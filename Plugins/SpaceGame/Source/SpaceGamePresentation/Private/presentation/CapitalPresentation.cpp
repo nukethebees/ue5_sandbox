@@ -1,6 +1,7 @@
 #include "SpaceGamePresentation/presentation/CapitalPresentation.h"
 
 #include <ioj/column_math.h>
+#include <ioj/sim/entities/entity_ledger.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGamePresentation/entities/TestBatchActorCore.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
@@ -67,7 +68,7 @@ void FCapitalPresentation::begin_play_presentation() {
     validate_array_sizes();
 }
 
-void FCapitalPresentation::update_visual_data() {
+void FCapitalPresentation::update_visual_data(ioj::sim::EntityLedger const& ledger) {
     auto const colours{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
     for (auto const& change : simulation().get_frame_changes()) {
@@ -83,7 +84,7 @@ void FCapitalPresentation::update_visual_data() {
             instances->SetCustomData(index, data, false);
         }
     }
-    trigger_death_effects();
+    trigger_death_effects(ledger);
 }
 
 void FCapitalPresentation::commit_visual_data() {
@@ -152,8 +153,11 @@ void FCapitalPresentation::add_visual_instances(int32 const first_index, int32 c
         first_index, first_index + n_to_add - 1, custom_data, mark_render_state_dirty);
 }
 
-void FCapitalPresentation::trigger_death_effects() {
-    auto const deaths{simulation().get_deaths()};
+void FCapitalPresentation::trigger_death_effects(ioj::sim::EntityLedger const& ledger) {
+    auto const deaths{ledger.get_frame_deaths(ioj::sim::EntityType::CapitalShip)};
+    auto const history{ledger.get_unique_entities()};
+    auto const death_ticks{history.death_ticks()};
+    auto const death_locations{history.death_locations()};
     auto const n{static_cast<int32>(deaths.size())};
     auto* const small_death_explosion{actor_config->small_death_explosion.Get()};
     auto* const main_death_explosion{actor_config->main_death_explosion.Get()};
@@ -188,13 +192,13 @@ void FCapitalPresentation::trigger_death_effects() {
     ml::reserve(n * (n_small_explosions + 1), spawn_systems, spawn_locations, spawn_delays);
 
     float current_delay{0.f};
-    uint32 previous_batch{MAX_uint32};
-    for (auto const& death : deaths) {
-        if (previous_batch != death.batch_index) {
+    std::optional<ioj::sim::SimTick> previous_tick;
+    for (auto const row : deaths) {
+        if (previous_tick != death_ticks[row]) {
             current_delay = 0.f;
-            previous_batch = death.batch_index;
+            previous_tick = death_ticks[row];
         }
-        FVector const base_location{ml::to_unreal(death.location)};
+        FVector const base_location{ml::to_unreal(death_locations[row])};
         if (has_small_death_explosion) {
             for (int32 explosion_index{0}; explosion_index < n_small_explosions;
                  ++explosion_index) {

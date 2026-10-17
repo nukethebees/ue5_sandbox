@@ -32,12 +32,14 @@ namespace ioj::sim::capital_ships {
 void Sim::set_config(CapitalShipSimConfig const& new_config) noexcept {
     config = new_config;
 }
-Sim::Sim(EntityLedger& ledger,
+Sim::Sim(SimClock const& clock,
+         EntityLedger& ledger,
          CombatEvents const& combat_events,
          EntityTables& entity_tables,
          SpatialQueryManager const& in_spatial_query_manager,
          fighters::Sim& fighters)
-    : ledger_{ledger}
+    : clock_{clock}
+    , ledger_{ledger}
     , combat_events_{combat_events}
     , entity_tables_{entity_tables}
     , spatial_query_manager{in_spatial_query_manager}
@@ -113,12 +115,6 @@ void Sim::resolve_damage_events() {
                                     local_indices_to_remove,
                                     entity_death_info,
                                     ledger_);
-    auto const batch_index{static_cast<std::uint32_t>(deaths_.size())};
-    auto const locations{entities.view_locations()};
-
-    for (auto const index : local_indices_to_remove) {
-        deaths_.push_back({vector_at(locations, index), batch_index});
-    }
 }
 void Sim::publish_deaths() {
     auto const deaths{entity_death_info.get_const_view()};
@@ -126,8 +122,14 @@ void Sim::publish_deaths() {
     auto const victims{deaths.victims()};
     auto const killers{deaths.killers()};
     auto const reasons{deaths.reasons()};
+    auto const locations{entities.get_const_view().view_locations()};
+    auto const handles{entity_tables_.lookups.for_type(EntityType::CapitalShip).entries()};
+    auto const tick{clock_.get_completed_ticks()};
     for (std::uint32_t i{}; i < death_count; ++i) {
-        ledger_.record_death(victims[i], killers[i], reasons[i]);
+        auto const handle{handles[victims[i].index()]};
+        assert(handle.is_valid());
+        ledger_.record_death(
+            victims[i], killers[i], reasons[i], tick, vector_at(locations, handle.index()));
     }
 }
 void Sim::remove_components() {

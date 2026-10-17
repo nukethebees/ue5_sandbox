@@ -37,7 +37,6 @@ native/levels/lib/include/ioj/levels/diagnostic_code.h
 native/levels/lib/include/ioj/levels/entity_archetype.h
 native/levels/lib/include/ioj/levels/level_mission_mode.h
 native/levels/lib/include/ioj/levels/team.h
-native/simulation/include/ioj/sim/capital_ships/capital_death_event.h
 native/simulation/include/ioj/sim/capital_ships/capital_entity_data.h
 native/simulation/include/ioj/sim/capital_ships/phase_interface.h
 native/simulation/include/ioj/sim/collision/cell_coord_bounds.h

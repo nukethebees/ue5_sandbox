@@ -236,8 +236,14 @@ void Sim::publish_deaths() {
     auto const victims{deaths.victims()};
     auto const killers{deaths.killers()};
     auto const reasons{deaths.reasons()};
+    auto const locations{entities.get_const_view().view_locations()};
+    auto const handles{entity_tables_.lookups.for_type(EntityType::Turret).entries()};
+    auto const tick{simulation_clock.get_completed_ticks()};
     for (std::uint32_t i{}; i < death_count; ++i) {
-        ledger_.record_death(victims[i], killers[i], reasons[i]);
+        auto const handle{handles[victims[i].index()]};
+        assert(handle.is_valid());
+        ledger_.record_death(
+            victims[i], killers[i], reasons[i], tick, vector_at(locations, handle.index()));
     }
 }
 void Sim::remove_components() {

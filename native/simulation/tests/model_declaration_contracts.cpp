@@ -3,7 +3,6 @@
 #include <ioj/levels/diagnostic_code.h>
 #include <ioj/levels/level_mission_mode.h>
 #include <ioj/levels/team.h>
-#include <ioj/sim/capital_ships/capital_death_event.h>
 #include <ioj/sim/collision/cell_coord.h>
 #include <ioj/sim/collision/cell_coord_bounds.h>
 #include <ioj/sim/collision/grid_geometry.h>
@@ -1115,28 +1114,6 @@ TEST(SimulationModelDefaults, LineTraceResult) {
     EXPECT_EQ(value.static_geometry_index,
               (collision::StaticGeometryIndex{collision::invalid_static_geometry_index}));
     EXPECT_EQ(value.hit, (bool{false}));
-}
-}
-
-namespace ioj::sim::model_contract {
-struct OriginalCapitalDeathEvent {
-    Vector3f location;
-    std::uint32_t batch_index{};
-};
-static_assert(sizeof(CapitalDeathEvent) == sizeof(OriginalCapitalDeathEvent));
-static_assert(alignof(CapitalDeathEvent) == alignof(OriginalCapitalDeathEvent));
-static_assert(std::is_standard_layout_v<CapitalDeathEvent> ==
-              std::is_standard_layout_v<OriginalCapitalDeathEvent>);
-static_assert(std::is_trivially_copyable_v<CapitalDeathEvent> ==
-              std::is_trivially_copyable_v<OriginalCapitalDeathEvent>);
-static_assert(std::is_aggregate_v<CapitalDeathEvent>);
-static_assert(std::is_trivially_default_constructible_v<CapitalDeathEvent> ==
-              std::is_trivially_default_constructible_v<OriginalCapitalDeathEvent>);
-IOJ_RECORD_MEMBER_CONTRACT(CapitalDeathEvent, location);
-IOJ_RECORD_MEMBER_CONTRACT(CapitalDeathEvent, batch_index);
-TEST(SimulationModelDefaults, CapitalDeathEvent) {
-    CapitalDeathEvent const value{};
-    EXPECT_EQ(value.batch_index, (std::int32_t{}));
 }
 }
 

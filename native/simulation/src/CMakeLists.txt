@@ -13,7 +13,6 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/collision/overlap_response_config.h
   ../include/ioj/sim/fighters/fighter_sim_config.h
   ../include/ioj/sim/batch_operations.h
-  ../include/ioj/sim/capital_ships/capital_death_event.h
   ../include/ioj/sim/capital_ships/capital_entity_data.h
   ../include/ioj/sim/collision/collision_events.h
   ../include/ioj/sim/collision/collision_types.h

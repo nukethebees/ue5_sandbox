@@ -10,6 +10,12 @@ void EntityLedger::reset() {
     history_.reset();
     ids_.reset();
     statistics_.reset();
+    reset_frame_output();
+}
+void EntityLedger::reset_frame_output() {
+    for (auto& deaths : frame_deaths_) {
+        deaths.clear();
+    }
 }
 auto EntityLedger::require_history_index(EntityUniqueId const id) const -> std::uint32_t {
     auto const index{ids_.history_index(id)};
@@ -47,13 +53,18 @@ void EntityLedger::record_status(EntityUniqueId const id, Team const team, bool 
 }
 void EntityLedger::record_death(EntityUniqueId const victim,
                                 EntityUniqueId const killer,
-                                DeathReason const reason) {
+                                DeathReason const reason,
+                                SimTick const tick,
+                                Vector3f const location) {
     auto const row{require_history_index(victim)};
     auto const history{history_.get_view()};
     auto const team{history.teams()[row]};
     auto const alive{history.life_state()[row] == LifeState::Alive};
     statistics_.apply_alive_transition(team, team, victim.entity_type(), alive, false);
     history.life_state()[row] = static_cast<LifeState>(reason);
+    history.death_ticks()[row] = tick;
+    history.death_locations()[row] = location;
+    frame_deaths_[std::to_underlying(victim.entity_type())].push_back(row);
     statistics_.record_destroyed(team, victim.entity_type());
     if (!killer.is_valid()) {
         return;

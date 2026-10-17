@@ -5,19 +5,34 @@
 #include <ioj/sim/entities/entity_id_allocator.h>
 #include <ioj/sim/entities/health.h>
 
+#include <array>
+#include <vector>
+
 namespace ioj::sim {
 // Level-lifetime identity, history and combat accounting; no live agent storage.
 class EntityLedger {
   public:
+    using HistoryIndex = std::uint32_t;
+
     void reset();
+    void reset_frame_output();
     auto record_spawn(EntityType type, Team team, bool alive) -> EntityUniqueId;
     void record_status(EntityUniqueId id, Team team, bool alive);
-    void record_death(EntityUniqueId victim, EntityUniqueId killer, DeathReason reason);
+    void record_death(EntityUniqueId victim,
+                      EntityUniqueId killer,
+                      DeathReason reason,
+                      SimTick tick,
+                      Vector3f location);
     void record_damage(EntityUniqueId victim, EntityUniqueId attacker, Health damage);
     void record_shots(std::span<EntityUniqueId const> instigators);
 
+    // Read death metadata after record_death; it describes the latest death of that identity.
     auto get_unique_entities() const noexcept -> EntityHistory::ConstView {
         return history_.get_const_view();
+    }
+    // Borrow history rows in publication order until the next frame or ledger mutation.
+    auto get_frame_deaths(EntityType type) const -> std::span<HistoryIndex const> {
+        return frame_deaths_[std::to_underlying(type)];
     }
     auto get_history_index(EntityUniqueId id) const noexcept -> std::uint32_t {
         return ids_.history_index(id);
@@ -54,5 +69,6 @@ class EntityLedger {
     EntityHistory history_;
     EntityIdAllocator ids_;
     CombatStatistics statistics_;
+    std::array<std::vector<HistoryIndex>, ml::enum_count<EntityType>()> frame_deaths_;
 };
 }

@@ -436,15 +436,6 @@
     (member static_geometry_index @native_static_geometry_index :initializer "collision::invalid_static_geometry_index")
     (member hit bool :initializer "false")))
 
-(module native_capital_death_event
-  :header "native/simulation/include/ioj/sim/capital_ships/capital_death_event.h"
-  :header-include "ioj/sim/capital_ships/capital_death_event.h"
-  :backend standard-library
-  :namespace ioj::sim
-  (record CapitalDeathEvent
-    (member location @native_vector_3f)
-    (member batch_index std::uint32_t :initializer "")))
-
 (module native_navigation_telemetry
   :header "native/simulation/include/ioj/sim/telemetry/navigation_telemetry.h"
   :header-include "ioj/sim/telemetry/navigation_telemetry.h"

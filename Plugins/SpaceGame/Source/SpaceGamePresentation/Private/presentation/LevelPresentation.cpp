@@ -81,7 +81,7 @@ void FLevelPresentation::tick(float const dt, ::ioj::sim::LevelReadAccess const&
         player_->tick(*player);
     }
     if (consume_changes) {
-        capital_ships.update_visual_data();
+        capital_ships.update_visual_data(view.get_entity_ledger());
         turrets.update_visual_data();
     }
     capital_ship_fighters.update_visual_data();

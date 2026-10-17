@@ -8,6 +8,8 @@
 #include "ioj/sim/entities/entity_life_state.h"
 #include "ioj/sim/entities/entity_type.h"
 #include "ioj/sim/entities/entity_unique_id.h"
+#include "ioj/sim/sim_tick.h"
+#include "ioj/vector_types.h"
 
 #include <cassert>
 #include <memory_resource>
@@ -29,6 +31,8 @@ struct EntityHistoryColumnsSingleLayoutColumns {
     ColLayout<std::uint32_t> KillsColumn;
     ColLayout<EntityUniqueId> KilledByColumn;
     ColLayout<LifeState> LifeStateColumn;
+    ColLayout<SimTick> DeathTicksColumn;
+    ColLayout<Vector3f> DeathLocationsColumn;
 
     constexpr EntityHistoryColumnsSingleLayoutColumns() noexcept
         : EntityIdsColumn{LayoutStart}
@@ -36,7 +40,9 @@ struct EntityHistoryColumnsSingleLayoutColumns {
         , TeamsColumn{EntityTypesColumn}
         , KillsColumn{TeamsColumn}
         , KilledByColumn{KillsColumn}
-        , LifeStateColumn{KilledByColumn} {}
+        , LifeStateColumn{KilledByColumn}
+        , DeathTicksColumn{LifeStateColumn}
+        , DeathLocationsColumn{DeathTicksColumn} {}
     EntityHistoryColumnsSingleLayoutColumns(EntityHistoryColumnsSingleLayoutColumns const&) =
         delete;
     auto operator=(EntityHistoryColumnsSingleLayoutColumns const&)
@@ -53,15 +59,15 @@ struct EntityHistoryColumnsSingleLayout {
     static constexpr EntityHistoryColumnsSingleLayoutColumns columns{};
 
     static constexpr byte_size_type allocation_alignment{
-        columns.LifeStateColumn.allocation_alignment};
+        columns.DeathLocationsColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::capacity_block_bound(columns.LifeStateColumn)};
+        ml::native_soa::capacity_block_bound(columns.DeathLocationsColumn)};
     static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.LifeStateColumn.data_end(blocks);
+        return blocks == 0 ? 0 : columns.DeathLocationsColumn.data_end(blocks);
     }
     static_assert(max_capacity >= capacity_granularity);
 };
@@ -94,6 +100,8 @@ struct EntityHistoryColumnsSingleViewImpl : ml::soa_storage_detail::CompactViewO
     auto kills() const { return make_column_view(Layout::columns.KillsColumn); }
     auto killed_by() const { return make_column_view(Layout::columns.KilledByColumn); }
     auto life_state() const { return make_column_view(Layout::columns.LifeStateColumn); }
+    auto death_ticks() const { return make_column_view(Layout::columns.DeathTicksColumn); }
+    auto death_locations() const { return make_column_view(Layout::columns.DeathLocationsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(entity_ids());
@@ -102,6 +110,8 @@ struct EntityHistoryColumnsSingleViewImpl : ml::soa_storage_detail::CompactViewO
         func(kills());
         func(killed_by());
         func(life_state());
+        func(death_ticks());
+        func(death_locations());
     }
   private:
     template <typename T>
@@ -133,6 +143,8 @@ static_assert(ml::soa_storage_detail::validate_compact_view<EntityHistoryColumns
 // kills: std::uint32_t
 // killed_by: EntityUniqueId
 // life_state: LifeState
+// death_ticks: SimTick
+// death_locations: Vector3f
 struct EntityHistory
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {
@@ -185,6 +197,8 @@ struct EntityHistory
         Element<std::uint32_t>* kills{};
         Element<EntityUniqueId>* killed_by{};
         Element<LifeState>* life_state{};
+        Element<SimTick>* death_ticks{};
+        Element<Vector3f>* death_locations{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (entity_ids == nullptr) {
                 return {};
@@ -194,7 +208,9 @@ struct EntityHistory
                     teams + offset,
                     kills + offset,
                     killed_by + offset,
-                    life_state + offset};
+                    life_state + offset,
+                    death_ticks + offset,
+                    death_locations + offset};
         }
     };
     template <typename Self>
@@ -225,7 +241,9 @@ struct EntityHistory
                 cursor.column_pointer(data, Layout::columns.TeamsColumn),
                 cursor.column_pointer(data, Layout::columns.KillsColumn),
                 cursor.column_pointer(data, Layout::columns.KilledByColumn),
-                cursor.column_pointer(data, Layout::columns.LifeStateColumn)};
+                cursor.column_pointer(data, Layout::columns.LifeStateColumn),
+                cursor.column_pointer(data, Layout::columns.DeathTicksColumn),
+                cursor.column_pointer(data, Layout::columns.DeathLocationsColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -243,6 +261,8 @@ struct EntityHistory
         default_construct_n(columns.kills, count);
         default_construct_n(columns.killed_by, count);
         default_construct_n(columns.life_state, count);
+        default_construct_n(columns.death_ticks, count);
+        default_construct_n(columns.death_locations, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -257,6 +277,8 @@ struct EntityHistory
         transfer(destination.kills, source.kills);
         transfer(destination.killed_by, source.killed_by);
         transfer(destination.life_state, source.life_state);
+        transfer(destination.death_ticks, source.death_ticks);
+        transfer(destination.death_locations, source.death_locations);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,
@@ -286,7 +308,9 @@ struct EntityHistory
                 source_data(source.teams()),
                 source_data(source.kills()),
                 source_data(source.killed_by()),
-                source_data(source.life_state())};
+                source_data(source.life_state()),
+                source_data(source.death_ticks()),
+                source_data(source.death_locations())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,

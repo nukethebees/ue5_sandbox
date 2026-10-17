@@ -589,7 +589,11 @@ auto Sim::is_alive() const -> bool {
 
 void Sim::die(EntityUniqueId const killer) {
     auto const reason{killer.is_valid() ? DeathReason::Combat : DeathReason::Unknown};
-    ledger_.record_death(unique_entity_id, killer, reason);
+    ledger_.record_death(unique_entity_id,
+                         killer,
+                         reason,
+                         simulation_clock.get_completed_ticks(),
+                         to_float(state_.physical.transform.location));
     death_notification_pending = true;
 }
 

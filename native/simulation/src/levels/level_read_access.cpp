@@ -26,6 +26,9 @@ auto LevelReadAccess::get_player() const -> player::Sim const* {
 auto LevelReadAccess::get_clock() const -> SimClock const& {
     return level_.get_clock();
 }
+auto LevelReadAccess::get_entity_ledger() const -> EntityLedger const& {
+    return level_.get_entity_ledger();
+}
 auto LevelReadAccess::frame_sequence() const -> std::uint64_t {
     return level_.frame_sequence_;
 }

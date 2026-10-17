@@ -453,9 +453,11 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
                  frame.get_capitals().get_frame_changes()[0].id ==
                      frame.get_capitals().get_frame_changes()[1].id);
     }
-    TestEqual(TEXT("Death effect remains available"),
-              static_cast<int32>(frame.get_capitals().get_deaths().size()),
-              1);
+    TestEqual(
+        TEXT("Death effect remains available"),
+        static_cast<int32>(
+            frame.get_entity_ledger().get_frame_deaths(::ioj::sim::EntityType::CapitalShip).size()),
+        1);
     presentation.tick(static_cast<float>(dt * 4.25), frame);
     TestEqual(
         TEXT("One presentation follows all fixed ticks"), presentation.get_tick_count(), uint64{1});
@@ -474,7 +476,9 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
               static_cast<int32>(idle_frame.get_capitals().get_frame_changes().size()),
               0);
     TestEqual(TEXT("Zero-step frame has no previous deaths"),
-              static_cast<int32>(idle_frame.get_capitals().get_deaths().size()),
+              static_cast<int32>(idle_frame.get_entity_ledger()
+                                     .get_frame_deaths(::ioj::sim::EntityType::CapitalShip)
+                                     .size()),
               0);
     presentation.tick(0.f, idle_frame);
     TestEqual(
@@ -522,13 +526,18 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     deaths.advance(0.425);
     auto const death_frame{deaths.get_read_access()};
     if (!TestEqual(TEXT("Deaths from two fixed ticks survive the frame"),
-                   static_cast<int32>(death_frame.get_capitals().get_deaths().size()),
+                   static_cast<int32>(death_frame.get_entity_ledger()
+                                          .get_frame_deaths(::ioj::sim::EntityType::CapitalShip)
+                                          .size()),
                    2)) {
         return false;
     }
+    auto const death_rows{
+        death_frame.get_entity_ledger().get_frame_deaths(::ioj::sim::EntityType::CapitalShip)};
+    auto const death_ticks{death_frame.get_entity_ledger().get_unique_entities().death_ticks()};
     TestNotEqual(TEXT("Separate fixed ticks retain separate death batches"),
-                 death_frame.get_capitals().get_deaths()[0].batch_index,
-                 death_frame.get_capitals().get_deaths()[1].batch_index);
+                 death_ticks[death_rows[0]],
+                 death_ticks[death_rows[1]]);
     death_effects.tick(0.f, death_frame);
     auto const delays{death_effects.effects.get_times_remaining()};
     TestEqual(

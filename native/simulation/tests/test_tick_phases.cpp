@@ -486,7 +486,7 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
         ASSERT_FALSE(capital_view.get_frame_changes().empty());
         EXPECT_EQ(capital_view.get_frame_changes().back().kind, EntityFrameChangeKind::RemoveSwap);
         EXPECT_EQ(capital_view.get_frame_changes().back().id, victim);
-        ASSERT_EQ(capital_view.get_deaths().size(), 1);
+        ASSERT_EQ(ledger.get_frame_deaths(EntityType::CapitalShip).size(), 1);
         EXPECT_EQ(observe_entity_row(simulation, victim), EntityInstanceHandle::invalid_value);
         EXPECT_EQ(observe_entity_row(simulation, killer), 0);
         EXPECT_EQ(ledger.count_alive(), kill_tick == 1 ? 1 : 3);
@@ -523,7 +523,7 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
     simulation.advance(simulation.get_clock().get_tick_period() * 2.0);
     auto const& final{simulation.get_read_access().get_capitals()};
     ASSERT_EQ(final.get_frame_changes().size(), 2);
-    EXPECT_EQ(final.get_deaths().size(), 2);
+    EXPECT_EQ(simulation.get_entity_ledger().get_frame_deaths(EntityType::CapitalShip).size(), 2);
     for (auto const& change : final.get_frame_changes()) {
         EXPECT_EQ(change.kind, EntityFrameChangeKind::RemoveSwap);
         ASSERT_LT(static_cast<std::size_t>(change.index), visual_ids.size());

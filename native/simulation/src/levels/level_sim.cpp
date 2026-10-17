@@ -78,7 +78,8 @@ LevelSim::LevelSim(GameMemory& game_memory, LevelSimInitData data)
                            query_manager_,
                            lasers_simulation_}
     , fighters_phase_{fighters_simulation_}
-    , capital_ships_simulation_{entity_ledger_,
+    , capital_ships_simulation_{clock_,
+                                entity_ledger_,
                                 combat_events_,
                                 entity_tables_,
                                 query_manager_,
@@ -272,6 +273,7 @@ void LevelSim::advance(time_type const dt) {
     }
 
     ++frame_sequence_;
+    entity_ledger_.reset_frame_output();
     capital_ships_simulation_.reset_frame_output();
     turrets_simulation_.reset_frame_output();
     lasers_simulation_.reset_frame_output();

@@ -142,11 +142,11 @@ TEST(EntityLedger, PreservesHistoricalAccountingAndResetsLevelIdentity) {
     ledger.record_shots(std::array{killer, EntityUniqueId{}});
 
     ledger.record_damage(first_victim, killer, 17);
-    ledger.record_death(first_victim, killer, DeathReason::Combat);
-    ledger.record_death(killer, {}, DeathReason::Unknown);
+    ledger.record_death(first_victim, killer, DeathReason::Combat, 4, {1.f, 2.f, 3.f});
+    ledger.record_death(killer, {}, DeathReason::Unknown, 5, {});
 
     auto const second_victim{ledger.record_spawn(EntityType::Fighter, Team::Blue, true)};
-    ledger.record_death(second_victim, killer, DeathReason::Combat);
+    ledger.record_death(second_victim, killer, DeathReason::Combat, 4, {1.f, 2.f, 3.f});
 
     EXPECT_EQ(ledger.get_kills(killer), 2u);
     EXPECT_EQ(ledger.count_kills(), 2);

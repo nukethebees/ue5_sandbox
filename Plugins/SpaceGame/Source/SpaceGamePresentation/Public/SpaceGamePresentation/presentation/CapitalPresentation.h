@@ -26,14 +26,14 @@ struct SPACEGAMEPRESENTATION_API FCapitalPresentation {
 
     void clear_runtime_state_presentation();
     void begin_play_presentation();
-    void update_visual_data();
+    void update_visual_data(ioj::sim::EntityLedger const& ledger);
     void commit_visual_data();
     void end_tick_presentation();
 
     void configure_ismc();
     void add_initial_visual_instances();
     void add_visual_instances(int32 first_index, int32 count);
-    void trigger_death_effects();
+    void trigger_death_effects(ioj::sim::EntityLedger const& ledger);
     void validate_array_sizes() const;
 
     FCapitalShipConfig const* actor_config{nullptr};

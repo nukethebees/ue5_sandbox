@@ -1,7 +1,6 @@
 #pragma once
 #include <ioj/frame_memory_resource.h>
 #include <ioj/levels/team.h>
-#include <ioj/sim/capital_ships/capital_death_event.h>
 #include <ioj/sim/capital_ships/capital_entity_data.h>
 #include <ioj/sim/capital_ships/capital_ship_sim_config.h>
 #include <ioj/sim/entities/entity_death_info.h>
@@ -17,6 +16,7 @@
 #include <ioj/sim/levels/level_spawn_groups.h>
 #include <ioj/sim/levels/level_spinner_spawn_events.h>
 #include <ioj/sim/levels/level_turret_spawn_events.h>
+#include <ioj/sim/sim_clock.h>
 
 #include <cstdint>
 #include <optional>
@@ -42,7 +42,8 @@ class PhaseInterface;
 struct Sim {
     using EntityStorage = CapitalEntityData;
 
-    Sim(EntityLedger& ledger,
+    Sim(SimClock const& clock,
+        EntityLedger& ledger,
         CombatEvents const& combat_events,
         EntityTables& entity_tables,
         SpatialQueryManager const& spatial_query_manager,
@@ -60,11 +61,7 @@ struct Sim {
         return entity_tables_.health.get_const_view<EntityType::CapitalShip>(entities.num());
     }
     auto get_frame_changes() const -> std::span<EntityFrameChange const> { return frame_changes_; }
-    auto get_deaths() const -> std::span<CapitalDeathEvent const> { return deaths_; }
-    void reset_frame_output() {
-        frame_changes_.clear();
-        deaths_.clear();
-    }
+    void reset_frame_output() { frame_changes_.clear(); }
     void set_config(CapitalShipSimConfig const& new_config) noexcept;
     void set_diagnostics_enabled(bool enabled) noexcept { diagnostics_enabled_ = enabled; }
 
@@ -167,6 +164,7 @@ struct Sim {
 
     CapitalShipSimConfig config{};
     bool diagnostics_enabled_{};
+    SimClock const& clock_;
     EntityLedger& ledger_;
     CombatEvents const& combat_events_;
     EntityTables& entity_tables_;
@@ -176,7 +174,6 @@ struct Sim {
     std::vector<std::uint32_t> local_indices_to_remove;
     EntityDeathInfo entity_death_info;
     std::vector<EntityFrameChange> frame_changes_;
-    std::vector<CapitalDeathEvent> deaths_;
 
     fighters::CommandInterface fighters_interface;
     std::vector<EntityUniqueId> fighter_ids;
