@@ -29,18 +29,18 @@ auto to_closed_max_cell(float const value,
     }
     return to_cell(value, cell_dimension, half_grid_extent);
 }
-auto grid_half_size(GridGeometry const geometry) noexcept -> Vec3f {
+auto grid_half_size(GridGeometry const geometry) noexcept -> Vector3f {
     return ml::make_vector3f(
         static_cast<float>(geometry.dimensions.x) * geometry.cell_dimensions.X * 0.5f,
         static_cast<float>(geometry.dimensions.y) * geometry.cell_dimensions.Y * 0.5f,
         static_cast<float>(geometry.dimensions.z) * geometry.cell_dimensions.Z * 0.5f);
 }
-auto clip_segment(Vec3f const start,
-                  Vec3f const end,
-                  Vec3f const bounds_min,
-                  Vec3f const bounds_max_inside,
-                  Vec3f& clipped_start,
-                  Vec3f& clipped_end) noexcept -> bool {
+auto clip_segment(Vector3f const start,
+                  Vector3f const end,
+                  Vector3f const bounds_min,
+                  Vector3f const bounds_max_inside,
+                  Vector3f& clipped_start,
+                  Vector3f& clipped_end) noexcept -> bool {
     auto const delta{ml::make_vector3f(end.X - start.X, end.Y - start.Y, end.Z - start.Z)};
     float entry_t{};
     float exit_t{1.0f};
@@ -132,7 +132,7 @@ auto to_cell_coord(float const value, float const cell_dimension, int const grid
     auto const half_extent{static_cast<float>(grid_dimension) * cell_dimension * 0.5f};
     return to_cell(value, cell_dimension, half_extent);
 }
-auto to_cell_coord(GridGeometry const geometry, Vec3f const position) noexcept -> CellCoord {
+auto to_cell_coord(GridGeometry const geometry, Vector3f const position) noexcept -> CellCoord {
     auto const half_size{grid_half_size(geometry)};
     return {
         to_cell(position.X, geometry.cell_dimensions.X, half_size.X),
@@ -140,7 +140,7 @@ auto to_cell_coord(GridGeometry const geometry, Vec3f const position) noexcept -
         to_cell(position.Z, geometry.cell_dimensions.Z, half_size.Z),
     };
 }
-auto to_max_cell_coord(GridGeometry const geometry, Vec3f const position) noexcept -> CellCoord {
+auto to_max_cell_coord(GridGeometry const geometry, Vector3f const position) noexcept -> CellCoord {
     auto const half_size{grid_half_size(geometry)};
     return {
         to_closed_max_cell(
@@ -152,8 +152,8 @@ auto to_max_cell_coord(GridGeometry const geometry, Vec3f const position) noexce
     };
 }
 auto to_cell_coord_bounds(GridGeometry const geometry,
-                          Vec3f const min_point,
-                          Vec3f const max_point) noexcept -> CellCoordBounds {
+                          Vector3f const min_point,
+                          Vector3f const max_point) noexcept -> CellCoordBounds {
     return {to_cell_coord(geometry, min_point), to_max_cell_coord(geometry, max_point)};
 }
 auto to_cell_min(int const coordinate,
@@ -162,14 +162,14 @@ auto to_cell_min(int const coordinate,
     auto const half_extent{static_cast<float>(grid_dimension) * cell_dimension * 0.5f};
     return static_cast<float>(coordinate) * cell_dimension - half_extent;
 }
-auto to_cell_min(GridGeometry const geometry, CellCoord const coordinate) noexcept -> Vec3f {
+auto to_cell_min(GridGeometry const geometry, CellCoord const coordinate) noexcept -> Vector3f {
     auto const half_size{grid_half_size(geometry)};
     return ml::make_vector3f(
         static_cast<float>(coordinate.x) * geometry.cell_dimensions.X - half_size.X,
         static_cast<float>(coordinate.y) * geometry.cell_dimensions.Y - half_size.Y,
         static_cast<float>(coordinate.z) * geometry.cell_dimensions.Z - half_size.Z);
 }
-auto to_cell_centre(GridGeometry const geometry, CellCoord const coordinate) noexcept -> Vec3f {
+auto to_cell_centre(GridGeometry const geometry, CellCoord const coordinate) noexcept -> Vector3f {
     auto result{to_cell_min(geometry, coordinate)};
     result.X += geometry.cell_dimensions.X * 0.5f;
     result.Y += geometry.cell_dimensions.Y * 0.5f;
@@ -216,12 +216,12 @@ void are_spheres_in_bounds(GridGeometry const geometry,
 /* **************************************** */
 // AABB tracing
 /* **************************************** */
-auto trace_aabb(Vec3f const trace_start,
-                Vec3f const inverse_trace_delta,
-                Vec3f const trace_delta,
-                Vec3f const aabb_min,
-                Vec3f const aabb_max,
-                Vec3f const expansion) noexcept -> float {
+auto trace_aabb(Vector3f const trace_start,
+                Vector3f const inverse_trace_delta,
+                Vector3f const trace_delta,
+                Vector3f const aabb_min,
+                Vector3f const aabb_max,
+                Vector3f const expansion) noexcept -> float {
     float minimum_t{};
     float maximum_t{1.0f};
 
@@ -255,8 +255,8 @@ auto trace_aabb(Vec3f const trace_start,
 // Grid traversal
 /* **************************************** */
 auto GridTraversal::create(GridGeometry const geometry,
-                           Vec3f const start,
-                           Vec3f const end,
+                           Vector3f const start,
+                           Vector3f const end,
                            GridTraversal& result) noexcept -> bool {
     if (!is_configured(geometry)) {
         return false;
@@ -264,19 +264,19 @@ auto GridTraversal::create(GridGeometry const geometry,
 
     auto const half_size{grid_half_size(geometry)};
     auto const bounds_min{ml::make_vector3f(-half_size.X, -half_size.Y, -half_size.Z)};
-    Vec3f bounds_max_inside{half_size};
+    Vector3f bounds_max_inside{half_size};
     for (std::size_t axis{}; axis < axis_count; ++axis) {
         bounds_max_inside.Elements[axis] =
             std::nextafter(bounds_max_inside.Elements[axis], bounds_min.Elements[axis]);
     }
 
-    Vec3f clipped_start;
-    Vec3f clipped_end;
+    Vector3f clipped_start;
+    Vector3f clipped_end;
     if (!clip_segment(start, end, bounds_min, bounds_max_inside, clipped_start, clipped_end)) {
         return false;
     }
 
-    auto clamp_cell = [geometry](Vec3f const point) {
+    auto clamp_cell = [geometry](Vector3f const point) {
         return to_cell_coord(geometry, point).clamped({}, geometry.dimensions - 1);
     };
 
