@@ -2,8 +2,12 @@
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/entities/entity_unique_id.h>
 #include <ioj/sim/entities/ship_health.h>
+#include <ioj/sim/levels/level_capital_spawn_events.h>
+#include <ioj/sim/levels/level_mission_event_groups.h>
 #include <ioj/sim/levels/level_mission_initialisation_data.h>
-#include <ioj/sim/levels/level_runtime_events.h>
+#include <ioj/sim/levels/level_spawn_groups.h>
+#include <ioj/sim/levels/level_spinner_spawn_events.h>
+#include <ioj/sim/levels/level_turret_spawn_events.h>
 #include <ioj/sim/missions/mission_fail_reason.h>
 #include <ioj/sim/missions/mission_mode.h>
 #include <ioj/sim/missions/mission_state.h>

@@ -1,7 +1,11 @@
 #pragma once
 #include <ioj/levels/level_definition.h>
 #include <ioj/levels/level_mission_mode.h>
-#include <ioj/sim/levels/level_runtime_events.h>
+#include <ioj/sim/levels/level_capital_spawn_events.h>
+#include <ioj/sim/levels/level_mission_event_groups.h>
+#include <ioj/sim/levels/level_spawn_groups.h>
+#include <ioj/sim/levels/level_spinner_spawn_events.h>
+#include <ioj/sim/levels/level_turret_spawn_events.h>
 #include <SpaceGameSimulation/levels/LevelDefinitionSoA.h>
 #include <SpaceGameSimulation/levels/LevelTypes.h>
 

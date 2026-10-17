@@ -4,7 +4,11 @@
 #include <ioj/frame_array.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_tables.h>
-#include <ioj/sim/levels/level_runtime_events.h>
+#include <ioj/sim/levels/level_capital_spawn_events.h>
+#include <ioj/sim/levels/level_mission_event_groups.h>
+#include <ioj/sim/levels/level_spawn_groups.h>
+#include <ioj/sim/levels/level_spinner_spawn_events.h>
+#include <ioj/sim/levels/level_turret_spawn_events.h>
 #include <ioj/sim/profiling.h>
 
 #include <algorithm>

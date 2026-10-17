@@ -69,7 +69,11 @@ native/simulation/include/ioj/sim/lasers/laser_source.h
 native/simulation/include/ioj/sim/lasers/phase_interface.h
 native/simulation/include/ioj/sim/levels/level_event_values.h
 native/simulation/include/ioj/sim/telemetry/current_state.h
-native/simulation/include/ioj/sim/levels/level_runtime_events.h
+native/simulation/include/ioj/sim/levels/level_spawn_groups.h
+native/simulation/include/ioj/sim/levels/level_capital_spawn_events.h
+native/simulation/include/ioj/sim/levels/level_turret_spawn_events.h
+native/simulation/include/ioj/sim/levels/level_spinner_spawn_events.h
+native/simulation/include/ioj/sim/levels/level_mission_event_groups.h
 native/simulation/include/ioj/sim/collision/line_trace_result.h
 native/simulation/include/ioj/sim/collision/line_traces.h
 native/simulation/include/ioj/sim/missions/mission_fail_reason.h

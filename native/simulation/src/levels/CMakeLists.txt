@@ -7,7 +7,11 @@ target_sources(native-simulation PRIVATE
   ../../include/ioj/sim/levels/level_initialisation_data.h
   ../../include/ioj/sim/levels/level_mission_events.h
   ../../include/ioj/sim/levels/level_mission_initialisation_data.h
-  ../../include/ioj/sim/levels/level_runtime_events.h
+  ../../include/ioj/sim/levels/level_spawn_groups.h
+  ../../include/ioj/sim/levels/level_capital_spawn_events.h
+  ../../include/ioj/sim/levels/level_turret_spawn_events.h
+  ../../include/ioj/sim/levels/level_spinner_spawn_events.h
+  ../../include/ioj/sim/levels/level_mission_event_groups.h
   ../../include/ioj/sim/levels/level_spawn_manager.h
   level_compilation.cpp
   fighter_spawn_slot_validation.cpp

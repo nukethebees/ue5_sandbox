@@ -9,7 +9,11 @@
 #include <ioj/sim/fighters/command_interface.h>
 #include <ioj/sim/fighters/fighter_order_queue.h>
 #include <ioj/sim/index_span.h>
-#include <ioj/sim/levels/level_runtime_events.h>
+#include <ioj/sim/levels/level_capital_spawn_events.h>
+#include <ioj/sim/levels/level_mission_event_groups.h>
+#include <ioj/sim/levels/level_spawn_groups.h>
+#include <ioj/sim/levels/level_spinner_spawn_events.h>
+#include <ioj/sim/levels/level_turret_spawn_events.h>
 #include <ioj/sim/sim_config.h>
 
 #include <cstdint>
