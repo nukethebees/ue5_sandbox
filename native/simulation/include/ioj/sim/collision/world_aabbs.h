@@ -67,30 +67,12 @@ struct WorldAABBsColumnsSingleViewImpl : ml::soa_storage_detail::CompactViewOper
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto min_xs() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::MinXsColumn);
-    }
-    auto min_ys() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::MinYsColumn);
-    }
-    auto min_zs() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::MinZsColumn);
-    }
-    auto max_xs() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::MaxXsColumn);
-    }
-    auto max_ys() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::MaxYsColumn);
-    }
-    auto max_zs() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::MaxZsColumn);
-    }
+    auto min_xs() const { return make_column_view(Layout::MinXsColumn); }
+    auto min_ys() const { return make_column_view(Layout::MinYsColumn); }
+    auto min_zs() const { return make_column_view(Layout::MinZsColumn); }
+    auto max_xs() const { return make_column_view(Layout::MaxXsColumn); }
+    auto max_ys() const { return make_column_view(Layout::MaxYsColumn); }
+    auto max_zs() const { return make_column_view(Layout::MaxZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(min_xs());
@@ -101,6 +83,11 @@ struct WorldAABBsColumnsSingleViewImpl : ml::soa_storage_detail::CompactViewOper
         func(max_zs());
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::native_soa::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct WorldAABBsColumnsSingleViewImpl;

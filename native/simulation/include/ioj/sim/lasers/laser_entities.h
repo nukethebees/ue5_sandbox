@@ -85,14 +85,8 @@ struct EntitiesSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto active() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::uint8_t>>>(
-            state_, offset_, count_, Layout::ActiveColumn);
-    }
-    auto sources() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<ioj::sim::LaserSource>>>(
-            state_, offset_, count_, Layout::SourcesColumn);
-    }
+    auto active() const { return make_column_view(Layout::ActiveColumn); }
+    auto sources() const { return make_column_view(Layout::SourcesColumn); }
     auto view_locations() const {
         using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
@@ -124,26 +118,11 @@ struct EntitiesSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
                                                                      Layout::VelocitiesYsColumn,
                                                                      Layout::VelocitiesZsColumn);
     }
-    auto damages() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
-            state_, offset_, count_, Layout::DamagesColumn);
-    }
-    auto lifetimes_remaining() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::LifetimesRemainingColumn);
-    }
-    auto instigator_ids() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
-            state_, offset_, count_, Layout::InstigatorIdsColumn);
-    }
-    auto initial_lifetimes() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::InitialLifetimesColumn);
-    }
-    auto spawn_times() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::SpawnTimesColumn);
-    }
+    auto damages() const { return make_column_view(Layout::DamagesColumn); }
+    auto lifetimes_remaining() const { return make_column_view(Layout::LifetimesRemainingColumn); }
+    auto instigator_ids() const { return make_column_view(Layout::InstigatorIdsColumn); }
+    auto initial_lifetimes() const { return make_column_view(Layout::InitialLifetimesColumn); }
+    auto spawn_times() const { return make_column_view(Layout::SpawnTimesColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(active());
@@ -167,6 +146,11 @@ struct EntitiesSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
         func(spawn_times());
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::native_soa::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct EntitiesSingleViewImpl;

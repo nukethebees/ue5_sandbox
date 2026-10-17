@@ -232,11 +232,11 @@ TEST(SingleAllocationSoa, EmitsCompactViewsAndSharedOwnerState) {
     EXPECT_NE(output.find("struct RowsSingleView_nested"), std::string::npos);
     EXPECT_NE(output.find("validate_compact_view<RowsSingleView>()"), std::string::npos);
     EXPECT_NE(output.find("validate_compact_view<RowsSingleConstView>()"), std::string::npos);
-    EXPECT_NE(output.find("column_view<TArrayView<Element<Aligned256>>>"), std::string::npos);
+    EXPECT_NE(output.find("column_view<TArrayView<Element<T>>>"), std::string::npos);
     EXPECT_NE(output.find("friend ml::soa_storage_detail::CompactViewOperations;"),
               std::string::npos);
     EXPECT_NE(output.find("using Layout = RowsSingleLayout;"), std::string::npos);
-    EXPECT_NE(output.find("state_, offset_, count_, Layout::NestedWideColumn"), std::string::npos);
+    EXPECT_NE(output.find("make_column_view(Layout::NestedWideColumn)"), std::string::npos);
     EXPECT_EQ(output.find("ml::soa_storage_detail::view_column_data<"), std::string::npos);
     EXPECT_EQ(output.find("auto columns() const"), std::string::npos);
     EXPECT_NE(output.find("for_each_removal_run(num_, indices"), std::string::npos);

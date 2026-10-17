@@ -98,18 +98,9 @@ struct FighterSpawnQueueSingleViewImpl : ml::soa_storage_detail::CompactViewOper
             Layout::RotationsYawsColumn,
             Layout::RotationsRollsColumn);
     }
-    auto teams() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<::ioj::Team>>>(
-            state_, offset_, count_, Layout::TeamsColumn);
-    }
-    auto parents() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
-            state_, offset_, count_, Layout::ParentsColumn);
-    }
-    auto targets() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
-            state_, offset_, count_, Layout::TargetsColumn);
-    }
+    auto teams() const { return make_column_view(Layout::TeamsColumn); }
+    auto parents() const { return make_column_view(Layout::ParentsColumn); }
+    auto targets() const { return make_column_view(Layout::TargetsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         auto const& locations_view{view_locations()};
@@ -125,6 +116,11 @@ struct FighterSpawnQueueSingleViewImpl : ml::soa_storage_detail::CompactViewOper
         func(targets());
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::native_soa::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct FighterSpawnQueueSingleViewImpl;

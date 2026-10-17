@@ -100,6 +100,11 @@ struct LineTracesSingleViewImpl : ml::soa_storage_detail::CompactViewOperations 
         func(ends_view.zs());
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::native_soa::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct LineTracesSingleViewImpl;

@@ -75,58 +75,19 @@ struct EntityCellDataColumnsSingleViewImpl : ml::soa_storage_detail::CompactView
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto min_point_xs() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::MinPointXsColumn);
-    }
-    auto min_point_ys() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::MinPointYsColumn);
-    }
-    auto min_point_zs() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::MinPointZsColumn);
-    }
-    auto max_point_xs() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::MaxPointXsColumn);
-    }
-    auto max_point_ys() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::MaxPointYsColumn);
-    }
-    auto max_point_zs() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::MaxPointZsColumn);
-    }
-    auto min_cell_xs() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
-            state_, offset_, count_, Layout::MinCellXsColumn);
-    }
-    auto min_cell_ys() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
-            state_, offset_, count_, Layout::MinCellYsColumn);
-    }
-    auto min_cell_zs() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
-            state_, offset_, count_, Layout::MinCellZsColumn);
-    }
-    auto max_cell_xs() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
-            state_, offset_, count_, Layout::MaxCellXsColumn);
-    }
-    auto max_cell_ys() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
-            state_, offset_, count_, Layout::MaxCellYsColumn);
-    }
-    auto max_cell_zs() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
-            state_, offset_, count_, Layout::MaxCellZsColumn);
-    }
-    auto entity_ids() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
-            state_, offset_, count_, Layout::EntityIdsColumn);
-    }
+    auto min_point_xs() const { return make_column_view(Layout::MinPointXsColumn); }
+    auto min_point_ys() const { return make_column_view(Layout::MinPointYsColumn); }
+    auto min_point_zs() const { return make_column_view(Layout::MinPointZsColumn); }
+    auto max_point_xs() const { return make_column_view(Layout::MaxPointXsColumn); }
+    auto max_point_ys() const { return make_column_view(Layout::MaxPointYsColumn); }
+    auto max_point_zs() const { return make_column_view(Layout::MaxPointZsColumn); }
+    auto min_cell_xs() const { return make_column_view(Layout::MinCellXsColumn); }
+    auto min_cell_ys() const { return make_column_view(Layout::MinCellYsColumn); }
+    auto min_cell_zs() const { return make_column_view(Layout::MinCellZsColumn); }
+    auto max_cell_xs() const { return make_column_view(Layout::MaxCellXsColumn); }
+    auto max_cell_ys() const { return make_column_view(Layout::MaxCellYsColumn); }
+    auto max_cell_zs() const { return make_column_view(Layout::MaxCellZsColumn); }
+    auto entity_ids() const { return make_column_view(Layout::EntityIdsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(min_point_xs());
@@ -144,6 +105,11 @@ struct EntityCellDataColumnsSingleViewImpl : ml::soa_storage_detail::CompactView
         func(entity_ids());
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::native_soa::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct EntityCellDataColumnsSingleViewImpl;

@@ -65,20 +65,19 @@ struct EntityEntityOverlapsSingleViewImpl : ml::soa_storage_detail::CompactViewO
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto first_entities() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
-            state_, offset_, count_, Layout::FirstEntitiesColumn);
-    }
-    auto second_entities() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
-            state_, offset_, count_, Layout::SecondEntitiesColumn);
-    }
+    auto first_entities() const { return make_column_view(Layout::FirstEntitiesColumn); }
+    auto second_entities() const { return make_column_view(Layout::SecondEntitiesColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(first_entities());
         func(second_entities());
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::native_soa::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct EntityEntityOverlapsSingleViewImpl;
@@ -304,13 +303,9 @@ struct EntityStaticOverlapsSingleViewImpl : ml::soa_storage_detail::CompactViewO
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto entities() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
-            state_, offset_, count_, Layout::EntitiesColumn);
-    }
+    auto entities() const { return make_column_view(Layout::EntitiesColumn); }
     auto static_geometry_indices() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<StaticGeometryIndex>>>(
-            state_, offset_, count_, Layout::StaticGeometryIndicesColumn);
+        return make_column_view(Layout::StaticGeometryIndicesColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -318,6 +313,11 @@ struct EntityStaticOverlapsSingleViewImpl : ml::soa_storage_detail::CompactViewO
         func(static_geometry_indices());
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::native_soa::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct EntityStaticOverlapsSingleViewImpl;

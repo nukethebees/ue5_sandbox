@@ -84,19 +84,11 @@ struct TraceHitsSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
                                                                      Layout::LocationsYsColumn,
                                                                      Layout::LocationsZsColumn);
     }
-    auto entities() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
-            state_, offset_, count_, Layout::EntitiesColumn);
-    }
+    auto entities() const { return make_column_view(Layout::EntitiesColumn); }
     auto static_geometry_indices() const {
-        return ml::soa_storage_detail::column_view<
-            std::span<Element<collision::StaticGeometryIndex>>>(
-            state_, offset_, count_, Layout::StaticGeometryIndicesColumn);
+        return make_column_view(Layout::StaticGeometryIndicesColumn);
     }
-    auto hits() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<TraceHit>>>(
-            state_, offset_, count_, Layout::HitsColumn);
-    }
+    auto hits() const { return make_column_view(Layout::HitsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         auto const& locations_view{view_locations()};
@@ -108,6 +100,11 @@ struct TraceHitsSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
         func(hits());
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::native_soa::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct TraceHitsSingleViewImpl;

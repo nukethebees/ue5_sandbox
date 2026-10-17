@@ -91,10 +91,7 @@ struct LaserHitDetailsSingleViewImpl : ml::soa_storage_detail::CompactViewOperat
             Layout::EmissionDirectionsYsColumn,
             Layout::EmissionDirectionsZsColumn);
     }
-    auto sources() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<LaserSource>>>(
-            state_, offset_, count_, Layout::SourcesColumn);
-    }
+    auto sources() const { return make_column_view(Layout::SourcesColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         auto const& locations_view{view_locations()};
@@ -108,6 +105,11 @@ struct LaserHitDetailsSingleViewImpl : ml::soa_storage_detail::CompactViewOperat
         func(sources());
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::native_soa::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct LaserHitDetailsSingleViewImpl;

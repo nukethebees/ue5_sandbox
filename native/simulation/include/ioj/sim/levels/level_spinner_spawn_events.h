@@ -73,10 +73,7 @@ struct LevelSpinnerSpawnEventsSingleViewImpl : ml::soa_storage_detail::CompactVi
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto entity_indices() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::uint32_t>>>(
-            state_, offset_, count_, Layout::EntityIndicesColumn);
-    }
+    auto entity_indices() const { return make_column_view(Layout::EntityIndicesColumn); }
     auto view_locations() const {
         using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
@@ -86,13 +83,9 @@ struct LevelSpinnerSpawnEventsSingleViewImpl : ml::soa_storage_detail::CompactVi
                                                                      Layout::LocationsYsColumn,
                                                                      Layout::LocationsZsColumn);
     }
-    auto yaws() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::YawsColumn);
-    }
+    auto yaws() const { return make_column_view(Layout::YawsColumn); }
     auto initial_fire_point_indices() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
-            state_, offset_, count_, Layout::InitialFirePointIndicesColumn);
+        return make_column_view(Layout::InitialFirePointIndicesColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -105,6 +98,11 @@ struct LevelSpinnerSpawnEventsSingleViewImpl : ml::soa_storage_detail::CompactVi
         func(initial_fire_point_indices());
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::native_soa::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct LevelSpinnerSpawnEventsSingleViewImpl;

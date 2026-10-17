@@ -75,10 +75,7 @@ struct SpinnerEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto entity_ids() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
-            state_, offset_, count_, Layout::EntityIdsColumn);
-    }
+    auto entity_ids() const { return make_column_view(Layout::EntityIdsColumn); }
     auto view_locations() const {
         using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
@@ -88,17 +85,10 @@ struct SpinnerEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
                                                                      Layout::LocationsYsColumn,
                                                                      Layout::LocationsZsColumn);
     }
-    auto yaws() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::YawsColumn);
-    }
-    auto laser_cooldowns() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int16_t>>>(
-            state_, offset_, count_, Layout::LaserCooldownsColumn);
-    }
+    auto yaws() const { return make_column_view(Layout::YawsColumn); }
+    auto laser_cooldowns() const { return make_column_view(Layout::LaserCooldownsColumn); }
     auto next_fire_point_indices() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
-            state_, offset_, count_, Layout::NextFirePointIndicesColumn);
+        return make_column_view(Layout::NextFirePointIndicesColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -112,6 +102,11 @@ struct SpinnerEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
         func(next_fire_point_indices());
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::native_soa::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct SpinnerEntityDataSingleViewImpl;

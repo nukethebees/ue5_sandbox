@@ -136,22 +136,10 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto entity_ids() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
-            state_, offset_, count_, Layout::EntityIdsColumn);
-    }
-    auto integral_biases() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::uint32_t>>>(
-            state_, offset_, count_, Layout::IntegralBiasesColumn);
-    }
-    auto float_biases() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::FloatBiasesColumn);
-    }
-    auto tasks() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<FighterTask>>>(
-            state_, offset_, count_, Layout::TasksColumn);
-    }
+    auto entity_ids() const { return make_column_view(Layout::EntityIdsColumn); }
+    auto integral_biases() const { return make_column_view(Layout::IntegralBiasesColumn); }
+    auto float_biases() const { return make_column_view(Layout::FloatBiasesColumn); }
+    auto tasks() const { return make_column_view(Layout::TasksColumn); }
     auto view_locations() const {
         using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
@@ -219,33 +207,18 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
                                                                      Layout::VelocitiesYsColumn,
                                                                      Layout::VelocitiesZsColumn);
     }
-    auto move_distances() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::MoveDistancesColumn);
-    }
-    auto speeds() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::SpeedsColumn);
-    }
-    auto teams() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<::ioj::Team>>>(
-            state_, offset_, count_, Layout::TeamsColumn);
-    }
-    auto parent_ids() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
-            state_, offset_, count_, Layout::ParentIdsColumn);
-    }
+    auto move_distances() const { return make_column_view(Layout::MoveDistancesColumn); }
+    auto speeds() const { return make_column_view(Layout::SpeedsColumn); }
+    auto teams() const { return make_column_view(Layout::TeamsColumn); }
+    auto parent_ids() const { return make_column_view(Layout::ParentIdsColumn); }
     auto awareness_scan_countdowns() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int8_t>>>(
-            state_, offset_, count_, Layout::AwarenessScanCountdownsColumn);
+        return make_column_view(Layout::AwarenessScanCountdownsColumn);
     }
     auto navigation_update_countdowns_remaining_ticks() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int16_t>>>(
-            state_, offset_, count_, Layout::NavigationUpdateCountdownsRemainingTicksColumn);
+        return make_column_view(Layout::NavigationUpdateCountdownsRemainingTicksColumn);
     }
     auto navigation_update_countdowns_periods() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int16_t>>>(
-            state_, offset_, count_, Layout::NavigationUpdateCountdownsPeriodsColumn);
+        return make_column_view(Layout::NavigationUpdateCountdownsPeriodsColumn);
     }
     auto view_separation_steering() const {
         using ml::soa_storage_detail::three_column_view;
@@ -258,36 +231,22 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
             Layout::SeparationSteeringZsColumn);
     }
     auto navigation_risk_tiers() const {
-        return ml::soa_storage_detail::column_view<
-            std::span<Element<fighters::NavigationRiskCode>>>(
-            state_, offset_, count_, Layout::NavigationRiskTiersColumn);
+        return make_column_view(Layout::NavigationRiskTiersColumn);
     }
     auto navigation_lower_risk_scan_counts() const {
-        return ml::soa_storage_detail::column_view<
-            std::span<Element<fighters::NavigationScanCount>>>(
-            state_, offset_, count_, Layout::NavigationLowerRiskScanCountsColumn);
+        return make_column_view(Layout::NavigationLowerRiskScanCountsColumn);
     }
     auto avoidance_choice_indices() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<fighters::AvoidanceChoice>>>(
-            state_, offset_, count_, Layout::AvoidanceChoiceIndicesColumn);
+        return make_column_view(Layout::AvoidanceChoiceIndicesColumn);
     }
     auto avoidance_clear_scan_counts() const {
-        return ml::soa_storage_detail::column_view<
-            std::span<Element<fighters::NavigationScanCount>>>(
-            state_, offset_, count_, Layout::AvoidanceClearScanCountsColumn);
+        return make_column_view(Layout::AvoidanceClearScanCountsColumn);
     }
     auto attack_reposition_countdowns() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int16_t>>>(
-            state_, offset_, count_, Layout::AttackRepositionCountdownsColumn);
+        return make_column_view(Layout::AttackRepositionCountdownsColumn);
     }
-    auto attack_cooldowns() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int16_t>>>(
-            state_, offset_, count_, Layout::AttackCooldownsColumn);
-    }
-    auto target_ids() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
-            state_, offset_, count_, Layout::TargetIdsColumn);
-    }
+    auto attack_cooldowns() const { return make_column_view(Layout::AttackCooldownsColumn); }
+    auto target_ids() const { return make_column_view(Layout::TargetIdsColumn); }
     auto view_target_locations() const {
         using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(
@@ -318,22 +277,10 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
             Layout::TargetDirectionsYsColumn,
             Layout::TargetDirectionsZsColumn);
     }
-    auto intercept_times() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::InterceptTimesColumn);
-    }
-    auto target_distance_sq() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::TargetDistanceSqColumn);
-    }
-    auto target_distances() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::TargetDistancesColumn);
-    }
-    auto target_radii() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::TargetRadiiColumn);
-    }
+    auto intercept_times() const { return make_column_view(Layout::InterceptTimesColumn); }
+    auto target_distance_sq() const { return make_column_view(Layout::TargetDistanceSqColumn); }
+    auto target_distances() const { return make_column_view(Layout::TargetDistancesColumn); }
+    auto target_radii() const { return make_column_view(Layout::TargetRadiiColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(entity_ids());
@@ -404,6 +351,11 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
         func(target_radii());
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::native_soa::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct FighterEntityDataSingleViewImpl;

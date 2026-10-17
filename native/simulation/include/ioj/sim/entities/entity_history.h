@@ -71,30 +71,12 @@ struct EntityHistoryColumnsSingleViewImpl : ml::soa_storage_detail::CompactViewO
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto entity_ids() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
-            state_, offset_, count_, Layout::EntityIdsColumn);
-    }
-    auto entity_types() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<EntityType>>>(
-            state_, offset_, count_, Layout::EntityTypesColumn);
-    }
-    auto teams() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<::ioj::Team>>>(
-            state_, offset_, count_, Layout::TeamsColumn);
-    }
-    auto kills() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::uint32_t>>>(
-            state_, offset_, count_, Layout::KillsColumn);
-    }
-    auto killed_by() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
-            state_, offset_, count_, Layout::KilledByColumn);
-    }
-    auto life_state() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<LifeState>>>(
-            state_, offset_, count_, Layout::LifeStateColumn);
-    }
+    auto entity_ids() const { return make_column_view(Layout::EntityIdsColumn); }
+    auto entity_types() const { return make_column_view(Layout::EntityTypesColumn); }
+    auto teams() const { return make_column_view(Layout::TeamsColumn); }
+    auto kills() const { return make_column_view(Layout::KillsColumn); }
+    auto killed_by() const { return make_column_view(Layout::KilledByColumn); }
+    auto life_state() const { return make_column_view(Layout::LifeStateColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(entity_ids());
@@ -105,6 +87,11 @@ struct EntityHistoryColumnsSingleViewImpl : ml::soa_storage_detail::CompactViewO
         func(life_state());
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::native_soa::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct EntityHistoryColumnsSingleViewImpl;

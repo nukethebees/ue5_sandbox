@@ -95,14 +95,8 @@ struct TurretEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOpera
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto entity_ids() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
-            state_, offset_, count_, Layout::EntityIdsColumn);
-    }
-    auto integral_biases() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::uint32_t>>>(
-            state_, offset_, count_, Layout::IntegralBiasesColumn);
-    }
+    auto entity_ids() const { return make_column_view(Layout::EntityIdsColumn); }
+    auto integral_biases() const { return make_column_view(Layout::IntegralBiasesColumn); }
     auto view_locations() const {
         using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
@@ -134,30 +128,16 @@ struct TurretEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOpera
             Layout::RotationsYawsColumn,
             Layout::RotationsRollsColumn);
     }
-    auto teams() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<::ioj::Team>>>(
-            state_, offset_, count_, Layout::TeamsColumn);
-    }
-    auto laser_cooldowns() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int16_t>>>(
-            state_, offset_, count_, Layout::LaserCooldownsColumn);
-    }
-    auto laser_damages() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
-            state_, offset_, count_, Layout::LaserDamagesColumn);
-    }
+    auto teams() const { return make_column_view(Layout::TeamsColumn); }
+    auto laser_cooldowns() const { return make_column_view(Layout::LaserCooldownsColumn); }
+    auto laser_damages() const { return make_column_view(Layout::LaserDamagesColumn); }
     auto target_refresh_countdowns_periods() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int16_t>>>(
-            state_, offset_, count_, Layout::TargetRefreshCountdownsPeriodsColumn);
+        return make_column_view(Layout::TargetRefreshCountdownsPeriodsColumn);
     }
     auto target_refresh_countdowns_remaining_ticks() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int16_t>>>(
-            state_, offset_, count_, Layout::TargetRefreshCountdownsRemainingTicksColumn);
+        return make_column_view(Layout::TargetRefreshCountdownsRemainingTicksColumn);
     }
-    auto target_ids() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
-            state_, offset_, count_, Layout::TargetIdsColumn);
-    }
+    auto target_ids() const { return make_column_view(Layout::TargetIdsColumn); }
     auto view_target_locations() const {
         using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(
@@ -210,6 +190,11 @@ struct TurretEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOpera
         func(target_velocities_view.zs());
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::native_soa::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct TurretEntityDataSingleViewImpl;

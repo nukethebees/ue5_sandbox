@@ -69,18 +69,9 @@ struct LevelMissionEventGroupsSingleViewImpl : ml::soa_storage_detail::CompactVi
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto types() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<LevelMissionEventType>>>(
-            state_, offset_, count_, Layout::TypesColumn);
-    }
-    auto offsets() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
-            state_, offset_, count_, Layout::OffsetsColumn);
-    }
-    auto counts() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<LevelEventCount>>>(
-            state_, offset_, count_, Layout::CountsColumn);
-    }
+    auto types() const { return make_column_view(Layout::TypesColumn); }
+    auto offsets() const { return make_column_view(Layout::OffsetsColumn); }
+    auto counts() const { return make_column_view(Layout::CountsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(types());
@@ -88,6 +79,11 @@ struct LevelMissionEventGroupsSingleViewImpl : ml::soa_storage_detail::CompactVi
         func(counts());
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::native_soa::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct LevelMissionEventGroupsSingleViewImpl;

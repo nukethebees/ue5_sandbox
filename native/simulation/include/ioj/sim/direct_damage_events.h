@@ -66,18 +66,9 @@ struct DirectDamageEventsSingleViewImpl : ml::soa_storage_detail::CompactViewOpe
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto damaged_entities() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
-            state_, offset_, count_, Layout::DamagedEntitiesColumn);
-    }
-    auto damage_amounts() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
-            state_, offset_, count_, Layout::DamageAmountsColumn);
-    }
-    auto instigators() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
-            state_, offset_, count_, Layout::InstigatorsColumn);
-    }
+    auto damaged_entities() const { return make_column_view(Layout::DamagedEntitiesColumn); }
+    auto damage_amounts() const { return make_column_view(Layout::DamageAmountsColumn); }
+    auto instigators() const { return make_column_view(Layout::InstigatorsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(damaged_entities());
@@ -85,6 +76,11 @@ struct DirectDamageEventsSingleViewImpl : ml::soa_storage_detail::CompactViewOpe
         func(instigators());
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::native_soa::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct DirectDamageEventsSingleViewImpl;

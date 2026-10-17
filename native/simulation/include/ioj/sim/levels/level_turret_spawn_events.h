@@ -78,10 +78,7 @@ struct LevelTurretSpawnEventsSingleViewImpl : ml::soa_storage_detail::CompactVie
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto entity_indices() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::uint32_t>>>(
-            state_, offset_, count_, Layout::EntityIndicesColumn);
-    }
+    auto entity_indices() const { return make_column_view(Layout::EntityIndicesColumn); }
     auto view_locations() const {
         using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
@@ -103,18 +100,9 @@ struct LevelTurretSpawnEventsSingleViewImpl : ml::soa_storage_detail::CompactVie
             Layout::RotationsYawsColumn,
             Layout::RotationsRollsColumn);
     }
-    auto teams() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<::ioj::Team>>>(
-            state_, offset_, count_, Layout::TeamsColumn);
-    }
-    auto healths() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<Health>>>(
-            state_, offset_, count_, Layout::HealthsColumn);
-    }
-    auto laser_damages() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
-            state_, offset_, count_, Layout::LaserDamagesColumn);
-    }
+    auto teams() const { return make_column_view(Layout::TeamsColumn); }
+    auto healths() const { return make_column_view(Layout::HealthsColumn); }
+    auto laser_damages() const { return make_column_view(Layout::LaserDamagesColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(entity_indices());
@@ -131,6 +119,11 @@ struct LevelTurretSpawnEventsSingleViewImpl : ml::soa_storage_detail::CompactVie
         func(laser_damages());
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::native_soa::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct LevelTurretSpawnEventsSingleViewImpl;

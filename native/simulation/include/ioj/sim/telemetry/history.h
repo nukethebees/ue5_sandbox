@@ -145,46 +145,20 @@ struct HistoryRowsSingleViewImpl : ml::soa_storage_detail::CompactViewOperations
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto completed_ticks() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<SimTick>>>(
-            state_, offset_, count_, Layout::CompletedTicksColumn);
-    }
-    auto validity_masks() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<HistoryFieldMask>>>(
-            state_, offset_, count_, Layout::ValidityMasksColumn);
-    }
-    auto active_entities() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
-            state_, offset_, count_, Layout::ActiveEntitiesColumn);
-    }
+    auto completed_ticks() const { return make_column_view(Layout::CompletedTicksColumn); }
+    auto validity_masks() const { return make_column_view(Layout::ValidityMasksColumn); }
+    auto active_entities() const { return make_column_view(Layout::ActiveEntitiesColumn); }
     auto active_entities_by_type() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<EntityTypeCounts>>>(
-            state_, offset_, count_, Layout::ActiveEntitiesByTypeColumn);
+        return make_column_view(Layout::ActiveEntitiesByTypeColumn);
     }
     auto active_entities_by_team_and_type() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<EntityCounts>>>(
-            state_, offset_, count_, Layout::ActiveEntitiesByTeamAndTypeColumn);
+        return make_column_view(Layout::ActiveEntitiesByTeamAndTypeColumn);
     }
-    auto spawned_entities() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
-            state_, offset_, count_, Layout::SpawnedEntitiesColumn);
-    }
-    auto destroyed_entities() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
-            state_, offset_, count_, Layout::DestroyedEntitiesColumn);
-    }
-    auto kills() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
-            state_, offset_, count_, Layout::KillsColumn);
-    }
-    auto active_lasers() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
-            state_, offset_, count_, Layout::ActiveLasersColumn);
-    }
-    auto lasers_fired() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
-            state_, offset_, count_, Layout::LasersFiredColumn);
-    }
+    auto spawned_entities() const { return make_column_view(Layout::SpawnedEntitiesColumn); }
+    auto destroyed_entities() const { return make_column_view(Layout::DestroyedEntitiesColumn); }
+    auto kills() const { return make_column_view(Layout::KillsColumn); }
+    auto active_lasers() const { return make_column_view(Layout::ActiveLasersColumn); }
+    auto lasers_fired() const { return make_column_view(Layout::LasersFiredColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(completed_ticks());
@@ -199,6 +173,11 @@ struct HistoryRowsSingleViewImpl : ml::soa_storage_detail::CompactViewOperations
         func(lasers_fired());
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::native_soa::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct HistoryRowsSingleViewImpl;

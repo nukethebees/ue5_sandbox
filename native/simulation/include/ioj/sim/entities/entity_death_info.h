@@ -66,18 +66,9 @@ struct EntityDeathInfoSingleViewImpl : ml::soa_storage_detail::CompactViewOperat
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto reasons() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<DeathReason>>>(
-            state_, offset_, count_, Layout::ReasonsColumn);
-    }
-    auto victims() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
-            state_, offset_, count_, Layout::VictimsColumn);
-    }
-    auto killers() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
-            state_, offset_, count_, Layout::KillersColumn);
-    }
+    auto reasons() const { return make_column_view(Layout::ReasonsColumn); }
+    auto victims() const { return make_column_view(Layout::VictimsColumn); }
+    auto killers() const { return make_column_view(Layout::KillersColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(reasons());
@@ -85,6 +76,11 @@ struct EntityDeathInfoSingleViewImpl : ml::soa_storage_detail::CompactViewOperat
         func(killers());
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::native_soa::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct EntityDeathInfoSingleViewImpl;

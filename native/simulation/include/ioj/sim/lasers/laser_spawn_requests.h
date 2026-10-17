@@ -115,26 +115,11 @@ struct SpawnRequestsSingleViewImpl : ml::soa_storage_detail::CompactViewOperatio
             Layout::BaseVelocitiesYsColumn,
             Layout::BaseVelocitiesZsColumn);
     }
-    auto damages() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
-            state_, offset_, count_, Layout::DamagesColumn);
-    }
-    auto speeds() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::SpeedsColumn);
-    }
-    auto max_distances() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::MaxDistancesColumn);
-    }
-    auto instigator_ids() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
-            state_, offset_, count_, Layout::InstigatorIdsColumn);
-    }
-    auto sources() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<ioj::sim::LaserSource>>>(
-            state_, offset_, count_, Layout::SourcesColumn);
-    }
+    auto damages() const { return make_column_view(Layout::DamagesColumn); }
+    auto speeds() const { return make_column_view(Layout::SpeedsColumn); }
+    auto max_distances() const { return make_column_view(Layout::MaxDistancesColumn); }
+    auto instigator_ids() const { return make_column_view(Layout::InstigatorIdsColumn); }
+    auto sources() const { return make_column_view(Layout::SourcesColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         auto const& locations_view{view_locations()};
@@ -156,6 +141,11 @@ struct SpawnRequestsSingleViewImpl : ml::soa_storage_detail::CompactViewOperatio
         func(sources());
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::native_soa::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct SpawnRequestsSingleViewImpl;

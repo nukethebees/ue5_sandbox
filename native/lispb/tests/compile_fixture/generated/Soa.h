@@ -141,14 +141,8 @@ struct ApiView_positionsImpl : ml::soa_storage_detail::CompactViewOperations {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto xs() const {
-        return ml::soa_storage_detail::column_view<TArrayView<Element<float>>>(
-            state_, offset_, count_, Layout::PositionsXsColumn);
-    }
-    auto ys() const {
-        return ml::soa_storage_detail::column_view<TArrayView<Element<float>>>(
-            state_, offset_, count_, Layout::PositionsYsColumn);
-    }
+    auto xs() const { return make_column_view(Layout::PositionsXsColumn); }
+    auto ys() const { return make_column_view(Layout::PositionsYsColumn); }
     template <typename Func>
     auto apply_arrays(Func&& func) const -> decltype(auto) {
         auto column_0{xs()};
@@ -156,6 +150,11 @@ struct ApiView_positionsImpl : ml::soa_storage_detail::CompactViewOperations {
         return std::forward<Func>(func)(column_0, column_1);
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::soa_storage::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<TArrayView<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct ApiView_positionsImpl;
@@ -212,14 +211,8 @@ struct ApiViewImpl : ml::soa_storage_detail::CompactViewOperations {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto values() const {
-        return ml::soa_storage_detail::column_view<TArrayView<Element<float>>>(
-            state_, offset_, count_, Layout::ValuesColumn);
-    }
-    auto masks() const {
-        return ml::soa_storage_detail::column_view<TArrayView<Element<ApiMask>>>(
-            state_, offset_, count_, Layout::MasksColumn);
-    }
+    auto values() const { return make_column_view(Layout::ValuesColumn); }
+    auto masks() const { return make_column_view(Layout::MasksColumn); }
     auto view_positions() const
         -> std::conditional_t<Const, ApiConstView_positions, ApiView_positions> {
         return {state_, offset_, count_};
@@ -234,6 +227,11 @@ struct ApiViewImpl : ml::soa_storage_detail::CompactViewOperations {
         return std::forward<Func>(func)(column_0, column_1, column_2, column_3);
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::soa_storage::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<TArrayView<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct ApiViewImpl;
@@ -487,14 +485,8 @@ struct EquivalentRowsSingleViewImpl : ml::soa_storage_detail::CompactViewOperati
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto xs() const {
-        return ml::soa_storage_detail::column_view<TArrayView<Element<float>>>(
-            state_, offset_, count_, Layout::XsColumn);
-    }
-    auto ys() const {
-        return ml::soa_storage_detail::column_view<TArrayView<Element<float>>>(
-            state_, offset_, count_, Layout::YsColumn);
-    }
+    auto xs() const { return make_column_view(Layout::XsColumn); }
+    auto ys() const { return make_column_view(Layout::YsColumn); }
     template <typename Func>
     auto apply_arrays(Func&& func) const -> decltype(auto) {
         auto column_0{xs()};
@@ -502,6 +494,11 @@ struct EquivalentRowsSingleViewImpl : ml::soa_storage_detail::CompactViewOperati
         return std::forward<Func>(func)(column_0, column_1);
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::soa_storage::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<TArrayView<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct EquivalentRowsSingleViewImpl;
@@ -1237,16 +1234,18 @@ struct FParentsSingleView_childrenImpl : ml::soa_storage_detail::CompactViewOper
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto values() const {
-        return ml::soa_storage_detail::column_view<TArrayView<Element<int32>>>(
-            state_, offset_, count_, Layout::ChildrenValuesColumn);
-    }
+    auto values() const { return make_column_view(Layout::ChildrenValuesColumn); }
     template <typename Func>
     auto apply_arrays(Func&& func) const -> decltype(auto) {
         auto column_0{values()};
         return std::forward<Func>(func)(column_0);
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::soa_storage::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<TArrayView<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct FParentsSingleView_childrenImpl;
@@ -1286,10 +1285,7 @@ struct FParentsSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto keys() const {
-        return ml::soa_storage_detail::column_view<TArrayView<Element<int32>>>(
-            state_, offset_, count_, Layout::KeysColumn);
-    }
+    auto keys() const { return make_column_view(Layout::KeysColumn); }
     auto view_children() const -> std::
         conditional_t<Const, FParentsSingleConstView_children, FParentsSingleView_children> {
         return {state_, offset_, count_};
@@ -1302,6 +1298,11 @@ struct FParentsSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
         return std::forward<Func>(func)(column_0, column_1);
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::soa_storage::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<TArrayView<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct FParentsSingleViewImpl;
@@ -2525,16 +2526,18 @@ struct RestrictionRowsSingleViewImpl : ml::soa_storage_detail::CompactViewOperat
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto restricted() const {
-        return ml::soa_storage_detail::column_view<TArrayView<Element<RestrictedLeaf>>>(
-            state_, offset_, count_, Layout::RestrictedColumn);
-    }
+    auto restricted() const { return make_column_view(Layout::RestrictedColumn); }
     template <typename Func>
     auto apply_arrays(Func&& func) const -> decltype(auto) {
         auto column_0{restricted()};
         return std::forward<Func>(func)(column_0);
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::soa_storage::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<TArrayView<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct RestrictionRowsSingleViewImpl;

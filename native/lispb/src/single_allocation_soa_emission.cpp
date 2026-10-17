@@ -489,18 +489,11 @@ auto compact_view_node(SingleAllocationModel const& model) -> Node {
             }));
         } else {
             auto const& column{column_for(model, path)};
-            auto const view_type{model.dialect.span_template + "<Element<" + column.type.spelling +
-                                 ">>"};
             children.new_lines(1).add(compact_function(FunctionSpec{
                 .name = member.name,
                 .return_type = "auto",
-                .body = {ReturnStmt{
-                    call(named("ml::soa_storage_detail::column_view<" + view_type + ">",
-                               column.type.dependencies),
-                         {named("state_"),
-                          named("offset_"),
-                          named("count_"),
-                          named("Layout::" + column.layout_identifier)})}},
+                .body = {ReturnStmt{call(named("make_column_view", column.type.dependencies),
+                                         {named("Layout::" + column.layout_identifier)})}},
                 .qualifiers = {.is_const = true},
             }));
         }
@@ -544,6 +537,19 @@ auto compact_view_node(SingleAllocationModel const& model) -> Node {
     }));
     children.new_lines(1)
         .add(AccessSpecifier{"private"})
+        .new_lines(1)
+        .add(compact_function(FunctionSpec{
+            .name = "make_column_view",
+            .return_type = "auto",
+            .parameters = {FunctionParameter{
+                model.dialect.runtime_namespace + "ColumnLayout<T> const&", "layout"}},
+            .body = {ReturnStmt{
+                call(named("ml::soa_storage_detail::column_view<" + model.dialect.span_template +
+                           "<Element<T>>>"),
+                     {named("state_"), named("offset_"), named("count_"), named("layout")})}},
+            .qualifiers = {.is_const = true},
+            .template_parameters = "typename T",
+        }))
         .new_lines(1)
         .add(raw("friend ml::soa_storage_detail::CompactViewOperations;\ntemplate <bool>\nfriend "
                  "struct " +

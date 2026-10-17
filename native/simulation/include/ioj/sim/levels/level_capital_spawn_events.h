@@ -81,13 +81,9 @@ struct LevelCapitalSpawnEventsSingleViewImpl : ml::soa_storage_detail::CompactVi
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto entity_indices() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::uint32_t>>>(
-            state_, offset_, count_, Layout::EntityIndicesColumn);
-    }
+    auto entity_indices() const { return make_column_view(Layout::EntityIndicesColumn); }
     auto target_entity_indices() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<std::uint32_t>>>(
-            state_, offset_, count_, Layout::TargetEntityIndicesColumn);
+        return make_column_view(Layout::TargetEntityIndicesColumn);
     }
     auto view_locations() const {
         using ml::soa_storage_detail::three_column_view;
@@ -110,21 +106,13 @@ struct LevelCapitalSpawnEventsSingleViewImpl : ml::soa_storage_detail::CompactVi
             Layout::RotationsYawsColumn,
             Layout::RotationsRollsColumn);
     }
-    auto teams() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<::ioj::Team>>>(
-            state_, offset_, count_, Layout::TeamsColumn);
-    }
-    auto healths() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<Health>>>(
-            state_, offset_, count_, Layout::HealthsColumn);
-    }
+    auto teams() const { return make_column_view(Layout::TeamsColumn); }
+    auto healths() const { return make_column_view(Layout::HealthsColumn); }
     auto initial_fighter_spawn_delays() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::InitialFighterSpawnDelaysColumn);
+        return make_column_view(Layout::InitialFighterSpawnDelaysColumn);
     }
     auto fighter_spawn_cooldowns() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
-            state_, offset_, count_, Layout::FighterSpawnCooldownsColumn);
+        return make_column_view(Layout::FighterSpawnCooldownsColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -144,6 +132,11 @@ struct LevelCapitalSpawnEventsSingleViewImpl : ml::soa_storage_detail::CompactVi
         func(fighter_spawn_cooldowns());
     }
   private:
+    template <typename T>
+    auto make_column_view(ml::native_soa::ColumnLayout<T> const& layout) const {
+        return ml::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
     friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct LevelCapitalSpawnEventsSingleViewImpl;
