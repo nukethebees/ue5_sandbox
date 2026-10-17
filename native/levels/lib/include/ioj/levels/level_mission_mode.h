@@ -4,9 +4,7 @@
 #pragma once
 
 #include "ioj/enum_lookup.h"
-#include "ioj/enum_traits.h"
 
-#include <array>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -19,25 +17,6 @@ enum class LevelMissionMode : std::uint8_t {
     KillEnemies,
     KillEnemiesWithinTime,
 };
-
-[[nodiscard]] constexpr auto to_string(LevelMissionMode const value) noexcept -> std::string_view {
-    switch (value) {
-        case LevelMissionMode::Unspecified: {
-            return "Unspecified";
-        }
-        case LevelMissionMode::SurviveTime: {
-            return "SurviveTime";
-        }
-        case LevelMissionMode::KillEnemies: {
-            return "KillEnemies";
-        }
-        case LevelMissionMode::KillEnemiesWithinTime: {
-            return "KillEnemiesWithinTime";
-        }
-    }
-
-    return "<invalid LevelMissionMode>";
-}
 
 [[nodiscard]] constexpr auto to_serialized_string(LevelMissionMode const value) noexcept
     -> std::string_view {
@@ -72,21 +51,3 @@ enum class LevelMissionMode : std::uint8_t {
 }
 
 } // namespace ioj::levels
-namespace ml {
-template <>
-struct EnumTraits<::ioj::levels::LevelMissionMode> {
-    inline static constexpr std::array values{
-        ::ioj::levels::LevelMissionMode::Unspecified,
-        ::ioj::levels::LevelMissionMode::SurviveTime,
-        ::ioj::levels::LevelMissionMode::KillEnemies,
-        ::ioj::levels::LevelMissionMode::KillEnemiesWithinTime,
-    };
-    inline static constexpr std::array names{
-        std::string_view{"Unspecified"},
-        std::string_view{"SurviveTime"},
-        std::string_view{"KillEnemies"},
-        std::string_view{"KillEnemiesWithinTime"},
-    };
-};
-
-} // namespace ml

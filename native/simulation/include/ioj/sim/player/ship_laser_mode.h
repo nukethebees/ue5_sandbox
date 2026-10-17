@@ -3,12 +3,7 @@
 
 #pragma once
 
-#include "ioj/enum_traits.h"
-
-#include <array>
-#include <cstddef>
 #include <cstdint>
-#include <string_view>
 
 namespace ioj::sim {
 enum class ShipLaserMode : std::uint8_t {
@@ -17,41 +12,4 @@ enum class ShipLaserMode : std::uint8_t {
     Hyper = 2,
 };
 
-[[nodiscard]] constexpr auto to_string(ShipLaserMode const value) noexcept -> std::string_view {
-    switch (value) {
-        case ShipLaserMode::Single: {
-            return "Single";
-        }
-        case ShipLaserMode::Double: {
-            return "Double";
-        }
-        case ShipLaserMode::Hyper: {
-            return "Hyper";
-        }
-    }
-
-    return "<invalid ShipLaserMode>";
-}
-
 } // namespace ioj::sim
-namespace ml {
-template <>
-struct EnumTraits<::ioj::sim::ShipLaserMode> {
-    inline static constexpr std::array values{
-        ::ioj::sim::ShipLaserMode::Single,
-        ::ioj::sim::ShipLaserMode::Double,
-        ::ioj::sim::ShipLaserMode::Hyper,
-    };
-    inline static constexpr std::array names{
-        std::string_view{"Single"},
-        std::string_view{"Double"},
-        std::string_view{"Hyper"},
-    };
-};
-
-template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::sim::ShipLaserMode>() noexcept -> std::size_t {
-    return 3;
-}
-
-} // namespace ml

@@ -3,8 +3,6 @@
 
 #pragma once
 
-#include "ioj/enum_traits.h"
-
 #include "CoreMinimal.h"
 
 #include "TestMissionFailReason.generated.h"
@@ -15,10 +13,3 @@ enum class ETestMissionFailReason : uint8 {
     TimeElapsed = 2,
     DefenceObjectiveFailed = 3,
 };
-
-namespace ml {
-template <>
-[[nodiscard]] constexpr auto enum_count<::ETestMissionFailReason>() noexcept -> std::size_t {
-    return 4;
-}
-} // namespace ml

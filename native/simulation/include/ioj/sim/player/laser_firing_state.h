@@ -3,12 +3,7 @@
 
 #pragma once
 
-#include "ioj/enum_traits.h"
-
-#include <array>
-#include <cstddef>
 #include <cstdint>
-#include <string_view>
 
 namespace ioj::sim {
 enum class LaserFiringState : std::uint8_t {
@@ -16,36 +11,4 @@ enum class LaserFiringState : std::uint8_t {
     burst = 1,
 };
 
-[[nodiscard]] constexpr auto to_string(LaserFiringState const value) noexcept -> std::string_view {
-    switch (value) {
-        case LaserFiringState::idle: {
-            return "idle";
-        }
-        case LaserFiringState::burst: {
-            return "burst";
-        }
-    }
-
-    return "<invalid LaserFiringState>";
-}
-
 } // namespace ioj::sim
-namespace ml {
-template <>
-struct EnumTraits<::ioj::sim::LaserFiringState> {
-    inline static constexpr std::array values{
-        ::ioj::sim::LaserFiringState::idle,
-        ::ioj::sim::LaserFiringState::burst,
-    };
-    inline static constexpr std::array names{
-        std::string_view{"idle"},
-        std::string_view{"burst"},
-    };
-};
-
-template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::sim::LaserFiringState>() noexcept -> std::size_t {
-    return 2;
-}
-
-} // namespace ml

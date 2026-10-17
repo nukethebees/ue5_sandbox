@@ -4,10 +4,7 @@
 #pragma once
 
 #include "ioj/enum_lookup.h"
-#include "ioj/enum_traits.h"
 
-#include <array>
-#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -73,26 +70,3 @@ enum class MissionFailReason : std::uint8_t {
 }
 
 } // namespace ioj::sim
-namespace ml {
-template <>
-struct EnumTraits<::ioj::sim::MissionFailReason> {
-    inline static constexpr std::array values{
-        ::ioj::sim::MissionFailReason::None,
-        ::ioj::sim::MissionFailReason::PlayerKilled,
-        ::ioj::sim::MissionFailReason::TimeElapsed,
-        ::ioj::sim::MissionFailReason::DefenceObjectiveFailed,
-    };
-    inline static constexpr std::array names{
-        std::string_view{"None"},
-        std::string_view{"PlayerKilled"},
-        std::string_view{"TimeElapsed"},
-        std::string_view{"DefenceObjectiveFailed"},
-    };
-};
-
-template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::sim::MissionFailReason>() noexcept -> std::size_t {
-    return 4;
-}
-
-} // namespace ml

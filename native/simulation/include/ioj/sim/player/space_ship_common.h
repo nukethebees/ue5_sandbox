@@ -3,10 +3,6 @@
 
 #pragma once
 
-#include "ioj/enum_traits.h"
-
-#include <array>
-#include <cstddef>
 #include <cstdint>
 #include <string_view>
 
@@ -38,27 +34,3 @@ enum class BoostBrakeState : std::uint8_t {
 }
 
 } // namespace ioj::sim::player
-namespace ml {
-template <>
-struct EnumTraits<::ioj::sim::player::BoostBrakeState> {
-    inline static constexpr std::array values{
-        ::ioj::sim::player::BoostBrakeState::None,
-        ::ioj::sim::player::BoostBrakeState::Boost,
-        ::ioj::sim::player::BoostBrakeState::Brake,
-        ::ioj::sim::player::BoostBrakeState::EmergencyBrake,
-    };
-    inline static constexpr std::array names{
-        std::string_view{"None"},
-        std::string_view{"Boost"},
-        std::string_view{"Brake"},
-        std::string_view{"EmergencyBrake"},
-    };
-};
-
-template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::sim::player::BoostBrakeState>() noexcept
-    -> std::size_t {
-    return 4;
-}
-
-} // namespace ml

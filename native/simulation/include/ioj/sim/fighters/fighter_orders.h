@@ -11,7 +11,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <string_view>
 #include <type_traits>
 
 namespace ioj::sim {
@@ -20,22 +19,6 @@ enum class FighterTask : std::uint8_t {
     MoveToDestination = 1,
     Attack = 2,
 };
-
-[[nodiscard]] constexpr auto to_string(FighterTask const value) noexcept -> std::string_view {
-    switch (value) {
-        case FighterTask::Standby: {
-            return "Standby";
-        }
-        case FighterTask::MoveToDestination: {
-            return "MoveToDestination";
-        }
-        case FighterTask::Attack: {
-            return "Attack";
-        }
-    }
-
-    return "<invalid FighterTask>";
-}
 
 struct FighterOrder {
     using storage_type = std::uint8_t;

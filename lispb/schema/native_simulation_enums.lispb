@@ -3,8 +3,7 @@
   :namespace ioj::sim
   (enum MissionMode @native_uint8
     :native-api true
-    :helpers (to-string traits to-display-string to-serialized-string try-parse-serialized)
-    :enum-array true
+    :helpers (to-string to-display-string to-serialized-string try-parse-serialized)
     (unreal-projection ETestMissionMode
       :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionMode.h"
       :header-include "SpaceGame/missions/TestMissionMode.h"
@@ -21,8 +20,7 @@
   :namespace ioj::sim
   (enum MissionState @native_uint8
     :native-api true
-    :helpers (to-string traits to-serialized-string try-parse-serialized)
-    :enum-array true
+    :helpers (to-string to-serialized-string try-parse-serialized)
     (unreal-projection ETestMissionState
       :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionState.h"
       :header-include "SpaceGame/missions/TestMissionState.h"
@@ -40,8 +38,7 @@
   :namespace ioj::sim
   (enum MissionFailReason @native_uint8
     :native-api true
-    :helpers (to-string traits to-serialized-string try-parse-serialized)
-    :enum-array true
+    :helpers (to-string to-serialized-string try-parse-serialized)
     (unreal-projection ETestMissionFailReason
       :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionFailReason.h"
       :header-include "SpaceGame/missions/TestMissionFailReason.h"
@@ -59,8 +56,7 @@
   :namespace ioj::sim::player
   (enum BoostBrakeState @native_uint8
     :native-api true
-    :helpers (to-string traits)
-    :enum-array true
+    :helpers (to-string)
     (value None :value "0")
     (value Boost :value "1")
     (value Brake :value "2")
@@ -71,8 +67,6 @@
   :namespace ioj::sim
   (enum ShipLaserMode @native_uint8
     :native-api true
-    :helpers (to-string traits)
-    :enum-array true
     (unreal-projection EShipLaserMode
       :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/common/ShipLaserMode.h"
       :header-include "SpaceGame/ships/common/ShipLaserMode.h"
@@ -88,8 +82,6 @@
   :namespace ioj::sim
   (enum LaserFiringState @native_uint8
     :native-api true
-    :helpers (to-string traits)
-    :enum-array true
     (value idle :value "0")
     (value burst :value "1")))
 
@@ -98,7 +90,7 @@
   :namespace ioj::sim
   (enum ShipFireRate @native_uint8
     :native-api true
-    :helpers (to-string traits)
+    :helpers (to-string)
     :enum-array true
     (unreal-projection ETestShipFireRate
       :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRate.h"
@@ -115,8 +107,7 @@
   :namespace ioj::sim
   (enum LevelTelemetryRunEndReason @native_uint8
     :native-api true
-    :helpers (to-string traits to-serialized-string try-parse-serialized)
-    :enum-array true
+    :helpers (to-serialized-string try-parse-serialized)
     (value MissionSucceeded :value "0" :serialized-name "mission_succeeded")
     (value MissionFailed :value "1" :serialized-name "mission_failed")
     (value BattleResolved :value "2" :serialized-name "battle_resolved")

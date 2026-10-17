@@ -19,22 +19,6 @@ enum class EntityArchetype : std::uint8_t {
     StaticTurret,
 };
 
-[[nodiscard]] constexpr auto to_string(EntityArchetype const value) noexcept -> std::string_view {
-    switch (value) {
-        case EntityArchetype::PlayerFighter: {
-            return "PlayerFighter";
-        }
-        case EntityArchetype::CapitalShip: {
-            return "CapitalShip";
-        }
-        case EntityArchetype::StaticTurret: {
-            return "StaticTurret";
-        }
-    }
-
-    return "<invalid EntityArchetype>";
-}
-
 [[nodiscard]] constexpr auto to_serialized_string(EntityArchetype const value) noexcept
     -> std::string_view {
     switch (value) {
@@ -71,11 +55,6 @@ struct EnumTraits<::ioj::levels::EntityArchetype> {
         ::ioj::levels::EntityArchetype::PlayerFighter,
         ::ioj::levels::EntityArchetype::CapitalShip,
         ::ioj::levels::EntityArchetype::StaticTurret,
-    };
-    inline static constexpr std::array names{
-        std::string_view{"PlayerFighter"},
-        std::string_view{"CapitalShip"},
-        std::string_view{"StaticTurret"},
     };
 };
 

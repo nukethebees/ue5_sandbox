@@ -48,30 +48,6 @@ enum class Team : std::uint8_t {
     return "<invalid Team>";
 }
 
-[[nodiscard]] constexpr auto try_parse_team(std::string_view const value) noexcept
-    -> std::optional<Team> {
-    if (value == "White") {
-        return Team::White;
-    }
-    if (value == "Red") {
-        return Team::Red;
-    }
-    if (value == "Green") {
-        return Team::Green;
-    }
-    if (value == "Blue") {
-        return Team::Blue;
-    }
-    if (value == "Orange") {
-        return Team::Orange;
-    }
-    if (value == "Yellow") {
-        return Team::Yellow;
-    }
-
-    return std::nullopt;
-}
-
 [[nodiscard]] constexpr auto to_serialized_string(Team const value) noexcept -> std::string_view {
     switch (value) {
         case Team::White: {
@@ -122,14 +98,6 @@ struct EnumTraits<::ioj::Team> {
         ::ioj::Team::Blue,
         ::ioj::Team::Orange,
         ::ioj::Team::Yellow,
-    };
-    inline static constexpr std::array names{
-        std::string_view{"White"},
-        std::string_view{"Red"},
-        std::string_view{"Green"},
-        std::string_view{"Blue"},
-        std::string_view{"Orange"},
-        std::string_view{"Yellow"},
     };
 };
 

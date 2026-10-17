@@ -5,7 +5,6 @@
 
 #include "ioj/enum_traits.h"
 
-#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
@@ -35,19 +34,6 @@ enum class ShipFireRate : std::uint8_t {
 
 } // namespace ioj::sim
 namespace ml {
-template <>
-struct EnumTraits<::ioj::sim::ShipFireRate> {
-    inline static constexpr std::array values{
-        ::ioj::sim::ShipFireRate::Single,
-        ::ioj::sim::ShipFireRate::Burst3,
-        ::ioj::sim::ShipFireRate::FullAuto,
-    };
-    inline static constexpr std::array names{
-        std::string_view{"Single"},
-        std::string_view{"Burst3"},
-        std::string_view{"FullAuto"},
-    };
-};
 
 template <>
 [[nodiscard]] constexpr auto enum_count<::ioj::sim::ShipFireRate>() noexcept -> std::size_t {

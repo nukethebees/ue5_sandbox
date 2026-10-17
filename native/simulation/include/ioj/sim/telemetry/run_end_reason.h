@@ -4,10 +4,7 @@
 #pragma once
 
 #include "ioj/enum_lookup.h"
-#include "ioj/enum_traits.h"
 
-#include <array>
-#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -22,32 +19,6 @@ enum class LevelTelemetryRunEndReason : std::uint8_t {
     OrchestratorReset = 4,
     WorldEnd = 5,
 };
-
-[[nodiscard]] constexpr auto to_string(LevelTelemetryRunEndReason const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case LevelTelemetryRunEndReason::MissionSucceeded: {
-            return "MissionSucceeded";
-        }
-        case LevelTelemetryRunEndReason::MissionFailed: {
-            return "MissionFailed";
-        }
-        case LevelTelemetryRunEndReason::BattleResolved: {
-            return "BattleResolved";
-        }
-        case LevelTelemetryRunEndReason::DurationReached: {
-            return "DurationReached";
-        }
-        case LevelTelemetryRunEndReason::OrchestratorReset: {
-            return "OrchestratorReset";
-        }
-        case LevelTelemetryRunEndReason::WorldEnd: {
-            return "WorldEnd";
-        }
-    }
-
-    return "<invalid LevelTelemetryRunEndReason>";
-}
 
 [[nodiscard]] constexpr auto to_serialized_string(LevelTelemetryRunEndReason const value) noexcept
     -> std::string_view {
@@ -91,31 +62,3 @@ enum class LevelTelemetryRunEndReason : std::uint8_t {
 }
 
 } // namespace ioj::sim
-namespace ml {
-template <>
-struct EnumTraits<::ioj::sim::LevelTelemetryRunEndReason> {
-    inline static constexpr std::array values{
-        ::ioj::sim::LevelTelemetryRunEndReason::MissionSucceeded,
-        ::ioj::sim::LevelTelemetryRunEndReason::MissionFailed,
-        ::ioj::sim::LevelTelemetryRunEndReason::BattleResolved,
-        ::ioj::sim::LevelTelemetryRunEndReason::DurationReached,
-        ::ioj::sim::LevelTelemetryRunEndReason::OrchestratorReset,
-        ::ioj::sim::LevelTelemetryRunEndReason::WorldEnd,
-    };
-    inline static constexpr std::array names{
-        std::string_view{"MissionSucceeded"},
-        std::string_view{"MissionFailed"},
-        std::string_view{"BattleResolved"},
-        std::string_view{"DurationReached"},
-        std::string_view{"OrchestratorReset"},
-        std::string_view{"WorldEnd"},
-    };
-};
-
-template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::sim::LevelTelemetryRunEndReason>() noexcept
-    -> std::size_t {
-    return 6;
-}
-
-} // namespace ml

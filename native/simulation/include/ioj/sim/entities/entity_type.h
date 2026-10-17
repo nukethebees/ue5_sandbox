@@ -3,15 +3,12 @@
 
 #pragma once
 
-#include "ioj/enum_lookup.h"
 #include "ioj/enum_traits.h"
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <optional>
 #include <string_view>
-#include <unordered_map>
 
 namespace ioj::sim {
 enum class EntityType : std::uint8_t {
@@ -44,50 +41,6 @@ enum class EntityType : std::uint8_t {
     return "<invalid EntityType>";
 }
 
-[[nodiscard]] constexpr auto try_parse_entity_type(std::string_view const value) noexcept
-    -> std::optional<EntityType> {
-    if (value == "PlayerShip") {
-        return EntityType::PlayerShip;
-    }
-    if (value == "Turret") {
-        return EntityType::Turret;
-    }
-    if (value == "CapitalShip") {
-        return EntityType::CapitalShip;
-    }
-    if (value == "Fighter") {
-        return EntityType::Fighter;
-    }
-    if (value == "TubeSpinner") {
-        return EntityType::TubeSpinner;
-    }
-
-    return std::nullopt;
-}
-
-[[nodiscard]] constexpr auto to_display_string(EntityType const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case EntityType::PlayerShip: {
-            return "Player Ship";
-        }
-        case EntityType::Turret: {
-            return "Turret";
-        }
-        case EntityType::CapitalShip: {
-            return "Capital Ship";
-        }
-        case EntityType::Fighter: {
-            return "Capital Ship Fighter";
-        }
-        case EntityType::TubeSpinner: {
-            return "Tube Spinner";
-        }
-    }
-
-    return "<invalid EntityType>";
-}
-
 [[nodiscard]] constexpr auto to_serialized_string(EntityType const value) noexcept
     -> std::string_view {
     switch (value) {
@@ -112,18 +65,6 @@ enum class EntityType : std::uint8_t {
     }
 }
 
-[[nodiscard]] inline auto try_parse_serialized_entity_type(std::string_view const value)
-    -> std::optional<EntityType> {
-    static std::unordered_map<std::string_view, EntityType> const values{
-        {"player_ship", EntityType::PlayerShip},
-        {"turret", EntityType::Turret},
-        {"capital_ship", EntityType::CapitalShip},
-        {"capital_ship_fighter", EntityType::Fighter},
-        {"tube_spinner", EntityType::TubeSpinner},
-    };
-    return ioj::lookup_enum(values, value);
-}
-
 } // namespace ioj::sim
 namespace ml {
 template <>
@@ -134,13 +75,6 @@ struct EnumTraits<::ioj::sim::EntityType> {
         ::ioj::sim::EntityType::CapitalShip,
         ::ioj::sim::EntityType::Fighter,
         ::ioj::sim::EntityType::TubeSpinner,
-    };
-    inline static constexpr std::array names{
-        std::string_view{"PlayerShip"},
-        std::string_view{"Turret"},
-        std::string_view{"CapitalShip"},
-        std::string_view{"Fighter"},
-        std::string_view{"TubeSpinner"},
     };
 };
 
