@@ -63,7 +63,7 @@ auto make_cap_battle(std::span<Team const> const capital_teams,
                                                   100)};
         // add_capital_spawn may grow and relocate the storage.
         // NOLINTBEGIN(ioj-loop-view-accessor-call)
-        data.level_events.initial_spawns.capital_spawns.get_view()
+        data.level_events.schedule.capital_spawns.get_view()
             .target_entity_indices()[capital_index] = entity_index;
         // NOLINTEND(ioj-loop-view-accessor-call)
     }
@@ -156,13 +156,14 @@ TEST(FighterLiveCap, DerivedParticipantsIncludeFutureSpawns) {
     auto& schedule{with_reinforcements.level_events.schedule};
     schedule.execution_ticks = {100};
     schedule.event_group_counts = {{}};
+    auto const payload_offset{schedule.turret_spawns.num()};
     schedule.turret_spawns.add_defaulted(1);
-    auto const turret{schedule.turret_spawns.get_view()};
+    auto const turret{schedule.turret_spawns.get_view(payload_offset, 1)};
     turret.entity_indices()[0] = with_reinforcements.level_events.initialisation.entity_count++;
     turret.teams()[0] = Team::Red;
     turret.healths()[0] = 100;
     set_vector(turret.view_locations(), 0, {{0.f, 6000.f, 0.f}});
-    ASSERT_TRUE(schedule.add_spawn_group(EntityType::Turret, 0, 1));
+    ASSERT_TRUE(schedule.add_spawn_group(EntityType::Turret, payload_offset, 1));
 
     LevelSim scheduled_simulation{std::move(with_reinforcements)};
     start_and_tick(scheduled_simulation);
@@ -217,8 +218,7 @@ TEST(FighterLiveCap, FinalCapitalDeathOrphansFighters) {
 
     std::vector<Team> const capitals{Team::White, Team::Red};
     auto data{make_cap_battle(capitals, capitals, 4, 2, 6000.f)};
-    auto targets{
-        data.level_events.initial_spawns.capital_spawns.get_view().target_entity_indices()};
+    auto targets{data.level_events.schedule.capital_spawns.get_view().target_entity_indices()};
     targets[0] = 1;
     targets[1] = 0;
 
@@ -291,8 +291,7 @@ TEST(FighterLiveCap, PendingLaunchSurvivesFinalCapitalDeathUnowned) {
 
     std::vector<Team> const capitals{Team::White, Team::Red};
     auto data{make_cap_battle(capitals, capitals, 2, 1, 6000.f)};
-    auto targets{
-        data.level_events.initial_spawns.capital_spawns.get_view().target_entity_indices()};
+    auto targets{data.level_events.schedule.capital_spawns.get_view().target_entity_indices()};
     targets[0] = 1;
     targets[1] = 0;
 

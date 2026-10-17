@@ -186,8 +186,8 @@ TEST(NativeSimulation, LevelEventSingleAllocationStoragePreservesOrderAcrossMove
     // Deliberately grow by one row to exercise allocation-boundary preservation.
     // NOLINTBEGIN(ioj-loop-view-accessor-call)
     for (std::int32_t index{}; index < row_count; ++index) {
-        events.initial_spawns.capital_spawns.add_defaulted(1);
-        auto const capitals{events.initial_spawns.capital_spawns.get_view()};
+        events.schedule.capital_spawns.add_defaulted(1);
+        auto const capitals{events.schedule.capital_spawns.get_view()};
         capitals.entity_indices()[index] = index;
         set_vector(capitals.view_locations(),
                    index,
@@ -195,16 +195,16 @@ TEST(NativeSimulation, LevelEventSingleAllocationStoragePreservesOrderAcrossMove
         capitals.teams()[index] = Team::Green;
         capitals.healths()[index] = 1000 + index;
 
-        events.initial_spawns.turret_spawns.add_defaulted(1);
-        auto const turrets{events.initial_spawns.turret_spawns.get_view()};
+        events.schedule.turret_spawns.add_defaulted(1);
+        auto const turrets{events.schedule.turret_spawns.get_view()};
         turrets.entity_indices()[index] = index + 100;
         set_vector(turrets.view_locations(),
                    index,
                    ml::make_vector3f(static_cast<float>(index), 3.f, 4.f));
         turrets.laser_damages()[index] = index * 2;
 
-        events.initial_spawns.spinner_spawns.add_defaulted(1);
-        auto const spinners{events.initial_spawns.spinner_spawns.get_view()};
+        events.schedule.spinner_spawns.add_defaulted(1);
+        auto const spinners{events.schedule.spinner_spawns.get_view()};
         spinners.entity_indices()[index] = index + 200;
         set_vector(spinners.view_locations(),
                    index,
@@ -212,19 +212,23 @@ TEST(NativeSimulation, LevelEventSingleAllocationStoragePreservesOrderAcrossMove
         spinners.yaws()[index] = static_cast<float>(index * 3);
         spinners.initial_fire_point_indices()[index] = index;
     }
-    events.schedule.capital_spawns.append_from(
-        events.initial_spawns.capital_spawns.get_const_view());
     // NOLINTEND(ioj-loop-view-accessor-call)
-    events.schedule.turret_spawns.append_from(events.initial_spawns.turret_spawns.get_const_view());
+    events.schedule.add_initial_spawn_group(EntityType::CapitalShip, 0, row_count);
+    events.schedule.add_initial_spawn_group(EntityType::TubeSpinner, 0, row_count);
+    events.schedule.execution_ticks = {1};
+    events.schedule.event_group_counts = {{}};
+    ASSERT_TRUE(events.schedule.add_spawn_group(EntityType::Turret, 0, row_count));
 
     CompiledLevelEvents moved{std::move(events)};
-    auto const capitals{moved.initial_spawns.capital_spawns.get_const_view()};
+    EXPECT_EQ(moved.schedule.initial_spawn_group_count, 2u);
+    EXPECT_EQ(moved.schedule.spawn_groups.num(), 3u);
+    auto const capitals{moved.schedule.capital_spawns.get_const_view()};
     auto const turrets{moved.schedule.turret_spawns.get_const_view()};
-    auto const spinners{moved.initial_spawns.spinner_spawns.get_const_view()};
+    auto const spinners{moved.schedule.spinner_spawns.get_const_view()};
     EXPECT_EQ(capitals.entity_indices()[64], 64) << "Capital event order survives growth";
     EXPECT_EQ(capitals.view_locations().xs()[64], 64.f) << "Capital nested values survive moves";
     EXPECT_EQ(turrets.entity_indices()[64], 164) << "Scheduled turret order is unchanged";
-    EXPECT_EQ(turrets.laser_damages()[64], 128) << "Scheduled turret payloads append";
+    EXPECT_EQ(turrets.laser_damages()[64], 128) << "Scheduled turret payloads survive moves";
     EXPECT_EQ(spinners.entity_indices()[64], 264) << "Spinner event order survives growth";
     EXPECT_EQ(spinners.yaws()[64], 192.f) << "Spinner payloads survive moves";
 }

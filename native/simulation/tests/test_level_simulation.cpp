@@ -65,7 +65,7 @@ auto make_battle() -> LevelSimInitData {
 auto make_overlap_response_battle() -> LevelSimInitData {
     auto data{make_battle()};
     data.overlap_response.damage_per_overlap_detection = 50;
-    std::ranges::fill(data.level_events.initial_spawns.capital_spawns.get_view().healths(), 5000);
+    std::ranges::fill(data.level_events.schedule.capital_spawns.get_view().healths(), 5000);
     add_player_spawn(data, {});
     data.player->transform.location = {-1000.0, 0.0, 0.0};
     data.player->health = {150, 150};
@@ -76,7 +76,7 @@ auto make_overlap_response_battle() -> LevelSimInitData {
 void add_mission(LevelSimInitData& data) {
     auto& mission{data.level_events.initialisation.mission.emplace()};
     auto const entities{
-        data.level_events.initial_spawns.capital_spawns.get_const_view().entity_indices()};
+        data.level_events.schedule.capital_spawns.get_const_view().entity_indices()};
     mission.mode = ::ioj::levels::LevelMissionMode::KillEnemies;
     mission.kill_count = 1;
     mission.save_results = false;
@@ -277,7 +277,7 @@ TEST(NativeSimulation, LevelSimCollisionBoundsTest) {
 TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
     auto data{make_battle()};
     auto const player_index{add_player_spawn(data, {})};
-    auto const capitals_events{data.level_events.initial_spawns.capital_spawns.get_view()};
+    auto const capitals_events{data.level_events.schedule.capital_spawns.get_view()};
     capitals_events.target_entity_indices()[0] = capitals_events.entity_indices()[1];
     capitals_events.target_entity_indices()[1] = player_index;
     add_turret_spawn(data, {{0.f, -1000.f, 0.f}}, {0.f, 90.f, 0.f}, Team::Green, 20, 5);
@@ -343,7 +343,7 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
     data.capital_ships.fighter_spawn_slots_relative_transforms[1].location.y() = 100.0;
     data.fighters.health = 100;
     data.fighters.speed = 0.f;
-    auto const capital_events{data.level_events.initial_spawns.capital_spawns.get_view()};
+    auto const capital_events{data.level_events.schedule.capital_spawns.get_view()};
     capital_events.target_entity_indices()[0] = capital_events.entity_indices()[1];
     capital_events.target_entity_indices()[1] = capital_events.entity_indices()[0];
     std::ranges::fill(capital_events.initial_fighter_spawn_delays(), 0.f);
@@ -351,13 +351,14 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
     auto& schedule{data.level_events.schedule};
     schedule.execution_ticks = {4};
     schedule.event_group_counts = {{}};
+    auto const payload_offset{schedule.turret_spawns.num()};
     schedule.turret_spawns.add_defaulted(1);
-    auto const scheduled_turret{schedule.turret_spawns.get_view()};
+    auto const scheduled_turret{schedule.turret_spawns.get_view(payload_offset, 1)};
     scheduled_turret.entity_indices()[0] = data.level_events.initialisation.entity_count++;
     set_vector(scheduled_turret.view_locations(), 0, {{0.f, 6000.f, 0.f}});
     scheduled_turret.teams()[0] = Team::White;
     scheduled_turret.healths()[0] = 75;
-    ASSERT_TRUE(schedule.add_spawn_group(EntityType::Turret, 0, 1));
+    ASSERT_TRUE(schedule.add_spawn_group(EntityType::Turret, payload_offset, 1));
 
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();

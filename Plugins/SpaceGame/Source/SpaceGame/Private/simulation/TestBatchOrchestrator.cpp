@@ -488,13 +488,22 @@ auto ATestBatchOrchestrator::initialise_simulation(USpaceGameLevelConfig const& 
         }
 
         initial_turret_transforms_.Reset();
-        auto const turrets{result->level_events.initial_spawns.turret_spawns.get_const_view()};
-        auto const turret_count{static_cast<int32>(turrets.num())};
-        initial_turret_transforms_.Reserve(turret_count);
-        for (int32 i{}; i < turret_count; ++i) {
-            initial_turret_transforms_.Emplace(
-                FRotator{ml::to_unreal(ioj::rotation_at(turrets.view_rotations(), i))},
-                FVector{ml::to_unreal(ioj::vector_at(turrets.view_locations(), i))});
+        auto const& schedule{result->level_events.schedule};
+        auto const groups{
+            schedule.spawn_groups.get_const_view(0, schedule.initial_spawn_group_count)};
+        auto const group_count{groups.num()};
+        for (std::uint32_t group{}; group < group_count; ++group) {
+            if (groups.types()[group] != ::ioj::sim::EntityType::Turret) {
+                continue;
+            }
+            auto const turrets{schedule.turret_spawns.get_const_view(groups.offsets()[group],
+                                                                     groups.counts()[group])};
+            auto const turret_count{static_cast<int32>(turrets.num())};
+            for (int32 i{}; i < turret_count; ++i) {
+                initial_turret_transforms_.Emplace(
+                    FRotator{ml::to_unreal(ioj::rotation_at(turrets.view_rotations(), i))},
+                    FVector{ml::to_unreal(ioj::vector_at(turrets.view_locations(), i))});
+            }
         }
         result->fighter_diagnostics_enabled =
             ml::fighter_diagnostics::enabled.GetValueOnGameThread() != 0;

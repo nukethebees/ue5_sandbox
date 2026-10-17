@@ -35,20 +35,10 @@ static void finalise_participating_teams(LevelSimInitData& data) {
     }
 
     if (data.participating_teams.is_empty()) {
-        // Collect initial spawn teams
+        // Collect teams from the player and all spawn payloads.
         if (data.player.has_value()) {
             include(data.player->team);
         }
-        for (auto const team :
-             data.level_events.initial_spawns.capital_spawns.get_const_view().teams()) {
-            include(team);
-        }
-        for (auto const team :
-             data.level_events.initial_spawns.turret_spawns.get_const_view().teams()) {
-            include(team);
-        }
-
-        // Collect scheduled spawn teams
         for (auto const team : data.level_events.schedule.capital_spawns.get_const_view().teams()) {
             include(team);
         }

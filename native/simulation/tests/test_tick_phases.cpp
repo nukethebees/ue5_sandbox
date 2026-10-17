@@ -40,8 +40,9 @@ void schedule_turret(LevelSimInitData& data, Vector3f const location, SimTick co
     auto& schedule{data.level_events.schedule};
     schedule.execution_ticks = {tick};
     schedule.event_group_counts = {{}};
+    auto const payload_offset{schedule.turret_spawns.num()};
     schedule.turret_spawns.add_defaulted(1);
-    auto const turret_spawns{schedule.turret_spawns.get_view()};
+    auto const turret_spawns{schedule.turret_spawns.get_view(payload_offset, 1)};
     turret_spawns.entity_indices()[0] = data.level_events.initialisation.entity_count++;
     set_vector(turret_spawns.view_locations(), 0, location);
     set_rotation(turret_spawns.view_rotations(), 0, {});
@@ -49,7 +50,7 @@ void schedule_turret(LevelSimInitData& data, Vector3f const location, SimTick co
     turret_spawns.healths()[0] = 100;
     turret_spawns.laser_damages()[0] = 0;
 
-    ASSERT_TRUE(schedule.add_spawn_group(EntityType::Turret, 0, 1));
+    ASSERT_TRUE(schedule.add_spawn_group(EntityType::Turret, payload_offset, 1));
 }
 
 TEST(TickPhases, CompletedBurstsStopUntilTheNextFirePress) {
@@ -146,7 +147,7 @@ TEST(TickPhases, CarrierSpawnIsDeferredAndParticipatesInLaunchOverlaps) {
     auto const second{add_capital_spawn(
         data, {{2000.f, 0.f, 0.f}}, Team::White, invalid_level_entity_index, 60.f, 60.f, 100)};
     auto const target_indices{
-        data.level_events.initial_spawns.capital_spawns.get_view().target_entity_indices()};
+        data.level_events.schedule.capital_spawns.get_view().target_entity_indices()};
     target_indices[0] = second;
     target_indices[1] = first;
     data.capital_ships.fighter_spawn_slots = 1;
@@ -423,7 +424,7 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
         auto const second{add_capital_spawn(
             data, {{2000.f, 0.f, 0.f}}, Team::White, invalid_level_entity_index, 0.f, 60.f, 100)};
         auto const target_indices{
-            data.level_events.initial_spawns.capital_spawns.get_view().target_entity_indices()};
+            data.level_events.schedule.capital_spawns.get_view().target_entity_indices()};
         target_indices[0] = second;
         target_indices[1] = first;
         data.capital_ships.fighter_spawn_slots = 1;

@@ -37,11 +37,9 @@ class LevelSpawnManager {
 
     void initialise(std::uint32_t entity_count,
                     LevelCapitalSpawnEvents::ConstView capital_payloads,
-                    LevelTurretSpawnEvents::ConstView turret_payloads);
+                    LevelTurretSpawnEvents::ConstView turret_payloads,
+                    LevelSpinnerSpawnEvents::ConstView spinner_payloads);
     void set_entity_id(LevelEntityIndex entity_index, EntityUniqueId id);
-    void spawn_initial(LevelCapitalSpawnEvents::ConstView capital_events,
-                       LevelTurretSpawnEvents::ConstView turret_events,
-                       LevelSpinnerSpawnEvents::ConstView spinner_events);
     void spawn(LevelSpawnGroups::ConstView groups);
     void reset_tick_output() { spawned_ids_this_tick_.clear(); }
     auto get_spawned_ids() const -> std::span<EntityUniqueId const> {
@@ -57,6 +55,7 @@ class LevelSpawnManager {
 
     LevelCapitalSpawnEvents::ConstView capital_payloads_{};
     LevelTurretSpawnEvents::ConstView turret_payloads_{};
+    LevelSpinnerSpawnEvents::ConstView spinner_payloads_{};
     capital_ships::Sim& capital_ships_;
     turrets::Sim& turrets_;
     spinners::Sim& spinners_;

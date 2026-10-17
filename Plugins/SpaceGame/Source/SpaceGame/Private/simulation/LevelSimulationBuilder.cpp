@@ -344,7 +344,7 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
         level_simulation_builder::collect_proxy_actors<ATestTubeSpinnerProxy>(world);
 
     auto& initialisation{build.data.level_events.initialisation};
-    auto& initial_spawns{build.data.level_events.initial_spawns};
+    auto& spawns{build.data.level_events.schedule};
     level_simulation_builder::FProxyEntityIndexMap entity_indices;
     auto allocate_entity_index{[&](AActor const& actor) {
         auto const index{initialisation.entity_count++};
@@ -360,7 +360,8 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
     {
         auto const count{build.capital_proxies.Num()};
         auto const default_spawn_cooldown{config.capital_ships.spawn_delay};
-        auto& storage{initial_spawns.capital_spawns};
+        auto& storage{spawns.capital_spawns};
+        spawns.add_initial_spawn_group(::ioj::sim::EntityType::CapitalShip, 0, count);
         storage.add_defaulted(count);
         auto const events{storage.get_view()};
         for (int32 i{}; i < count; ++i) {
@@ -381,7 +382,8 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
     }
     {
         auto const count{build.turret_proxies.Num()};
-        auto& storage{initial_spawns.turret_spawns};
+        auto& storage{spawns.turret_spawns};
+        spawns.add_initial_spawn_group(::ioj::sim::EntityType::Turret, 0, count);
         storage.add_defaulted(count);
         auto const events{storage.get_view()};
         build.initial_turret_transforms.Reserve(count);
@@ -401,7 +403,8 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
     }
     {
         auto const count{build.spinner_proxies.Num()};
-        auto& storage{initial_spawns.spinner_spawns};
+        auto& storage{spawns.spinner_spawns};
+        spawns.add_initial_spawn_group(::ioj::sim::EntityType::TubeSpinner, 0, count);
         storage.add_defaulted(count);
         auto const events{storage.get_view()};
         for (int32 i{}; i < count; ++i) {
@@ -415,7 +418,7 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
         }
     }
 
-    auto const capital_events{initial_spawns.capital_spawns.get_view()};
+    auto const capital_events{spawns.capital_spawns.get_view()};
     auto const capital_count{static_cast<int32>(capital_events.num())};
     for (int32 i{}; i < capital_count; ++i) {
         auto const* const target{build.capital_proxies[i]->get_target_ship().Get()};

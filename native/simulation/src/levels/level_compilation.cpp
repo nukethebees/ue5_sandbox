@@ -120,7 +120,6 @@ auto compile_level(LevelDefinition const& definition,
 
     sim::CompiledLevelEvents compiled;
     auto& initialisation{compiled.initialisation};
-    auto& initial_spawns{compiled.initial_spawns};
     auto& schedule{compiled.schedule};
     auto& mission_initialisation{initialisation.mission.emplace()};
     mission_initialisation.level_id = definition.metadata.id.value;
@@ -181,8 +180,6 @@ auto compile_level(LevelDefinition const& definition,
                 left.source_index < right.source_index);
     });
 
-    std::int32_t capital_offset{};
-    std::int32_t turret_offset{};
     MissionTickValues mission_values;
     auto const append_entity = [&](sim::LevelEntityIndex const entity_index_value,
                                    sim::LevelCapitalSpawnEvents& capital_storage,
@@ -230,10 +227,21 @@ auto compile_level(LevelDefinition const& definition,
     };
 
     for (auto const source : sources) {
+        if (source.execution_tick != 0) {
+            break;
+        }
+        if (source.source_index < entity_count) {
+            append_entity(source.source_index, schedule.capital_spawns, schedule.turret_spawns);
+        }
+    }
+    auto capital_offset{static_cast<std::int32_t>(schedule.capital_spawns.num())};
+    auto turret_offset{static_cast<std::int32_t>(schedule.turret_spawns.num())};
+    schedule.add_initial_spawn_group(sim::EntityType::CapitalShip, 0, capital_offset);
+    schedule.add_initial_spawn_group(sim::EntityType::Turret, 0, turret_offset);
+
+    for (auto const source : sources) {
         auto const is_entity{source.source_index < entity_count};
         if (is_entity && source.execution_tick == 0) {
-            append_entity(
-                source.source_index, initial_spawns.capital_spawns, initial_spawns.turret_spawns);
             continue;
         }
         if (schedule.execution_ticks.empty() ||

@@ -320,21 +320,21 @@ TEST(FighterMembership, CapitalRegistrationInitializesNewEmptySpan) {
     data.capital_ships.fighter_spawn_slots = 1;
     data.capital_ships.fighter_spawn_slots_relative_transforms = {{.location = {0.0, 100.0, 0.0}}};
     std::ranges::fill(
-        data.level_events.initial_spawns.capital_spawns.get_view().initial_fighter_spawn_delays(),
-        0.f);
+        data.level_events.schedule.capital_spawns.get_view().initial_fighter_spawn_delays(), 0.f);
 
     auto& schedule{data.level_events.schedule};
     schedule.execution_ticks = {3};
     schedule.event_group_counts = {{}};
+    auto const payload_offset{schedule.capital_spawns.num()};
     schedule.capital_spawns.add_defaulted(1);
-    auto const spawn{schedule.capital_spawns.get_view()};
+    auto const spawn{schedule.capital_spawns.get_view(payload_offset, 1)};
     spawn.entity_indices()[0] = data.level_events.initialisation.entity_count++;
     spawn.target_entity_indices()[0] = invalid_level_entity_index;
     set_vector(spawn.view_locations(), 0, {{3000.f, 0.f, 0.f}});
     spawn.teams()[0] = Team::Green;
     spawn.healths()[0] = 100;
     spawn.initial_fighter_spawn_delays()[0] = 60.f;
-    ASSERT_TRUE(schedule.add_spawn_group(EntityType::CapitalShip, 0, 1));
+    ASSERT_TRUE(schedule.add_spawn_group(EntityType::CapitalShip, payload_offset, 1));
 
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();

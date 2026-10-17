@@ -25,22 +25,21 @@ void LevelEventManager::initialise(CompiledLevelEvents data, EntityUniqueId cons
     assert(event_tick_count == schedule_.event_group_counts.size());
 
     next_event_index_ = 0;
-    spawn_group_offset_ = 0;
+    spawn_group_offset_ = schedule_.initial_spawn_group_count;
     mission_group_offset_ = 0;
     spawn_manager_.initialise(initialisation_.entity_count,
                               schedule_.capital_spawns.get_const_view(),
-                              schedule_.turret_spawns.get_const_view());
+                              schedule_.turret_spawns.get_const_view(),
+                              schedule_.spinner_spawns.get_const_view());
     if (initialisation_.player_entity_index != invalid_level_entity_index) {
         spawn_manager_.set_entity_id(initialisation_.player_entity_index, player_id);
     }
-    spawn_manager_.spawn_initial(data.initial_spawns.capital_spawns.get_const_view(),
-                                 data.initial_spawns.turret_spawns.get_const_view(),
-                                 data.initial_spawns.spinner_spawns.get_const_view());
+    spawn_manager_.spawn(schedule_.spawn_groups.get_const_view(0, spawn_group_offset_));
 
     mission_manager_.bind_level_event_data(schedule_.mission_events.values,
                                            spawn_manager_.get_entity_ids());
 
-    [[maybe_unused]] std::uint32_t spawn_group_count{};
+    [[maybe_unused]] std::uint32_t spawn_group_count{spawn_group_offset_};
     [[maybe_unused]] std::uint32_t mission_group_count{};
     std::uint32_t mission_tick_count{};
     for (std::uint32_t event_index{}; static_cast<std::size_t>(event_index) < event_tick_count;

@@ -123,7 +123,7 @@ void run_worldless_fighter_capital_obstruction(tests::SimulationFixture const& c
     tests::add_capital_spawn(
         data, target, Team::Red, invalid_level_entity_index, 60.f, 60.f, 100000);
     Rotator3f const obstacle_rotation{0.f, 35.f, 0.f};
-    set_rotation(data.level_events.initial_spawns.capital_spawns.get_view().view_rotations(),
+    set_rotation(data.level_events.schedule.capital_spawns.get_view().view_rotations(),
                  1,
                  obstacle_rotation);
 
@@ -327,8 +327,7 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
     auto data{make_fighter_navigation_test_data(
         config, spawn_slots, Vector3f{{-20000.f, -7000.f, 0.f}}, Vector3f{{20000.f, 0.f, 0.f}})};
     std::ranges::fill(
-        data.level_events.initial_spawns.capital_spawns.get_view().fighter_spawn_cooldowns(),
-        3600.f);
+        data.level_events.schedule.capital_spawns.get_view().fighter_spawn_cooldowns(), 3600.f);
     DenseNavigationResult result;
     result.collision_distance =
         collision::get_entity_radius(data.entity_bounds, EntityType::Fighter) * 2.f;

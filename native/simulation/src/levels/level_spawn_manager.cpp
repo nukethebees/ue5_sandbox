@@ -24,9 +24,11 @@ LevelSpawnManager::LevelSpawnManager(capital_ships::Sim& capital_ships,
 
 void LevelSpawnManager::initialise(std::uint32_t const entity_count,
                                    LevelCapitalSpawnEvents::ConstView const capital_payloads,
-                                   LevelTurretSpawnEvents::ConstView const turret_payloads) {
+                                   LevelTurretSpawnEvents::ConstView const turret_payloads,
+                                   LevelSpinnerSpawnEvents::ConstView const spinner_payloads) {
     capital_payloads_ = capital_payloads;
     turret_payloads_ = turret_payloads;
+    spinner_payloads_ = spinner_payloads;
     entity_ids_.clear();
     entity_ids_.resize(static_cast<std::size_t>(entity_count));
 }
@@ -36,23 +38,6 @@ void LevelSpawnManager::set_entity_id(LevelEntityIndex const entity_index,
     assert(static_cast<std::size_t>(entity_index) < entity_ids_.size());
     assert(id.is_valid());
     entity_ids_[entity_index] = id;
-}
-
-void LevelSpawnManager::spawn_initial(LevelCapitalSpawnEvents::ConstView const capital_events,
-                                      LevelTurretSpawnEvents::ConstView const turret_events,
-                                      LevelSpinnerSpawnEvents::ConstView const spinner_events) {
-    if (capital_events.num() > 0) {
-        spawn_capitals(capital_events);
-    }
-    if (turret_events.num() > 0) {
-        spawn_turrets(turret_events);
-    }
-    if (spinner_events.num() > 0) {
-        spawn_spinners(spinner_events);
-    }
-    if (capital_events.num() > 0) {
-        resolve_capital_targets(capital_events);
-    }
 }
 
 void LevelSpawnManager::spawn(LevelSpawnGroups::ConstView const groups) {
@@ -73,6 +58,11 @@ void LevelSpawnManager::spawn(LevelSpawnGroups::ConstView const groups) {
             case EntityType::Turret: {
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- per-group payload.
                 spawn_turrets(turret_payloads_.get_const_view(offset, count));
+                break;
+            }
+            case EntityType::TubeSpinner: {
+                // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- per-group payload.
+                spawn_spinners(spinner_payloads_.get_const_view(offset, count));
                 break;
             }
             default: {
@@ -130,6 +120,7 @@ void LevelSpawnManager::spawn_spinners(LevelSpinnerSpawnEvents::ConstView const 
     auto const locations{events.view_locations()};
     auto const ids{
         spinners_.spawn_instances(locations, events.yaws(), events.initial_fire_point_indices())};
+    spawned_ids_this_tick_.insert(spawned_ids_this_tick_.end(), ids.begin(), ids.end());
     auto const count{events.num()};
     auto const entity_indices{events.entity_indices()};
 

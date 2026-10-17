@@ -11,7 +11,7 @@ namespace {
 auto add_worldless_capital(LevelSimInitData& data,
                            ml::Vector3d const location,
                            Team const team = Team::White) -> std::uint32_t {
-    auto const row{data.level_events.initial_spawns.capital_spawns.num()};
+    auto const row{data.level_events.schedule.capital_spawns.num()};
     tests::add_capital_spawn(
         data, to_float(location), team, invalid_level_entity_index, 60.f, 60.f);
     return row;
@@ -47,7 +47,7 @@ void run_worldless_mission_manager_scenario(tests::SimulationFixture const& conf
     auto& mission{data.level_events.initialisation.mission.emplace()};
     mission.save_results = false;
     auto const entity_indices{
-        data.level_events.initial_spawns.capital_spawns.get_const_view().entity_indices()};
+        data.level_events.schedule.capital_spawns.get_const_view().entity_indices()};
     auto add_hero{[&] { mission.hero_entity_indices.push_back(entity_indices[hero_index]); }};
     auto add_survivor{
         [&] { mission.must_survive_entity_indices.push_back(entity_indices[hero_index]); }};

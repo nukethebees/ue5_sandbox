@@ -54,8 +54,10 @@ auto add_worldless_capital_spawn(::ioj::sim::LevelSimInitData& data,
                                  float const initial_spawn_delay,
                                  float const spawn_cooldown,
                                  int32 const health) -> uint32 {
-    auto& storage{data.level_events.initial_spawns.capital_spawns};
+    auto& storage{data.level_events.schedule.capital_spawns};
     auto const index{storage.num()};
+    data.level_events.schedule.add_initial_spawn_group(
+        ::ioj::sim::EntityType::CapitalShip, index, 1);
     storage.add_defaulted(1);
     auto const events{storage.get_view()};
     events.entity_indices()[index] = data.level_events.initialisation.entity_count++;

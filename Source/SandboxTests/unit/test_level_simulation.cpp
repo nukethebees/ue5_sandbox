@@ -62,7 +62,8 @@ auto make_battle() -> ::ioj::sim::LevelSimInitData {
     data.grid_geometry = {{16, 16, 4}, {1000.f, 1000.f, 1000.f}};
     data.lasers.n_preallocated_instances = 16;
     data.capital_ships.fighter_spawn_slots = 0;
-    auto& spawn_storage{data.level_events.initial_spawns.capital_spawns};
+    auto& spawn_storage{data.level_events.schedule.capital_spawns};
+    data.level_events.schedule.add_initial_spawn_group(::ioj::sim::EntityType::CapitalShip, 0, 2);
     spawn_storage.add_defaulted(2);
     auto const spawns{spawn_storage.get_view()};
     spawns.entity_indices()[0] = 0;
@@ -134,7 +135,7 @@ auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
 void add_mission(::ioj::sim::LevelSimInitData& data) {
     auto& mission{data.level_events.initialisation.mission.emplace()};
     auto const entities{
-        data.level_events.initial_spawns.capital_spawns.get_const_view().entity_indices()};
+        data.level_events.schedule.capital_spawns.get_const_view().entity_indices()};
     mission.mode = ::ioj::levels::LevelMissionMode::KillEnemies;
     mission.kill_count = 1;
     mission.save_results = false;
@@ -209,7 +210,8 @@ auto FLevelSimSpawnQueriesTest::RunTest(FString const&) -> bool {
     data.turrets.target_refresh_frequency = 10.f;
     // Keep the muzzle outside the turret's collision bounds so it cannot block its own query.
     data.turrets.fire_point_offset = ml::make_vector3f(20.f, 0.f, 0.f);
-    auto& initial_storage{data.level_events.initial_spawns.turret_spawns};
+    auto& initial_storage{data.level_events.schedule.turret_spawns};
+    data.level_events.schedule.add_initial_spawn_group(::ioj::sim::EntityType::Turret, 0, 1);
     initial_storage.add_uninitialised(1);
     auto const initial{initial_storage.get_view()};
     initial.entity_indices()[0] = data.level_events.initialisation.entity_count++;
@@ -416,10 +418,11 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     resources.config = config->get_visual_config();
 
     auto scheduled_battle{make_scheduled_battle()};
-    auto const scheduled_spawns{scheduled_battle.level_events.schedule.capital_spawns.get_view()};
+    auto const scheduled_spawns{
+        scheduled_battle.level_events.schedule.capital_spawns.get_view(1, 1)};
     scheduled_spawns.view_locations().xs()[0] = -1000.f;
     scheduled_spawns.healths()[0] = 100;
-    scheduled_battle.level_events.initial_spawns.capital_spawns.get_view().healths()[0] = 10000;
+    scheduled_battle.level_events.schedule.capital_spawns.get_view().healths()[0] = 10000;
     scheduled_battle.overlap_response.damage_per_overlap_detection = 100;
     ::ioj::sim::LevelSim simulation{MoveTemp(scheduled_battle)};
     simulation.finish_initialisation();
