@@ -515,7 +515,19 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
                 if (value.indentation == AccessSpecifier::Indentation::outdented && width >= 2) {
                     width -= 2;
                 }
-                return std::string(width, ' ') + value.access + ":";
+                std::string_view spelling;
+                switch (value.access) {
+                    case AccessSpecifier::Access::public_:
+                        spelling = "public";
+                        break;
+                    case AccessSpecifier::Access::protected_:
+                        spelling = "protected";
+                        break;
+                    case AccessSpecifier::Access::private_:
+                        spelling = "private";
+                        break;
+                }
+                return std::string(width, ' ') + std::string{spelling} + ":";
             } else if constexpr (std::is_same_v<T, Include>) {
                 auto const left{include_is_system(value) ? '<' : '"'};
                 auto const right{include_is_system(value) ? '>' : '"'};

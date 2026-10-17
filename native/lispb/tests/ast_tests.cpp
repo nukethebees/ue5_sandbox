@@ -31,7 +31,7 @@ TEST(Ast, NodeListBuilderComposesSectionsAndSpacing) {
     section.add(Member{"int32", "first"}, 1).add(Member{"int32", "second"});
 
     NodeListBuilder builder;
-    auto nodes{builder.add(AccessSpecifier{"public"}, 1)
+    auto nodes{builder.add(AccessSpecifier{AccessSpecifier::Access::public_}, 1)
                    .append(section.build())
                    .new_lines(2)
                    .add(Member{"int32", "third"})
@@ -94,10 +94,12 @@ TEST(Ast, TypedStmtsReportDependencies) {
 TEST(Ast, RendersAccessSpecifiersWithExplicitIndentation) {
     auto const context{RenderContext{.indent_level = 1, .indent_text = "    "}};
 
-    EXPECT_EQ(render(Node{AccessSpecifier{"public"}}, context), "  public:");
-    EXPECT_EQ(
-        render(Node{AccessSpecifier{"private", AccessSpecifier::Indentation::normal}}, context),
-        "    private:");
+    EXPECT_EQ(render(Node{AccessSpecifier{AccessSpecifier::Access::public_}}, context),
+              "  public:");
+    EXPECT_EQ(render(Node{AccessSpecifier{AccessSpecifier::Access::private_,
+                                          AccessSpecifier::Indentation::normal}},
+                     context),
+              "    private:");
 }
 
 TEST(Ast, RendersBraceInitialisedTree) {
@@ -367,7 +369,7 @@ TEST(Ast, RendersConstrainedStructuresAndSpecialMembers) {
                         },
                 }),
                 lines(2),
-                AccessSpecifier{"private"},
+                AccessSpecifier{AccessSpecifier::Access::private_},
             },
         .template_parameters = "int Capacity",
         .requires_clause = "(Capacity >= 0)",

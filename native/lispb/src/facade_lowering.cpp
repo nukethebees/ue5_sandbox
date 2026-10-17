@@ -86,10 +86,16 @@ auto lower_facade_impl(FacadeSchema const& facade, TypeRegistry const& types)
 
     NodeListBuilder class_nodes;
     if (has_public_nodes) {
-        class_nodes.add(AccessSpecifier{"public", AccessSpecifier::Indentation::normal}, 1)
+        class_nodes
+            .add(AccessSpecifier{AccessSpecifier::Access::public_,
+                                 AccessSpecifier::Indentation::normal},
+                 1)
             .append(public_nodes.build());
     }
-    class_nodes.add(AccessSpecifier{"private", AccessSpecifier::Indentation::normal}, 1)
+    class_nodes
+        .add(AccessSpecifier{AccessSpecifier::Access::private_,
+                             AccessSpecifier::Indentation::normal},
+             1)
         .append(private_nodes.build());
 
     Node declaration_node{Struct{

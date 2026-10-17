@@ -536,7 +536,7 @@ auto compact_view_node(SingleAllocationModel const& model) -> Node {
         .template_parameters = "typename Func",
     }));
     children.new_lines(1)
-        .add(AccessSpecifier{"private"})
+        .add(AccessSpecifier{AccessSpecifier::Access::private_})
         .new_lines(1)
         .add(compact_function(FunctionSpec{
             .name = "make_column_view",
@@ -662,11 +662,11 @@ auto storage_implementation_nodes(SingleAllocationModel const& model) -> Nodes {
         .new_lines(1)
         .append(storage_lifetime_nodes(model))
         .new_lines(1)
-        .add(AccessSpecifier{"protected"})
+        .add(AccessSpecifier{AccessSpecifier::Access::protected_})
         .new_lines(1)
         .append(storage_access_nodes(model))
         .new_lines(1)
-        .add(AccessSpecifier{"private"})
+        .add(AccessSpecifier{AccessSpecifier::Access::private_})
         .new_lines(1)
         .add(Member{"std::pmr::memory_resource*", "resource_", RawExpr{""}})
         .new_lines(1)
@@ -763,7 +763,7 @@ auto emit_single_allocation_container(SingleAllocationModel const& model, NodeLi
         .new_lines(1)
         .append(storage_implementation_nodes(model))
         .new_lines(1)
-        .add(AccessSpecifier{"public"})
+        .add(AccessSpecifier{AccessSpecifier::Access::public_})
         .new_lines(1);
 
     auto api{lower_soa_api(*model.schema,

@@ -1,16 +1,15 @@
 #pragma once
 
-#include <string>
-
 namespace codegen {
 
 struct AccessSpecifier {
+    enum class Access { public_, protected_, private_ };
     enum class Indentation {
         outdented,
         normal,
     };
 
-    std::string access;
+    Access access{Access::public_};
     Indentation indentation{Indentation::outdented};
 };
 

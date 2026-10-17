@@ -650,7 +650,7 @@ auto fixed_container_mutation_nodes() -> Nodes {
 
 auto fixed_container_private_nodes(SoaSchema const& schema) -> Nodes {
     NodeListBuilder result;
-    result.add(AccessSpecifier{"private"}, 1);
+    result.add(AccessSpecifier{AccessSpecifier::Access::private_}, 1);
     add_compact_function(result,
                          "check_index",
                          "void",
