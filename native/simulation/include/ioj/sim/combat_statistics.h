@@ -31,7 +31,6 @@ class CombatStatistics {
     void adjust_alive_count(Team team, EntityType type, std::int32_t delta) noexcept;
 
     telemetry::EntityCounts alive_counts_{};
-    std::int32_t alive_count_{};
     std::int32_t cumulative_kill_count_{};
     telemetry::CombatTelemetryCounters combat_telemetry_{};
 };

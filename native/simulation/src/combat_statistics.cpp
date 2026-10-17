@@ -16,7 +16,6 @@ constexpr auto is_valid(Team const team) noexcept -> bool {
 
 void CombatStatistics::reset() noexcept {
     alive_counts_ = {};
-    alive_count_ = 0;
     cumulative_kill_count_ = 0;
     combat_telemetry_ = {};
 }
@@ -101,7 +100,11 @@ void CombatStatistics::record_shot(Team const attacker_team,
 }
 
 auto CombatStatistics::alive_count() const noexcept -> std::int32_t {
-    return alive_count_;
+    std::int32_t total{};
+    for (auto const& counts : alive_counts_) {
+        total += std::accumulate(counts.begin(), counts.end(), std::int32_t{});
+    }
+    return total;
 }
 
 auto CombatStatistics::cumulative_kill_count() const noexcept -> std::int32_t {
@@ -136,11 +139,11 @@ auto CombatStatistics::count_alive_per_team_and_type() const noexcept
 
 auto CombatStatistics::count_alive_not_on_team(Team const team) const noexcept -> std::int32_t {
     if (!is_valid(team)) {
-        return alive_count_;
+        return alive_count();
     }
 
     auto const& counts{alive_counts_[std::to_underlying(team)]};
-    return alive_count_ - std::accumulate(counts.begin(), counts.end(), std::int32_t{});
+    return alive_count() - std::accumulate(counts.begin(), counts.end(), std::int32_t{});
 }
 
 auto CombatStatistics::combat_telemetry() const noexcept
@@ -156,8 +159,6 @@ void CombatStatistics::adjust_alive_count(Team const team,
 
     auto& count{alive_counts_[std::to_underlying(team)][std::to_underlying(type)]};
     count += delta;
-    alive_count_ += delta;
     assert(count >= 0);
-    assert(alive_count_ >= 0);
 }
 } // namespace ioj::sim
