@@ -542,13 +542,13 @@ auto CollisionUniformGrid::overlaps_impl(
                             continue;
                         }
 
-                        if (overlaps_query(
-                                ml::make_vector3f(entity_min_xs[aabb_offset + entity_index],
-                                                  entity_min_ys[aabb_offset + entity_index],
-                                                  entity_min_zs[aabb_offset + entity_index]),
-                                ml::make_vector3f(entity_max_xs[aabb_offset + entity_index],
-                                                  entity_max_ys[aabb_offset + entity_index],
-                                                  entity_max_zs[aabb_offset + entity_index]))) {
+                        auto const aabb_index{aabb_offset + entity_index};
+                        if (overlaps_query(ml::make_vector3f(entity_min_xs[aabb_index],
+                                                             entity_min_ys[aabb_index],
+                                                             entity_min_zs[aabb_index]),
+                                           ml::make_vector3f(entity_max_xs[aabb_index],
+                                                             entity_max_ys[aabb_index],
+                                                             entity_max_zs[aabb_index]))) {
                             if constexpr (Write) {
                                 assert(result.entities < out_entities.size());
                                 out_entities[result.entities] = id;
@@ -733,17 +733,17 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
                         }
                     }
 
-                    auto const hit_t{
-                        trace_aabb(start,
-                                   inverse_delta,
-                                   delta,
-                                   ml::make_vector3f(entity_min_xs[aabb_offset + entity_index],
-                                                     entity_min_ys[aabb_offset + entity_index],
-                                                     entity_min_zs[aabb_offset + entity_index]),
-                                   ml::make_vector3f(entity_max_xs[aabb_offset + entity_index],
-                                                     entity_max_ys[aabb_offset + entity_index],
-                                                     entity_max_zs[aabb_offset + entity_index]),
-                                   moving_half_extent)};
+                    auto const aabb_index{aabb_offset + entity_index};
+                    auto const hit_t{trace_aabb(start,
+                                                inverse_delta,
+                                                delta,
+                                                ml::make_vector3f(entity_min_xs[aabb_index],
+                                                                  entity_min_ys[aabb_index],
+                                                                  entity_min_zs[aabb_index]),
+                                                ml::make_vector3f(entity_max_xs[aabb_index],
+                                                                  entity_max_ys[aabb_index],
+                                                                  entity_max_zs[aabb_index]),
+                                                moving_half_extent)};
                     if (hit_t < nearest_t ||
                         (std::isfinite(hit_t) && hit_t == nearest_t && id < nearest_entity)) {
                         nearest_t = hit_t;
