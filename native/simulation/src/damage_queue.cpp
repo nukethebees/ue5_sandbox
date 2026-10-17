@@ -25,6 +25,7 @@ void DamageQueue::prepare(EntityLookupTables const& indexes,
     std::uint32_t offset{};
     std::uint32_t groups{};
     auto const entity_type_count{EntityTypeSizes::size()};
+    // Assign contiguous type runs and count nonempty groups before reordering damage events.
     for (std::size_t i{}; i < entity_type_count; ++i) {
         auto const type{static_cast<EntityType>(i)};
         auto& span{spans_[type]};
