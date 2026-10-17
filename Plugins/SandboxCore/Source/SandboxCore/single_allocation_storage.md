@@ -128,8 +128,8 @@ cmake --build --preset generate-code
 cmake --build out/build/native --target check-generated-code
 ```
 
-`native-tests` is the normal native correctness suite. `native-soa` builds and runs both native
-SoA allocation variants (`native-soa-tests` and `native-soa-tests-mimalloc`) and its benchmark
+`native-tests` is the normal native correctness suite. `native-soa` runs the algorithms once in
+`native-soa-tests`, a small `native-soa-mimalloc-smoke`, and its benchmark
 smoke checks; it is not a timed performance comparison. `generate-code` and
 `check-generated-code` validate committed generated output. Allocation counting uses the compile
 fixture's PMR resource. Small schemas in `native/lispb/native_soa` cover odd-sized and
@@ -138,7 +138,7 @@ native SoA suites exercise actual standard and mimalloc storage and alignment.
 
 For Unreal-dependent behavior, build the Editor and run the existing CQTest/Unreal Automation
 unit suite. The private SandboxCoreEngineTests fixture covers reacquiring views after growth,
-self-append, nested access, and move assignment:
+nested access, and PMR resource ownership:
 
 ```powershell
 cmake --workflow --preset debug-game

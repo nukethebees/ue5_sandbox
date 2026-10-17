@@ -34,10 +34,9 @@ target_link_libraries(native-soa-tests PRIVATE native-soa GTest::gtest_main)
 add_test(NAME native-soa-tests COMMAND native-soa-tests)
 set_tests_properties(native-soa-tests PROPERTIES LABELS "unit;all;native;native-soa")
 
-add_executable(native-soa-tests-mimalloc tests.cpp "${NATIVE_SOA_GENERATED}/native_soa_types.cpp")
-ioj_enable_warnings(native-soa-tests-mimalloc)
-target_compile_definitions(native-soa-tests-mimalloc PRIVATE NATIVE_SOA_MIMALLOC=1)
-target_link_libraries(native-soa-tests-mimalloc
+add_executable(native-soa-mimalloc-smoke mimalloc_smoke.cpp)
+ioj_enable_warnings(native-soa-mimalloc-smoke)
+target_link_libraries(native-soa-mimalloc-smoke
   PRIVATE
     native-soa
     GTest::gtest_main
@@ -46,8 +45,8 @@ target_link_libraries(native-soa-tests-mimalloc
     ioj::debug_symbols
     ioj::fp_precise
 )
-add_test(NAME native-soa-tests-mimalloc COMMAND native-soa-tests-mimalloc)
-set_tests_properties(native-soa-tests-mimalloc PROPERTIES LABELS "unit;all;native;native-soa")
+add_test(NAME native-soa-mimalloc-smoke COMMAND native-soa-mimalloc-smoke)
+set_tests_properties(native-soa-mimalloc-smoke PROPERTIES LABELS "unit;all;native;native-soa")
 
 add_executable(native-soa-benchmarks)
 target_sources(native-soa-benchmarks

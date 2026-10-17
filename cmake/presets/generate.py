@@ -722,7 +722,7 @@ def make_native_benchmark_document() -> dict[str, Any]:
             "configurePreset": BENCHMARK_CONFIGURATION,
             "targets": [
                 "native-soa-tests",
-                "native-soa-tests-mimalloc",
+                "native-soa-mimalloc-smoke",
                 "native-soa-benchmarks",
                 "codegen-tests",
             ],

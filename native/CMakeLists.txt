@@ -106,7 +106,7 @@ add_custom_target(native-tests
     native-core-tests
     native-ui-tests
     native-soa-tests
-    native-soa-tests-mimalloc
+    native-soa-mimalloc-smoke
     native-level-authoring-tests
     native-level-parser-tests
     native-memory-tests
