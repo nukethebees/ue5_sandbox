@@ -1,7 +1,5 @@
 #pragma once
 
-#include "ioj/frame_array.h"
-#include "ioj/frame_vectors3f.h"
 #include "ioj/sim/lasers/laser_hit_details.h"
 #include "ioj/sim/lasers/laser_source.h"
 #include "ioj/vector_types.h"
@@ -26,22 +24,18 @@ struct FrameHitDetails {
     void add(Vector3f location, Vector3f emission_direction, LaserSource source);
     [[nodiscard]] auto num() const noexcept -> std::uint32_t;
 
-    auto view_locations() -> FrameVectors3f& { return locations_; }
-    auto view_locations() const -> FrameVectors3f const& { return locations_; }
-    auto view_emission_directions() -> FrameVectors3f& { return emission_directions_; }
-    auto view_emission_directions() const -> FrameVectors3f const& { return emission_directions_; }
-    auto sources() -> std::span<LaserSource> { return sources_.view(); }
-    auto sources() const -> std::span<LaserSource const> { return sources_.view(); }
-    void validate() const {
-        locations_.validate();
-        emission_directions_.validate();
-        assert(locations_.num() == num());
-        assert(emission_directions_.num() == num());
-        assert(sources_.num() == num());
+    auto view_locations() { return storage_.get_view().view_locations(); }
+    auto view_locations() const { return storage_.get_const_view().view_locations(); }
+    auto view_emission_directions() { return storage_.get_view().view_emission_directions(); }
+    auto view_emission_directions() const {
+        return storage_.get_const_view().view_emission_directions();
     }
+    auto sources() -> std::span<LaserSource> { return storage_.get_view().sources(); }
+    auto sources() const -> std::span<LaserSource const> {
+        return storage_.get_const_view().sources();
+    }
+    void validate() const { storage_.get_const_view().validate(); }
   private:
-    FrameVectors3f locations_;
-    FrameVectors3f emission_directions_;
-    ml::FrameArray<LaserSource> sources_;
+    LaserHitDetails storage_;
 };
 } // namespace ioj::sim::lasers
