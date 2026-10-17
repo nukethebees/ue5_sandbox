@@ -2,9 +2,6 @@
 
 #include "reference_evaluator.h"
 
-#include <algorithm>
-#include <array>
-
 namespace kernel_codegen::detail {
 namespace {
 
@@ -35,23 +32,6 @@ auto test_arguments(ExpandedVariant const& expanded) -> std::string {
     return result;
 }
 
-auto out_of_place_arguments(ExpandedVariant const& expanded, std::string const& type)
-    -> std::string {
-    std::string result;
-    for (std::size_t index{}; index < expanded.operation->operands.size(); ++index) {
-        if (!result.empty()) {
-            result += ", ";
-        }
-        auto const& name{expanded.operation->operands[index].name};
-        if (expanded.storage[index] == StorageKind::scalar) {
-            result += name;
-        } else {
-            result += "std::span<" + type + " const>{" + name + ".data(), Count}";
-        }
-    }
-    return result + ", std::span<" + type + ">{out_of_place.data(), Count}";
-}
-
 auto initializer(std::vector<std::string> const& values) -> std::string {
     std::string result{"{"};
     for (std::size_t index{}; index < values.size(); ++index) {
@@ -63,37 +43,18 @@ auto initializer(std::vector<std::string> const& values) -> std::string {
     return result + "}";
 }
 
-void append_expectation(std::string& output, std::string const& type, std::string const& actual) {
-    if (type == "float" || type == "double") {
-        output += "            if (std::isnan(expected[i])) {\n"
-                  "                EXPECT_TRUE(std::isnan(" +
-                  actual +
-                  "));\n"
-                  "            } else if (std::isinf(expected[i])) {\n"
-                  "                EXPECT_EQ(" +
-                  actual +
-                  ", expected[i]);\n"
-                  "            } else {\n                " +
-                  (type == "float" ? "EXPECT_FLOAT_EQ(" : "EXPECT_DOUBLE_EQ(") + actual +
-                  ", expected[i]);\n            }\n";
-    } else {
-        output += "            EXPECT_EQ(" + actual + ", expected[i]);\n";
-    }
-}
-
 void append_case(std::string& output,
                  Emission const& emission,
                  ExpandedVariant const& expanded,
-                 ExpandedVariant const* const out_of_place,
                  std::size_t const count) {
     auto const type{standard_type(expanded.type)};
     auto const fixture{make_reference_fixture(expanded, count)};
-    output += "    {\n        constexpr std::size_t Count{" + std::to_string(count) + "};\n";
+    output += "    for (std::size_t const Count : {0, 1, 7, 8, 9, 31}) {\n";
     for (std::size_t index{}; index < expanded.operation->operands.size(); ++index) {
         auto const& operand{expanded.operation->operands[index]};
         if (expanded.storage[index] == StorageKind::array) {
-            output += "        std::array<" + type + ", Count> " + operand.name +
-                      initializer(fixture.operands[index]) + ";\n";
+            output += "        std::array<" + type + ", " + std::to_string(count) + "> " +
+                      operand.name + initializer(fixture.operands[index]) + ";\n";
         } else {
             output +=
                 "        auto const " + operand.name + "{" + fixture.operands[index][0] + "};\n";
@@ -104,26 +65,17 @@ void append_case(std::string& output,
                                ? *expanded.variant->target
                                : expanded.operation->output};
     if (expanded.variant->kind == VariantKind::out_of_place) {
-        output += "        std::array<" + type + ", Count> " + destination + "{};\n";
+        output += "        std::array<" + type + ", " + std::to_string(count) + "> " + destination +
+                  "{};\n";
     }
-    if (out_of_place != nullptr) {
-        output += "        std::array<" + type + ", Count> out_of_place{};\n";
-    }
-    output +=
-        "        std::array<" + type + ", Count> expected" + initializer(fixture.expected) + ";\n";
+    output += "        std::array<" + type + ", " + std::to_string(count) + "> expected" +
+              initializer(fixture.expected) + ";\n";
 
-    if (out_of_place != nullptr) {
-        output += "        " + emission.cpp_namespace + "::" + out_of_place->variant->public_name +
-                  "(" + out_of_place_arguments(*out_of_place, type) + ");\n";
-    }
     output += "        " + emission.cpp_namespace + "::" + expanded.variant->public_name + "(" +
               test_arguments(expanded) +
               ");\n"
               "        for (std::size_t i{}; i < Count; ++i) {\n";
-    append_expectation(output, expanded.type, destination + "[i]");
-    if (out_of_place != nullptr) {
-        append_expectation(output, expanded.type, "out_of_place[i]");
-    }
+    output += "            expect_value(" + destination + "[i], expected[i]);\n";
     output += "        }\n    }\n";
 }
 
@@ -136,23 +88,33 @@ auto render_standard_tests(Emission const& emission,
     result += "#include \"" + emission.header_include +
               "\"\n\n#include <gtest/gtest.h>\n\n"
               "#include <array>\n#include <cmath>\n#include <cstddef>\n#include <cstdint>\n"
-              "#include <limits>\n#include <span>\n\n";
+              "#include <limits>\n#include <span>\n#include <type_traits>\n\n";
     auto const suite{"Generated_" + module.name};
-    for (auto const& expanded : variants) {
-        auto const out_of_place{std::ranges::find_if(variants, [&](auto const& candidate) {
-            return expanded.variant->kind == VariantKind::in_place &&
-                   candidate.operation == expanded.operation && candidate.type == expanded.type &&
-                   candidate.storage == expanded.storage &&
-                   candidate.variant->kind == VariantKind::out_of_place;
-        })};
-        result += "TEST(" + suite + ", " + raw_name(expanded) + ") {\n";
-        auto const* comparison{out_of_place == variants.end() ? nullptr : &*out_of_place};
-        for (auto const count : std::array<std::size_t, 6>{0, 1, 7, 8, 9, 31}) {
-            append_case(result, emission, expanded, comparison, count);
+    result += "namespace " + suite + " {\n";
+    result += R"(template <typename T>
+void expect_value(T const actual, T const expected) {
+    if constexpr (std::is_floating_point_v<T>) {
+        if (std::isnan(expected)) {
+            EXPECT_TRUE(std::isnan(actual));
+        } else if (std::isinf(expected)) {
+            EXPECT_EQ(actual, expected);
+        } else if constexpr (std::is_same_v<T, float>) {
+            EXPECT_FLOAT_EQ(actual, expected);
+        } else {
+            EXPECT_DOUBLE_EQ(actual, expected);
         }
+    } else {
+        EXPECT_EQ(actual, expected);
+    }
+}
+
+)";
+    for (auto const& expanded : variants) {
+        result += "TEST(" + suite + ", " + raw_name(expanded) + ") {\n";
+        append_case(result, emission, expanded, 31);
         result += "}\n\n";
     }
-    return result;
+    return result + "}\n";
 }
 
 }

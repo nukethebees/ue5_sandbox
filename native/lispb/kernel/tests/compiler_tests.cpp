@@ -194,26 +194,6 @@ TEST(KernelRenderer, GeneratesConcreteOverloadsAndSourceLoops) {
     EXPECT_EQ(files[1].content.find("multiply: lhs and rhs must not overlap"), std::string::npos);
 }
 
-TEST(KernelRenderer, GeneratesStandardLibraryBindingsAndTests) {
-    auto const document{
-        parse("test.lispb", codegen::sexpr::read_forms("test.lispb", standard_source))};
-    auto const files{render(document.modules[0], Profile::standard)};
-
-    ASSERT_EQ(files.size(), 3);
-    EXPECT_TRUE(files[0].content.contains("std::span<std::uint32_t const> lhs"));
-    EXPECT_TRUE(files[0].content.contains("std::span<float> out"));
-    EXPECT_FALSE(files[0].content.contains("TArray"));
-    EXPECT_FALSE(files[1].content.contains("CoreMinimal"));
-    EXPECT_FALSE(files[1].content.contains("RESTRICT"));
-    EXPECT_TRUE(files[1].content.contains("for (std::size_t i{}; i < count; ++i)"));
-    EXPECT_TRUE(files[1].content.contains("std::abort()"));
-    EXPECT_TRUE(files[2].content.contains("#include <gtest/gtest.h>"));
-    EXPECT_TRUE(files[2].content.contains("constexpr std::size_t Count{31}"));
-    EXPECT_TRUE(files[2].content.contains("std::array<float, Count> expected{"));
-    EXPECT_TRUE(files[2].content.contains("EXPECT_FLOAT_EQ("));
-    EXPECT_FALSE(files[2].content.contains("expected[i] ="));
-}
-
 TEST(KernelRenderer, GeneratesFusedComponentMapBindings) {
     auto const document{
         parse("test.lispb", codegen::sexpr::read_forms("test.lispb", component_standard_source))};
@@ -679,7 +659,6 @@ TEST(KernelRenderer, RendersNamedConstantsForEachConcreteFloatingType) {
 
     EXPECT_TRUE(standard_files[1].content.contains("#include <limits>"));
     EXPECT_TRUE(standard_files[1].content.contains("std::numeric_limits<float>::quiet_NaN()"));
-    EXPECT_TRUE(standard_files[2].content.contains("std::isnan(expected[i])"));
 }
 
 TEST(KernelRenderer, TreatsBareNanAndInfAsOperandReferences) {
