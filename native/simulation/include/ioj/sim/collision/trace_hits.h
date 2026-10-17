@@ -137,15 +137,19 @@ struct TraceHits
     using Layout = TraceHitsSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
+
     static constexpr auto capacity_granularity = Layout::capacity_granularity;
     static constexpr auto allocation_alignment = Layout::allocation_alignment;
     static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
     static constexpr auto max_capacity = Layout::max_capacity;
+
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
+
     using View = TraceHitsSingleView;
     using ConstView = TraceHitsSingleConstView;
+
     /* **************************************** */
     // Lifetime
     /* **************************************** */

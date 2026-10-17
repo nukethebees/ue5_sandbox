@@ -661,7 +661,7 @@ auto storage_implementation_nodes(SingleAllocationModel const& model) -> Nodes {
     children
         .append(adjacent({UsingDeclaration{"View", CppType{model.view_name}},
                           UsingDeclaration{"ConstView", CppType{model.const_view_name}}}))
-        .new_lines(1)
+        .new_lines(2)
         .append(storage_lifetime_nodes(model))
         .new_lines(1)
         .add(AccessSpecifier{AccessSpecifier::Access::protected_})
@@ -752,17 +752,17 @@ auto emit_single_allocation_container(SingleAllocationModel const& model, NodeLi
         .add(raw("using Layout = " + model.layout_name +
                  ";\n"
                  "using size_type = Layout::size_type;\n"
-                 "using byte_size_type = Layout::byte_size_type;\n"
+                 "using byte_size_type = Layout::byte_size_type;\n\n"
                  "static constexpr auto capacity_granularity = "
                  "Layout::capacity_granularity;\n"
                  "static constexpr auto allocation_alignment = "
                  "Layout::allocation_alignment;\n"
                  "static constexpr auto capacity_block_bound = "
                  "Layout::capacity_block_bound;\n"
-                 "static constexpr auto max_capacity = Layout::max_capacity;\n"
+                 "static constexpr auto max_capacity = Layout::max_capacity;\n\n"
                  "static constexpr auto layout_bytes(byte_size_type blocks) noexcept "
                  "-> byte_size_type { return Layout::layout_bytes(blocks); }"))
-        .new_lines(1)
+        .new_lines(2)
         .append(storage_implementation_nodes(model))
         .new_lines(1)
         .add(AccessSpecifier{AccessSpecifier::Access::public_})
