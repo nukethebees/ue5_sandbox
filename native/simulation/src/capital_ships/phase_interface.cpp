@@ -21,8 +21,8 @@ void PhaseInterface::think(float const dt, ml::FrameMemoryResource* const scratc
     simulation.think(dt, scratch_resource);
 }
 
-void PhaseInterface::resolve_damage_events() {
-    simulation.resolve_damage_events();
+void PhaseInterface::resolve_damage_events(ml::FrameMemoryResource* const scratch_resource) {
+    simulation.resolve_damage_events(scratch_resource);
 }
 
 void PhaseInterface::resolve_fighters_of_dying_capitals() {

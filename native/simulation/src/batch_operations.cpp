@@ -1,5 +1,7 @@
 #include "ioj/sim/batch_operations.h"
 
+#include <ioj/column_math.h>
+#include <ioj/frame_array.h>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_ledger.h>
@@ -20,13 +22,18 @@ void sort_and_deduplicate_removal_indices(std::vector<std::uint32_t>& local_indi
 void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
                            EntityLookupTable const& lookup,
                            [[maybe_unused]] std::span<EntityUniqueId const> entity_ids,
+                           Vectors3fConstView const locations,
                            HealthView const healths,
                            std::vector<std::uint32_t>& local_indices_to_remove,
                            EntityDeathInfo& entity_death_info,
-                           EntityLedger& ledger) {
+                           EntityLedger& ledger,
+                           ml::FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("resolve_damage_events");
 
     auto const n_direct_events{damage_events.num()};
+    ml::FrameArray<Health> applied_damages{scratch_resource};
+    applied_damages.set_num(n_direct_events);
+    std::ranges::fill(applied_damages, Health{});
     auto const removal_count{local_indices_to_remove.size()};
     auto const death_count{entity_death_info.num()};
     local_indices_to_remove.resize(removal_count + static_cast<std::size_t>(n_direct_events));
@@ -44,6 +51,7 @@ void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
     auto const death_reasons{deaths.reasons()};
     auto const victims{deaths.victims()};
     auto const killers{deaths.killers()};
+    auto const death_locations{deaths.locations()};
     for (std::uint32_t event_index{}; event_index < n_direct_events; ++event_index) {
         auto const element{static_cast<std::size_t>(event_index)};
         auto const id{damaged_entities[element]};
@@ -62,7 +70,7 @@ void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
         auto const applied_damage{std::min(health, requested_damage)};
         health -= requested_damage;
         healths.set_health(local_index, health);
-        ledger.record_damage(id, instigators[element], applied_damage);
+        applied_damages[event_index] = applied_damage;
         // The populated prefix grows as this loop discovers deaths.
         // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
         auto const removals{removal_storage.first(static_cast<std::size_t>(current_removal_count))};
@@ -76,10 +84,12 @@ void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
         death_reasons[current_death_count] = reason;
         victims[current_death_count] = id;
         killers[current_death_count] = instigator;
+        death_locations[current_death_count] = vector_at(locations, local_index);
         ++current_death_count;
     }
     local_indices_to_remove.resize(static_cast<std::size_t>(current_removal_count));
     entity_death_info.set_num(current_death_count);
+    ledger.record_damage(damage_events, {applied_damages.data(), applied_damages.num()});
 }
 
 }

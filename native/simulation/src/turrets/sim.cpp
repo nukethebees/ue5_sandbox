@@ -111,14 +111,9 @@ auto Sim::register_turrets(LevelTurretSpawnEvents::ConstView const spawn_data)
         auto const rotation{rotation_at(spawn_data_rotations, i)};
         set_rotation(entities_rotations, first_new_index + i, rotation);
     }
-    std::vector<EntityUniqueId> new_ids;
-    new_ids.reserve(spawn_count);
-    for (std::uint32_t i{}; i < n_to_add; ++i) {
-        auto const id{ledger_.record_spawn(
-            EntityType::Turret, spawn_data_teams[i], is_alive(spawn_data_healths[i]))};
-        new_ids.push_back(id);
-        entities_entity_ids[first_new_index + i] = id;
-    }
+    auto const new_entity_ids{entities_entity_ids.subspan(first_new_index, n_to_add)};
+    ledger_.record_spawns(EntityType::Turret, spawn_data_teams, spawn_data_healths, new_entity_ids);
+    std::vector<EntityUniqueId> new_ids{new_entity_ids.begin(), new_entity_ids.end()};
     entity_tables_.health.initialise_rows<EntityType::Turret>(first_new_index, spawn_data_healths);
     make_deterministic_biases(std::span<EntityUniqueId const>{entities_entity_ids}.subspan(
                                   static_cast<std::size_t>(first_new_index), spawn_count),
@@ -212,7 +207,7 @@ void Sim::generate_fire_commands(ml::FrameMemoryResource* const scratch_resource
 
     fire_at_enemies(scratch_resource);
 }
-void Sim::resolve_damage_events() {
+void Sim::resolve_damage_events(ml::FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::resolve_damage_events");
 
     auto const entities{this->entities.get_view()};
@@ -220,10 +215,12 @@ void Sim::resolve_damage_events() {
     ioj::sim::resolve_damage_events(combat_events_.events_for(EntityType::Turret),
                                     entity_tables_.lookups.for_type(EntityType::Turret),
                                     entities.entity_ids(),
+                                    entities.view_locations().get_const_view(),
                                     healths,
                                     local_indices_to_remove,
                                     entity_death_info,
-                                    ledger_);
+                                    ledger_,
+                                    scratch_resource);
     auto const locations{entities.view_locations()};
 
     for (auto const index : local_indices_to_remove) {
@@ -231,21 +228,10 @@ void Sim::resolve_damage_events() {
     }
 }
 void Sim::publish_deaths() {
-    auto const deaths{entity_death_info.get_const_view()};
-    auto const death_count{deaths.num()};
-    auto const victims{deaths.victims()};
-    auto const killers{deaths.killers()};
-    auto const reasons{deaths.reasons()};
-    auto const locations{entities.get_const_view().view_locations()};
-    auto const handles{entity_tables_.lookups.for_type(EntityType::Turret).entries()};
-    auto const tick{simulation_clock.get_completed_ticks()};
-    for (std::uint32_t i{}; i < death_count; ++i) {
-        auto const handle{handles[victims[i].index()]};
-        assert(handle.is_valid());
-        ledger_.record_death(
-            victims[i], killers[i], reasons[i], tick, vector_at(locations, handle.index()));
-    }
+    ledger_.record_deaths(entity_death_info.get_const_view(),
+                          simulation_clock.get_completed_ticks());
 }
+
 void Sim::remove_components() {
     entity_tables_.lookups.assert_removal_allowed();
     SANDBOX_PROFILE_SCOPE("turrets::Sim::remove_components");

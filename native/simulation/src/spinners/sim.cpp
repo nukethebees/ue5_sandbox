@@ -124,9 +124,7 @@ auto Sim::spawn_instances(Vectors3fConstView const new_locations,
 
     entities.get_const_view().validate();
 
-    for (std::uint32_t i{0}; i < n; ++i) {
-        entity_ids[i] = ledger_.record_spawn(EntityType::TubeSpinner, Team::White, true);
-    }
+    ledger_.record_spawns(EntityType::TubeSpinner, Team::White, Health{1}, entity_ids);
 
     return entity_ids;
 }

@@ -1,6 +1,8 @@
 #pragma once
 
 #include <ioj/sim/combat_statistics.h>
+#include <ioj/sim/direct_damage_events.h>
+#include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_history.h>
 #include <ioj/sim/entities/entity_id_allocator.h>
 #include <ioj/sim/entities/health.h>
@@ -16,17 +18,26 @@ class EntityLedger {
 
     void reset();
     void reset_frame_output();
-    auto record_spawn(EntityType type, Team team, bool alive) -> EntityUniqueId;
-    void record_status(EntityUniqueId id, Team team, bool alive);
-    void record_death(EntityUniqueId victim,
-                      EntityUniqueId killer,
-                      DeathReason reason,
-                      SimTick tick,
-                      Vector3f location);
-    void record_damage(EntityUniqueId victim, EntityUniqueId attacker, Health damage);
+    // Require equally sized columns and output IDs. Do not borrow inputs from this ledger.
+    void record_spawns(EntityType type,
+                       std::span<Team const> teams,
+                       std::span<Health const> healths,
+                       std::span<EntityUniqueId> ids);
+    void record_spawns(EntityType type,
+                       std::span<Team const> teams,
+                       Health health,
+                       std::span<EntityUniqueId> ids);
+    void record_spawns(EntityType type, Team team, Health health, std::span<EntityUniqueId> ids);
+    void record_status(std::span<EntityUniqueId const> ids,
+                       std::span<Team const> teams,
+                       std::span<Health const> healths);
+    void record_deaths(EntityDeathInfo::ConstView deaths, SimTick tick);
+    // Match applied damage to the event rows; use zero for unapplied events.
+    void record_damage(DirectDamageEvents::ConstView events,
+                       std::span<Health const> applied_damage);
     void record_shots(std::span<EntityUniqueId const> instigators);
 
-    // Read death metadata after record_death; it describes the latest death of that identity.
+    // Read death metadata after record_deaths; it describes the latest death of that identity.
     auto get_unique_entities() const noexcept -> EntityHistory::ConstView {
         return history_.get_const_view();
     }
@@ -65,6 +76,11 @@ class EntityLedger {
         return statistics_.combat_telemetry();
     }
   private:
+    template <typename Teams, typename Healths>
+    void record_spawns_impl(EntityType type,
+                            Teams const& teams,
+                            Healths const& healths,
+                            std::span<EntityUniqueId> ids);
     auto require_history_index(EntityUniqueId id) const -> std::uint32_t;
     EntityHistory history_;
     EntityIdAllocator ids_;

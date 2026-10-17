@@ -112,7 +112,7 @@ struct Sim {
     void update_entity_lookup_table();
     void prepare_tick(float dt);
     void think(float dt, ml::FrameMemoryResource* const scratch_resource);
-    void resolve_damage_events();
+    void resolve_damage_events(ml::FrameMemoryResource* scratch_resource);
     void resolve_fighters_of_dying_capitals();
     void publish_deaths();
     void remove_components();

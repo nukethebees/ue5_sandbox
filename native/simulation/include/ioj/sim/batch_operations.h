@@ -1,7 +1,9 @@
 #pragma once
+#include <ioj/frame_memory_resource.h>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entities/entity_lookup_table.h>
 #include <ioj/sim/entities/health_table.h>
+#include <ioj/vectors3f.h>
 
 #include <cstdint>
 #include <span>
@@ -19,9 +21,11 @@ void sort_and_deduplicate_removal_indices(std::vector<std::uint32_t>& local_indi
 void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
                            EntityLookupTable const& lookup,
                            [[maybe_unused]] std::span<EntityUniqueId const> entity_ids,
+                           Vectors3fConstView locations,
                            HealthView healths,
                            std::vector<std::uint32_t>& local_indices_to_remove,
                            EntityDeathInfo& entity_death_info,
-                           EntityLedger& ledger);
+                           EntityLedger& ledger,
+                           ml::FrameMemoryResource* scratch_resource);
 
 }

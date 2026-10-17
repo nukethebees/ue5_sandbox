@@ -6,6 +6,7 @@
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/entities/entity_life_state.h"
 #include "ioj/sim/entities/entity_unique_id.h"
+#include "ioj/vector_types.h"
 
 #include <cassert>
 #include <memory_resource>
@@ -24,11 +25,13 @@ struct EntityDeathInfoSingleLayoutColumns {
     ColLayout<DeathReason> ReasonsColumn;
     ColLayout<EntityUniqueId> VictimsColumn;
     ColLayout<EntityUniqueId> KillersColumn;
+    ColLayout<Vector3f> LocationsColumn;
 
     constexpr EntityDeathInfoSingleLayoutColumns() noexcept
         : ReasonsColumn{LayoutStart}
         , VictimsColumn{ReasonsColumn}
-        , KillersColumn{VictimsColumn} {}
+        , KillersColumn{VictimsColumn}
+        , LocationsColumn{KillersColumn} {}
     EntityDeathInfoSingleLayoutColumns(EntityDeathInfoSingleLayoutColumns const&) = delete;
     auto operator=(EntityDeathInfoSingleLayoutColumns const&)
         -> EntityDeathInfoSingleLayoutColumns& = delete;
@@ -44,15 +47,15 @@ struct EntityDeathInfoSingleLayout {
     static constexpr EntityDeathInfoSingleLayoutColumns columns{};
 
     static constexpr byte_size_type allocation_alignment{
-        columns.KillersColumn.allocation_alignment};
+        columns.LocationsColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::capacity_block_bound(columns.KillersColumn)};
+        ml::native_soa::capacity_block_bound(columns.LocationsColumn)};
     static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.KillersColumn.data_end(blocks);
+        return blocks == 0 ? 0 : columns.LocationsColumn.data_end(blocks);
     }
     static_assert(max_capacity >= capacity_granularity);
 };
@@ -82,11 +85,13 @@ struct EntityDeathInfoSingleViewImpl : ml::soa_storage_detail::CompactViewOperat
     auto reasons() const { return make_column_view(Layout::columns.ReasonsColumn); }
     auto victims() const { return make_column_view(Layout::columns.VictimsColumn); }
     auto killers() const { return make_column_view(Layout::columns.KillersColumn); }
+    auto locations() const { return make_column_view(Layout::columns.LocationsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(reasons());
         func(victims());
         func(killers());
+        func(locations());
     }
   private:
     template <typename T>
@@ -115,6 +120,7 @@ static_assert(ml::soa_storage_detail::validate_compact_view<EntityDeathInfoSingl
 // reasons: DeathReason
 // victims: EntityUniqueId
 // killers: EntityUniqueId
+// locations: Vector3f
 struct EntityDeathInfo
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {
@@ -164,11 +170,12 @@ struct EntityDeathInfo
         Element<DeathReason>* reasons{};
         Element<EntityUniqueId>* victims{};
         Element<EntityUniqueId>* killers{};
+        Element<Vector3f>* locations{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (reasons == nullptr) {
                 return {};
             }
-            return {reasons + offset, victims + offset, killers + offset};
+            return {reasons + offset, victims + offset, killers + offset, locations + offset};
         }
     };
     template <typename Self>
@@ -196,7 +203,8 @@ struct EntityDeathInfo
         ml::native_soa::LayoutCursor cursor{blocks};
         return {cursor.column_pointer(data, Layout::columns.ReasonsColumn),
                 cursor.column_pointer(data, Layout::columns.VictimsColumn),
-                cursor.column_pointer(data, Layout::columns.KillersColumn)};
+                cursor.column_pointer(data, Layout::columns.KillersColumn),
+                cursor.column_pointer(data, Layout::columns.LocationsColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -211,6 +219,7 @@ struct EntityDeathInfo
         default_construct_n(columns.reasons, count);
         default_construct_n(columns.victims, count);
         default_construct_n(columns.killers, count);
+        default_construct_n(columns.locations, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -222,6 +231,7 @@ struct EntityDeathInfo
         transfer(destination.reasons, source.reasons);
         transfer(destination.victims, source.victims);
         transfer(destination.killers, source.killers);
+        transfer(destination.locations, source.locations);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,
@@ -248,7 +258,8 @@ struct EntityDeathInfo
         using ml::native_soa::source_data;
         return {source_data(source.reasons()),
                 source_data(source.victims()),
-                source_data(source.killers())};
+                source_data(source.killers()),
+                source_data(source.locations())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,

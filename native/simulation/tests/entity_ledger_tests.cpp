@@ -5,6 +5,7 @@
 #include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_lookup_table.h>
+#include <ioj/vectors3f.h>
 
 #include <gtest/gtest.h>
 
@@ -73,9 +74,12 @@ TEST(DamageQueue, GroupsMixedOwnerEventsAndFiltersRetiredRecipients) {
 
 TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
     EntityLedger ledger;
-    auto const attacker{ledger.record_spawn(EntityType::Turret, Team::Red, true)};
-    auto const victim{ledger.record_spawn(EntityType::Fighter, Team::Blue, true)};
-    auto const retired{ledger.record_spawn(EntityType::CapitalShip, Team::Blue, true)};
+    EntityUniqueId attacker;
+    ledger.record_spawns(EntityType::Turret, Team::Red, Health{1}, {&attacker, 1});
+    EntityUniqueId victim;
+    ledger.record_spawns(EntityType::Fighter, Team::Blue, Health{1}, {&victim, 1});
+    EntityUniqueId retired;
+    ledger.record_spawns(EntityType::CapitalShip, Team::Blue, Health{1}, {&retired, 1});
 
     SimClock clock;
     EntityLookupTables indexes{clock};
@@ -111,13 +115,20 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
     health_table.initialise_rows<EntityType::Fighter>(0, initial_healths);
     std::vector<std::uint32_t> removals;
     EntityDeathInfo deaths;
-    resolve_damage_events(events.events_for(EntityType::Fighter),
-                          indexes.for_type(EntityType::Fighter),
-                          ids,
-                          health_table.get_view<EntityType::Fighter>(ids.size()),
-                          removals,
-                          deaths,
-                          ledger);
+    Vectors3f locations;
+    locations.set_num(1);
+    {
+        ml::FrameScratchScope scratch_scope{frame_memory};
+        resolve_damage_events(events.events_for(EntityType::Fighter),
+                              indexes.for_type(EntityType::Fighter),
+                              ids,
+                              locations.get_const_view(),
+                              health_table.get_view<EntityType::Fighter>(ids.size()),
+                              removals,
+                              deaths,
+                              ledger,
+                              &frame_memory);
+    }
 
     EXPECT_EQ(health_table.get_const_view<EntityType::Fighter>(ids.size()).health(0), -6);
     EXPECT_EQ(removals, std::vector<std::uint32_t>{0});
@@ -133,20 +144,37 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
 
 TEST(EntityLedger, PreservesHistoricalAccountingAndResetsLevelIdentity) {
     EntityLedger ledger;
-    auto const killer{ledger.record_spawn(EntityType::Turret, Team::Red, true)};
-    auto const first_victim{ledger.record_spawn(EntityType::CapitalShip, Team::Blue, true)};
+    EntityUniqueId killer;
+    ledger.record_spawns(EntityType::Turret, Team::Red, Health{1}, {&killer, 1});
+    EntityUniqueId first_victim;
+    ledger.record_spawns(EntityType::CapitalShip, Team::Blue, Health{1}, {&first_victim, 1});
 
     ledger.record_shots(std::array{killer});
-    ledger.record_status(killer, Team::Green, true);
-    ledger.record_status(first_victim, Team::Yellow, true);
+    ledger.record_status(std::array{killer, first_victim},
+                         std::array{Team::Green, Team::Yellow},
+                         std::array<Health, 2>{1, 1});
     ledger.record_shots(std::array{killer, EntityUniqueId{}});
 
-    ledger.record_damage(first_victim, killer, 17);
-    ledger.record_death(first_victim, killer, DeathReason::Combat, 4, {1.f, 2.f, 3.f});
-    ledger.record_death(killer, {}, DeathReason::Unknown, 5, {});
+    DirectDamageEvents damage;
+    damage.add(first_victim, 17, killer);
+    ledger.record_damage(damage.get_const_view(), std::array<Health, 1>{17});
+    EntityDeathInfo deaths;
+    deaths.add_defaulted(2);
+    auto rows{deaths.get_view()};
+    rows.victims()[0] = first_victim;
+    rows.killers()[0] = killer;
+    rows.reasons()[0] = DeathReason::Combat;
+    rows.locations()[0] = {1.f, 2.f, 3.f};
+    rows.victims()[1] = killer;
+    rows.reasons()[1] = DeathReason::Unknown;
+    ledger.record_deaths(deaths.get_const_view(), 4);
 
-    auto const second_victim{ledger.record_spawn(EntityType::Fighter, Team::Blue, true)};
-    ledger.record_death(second_victim, killer, DeathReason::Combat, 4, {1.f, 2.f, 3.f});
+    EntityUniqueId second_victim;
+    ledger.record_spawns(EntityType::Fighter, Team::Blue, Health{1}, {&second_victim, 1});
+    deaths.set_num(1);
+    rows = deaths.get_view();
+    rows.victims()[0] = second_victim;
+    ledger.record_deaths(deaths.get_const_view(), 6);
 
     EXPECT_EQ(ledger.get_kills(killer), 2u);
     EXPECT_EQ(ledger.count_kills(), 2);
@@ -176,7 +204,8 @@ TEST(EntityLedger, PreservesHistoricalAccountingAndResetsLevelIdentity) {
     EXPECT_EQ(ledger.count_kills(), 0);
     EXPECT_FALSE(ledger.is_valid_unique_id(killer));
 
-    auto const restarted{ledger.record_spawn(EntityType::Turret, Team::Red, true)};
+    EntityUniqueId restarted;
+    ledger.record_spawns(EntityType::Turret, Team::Red, Health{1}, {&restarted, 1});
     EXPECT_EQ(restarted, killer);
     EXPECT_EQ(ledger.get_history_index(restarted), 0);
     EXPECT_EQ(ledger.count_alive(), 1);

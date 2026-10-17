@@ -536,10 +536,12 @@ void Sim::resolve_damage_events(ml::FrameMemoryResource* const scratch_resource)
     ioj::sim::resolve_damage_events(damage_events,
                                     entity_tables_.lookups.for_type(EntityType::Fighter),
                                     data.entity_ids(),
+                                    data.view_locations().get_const_view(),
                                     healths,
                                     local_indices_to_remove,
                                     entity_death_info,
-                                    ledger_);
+                                    ledger_,
+                                    scratch_resource);
 
     if (entity_death_info.num() != previous_death_count) {
         ++membership_revision_;
@@ -595,21 +597,10 @@ void Sim::resolve_damage_events(ml::FrameMemoryResource* const scratch_resource)
     }
 }
 void Sim::publish_deaths() {
-    auto const deaths{entity_death_info.get_const_view()};
-    auto const death_count{deaths.num()};
-    auto const victims{deaths.victims()};
-    auto const killers{deaths.killers()};
-    auto const reasons{deaths.reasons()};
-    auto const locations{entity_buffers.current().get_const_view().view_locations()};
-    auto const handles{entity_tables_.lookups.for_type(EntityType::Fighter).entries()};
-    auto const tick{simulation_clock.get_completed_ticks()};
-    for (std::uint32_t i{}; i < death_count; ++i) {
-        auto const handle{handles[victims[i].index()]};
-        assert(handle.is_valid());
-        ledger_.record_death(
-            victims[i], killers[i], reasons[i], tick, vector_at(locations, handle.index()));
-    }
+    ledger_.record_deaths(entity_death_info.get_const_view(),
+                          simulation_clock.get_completed_ticks());
 }
+
 void Sim::remove_components() {
     entity_tables_.lookups.assert_removal_allowed();
     SANDBOX_PROFILE_SCOPE("fighters::Sim::remove_components");
@@ -1455,10 +1446,7 @@ void Sim::commit_spawns() {
 
     auto const entity_ids{new_data.entity_ids()};
     auto const teams{new_data.teams()};
-    for (std::uint32_t i{0}; i < n_new; ++i) {
-        entity_ids[i] =
-            ledger_.record_spawn(EntityType::Fighter, teams[i], is_alive(config.health));
-    }
+    ledger_.record_spawns(EntityType::Fighter, teams, config.health, entity_ids);
     entity_tables_.health.initialise_rows<EntityType::Fighter>(n_cur, n_new, config.health);
     if (is_alive(config.health)) {
         ++membership_revision_;

@@ -7,4 +7,5 @@
     (member reasons array @native_death_reason)
     (member victims array @native_unique_id)
     (member killers array @native_unique_id)
+    (member locations array @native_vector_3f)
     (single-allocation EntityDeathInfo)))

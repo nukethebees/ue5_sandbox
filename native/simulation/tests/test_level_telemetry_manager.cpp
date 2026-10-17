@@ -117,9 +117,10 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     EXPECT_EQ(active_count_data.num(), 1);
     EXPECT_EQ(active_count_data.last_time(), 0);
 
-    entity_ledger.record_spawn(EntityType::PlayerShip, Team::Green, true);
-    entity_ledger.record_spawn(EntityType::CapitalShip, Team::Red, true);
-    entity_ledger.record_spawn(EntityType::Fighter, Team::Red, true);
+    std::array<EntityUniqueId, 1> ids;
+    entity_ledger.record_spawns(EntityType::PlayerShip, Team::Green, Health{1}, ids);
+    entity_ledger.record_spawns(EntityType::CapitalShip, Team::Red, Health{1}, ids);
+    entity_ledger.record_spawns(EntityType::Fighter, Team::Red, Health{1}, ids);
 
     clock.completed_ticks = 2;
     telemetry_manager.tick();
@@ -182,7 +183,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     EXPECT_EQ(boundary_manager.get_history_stats().total_sample_capacity, 64);
     for (std::uint64_t tick{1}; tick <= 64; ++tick) {
         clock.completed_ticks = tick;
-        entity_ledger.record_spawn(EntityType::CapitalShip, Team::Red, true);
+        entity_ledger.record_spawns(EntityType::CapitalShip, Team::Red, Health{1}, ids);
         boundary_manager.tick();
     }
     EXPECT_EQ(boundary_manager.get_history_stats().used_sample_count, 65);

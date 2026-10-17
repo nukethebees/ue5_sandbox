@@ -2,6 +2,7 @@
 
 #include <ioj/column_math.h>
 #include <ioj/diagnostics.h>
+#include <ioj/frame_array.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/combat_events.h>
@@ -67,7 +68,8 @@ void Sim::configure(PlayerSpawnData const& spawn) noexcept {
     laser_mode = spawn.laser_mode;
     laser_fire_rate = spawn.laser_fire_rate;
     max_health_ = spawn.health.max_health;
-    unique_entity_id = ledger_.record_spawn(EntityType::PlayerShip, team, spawn.health.is_alive());
+    ledger_.record_spawns(
+        EntityType::PlayerShip, team, spawn.health.health, {&unique_entity_id, 1});
     auto const initial_health{spawn.health.health};
     health_table_.initialise_rows<EntityType::PlayerShip>(0, 1, initial_health);
 }
@@ -151,7 +153,7 @@ void Sim::generate_fire_commands() {
     update_laser_firing();
 }
 
-void Sim::resolve_damage_events() {
+void Sim::resolve_damage_events(ml::FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::resolve_damage_events");
 
     auto const damage_events{combat_events_.events_for(EntityType::PlayerShip)};
@@ -159,6 +161,9 @@ void Sim::resolve_damage_events() {
     auto health{health_table_.get_const_view<EntityType::PlayerShip>(1).health(0)};
     EntityUniqueId killer{};
     auto const damage_count{damage_events.num()};
+    ml::FrameArray<Health> applied_damages{scratch_resource};
+    applied_damages.set_num(damage_count);
+    std::ranges::fill(applied_damages, Health{});
     [[maybe_unused]] auto const damaged_entities{damage_events.damaged_entities()};
     auto const damage_amounts{damage_events.damage_amounts()};
     auto const instigators{damage_events.instigators()};
@@ -177,12 +182,13 @@ void Sim::resolve_damage_events() {
         auto const was_alive{sim::is_alive(health)};
         auto const applied_damage{std::min(health, requested_damage)};
         health -= requested_damage;
-        ledger_.record_damage(unique_entity_id, instigators[element], applied_damage);
+        applied_damages[event_index] = applied_damage;
         if (was_alive && is_dead(health)) {
             killer = instigators[element];
         }
     }
 
+    ledger_.record_damage(damage_events, {applied_damages.data(), applied_damages.num()});
     health_table_.get_view<EntityType::PlayerShip>(1).set_health(0, health);
 
     if (sim::is_alive(original_health) && is_dead(health)) {
@@ -196,7 +202,8 @@ void Sim::resolve_damage_events() {
 void Sim::set_team(Team const new_team) noexcept {
     team = new_team;
     if (unique_entity_id.is_valid()) {
-        ledger_.record_status(unique_entity_id, team, is_alive());
+        auto const health{health_table_.get_const_view<EntityType::PlayerShip>(1).health(0)};
+        ledger_.record_status({&unique_entity_id, 1}, {&team, 1}, {&health, 1});
     }
 }
 
@@ -589,11 +596,14 @@ auto Sim::is_alive() const -> bool {
 
 void Sim::die(EntityUniqueId const killer) {
     auto const reason{killer.is_valid() ? DeathReason::Combat : DeathReason::Unknown};
-    ledger_.record_death(unique_entity_id,
-                         killer,
-                         reason,
-                         simulation_clock.get_completed_ticks(),
-                         to_float(state_.physical.transform.location));
+    EntityDeathInfo deaths;
+    deaths.add_uninitialised(1);
+    auto const row{deaths.get_view()};
+    row.victims()[0] = unique_entity_id;
+    row.killers()[0] = killer;
+    row.reasons()[0] = reason;
+    row.locations()[0] = to_float(state_.physical.transform.location);
+    ledger_.record_deaths(deaths.get_const_view(), simulation_clock.get_completed_ticks());
     death_notification_pending = true;
 }
 

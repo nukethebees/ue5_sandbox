@@ -104,34 +104,24 @@ void Sim::resolve_fighters_of_dying_capitals() {
     sort_and_deduplicate_removal_indices(local_indices_to_remove);
     reassign_fighters_of_dying_capital();
 }
-void Sim::resolve_damage_events() {
+void Sim::resolve_damage_events(ml::FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::resolve_damage_events");
     auto const entities{this->entities.get_view()};
     auto const healths{entity_tables_.health.get_view<EntityType::CapitalShip>(entities.num())};
     ioj::sim::resolve_damage_events(combat_events_.events_for(EntityType::CapitalShip),
                                     entity_tables_.lookups.for_type(EntityType::CapitalShip),
                                     entities.entity_ids(),
+                                    entities.view_locations().get_const_view(),
                                     healths,
                                     local_indices_to_remove,
                                     entity_death_info,
-                                    ledger_);
+                                    ledger_,
+                                    scratch_resource);
 }
 void Sim::publish_deaths() {
-    auto const deaths{entity_death_info.get_const_view()};
-    auto const death_count{deaths.num()};
-    auto const victims{deaths.victims()};
-    auto const killers{deaths.killers()};
-    auto const reasons{deaths.reasons()};
-    auto const locations{entities.get_const_view().view_locations()};
-    auto const handles{entity_tables_.lookups.for_type(EntityType::CapitalShip).entries()};
-    auto const tick{clock_.get_completed_ticks()};
-    for (std::uint32_t i{}; i < death_count; ++i) {
-        auto const handle{handles[victims[i].index()]};
-        assert(handle.is_valid());
-        ledger_.record_death(
-            victims[i], killers[i], reasons[i], tick, vector_at(locations, handle.index()));
-    }
+    ledger_.record_deaths(entity_death_info.get_const_view(), clock_.get_completed_ticks());
 }
+
 void Sim::remove_components() {
     entity_tables_.lookups.assert_removal_allowed();
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::remove_components");
@@ -220,19 +210,11 @@ auto Sim::register_ships(LevelCapitalSpawnEvents::ConstView const spawn_data)
     spawn_ships(spawn_data);
     fighter_ids_current_ = false;
 
-    std::vector<EntityUniqueId> new_ids;
-    new_ids.reserve(static_cast<std::size_t>(n_to_add));
     auto const spawn_teams{spawn_data.teams()};
     auto const spawn_healths{spawn_data.healths()};
-
-    auto const new_entity_ids{this->entities.get_view().entity_ids()};
-
-    for (std::uint32_t i{}; i < n_to_add; ++i) {
-        auto const id{ledger_.record_spawn(
-            EntityType::CapitalShip, spawn_teams[i], is_alive(spawn_healths[i]))};
-        new_ids.push_back(id);
-        new_entity_ids[first_new_index + i] = id;
-    }
+    auto const new_entity_ids{entities.right(n_to_add).entity_ids()};
+    ledger_.record_spawns(EntityType::CapitalShip, spawn_teams, spawn_healths, new_entity_ids);
+    std::vector<EntityUniqueId> new_ids{new_entity_ids.begin(), new_entity_ids.end()};
     entity_tables_.health.initialise_rows<EntityType::CapitalShip>(first_new_index, spawn_healths);
     auto const entities{this->entities.get_const_view()};
     auto const locations{entities.view_locations()};

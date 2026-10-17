@@ -460,11 +460,11 @@ void LevelSim::advance(time_type const dt) {
 
                 // Resolve damage
                 if (player_active) {
-                    player_ship_phase_->resolve_damage_events();
+                    player_ship_phase_->resolve_damage_events(&frame_memory_);
                 }
-                capital_ships_phase_.resolve_damage_events();
+                capital_ships_phase_.resolve_damage_events(&frame_memory_);
                 fighters_phase_.resolve_damage_events(&frame_memory_);
-                turrets_phase_.resolve_damage_events();
+                turrets_phase_.resolve_damage_events(&frame_memory_);
                 capital_ships_phase_.resolve_fighters_of_dying_capitals();
 
                 // Publish deaths

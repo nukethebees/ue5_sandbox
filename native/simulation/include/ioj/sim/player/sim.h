@@ -1,5 +1,6 @@
 #include <ioj/sim/entities/entity_tables.h>
 #pragma once
+#include <ioj/frame_memory_resource.h>
 #include <ioj/levels/team.h>
 #include <ioj/sim/entities/entity_unique_id.h>
 #include <ioj/sim/entities/health_table.h>
@@ -192,7 +193,7 @@ struct Sim {
     void think(float dt);
     void apply_movement();
     void generate_fire_commands();
-    void resolve_damage_events();
+    void resolve_damage_events(ml::FrameMemoryResource* scratch_resource);
 
     /* **************************************** */
     // Identity and accounting

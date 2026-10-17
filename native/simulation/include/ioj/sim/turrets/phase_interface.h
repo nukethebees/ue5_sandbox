@@ -18,7 +18,7 @@ class PhaseInterface {
 
     void generate_fire_commands(ml::FrameMemoryResource* const scratch_resource);
 
-    void resolve_damage_events();
+    void resolve_damage_events(ml::FrameMemoryResource* const scratch_resource);
 
     void publish_deaths();
 

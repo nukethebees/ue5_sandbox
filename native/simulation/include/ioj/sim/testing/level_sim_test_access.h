@@ -78,7 +78,7 @@ struct LevelSimTestAccess {
         auto const previous_phase{simulation.clock_.phase()};
         SimClockTestAccess::set_phase(simulation.clock_, SimulationPhase::Resolution);
         simulation.combat_events_.prepare(simulation.entity_tables_.lookups, scratch_resource);
-        simulation.capital_ships_simulation_.resolve_damage_events();
+        simulation.capital_ships_simulation_.resolve_damage_events(scratch_resource);
         simulation.fighters_simulation_.resolve_damage_events(scratch_resource);
         simulation.capital_ships_simulation_.resolve_fighters_of_dying_capitals();
         simulation.capital_ships_simulation_.publish_deaths();

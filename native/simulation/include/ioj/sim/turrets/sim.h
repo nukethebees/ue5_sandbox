@@ -77,7 +77,7 @@ struct Sim {
     void prepare_tick(float dt);
     void think(float dt, ml::FrameMemoryResource* const scratch_resource);
     void generate_fire_commands(ml::FrameMemoryResource* const scratch_resource);
-    void resolve_damage_events();
+    void resolve_damage_events(ml::FrameMemoryResource* scratch_resource);
     void publish_deaths();
     void remove_components();
     void remove_entities();

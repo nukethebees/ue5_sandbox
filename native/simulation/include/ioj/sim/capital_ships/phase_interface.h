@@ -16,7 +16,7 @@ class PhaseInterface {
 
     void think(float const dt, ml::FrameMemoryResource* const scratch_resource);
 
-    void resolve_damage_events();
+    void resolve_damage_events(ml::FrameMemoryResource* const scratch_resource);
 
     void resolve_fighters_of_dying_capitals();
 

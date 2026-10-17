@@ -20,7 +20,7 @@ class PhaseInterface {
 
     void generate_fire_commands();
 
-    void resolve_damage_events();
+    void resolve_damage_events(ml::FrameMemoryResource* const scratch_resource);
 
     friend struct sim::LevelSim;
     Sim& simulation;

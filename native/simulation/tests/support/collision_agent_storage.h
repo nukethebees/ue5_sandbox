@@ -39,7 +39,8 @@ struct CollisionAgentStorage {
                Health health = 100,
                Team team = Team::Blue) -> EntityUniqueId {
         SimClockTestAccess::set_phase(clock, SimulationPhase::Preparation);
-        auto const id{ledger.record_spawn(type, team, health > 0)};
+        EntityUniqueId id;
+        ledger.record_spawns(type, team, health, {&id, 1});
         switch (type) {
             case EntityType::CapitalShip: {
                 auto const row{capitals.num()};

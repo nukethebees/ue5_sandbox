@@ -29,7 +29,7 @@ void PhaseInterface::generate_fire_commands() {
     simulation.generate_fire_commands();
 }
 
-void PhaseInterface::resolve_damage_events() {
-    simulation.resolve_damage_events();
+void PhaseInterface::resolve_damage_events(ml::FrameMemoryResource* const scratch_resource) {
+    simulation.resolve_damage_events(scratch_resource);
 }
 } // namespace ioj::sim::player
