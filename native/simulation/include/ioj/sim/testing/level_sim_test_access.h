@@ -22,12 +22,14 @@ struct LevelSimTestAccess {
         SimClockTestAccess::set_phase(simulation.clock_, SimulationPhase::Thinking);
         return simulation.capture_thinking_phase_state();
     }
-    static auto check_thinking_entry_invariants(
-        LevelSim const& simulation, std::span<LevelSim::ThinkingEntityState const> state) -> bool {
+    static auto check_thinking_entry_invariants(LevelSim const& simulation,
+                                                std::span<ThinkingEntityState const> state)
+        -> bool {
         return simulation.check_thinking_entry_invariants(state);
     }
-    static auto check_thinking_phase_invariants(
-        LevelSim const& simulation, std::span<LevelSim::ThinkingEntityState const> state) -> bool {
+    static auto check_thinking_phase_invariants(LevelSim const& simulation,
+                                                std::span<ThinkingEntityState const> state)
+        -> bool {
         return simulation.check_phase_invariants(state);
     }
     static auto capital_entities(LevelSim& simulation) -> CapitalEntityData::View {

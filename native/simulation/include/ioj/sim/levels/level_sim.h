@@ -17,6 +17,9 @@
 #include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/levels/level_read_access.h>
 #include <ioj/sim/levels/level_sim_init_data.h>
+#ifndef NDEBUG
+#include <ioj/sim/levels/thinking_entity_state.h>
+#endif
 #include <ioj/sim/memory/game_memory.h>
 #include <ioj/sim/missions/mission_manager.h>
 #include <ioj/sim/overlap_handler.h>
@@ -30,7 +33,6 @@
 #include <ioj/sim/turrets/phase_interface.h>
 #include <ioj/sim/turrets/sim.h>
 
-#include <array>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -143,17 +145,6 @@ struct LevelSim {
     /* **************************************** */
     // Phase invariants
     /* **************************************** */
-    struct ThinkingEntityState {
-        EntityUniqueId id;
-        std::uint32_t row{};
-        Health health{};
-        Team team{};
-        std::array<double, 3> location{};
-        std::array<double, 4> orientation{};
-
-        auto operator==(ThinkingEntityState const&) const -> bool = default;
-    };
-
     auto check_phase_invariants(std::span<ThinkingEntityState const> state) const -> bool;
     auto capture_thinking_phase_state() const -> std::vector<ThinkingEntityState>;
     auto check_thinking_entry_invariants(std::span<ThinkingEntityState const> state) const -> bool;
