@@ -1,20 +1,11 @@
 #pragma once
 
+#include <ioj/point2f.h>
+#include <ioj/point3f.h>
+
 namespace ioj::ui {
-struct Vector2f {
-    float x{};
-    float y{};
-
-    auto operator==(Vector2f const&) const -> bool = default;
-};
-
-struct Vector3f {
-    float x{};
-    float y{};
-    float z{};
-
-    auto operator==(Vector3f const&) const -> bool = default;
-};
+using Vector2f = Point2f;
+using Vector3f = Point3f;
 
 struct Color4f {
     float r{};

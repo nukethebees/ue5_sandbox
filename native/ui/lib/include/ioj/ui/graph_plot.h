@@ -1,6 +1,8 @@
 #pragma once
 
 #include <ioj/min_max.h>
+#include <ioj/point2f.h>
+#include <ioj/vector2d.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -32,17 +34,8 @@ struct SeriesView {
     std::span<float const> y;
 };
 
-struct Point2d {
-    double x{};
-    double y{};
-
-    auto operator==(Point2d const&) const -> bool = default;
-};
-
-struct Point2f {
-    float x{};
-    float y{};
-};
+using Point2d = ml::Vector2d;
+using Point2f = ioj::Point2f;
 
 struct LayoutSettings {
     float desired_width{320.0f};
