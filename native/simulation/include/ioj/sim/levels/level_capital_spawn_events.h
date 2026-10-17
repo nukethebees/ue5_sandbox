@@ -21,6 +21,43 @@ struct LevelCapitalSpawnEventsSchema;
 
 struct LevelCapitalSpawnEventsSingleView;
 struct LevelCapitalSpawnEventsSingleConstView;
+struct LevelCapitalSpawnEventsSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+
+    ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<LevelEntityIndex> EntityIndicesColumn;
+    ColLayout<LevelEntityIndex> TargetEntityIndicesColumn;
+    ColLayout<float> LocationsXsColumn;
+    ColLayout<float> LocationsYsColumn;
+    ColLayout<float> LocationsZsColumn;
+    ColLayout<float> RotationsPitchesColumn;
+    ColLayout<float> RotationsYawsColumn;
+    ColLayout<float> RotationsRollsColumn;
+    ColLayout<::ioj::Team> TeamsColumn;
+    ColLayout<Health> HealthsColumn;
+    ColLayout<float> InitialFighterSpawnDelaysColumn;
+    ColLayout<float> FighterSpawnCooldownsColumn;
+
+    constexpr LevelCapitalSpawnEventsSingleLayoutColumns() noexcept
+        : EntityIndicesColumn{LayoutStart}
+        , TargetEntityIndicesColumn{EntityIndicesColumn}
+        , LocationsXsColumn{TargetEntityIndicesColumn}
+        , LocationsYsColumn{LocationsXsColumn}
+        , LocationsZsColumn{LocationsYsColumn}
+        , RotationsPitchesColumn{LocationsZsColumn}
+        , RotationsYawsColumn{RotationsPitchesColumn}
+        , RotationsRollsColumn{RotationsYawsColumn}
+        , TeamsColumn{RotationsRollsColumn}
+        , HealthsColumn{TeamsColumn}
+        , InitialFighterSpawnDelaysColumn{HealthsColumn}
+        , FighterSpawnCooldownsColumn{InitialFighterSpawnDelaysColumn} {}
+    LevelCapitalSpawnEventsSingleLayoutColumns(LevelCapitalSpawnEventsSingleLayoutColumns const&) =
+        delete;
+    auto operator=(LevelCapitalSpawnEventsSingleLayoutColumns const&)
+        -> LevelCapitalSpawnEventsSingleLayoutColumns& = delete;
+};
 struct LevelCapitalSpawnEventsSingleLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
@@ -29,33 +66,18 @@ struct LevelCapitalSpawnEventsSingleLayout {
         ml::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
-    template <typename T>
-    using ColLayout = ml::native_soa::ColumnLayout<T>;
-    static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
-
-    static constexpr ColLayout<LevelEntityIndex> EntityIndicesColumn{LayoutStart};
-    static constexpr ColLayout<LevelEntityIndex> TargetEntityIndicesColumn{EntityIndicesColumn};
-    static constexpr ColLayout<float> LocationsXsColumn{TargetEntityIndicesColumn};
-    static constexpr ColLayout<float> LocationsYsColumn{LocationsXsColumn};
-    static constexpr ColLayout<float> LocationsZsColumn{LocationsYsColumn};
-    static constexpr ColLayout<float> RotationsPitchesColumn{LocationsZsColumn};
-    static constexpr ColLayout<float> RotationsYawsColumn{RotationsPitchesColumn};
-    static constexpr ColLayout<float> RotationsRollsColumn{RotationsYawsColumn};
-    static constexpr ColLayout<::ioj::Team> TeamsColumn{RotationsRollsColumn};
-    static constexpr ColLayout<Health> HealthsColumn{TeamsColumn};
-    static constexpr ColLayout<float> InitialFighterSpawnDelaysColumn{HealthsColumn};
-    static constexpr ColLayout<float> FighterSpawnCooldownsColumn{InitialFighterSpawnDelaysColumn};
+    static constexpr LevelCapitalSpawnEventsSingleLayoutColumns columns{};
 
     static constexpr byte_size_type allocation_alignment{
-        FighterSpawnCooldownsColumn.allocation_alignment};
+        columns.FighterSpawnCooldownsColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::capacity_block_bound(FighterSpawnCooldownsColumn)};
+        ml::native_soa::capacity_block_bound(columns.FighterSpawnCooldownsColumn)};
     static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : FighterSpawnCooldownsColumn.data_end(blocks);
+        return blocks == 0 ? 0 : columns.FighterSpawnCooldownsColumn.data_end(blocks);
     }
     static_assert(max_capacity >= capacity_granularity);
 };
@@ -82,18 +104,19 @@ struct LevelCapitalSpawnEventsSingleViewImpl : ml::soa_storage_detail::CompactVi
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto entity_indices() const { return make_column_view(Layout::EntityIndicesColumn); }
+    auto entity_indices() const { return make_column_view(Layout::columns.EntityIndicesColumn); }
     auto target_entity_indices() const {
-        return make_column_view(Layout::TargetEntityIndicesColumn);
+        return make_column_view(Layout::columns.TargetEntityIndicesColumn);
     }
     auto view_locations() const {
         using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
-                                                                     offset_,
-                                                                     count_,
-                                                                     Layout::LocationsXsColumn,
-                                                                     Layout::LocationsYsColumn,
-                                                                     Layout::LocationsZsColumn);
+        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+            state_,
+            offset_,
+            count_,
+            Layout::columns.LocationsXsColumn,
+            Layout::columns.LocationsYsColumn,
+            Layout::columns.LocationsZsColumn);
     }
     auto view_rotations() const {
         using ml::soa_storage_detail::three_column_view;
@@ -103,17 +126,17 @@ struct LevelCapitalSpawnEventsSingleViewImpl : ml::soa_storage_detail::CompactVi
             state_,
             offset_,
             count_,
-            Layout::RotationsPitchesColumn,
-            Layout::RotationsYawsColumn,
-            Layout::RotationsRollsColumn);
+            Layout::columns.RotationsPitchesColumn,
+            Layout::columns.RotationsYawsColumn,
+            Layout::columns.RotationsRollsColumn);
     }
-    auto teams() const { return make_column_view(Layout::TeamsColumn); }
-    auto healths() const { return make_column_view(Layout::HealthsColumn); }
+    auto teams() const { return make_column_view(Layout::columns.TeamsColumn); }
+    auto healths() const { return make_column_view(Layout::columns.HealthsColumn); }
     auto initial_fighter_spawn_delays() const {
-        return make_column_view(Layout::InitialFighterSpawnDelaysColumn);
+        return make_column_view(Layout::columns.InitialFighterSpawnDelaysColumn);
     }
     auto fighter_spawn_cooldowns() const {
-        return make_column_view(Layout::FighterSpawnCooldownsColumn);
+        return make_column_view(Layout::columns.FighterSpawnCooldownsColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -268,18 +291,18 @@ struct LevelCapitalSpawnEvents
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::EntityIndicesColumn),
-                cursor.column_pointer(data, Layout::TargetEntityIndicesColumn),
-                cursor.column_pointer(data, Layout::LocationsXsColumn),
-                cursor.column_pointer(data, Layout::LocationsYsColumn),
-                cursor.column_pointer(data, Layout::LocationsZsColumn),
-                cursor.column_pointer(data, Layout::RotationsPitchesColumn),
-                cursor.column_pointer(data, Layout::RotationsYawsColumn),
-                cursor.column_pointer(data, Layout::RotationsRollsColumn),
-                cursor.column_pointer(data, Layout::TeamsColumn),
-                cursor.column_pointer(data, Layout::HealthsColumn),
-                cursor.column_pointer(data, Layout::InitialFighterSpawnDelaysColumn),
-                cursor.column_pointer(data, Layout::FighterSpawnCooldownsColumn)};
+        return {cursor.column_pointer(data, Layout::columns.EntityIndicesColumn),
+                cursor.column_pointer(data, Layout::columns.TargetEntityIndicesColumn),
+                cursor.column_pointer(data, Layout::columns.LocationsXsColumn),
+                cursor.column_pointer(data, Layout::columns.LocationsYsColumn),
+                cursor.column_pointer(data, Layout::columns.LocationsZsColumn),
+                cursor.column_pointer(data, Layout::columns.RotationsPitchesColumn),
+                cursor.column_pointer(data, Layout::columns.RotationsYawsColumn),
+                cursor.column_pointer(data, Layout::columns.RotationsRollsColumn),
+                cursor.column_pointer(data, Layout::columns.TeamsColumn),
+                cursor.column_pointer(data, Layout::columns.HealthsColumn),
+                cursor.column_pointer(data, Layout::columns.InitialFighterSpawnDelaysColumn),
+                cursor.column_pointer(data, Layout::columns.FighterSpawnCooldownsColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);

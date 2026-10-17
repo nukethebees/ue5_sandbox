@@ -13,6 +13,30 @@ struct WorldAABBsColumnsSchema;
 
 struct WorldAABBsColumnsSingleView;
 struct WorldAABBsColumnsSingleConstView;
+struct WorldAABBsColumnsSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+
+    ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<float> MinXsColumn;
+    ColLayout<float> MinYsColumn;
+    ColLayout<float> MinZsColumn;
+    ColLayout<float> MaxXsColumn;
+    ColLayout<float> MaxYsColumn;
+    ColLayout<float> MaxZsColumn;
+
+    constexpr WorldAABBsColumnsSingleLayoutColumns() noexcept
+        : MinXsColumn{LayoutStart}
+        , MinYsColumn{MinXsColumn}
+        , MinZsColumn{MinYsColumn}
+        , MaxXsColumn{MinZsColumn}
+        , MaxYsColumn{MaxXsColumn}
+        , MaxZsColumn{MaxYsColumn} {}
+    WorldAABBsColumnsSingleLayoutColumns(WorldAABBsColumnsSingleLayoutColumns const&) = delete;
+    auto operator=(WorldAABBsColumnsSingleLayoutColumns const&)
+        -> WorldAABBsColumnsSingleLayoutColumns& = delete;
+};
 struct WorldAABBsColumnsSingleLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
@@ -21,26 +45,17 @@ struct WorldAABBsColumnsSingleLayout {
         ml::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
-    template <typename T>
-    using ColLayout = ml::native_soa::ColumnLayout<T>;
-    static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+    static constexpr WorldAABBsColumnsSingleLayoutColumns columns{};
 
-    static constexpr ColLayout<float> MinXsColumn{LayoutStart};
-    static constexpr ColLayout<float> MinYsColumn{MinXsColumn};
-    static constexpr ColLayout<float> MinZsColumn{MinYsColumn};
-    static constexpr ColLayout<float> MaxXsColumn{MinZsColumn};
-    static constexpr ColLayout<float> MaxYsColumn{MaxXsColumn};
-    static constexpr ColLayout<float> MaxZsColumn{MaxYsColumn};
-
-    static constexpr byte_size_type allocation_alignment{MaxZsColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{columns.MaxZsColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::capacity_block_bound(MaxZsColumn)};
+        ml::native_soa::capacity_block_bound(columns.MaxZsColumn)};
     static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : MaxZsColumn.data_end(blocks);
+        return blocks == 0 ? 0 : columns.MaxZsColumn.data_end(blocks);
     }
     static_assert(max_capacity >= capacity_granularity);
 };
@@ -67,12 +82,12 @@ struct WorldAABBsColumnsSingleViewImpl : ml::soa_storage_detail::CompactViewOper
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto min_xs() const { return make_column_view(Layout::MinXsColumn); }
-    auto min_ys() const { return make_column_view(Layout::MinYsColumn); }
-    auto min_zs() const { return make_column_view(Layout::MinZsColumn); }
-    auto max_xs() const { return make_column_view(Layout::MaxXsColumn); }
-    auto max_ys() const { return make_column_view(Layout::MaxYsColumn); }
-    auto max_zs() const { return make_column_view(Layout::MaxZsColumn); }
+    auto min_xs() const { return make_column_view(Layout::columns.MinXsColumn); }
+    auto min_ys() const { return make_column_view(Layout::columns.MinYsColumn); }
+    auto min_zs() const { return make_column_view(Layout::columns.MinZsColumn); }
+    auto max_xs() const { return make_column_view(Layout::columns.MaxXsColumn); }
+    auto max_ys() const { return make_column_view(Layout::columns.MaxYsColumn); }
+    auto max_zs() const { return make_column_view(Layout::columns.MaxZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(min_xs());
@@ -199,12 +214,12 @@ struct WorldAABBs
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::MinXsColumn),
-                cursor.column_pointer(data, Layout::MinYsColumn),
-                cursor.column_pointer(data, Layout::MinZsColumn),
-                cursor.column_pointer(data, Layout::MaxXsColumn),
-                cursor.column_pointer(data, Layout::MaxYsColumn),
-                cursor.column_pointer(data, Layout::MaxZsColumn)};
+        return {cursor.column_pointer(data, Layout::columns.MinXsColumn),
+                cursor.column_pointer(data, Layout::columns.MinYsColumn),
+                cursor.column_pointer(data, Layout::columns.MinZsColumn),
+                cursor.column_pointer(data, Layout::columns.MaxXsColumn),
+                cursor.column_pointer(data, Layout::columns.MaxYsColumn),
+                cursor.column_pointer(data, Layout::columns.MaxZsColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);

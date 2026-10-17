@@ -21,6 +21,49 @@ struct EntitiesSchema;
 
 struct EntitiesSingleView;
 struct EntitiesSingleConstView;
+struct EntitiesSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+
+    ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<std::uint8_t> ActiveColumn;
+    ColLayout<ioj::sim::LaserSource> SourcesColumn;
+    ColLayout<float> LocationsXsColumn;
+    ColLayout<float> LocationsYsColumn;
+    ColLayout<float> LocationsZsColumn;
+    ColLayout<float> RotationsPitchesColumn;
+    ColLayout<float> RotationsYawsColumn;
+    ColLayout<float> RotationsRollsColumn;
+    ColLayout<float> VelocitiesXsColumn;
+    ColLayout<float> VelocitiesYsColumn;
+    ColLayout<float> VelocitiesZsColumn;
+    ColLayout<std::int32_t> DamagesColumn;
+    ColLayout<float> LifetimesRemainingColumn;
+    ColLayout<EntityUniqueId> InstigatorIdsColumn;
+    ColLayout<float> InitialLifetimesColumn;
+    ColLayout<float> SpawnTimesColumn;
+
+    constexpr EntitiesSingleLayoutColumns() noexcept
+        : ActiveColumn{LayoutStart}
+        , SourcesColumn{ActiveColumn}
+        , LocationsXsColumn{SourcesColumn}
+        , LocationsYsColumn{LocationsXsColumn}
+        , LocationsZsColumn{LocationsYsColumn}
+        , RotationsPitchesColumn{LocationsZsColumn}
+        , RotationsYawsColumn{RotationsPitchesColumn}
+        , RotationsRollsColumn{RotationsYawsColumn}
+        , VelocitiesXsColumn{RotationsRollsColumn}
+        , VelocitiesYsColumn{VelocitiesXsColumn}
+        , VelocitiesZsColumn{VelocitiesYsColumn}
+        , DamagesColumn{VelocitiesZsColumn}
+        , LifetimesRemainingColumn{DamagesColumn}
+        , InstigatorIdsColumn{LifetimesRemainingColumn}
+        , InitialLifetimesColumn{InstigatorIdsColumn}
+        , SpawnTimesColumn{InitialLifetimesColumn} {}
+    EntitiesSingleLayoutColumns(EntitiesSingleLayoutColumns const&) = delete;
+    auto operator=(EntitiesSingleLayoutColumns const&) -> EntitiesSingleLayoutColumns& = delete;
+};
 struct EntitiesSingleLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
@@ -29,36 +72,18 @@ struct EntitiesSingleLayout {
         ml::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
-    template <typename T>
-    using ColLayout = ml::native_soa::ColumnLayout<T>;
-    static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+    static constexpr EntitiesSingleLayoutColumns columns{};
 
-    static constexpr ColLayout<std::uint8_t> ActiveColumn{LayoutStart};
-    static constexpr ColLayout<ioj::sim::LaserSource> SourcesColumn{ActiveColumn};
-    static constexpr ColLayout<float> LocationsXsColumn{SourcesColumn};
-    static constexpr ColLayout<float> LocationsYsColumn{LocationsXsColumn};
-    static constexpr ColLayout<float> LocationsZsColumn{LocationsYsColumn};
-    static constexpr ColLayout<float> RotationsPitchesColumn{LocationsZsColumn};
-    static constexpr ColLayout<float> RotationsYawsColumn{RotationsPitchesColumn};
-    static constexpr ColLayout<float> RotationsRollsColumn{RotationsYawsColumn};
-    static constexpr ColLayout<float> VelocitiesXsColumn{RotationsRollsColumn};
-    static constexpr ColLayout<float> VelocitiesYsColumn{VelocitiesXsColumn};
-    static constexpr ColLayout<float> VelocitiesZsColumn{VelocitiesYsColumn};
-    static constexpr ColLayout<std::int32_t> DamagesColumn{VelocitiesZsColumn};
-    static constexpr ColLayout<float> LifetimesRemainingColumn{DamagesColumn};
-    static constexpr ColLayout<EntityUniqueId> InstigatorIdsColumn{LifetimesRemainingColumn};
-    static constexpr ColLayout<float> InitialLifetimesColumn{InstigatorIdsColumn};
-    static constexpr ColLayout<float> SpawnTimesColumn{InitialLifetimesColumn};
-
-    static constexpr byte_size_type allocation_alignment{SpawnTimesColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{
+        columns.SpawnTimesColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::capacity_block_bound(SpawnTimesColumn)};
+        ml::native_soa::capacity_block_bound(columns.SpawnTimesColumn)};
     static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : SpawnTimesColumn.data_end(blocks);
+        return blocks == 0 ? 0 : columns.SpawnTimesColumn.data_end(blocks);
     }
     static_assert(max_capacity >= capacity_granularity);
 };
@@ -85,16 +110,17 @@ struct EntitiesSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto active() const { return make_column_view(Layout::ActiveColumn); }
-    auto sources() const { return make_column_view(Layout::SourcesColumn); }
+    auto active() const { return make_column_view(Layout::columns.ActiveColumn); }
+    auto sources() const { return make_column_view(Layout::columns.SourcesColumn); }
     auto view_locations() const {
         using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
-                                                                     offset_,
-                                                                     count_,
-                                                                     Layout::LocationsXsColumn,
-                                                                     Layout::LocationsYsColumn,
-                                                                     Layout::LocationsZsColumn);
+        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+            state_,
+            offset_,
+            count_,
+            Layout::columns.LocationsXsColumn,
+            Layout::columns.LocationsYsColumn,
+            Layout::columns.LocationsZsColumn);
     }
     auto view_rotations() const {
         using ml::soa_storage_detail::three_column_view;
@@ -105,24 +131,29 @@ struct EntitiesSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
             state_,
             offset_,
             count_,
-            Layout::RotationsPitchesColumn,
-            Layout::RotationsYawsColumn,
-            Layout::RotationsRollsColumn);
+            Layout::columns.RotationsPitchesColumn,
+            Layout::columns.RotationsYawsColumn,
+            Layout::columns.RotationsRollsColumn);
     }
     auto view_velocities() const {
         using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
-                                                                     offset_,
-                                                                     count_,
-                                                                     Layout::VelocitiesXsColumn,
-                                                                     Layout::VelocitiesYsColumn,
-                                                                     Layout::VelocitiesZsColumn);
+        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+            state_,
+            offset_,
+            count_,
+            Layout::columns.VelocitiesXsColumn,
+            Layout::columns.VelocitiesYsColumn,
+            Layout::columns.VelocitiesZsColumn);
     }
-    auto damages() const { return make_column_view(Layout::DamagesColumn); }
-    auto lifetimes_remaining() const { return make_column_view(Layout::LifetimesRemainingColumn); }
-    auto instigator_ids() const { return make_column_view(Layout::InstigatorIdsColumn); }
-    auto initial_lifetimes() const { return make_column_view(Layout::InitialLifetimesColumn); }
-    auto spawn_times() const { return make_column_view(Layout::SpawnTimesColumn); }
+    auto damages() const { return make_column_view(Layout::columns.DamagesColumn); }
+    auto lifetimes_remaining() const {
+        return make_column_view(Layout::columns.LifetimesRemainingColumn);
+    }
+    auto instigator_ids() const { return make_column_view(Layout::columns.InstigatorIdsColumn); }
+    auto initial_lifetimes() const {
+        return make_column_view(Layout::columns.InitialLifetimesColumn);
+    }
+    auto spawn_times() const { return make_column_view(Layout::columns.SpawnTimesColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(active());
@@ -292,22 +323,22 @@ struct LaserEntities
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::ActiveColumn),
-                cursor.column_pointer(data, Layout::SourcesColumn),
-                cursor.column_pointer(data, Layout::LocationsXsColumn),
-                cursor.column_pointer(data, Layout::LocationsYsColumn),
-                cursor.column_pointer(data, Layout::LocationsZsColumn),
-                cursor.column_pointer(data, Layout::RotationsPitchesColumn),
-                cursor.column_pointer(data, Layout::RotationsYawsColumn),
-                cursor.column_pointer(data, Layout::RotationsRollsColumn),
-                cursor.column_pointer(data, Layout::VelocitiesXsColumn),
-                cursor.column_pointer(data, Layout::VelocitiesYsColumn),
-                cursor.column_pointer(data, Layout::VelocitiesZsColumn),
-                cursor.column_pointer(data, Layout::DamagesColumn),
-                cursor.column_pointer(data, Layout::LifetimesRemainingColumn),
-                cursor.column_pointer(data, Layout::InstigatorIdsColumn),
-                cursor.column_pointer(data, Layout::InitialLifetimesColumn),
-                cursor.column_pointer(data, Layout::SpawnTimesColumn)};
+        return {cursor.column_pointer(data, Layout::columns.ActiveColumn),
+                cursor.column_pointer(data, Layout::columns.SourcesColumn),
+                cursor.column_pointer(data, Layout::columns.LocationsXsColumn),
+                cursor.column_pointer(data, Layout::columns.LocationsYsColumn),
+                cursor.column_pointer(data, Layout::columns.LocationsZsColumn),
+                cursor.column_pointer(data, Layout::columns.RotationsPitchesColumn),
+                cursor.column_pointer(data, Layout::columns.RotationsYawsColumn),
+                cursor.column_pointer(data, Layout::columns.RotationsRollsColumn),
+                cursor.column_pointer(data, Layout::columns.VelocitiesXsColumn),
+                cursor.column_pointer(data, Layout::columns.VelocitiesYsColumn),
+                cursor.column_pointer(data, Layout::columns.VelocitiesZsColumn),
+                cursor.column_pointer(data, Layout::columns.DamagesColumn),
+                cursor.column_pointer(data, Layout::columns.LifetimesRemainingColumn),
+                cursor.column_pointer(data, Layout::columns.InstigatorIdsColumn),
+                cursor.column_pointer(data, Layout::columns.InitialLifetimesColumn),
+                cursor.column_pointer(data, Layout::columns.SpawnTimesColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);

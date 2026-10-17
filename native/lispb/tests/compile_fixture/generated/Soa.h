@@ -86,6 +86,25 @@ static_assert(std::is_trivially_copyable_v<ApiMask>);
 
 struct ApiView;
 struct ApiConstView;
+struct ApiRowsSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ml::soa_storage::ColumnLayout<T>;
+
+    ml::soa_storage::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<float> ValuesColumn;
+    ColLayout<ApiMask> MasksColumn;
+    ColLayout<float> PositionsXsColumn;
+    ColLayout<float> PositionsYsColumn;
+
+    constexpr ApiRowsSingleLayoutColumns() noexcept
+        : ValuesColumn{LayoutStart}
+        , MasksColumn{ValuesColumn}
+        , PositionsXsColumn{MasksColumn}
+        , PositionsYsColumn{PositionsXsColumn} {}
+    ApiRowsSingleLayoutColumns(ApiRowsSingleLayoutColumns const&) = delete;
+    auto operator=(ApiRowsSingleLayoutColumns const&) -> ApiRowsSingleLayoutColumns& = delete;
+};
 struct ApiRowsSingleLayout {
     using size_type = int32;
     using byte_size_type = SIZE_T;
@@ -94,25 +113,19 @@ struct ApiRowsSingleLayout {
         ml::soa_storage::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ml::soa_storage::LayoutPolicy::column_gap};
 
-    template <typename T>
-    using ColLayout = ml::soa_storage::ColumnLayout<T>;
-    static constexpr ml::soa_storage::ColumnLayoutStart LayoutStart{};
+    static constexpr ApiRowsSingleLayoutColumns columns{};
 
-    static constexpr ColLayout<float> ValuesColumn{LayoutStart};
-    static constexpr ColLayout<ApiMask> MasksColumn{ValuesColumn};
-    static constexpr ColLayout<float> PositionsXsColumn{MasksColumn};
-    static constexpr ColLayout<float> PositionsYsColumn{PositionsXsColumn};
-
-    static constexpr byte_size_type allocation_alignment{PositionsYsColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{
+        columns.PositionsYsColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::soa_storage::capacity_block_bound(PositionsYsColumn)};
+        ml::soa_storage::capacity_block_bound(columns.PositionsYsColumn)};
     static constexpr size_type max_capacity{
         ml::soa_storage::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : PositionsYsColumn.data_end(blocks);
+        return blocks == 0 ? 0 : columns.PositionsYsColumn.data_end(blocks);
     }
     static_assert(max_capacity >= capacity_granularity);
 };
@@ -141,8 +154,8 @@ struct ApiView_positionsImpl : ml::soa_storage_detail::CompactViewOperations {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto xs() const { return make_column_view(Layout::PositionsXsColumn); }
-    auto ys() const { return make_column_view(Layout::PositionsYsColumn); }
+    auto xs() const { return make_column_view(Layout::columns.PositionsXsColumn); }
+    auto ys() const { return make_column_view(Layout::columns.PositionsYsColumn); }
     template <typename Func>
     auto apply_arrays(Func&& func) const -> decltype(auto) {
         auto column_0{xs()};
@@ -211,8 +224,8 @@ struct ApiViewImpl : ml::soa_storage_detail::CompactViewOperations {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto values() const { return make_column_view(Layout::ValuesColumn); }
-    auto masks() const { return make_column_view(Layout::MasksColumn); }
+    auto values() const { return make_column_view(Layout::columns.ValuesColumn); }
+    auto masks() const { return make_column_view(Layout::columns.MasksColumn); }
     auto view_positions() const
         -> std::conditional_t<Const, ApiConstView_positions, ApiView_positions> {
         return {state_, offset_, count_};
@@ -340,10 +353,10 @@ struct COMPILE_FIXTURE_API ApiOwner
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::soa_storage::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::ValuesColumn),
-                cursor.column_pointer(data, Layout::MasksColumn),
-                cursor.column_pointer(data, Layout::PositionsXsColumn),
-                cursor.column_pointer(data, Layout::PositionsYsColumn)};
+        return {cursor.column_pointer(data, Layout::columns.ValuesColumn),
+                cursor.column_pointer(data, Layout::columns.MasksColumn),
+                cursor.column_pointer(data, Layout::columns.PositionsXsColumn),
+                cursor.column_pointer(data, Layout::columns.PositionsYsColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -443,6 +456,22 @@ struct EquivalentRowsSchema;
 
 struct EquivalentRowsSingleView;
 struct EquivalentRowsSingleConstView;
+struct EquivalentRowsSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ml::soa_storage::ColumnLayout<T>;
+
+    ml::soa_storage::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<float> XsColumn;
+    ColLayout<float> YsColumn;
+
+    constexpr EquivalentRowsSingleLayoutColumns() noexcept
+        : XsColumn{LayoutStart}
+        , YsColumn{XsColumn} {}
+    EquivalentRowsSingleLayoutColumns(EquivalentRowsSingleLayoutColumns const&) = delete;
+    auto operator=(EquivalentRowsSingleLayoutColumns const&)
+        -> EquivalentRowsSingleLayoutColumns& = delete;
+};
 struct EquivalentRowsSingleLayout {
     using size_type = int32;
     using byte_size_type = SIZE_T;
@@ -451,23 +480,18 @@ struct EquivalentRowsSingleLayout {
         ml::soa_storage::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ml::soa_storage::LayoutPolicy::column_gap};
 
-    template <typename T>
-    using ColLayout = ml::soa_storage::ColumnLayout<T>;
-    static constexpr ml::soa_storage::ColumnLayoutStart LayoutStart{};
+    static constexpr EquivalentRowsSingleLayoutColumns columns{};
 
-    static constexpr ColLayout<float> XsColumn{LayoutStart};
-    static constexpr ColLayout<float> YsColumn{XsColumn};
-
-    static constexpr byte_size_type allocation_alignment{YsColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{columns.YsColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::soa_storage::capacity_block_bound(YsColumn)};
+        ml::soa_storage::capacity_block_bound(columns.YsColumn)};
     static constexpr size_type max_capacity{
         ml::soa_storage::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : YsColumn.data_end(blocks);
+        return blocks == 0 ? 0 : columns.YsColumn.data_end(blocks);
     }
     static_assert(max_capacity >= capacity_granularity);
 };
@@ -494,8 +518,8 @@ struct EquivalentRowsSingleViewImpl : ml::soa_storage_detail::CompactViewOperati
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto xs() const { return make_column_view(Layout::XsColumn); }
-    auto ys() const { return make_column_view(Layout::YsColumn); }
+    auto xs() const { return make_column_view(Layout::columns.XsColumn); }
+    auto ys() const { return make_column_view(Layout::columns.YsColumn); }
     template <typename Func>
     auto apply_arrays(Func&& func) const -> decltype(auto) {
         auto column_0{xs()};
@@ -614,8 +638,8 @@ struct EquivalentOwner
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::soa_storage::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::XsColumn),
-                cursor.column_pointer(data, Layout::YsColumn)};
+        return {cursor.column_pointer(data, Layout::columns.XsColumn),
+                cursor.column_pointer(data, Layout::columns.YsColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -1197,6 +1221,21 @@ struct FParents {
 
 struct FParentsSingleView;
 struct FParentsSingleConstView;
+struct FParentsSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ml::soa_storage::ColumnLayout<T>;
+
+    ml::soa_storage::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<int32> KeysColumn;
+    ColLayout<int32> ChildrenValuesColumn;
+
+    constexpr FParentsSingleLayoutColumns() noexcept
+        : KeysColumn{LayoutStart}
+        , ChildrenValuesColumn{KeysColumn} {}
+    FParentsSingleLayoutColumns(FParentsSingleLayoutColumns const&) = delete;
+    auto operator=(FParentsSingleLayoutColumns const&) -> FParentsSingleLayoutColumns& = delete;
+};
 struct FParentsSingleLayout {
     using size_type = int32;
     using byte_size_type = SIZE_T;
@@ -1205,23 +1244,19 @@ struct FParentsSingleLayout {
         ml::soa_storage::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ml::soa_storage::LayoutPolicy::column_gap};
 
-    template <typename T>
-    using ColLayout = ml::soa_storage::ColumnLayout<T>;
-    static constexpr ml::soa_storage::ColumnLayoutStart LayoutStart{};
+    static constexpr FParentsSingleLayoutColumns columns{};
 
-    static constexpr ColLayout<int32> KeysColumn{LayoutStart};
-    static constexpr ColLayout<int32> ChildrenValuesColumn{KeysColumn};
-
-    static constexpr byte_size_type allocation_alignment{ChildrenValuesColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{
+        columns.ChildrenValuesColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::soa_storage::capacity_block_bound(ChildrenValuesColumn)};
+        ml::soa_storage::capacity_block_bound(columns.ChildrenValuesColumn)};
     static constexpr size_type max_capacity{
         ml::soa_storage::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : ChildrenValuesColumn.data_end(blocks);
+        return blocks == 0 ? 0 : columns.ChildrenValuesColumn.data_end(blocks);
     }
     static_assert(max_capacity >= capacity_granularity);
 };
@@ -1250,7 +1285,7 @@ struct FParentsSingleView_childrenImpl : ml::soa_storage_detail::CompactViewOper
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto values() const { return make_column_view(Layout::ChildrenValuesColumn); }
+    auto values() const { return make_column_view(Layout::columns.ChildrenValuesColumn); }
     template <typename Func>
     auto apply_arrays(Func&& func) const -> decltype(auto) {
         auto column_0{values()};
@@ -1301,7 +1336,7 @@ struct FParentsSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto keys() const { return make_column_view(Layout::KeysColumn); }
+    auto keys() const { return make_column_view(Layout::columns.KeysColumn); }
     auto view_children() const -> std::
         conditional_t<Const, FParentsSingleConstView_children, FParentsSingleView_children> {
         return {state_, offset_, count_};
@@ -1417,8 +1452,8 @@ struct SingleParents
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::soa_storage::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::KeysColumn),
-                cursor.column_pointer(data, Layout::ChildrenValuesColumn)};
+        return {cursor.column_pointer(data, Layout::columns.KeysColumn),
+                cursor.column_pointer(data, Layout::columns.ChildrenValuesColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -2499,6 +2534,20 @@ struct RestrictionRowsSchema;
 
 struct RestrictionRowsSingleView;
 struct RestrictionRowsSingleConstView;
+struct RestrictionRowsSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ml::soa_storage::ColumnLayout<T>;
+
+    ml::soa_storage::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<RestrictedLeaf> RestrictedColumn;
+
+    constexpr RestrictionRowsSingleLayoutColumns() noexcept
+        : RestrictedColumn{LayoutStart} {}
+    RestrictionRowsSingleLayoutColumns(RestrictionRowsSingleLayoutColumns const&) = delete;
+    auto operator=(RestrictionRowsSingleLayoutColumns const&)
+        -> RestrictionRowsSingleLayoutColumns& = delete;
+};
 struct RestrictionRowsSingleLayout {
     using size_type = int32;
     using byte_size_type = SIZE_T;
@@ -2507,22 +2556,19 @@ struct RestrictionRowsSingleLayout {
         ml::soa_storage::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ml::soa_storage::LayoutPolicy::column_gap};
 
-    template <typename T>
-    using ColLayout = ml::soa_storage::ColumnLayout<T>;
-    static constexpr ml::soa_storage::ColumnLayoutStart LayoutStart{};
+    static constexpr RestrictionRowsSingleLayoutColumns columns{};
 
-    static constexpr ColLayout<RestrictedLeaf> RestrictedColumn{LayoutStart};
-
-    static constexpr byte_size_type allocation_alignment{RestrictedColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{
+        columns.RestrictedColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::soa_storage::capacity_block_bound(RestrictedColumn)};
+        ml::soa_storage::capacity_block_bound(columns.RestrictedColumn)};
     static constexpr size_type max_capacity{
         ml::soa_storage::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : RestrictedColumn.data_end(blocks);
+        return blocks == 0 ? 0 : columns.RestrictedColumn.data_end(blocks);
     }
     static_assert(max_capacity >= capacity_granularity);
 };
@@ -2549,7 +2595,7 @@ struct RestrictionRowsSingleViewImpl : ml::soa_storage_detail::CompactViewOperat
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto restricted() const { return make_column_view(Layout::RestrictedColumn); }
+    auto restricted() const { return make_column_view(Layout::columns.RestrictedColumn); }
     template <typename Func>
     auto apply_arrays(Func&& func) const -> decltype(auto) {
         auto column_0{restricted()};
@@ -2657,7 +2703,7 @@ struct SingleRestrictionRows
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::soa_storage::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::RestrictedColumn)};
+        return {cursor.column_pointer(data, Layout::columns.RestrictedColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);

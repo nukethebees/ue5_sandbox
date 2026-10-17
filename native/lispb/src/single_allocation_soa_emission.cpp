@@ -203,8 +203,9 @@ auto column_pointer_nodes(SingleAllocationModel const& model) -> Nodes {
     std::vector<Expr> pointers;
     pointers.reserve(model.columns.size());
     for (auto const& column : model.columns) {
-        pointers.push_back(call(member_access(named("cursor"), "column_pointer"),
-                                {named("data"), named("Layout::" + column.layout_identifier)}));
+        pointers.push_back(
+            call(member_access(named("cursor"), "column_pointer"),
+                 {named("data"), named("Layout::columns." + column.layout_identifier)}));
     }
     make_data_body.add(ReturnStmt{init_list(std::move(pointers))});
     auto make_data{FunctionSpec{
@@ -474,8 +475,8 @@ auto compact_view_node(SingleAllocationModel const& model) -> Node {
             for (std::size_t index{}; index < columns; ++index) {
                 auto component_path{path};
                 component_path.push_back(vector->components[index]);
-                arguments.push_back(
-                    named("Layout::" + column_for(model, component_path).layout_identifier));
+                arguments.push_back(named("Layout::columns." +
+                                          column_for(model, component_path).layout_identifier));
             }
             children.new_lines(1).add(compact_function(FunctionSpec{
                 .name = "view_" + member.name,
@@ -495,7 +496,7 @@ auto compact_view_node(SingleAllocationModel const& model) -> Node {
                 .name = member.name,
                 .return_type = "auto",
                 .body = {ReturnStmt{call(named("make_column_view", column.type.dependencies),
-                                         {named("Layout::" + column.layout_identifier)})}},
+                                         {named("Layout::columns." + column.layout_identifier)})}},
                 .qualifiers = {.is_const = true},
             }));
         }
@@ -574,6 +575,31 @@ auto view_validation_nodes(std::string const& name) -> Nodes {
 
 auto emit_single_allocation_layout(SingleAllocationModel const& model) -> Nodes {
     auto const& dialect{model.dialect};
+    auto const columns_name{model.layout_name + "Columns"};
+    NodeListBuilder columns;
+    columns
+        .add(raw("template <typename T>\nusing ColLayout = " + dialect.runtime_namespace +
+                 "ColumnLayout<T>;"))
+        .new_lines(2)
+        .add(Member{dialect.runtime_namespace + "ColumnLayoutStart", "LayoutStart", RawExpr{""}})
+        .new_lines(2);
+    FunctionSpec constructor{
+        .name = columns_name,
+        .qualifiers = {.is_noexcept = true, .is_constexpr = true},
+    };
+    std::string previous_column{"LayoutStart"};
+    for (auto const& column : model.columns) {
+        columns.add(Member{"ColLayout<" + column.type.spelling + ">", column.layout_identifier})
+            .new_lines(1);
+        constructor.member_initializers.emplace_back(column.layout_identifier, previous_column);
+        previous_column = column.layout_identifier;
+    }
+    columns.new_lines(2)
+        .add(inline_function(std::move(constructor)))
+        .new_lines(1)
+        .add(raw(columns_name + "(" + columns_name + " const&) = delete;\nauto operator=(" +
+                 columns_name + " const&) -> " + columns_name + "& = delete;"));
+    auto const last_column{"columns." + model.columns.back().layout_identifier};
     NodeListBuilder children;
     children
         .append(adjacent({UsingDeclaration{"size_type", CppType{dialect.size_type}},
@@ -590,34 +616,14 @@ auto emit_single_allocation_layout(SingleAllocationModel const& model) -> Nodes 
                    {.is_static = true, .is_constexpr = true}},
         }))
         .new_lines(2)
-        .add(raw("template <typename T>\nusing ColLayout = " + dialect.runtime_namespace +
-                 "ColumnLayout<T>;"))
-        .new_lines(1)
-        .add(Member{dialect.runtime_namespace + "ColumnLayoutStart",
-                    "LayoutStart",
-                    RawExpr{""},
-                    {.is_static = true, .is_constexpr = true}})
+        .add(
+            Member{columns_name, "columns", RawExpr{""}, {.is_static = true, .is_constexpr = true}})
         .new_lines(2);
-
-    std::string previous_column{"LayoutStart"};
-    auto const column_count{model.columns.size()};
-    for (std::size_t index{}; index < column_count; ++index) {
-        auto const& column{model.columns[index]};
-        children.add(Member{"ColLayout<" + column.type.spelling + ">",
-                            column.layout_identifier,
-                            named(previous_column),
-                            {.is_static = true, .is_constexpr = true}});
-        if (index + 1 < column_count) {
-            children.new_lines(1);
-        }
-        previous_column = column.layout_identifier;
-    }
-    children.new_lines(2)
-        .add(Member{
-            "byte_size_type",
-            "allocation_alignment",
-            member_access(named(model.columns.back().layout_identifier), "allocation_alignment"),
-            {.is_static = true, .is_constexpr = true}})
+    children
+        .add(Member{"byte_size_type",
+                    "allocation_alignment",
+                    member_access(named(last_column), "allocation_alignment"),
+                    {.is_static = true, .is_constexpr = true}})
         .new_lines(2)
         .add(LineComment{
             "Conservative per-block bound for checked capacity arithmetic; gaps do not scale "
@@ -627,7 +633,7 @@ auto emit_single_allocation_layout(SingleAllocationModel const& model) -> Nodes 
             Member{"byte_size_type",
                    "capacity_block_bound",
                    call(named(dialect.runtime_namespace + "capacity_block_bound"),
-                        {named(model.columns.back().layout_identifier)}),
+                        {named(last_column)}),
                    {.is_static = true, .is_constexpr = true}},
             Member{"size_type",
                    "max_capacity",
@@ -639,8 +645,7 @@ auto emit_single_allocation_layout(SingleAllocationModel const& model) -> Nodes 
                 .return_type = "auto",
                 .parameters = {FunctionParameter{"byte_size_type", "blocks"}},
                 .body = {ReturnStmt{
-                    RawExpr{"blocks == 0 ? 0 : " + model.columns.back().layout_identifier +
-                            ".data_end(blocks)"}}},
+                    RawExpr{"blocks == 0 ? 0 : " + last_column + ".data_end(blocks)"}}},
                 .qualifiers = {.trailing_return_type = CppType{"byte_size_type"},
                                .is_noexcept = true,
                                .is_static = true,
@@ -652,6 +657,7 @@ auto emit_single_allocation_layout(SingleAllocationModel const& model) -> Nodes 
 
     return adjacent({ForwardDeclaration{model.view_name},
                      ForwardDeclaration{model.const_view_name},
+                     Struct{.name = columns_name, .children = columns.build()},
                      Struct{.name = model.layout_name, .children = children.build()}});
 }
 

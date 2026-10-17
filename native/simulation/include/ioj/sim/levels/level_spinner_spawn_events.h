@@ -19,6 +19,31 @@ struct LevelSpinnerSpawnEventsSchema;
 
 struct LevelSpinnerSpawnEventsSingleView;
 struct LevelSpinnerSpawnEventsSingleConstView;
+struct LevelSpinnerSpawnEventsSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+
+    ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<LevelEntityIndex> EntityIndicesColumn;
+    ColLayout<float> LocationsXsColumn;
+    ColLayout<float> LocationsYsColumn;
+    ColLayout<float> LocationsZsColumn;
+    ColLayout<float> YawsColumn;
+    ColLayout<std::int32_t> InitialFirePointIndicesColumn;
+
+    constexpr LevelSpinnerSpawnEventsSingleLayoutColumns() noexcept
+        : EntityIndicesColumn{LayoutStart}
+        , LocationsXsColumn{EntityIndicesColumn}
+        , LocationsYsColumn{LocationsXsColumn}
+        , LocationsZsColumn{LocationsYsColumn}
+        , YawsColumn{LocationsZsColumn}
+        , InitialFirePointIndicesColumn{YawsColumn} {}
+    LevelSpinnerSpawnEventsSingleLayoutColumns(LevelSpinnerSpawnEventsSingleLayoutColumns const&) =
+        delete;
+    auto operator=(LevelSpinnerSpawnEventsSingleLayoutColumns const&)
+        -> LevelSpinnerSpawnEventsSingleLayoutColumns& = delete;
+};
 struct LevelSpinnerSpawnEventsSingleLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
@@ -27,27 +52,18 @@ struct LevelSpinnerSpawnEventsSingleLayout {
         ml::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
-    template <typename T>
-    using ColLayout = ml::native_soa::ColumnLayout<T>;
-    static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
-
-    static constexpr ColLayout<LevelEntityIndex> EntityIndicesColumn{LayoutStart};
-    static constexpr ColLayout<float> LocationsXsColumn{EntityIndicesColumn};
-    static constexpr ColLayout<float> LocationsYsColumn{LocationsXsColumn};
-    static constexpr ColLayout<float> LocationsZsColumn{LocationsYsColumn};
-    static constexpr ColLayout<float> YawsColumn{LocationsZsColumn};
-    static constexpr ColLayout<std::int32_t> InitialFirePointIndicesColumn{YawsColumn};
+    static constexpr LevelSpinnerSpawnEventsSingleLayoutColumns columns{};
 
     static constexpr byte_size_type allocation_alignment{
-        InitialFirePointIndicesColumn.allocation_alignment};
+        columns.InitialFirePointIndicesColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::capacity_block_bound(InitialFirePointIndicesColumn)};
+        ml::native_soa::capacity_block_bound(columns.InitialFirePointIndicesColumn)};
     static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : InitialFirePointIndicesColumn.data_end(blocks);
+        return blocks == 0 ? 0 : columns.InitialFirePointIndicesColumn.data_end(blocks);
     }
     static_assert(max_capacity >= capacity_granularity);
 };
@@ -74,19 +90,20 @@ struct LevelSpinnerSpawnEventsSingleViewImpl : ml::soa_storage_detail::CompactVi
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto entity_indices() const { return make_column_view(Layout::EntityIndicesColumn); }
+    auto entity_indices() const { return make_column_view(Layout::columns.EntityIndicesColumn); }
     auto view_locations() const {
         using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
-                                                                     offset_,
-                                                                     count_,
-                                                                     Layout::LocationsXsColumn,
-                                                                     Layout::LocationsYsColumn,
-                                                                     Layout::LocationsZsColumn);
+        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+            state_,
+            offset_,
+            count_,
+            Layout::columns.LocationsXsColumn,
+            Layout::columns.LocationsYsColumn,
+            Layout::columns.LocationsZsColumn);
     }
-    auto yaws() const { return make_column_view(Layout::YawsColumn); }
+    auto yaws() const { return make_column_view(Layout::columns.YawsColumn); }
     auto initial_fire_point_indices() const {
-        return make_column_view(Layout::InitialFirePointIndicesColumn);
+        return make_column_view(Layout::columns.InitialFirePointIndicesColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -216,12 +233,12 @@ struct LevelSpinnerSpawnEvents
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::EntityIndicesColumn),
-                cursor.column_pointer(data, Layout::LocationsXsColumn),
-                cursor.column_pointer(data, Layout::LocationsYsColumn),
-                cursor.column_pointer(data, Layout::LocationsZsColumn),
-                cursor.column_pointer(data, Layout::YawsColumn),
-                cursor.column_pointer(data, Layout::InitialFirePointIndicesColumn)};
+        return {cursor.column_pointer(data, Layout::columns.EntityIndicesColumn),
+                cursor.column_pointer(data, Layout::columns.LocationsXsColumn),
+                cursor.column_pointer(data, Layout::columns.LocationsYsColumn),
+                cursor.column_pointer(data, Layout::columns.LocationsZsColumn),
+                cursor.column_pointer(data, Layout::columns.YawsColumn),
+                cursor.column_pointer(data, Layout::columns.InitialFirePointIndicesColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);

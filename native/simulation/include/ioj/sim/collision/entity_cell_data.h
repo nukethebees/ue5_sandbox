@@ -14,6 +14,45 @@ struct EntityCellDataColumnsSchema;
 
 struct EntityCellDataColumnsSingleView;
 struct EntityCellDataColumnsSingleConstView;
+struct EntityCellDataColumnsSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+
+    ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<float> MinPointXsColumn;
+    ColLayout<float> MinPointYsColumn;
+    ColLayout<float> MinPointZsColumn;
+    ColLayout<float> MaxPointXsColumn;
+    ColLayout<float> MaxPointYsColumn;
+    ColLayout<float> MaxPointZsColumn;
+    ColLayout<std::int32_t> MinCellXsColumn;
+    ColLayout<std::int32_t> MinCellYsColumn;
+    ColLayout<std::int32_t> MinCellZsColumn;
+    ColLayout<std::int32_t> MaxCellXsColumn;
+    ColLayout<std::int32_t> MaxCellYsColumn;
+    ColLayout<std::int32_t> MaxCellZsColumn;
+    ColLayout<EntityUniqueId> EntityIdsColumn;
+
+    constexpr EntityCellDataColumnsSingleLayoutColumns() noexcept
+        : MinPointXsColumn{LayoutStart}
+        , MinPointYsColumn{MinPointXsColumn}
+        , MinPointZsColumn{MinPointYsColumn}
+        , MaxPointXsColumn{MinPointZsColumn}
+        , MaxPointYsColumn{MaxPointXsColumn}
+        , MaxPointZsColumn{MaxPointYsColumn}
+        , MinCellXsColumn{MaxPointZsColumn}
+        , MinCellYsColumn{MinCellXsColumn}
+        , MinCellZsColumn{MinCellYsColumn}
+        , MaxCellXsColumn{MinCellZsColumn}
+        , MaxCellYsColumn{MaxCellXsColumn}
+        , MaxCellZsColumn{MaxCellYsColumn}
+        , EntityIdsColumn{MaxCellZsColumn} {}
+    EntityCellDataColumnsSingleLayoutColumns(EntityCellDataColumnsSingleLayoutColumns const&) =
+        delete;
+    auto operator=(EntityCellDataColumnsSingleLayoutColumns const&)
+        -> EntityCellDataColumnsSingleLayoutColumns& = delete;
+};
 struct EntityCellDataColumnsSingleLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
@@ -22,33 +61,18 @@ struct EntityCellDataColumnsSingleLayout {
         ml::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
-    template <typename T>
-    using ColLayout = ml::native_soa::ColumnLayout<T>;
-    static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+    static constexpr EntityCellDataColumnsSingleLayoutColumns columns{};
 
-    static constexpr ColLayout<float> MinPointXsColumn{LayoutStart};
-    static constexpr ColLayout<float> MinPointYsColumn{MinPointXsColumn};
-    static constexpr ColLayout<float> MinPointZsColumn{MinPointYsColumn};
-    static constexpr ColLayout<float> MaxPointXsColumn{MinPointZsColumn};
-    static constexpr ColLayout<float> MaxPointYsColumn{MaxPointXsColumn};
-    static constexpr ColLayout<float> MaxPointZsColumn{MaxPointYsColumn};
-    static constexpr ColLayout<std::int32_t> MinCellXsColumn{MaxPointZsColumn};
-    static constexpr ColLayout<std::int32_t> MinCellYsColumn{MinCellXsColumn};
-    static constexpr ColLayout<std::int32_t> MinCellZsColumn{MinCellYsColumn};
-    static constexpr ColLayout<std::int32_t> MaxCellXsColumn{MinCellZsColumn};
-    static constexpr ColLayout<std::int32_t> MaxCellYsColumn{MaxCellXsColumn};
-    static constexpr ColLayout<std::int32_t> MaxCellZsColumn{MaxCellYsColumn};
-    static constexpr ColLayout<EntityUniqueId> EntityIdsColumn{MaxCellZsColumn};
-
-    static constexpr byte_size_type allocation_alignment{EntityIdsColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{
+        columns.EntityIdsColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::capacity_block_bound(EntityIdsColumn)};
+        ml::native_soa::capacity_block_bound(columns.EntityIdsColumn)};
     static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : EntityIdsColumn.data_end(blocks);
+        return blocks == 0 ? 0 : columns.EntityIdsColumn.data_end(blocks);
     }
     static_assert(max_capacity >= capacity_granularity);
 };
@@ -75,19 +99,19 @@ struct EntityCellDataColumnsSingleViewImpl : ml::soa_storage_detail::CompactView
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto min_point_xs() const { return make_column_view(Layout::MinPointXsColumn); }
-    auto min_point_ys() const { return make_column_view(Layout::MinPointYsColumn); }
-    auto min_point_zs() const { return make_column_view(Layout::MinPointZsColumn); }
-    auto max_point_xs() const { return make_column_view(Layout::MaxPointXsColumn); }
-    auto max_point_ys() const { return make_column_view(Layout::MaxPointYsColumn); }
-    auto max_point_zs() const { return make_column_view(Layout::MaxPointZsColumn); }
-    auto min_cell_xs() const { return make_column_view(Layout::MinCellXsColumn); }
-    auto min_cell_ys() const { return make_column_view(Layout::MinCellYsColumn); }
-    auto min_cell_zs() const { return make_column_view(Layout::MinCellZsColumn); }
-    auto max_cell_xs() const { return make_column_view(Layout::MaxCellXsColumn); }
-    auto max_cell_ys() const { return make_column_view(Layout::MaxCellYsColumn); }
-    auto max_cell_zs() const { return make_column_view(Layout::MaxCellZsColumn); }
-    auto entity_ids() const { return make_column_view(Layout::EntityIdsColumn); }
+    auto min_point_xs() const { return make_column_view(Layout::columns.MinPointXsColumn); }
+    auto min_point_ys() const { return make_column_view(Layout::columns.MinPointYsColumn); }
+    auto min_point_zs() const { return make_column_view(Layout::columns.MinPointZsColumn); }
+    auto max_point_xs() const { return make_column_view(Layout::columns.MaxPointXsColumn); }
+    auto max_point_ys() const { return make_column_view(Layout::columns.MaxPointYsColumn); }
+    auto max_point_zs() const { return make_column_view(Layout::columns.MaxPointZsColumn); }
+    auto min_cell_xs() const { return make_column_view(Layout::columns.MinCellXsColumn); }
+    auto min_cell_ys() const { return make_column_view(Layout::columns.MinCellYsColumn); }
+    auto min_cell_zs() const { return make_column_view(Layout::columns.MinCellZsColumn); }
+    auto max_cell_xs() const { return make_column_view(Layout::columns.MaxCellXsColumn); }
+    auto max_cell_ys() const { return make_column_view(Layout::columns.MaxCellYsColumn); }
+    auto max_cell_zs() const { return make_column_view(Layout::columns.MaxCellZsColumn); }
+    auto entity_ids() const { return make_column_view(Layout::columns.EntityIdsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(min_point_xs());
@@ -243,19 +267,19 @@ struct EntityCellData
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::MinPointXsColumn),
-                cursor.column_pointer(data, Layout::MinPointYsColumn),
-                cursor.column_pointer(data, Layout::MinPointZsColumn),
-                cursor.column_pointer(data, Layout::MaxPointXsColumn),
-                cursor.column_pointer(data, Layout::MaxPointYsColumn),
-                cursor.column_pointer(data, Layout::MaxPointZsColumn),
-                cursor.column_pointer(data, Layout::MinCellXsColumn),
-                cursor.column_pointer(data, Layout::MinCellYsColumn),
-                cursor.column_pointer(data, Layout::MinCellZsColumn),
-                cursor.column_pointer(data, Layout::MaxCellXsColumn),
-                cursor.column_pointer(data, Layout::MaxCellYsColumn),
-                cursor.column_pointer(data, Layout::MaxCellZsColumn),
-                cursor.column_pointer(data, Layout::EntityIdsColumn)};
+        return {cursor.column_pointer(data, Layout::columns.MinPointXsColumn),
+                cursor.column_pointer(data, Layout::columns.MinPointYsColumn),
+                cursor.column_pointer(data, Layout::columns.MinPointZsColumn),
+                cursor.column_pointer(data, Layout::columns.MaxPointXsColumn),
+                cursor.column_pointer(data, Layout::columns.MaxPointYsColumn),
+                cursor.column_pointer(data, Layout::columns.MaxPointZsColumn),
+                cursor.column_pointer(data, Layout::columns.MinCellXsColumn),
+                cursor.column_pointer(data, Layout::columns.MinCellYsColumn),
+                cursor.column_pointer(data, Layout::columns.MinCellZsColumn),
+                cursor.column_pointer(data, Layout::columns.MaxCellXsColumn),
+                cursor.column_pointer(data, Layout::columns.MaxCellYsColumn),
+                cursor.column_pointer(data, Layout::columns.MaxCellZsColumn),
+                cursor.column_pointer(data, Layout::columns.EntityIdsColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);

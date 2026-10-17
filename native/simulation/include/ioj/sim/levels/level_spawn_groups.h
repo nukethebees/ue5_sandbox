@@ -19,6 +19,24 @@ struct LevelSpawnGroupsSchema;
 
 struct LevelSpawnGroupsSingleView;
 struct LevelSpawnGroupsSingleConstView;
+struct LevelSpawnGroupsSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+
+    ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<EntityType> TypesColumn;
+    ColLayout<std::int32_t> OffsetsColumn;
+    ColLayout<LevelEventCount> CountsColumn;
+
+    constexpr LevelSpawnGroupsSingleLayoutColumns() noexcept
+        : TypesColumn{LayoutStart}
+        , OffsetsColumn{TypesColumn}
+        , CountsColumn{OffsetsColumn} {}
+    LevelSpawnGroupsSingleLayoutColumns(LevelSpawnGroupsSingleLayoutColumns const&) = delete;
+    auto operator=(LevelSpawnGroupsSingleLayoutColumns const&)
+        -> LevelSpawnGroupsSingleLayoutColumns& = delete;
+};
 struct LevelSpawnGroupsSingleLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
@@ -27,23 +45,17 @@ struct LevelSpawnGroupsSingleLayout {
         ml::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
-    template <typename T>
-    using ColLayout = ml::native_soa::ColumnLayout<T>;
-    static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+    static constexpr LevelSpawnGroupsSingleLayoutColumns columns{};
 
-    static constexpr ColLayout<EntityType> TypesColumn{LayoutStart};
-    static constexpr ColLayout<std::int32_t> OffsetsColumn{TypesColumn};
-    static constexpr ColLayout<LevelEventCount> CountsColumn{OffsetsColumn};
-
-    static constexpr byte_size_type allocation_alignment{CountsColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{columns.CountsColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::capacity_block_bound(CountsColumn)};
+        ml::native_soa::capacity_block_bound(columns.CountsColumn)};
     static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : CountsColumn.data_end(blocks);
+        return blocks == 0 ? 0 : columns.CountsColumn.data_end(blocks);
     }
     static_assert(max_capacity >= capacity_granularity);
 };
@@ -70,9 +82,9 @@ struct LevelSpawnGroupsSingleViewImpl : ml::soa_storage_detail::CompactViewOpera
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto types() const { return make_column_view(Layout::TypesColumn); }
-    auto offsets() const { return make_column_view(Layout::OffsetsColumn); }
-    auto counts() const { return make_column_view(Layout::CountsColumn); }
+    auto types() const { return make_column_view(Layout::columns.TypesColumn); }
+    auto offsets() const { return make_column_view(Layout::columns.OffsetsColumn); }
+    auto counts() const { return make_column_view(Layout::columns.CountsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(types());
@@ -185,9 +197,9 @@ struct LevelSpawnGroups
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::TypesColumn),
-                cursor.column_pointer(data, Layout::OffsetsColumn),
-                cursor.column_pointer(data, Layout::CountsColumn)};
+        return {cursor.column_pointer(data, Layout::columns.TypesColumn),
+                cursor.column_pointer(data, Layout::columns.OffsetsColumn),
+                cursor.column_pointer(data, Layout::columns.CountsColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);

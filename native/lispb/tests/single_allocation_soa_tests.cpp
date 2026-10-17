@@ -32,7 +32,7 @@ TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
     EXPECT_EQ(output.find("struct RowsConstView"), std::string::npos);
     EXPECT_NE(output.find("ColLayout<std::int32_t> IdsColumn"), std::string::npos);
     EXPECT_NE(output.find("auto ids() const"), std::string::npos);
-    EXPECT_NE(output.find("ColLayout<float> NestedXsColumn{IdsColumn}"), std::string::npos);
+    EXPECT_NE(output.find("NestedXsColumn{IdsColumn}"), std::string::npos);
     EXPECT_NE(output.find("ColLayout<Token> LocalTypesColumn"), std::string::npos);
     EXPECT_NE(output.find("ColLayout<sub::Token> NestedTypesColumn"), std::string::npos);
     EXPECT_NE(output.find("ColLayout<other::Token> ForeignTypesColumn"), std::string::npos);
@@ -116,8 +116,9 @@ TEST(SingleAllocationSoa, TypedColumnOperationsUseLayoutCursorAndPreserveNestedP
     EXPECT_NE(output.find("transfer_columns<false>(columns + index, columns + source, move_count)"),
               std::string::npos);
     EXPECT_NE(output.find("ml::soa_storage::LayoutCursor cursor{blocks};"), std::string::npos);
-    EXPECT_NE(output.find("cursor.column_pointer(data, Layout::IdsColumn)"), std::string::npos);
-    EXPECT_NE(output.find("cursor.column_pointer(data, Layout::NestedValuesColumn)"),
+    EXPECT_NE(output.find("cursor.column_pointer(data, Layout::columns.IdsColumn)"),
+              std::string::npos);
+    EXPECT_NE(output.find("cursor.column_pointer(data, Layout::columns.NestedValuesColumn)"),
               std::string::npos);
     EXPECT_NE(output.find("using ml::soa_storage::source_data;"), std::string::npos);
     EXPECT_NE(output.find("source_data(nested_view.values())"), std::string::npos);
@@ -237,7 +238,7 @@ TEST(SingleAllocationSoa, EmitsCompactViewsAndSharedOwnerState) {
     EXPECT_NE(output.find("friend ml::soa_storage_detail::CompactViewOperations;"),
               std::string::npos);
     EXPECT_NE(output.find("using Layout = RowsSingleLayout;"), std::string::npos);
-    EXPECT_NE(output.find("make_column_view(Layout::NestedWideColumn)"), std::string::npos);
+    EXPECT_NE(output.find("make_column_view(Layout::columns.NestedWideColumn)"), std::string::npos);
     EXPECT_EQ(output.find("ml::soa_storage_detail::view_column_data<"), std::string::npos);
     EXPECT_EQ(output.find("auto columns() const"), std::string::npos);
     EXPECT_NE(output.find("for_each_removal_run(num_, indices"), std::string::npos);
@@ -266,9 +267,9 @@ TEST(SingleAllocationSoa, EmitsCompactViewsAndSharedOwnerState) {
     auto const rotations{render(input)};
     EXPECT_NE(rotations.find("ml::soa::RotatorSoAView<double>"), std::string::npos);
     EXPECT_NE(rotations.find("ml::soa::RotatorSoAConstView<double>"), std::string::npos);
-    EXPECT_NE(rotations.find("Layout::NestedPitchesColumn"), std::string::npos);
-    EXPECT_NE(rotations.find("Layout::NestedYawsColumn"), std::string::npos);
-    EXPECT_NE(rotations.find("Layout::NestedRollsColumn"), std::string::npos);
+    EXPECT_NE(rotations.find("Layout::columns.NestedPitchesColumn"), std::string::npos);
+    EXPECT_NE(rotations.find("Layout::columns.NestedYawsColumn"), std::string::npos);
+    EXPECT_NE(rotations.find("Layout::columns.NestedRollsColumn"), std::string::npos);
     EXPECT_NE(rotations.find("return three_column_view<"), std::string::npos);
     EXPECT_NE(rotations.find("using ml::soa_storage_detail::three_column_view;"),
               std::string::npos);
@@ -320,13 +321,12 @@ TEST(SingleAllocationSoa, EmitsOrderedAlignedBlocksAndExplicitBulkRelocation) {
     auto const output{render(schemas())};
     EXPECT_NE(output.find("LayoutPolicy::capacity_granularity"), std::string::npos);
     EXPECT_NE(output.find("LayoutPolicy::column_gap"), std::string::npos);
-    EXPECT_NE(output.find("ColLayout<int32> IdsColumn{LayoutStart}"), std::string::npos);
-    EXPECT_NE(output.find("ColLayout<uint8> NestedSmallColumn{IdsColumn}"), std::string::npos);
+    EXPECT_NE(output.find("IdsColumn{LayoutStart}"), std::string::npos);
+    EXPECT_NE(output.find("NestedSmallColumn{IdsColumn}"), std::string::npos);
     EXPECT_NE(output.find("layout_bytes(byte_size_type blocks)"), std::string::npos);
-    EXPECT_NE(output.find("ColLayout<Aligned256> NestedWideColumn{NestedSmallColumn}"),
-              std::string::npos);
-    EXPECT_NE(output.find("ColumnLayoutStart LayoutStart{}"), std::string::npos);
-    EXPECT_NE(output.find("capacity_block_bound(NestedWideColumn)"), std::string::npos);
+    EXPECT_NE(output.find("NestedWideColumn{NestedSmallColumn}"), std::string::npos);
+    EXPECT_NE(output.find("static constexpr RowsSingleLayoutColumns columns{}"), std::string::npos);
+    EXPECT_NE(output.find("capacity_block_bound(columns.NestedWideColumn)"), std::string::npos);
     EXPECT_NE(output.find("destination.nested_wide"), std::string::npos);
     EXPECT_NE(output.find("source_data(nested_view.wide())"), std::string::npos);
     EXPECT_NE(output.find("LayoutCursor cursor{blocks}"), std::string::npos);
@@ -365,8 +365,8 @@ TEST(SingleAllocationSoa, SharesTypeChecksAlignmentAndCopySizesAcrossNestedLeave
     EXPECT_EQ(occurrences("transfer(destination.ys, source.ys)"), 1);
     EXPECT_EQ(occurrences("source_data(source.ys())"), 1);
     EXPECT_EQ(occurrences("_maximum_alignment"), 0);
-    EXPECT_NE(owner.find("ColLayout<float> YsColumn{NestedXsColumn}"), std::string::npos);
-    EXPECT_NE(owner.find("capacity_block_bound(YsColumn)"), std::string::npos);
+    EXPECT_NE(owner.find("YsColumn{NestedXsColumn}"), std::string::npos);
+    EXPECT_NE(owner.find("capacity_block_bound(columns.YsColumn)"), std::string::npos);
 }
 
 TEST(SingleAllocationSoa, RejectsInvalidFlatteningAndOwnerNames) {
@@ -416,8 +416,7 @@ TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {
         .single_allocation = "SingleGrandparent",
     });
     auto const output{render(input)};
-    EXPECT_NE(output.find("ColLayout<int32> SecondIdsColumn{FirstNestedWideColumn}"),
-              std::string::npos);
+    EXPECT_NE(output.find("SecondIdsColumn{FirstNestedWideColumn}"), std::string::npos);
     EXPECT_NE(output.find("GrandparentSingleView_first"), std::string::npos);
     EXPECT_NE(output.find("GrandparentSingleView_second_nested"), std::string::npos);
     EXPECT_NE(output.find("second_nested_view.wide()"), std::string::npos);

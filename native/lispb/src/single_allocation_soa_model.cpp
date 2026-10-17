@@ -212,7 +212,7 @@ auto build_single_allocation_model(SoaSchema const& schema,
     auto const& root_type{std::get<lispb::schema::SoaType>(type_graph.type(*root_id).definition)};
     result.equivalent_constructors.emplace(schema.name,
                                            root_type.equivalent_constructor.value_or(""));
-    std::set<std::string> layout_names{"ColLayout", "LayoutStart", result.layout_name};
+    std::set<std::string> layout_names{"ColLayout", result.layout_name + "Columns"};
     auto collect_columns = [&](auto&& self,
                                lispb::schema::SoaType const& current,
                                std::vector<std::string> const& prefix) -> void {

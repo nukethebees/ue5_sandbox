@@ -161,6 +161,7 @@ auto soa_generated_cpp_names(SoaSchema const& schema,
     if (schema.single_allocation.has_value()) {
         result.push_back(*schema.single_allocation);
         result.push_back(schema.name + "SingleLayout");
+        result.push_back(schema.name + "SingleLayoutColumns");
         result.push_back(schema.compact_view_name());
         result.push_back(schema.compact_const_view_name());
         result.push_back(schema.compact_view_name() + "Impl");

@@ -17,6 +17,32 @@ struct LaserHitDetailsSchema;
 
 struct LaserHitDetailsSingleView;
 struct LaserHitDetailsSingleConstView;
+struct LaserHitDetailsSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+
+    ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<float> LocationsXsColumn;
+    ColLayout<float> LocationsYsColumn;
+    ColLayout<float> LocationsZsColumn;
+    ColLayout<float> EmissionDirectionsXsColumn;
+    ColLayout<float> EmissionDirectionsYsColumn;
+    ColLayout<float> EmissionDirectionsZsColumn;
+    ColLayout<LaserSource> SourcesColumn;
+
+    constexpr LaserHitDetailsSingleLayoutColumns() noexcept
+        : LocationsXsColumn{LayoutStart}
+        , LocationsYsColumn{LocationsXsColumn}
+        , LocationsZsColumn{LocationsYsColumn}
+        , EmissionDirectionsXsColumn{LocationsZsColumn}
+        , EmissionDirectionsYsColumn{EmissionDirectionsXsColumn}
+        , EmissionDirectionsZsColumn{EmissionDirectionsYsColumn}
+        , SourcesColumn{EmissionDirectionsZsColumn} {}
+    LaserHitDetailsSingleLayoutColumns(LaserHitDetailsSingleLayoutColumns const&) = delete;
+    auto operator=(LaserHitDetailsSingleLayoutColumns const&)
+        -> LaserHitDetailsSingleLayoutColumns& = delete;
+};
 struct LaserHitDetailsSingleLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
@@ -25,27 +51,18 @@ struct LaserHitDetailsSingleLayout {
         ml::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
-    template <typename T>
-    using ColLayout = ml::native_soa::ColumnLayout<T>;
-    static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+    static constexpr LaserHitDetailsSingleLayoutColumns columns{};
 
-    static constexpr ColLayout<float> LocationsXsColumn{LayoutStart};
-    static constexpr ColLayout<float> LocationsYsColumn{LocationsXsColumn};
-    static constexpr ColLayout<float> LocationsZsColumn{LocationsYsColumn};
-    static constexpr ColLayout<float> EmissionDirectionsXsColumn{LocationsZsColumn};
-    static constexpr ColLayout<float> EmissionDirectionsYsColumn{EmissionDirectionsXsColumn};
-    static constexpr ColLayout<float> EmissionDirectionsZsColumn{EmissionDirectionsYsColumn};
-    static constexpr ColLayout<LaserSource> SourcesColumn{EmissionDirectionsZsColumn};
-
-    static constexpr byte_size_type allocation_alignment{SourcesColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{
+        columns.SourcesColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::capacity_block_bound(SourcesColumn)};
+        ml::native_soa::capacity_block_bound(columns.SourcesColumn)};
     static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : SourcesColumn.data_end(blocks);
+        return blocks == 0 ? 0 : columns.SourcesColumn.data_end(blocks);
     }
     static_assert(max_capacity >= capacity_granularity);
 };
@@ -74,12 +91,13 @@ struct LaserHitDetailsSingleViewImpl : ml::soa_storage_detail::CompactViewOperat
         , count_{other.count_} {}
     auto view_locations() const {
         using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
-                                                                     offset_,
-                                                                     count_,
-                                                                     Layout::LocationsXsColumn,
-                                                                     Layout::LocationsYsColumn,
-                                                                     Layout::LocationsZsColumn);
+        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+            state_,
+            offset_,
+            count_,
+            Layout::columns.LocationsXsColumn,
+            Layout::columns.LocationsYsColumn,
+            Layout::columns.LocationsZsColumn);
     }
     auto view_emission_directions() const {
         using ml::soa_storage_detail::three_column_view;
@@ -87,11 +105,11 @@ struct LaserHitDetailsSingleViewImpl : ml::soa_storage_detail::CompactViewOperat
             state_,
             offset_,
             count_,
-            Layout::EmissionDirectionsXsColumn,
-            Layout::EmissionDirectionsYsColumn,
-            Layout::EmissionDirectionsZsColumn);
+            Layout::columns.EmissionDirectionsXsColumn,
+            Layout::columns.EmissionDirectionsYsColumn,
+            Layout::columns.EmissionDirectionsZsColumn);
     }
-    auto sources() const { return make_column_view(Layout::SourcesColumn); }
+    auto sources() const { return make_column_view(Layout::columns.SourcesColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         auto const& locations_view{view_locations()};
@@ -224,13 +242,13 @@ struct LaserHitDetails
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::LocationsXsColumn),
-                cursor.column_pointer(data, Layout::LocationsYsColumn),
-                cursor.column_pointer(data, Layout::LocationsZsColumn),
-                cursor.column_pointer(data, Layout::EmissionDirectionsXsColumn),
-                cursor.column_pointer(data, Layout::EmissionDirectionsYsColumn),
-                cursor.column_pointer(data, Layout::EmissionDirectionsZsColumn),
-                cursor.column_pointer(data, Layout::SourcesColumn)};
+        return {cursor.column_pointer(data, Layout::columns.LocationsXsColumn),
+                cursor.column_pointer(data, Layout::columns.LocationsYsColumn),
+                cursor.column_pointer(data, Layout::columns.LocationsZsColumn),
+                cursor.column_pointer(data, Layout::columns.EmissionDirectionsXsColumn),
+                cursor.column_pointer(data, Layout::columns.EmissionDirectionsYsColumn),
+                cursor.column_pointer(data, Layout::columns.EmissionDirectionsZsColumn),
+                cursor.column_pointer(data, Layout::columns.SourcesColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);

@@ -15,6 +15,23 @@ struct EntityEntityOverlapsSchema;
 
 struct EntityEntityOverlapsSingleView;
 struct EntityEntityOverlapsSingleConstView;
+struct EntityEntityOverlapsSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+
+    ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<EntityUniqueId> FirstEntitiesColumn;
+    ColLayout<EntityUniqueId> SecondEntitiesColumn;
+
+    constexpr EntityEntityOverlapsSingleLayoutColumns() noexcept
+        : FirstEntitiesColumn{LayoutStart}
+        , SecondEntitiesColumn{FirstEntitiesColumn} {}
+    EntityEntityOverlapsSingleLayoutColumns(EntityEntityOverlapsSingleLayoutColumns const&) =
+        delete;
+    auto operator=(EntityEntityOverlapsSingleLayoutColumns const&)
+        -> EntityEntityOverlapsSingleLayoutColumns& = delete;
+};
 struct EntityEntityOverlapsSingleLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
@@ -23,22 +40,18 @@ struct EntityEntityOverlapsSingleLayout {
         ml::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
-    template <typename T>
-    using ColLayout = ml::native_soa::ColumnLayout<T>;
-    static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+    static constexpr EntityEntityOverlapsSingleLayoutColumns columns{};
 
-    static constexpr ColLayout<EntityUniqueId> FirstEntitiesColumn{LayoutStart};
-    static constexpr ColLayout<EntityUniqueId> SecondEntitiesColumn{FirstEntitiesColumn};
-
-    static constexpr byte_size_type allocation_alignment{SecondEntitiesColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{
+        columns.SecondEntitiesColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::capacity_block_bound(SecondEntitiesColumn)};
+        ml::native_soa::capacity_block_bound(columns.SecondEntitiesColumn)};
     static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : SecondEntitiesColumn.data_end(blocks);
+        return blocks == 0 ? 0 : columns.SecondEntitiesColumn.data_end(blocks);
     }
     static_assert(max_capacity >= capacity_granularity);
 };
@@ -65,8 +78,8 @@ struct EntityEntityOverlapsSingleViewImpl : ml::soa_storage_detail::CompactViewO
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto first_entities() const { return make_column_view(Layout::FirstEntitiesColumn); }
-    auto second_entities() const { return make_column_view(Layout::SecondEntitiesColumn); }
+    auto first_entities() const { return make_column_view(Layout::columns.FirstEntitiesColumn); }
+    auto second_entities() const { return make_column_view(Layout::columns.SecondEntitiesColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(first_entities());
@@ -176,8 +189,8 @@ struct EntityEntityOverlaps
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::FirstEntitiesColumn),
-                cursor.column_pointer(data, Layout::SecondEntitiesColumn)};
+        return {cursor.column_pointer(data, Layout::columns.FirstEntitiesColumn),
+                cursor.column_pointer(data, Layout::columns.SecondEntitiesColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -259,6 +272,23 @@ struct EntityStaticOverlapsSchema;
 
 struct EntityStaticOverlapsSingleView;
 struct EntityStaticOverlapsSingleConstView;
+struct EntityStaticOverlapsSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+
+    ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<EntityUniqueId> EntitiesColumn;
+    ColLayout<StaticGeometryIndex> StaticGeometryIndicesColumn;
+
+    constexpr EntityStaticOverlapsSingleLayoutColumns() noexcept
+        : EntitiesColumn{LayoutStart}
+        , StaticGeometryIndicesColumn{EntitiesColumn} {}
+    EntityStaticOverlapsSingleLayoutColumns(EntityStaticOverlapsSingleLayoutColumns const&) =
+        delete;
+    auto operator=(EntityStaticOverlapsSingleLayoutColumns const&)
+        -> EntityStaticOverlapsSingleLayoutColumns& = delete;
+};
 struct EntityStaticOverlapsSingleLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
@@ -267,23 +297,18 @@ struct EntityStaticOverlapsSingleLayout {
         ml::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
-    template <typename T>
-    using ColLayout = ml::native_soa::ColumnLayout<T>;
-    static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
-
-    static constexpr ColLayout<EntityUniqueId> EntitiesColumn{LayoutStart};
-    static constexpr ColLayout<StaticGeometryIndex> StaticGeometryIndicesColumn{EntitiesColumn};
+    static constexpr EntityStaticOverlapsSingleLayoutColumns columns{};
 
     static constexpr byte_size_type allocation_alignment{
-        StaticGeometryIndicesColumn.allocation_alignment};
+        columns.StaticGeometryIndicesColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::capacity_block_bound(StaticGeometryIndicesColumn)};
+        ml::native_soa::capacity_block_bound(columns.StaticGeometryIndicesColumn)};
     static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : StaticGeometryIndicesColumn.data_end(blocks);
+        return blocks == 0 ? 0 : columns.StaticGeometryIndicesColumn.data_end(blocks);
     }
     static_assert(max_capacity >= capacity_granularity);
 };
@@ -310,9 +335,9 @@ struct EntityStaticOverlapsSingleViewImpl : ml::soa_storage_detail::CompactViewO
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto entities() const { return make_column_view(Layout::EntitiesColumn); }
+    auto entities() const { return make_column_view(Layout::columns.EntitiesColumn); }
     auto static_geometry_indices() const {
-        return make_column_view(Layout::StaticGeometryIndicesColumn);
+        return make_column_view(Layout::columns.StaticGeometryIndicesColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -423,8 +448,8 @@ struct EntityStaticOverlaps
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::EntitiesColumn),
-                cursor.column_pointer(data, Layout::StaticGeometryIndicesColumn)};
+        return {cursor.column_pointer(data, Layout::columns.EntitiesColumn),
+                cursor.column_pointer(data, Layout::columns.StaticGeometryIndicesColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);

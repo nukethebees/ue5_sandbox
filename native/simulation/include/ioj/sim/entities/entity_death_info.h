@@ -15,6 +15,24 @@ struct EntityDeathInfoSchema;
 
 struct EntityDeathInfoSingleView;
 struct EntityDeathInfoSingleConstView;
+struct EntityDeathInfoSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+
+    ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<DeathReason> ReasonsColumn;
+    ColLayout<EntityUniqueId> VictimsColumn;
+    ColLayout<EntityUniqueId> KillersColumn;
+
+    constexpr EntityDeathInfoSingleLayoutColumns() noexcept
+        : ReasonsColumn{LayoutStart}
+        , VictimsColumn{ReasonsColumn}
+        , KillersColumn{VictimsColumn} {}
+    EntityDeathInfoSingleLayoutColumns(EntityDeathInfoSingleLayoutColumns const&) = delete;
+    auto operator=(EntityDeathInfoSingleLayoutColumns const&)
+        -> EntityDeathInfoSingleLayoutColumns& = delete;
+};
 struct EntityDeathInfoSingleLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
@@ -23,23 +41,18 @@ struct EntityDeathInfoSingleLayout {
         ml::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
-    template <typename T>
-    using ColLayout = ml::native_soa::ColumnLayout<T>;
-    static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+    static constexpr EntityDeathInfoSingleLayoutColumns columns{};
 
-    static constexpr ColLayout<DeathReason> ReasonsColumn{LayoutStart};
-    static constexpr ColLayout<EntityUniqueId> VictimsColumn{ReasonsColumn};
-    static constexpr ColLayout<EntityUniqueId> KillersColumn{VictimsColumn};
-
-    static constexpr byte_size_type allocation_alignment{KillersColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{
+        columns.KillersColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::capacity_block_bound(KillersColumn)};
+        ml::native_soa::capacity_block_bound(columns.KillersColumn)};
     static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : KillersColumn.data_end(blocks);
+        return blocks == 0 ? 0 : columns.KillersColumn.data_end(blocks);
     }
     static_assert(max_capacity >= capacity_granularity);
 };
@@ -66,9 +79,9 @@ struct EntityDeathInfoSingleViewImpl : ml::soa_storage_detail::CompactViewOperat
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto reasons() const { return make_column_view(Layout::ReasonsColumn); }
-    auto victims() const { return make_column_view(Layout::VictimsColumn); }
-    auto killers() const { return make_column_view(Layout::KillersColumn); }
+    auto reasons() const { return make_column_view(Layout::columns.ReasonsColumn); }
+    auto victims() const { return make_column_view(Layout::columns.VictimsColumn); }
+    auto killers() const { return make_column_view(Layout::columns.KillersColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(reasons());
@@ -181,9 +194,9 @@ struct EntityDeathInfo
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::ReasonsColumn),
-                cursor.column_pointer(data, Layout::VictimsColumn),
-                cursor.column_pointer(data, Layout::KillersColumn)};
+        return {cursor.column_pointer(data, Layout::columns.ReasonsColumn),
+                cursor.column_pointer(data, Layout::columns.VictimsColumn),
+                cursor.column_pointer(data, Layout::columns.KillersColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);

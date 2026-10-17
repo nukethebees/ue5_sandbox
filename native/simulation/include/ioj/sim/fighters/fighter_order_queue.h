@@ -15,6 +15,26 @@ struct FighterOrderQueueSchema;
 
 struct FighterOrderQueueSingleView;
 struct FighterOrderQueueSingleConstView;
+struct FighterOrderQueueSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+
+    ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<EntityUniqueId> EntityIdsColumn;
+    ColLayout<FighterOrder> OrdersColumn;
+    ColLayout<FighterTask> TasksColumn;
+    ColLayout<EntityUniqueId> TargetsColumn;
+
+    constexpr FighterOrderQueueSingleLayoutColumns() noexcept
+        : EntityIdsColumn{LayoutStart}
+        , OrdersColumn{EntityIdsColumn}
+        , TasksColumn{OrdersColumn}
+        , TargetsColumn{TasksColumn} {}
+    FighterOrderQueueSingleLayoutColumns(FighterOrderQueueSingleLayoutColumns const&) = delete;
+    auto operator=(FighterOrderQueueSingleLayoutColumns const&)
+        -> FighterOrderQueueSingleLayoutColumns& = delete;
+};
 struct FighterOrderQueueSingleLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
@@ -23,24 +43,18 @@ struct FighterOrderQueueSingleLayout {
         ml::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
-    template <typename T>
-    using ColLayout = ml::native_soa::ColumnLayout<T>;
-    static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+    static constexpr FighterOrderQueueSingleLayoutColumns columns{};
 
-    static constexpr ColLayout<EntityUniqueId> EntityIdsColumn{LayoutStart};
-    static constexpr ColLayout<FighterOrder> OrdersColumn{EntityIdsColumn};
-    static constexpr ColLayout<FighterTask> TasksColumn{OrdersColumn};
-    static constexpr ColLayout<EntityUniqueId> TargetsColumn{TasksColumn};
-
-    static constexpr byte_size_type allocation_alignment{TargetsColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{
+        columns.TargetsColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::capacity_block_bound(TargetsColumn)};
+        ml::native_soa::capacity_block_bound(columns.TargetsColumn)};
     static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : TargetsColumn.data_end(blocks);
+        return blocks == 0 ? 0 : columns.TargetsColumn.data_end(blocks);
     }
     static_assert(max_capacity >= capacity_granularity);
 };
@@ -67,10 +81,10 @@ struct FighterOrderQueueSingleViewImpl : ml::soa_storage_detail::CompactViewOper
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto entity_ids() const { return make_column_view(Layout::EntityIdsColumn); }
-    auto orders() const { return make_column_view(Layout::OrdersColumn); }
-    auto tasks() const { return make_column_view(Layout::TasksColumn); }
-    auto targets() const { return make_column_view(Layout::TargetsColumn); }
+    auto entity_ids() const { return make_column_view(Layout::columns.EntityIdsColumn); }
+    auto orders() const { return make_column_view(Layout::columns.OrdersColumn); }
+    auto tasks() const { return make_column_view(Layout::columns.TasksColumn); }
+    auto targets() const { return make_column_view(Layout::columns.TargetsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(entity_ids());
@@ -186,10 +200,10 @@ struct FighterOrderQueue
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::EntityIdsColumn),
-                cursor.column_pointer(data, Layout::OrdersColumn),
-                cursor.column_pointer(data, Layout::TasksColumn),
-                cursor.column_pointer(data, Layout::TargetsColumn)};
+        return {cursor.column_pointer(data, Layout::columns.EntityIdsColumn),
+                cursor.column_pointer(data, Layout::columns.OrdersColumn),
+                cursor.column_pointer(data, Layout::columns.TasksColumn),
+                cursor.column_pointer(data, Layout::columns.TargetsColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);

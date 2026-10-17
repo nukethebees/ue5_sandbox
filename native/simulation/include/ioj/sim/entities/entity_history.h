@@ -17,6 +17,31 @@ struct EntityHistoryColumnsSchema;
 
 struct EntityHistoryColumnsSingleView;
 struct EntityHistoryColumnsSingleConstView;
+struct EntityHistoryColumnsSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+
+    ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<EntityUniqueId> EntityIdsColumn;
+    ColLayout<EntityType> EntityTypesColumn;
+    ColLayout<::ioj::Team> TeamsColumn;
+    ColLayout<std::uint32_t> KillsColumn;
+    ColLayout<EntityUniqueId> KilledByColumn;
+    ColLayout<LifeState> LifeStateColumn;
+
+    constexpr EntityHistoryColumnsSingleLayoutColumns() noexcept
+        : EntityIdsColumn{LayoutStart}
+        , EntityTypesColumn{EntityIdsColumn}
+        , TeamsColumn{EntityTypesColumn}
+        , KillsColumn{TeamsColumn}
+        , KilledByColumn{KillsColumn}
+        , LifeStateColumn{KilledByColumn} {}
+    EntityHistoryColumnsSingleLayoutColumns(EntityHistoryColumnsSingleLayoutColumns const&) =
+        delete;
+    auto operator=(EntityHistoryColumnsSingleLayoutColumns const&)
+        -> EntityHistoryColumnsSingleLayoutColumns& = delete;
+};
 struct EntityHistoryColumnsSingleLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
@@ -25,26 +50,18 @@ struct EntityHistoryColumnsSingleLayout {
         ml::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
-    template <typename T>
-    using ColLayout = ml::native_soa::ColumnLayout<T>;
-    static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+    static constexpr EntityHistoryColumnsSingleLayoutColumns columns{};
 
-    static constexpr ColLayout<EntityUniqueId> EntityIdsColumn{LayoutStart};
-    static constexpr ColLayout<EntityType> EntityTypesColumn{EntityIdsColumn};
-    static constexpr ColLayout<::ioj::Team> TeamsColumn{EntityTypesColumn};
-    static constexpr ColLayout<std::uint32_t> KillsColumn{TeamsColumn};
-    static constexpr ColLayout<EntityUniqueId> KilledByColumn{KillsColumn};
-    static constexpr ColLayout<LifeState> LifeStateColumn{KilledByColumn};
-
-    static constexpr byte_size_type allocation_alignment{LifeStateColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{
+        columns.LifeStateColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::capacity_block_bound(LifeStateColumn)};
+        ml::native_soa::capacity_block_bound(columns.LifeStateColumn)};
     static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : LifeStateColumn.data_end(blocks);
+        return blocks == 0 ? 0 : columns.LifeStateColumn.data_end(blocks);
     }
     static_assert(max_capacity >= capacity_granularity);
 };
@@ -71,12 +88,12 @@ struct EntityHistoryColumnsSingleViewImpl : ml::soa_storage_detail::CompactViewO
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto entity_ids() const { return make_column_view(Layout::EntityIdsColumn); }
-    auto entity_types() const { return make_column_view(Layout::EntityTypesColumn); }
-    auto teams() const { return make_column_view(Layout::TeamsColumn); }
-    auto kills() const { return make_column_view(Layout::KillsColumn); }
-    auto killed_by() const { return make_column_view(Layout::KilledByColumn); }
-    auto life_state() const { return make_column_view(Layout::LifeStateColumn); }
+    auto entity_ids() const { return make_column_view(Layout::columns.EntityIdsColumn); }
+    auto entity_types() const { return make_column_view(Layout::columns.EntityTypesColumn); }
+    auto teams() const { return make_column_view(Layout::columns.TeamsColumn); }
+    auto kills() const { return make_column_view(Layout::columns.KillsColumn); }
+    auto killed_by() const { return make_column_view(Layout::columns.KilledByColumn); }
+    auto life_state() const { return make_column_view(Layout::columns.LifeStateColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(entity_ids());
@@ -203,12 +220,12 @@ struct EntityHistory
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::EntityIdsColumn),
-                cursor.column_pointer(data, Layout::EntityTypesColumn),
-                cursor.column_pointer(data, Layout::TeamsColumn),
-                cursor.column_pointer(data, Layout::KillsColumn),
-                cursor.column_pointer(data, Layout::KilledByColumn),
-                cursor.column_pointer(data, Layout::LifeStateColumn)};
+        return {cursor.column_pointer(data, Layout::columns.EntityIdsColumn),
+                cursor.column_pointer(data, Layout::columns.EntityTypesColumn),
+                cursor.column_pointer(data, Layout::columns.TeamsColumn),
+                cursor.column_pointer(data, Layout::columns.KillsColumn),
+                cursor.column_pointer(data, Layout::columns.KilledByColumn),
+                cursor.column_pointer(data, Layout::columns.LifeStateColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);

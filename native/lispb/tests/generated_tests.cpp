@@ -1155,14 +1155,14 @@ TEST(GeneratedSingleAllocationSoa, LayoutAndAccess) {
     static_assert(ml::soa_storage_detail::validate_compact_view<SingleParents::View>());
     static_assert(ml::soa_storage_detail::validate_compact_view<SingleParents::ConstView>());
     static_assert(!std::is_copy_constructible_v<SingleParents>);
-    using KeysColumn = std::remove_cvref_t<decltype(SingleParents::Layout::KeysColumn)>;
+    using KeysColumn = std::remove_cvref_t<decltype(SingleParents::Layout::columns.KeysColumn)>;
     static_assert(std::is_same_v<KeysColumn::pointer, int32*>);
     static_assert(std::is_same_v<KeysColumn::const_pointer, int32 const*>);
-    static_assert(SingleParents::Layout::KeysColumn.offset(1) == 0);
-    static_assert(SingleParents::Layout::ChildrenValuesColumn.offset(1) ==
+    static_assert(SingleParents::Layout::columns.KeysColumn.offset(1) == 0);
+    static_assert(SingleParents::Layout::columns.ChildrenValuesColumn.offset(1) ==
                   64 * sizeof(int32) + 192);
-    static_assert(SingleParents::Layout::ChildrenValuesColumn.capacity_granularity == 64);
-    static_assert(SingleParents::Layout::ChildrenValuesColumn.column_gap == 192);
+    static_assert(SingleParents::Layout::columns.ChildrenValuesColumn.capacity_granularity == 64);
+    static_assert(SingleParents::Layout::columns.ChildrenValuesColumn.column_gap == 192);
     static_assert(SingleParents::layout_bytes(1) == 128 * sizeof(int32) + 192);
 
     SingleParents parents;

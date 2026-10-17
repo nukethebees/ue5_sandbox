@@ -20,6 +20,36 @@ struct FighterSpawnQueueSchema;
 
 struct FighterSpawnQueueSingleView;
 struct FighterSpawnQueueSingleConstView;
+struct FighterSpawnQueueSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+
+    ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<float> LocationsXsColumn;
+    ColLayout<float> LocationsYsColumn;
+    ColLayout<float> LocationsZsColumn;
+    ColLayout<float> RotationsPitchesColumn;
+    ColLayout<float> RotationsYawsColumn;
+    ColLayout<float> RotationsRollsColumn;
+    ColLayout<::ioj::Team> TeamsColumn;
+    ColLayout<EntityUniqueId> ParentsColumn;
+    ColLayout<EntityUniqueId> TargetsColumn;
+
+    constexpr FighterSpawnQueueSingleLayoutColumns() noexcept
+        : LocationsXsColumn{LayoutStart}
+        , LocationsYsColumn{LocationsXsColumn}
+        , LocationsZsColumn{LocationsYsColumn}
+        , RotationsPitchesColumn{LocationsZsColumn}
+        , RotationsYawsColumn{RotationsPitchesColumn}
+        , RotationsRollsColumn{RotationsYawsColumn}
+        , TeamsColumn{RotationsRollsColumn}
+        , ParentsColumn{TeamsColumn}
+        , TargetsColumn{ParentsColumn} {}
+    FighterSpawnQueueSingleLayoutColumns(FighterSpawnQueueSingleLayoutColumns const&) = delete;
+    auto operator=(FighterSpawnQueueSingleLayoutColumns const&)
+        -> FighterSpawnQueueSingleLayoutColumns& = delete;
+};
 struct FighterSpawnQueueSingleLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
@@ -28,29 +58,18 @@ struct FighterSpawnQueueSingleLayout {
         ml::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
-    template <typename T>
-    using ColLayout = ml::native_soa::ColumnLayout<T>;
-    static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+    static constexpr FighterSpawnQueueSingleLayoutColumns columns{};
 
-    static constexpr ColLayout<float> LocationsXsColumn{LayoutStart};
-    static constexpr ColLayout<float> LocationsYsColumn{LocationsXsColumn};
-    static constexpr ColLayout<float> LocationsZsColumn{LocationsYsColumn};
-    static constexpr ColLayout<float> RotationsPitchesColumn{LocationsZsColumn};
-    static constexpr ColLayout<float> RotationsYawsColumn{RotationsPitchesColumn};
-    static constexpr ColLayout<float> RotationsRollsColumn{RotationsYawsColumn};
-    static constexpr ColLayout<::ioj::Team> TeamsColumn{RotationsRollsColumn};
-    static constexpr ColLayout<EntityUniqueId> ParentsColumn{TeamsColumn};
-    static constexpr ColLayout<EntityUniqueId> TargetsColumn{ParentsColumn};
-
-    static constexpr byte_size_type allocation_alignment{TargetsColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{
+        columns.TargetsColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::capacity_block_bound(TargetsColumn)};
+        ml::native_soa::capacity_block_bound(columns.TargetsColumn)};
     static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : TargetsColumn.data_end(blocks);
+        return blocks == 0 ? 0 : columns.TargetsColumn.data_end(blocks);
     }
     static_assert(max_capacity >= capacity_granularity);
 };
@@ -79,12 +98,13 @@ struct FighterSpawnQueueSingleViewImpl : ml::soa_storage_detail::CompactViewOper
         , count_{other.count_} {}
     auto view_locations() const {
         using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
-                                                                     offset_,
-                                                                     count_,
-                                                                     Layout::LocationsXsColumn,
-                                                                     Layout::LocationsYsColumn,
-                                                                     Layout::LocationsZsColumn);
+        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+            state_,
+            offset_,
+            count_,
+            Layout::columns.LocationsXsColumn,
+            Layout::columns.LocationsYsColumn,
+            Layout::columns.LocationsZsColumn);
     }
     auto view_rotations() const {
         using ml::soa_storage_detail::three_column_view;
@@ -94,13 +114,13 @@ struct FighterSpawnQueueSingleViewImpl : ml::soa_storage_detail::CompactViewOper
             state_,
             offset_,
             count_,
-            Layout::RotationsPitchesColumn,
-            Layout::RotationsYawsColumn,
-            Layout::RotationsRollsColumn);
+            Layout::columns.RotationsPitchesColumn,
+            Layout::columns.RotationsYawsColumn,
+            Layout::columns.RotationsRollsColumn);
     }
-    auto teams() const { return make_column_view(Layout::TeamsColumn); }
-    auto parents() const { return make_column_view(Layout::ParentsColumn); }
-    auto targets() const { return make_column_view(Layout::TargetsColumn); }
+    auto teams() const { return make_column_view(Layout::columns.TeamsColumn); }
+    auto parents() const { return make_column_view(Layout::columns.ParentsColumn); }
+    auto targets() const { return make_column_view(Layout::columns.TargetsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         auto const& locations_view{view_locations()};
@@ -241,15 +261,15 @@ struct FighterSpawnQueue
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::LocationsXsColumn),
-                cursor.column_pointer(data, Layout::LocationsYsColumn),
-                cursor.column_pointer(data, Layout::LocationsZsColumn),
-                cursor.column_pointer(data, Layout::RotationsPitchesColumn),
-                cursor.column_pointer(data, Layout::RotationsYawsColumn),
-                cursor.column_pointer(data, Layout::RotationsRollsColumn),
-                cursor.column_pointer(data, Layout::TeamsColumn),
-                cursor.column_pointer(data, Layout::ParentsColumn),
-                cursor.column_pointer(data, Layout::TargetsColumn)};
+        return {cursor.column_pointer(data, Layout::columns.LocationsXsColumn),
+                cursor.column_pointer(data, Layout::columns.LocationsYsColumn),
+                cursor.column_pointer(data, Layout::columns.LocationsZsColumn),
+                cursor.column_pointer(data, Layout::columns.RotationsPitchesColumn),
+                cursor.column_pointer(data, Layout::columns.RotationsYawsColumn),
+                cursor.column_pointer(data, Layout::columns.RotationsRollsColumn),
+                cursor.column_pointer(data, Layout::columns.TeamsColumn),
+                cursor.column_pointer(data, Layout::columns.ParentsColumn),
+                cursor.column_pointer(data, Layout::columns.TargetsColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);

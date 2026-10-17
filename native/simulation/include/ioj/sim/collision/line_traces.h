@@ -16,6 +16,29 @@ struct LineTracesSchema;
 
 struct LineTracesSingleView;
 struct LineTracesSingleConstView;
+struct LineTracesSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+
+    ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<float> StartsXsColumn;
+    ColLayout<float> StartsYsColumn;
+    ColLayout<float> StartsZsColumn;
+    ColLayout<float> EndsXsColumn;
+    ColLayout<float> EndsYsColumn;
+    ColLayout<float> EndsZsColumn;
+
+    constexpr LineTracesSingleLayoutColumns() noexcept
+        : StartsXsColumn{LayoutStart}
+        , StartsYsColumn{StartsXsColumn}
+        , StartsZsColumn{StartsYsColumn}
+        , EndsXsColumn{StartsZsColumn}
+        , EndsYsColumn{EndsXsColumn}
+        , EndsZsColumn{EndsYsColumn} {}
+    LineTracesSingleLayoutColumns(LineTracesSingleLayoutColumns const&) = delete;
+    auto operator=(LineTracesSingleLayoutColumns const&) -> LineTracesSingleLayoutColumns& = delete;
+};
 struct LineTracesSingleLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
@@ -24,26 +47,17 @@ struct LineTracesSingleLayout {
         ml::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
-    template <typename T>
-    using ColLayout = ml::native_soa::ColumnLayout<T>;
-    static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+    static constexpr LineTracesSingleLayoutColumns columns{};
 
-    static constexpr ColLayout<float> StartsXsColumn{LayoutStart};
-    static constexpr ColLayout<float> StartsYsColumn{StartsXsColumn};
-    static constexpr ColLayout<float> StartsZsColumn{StartsYsColumn};
-    static constexpr ColLayout<float> EndsXsColumn{StartsZsColumn};
-    static constexpr ColLayout<float> EndsYsColumn{EndsXsColumn};
-    static constexpr ColLayout<float> EndsZsColumn{EndsYsColumn};
-
-    static constexpr byte_size_type allocation_alignment{EndsZsColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{columns.EndsZsColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::capacity_block_bound(EndsZsColumn)};
+        ml::native_soa::capacity_block_bound(columns.EndsZsColumn)};
     static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : EndsZsColumn.data_end(blocks);
+        return blocks == 0 ? 0 : columns.EndsZsColumn.data_end(blocks);
     }
     static_assert(max_capacity >= capacity_granularity);
 };
@@ -72,21 +86,22 @@ struct LineTracesSingleViewImpl : ml::soa_storage_detail::CompactViewOperations 
         , count_{other.count_} {}
     auto view_starts() const {
         using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
-                                                                     offset_,
-                                                                     count_,
-                                                                     Layout::StartsXsColumn,
-                                                                     Layout::StartsYsColumn,
-                                                                     Layout::StartsZsColumn);
+        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+            state_,
+            offset_,
+            count_,
+            Layout::columns.StartsXsColumn,
+            Layout::columns.StartsYsColumn,
+            Layout::columns.StartsZsColumn);
     }
     auto view_ends() const {
         using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
                                                                      offset_,
                                                                      count_,
-                                                                     Layout::EndsXsColumn,
-                                                                     Layout::EndsYsColumn,
-                                                                     Layout::EndsZsColumn);
+                                                                     Layout::columns.EndsXsColumn,
+                                                                     Layout::columns.EndsYsColumn,
+                                                                     Layout::columns.EndsZsColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -216,12 +231,12 @@ struct LineTraces
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::StartsXsColumn),
-                cursor.column_pointer(data, Layout::StartsYsColumn),
-                cursor.column_pointer(data, Layout::StartsZsColumn),
-                cursor.column_pointer(data, Layout::EndsXsColumn),
-                cursor.column_pointer(data, Layout::EndsYsColumn),
-                cursor.column_pointer(data, Layout::EndsZsColumn)};
+        return {cursor.column_pointer(data, Layout::columns.StartsXsColumn),
+                cursor.column_pointer(data, Layout::columns.StartsYsColumn),
+                cursor.column_pointer(data, Layout::columns.StartsZsColumn),
+                cursor.column_pointer(data, Layout::columns.EndsXsColumn),
+                cursor.column_pointer(data, Layout::columns.EndsYsColumn),
+                cursor.column_pointer(data, Layout::columns.EndsZsColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);

@@ -85,6 +85,38 @@ static_assert(std::is_trivially_copyable_v<HistoryFieldMask>);
 
 struct HistoryRowsSingleView;
 struct HistoryRowsSingleConstView;
+struct HistoryRowsSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+
+    ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<SimTick> CompletedTicksColumn;
+    ColLayout<HistoryFieldMask> ValidityMasksColumn;
+    ColLayout<std::int32_t> ActiveEntitiesColumn;
+    ColLayout<EntityTypeCounts> ActiveEntitiesByTypeColumn;
+    ColLayout<EntityCounts> ActiveEntitiesByTeamAndTypeColumn;
+    ColLayout<std::int32_t> SpawnedEntitiesColumn;
+    ColLayout<std::int32_t> DestroyedEntitiesColumn;
+    ColLayout<std::int32_t> KillsColumn;
+    ColLayout<std::int32_t> ActiveLasersColumn;
+    ColLayout<std::int32_t> LasersFiredColumn;
+
+    constexpr HistoryRowsSingleLayoutColumns() noexcept
+        : CompletedTicksColumn{LayoutStart}
+        , ValidityMasksColumn{CompletedTicksColumn}
+        , ActiveEntitiesColumn{ValidityMasksColumn}
+        , ActiveEntitiesByTypeColumn{ActiveEntitiesColumn}
+        , ActiveEntitiesByTeamAndTypeColumn{ActiveEntitiesByTypeColumn}
+        , SpawnedEntitiesColumn{ActiveEntitiesByTeamAndTypeColumn}
+        , DestroyedEntitiesColumn{SpawnedEntitiesColumn}
+        , KillsColumn{DestroyedEntitiesColumn}
+        , ActiveLasersColumn{KillsColumn}
+        , LasersFiredColumn{ActiveLasersColumn} {}
+    HistoryRowsSingleLayoutColumns(HistoryRowsSingleLayoutColumns const&) = delete;
+    auto operator=(HistoryRowsSingleLayoutColumns const&)
+        -> HistoryRowsSingleLayoutColumns& = delete;
+};
 struct HistoryRowsSingleLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
@@ -93,32 +125,18 @@ struct HistoryRowsSingleLayout {
         ml::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
-    template <typename T>
-    using ColLayout = ml::native_soa::ColumnLayout<T>;
-    static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+    static constexpr HistoryRowsSingleLayoutColumns columns{};
 
-    static constexpr ColLayout<SimTick> CompletedTicksColumn{LayoutStart};
-    static constexpr ColLayout<HistoryFieldMask> ValidityMasksColumn{CompletedTicksColumn};
-    static constexpr ColLayout<std::int32_t> ActiveEntitiesColumn{ValidityMasksColumn};
-    static constexpr ColLayout<EntityTypeCounts> ActiveEntitiesByTypeColumn{ActiveEntitiesColumn};
-    static constexpr ColLayout<EntityCounts> ActiveEntitiesByTeamAndTypeColumn{
-        ActiveEntitiesByTypeColumn};
-    static constexpr ColLayout<std::int32_t> SpawnedEntitiesColumn{
-        ActiveEntitiesByTeamAndTypeColumn};
-    static constexpr ColLayout<std::int32_t> DestroyedEntitiesColumn{SpawnedEntitiesColumn};
-    static constexpr ColLayout<std::int32_t> KillsColumn{DestroyedEntitiesColumn};
-    static constexpr ColLayout<std::int32_t> ActiveLasersColumn{KillsColumn};
-    static constexpr ColLayout<std::int32_t> LasersFiredColumn{ActiveLasersColumn};
-
-    static constexpr byte_size_type allocation_alignment{LasersFiredColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{
+        columns.LasersFiredColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::capacity_block_bound(LasersFiredColumn)};
+        ml::native_soa::capacity_block_bound(columns.LasersFiredColumn)};
     static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : LasersFiredColumn.data_end(blocks);
+        return blocks == 0 ? 0 : columns.LasersFiredColumn.data_end(blocks);
     }
     static_assert(max_capacity >= capacity_granularity);
 };
@@ -145,20 +163,24 @@ struct HistoryRowsSingleViewImpl : ml::soa_storage_detail::CompactViewOperations
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto completed_ticks() const { return make_column_view(Layout::CompletedTicksColumn); }
-    auto validity_masks() const { return make_column_view(Layout::ValidityMasksColumn); }
-    auto active_entities() const { return make_column_view(Layout::ActiveEntitiesColumn); }
+    auto completed_ticks() const { return make_column_view(Layout::columns.CompletedTicksColumn); }
+    auto validity_masks() const { return make_column_view(Layout::columns.ValidityMasksColumn); }
+    auto active_entities() const { return make_column_view(Layout::columns.ActiveEntitiesColumn); }
     auto active_entities_by_type() const {
-        return make_column_view(Layout::ActiveEntitiesByTypeColumn);
+        return make_column_view(Layout::columns.ActiveEntitiesByTypeColumn);
     }
     auto active_entities_by_team_and_type() const {
-        return make_column_view(Layout::ActiveEntitiesByTeamAndTypeColumn);
+        return make_column_view(Layout::columns.ActiveEntitiesByTeamAndTypeColumn);
     }
-    auto spawned_entities() const { return make_column_view(Layout::SpawnedEntitiesColumn); }
-    auto destroyed_entities() const { return make_column_view(Layout::DestroyedEntitiesColumn); }
-    auto kills() const { return make_column_view(Layout::KillsColumn); }
-    auto active_lasers() const { return make_column_view(Layout::ActiveLasersColumn); }
-    auto lasers_fired() const { return make_column_view(Layout::LasersFiredColumn); }
+    auto spawned_entities() const {
+        return make_column_view(Layout::columns.SpawnedEntitiesColumn);
+    }
+    auto destroyed_entities() const {
+        return make_column_view(Layout::columns.DestroyedEntitiesColumn);
+    }
+    auto kills() const { return make_column_view(Layout::columns.KillsColumn); }
+    auto active_lasers() const { return make_column_view(Layout::columns.ActiveLasersColumn); }
+    auto lasers_fired() const { return make_column_view(Layout::columns.LasersFiredColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(completed_ticks());
@@ -301,16 +323,16 @@ struct HistoryRows
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::CompletedTicksColumn),
-                cursor.column_pointer(data, Layout::ValidityMasksColumn),
-                cursor.column_pointer(data, Layout::ActiveEntitiesColumn),
-                cursor.column_pointer(data, Layout::ActiveEntitiesByTypeColumn),
-                cursor.column_pointer(data, Layout::ActiveEntitiesByTeamAndTypeColumn),
-                cursor.column_pointer(data, Layout::SpawnedEntitiesColumn),
-                cursor.column_pointer(data, Layout::DestroyedEntitiesColumn),
-                cursor.column_pointer(data, Layout::KillsColumn),
-                cursor.column_pointer(data, Layout::ActiveLasersColumn),
-                cursor.column_pointer(data, Layout::LasersFiredColumn)};
+        return {cursor.column_pointer(data, Layout::columns.CompletedTicksColumn),
+                cursor.column_pointer(data, Layout::columns.ValidityMasksColumn),
+                cursor.column_pointer(data, Layout::columns.ActiveEntitiesColumn),
+                cursor.column_pointer(data, Layout::columns.ActiveEntitiesByTypeColumn),
+                cursor.column_pointer(data, Layout::columns.ActiveEntitiesByTeamAndTypeColumn),
+                cursor.column_pointer(data, Layout::columns.SpawnedEntitiesColumn),
+                cursor.column_pointer(data, Layout::columns.DestroyedEntitiesColumn),
+                cursor.column_pointer(data, Layout::columns.KillsColumn),
+                cursor.column_pointer(data, Layout::columns.ActiveLasersColumn),
+                cursor.column_pointer(data, Layout::columns.LasersFiredColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);

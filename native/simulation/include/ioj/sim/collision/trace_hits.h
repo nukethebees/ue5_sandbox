@@ -20,6 +20,29 @@ struct TraceHitsSchema;
 
 struct TraceHitsSingleView;
 struct TraceHitsSingleConstView;
+struct TraceHitsSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+
+    ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<float> LocationsXsColumn;
+    ColLayout<float> LocationsYsColumn;
+    ColLayout<float> LocationsZsColumn;
+    ColLayout<EntityUniqueId> EntitiesColumn;
+    ColLayout<collision::StaticGeometryIndex> StaticGeometryIndicesColumn;
+    ColLayout<TraceHit> HitsColumn;
+
+    constexpr TraceHitsSingleLayoutColumns() noexcept
+        : LocationsXsColumn{LayoutStart}
+        , LocationsYsColumn{LocationsXsColumn}
+        , LocationsZsColumn{LocationsYsColumn}
+        , EntitiesColumn{LocationsZsColumn}
+        , StaticGeometryIndicesColumn{EntitiesColumn}
+        , HitsColumn{StaticGeometryIndicesColumn} {}
+    TraceHitsSingleLayoutColumns(TraceHitsSingleLayoutColumns const&) = delete;
+    auto operator=(TraceHitsSingleLayoutColumns const&) -> TraceHitsSingleLayoutColumns& = delete;
+};
 struct TraceHitsSingleLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
@@ -28,27 +51,17 @@ struct TraceHitsSingleLayout {
         ml::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
-    template <typename T>
-    using ColLayout = ml::native_soa::ColumnLayout<T>;
-    static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+    static constexpr TraceHitsSingleLayoutColumns columns{};
 
-    static constexpr ColLayout<float> LocationsXsColumn{LayoutStart};
-    static constexpr ColLayout<float> LocationsYsColumn{LocationsXsColumn};
-    static constexpr ColLayout<float> LocationsZsColumn{LocationsYsColumn};
-    static constexpr ColLayout<EntityUniqueId> EntitiesColumn{LocationsZsColumn};
-    static constexpr ColLayout<collision::StaticGeometryIndex> StaticGeometryIndicesColumn{
-        EntitiesColumn};
-    static constexpr ColLayout<TraceHit> HitsColumn{StaticGeometryIndicesColumn};
-
-    static constexpr byte_size_type allocation_alignment{HitsColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{columns.HitsColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::capacity_block_bound(HitsColumn)};
+        ml::native_soa::capacity_block_bound(columns.HitsColumn)};
     static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : HitsColumn.data_end(blocks);
+        return blocks == 0 ? 0 : columns.HitsColumn.data_end(blocks);
     }
     static_assert(max_capacity >= capacity_granularity);
 };
@@ -77,18 +90,19 @@ struct TraceHitsSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
         , count_{other.count_} {}
     auto view_locations() const {
         using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
-                                                                     offset_,
-                                                                     count_,
-                                                                     Layout::LocationsXsColumn,
-                                                                     Layout::LocationsYsColumn,
-                                                                     Layout::LocationsZsColumn);
+        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+            state_,
+            offset_,
+            count_,
+            Layout::columns.LocationsXsColumn,
+            Layout::columns.LocationsYsColumn,
+            Layout::columns.LocationsZsColumn);
     }
-    auto entities() const { return make_column_view(Layout::EntitiesColumn); }
+    auto entities() const { return make_column_view(Layout::columns.EntitiesColumn); }
     auto static_geometry_indices() const {
-        return make_column_view(Layout::StaticGeometryIndicesColumn);
+        return make_column_view(Layout::columns.StaticGeometryIndicesColumn);
     }
-    auto hits() const { return make_column_view(Layout::HitsColumn); }
+    auto hits() const { return make_column_view(Layout::columns.HitsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         auto const& locations_view{view_locations()};
@@ -216,12 +230,12 @@ struct TraceHits
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::LocationsXsColumn),
-                cursor.column_pointer(data, Layout::LocationsYsColumn),
-                cursor.column_pointer(data, Layout::LocationsZsColumn),
-                cursor.column_pointer(data, Layout::EntitiesColumn),
-                cursor.column_pointer(data, Layout::StaticGeometryIndicesColumn),
-                cursor.column_pointer(data, Layout::HitsColumn)};
+        return {cursor.column_pointer(data, Layout::columns.LocationsXsColumn),
+                cursor.column_pointer(data, Layout::columns.LocationsYsColumn),
+                cursor.column_pointer(data, Layout::columns.LocationsZsColumn),
+                cursor.column_pointer(data, Layout::columns.EntitiesColumn),
+                cursor.column_pointer(data, Layout::columns.StaticGeometryIndicesColumn),
+                cursor.column_pointer(data, Layout::columns.HitsColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);

@@ -15,6 +15,24 @@ struct DirectDamageEventsSchema;
 
 struct DirectDamageEventsSingleView;
 struct DirectDamageEventsSingleConstView;
+struct DirectDamageEventsSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+
+    ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<EntityUniqueId> DamagedEntitiesColumn;
+    ColLayout<std::int32_t> DamageAmountsColumn;
+    ColLayout<EntityUniqueId> InstigatorsColumn;
+
+    constexpr DirectDamageEventsSingleLayoutColumns() noexcept
+        : DamagedEntitiesColumn{LayoutStart}
+        , DamageAmountsColumn{DamagedEntitiesColumn}
+        , InstigatorsColumn{DamageAmountsColumn} {}
+    DirectDamageEventsSingleLayoutColumns(DirectDamageEventsSingleLayoutColumns const&) = delete;
+    auto operator=(DirectDamageEventsSingleLayoutColumns const&)
+        -> DirectDamageEventsSingleLayoutColumns& = delete;
+};
 struct DirectDamageEventsSingleLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
@@ -23,23 +41,18 @@ struct DirectDamageEventsSingleLayout {
         ml::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
-    template <typename T>
-    using ColLayout = ml::native_soa::ColumnLayout<T>;
-    static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+    static constexpr DirectDamageEventsSingleLayoutColumns columns{};
 
-    static constexpr ColLayout<EntityUniqueId> DamagedEntitiesColumn{LayoutStart};
-    static constexpr ColLayout<std::int32_t> DamageAmountsColumn{DamagedEntitiesColumn};
-    static constexpr ColLayout<EntityUniqueId> InstigatorsColumn{DamageAmountsColumn};
-
-    static constexpr byte_size_type allocation_alignment{InstigatorsColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{
+        columns.InstigatorsColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::capacity_block_bound(InstigatorsColumn)};
+        ml::native_soa::capacity_block_bound(columns.InstigatorsColumn)};
     static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : InstigatorsColumn.data_end(blocks);
+        return blocks == 0 ? 0 : columns.InstigatorsColumn.data_end(blocks);
     }
     static_assert(max_capacity >= capacity_granularity);
 };
@@ -66,9 +79,11 @@ struct DirectDamageEventsSingleViewImpl : ml::soa_storage_detail::CompactViewOpe
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto damaged_entities() const { return make_column_view(Layout::DamagedEntitiesColumn); }
-    auto damage_amounts() const { return make_column_view(Layout::DamageAmountsColumn); }
-    auto instigators() const { return make_column_view(Layout::InstigatorsColumn); }
+    auto damaged_entities() const {
+        return make_column_view(Layout::columns.DamagedEntitiesColumn);
+    }
+    auto damage_amounts() const { return make_column_view(Layout::columns.DamageAmountsColumn); }
+    auto instigators() const { return make_column_view(Layout::columns.InstigatorsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(damaged_entities());
@@ -181,9 +196,9 @@ struct DirectDamageEvents
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::DamagedEntitiesColumn),
-                cursor.column_pointer(data, Layout::DamageAmountsColumn),
-                cursor.column_pointer(data, Layout::InstigatorsColumn)};
+        return {cursor.column_pointer(data, Layout::columns.DamagedEntitiesColumn),
+                cursor.column_pointer(data, Layout::columns.DamageAmountsColumn),
+                cursor.column_pointer(data, Layout::columns.InstigatorsColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);

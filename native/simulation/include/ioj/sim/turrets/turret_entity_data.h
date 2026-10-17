@@ -20,6 +20,64 @@ struct TurretEntityDataSchema;
 
 struct TurretEntityDataSingleView;
 struct TurretEntityDataSingleConstView;
+struct TurretEntityDataSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+
+    ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<EntityUniqueId> EntityIdsColumn;
+    ColLayout<std::uint32_t> IntegralBiasesColumn;
+    ColLayout<float> LocationsXsColumn;
+    ColLayout<float> LocationsYsColumn;
+    ColLayout<float> LocationsZsColumn;
+    ColLayout<float> FirePointLocationsXsColumn;
+    ColLayout<float> FirePointLocationsYsColumn;
+    ColLayout<float> FirePointLocationsZsColumn;
+    ColLayout<float> RotationsPitchesColumn;
+    ColLayout<float> RotationsYawsColumn;
+    ColLayout<float> RotationsRollsColumn;
+    ColLayout<::ioj::Team> TeamsColumn;
+    ColLayout<std::int16_t> LaserCooldownsColumn;
+    ColLayout<std::int32_t> LaserDamagesColumn;
+    ColLayout<std::int16_t> TargetRefreshCountdownsPeriodsColumn;
+    ColLayout<std::int16_t> TargetRefreshCountdownsRemainingTicksColumn;
+    ColLayout<EntityUniqueId> TargetIdsColumn;
+    ColLayout<float> TargetLocationsXsColumn;
+    ColLayout<float> TargetLocationsYsColumn;
+    ColLayout<float> TargetLocationsZsColumn;
+    ColLayout<float> TargetVelocitiesXsColumn;
+    ColLayout<float> TargetVelocitiesYsColumn;
+    ColLayout<float> TargetVelocitiesZsColumn;
+
+    constexpr TurretEntityDataSingleLayoutColumns() noexcept
+        : EntityIdsColumn{LayoutStart}
+        , IntegralBiasesColumn{EntityIdsColumn}
+        , LocationsXsColumn{IntegralBiasesColumn}
+        , LocationsYsColumn{LocationsXsColumn}
+        , LocationsZsColumn{LocationsYsColumn}
+        , FirePointLocationsXsColumn{LocationsZsColumn}
+        , FirePointLocationsYsColumn{FirePointLocationsXsColumn}
+        , FirePointLocationsZsColumn{FirePointLocationsYsColumn}
+        , RotationsPitchesColumn{FirePointLocationsZsColumn}
+        , RotationsYawsColumn{RotationsPitchesColumn}
+        , RotationsRollsColumn{RotationsYawsColumn}
+        , TeamsColumn{RotationsRollsColumn}
+        , LaserCooldownsColumn{TeamsColumn}
+        , LaserDamagesColumn{LaserCooldownsColumn}
+        , TargetRefreshCountdownsPeriodsColumn{LaserDamagesColumn}
+        , TargetRefreshCountdownsRemainingTicksColumn{TargetRefreshCountdownsPeriodsColumn}
+        , TargetIdsColumn{TargetRefreshCountdownsRemainingTicksColumn}
+        , TargetLocationsXsColumn{TargetIdsColumn}
+        , TargetLocationsYsColumn{TargetLocationsXsColumn}
+        , TargetLocationsZsColumn{TargetLocationsYsColumn}
+        , TargetVelocitiesXsColumn{TargetLocationsZsColumn}
+        , TargetVelocitiesYsColumn{TargetVelocitiesXsColumn}
+        , TargetVelocitiesZsColumn{TargetVelocitiesYsColumn} {}
+    TurretEntityDataSingleLayoutColumns(TurretEntityDataSingleLayoutColumns const&) = delete;
+    auto operator=(TurretEntityDataSingleLayoutColumns const&)
+        -> TurretEntityDataSingleLayoutColumns& = delete;
+};
 struct TurretEntityDataSingleLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
@@ -28,47 +86,18 @@ struct TurretEntityDataSingleLayout {
         ml::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
-    template <typename T>
-    using ColLayout = ml::native_soa::ColumnLayout<T>;
-    static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
-
-    static constexpr ColLayout<EntityUniqueId> EntityIdsColumn{LayoutStart};
-    static constexpr ColLayout<std::uint32_t> IntegralBiasesColumn{EntityIdsColumn};
-    static constexpr ColLayout<float> LocationsXsColumn{IntegralBiasesColumn};
-    static constexpr ColLayout<float> LocationsYsColumn{LocationsXsColumn};
-    static constexpr ColLayout<float> LocationsZsColumn{LocationsYsColumn};
-    static constexpr ColLayout<float> FirePointLocationsXsColumn{LocationsZsColumn};
-    static constexpr ColLayout<float> FirePointLocationsYsColumn{FirePointLocationsXsColumn};
-    static constexpr ColLayout<float> FirePointLocationsZsColumn{FirePointLocationsYsColumn};
-    static constexpr ColLayout<float> RotationsPitchesColumn{FirePointLocationsZsColumn};
-    static constexpr ColLayout<float> RotationsYawsColumn{RotationsPitchesColumn};
-    static constexpr ColLayout<float> RotationsRollsColumn{RotationsYawsColumn};
-    static constexpr ColLayout<::ioj::Team> TeamsColumn{RotationsRollsColumn};
-    static constexpr ColLayout<std::int16_t> LaserCooldownsColumn{TeamsColumn};
-    static constexpr ColLayout<std::int32_t> LaserDamagesColumn{LaserCooldownsColumn};
-    static constexpr ColLayout<std::int16_t> TargetRefreshCountdownsPeriodsColumn{
-        LaserDamagesColumn};
-    static constexpr ColLayout<std::int16_t> TargetRefreshCountdownsRemainingTicksColumn{
-        TargetRefreshCountdownsPeriodsColumn};
-    static constexpr ColLayout<EntityUniqueId> TargetIdsColumn{
-        TargetRefreshCountdownsRemainingTicksColumn};
-    static constexpr ColLayout<float> TargetLocationsXsColumn{TargetIdsColumn};
-    static constexpr ColLayout<float> TargetLocationsYsColumn{TargetLocationsXsColumn};
-    static constexpr ColLayout<float> TargetLocationsZsColumn{TargetLocationsYsColumn};
-    static constexpr ColLayout<float> TargetVelocitiesXsColumn{TargetLocationsZsColumn};
-    static constexpr ColLayout<float> TargetVelocitiesYsColumn{TargetVelocitiesXsColumn};
-    static constexpr ColLayout<float> TargetVelocitiesZsColumn{TargetVelocitiesYsColumn};
+    static constexpr TurretEntityDataSingleLayoutColumns columns{};
 
     static constexpr byte_size_type allocation_alignment{
-        TargetVelocitiesZsColumn.allocation_alignment};
+        columns.TargetVelocitiesZsColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::capacity_block_bound(TargetVelocitiesZsColumn)};
+        ml::native_soa::capacity_block_bound(columns.TargetVelocitiesZsColumn)};
     static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : TargetVelocitiesZsColumn.data_end(blocks);
+        return blocks == 0 ? 0 : columns.TargetVelocitiesZsColumn.data_end(blocks);
     }
     static_assert(max_capacity >= capacity_granularity);
 };
@@ -95,16 +124,17 @@ struct TurretEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOpera
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto entity_ids() const { return make_column_view(Layout::EntityIdsColumn); }
-    auto integral_biases() const { return make_column_view(Layout::IntegralBiasesColumn); }
+    auto entity_ids() const { return make_column_view(Layout::columns.EntityIdsColumn); }
+    auto integral_biases() const { return make_column_view(Layout::columns.IntegralBiasesColumn); }
     auto view_locations() const {
         using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
-                                                                     offset_,
-                                                                     count_,
-                                                                     Layout::LocationsXsColumn,
-                                                                     Layout::LocationsYsColumn,
-                                                                     Layout::LocationsZsColumn);
+        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+            state_,
+            offset_,
+            count_,
+            Layout::columns.LocationsXsColumn,
+            Layout::columns.LocationsYsColumn,
+            Layout::columns.LocationsZsColumn);
     }
     auto view_fire_point_locations() const {
         using ml::soa_storage_detail::three_column_view;
@@ -112,9 +142,9 @@ struct TurretEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOpera
             state_,
             offset_,
             count_,
-            Layout::FirePointLocationsXsColumn,
-            Layout::FirePointLocationsYsColumn,
-            Layout::FirePointLocationsZsColumn);
+            Layout::columns.FirePointLocationsXsColumn,
+            Layout::columns.FirePointLocationsYsColumn,
+            Layout::columns.FirePointLocationsZsColumn);
     }
     auto view_rotations() const {
         using ml::soa_storage_detail::three_column_view;
@@ -124,29 +154,29 @@ struct TurretEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOpera
             state_,
             offset_,
             count_,
-            Layout::RotationsPitchesColumn,
-            Layout::RotationsYawsColumn,
-            Layout::RotationsRollsColumn);
+            Layout::columns.RotationsPitchesColumn,
+            Layout::columns.RotationsYawsColumn,
+            Layout::columns.RotationsRollsColumn);
     }
-    auto teams() const { return make_column_view(Layout::TeamsColumn); }
-    auto laser_cooldowns() const { return make_column_view(Layout::LaserCooldownsColumn); }
-    auto laser_damages() const { return make_column_view(Layout::LaserDamagesColumn); }
+    auto teams() const { return make_column_view(Layout::columns.TeamsColumn); }
+    auto laser_cooldowns() const { return make_column_view(Layout::columns.LaserCooldownsColumn); }
+    auto laser_damages() const { return make_column_view(Layout::columns.LaserDamagesColumn); }
     auto target_refresh_countdowns_periods() const {
-        return make_column_view(Layout::TargetRefreshCountdownsPeriodsColumn);
+        return make_column_view(Layout::columns.TargetRefreshCountdownsPeriodsColumn);
     }
     auto target_refresh_countdowns_remaining_ticks() const {
-        return make_column_view(Layout::TargetRefreshCountdownsRemainingTicksColumn);
+        return make_column_view(Layout::columns.TargetRefreshCountdownsRemainingTicksColumn);
     }
-    auto target_ids() const { return make_column_view(Layout::TargetIdsColumn); }
+    auto target_ids() const { return make_column_view(Layout::columns.TargetIdsColumn); }
     auto view_target_locations() const {
         using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
             count_,
-            Layout::TargetLocationsXsColumn,
-            Layout::TargetLocationsYsColumn,
-            Layout::TargetLocationsZsColumn);
+            Layout::columns.TargetLocationsXsColumn,
+            Layout::columns.TargetLocationsYsColumn,
+            Layout::columns.TargetLocationsZsColumn);
     }
     auto view_target_velocities() const {
         using ml::soa_storage_detail::three_column_view;
@@ -154,9 +184,9 @@ struct TurretEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOpera
             state_,
             offset_,
             count_,
-            Layout::TargetVelocitiesXsColumn,
-            Layout::TargetVelocitiesYsColumn,
-            Layout::TargetVelocitiesZsColumn);
+            Layout::columns.TargetVelocitiesXsColumn,
+            Layout::columns.TargetVelocitiesYsColumn,
+            Layout::columns.TargetVelocitiesZsColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -357,29 +387,30 @@ struct TurretEntityData
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::EntityIdsColumn),
-                cursor.column_pointer(data, Layout::IntegralBiasesColumn),
-                cursor.column_pointer(data, Layout::LocationsXsColumn),
-                cursor.column_pointer(data, Layout::LocationsYsColumn),
-                cursor.column_pointer(data, Layout::LocationsZsColumn),
-                cursor.column_pointer(data, Layout::FirePointLocationsXsColumn),
-                cursor.column_pointer(data, Layout::FirePointLocationsYsColumn),
-                cursor.column_pointer(data, Layout::FirePointLocationsZsColumn),
-                cursor.column_pointer(data, Layout::RotationsPitchesColumn),
-                cursor.column_pointer(data, Layout::RotationsYawsColumn),
-                cursor.column_pointer(data, Layout::RotationsRollsColumn),
-                cursor.column_pointer(data, Layout::TeamsColumn),
-                cursor.column_pointer(data, Layout::LaserCooldownsColumn),
-                cursor.column_pointer(data, Layout::LaserDamagesColumn),
-                cursor.column_pointer(data, Layout::TargetRefreshCountdownsPeriodsColumn),
-                cursor.column_pointer(data, Layout::TargetRefreshCountdownsRemainingTicksColumn),
-                cursor.column_pointer(data, Layout::TargetIdsColumn),
-                cursor.column_pointer(data, Layout::TargetLocationsXsColumn),
-                cursor.column_pointer(data, Layout::TargetLocationsYsColumn),
-                cursor.column_pointer(data, Layout::TargetLocationsZsColumn),
-                cursor.column_pointer(data, Layout::TargetVelocitiesXsColumn),
-                cursor.column_pointer(data, Layout::TargetVelocitiesYsColumn),
-                cursor.column_pointer(data, Layout::TargetVelocitiesZsColumn)};
+        return {cursor.column_pointer(data, Layout::columns.EntityIdsColumn),
+                cursor.column_pointer(data, Layout::columns.IntegralBiasesColumn),
+                cursor.column_pointer(data, Layout::columns.LocationsXsColumn),
+                cursor.column_pointer(data, Layout::columns.LocationsYsColumn),
+                cursor.column_pointer(data, Layout::columns.LocationsZsColumn),
+                cursor.column_pointer(data, Layout::columns.FirePointLocationsXsColumn),
+                cursor.column_pointer(data, Layout::columns.FirePointLocationsYsColumn),
+                cursor.column_pointer(data, Layout::columns.FirePointLocationsZsColumn),
+                cursor.column_pointer(data, Layout::columns.RotationsPitchesColumn),
+                cursor.column_pointer(data, Layout::columns.RotationsYawsColumn),
+                cursor.column_pointer(data, Layout::columns.RotationsRollsColumn),
+                cursor.column_pointer(data, Layout::columns.TeamsColumn),
+                cursor.column_pointer(data, Layout::columns.LaserCooldownsColumn),
+                cursor.column_pointer(data, Layout::columns.LaserDamagesColumn),
+                cursor.column_pointer(data, Layout::columns.TargetRefreshCountdownsPeriodsColumn),
+                cursor.column_pointer(data,
+                                      Layout::columns.TargetRefreshCountdownsRemainingTicksColumn),
+                cursor.column_pointer(data, Layout::columns.TargetIdsColumn),
+                cursor.column_pointer(data, Layout::columns.TargetLocationsXsColumn),
+                cursor.column_pointer(data, Layout::columns.TargetLocationsYsColumn),
+                cursor.column_pointer(data, Layout::columns.TargetLocationsZsColumn),
+                cursor.column_pointer(data, Layout::columns.TargetVelocitiesXsColumn),
+                cursor.column_pointer(data, Layout::columns.TargetVelocitiesYsColumn),
+                cursor.column_pointer(data, Layout::columns.TargetVelocitiesZsColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
