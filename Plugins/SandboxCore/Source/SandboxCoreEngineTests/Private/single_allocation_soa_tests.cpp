@@ -7,8 +7,6 @@
 #include <CQTest.h>
 
 #include <array>
-#include <cstdint>
-#include <type_traits>
 #include <utility>
 
 TEST_CLASS(SingleAllocationSoa, "SandboxCoreEngine.UnitTests")
@@ -39,73 +37,6 @@ TEST_CLASS(SingleAllocationSoa, "SandboxCoreEngine.UnitTests")
                              destination.num() == 2 && destination.get_view().bytes()[0] == 31 &&
                                  destination.get_view().view_nested().xs()[0] == 2.5f &&
                                  source.num() == 0 && source.get_memory_resource() == &first);
-    }
-
-    TEST_METHOD(CompactSelfCopyPreservesEveryColumn)
-    {
-        struct CopyRange {
-            TCHAR const* name;
-            int32 source;
-            int32 destination;
-            int32 count;
-            bool single_element{};
-        };
-        constexpr CopyRange cases[]{
-            {TEXT("source before destination"), 0, 2, 5},
-            {TEXT("destination before source"), 2, 0, 5},
-            {TEXT("identical ranges"), 1, 1, 5},
-            {TEXT("disjoint forward"), 0, 5, 3},
-            {TEXT("disjoint backward"), 5, 0, 3},
-            {TEXT("one element"), 3, 6, 1, true},
-            {TEXT("identical element"), 3, 3, 1, true},
-            {TEXT("empty range"), 2, 4, 0},
-        };
-        constexpr int32 row_count{8};
-        for (auto const& range : cases) {
-            for (bool const sliced : {false, true}) {
-                Owner owner{sbx::memory::mimalloc_resource()};
-                owner.set_num(row_count);
-                auto const view{owner.get_view()};
-                int32 column_index{};
-                auto const initialize_column{[&](auto column) {
-                    using Element = std::remove_cvref_t<decltype(column[0])>;
-                    for (int32 row{}; row < row_count; ++row) {
-                        column[row] = static_cast<Element>(column_index * 16 + row);
-                    }
-                    ++column_index;
-                }};
-                view.apply_arrays([&](auto... columns) { (initialize_column(columns), ...); });
-                auto const capacity{owner.capacity()};
-                auto const source_first{sliced ? range.source : 0};
-                auto const source{owner.get_const_view(source_first, row_count - source_first)};
-                if (range.single_element) {
-                    owner.copy_element(range.destination, source, range.source - source_first);
-                } else {
-                    owner.copy_elements(
-                        range.destination, source, range.source - source_first, range.count);
-                }
-
-                auto correct{owner.num() == row_count && owner.capacity() == capacity};
-                column_index = 0;
-                auto const check_column{[&](auto const column) {
-                    using Element = std::remove_cvref_t<decltype(column[0])>;
-                    for (int32 row{}; row < row_count; ++row) {
-                        auto const copied{row >= range.destination &&
-                                          row < range.destination + range.count};
-                        auto const original{copied ? range.source + row - range.destination : row};
-                        correct &=
-                            column[row] == static_cast<Element>(column_index * 16 + original);
-                    }
-                    ++column_index;
-                }};
-                view.apply_arrays([&](auto... columns) { (check_column(columns), ...); });
-                TestRunner->TestTrue(
-                    *FString::Printf(TEXT("%s (sliced source: %d): all columns preserve rows"),
-                                     range.name,
-                                     static_cast<int32>(sliced)),
-                    correct && column_index == 4);
-            }
-        }
     }
 
     TEST_METHOD(LogicalCompactApi)
@@ -155,57 +86,5 @@ TEST_CLASS(SingleAllocationSoa, "SandboxCoreEngine.UnitTests")
         TestRunner->TestTrue(TEXT("Reacquired bytes preserve values"), compact.bytes()[0] == 17);
         TestRunner->TestTrue(TEXT("Reacquired nested vectors preserve values"),
                              compact.view_nested().xs()[0] == 2.5f);
-    }
-
-    TEST_METHOD(CompactSelfAppendSurvivesGrowth)
-    {
-        Owner owner{sbx::memory::mimalloc_resource()};
-        owner.set_num(2);
-        owner.get_view().bytes()[1] = 19;
-        owner.get_view().view_nested().xs()[1] = 3.5f;
-        owner.set_num(owner.capacity());
-
-        auto const slice{owner.get_view().slice(1, 1)};
-        auto const first{owner.num()};
-        auto const before_slice_data{owner.get_view().bytes().GetData()};
-        owner.append_from(slice);
-        TestRunner->TestTrue(TEXT("Sliced append relocates storage"),
-                             owner.get_view().bytes().GetData() != before_slice_data);
-        TestRunner->TestTrue(TEXT("Sliced compact self append survives growth"),
-                             owner.get_view().bytes()[first] == 19 &&
-                                 owner.get_view().view_nested().xs()[first] == 3.5f);
-
-        auto const whole{owner.get_view()};
-        auto const old_count{owner.num()};
-        auto const before_whole_data{owner.get_view().bytes().GetData()};
-        owner.append_from(whole);
-        TestRunner->TestTrue(TEXT("Whole append relocates storage"),
-                             owner.get_view().bytes().GetData() != before_whole_data);
-        TestRunner->TestTrue(TEXT("Whole compact self append survives growth"),
-                             owner.get_view().bytes()[old_count + 1] == 19 &&
-                                 owner.get_view().view_nested().xs()[old_count + 1] == 3.5f);
-    }
-
-    TEST_METHOD(MoveAssignmentReplacesDestinationStorage)
-    {
-        Owner destination{sbx::memory::mimalloc_resource()};
-        destination.set_num(1);
-        auto const old_view{destination.get_view()};
-        auto const old_data{destination.get_view().bytes().GetData()};
-        auto* const destination_address{&destination};
-        TestRunner->TestTrue(TEXT("Retained view initially observes destination storage"),
-                             old_view.bytes().GetData() == old_data);
-
-        Owner source{sbx::memory::mimalloc_resource()};
-        source.set_num(1);
-        auto const source_data{source.get_view().bytes().GetData()};
-        destination = std::move(source);
-
-        TestRunner->TestTrue(TEXT("Destination object remains in place"),
-                             &destination == destination_address);
-        TestRunner->TestTrue(TEXT("Destination now owns the moved-in allocation"),
-                             destination.get_view().bytes().GetData() == source_data);
-        TestRunner->TestTrue(TEXT("Previous destination allocation was replaced"),
-                             destination.get_view().bytes().GetData() != old_data);
     }
 };

@@ -547,10 +547,6 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         assert_stale_preview_does_not_apply(
             *TestRunner, fixture, source_session, *preview, TEXT("source or source path"));
 
-        fixture = make_preview_fixture();
-        if (!TestRunner->TestTrue(TEXT("Path fixture"), fixture.is_valid())) {
-            return;
-        }
         ml::editor::FS7LevelSourceSession path_session;
         auto const path_preview{make_stale_preview(fixture, path_session)};
         if (!TestRunner->TestTrue(TEXT("Path preview builds"), path_preview.has_value())) {
@@ -589,7 +585,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                               fixture.player->GetActorLocation(),
                               FVector{100.0, 0.0, 0.0});
 
-        fixture = make_preview_fixture();
+        fixture.player->SetActorLocation(FVector::ZeroVector);
         ml::editor::FS7LevelSourceSession team_session;
         auto const team_preview{make_stale_preview(fixture, team_session)};
         if (!TestRunner->TestTrue(TEXT("Team preview builds"), team_preview.has_value())) {
@@ -602,7 +598,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestEqual(
             TEXT("Stale apply preserves team"), fixture.enemy->get_team(), ETestTeam::Blue);
 
-        fixture = make_preview_fixture();
+        fixture.enemy->set_team(ETestTeam::Red);
         ml::editor::FS7LevelSourceSession metadata_session;
         auto const metadata_preview{make_stale_preview(fixture, metadata_session)};
         if (!TestRunner->TestTrue(TEXT("Metadata preview builds"), metadata_preview.has_value())) {
@@ -616,7 +612,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                               fixture.document->description,
                               FString{TEXT("Edited after preview")});
 
-        fixture = make_preview_fixture();
+        fixture.document->description = TEXT("Before");
+        auto const original_mission{fixture.document->mission};
         ml::editor::FS7LevelSourceSession mission_session;
         auto const mission_preview{make_stale_preview(fixture, mission_session)};
         if (!TestRunner->TestTrue(TEXT("Mission preview builds"), mission_preview.has_value())) {
@@ -630,7 +627,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                               fixture.document->mission.mode,
                               ETestMissionMode::SurviveTime);
 
-        fixture = make_preview_fixture();
+        fixture.document->mission = original_mission;
         ml::editor::FS7LevelSourceSession camera_session;
         auto const camera_preview{make_stale_preview(fixture, camera_session)};
         if (!TestRunner->TestTrue(TEXT("Camera preview builds"), camera_preview.has_value())) {
@@ -661,7 +658,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         assert_stale_preview_does_not_apply(
             *TestRunner, fixture, source_session, *id_preview, TEXT("bindings"));
 
-        fixture = make_preview_fixture();
+        fixture.document->entities[1].id = TEXT("enemy");
         ml::editor::FS7LevelSourceSession replacement_session;
         auto const replacement_preview{make_stale_preview(fixture, replacement_session)};
         if (!TestRunner->TestTrue(TEXT("Replacement preview builds"),
@@ -684,7 +681,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                               fixture.document->entities[1].actor.Get(),
                               static_cast<AActor*>(replacement));
 
-        fixture = make_preview_fixture();
+        fixture.document->entities[1].actor = fixture.enemy;
+        replacement->Destroy();
         ml::editor::FS7LevelSourceSession deletion_session;
         auto const deletion_preview{make_stale_preview(fixture, deletion_session)};
         if (!TestRunner->TestTrue(TEXT("Deletion preview builds"), deletion_preview.has_value())) {
@@ -712,7 +710,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         assert_stale_preview_does_not_apply(
             *TestRunner, fixture, source_session, *pointer_preview, TEXT("level configuration"));
 
-        fixture = make_preview_fixture();
+        fixture.document->level_config = fixture.level_config;
         ml::editor::FS7LevelSourceSession value_session;
         auto const value_preview{make_stale_preview(fixture, value_session)};
         if (!TestRunner->TestTrue(TEXT("Value preview builds"), value_preview.has_value())) {
@@ -723,7 +721,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         assert_stale_preview_does_not_apply(
             *TestRunner, fixture, value_session, *value_preview, TEXT("level configuration"));
 
-        fixture = make_preview_fixture();
+        fixture.level_config->laser_debug_shapes = !fixture.level_config->laser_debug_shapes;
         ml::editor::FS7LevelSourceSession class_session;
         auto const class_preview{make_stale_preview(fixture, class_session)};
         if (!TestRunner->TestTrue(TEXT("Class preview builds"), class_preview.has_value())) {
@@ -758,7 +756,6 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                               fixture.document->title,
                               FString{TEXT("Preview Level")});
 
-        fixture = make_preview_fixture();
         ml::editor::FS7LevelSourceSession document_session;
         auto const document_preview{make_stale_preview(fixture, document_session)};
         if (!TestRunner->TestTrue(TEXT("Document preview builds"), document_preview.has_value())) {
@@ -800,7 +797,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                               fixture.document->title,
                               FString{TEXT("From Preview")});
 
-        fixture = make_preview_fixture();
+        fixture.document->title = TEXT("Preview Level");
         FTemporarySourceDirectory directory;
         auto const source_path{FPaths::Combine(directory.path, TEXT("level.scm"))};
         if (!TestRunner->TestTrue(TEXT("Initial disk source writes"),

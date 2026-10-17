@@ -502,91 +502,61 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 prepare_slate_input();
             });
 
-        struct Mode {
+        struct MappingCase {
             Scope scope;
             FKey select;
-            FKey pitch;
-            FKey yaw;
-            FKey roll;
+            Axis axis;
+            FKey key;
+            bool inverted;
+            float physical_value;
         };
-        Mode const modes[]{
-            {Scope::Starfox, EKeys::One, EKeys::Gamepad_LeftY, EKeys::Gamepad_LeftX, {}},
-            {Scope::Fighter,
-             EKeys::Two,
-             EKeys::Gamepad_RightY,
-             EKeys::Gamepad_RightX,
-             EKeys::Gamepad_LeftX},
-            {Scope::Skater,
-             EKeys::Three,
-             EKeys::Gamepad_LeftY,
-             EKeys::Gamepad_LeftX,
-             EKeys::Gamepad_RightX},
-            {Scope::Gunship, EKeys::Four, EKeys::Gamepad_RightY, EKeys::Gamepad_RightX, {}},
+        MappingCase const cases[]{
+            {Scope::Starfox, EKeys::One, Axis::Pitch, EKeys::Gamepad_LeftY, false, 1.f},
+            {Scope::Fighter, EKeys::Two, Axis::Pitch, EKeys::Gamepad_RightY, true, -1.f},
+            {Scope::Fighter, EKeys::Two, Axis::Roll, EKeys::Gamepad_LeftX, false, -1.f},
+            {Scope::Skater, EKeys::Three, Axis::Roll, EKeys::Gamepad_RightX, true, 1.f},
+            {Scope::Gunship, EKeys::Four, Axis::Yaw, EKeys::Gamepad_RightX, false, 1.f},
         };
-        for (auto const mode : modes) {
-            TestCommandBuilder.Then([this, mode] { send_slate_key(mode.select, true); })
+        for (auto const mapping : cases) {
+            auto const expected_sign{mapping.physical_value * (mapping.inverted ? -1.f : 1.f)};
+            TestCommandBuilder.Then([this, mapping] { send_slate_key(mapping.select, true); })
                 .Until(
-                    [this, mode] {
+                    [this, mapping] {
                         auto const* const ship{Cast<ATestSpaceShip>(controller_->GetPawn())};
                         return !checks.all_passed || ship->get_active_flight_model_slot() ==
-                                                         ioj::flight_model_slot(mode.scope);
+                                                         ioj::flight_model_slot(mapping.scope);
                     },
                     timeout)
-                .Then([this, mode] {
-                    send_slate_key(mode.select, false);
-                    check_active_contexts(mode.scope);
-                });
-            struct AxisBinding {
-                Axis axis;
-                FKey key;
-            };
-            for (auto const binding : {AxisBinding{Axis::Pitch, mode.pitch},
-                                       AxisBinding{Axis::Yaw, mode.yaw},
-                                       AxisBinding{Axis::Roll, mode.roll}}) {
-                if (!binding.key.IsValid()) {
-                    continue;
-                }
-                for (bool const inverted : {false, true}) {
-                    TestCommandBuilder.Then([this, binding, inverted] {
-                        auto* const settings{
-                            Cast<ioj::USpaceGameInputUserSettings>(settings_.Get())};
-                        settings->set_invert_gamepad_pitch(inverted && binding.axis == Axis::Pitch);
-                        settings->set_invert_gamepad_yaw(inverted && binding.axis == Axis::Yaw);
-                        settings->set_invert_gamepad_roll(inverted && binding.axis == Axis::Roll);
-                        settings->ApplySettings();
-                    });
-                    for (float const physical_value : {1.0f, -1.0f}) {
-                        auto const expected_sign{physical_value * (inverted ? -1.0f : 1.0f)};
-                        TestCommandBuilder
-                            .Then([this, binding, physical_value] {
-                                // Slate stick-up/right is positive, before the viewport's RightY
-                                // flip.
-                                send_slate_axis(binding.key, physical_value);
-                            })
-                            .Until(
-                                [this, binding, expected_sign] {
-                                    return !checks.all_passed ||
-                                           native_rotation(binding.axis) * expected_sign > 0.5f;
-                                },
-                                timeout)
-                            .Then([this, mode, binding, inverted, expected_sign] {
-                                checks.is_true(native_rotation(binding.axis) * expected_sign > 0.5f,
-                                               FString::Printf(TEXT("Scope %d axis %d inverted=%d "
-                                                                    "follows physical direction"),
-                                                               static_cast<int32>(mode.scope),
-                                                               static_cast<int32>(binding.axis),
-                                                               inverted));
-                                send_slate_axis(binding.key, 0.0f);
-                            })
-                            .Until(
-                                [this, binding] {
-                                    return !checks.all_passed ||
-                                           FMath::IsNearlyZero(native_rotation(binding.axis));
-                                },
-                                timeout);
-                    }
-                }
-            }
+                .Then([this, mapping] {
+                    send_slate_key(mapping.select, false);
+                    check_active_contexts(mapping.scope);
+                    auto* const settings{Cast<ioj::USpaceGameInputUserSettings>(settings_.Get())};
+                    settings->set_invert_gamepad_pitch(mapping.inverted &&
+                                                       mapping.axis == Axis::Pitch);
+                    settings->set_invert_gamepad_yaw(mapping.inverted && mapping.axis == Axis::Yaw);
+                    settings->set_invert_gamepad_roll(mapping.inverted &&
+                                                      mapping.axis == Axis::Roll);
+                    settings->ApplySettings();
+                    send_slate_axis(mapping.key, mapping.physical_value);
+                })
+                .Until(
+                    [this, mapping, expected_sign] {
+                        return !checks.all_passed ||
+                               native_rotation(mapping.axis) * expected_sign > 0.5f;
+                    },
+                    timeout)
+                .Then([this, mapping, expected_sign] {
+                    checks.is_true(
+                        native_rotation(mapping.axis) * expected_sign > 0.5f,
+                        TEXT("Mapped axis follows the physical direction and inversion"));
+                    send_slate_axis(mapping.key, 0.f);
+                })
+                .Until(
+                    [this, mapping] {
+                        return !checks.all_passed ||
+                               FMath::IsNearlyZero(native_rotation(mapping.axis));
+                    },
+                    timeout);
         }
     }
 

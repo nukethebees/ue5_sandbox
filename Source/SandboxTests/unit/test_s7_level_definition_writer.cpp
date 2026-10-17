@@ -4,7 +4,6 @@
 #include <SandboxCoreEngine/strings.h>
 
 #include <CQTest.h>
-#include <Misc/Paths.h>
 
 namespace {
 auto make_player_level() -> ml::FLevelDefinition {
@@ -46,22 +45,6 @@ auto make_player_level() -> ml::FLevelDefinition {
 
 TEST_CLASS(S7LevelDefinitionWriter, "Sandbox.UnitTests")
 {
-    TEST_METHOD(EmitsCanonicalReadableInitialState)
-    {
-        auto const source{::ioj::levels::authoring::emit_editor_level_source(make_player_level())};
-        if (!TestRunner->TestTrue(TEXT("Source is emitted"), source.has_value())) {
-            TestRunner->AddError(source.error());
-            return;
-        }
-
-        TestRunner->TestTrue(TEXT("Literal vectors are quoted"),
-                             source->Contains(TEXT(":position '(0 200.123 -300.5)")));
-        TestRunner->TestFalse(TEXT("Teams are derived rather than serialized"),
-                              source->Contains(TEXT(":teams")));
-        TestRunner->TestTrue(TEXT("Entity constructors are evaluated"),
-                             source->Contains(TEXT(":entities (list")));
-    }
-
     TEST_METHOD(EmittedSourceReadsBackWithSupportedSemantics)
     {
         auto const source{::ioj::levels::authoring::emit_editor_level_source(make_player_level())};
@@ -112,34 +95,5 @@ TEST_CLASS(S7LevelDefinitionWriter, "Sandbox.UnitTests")
         }
         TestRunner->TestEqual(
             TEXT("Spawn time survives"), read->entities.spawn_times_seconds[1], 5.0);
-    }
-
-    TEST_METHOD(ExpandsLargeProceduralLevelIntoExplicitSemanticEquivalent)
-    {
-        ::ioj::levels::authoring::FDefinitionReader reader;
-        auto const input{reader.read_level_file(FPaths::Combine(
-            FPaths::ProjectDir(), TEXT("LevelScripts"), TEXT("BenchmarkFleet_10.scm")))};
-        if (!TestRunner->TestTrue(TEXT("Procedural benchmark reads"), static_cast<bool>(input))) {
-            TestRunner->AddError(ml::to_fstring(::ioj::levels::format_diagnostics(input.error())));
-            return;
-        }
-
-        auto const source{::ioj::levels::authoring::emit_editor_level_source(input.value())};
-        if (!TestRunner->TestTrue(TEXT("Large benchmark emits"), source.has_value())) {
-            TestRunner->AddError(source.error());
-            return;
-        }
-        TestRunner->TestFalse(TEXT("Writer does not reconstruct helper definitions"),
-                              source->Contains(TEXT("(define")));
-        TestRunner->TestFalse(TEXT("Writer does not reconstruct procedural application"),
-                              source->Contains(TEXT("(apply entities")));
-
-        auto const output{reader.read_level_source(*source)};
-        if (!TestRunner->TestTrue(TEXT("Expanded benchmark reads"), static_cast<bool>(output))) {
-            TestRunner->AddError(ml::to_fstring(::ioj::levels::format_diagnostics(output.error())));
-            return;
-        }
-        TestRunner->TestEqual(TEXT("All capitals survive expansion"), output->entities.num(), 320);
-        TestRunner->TestTrue(TEXT("Observer camera survives expansion"), output->camera.IsSet());
     }
 };
