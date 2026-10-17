@@ -11,7 +11,10 @@
 #include <unordered_map>
 
 namespace ioj::sim {
-enum class MissionState : std::uint8_t {
+using MissionStateUnderlying = std::uint8_t;
+
+// Logical bit width: 3.
+enum class MissionState : MissionStateUnderlying {
     NotStarted = 0,
     Running = 1,
     Succeeded = 2,

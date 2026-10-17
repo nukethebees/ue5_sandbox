@@ -9,11 +9,14 @@
 
 #include "CharacterCameraMode.generated.h"
 
+// Logical bit width: 1.
 UENUM(BlueprintType)
 enum class ECharacterCameraMode : uint8 {
     FirstPerson UMETA(DisplayName = "First Person"),
     ThirdPerson UMETA(DisplayName = "Third Person"),
 };
+
+using ECharacterCameraModeUnderlying = uint8;
 
 namespace ml {
 template <>

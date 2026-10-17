@@ -6,7 +6,10 @@
 #include <cstdint>
 
 namespace ioj::sim {
-enum class LevelMissionEventType : std::uint8_t {
+using LevelMissionEventTypeUnderlying = std::uint8_t;
+
+// Logical bit width: 2.
+enum class LevelMissionEventType : LevelMissionEventTypeUnderlying {
     MustSurvive = 0,
     RequiredKill = 1,
     IncreaseKillTarget = 2,

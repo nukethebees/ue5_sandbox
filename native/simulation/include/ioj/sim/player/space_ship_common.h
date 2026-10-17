@@ -7,7 +7,10 @@
 #include <string_view>
 
 namespace ioj::sim::player {
-enum class BoostBrakeState : std::uint8_t {
+using BoostBrakeStateUnderlying = std::uint8_t;
+
+// Logical bit width: 2.
+enum class BoostBrakeState : BoostBrakeStateUnderlying {
     None = 0,
     Boost = 1,
     Brake = 2,

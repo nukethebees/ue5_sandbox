@@ -11,7 +11,10 @@
 #include <unordered_map>
 
 namespace ioj::sim {
-enum class MissionMode : std::uint8_t {
+using MissionModeUnderlying = std::uint8_t;
+
+// Logical bit width: 2.
+enum class MissionMode : MissionModeUnderlying {
     None = 0,
     SurviveTime = 1,
     KillEnemies = 2,

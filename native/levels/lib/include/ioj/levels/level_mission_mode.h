@@ -11,7 +11,10 @@
 #include <unordered_map>
 
 namespace ioj::levels {
-enum class LevelMissionMode : std::uint8_t {
+using LevelMissionModeUnderlying = std::uint8_t;
+
+// Logical bit width: 2.
+enum class LevelMissionMode : LevelMissionModeUnderlying {
     Unspecified,
     SurviveTime,
     KillEnemies,

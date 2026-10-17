@@ -8,6 +8,7 @@
 #include "CoreMinimal.h"
 
 #include "TestTeam.generated.h"
+// Logical bit width: 3.
 UENUM()
 enum class ETestTeam : uint8 {
     White = 0,
@@ -17,6 +18,8 @@ enum class ETestTeam : uint8 {
     Orange = 4,
     Yellow = 5,
 };
+
+using ETestTeamUnderlying = uint8;
 
 namespace ml {
 template <>

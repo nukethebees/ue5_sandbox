@@ -11,7 +11,10 @@
 #include <string_view>
 
 namespace ioj::sim {
-enum class EntityType : std::uint8_t {
+using EntityTypeUnderlying = std::uint8_t;
+
+// Logical bit width: 3.
+enum class EntityType : EntityTypeUnderlying {
     PlayerShip = 0,
     Turret = 1,
     CapitalShip = 2,

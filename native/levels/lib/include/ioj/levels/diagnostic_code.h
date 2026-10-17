@@ -6,7 +6,10 @@
 #include <cstdint>
 
 namespace ioj::levels {
-enum class DiagnosticCode : std::uint8_t {
+using DiagnosticCodeUnderlying = std::uint8_t;
+
+// Logical bit width: 7.
+enum class DiagnosticCode : DiagnosticCodeUnderlying {
     MissingLevelId,
     MissingTitle,
     InvalidParTime,

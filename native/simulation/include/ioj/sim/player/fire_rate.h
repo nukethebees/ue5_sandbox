@@ -10,7 +10,10 @@
 #include <string_view>
 
 namespace ioj::sim {
-enum class ShipFireRate : std::uint8_t {
+using ShipFireRateUnderlying = std::uint8_t;
+
+// Logical bit width: 2.
+enum class ShipFireRate : ShipFireRateUnderlying {
     Single = 0,
     Burst3 = 1,
     FullAuto = 2,

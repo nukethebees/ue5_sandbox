@@ -11,7 +11,10 @@
 #include <unordered_map>
 
 namespace ioj::sim {
-enum class MissionFailReason : std::uint8_t {
+using MissionFailReasonUnderlying = std::uint8_t;
+
+// Logical bit width: 2.
+enum class MissionFailReason : MissionFailReasonUnderlying {
     None = 0,
     PlayerKilled = 1,
     TimeElapsed = 2,

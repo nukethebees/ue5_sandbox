@@ -309,10 +309,14 @@ auto generated_cpp_names(DeclarationSchema const& declaration, NormalModuleSchem
     return std::visit(
         [&](auto const& value) -> std::vector<std::string> {
             using T = std::decay_t<decltype(value)>;
-            if constexpr (std::is_same_v<T, EnumSchema> || std::is_same_v<T, PackedValueSchema> ||
-                          std::is_same_v<T, RecordSchema> || std::is_same_v<T, UnionSchema> ||
-                          std::is_same_v<T, TaggedUnionSchema> ||
-                          std::is_same_v<T, StaticTableSchema> || std::is_same_v<T, FacadeSchema>) {
+            if constexpr (std::is_same_v<T, EnumSchema>) {
+                return {value.name, value.name + "Underlying"};
+            } else if constexpr (std::is_same_v<T, PackedValueSchema> ||
+                                 std::is_same_v<T, RecordSchema> ||
+                                 std::is_same_v<T, UnionSchema> ||
+                                 std::is_same_v<T, TaggedUnionSchema> ||
+                                 std::is_same_v<T, StaticTableSchema> ||
+                                 std::is_same_v<T, FacadeSchema>) {
                 return {value.name};
             } else if constexpr (std::is_same_v<T, IntegerScalarSchema>) {
                 std::vector<std::string> result;

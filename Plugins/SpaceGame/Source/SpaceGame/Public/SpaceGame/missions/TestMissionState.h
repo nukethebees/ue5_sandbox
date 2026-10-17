@@ -6,6 +6,7 @@
 #include "CoreMinimal.h"
 
 #include "TestMissionState.generated.h"
+// Logical bit width: 3.
 UENUM()
 enum class ETestMissionState : uint8 {
     NotStarted = 0 UMETA(DisplayName = "Not Started"),
@@ -14,3 +15,5 @@ enum class ETestMissionState : uint8 {
     Failed = 3 UMETA(DisplayName = "Failed"),
     Disabled = 4,
 };
+
+using ETestMissionStateUnderlying = uint8;

@@ -7,7 +7,10 @@
 
 #include <cstdint>
 namespace ioj::sim::fighters {
-enum class NavigationRiskTier : std::uint8_t {
+using NavigationRiskTierUnderlying = std::uint8_t;
+
+// Logical bit width: 2.
+enum class NavigationRiskTier : NavigationRiskTierUnderlying {
     Clear = 0,
     Nearby = 1,
     Active = 2,

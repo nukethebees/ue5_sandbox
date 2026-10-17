@@ -40,7 +40,10 @@ struct DefaultArguments {
 
 using MethodCount = std::uint8_t;
 
-enum class Kind : std::uint8_t {
+using KindUnderlying = std::uint8_t;
+
+// Logical bit width: 1.
+enum class Kind : KindUnderlying {
     Data,
 };
 

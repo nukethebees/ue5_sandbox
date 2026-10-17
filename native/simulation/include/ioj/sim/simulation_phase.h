@@ -6,7 +6,10 @@
 #include <cstdint>
 
 namespace ioj::sim {
-enum class SimulationPhase : std::uint8_t {
+using SimulationPhaseUnderlying = std::uint8_t;
+
+// Logical bit width: 3.
+enum class SimulationPhase : SimulationPhaseUnderlying {
     StableSetup,
     Thinking,
     Action,

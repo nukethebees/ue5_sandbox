@@ -7,7 +7,10 @@
 
 #include "CoreMinimal.h"
 namespace codegen_compile_fixture {
-enum class EPlainFixture : uint8 {
+using EPlainFixtureUnderlying = uint8;
+
+// Logical bit width: 1.
+enum class EPlainFixture : EPlainFixtureUnderlying {
     First,
     ReadableName,
 };

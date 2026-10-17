@@ -13,7 +13,10 @@
 #include <unordered_map>
 
 namespace ioj::levels {
-enum class EntityArchetype : std::uint8_t {
+using EntityArchetypeUnderlying = std::uint8_t;
+
+// Logical bit width: 2.
+enum class EntityArchetype : EntityArchetypeUnderlying {
     PlayerFighter,
     CapitalShip,
     StaticTurret,

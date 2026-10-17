@@ -14,7 +14,10 @@
 #include <unordered_map>
 
 namespace ioj {
-enum class Team : std::uint8_t {
+using TeamUnderlying = std::uint8_t;
+
+// Logical bit width: 3.
+enum class Team : TeamUnderlying {
     White = 0,
     Red = 1,
     Green = 2,

@@ -6,9 +6,12 @@
 #include "CoreMinimal.h"
 
 #include "TestShipFireRate.generated.h"
+// Logical bit width: 2.
 UENUM()
 enum class ETestShipFireRate : uint8 {
     Single = 0 UMETA(DisplayName = "Single"),
     Burst3 = 1 UMETA(DisplayName = "Burst 3"),
     FullAuto = 2 UMETA(DisplayName = "Full Auto"),
 };
+
+using ETestShipFireRateUnderlying = uint8;

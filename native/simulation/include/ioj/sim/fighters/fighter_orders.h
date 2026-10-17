@@ -14,7 +14,10 @@
 #include <type_traits>
 
 namespace ioj::sim {
-enum class FighterTask : std::uint8_t {
+using FighterTaskUnderlying = std::uint8_t;
+
+// Logical bit width: 2.
+enum class FighterTask : FighterTaskUnderlying {
     Standby = 0,
     MoveToDestination = 1,
     Attack = 2,

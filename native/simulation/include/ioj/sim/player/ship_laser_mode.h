@@ -6,7 +6,10 @@
 #include <cstdint>
 
 namespace ioj::sim {
-enum class ShipLaserMode : std::uint8_t {
+using ShipLaserModeUnderlying = std::uint8_t;
+
+// Logical bit width: 2.
+enum class ShipLaserMode : ShipLaserModeUnderlying {
     Single = 0,
     Double = 1,
     Hyper = 2,

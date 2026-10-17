@@ -125,7 +125,8 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
 
     ASSERT_EQ(files.size(), 1);
     auto const& header{files.front().content};
-    EXPECT_NE(header.find("enum class NativeState : std::uint8_t"), std::string::npos);
+    EXPECT_NE(header.find("using NativeStateUnderlying = std::uint8_t;"), std::string::npos);
+    EXPECT_NE(header.find("enum class NativeState : NativeStateUnderlying"), std::string::npos);
     EXPECT_NE(header.find("try_parse_native_state"), std::string::npos);
     EXPECT_NE(header.find("try_parse_serialized_native_state"), std::string::npos);
     EXPECT_NE(header.find("EnumTraits<::fixture::NativeState>"), std::string::npos);
@@ -190,7 +191,8 @@ TEST(Lowering, DerivesNativeEnumBackingFromSemanticWidthAndSignedness) {
 
     ASSERT_EQ(files.size(), 1);
     auto const& header{files.front().content};
-    EXPECT_NE(header.find("enum class SignedState : std::int16_t"), std::string::npos);
+    EXPECT_NE(header.find("using SignedStateUnderlying = std::int16_t;"), std::string::npos);
+    EXPECT_NE(header.find("enum class SignedState : SignedStateUnderlying"), std::string::npos);
     EXPECT_EQ(header.find("to_string("), std::string::npos);
     EXPECT_EQ(header.find("try_parse_"), std::string::npos);
     EXPECT_EQ(header.find("EnumTraits<"), std::string::npos);
@@ -212,7 +214,8 @@ TEST(Lowering, DerivesUnrealStyleEnumBackingWithoutChangingSemanticWidth) {
         }}})};
 
     EXPECT_NE(output.header.find("#include \"CoreMinimal.h\""), std::string::npos);
-    EXPECT_NE(output.header.find("enum class EState : uint16"), std::string::npos);
+    EXPECT_NE(output.header.find("using EStateUnderlying = uint16;"), std::string::npos);
+    EXPECT_NE(output.header.find("enum class EState : EStateUnderlying"), std::string::npos);
 }
 
 TEST(Lowering, EmitsRequestedNamedScalarConstantsWithoutInventingScalarTypes) {
@@ -334,7 +337,8 @@ TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) 
     auto const& conversion_header{files[2].content};
     EXPECT_EQ(native_header.find("enum_count<"), std::string::npos);
     EXPECT_NE(projection_header.find("enum_count<::ENativeState>"), std::string::npos);
-    EXPECT_NE(native_header.find("enum class NativeState : std::uint8_t"), std::string::npos);
+    EXPECT_NE(native_header.find("enum class NativeState : NativeStateUnderlying"),
+              std::string::npos);
     auto const traits_start{native_header.find("struct EnumTraits<::fixture::NativeState>")};
     ASSERT_NE(traits_start, std::string::npos);
     auto const traits_end{native_header.find("};", traits_start)};
@@ -432,8 +436,10 @@ TEST(Lowering, EmitsPlainEnumsInTheirNamespace) {
                                                          .conversions = {EnumConversion::string},
                                                      }}})};
 
-    EXPECT_NE(output.header.find("namespace project::states {\nenum class EState : int"),
+    EXPECT_NE(output.header.find("namespace project::states {\nusing EStateUnderlying = int;\n\n"
+                                 "// Logical bit width: 1.\nenum class EState : EStateUnderlying"),
               std::string::npos);
+    EXPECT_NE(output.header.find("using EStateUnderlying = int;"), std::string::npos);
     EXPECT_NE(output.header.find("namespace project::states {\nauto to_string(EState const value)"),
               std::string::npos);
     EXPECT_EQ(output.header.find("UENUM"), std::string::npos);

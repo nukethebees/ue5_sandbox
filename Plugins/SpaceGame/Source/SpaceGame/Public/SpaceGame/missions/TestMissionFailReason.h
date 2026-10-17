@@ -6,6 +6,7 @@
 #include "CoreMinimal.h"
 
 #include "TestMissionFailReason.generated.h"
+// Logical bit width: 2.
 UENUM()
 enum class ETestMissionFailReason : uint8 {
     None = 0 UMETA(DisplayName = "None"),
@@ -13,3 +14,5 @@ enum class ETestMissionFailReason : uint8 {
     TimeElapsed = 2,
     DefenceObjectiveFailed = 3,
 };
+
+using ETestMissionFailReasonUnderlying = uint8;

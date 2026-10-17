@@ -6,7 +6,10 @@
 #include <cstdint>
 
 namespace ioj::sim::collision {
-enum class TraceEntityFilter : std::uint8_t {
+using TraceEntityFilterUnderlying = std::uint8_t;
+
+// Logical bit width: 1.
+enum class TraceEntityFilter : TraceEntityFilterUnderlying {
     None,
     ExcludeFighters,
 };

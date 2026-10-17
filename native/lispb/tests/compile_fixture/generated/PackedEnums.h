@@ -7,24 +7,36 @@
 
 #include <cstdint>
 namespace codegen_compile_fixture {
-enum class PackedState : std::uint8_t {
+using PackedStateUnderlying = std::uint8_t;
+
+// Logical bit width: 8.
+enum class PackedState : PackedStateUnderlying {
     Zero = 0x00,
     AB = 0xAB,
     Max = 0xFF,
 };
 
-enum class OpaqueState : std::uint8_t {
+using OpaqueStateUnderlying = std::uint8_t;
+
+// Logical bit width depends on the enumerator expressions.
+enum class OpaqueState : OpaqueStateUnderlying {
     Zero = static_cast<std::uint8_t>(PackedState::Zero),
     Max = static_cast<std::uint8_t>(PackedState::Max),
 };
 
-enum class TinyState : std::uint8_t {
+using TinyStateUnderlying = std::uint8_t;
+
+// Logical bit width: 2.
+enum class TinyState : TinyStateUnderlying {
     Zero = 0,
     One = 1,
     Max = 3,
 };
 
-enum class DomainState : std::uint8_t {
+using DomainStateUnderlying = std::uint8_t;
+
+// Logical bit width: 1.
+enum class DomainState : DomainStateUnderlying {
     Zero,
     One,
 };

@@ -286,10 +286,20 @@ auto enum_underlying_type(EnumSchema const& schema, TypeRegistry const& types) -
     return CppType{spelling, schema.native_api ? "cstdint" : "CoreMinimal.h"};
 }
 
+auto enum_bit_width_comment(EnumSchema const& schema) -> std::string {
+    auto const width{schema.bit_width.has_value()
+                         ? schema.bit_width
+                         : lispb::schema::analyze_enum_domain(schema).minimum_required_bits};
+    return width.has_value() ? "// Logical bit width: " + std::to_string(*width) + ".\n"
+                             : "// Logical bit width depends on the enumerator expressions.\n";
+}
+
 auto native_enum_declaration(EnumSchema const& schema, TypeRegistry const& types) -> std::string {
     auto const underlying{enum_underlying_type(schema, types).spelling};
     std::ostringstream output;
-    output << "enum class " << schema.name << " : " << underlying << " {\n";
+    output << "using " << schema.name << "Underlying = " << underlying << ";\n\n";
+    output << enum_bit_width_comment(schema);
+    output << "enum class " << schema.name << " : " << schema.name << "Underlying {\n";
     for (auto const& value : schema.values) {
         output << "    " << value.name;
         if (value.initializer.has_value()) {
@@ -431,6 +441,7 @@ auto unreal_projection_header(EnumSchema const& schema,
                               EnumUnrealProjection const& projection,
                               TypeRegistry const& types) -> std::string {
     std::ostringstream output;
+    output << enum_bit_width_comment(schema);
     output << (projection.reflection == EnumReflection::blueprint ? "UENUM(BlueprintType)"
                                                                   : "UENUM()")
            << "\nenum class " << projection.name << " : "
@@ -455,7 +466,8 @@ auto unreal_projection_header(EnumSchema const& schema,
         }
         output << ",\n";
     }
-    output << "};";
+    output << "};\n\nusing " << projection.name
+           << "Underlying = " << unreal_underlying_type(enum_underlying_type(schema, types)) << ";";
     if (projection.enum_array) {
         output << "\n\nnamespace ml {\n"
                << enum_count_specialization("::" + projection.name, schema.values.size())
@@ -570,7 +582,14 @@ auto lower_enum(EnumSchema const& schema,
     }
 
     NodeListBuilder declarations;
-    if (schema.reflection != EnumReflection::none) {
+    auto const underlying{enum_underlying_type(schema, types)};
+    auto const underlying_alias{schema.name + "Underlying"};
+    auto const reflected{schema.reflection != EnumReflection::none};
+    if (!reflected) {
+        declarations.add(UsingDeclaration{underlying_alias, underlying}, 2);
+    }
+    declarations.add(raw(enum_bit_width_comment(schema)), 1);
+    if (reflected) {
         declarations.add(
             raw(schema.reflection == EnumReflection::blueprint ? "UENUM(BlueprintType)" : "UENUM()",
                 {TypeDependency{"UENUM", "CoreMinimal.h", {}}}),
@@ -586,9 +605,13 @@ auto lower_enum(EnumSchema const& schema,
                        .annotation = annotation(value, schema.reflection != EnumReflection::none)});
     }
     declarations.add(Enum{.name = schema.name,
-                          .underlying_type = enum_underlying_type(schema, types),
+                          .underlying_type = reflected ? underlying : CppType{underlying_alias},
                           .values = std::move(values)},
                      2);
+    if (reflected) {
+        // Preserve the built-in spelling required by UnrealHeaderTool for reflected enums.
+        declarations.add(UsingDeclaration{underlying_alias, underlying}, 2);
+    }
     if (schema.enum_array) {
         emission.header_prefix.push_back(Include{"ioj/enum_traits.h", false});
         emission.header_global.push_back(

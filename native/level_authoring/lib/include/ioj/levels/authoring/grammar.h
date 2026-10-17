@@ -13,7 +13,10 @@
 #include <unordered_map>
 
 namespace ioj::levels::authoring {
-enum class Property : std::uint8_t {
+using PropertyUnderlying = std::uint8_t;
+
+// Logical bit width: 6.
+enum class Property : PropertyUnderlying {
     Id,
     Title,
     Description,
@@ -212,7 +215,10 @@ enum class Property : std::uint8_t {
     return ioj::lookup_enum(values, value);
 }
 
-enum class RecordKind : std::uint8_t {
+using RecordKindUnderlying = std::uint8_t;
+
+// Logical bit width: 4.
+enum class RecordKind : RecordKindUnderlying {
     Level,
     Campaign,
     Catalog,

@@ -9,6 +9,7 @@
 
 #include "GameUiStyleTypes.generated.h"
 
+// Logical bit width: 4.
 UENUM()
 enum class EGameTextStyle : uint8 {
     Body,
@@ -23,12 +24,18 @@ enum class EGameTextStyle : uint8 {
     Disabled,
 };
 
+using EGameTextStyleUnderlying = uint8;
+
+// Logical bit width: 1.
 UENUM()
 enum class EGameButtonStyle : uint8 {
     Primary,
     Secondary,
 };
 
+using EGameButtonStyleUnderlying = uint8;
+
+// Logical bit width: 4.
 UENUM()
 enum class EGameUiIcon : uint8 {
     Hive,
@@ -41,6 +48,8 @@ enum class EGameUiIcon : uint8 {
     LevelIncomplete,
     LevelComplete,
 };
+
+using EGameUiIconUnderlying = uint8;
 
 namespace ml {
 template <>

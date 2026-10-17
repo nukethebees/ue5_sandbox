@@ -6,6 +6,7 @@
 #include "CoreMinimal.h"
 
 #include "TestMissionMode.generated.h"
+// Logical bit width: 2.
 UENUM()
 enum class ETestMissionMode : uint8 {
     None = 0,
@@ -13,3 +14,5 @@ enum class ETestMissionMode : uint8 {
     KillEnemies = 2 UMETA(DisplayName = "Kill Enemies"),
     KillEnemiesWithinTime = 3 UMETA(DisplayName = "Kill Enemies Within Time"),
 };
+
+using ETestMissionModeUnderlying = uint8;

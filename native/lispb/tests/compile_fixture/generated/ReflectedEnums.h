@@ -9,10 +9,13 @@
 
 #include "ReflectedEnums.generated.h"
 
+// Logical bit width: 1.
 UENUM(BlueprintType)
 enum class EReflectedFixture : uint8 {
     Visible UMETA(DisplayName = "Visible Value"),
 };
+
+using EReflectedFixtureUnderlying = uint8;
 
 namespace ml {
 template <>

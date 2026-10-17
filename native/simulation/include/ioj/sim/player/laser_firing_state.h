@@ -6,7 +6,10 @@
 #include <cstdint>
 
 namespace ioj::sim {
-enum class LaserFiringState : std::uint8_t {
+using LaserFiringStateUnderlying = std::uint8_t;
+
+// Logical bit width: 1.
+enum class LaserFiringState : LaserFiringStateUnderlying {
     idle = 0,
     burst = 1,
 };

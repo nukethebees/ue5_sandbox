@@ -6,7 +6,10 @@
 #include <cstdint>
 
 namespace ioj::sim {
-enum class OrchestratorState : std::uint8_t {
+using OrchestratorStateUnderlying = std::uint8_t;
+
+// Logical bit width: 2.
+enum class OrchestratorState : OrchestratorStateUnderlying {
     Uninitialised,
     Paused,
     Running,

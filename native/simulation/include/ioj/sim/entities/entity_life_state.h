@@ -6,13 +6,19 @@
 #include <cstdint>
 
 namespace ioj::sim {
-enum class LifeState : std::uint8_t {
+using LifeStateUnderlying = std::uint8_t;
+
+// Logical bit width: 2.
+enum class LifeState : LifeStateUnderlying {
     Alive,
     Unknown,
     Combat,
 };
 
-enum class DeathReason : std::uint8_t {
+using DeathReasonUnderlying = std::uint8_t;
+
+// Logical bit width: 2.
+enum class DeathReason : DeathReasonUnderlying {
     Unknown = static_cast<std::uint8_t>(LifeState::Unknown),
     Combat = static_cast<std::uint8_t>(LifeState::Combat),
 };

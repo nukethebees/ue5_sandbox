@@ -6,56 +6,83 @@
 #include <cstdint>
 
 namespace ioj::sim::player {
-enum class FlightModelPreset : std::uint8_t {
+using FlightModelPresetUnderlying = std::uint8_t;
+
+// Logical bit width: 2.
+enum class FlightModelPreset : FlightModelPresetUnderlying {
     Starfox,
     Fighter,
     Skater,
     Gunship,
 };
 
-enum class FlightModelSlot : std::uint8_t {
+using FlightModelSlotUnderlying = std::uint8_t;
+
+// Logical bit width: 2.
+enum class FlightModelSlot : FlightModelSlotUnderlying {
     Up,
     Right,
     Down,
     Left,
 };
 
-enum class TranslationSemantic : std::uint8_t {
+using TranslationSemanticUnderlying = std::uint8_t;
+
+// Logical bit width: 2.
+enum class TranslationSemantic : TranslationSemanticUnderlying {
     Disabled,
     TargetSpeed,
     TargetVelocity,
     Acceleration,
 };
 
-enum class RotationSemantic : std::uint8_t {
+using RotationSemanticUnderlying = std::uint8_t;
+
+// Logical bit width: 2.
+enum class RotationSemantic : RotationSemanticUnderlying {
     Disabled,
     TargetAngularVelocity,
     AngularAcceleration,
 };
 
-enum class ReferenceFrame : std::uint8_t {
+using ReferenceFrameUnderlying = std::uint8_t;
+
+// Logical bit width: 1.
+enum class ReferenceFrame : ReferenceFrameUnderlying {
     Ship,
     World,
 };
 
-enum class TranslationInputSource : std::uint8_t {
+using TranslationInputSourceUnderlying = std::uint8_t;
+
+// Logical bit width: 1.
+enum class TranslationInputSource : TranslationInputSourceUnderlying {
     Axis,
     Accelerator,
 };
 
-enum class ResponseMode : std::uint8_t {
+using ResponseModeUnderlying = std::uint8_t;
+
+// Logical bit width: 2.
+enum class ResponseMode : ResponseModeUnderlying {
     Direct,
     RateLimited,
     SecondOrder,
 };
 
-enum class FacingVelocityCoupling : std::uint8_t {
+using FacingVelocityCouplingUnderlying = std::uint8_t;
+
+// Logical bit width: 2.
+enum class FacingVelocityCoupling : FacingVelocityCouplingUnderlying {
     Independent,
     AlignToFacing,
     LockedToFacing,
 };
 
-enum class FlightModelConfigError : std::uint8_t {
+using FlightModelConfigErrorUnderlying = std::uint8_t;
+
+// Logical bit width: 4.
+enum class FlightModelConfigError : FlightModelConfigErrorUnderlying {
     InvalidEnumValue,
     NonFiniteValue,
     NegativeValue,

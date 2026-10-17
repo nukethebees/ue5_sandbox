@@ -11,7 +11,10 @@
 #include <unordered_map>
 
 namespace ioj::sim {
-enum class LevelTelemetryRunEndReason : std::uint8_t {
+using LevelTelemetryRunEndReasonUnderlying = std::uint8_t;
+
+// Logical bit width: 3.
+enum class LevelTelemetryRunEndReason : LevelTelemetryRunEndReasonUnderlying {
     MissionSucceeded = 0,
     MissionFailed = 1,
     BattleResolved = 2,
