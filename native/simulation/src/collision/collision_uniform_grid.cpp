@@ -3,6 +3,7 @@
 #include <ioj/diagnostics.h>
 #include <ioj/sim/collision/collision_grid.h>
 #include <ioj/sim/collision/entity_cell_data_operations.h>
+#include <ioj/sim/collision/grid_traversal.h>
 #include <ioj/sim/collision/line_trace_batch.h>
 #include <ioj/sim/collision/trace_hits.h>
 #include <ioj/sim/collision/world_aabb_operations.h>
