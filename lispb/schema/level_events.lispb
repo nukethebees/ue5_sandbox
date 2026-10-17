@@ -1,5 +1,5 @@
-(module level_events
-  :header "native/simulation/include/ioj/sim/levels/level_event_values.h"
+(module level_events_level_event_count
+  :header "native/simulation/include/ioj/sim/levels/level_event_count.h"
   :backend standard-library
   :namespace ioj::sim
   (integer-scalar LevelEventCount
@@ -8,7 +8,12 @@
     :maximum 255
     :bit-width 8
     :cpp-type @native_uint8
-    :cpp-emission alias)
+    :cpp-emission alias))
+
+(module level_events_level_mission_event_type
+  :header "native/simulation/include/ioj/sim/levels/level_mission_event_type.h"
+  :backend standard-library
+  :namespace ioj::sim
   (enum LevelMissionEventType @native_uint8
     (value MustSurvive :value "0")
     (value RequiredKill :value "1")

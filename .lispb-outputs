@@ -67,7 +67,8 @@ native/simulation/include/ioj/sim/lasers/laser_hit_details.h
 native/simulation/include/ioj/sim/lasers/laser_soa.h
 native/simulation/include/ioj/sim/lasers/laser_source.h
 native/simulation/include/ioj/sim/lasers/phase_interface.h
-native/simulation/include/ioj/sim/levels/level_event_values.h
+native/simulation/include/ioj/sim/levels/level_event_count.h
+native/simulation/include/ioj/sim/levels/level_mission_event_type.h
 native/simulation/include/ioj/sim/telemetry/current_state.h
 native/simulation/include/ioj/sim/levels/level_spawn_groups.h
 native/simulation/include/ioj/sim/levels/level_capital_spawn_events.h

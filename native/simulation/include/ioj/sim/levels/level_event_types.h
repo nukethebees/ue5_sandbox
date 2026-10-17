@@ -1,6 +1,7 @@
 #pragma once
 
-#include "ioj/sim/levels/level_event_values.h"
+#include <ioj/sim/levels/level_event_count.h>
+#include <ioj/sim/levels/level_mission_event_type.h>
 
 #include <cstdint>
 #include <limits>
