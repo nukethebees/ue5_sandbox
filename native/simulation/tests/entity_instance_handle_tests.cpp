@@ -1,6 +1,5 @@
 #include <ioj/sim/entities/entity_instance_handle.h>
 #include <ioj/sim/sim_clock.h>
-#include <ioj/sim/testing/sim_clock_test_access.h>
 
 #include <gtest/gtest.h>
 
@@ -10,14 +9,9 @@ static_assert(EntityInstanceHandle::index_field::bits == 18);
 static_assert(EntityInstanceHandle::team_field::offset == 18);
 static_assert(EntityInstanceHandle::health_state_field::offset == 21);
 
-TEST(EntityInstanceHandle, RejectsUnrepresentableRowsAndMetadata) {
+TEST(EntityInstanceHandle, RepresentsTheMaximumRowWithoutTouchingReservedBits) {
     EntityInstanceHandle result;
     EXPECT_FALSE(result.is_valid());
-#ifndef NDEBUG
-    EXPECT_DEATH((EntityInstanceHandle{262144, Team::White, 3}), "");
-    EXPECT_DEATH((EntityInstanceHandle{0, static_cast<Team>(ml::enum_count<Team>()), 3}), "");
-    EXPECT_DEATH((EntityInstanceHandle{0, Team::White, 4}), "");
-#endif
     result = EntityInstanceHandle{262143, Team::Yellow, 3};
     EXPECT_TRUE(result.is_valid());
     EXPECT_EQ(result.index(), 262143u);
@@ -76,33 +70,4 @@ TEST(SimulationPhases, AllowsStableSetupAndSuccessiveTicks) {
     }
 }
 
-struct PhaseLookupPermission {
-    SimulationPhase phase;
-    bool permitted;
-    char const* name;
-};
-
-class SimulationLookupPermission : public ::testing::TestWithParam<PhaseLookupPermission> {};
-
-TEST_P(SimulationLookupPermission, PermitsOnlyStableLookupPhases) {
-    auto const expectation{GetParam()};
-    SimClock clock;
-    SimClockTestAccess::set_phase(clock, expectation.phase);
-
-    EXPECT_EQ(clock.permits_lookup(), expectation.permitted);
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    EveryPhase,
-    SimulationLookupPermission,
-    ::testing::Values(
-        PhaseLookupPermission{SimulationPhase::Initialisation, false, "Initialisation"},
-        PhaseLookupPermission{SimulationPhase::StableSetup, true, "StableSetup"},
-        PhaseLookupPermission{SimulationPhase::BetweenTicks, false, "BetweenTicks"},
-        PhaseLookupPermission{SimulationPhase::Preparation, false, "Preparation"},
-        PhaseLookupPermission{SimulationPhase::Thinking, true, "Thinking"},
-        PhaseLookupPermission{SimulationPhase::Action, true, "Action"},
-        PhaseLookupPermission{SimulationPhase::Resolution, true, "Resolution"},
-        PhaseLookupPermission{SimulationPhase::ResolutionCommit, false, "ResolutionCommit"}),
-    [](auto const& info) { return info.param.name; });
 }

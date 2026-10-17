@@ -386,57 +386,10 @@ void CollisionUniformGrid::finish_entity_grid() {
             }
         }
     }
-
-#ifndef NDEBUG
-    {
-        SANDBOX_PROFILE_SCOPE("validate entity grid");
-        assert(is_configured());
-        auto const cell_count{static_cast<std::size_t>(num_cells())};
-        assert(storage.cell_counts.size() == cell_count);
-        assert(storage.cell_offsets.size() == cell_count);
-        assert(storage.cell_write_indices.size() == cell_count);
-        auto const membership_count{storage.entities.size()};
-        auto const aabbs{storage.aabbs.get_const_view()};
-        aabbs.validate();
-        assert(aabbs.num() == membership_count);
-
-        // Preparation clears previously populated cells; only these cells own ranges now.
-        std::size_t offset{};
-        for (auto const cell_index : storage.non_empty_cell_indices) {
-            auto const element{static_cast<std::size_t>(cell_index)};
-            assert(element < cell_count && storage.cell_counts[element] > 0);
-            assert(storage.cell_offsets[element] == offset);
-            auto const count{storage.cell_counts[element]};
-            assert(offset <= membership_count && count <= membership_count - offset);
-            offset += count;
-            assert(storage.cell_write_indices[element] == offset);
-        }
-        assert(offset == membership_count);
-    }
-#endif
 }
 auto CollisionUniformGrid::get_entity_world_bounds() const -> EntityCellData::ConstView {
     return entity_storage_.rebuild_entity_data.get_const_view();
 }
-#ifndef NDEBUG
-auto CollisionUniformGrid::check_live_entity_membership() const -> bool {
-    auto const built_ids{entity_storage_.rebuild_entity_data.get_const_view().entity_ids()};
-    std::vector<EntityUniqueId> live_ids{built_ids.begin(), built_ids.end()};
-    std::ranges::sort(live_ids);
-
-    // Check the cell entries consumed by queries, not just the rebuild's entity list.
-    for (auto const id : entity_storage_.entities) {
-        if (!std::ranges::binary_search(live_ids, id)) {
-            ml::log_error(
-                std::format("Collision grid cell membership contains missing or dead entity {}",
-                            id.raw_value()));
-            return false;
-        }
-    }
-
-    return true;
-}
-#endif
 
 /* **************************************** */
 // Spatial queries

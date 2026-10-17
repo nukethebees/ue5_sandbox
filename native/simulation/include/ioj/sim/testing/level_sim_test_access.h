@@ -19,30 +19,6 @@ struct LevelSimTestAccess {
         simulation.fighters_simulation_.update_entity_lookup_table();
         SimClockTestAccess::set_phase(simulation.clock_, previous);
     }
-#ifndef NDEBUG
-    static auto capture_thinking_phase_state(LevelSim& simulation) {
-        SimClockTestAccess::set_phase(simulation.clock_, SimulationPhase::Thinking);
-        return simulation.capture_thinking_phase_state();
-    }
-    static auto check_thinking_entry_invariants(LevelSim const& simulation,
-                                                std::span<ThinkingEntityState const> state)
-        -> bool {
-        return simulation.check_thinking_entry_invariants(state);
-    }
-    static auto check_thinking_phase_invariants(LevelSim const& simulation,
-                                                std::span<ThinkingEntityState const> state)
-        -> bool {
-        return simulation.check_phase_invariants(state);
-    }
-    static auto capital_entities(LevelSim& simulation) -> CapitalEntityData::View {
-        return simulation.capital_ships_simulation_.entities.get_view();
-    }
-    static void set_capital_health(LevelSim& simulation, std::uint32_t row, Health health) {
-        auto const data{capital_entities(simulation)};
-        simulation.entity_tables_.health.get_view<EntityType::CapitalShip>(data.num())
-            .set_health(row, health);
-    }
-#endif
 
     static auto player_simulation(LevelSim& simulation) -> player::Sim& {
         return simulation.player_ship_simulation_.value();

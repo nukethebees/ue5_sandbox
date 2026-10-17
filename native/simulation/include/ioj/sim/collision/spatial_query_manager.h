@@ -152,11 +152,6 @@ struct SpatialQueryManager {
     // Debug snapshot of the last rebuild; may include entities removed later in Resolution.
     auto get_entity_collision_bounds() const -> collision::EntityCellData::ConstView;
     auto get_static_collision_bounds() const -> collision::WorldAABBs::ConstView;
-#ifndef NDEBUG
-    auto check_live_grid_membership() const -> bool {
-        return collision_system_.uniform_grid_.check_live_entity_membership();
-    }
-#endif
   private:
     friend struct SpatialQueryManagerTestAccess;
 

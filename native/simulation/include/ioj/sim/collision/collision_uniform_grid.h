@@ -69,9 +69,6 @@ struct CollisionUniformGrid {
     auto entity_row_to_aabb_row(EntityType const type) const -> std::span<std::uint32_t const> {
         return entity_storage_.entity_row_to_aabb_row[type];
     }
-#ifndef NDEBUG
-    auto check_live_entity_membership() const -> bool;
-#endif
     auto get_cell_entities(CellCoord const cell_coord) const -> std::span<EntityUniqueId const> {
         auto const dimensions{geometry_.dimensions};
         assert(cell_coord.x() >= 0 && cell_coord.x() < dimensions.x() && cell_coord.y() >= 0 &&

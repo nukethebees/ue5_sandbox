@@ -110,7 +110,6 @@ target_sources(native-simulation PRIVATE
   levels/level_event_types.cpp
   levels/level_read_access.cpp
   levels/level_sim.cpp
-  levels/level_sim_invariants.cpp
   telemetry/manager.cpp
   missions/mission_manager.cpp
   overlap_handler.cpp

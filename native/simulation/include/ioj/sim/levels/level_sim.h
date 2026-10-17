@@ -14,9 +14,6 @@
 #include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/levels/level_read_access.h>
 #include <ioj/sim/levels/level_sim_init_data.h>
-#ifndef NDEBUG
-#include <ioj/sim/levels/thinking_entity_state.h>
-#endif
 #include <ioj/sim/memory/game_memory.h>
 #include <ioj/sim/missions/mission_manager.h>
 #include <ioj/sim/overlap_handler.h>
@@ -135,16 +132,6 @@ struct LevelSim {
     void initialise_spatial_queries(LevelSimInitData& data);
     void begin_subsystems();
     void initialise_events(CompiledLevelEvents events);
-
-#ifndef NDEBUG
-    /* **************************************** */
-    // Phase invariants
-    /* **************************************** */
-    auto check_phase_invariants(std::span<ThinkingEntityState const> state) const -> bool;
-    auto capture_thinking_phase_state() const -> std::vector<ThinkingEntityState>;
-    auto check_thinking_entry_invariants(std::span<ThinkingEntityState const> state) const -> bool;
-    auto check_thinking_phase_invariants(std::span<ThinkingEntityState const> state) const -> bool;
-#endif
 
     /* **************************************** */
     // Telemetry

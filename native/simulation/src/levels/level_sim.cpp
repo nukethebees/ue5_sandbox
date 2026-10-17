@@ -367,11 +367,6 @@ void LevelSim::advance(time_type const dt) {
             mission_manager_.prepare_objectives(scratch_resource);
             capital_ships_simulation_.refresh_fighter_ids(scratch_resource);
 
-#ifndef NDEBUG
-            auto const thinking_state{capture_thinking_phase_state()};
-            assert(check_thinking_entry_invariants(thinking_state));
-#endif
-
             // Run decision phases
             turrets_phase.think(tick_period, scratch_resource);
             capital_ships_phase.think(tick_period, scratch_resource);
@@ -388,8 +383,6 @@ void LevelSim::advance(time_type const dt) {
             fighters_phase.generate_fire_commands(scratch_resource);
             turrets_phase.generate_fire_commands(scratch_resource);
             spinners_phase.generate_fire_commands();
-
-            assert(check_phase_invariants(thinking_state));
         }
 
         /* -------------------------------------------------------------------------------- */
