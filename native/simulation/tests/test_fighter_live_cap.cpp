@@ -1,7 +1,7 @@
 #include "support/simulation_test_support.h"
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entities/health.h>
-#include <ioj/sim/fighters/fighter_types.h>
+#include <ioj/sim/fighters/fighter_task_format.h>
 #include <ioj/sim/levels/level_sim.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/level_sim_test_access.h>

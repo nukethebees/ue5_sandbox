@@ -135,12 +135,12 @@
 
 (type native_fighter_order
   :spelling "FighterOrder"
-  :header "ioj/sim/fighters/fighter_types.h"
+  :header "ioj/sim/fighters/fighter_task_format.h"
   :pass-by value)
 
 (type native_fighter_task
   :spelling "FighterTask"
-  :header "ioj/sim/fighters/fighter_types.h"
+  :header "ioj/sim/fighters/fighter_task_format.h"
   :pass-by value)
 
 (type native_vector_3f

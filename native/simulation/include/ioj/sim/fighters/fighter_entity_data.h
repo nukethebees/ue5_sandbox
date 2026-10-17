@@ -7,7 +7,7 @@
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/entities/entity_unique_id.h"
 #include "ioj/sim/fighters/fighter_navigation_types.h"
-#include "ioj/sim/fighters/fighter_types.h"
+#include "ioj/sim/fighters/fighter_task_format.h"
 #include "ioj/vector_soa_view.h"
 
 #include <cassert>

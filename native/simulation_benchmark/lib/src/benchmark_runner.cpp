@@ -3,7 +3,7 @@
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/authoring/level_parser.h>
 #include <ioj/rotator3d.h>
-#include <ioj/sim/fighters/fighter_types.h>
+#include <ioj/sim/fighters/fighter_task_format.h>
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/reference_level_simulation_data.h>
 #include <ioj/sim/profiling.h>
