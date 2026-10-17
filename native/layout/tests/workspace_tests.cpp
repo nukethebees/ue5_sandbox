@@ -13,20 +13,20 @@ auto enumeration(std::string name) -> codegen::EnumSchema {
     return {.name = std::move(name),
             .underlying_type =
                 codegen::TypeRef{.name = "std::uint8_t", .suffix = {}, .nested = std::nullopt},
-            .bit_width = std::nullopt,
-            .signedness = std::nullopt,
-            .reflection = codegen::EnumReflection::none,
             .values = {{.name = "Value",
                         .initializer = std::nullopt,
                         .display_name = std::nullopt,
                         .hidden = false,
                         .serialized_name = std::nullopt}},
-            .enum_array = false,
             .count = std::nullopt,
             .conversions = {},
             .export_specifier = std::nullopt,
-            .native_api = false,
-            .unreal_projection = std::nullopt};
+            .unreal_projection = std::nullopt,
+            .bit_width = std::nullopt,
+            .reflection = codegen::EnumReflection::none,
+            .signedness = std::nullopt,
+            .enum_array = false,
+            .native_api = false};
 }
 
 auto graph(bool const insert_before_target,

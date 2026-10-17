@@ -102,17 +102,19 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
             .settings = ModuleSettings{.name = "native_enum",
                                        .header = "NativeEnum.h",
                                        .namespace_name = "fixture"},
-            .declarations = {EnumSchema{.name = "NativeState",
-                                        .underlying_type = TypeRef{"@native_uint8"},
-                                        .values = {EnumeratorSchema{.name = "Idle",
-                                                                    .initializer = "0",
-                                                                    .display_name = "Idle",
-                                                                    .serialized_name = "idle"},
-                                                   EnumeratorSchema{.name = "Active",
-                                                                    .initializer = "1",
-                                                                    .display_name = "Active",
-                                                                    .serialized_name = "active"}},
-                                        .native_api = true}}}},
+            .declarations = {EnumSchema{
+                .name = "NativeState",
+                .underlying_type = TypeRef{"@native_uint8"},
+                .values = {EnumeratorSchema{.name = "Idle",
+                                            .initializer = "0",
+                                            .display_name = "Idle",
+                                            .serialized_name = "idle"},
+                           EnumeratorSchema{.name = "Active",
+                                            .initializer = "1",
+                                            .display_name = "Active",
+                                            .serialized_name = "active"}},
+                .native_api = true,
+            }}}},
     }))};
 
     ASSERT_EQ(files.size(), 1);
@@ -134,11 +136,12 @@ TEST(Lowering, DerivesNativeEnumBackingFromSemanticWidthAndSignedness) {
             .declarations = {EnumSchema{
                 .name = "SignedState",
                 .underlying_type = std::nullopt,
-                .bit_width = 12,
-                .signedness = true,
                 .values = {EnumeratorSchema{.name = "Below", .initializer = "-1"},
                            EnumeratorSchema{.name = "Above", .initializer = "1"}},
-                .native_api = true}}}},
+                .bit_width = 12,
+                .signedness = true,
+                .native_api = true,
+            }}}},
     }))};
 
     ASSERT_EQ(files.size(), 1);
@@ -153,10 +156,10 @@ TEST(Lowering, DerivesUnrealStyleEnumBackingWithoutChangingSemanticWidth) {
         .declarations = {EnumSchema{
             .name = "EState",
             .underlying_type = std::nullopt,
-            .bit_width = 12,
-            .signedness = false,
             .values = {EnumeratorSchema{.name = "Idle", .initializer = "0"},
                        EnumeratorSchema{.name = "Maximum", .initializer = "4095"}},
+            .bit_width = 12,
+            .signedness = false,
         }}})};
 
     EXPECT_NE(output.header.find("#include \"CoreMinimal.h\""), std::string::npos);
@@ -261,8 +264,6 @@ TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) 
                                .name = "Idle", .initializer = "0", .serialized_name = "idle"},
                            EnumeratorSchema{
                                .name = "Active", .initializer = "1", .serialized_name = "active"}},
-                .enum_array = true,
-                .native_api = true,
                 .unreal_projection =
                     EnumUnrealProjection{
                         .name = "ENativeState",
@@ -271,6 +272,8 @@ TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) 
                         .conversion_header = "Project/NativeStateConversion.h",
                         .native_header_include = "fixture/NativeEnum.h",
                     },
+                .enum_array = true,
+                .native_api = true,
             }}}},
     }))};
 
@@ -311,7 +314,6 @@ TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
         .declarations = {EnumSchema{
             .name = "EMode",
             .underlying_type = TypeRef{"uint8"},
-            .reflection = EnumReflection::blueprint,
             .values =
                 {
                     EnumeratorSchema{"First", std::nullopt, std::nullopt, false, "first"},
@@ -327,6 +329,7 @@ TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
                     EnumConversion::try_parse_serialized,
                 },
             .export_specifier = "PROJECT_API",
+            .reflection = EnumReflection::blueprint,
         }},
         .enum_helper_namespace = "project"})};
 
@@ -417,12 +420,12 @@ TEST(Lowering, EmitsCountsForReflectedEnumArrays) {
                                                      .declarations = {EnumSchema{
                                                          .name = "EMode",
                                                          .underlying_type = TypeRef{"uint8"},
-                                                         .reflection = EnumReflection::uenum,
                                                          .values =
                                                              {
                                                                  EnumeratorSchema{"First"},
                                                                  EnumeratorSchema{"Second"},
                                                              },
+                                                         .reflection = EnumReflection::uenum,
                                                          .enum_array = true,
                                                      }}})};
 
@@ -458,13 +461,13 @@ TEST(Lowering, EnumEscapingAndSparseDisplayCasesPreserveFallbacks) {
         .declarations = {EnumSchema{
             .name = "EState",
             .underlying_type = TypeRef{"int"},
-            .reflection = EnumReflection::uenum,
             .values = {EnumeratorSchema{"Ready", std::nullopt, std::nullopt, false, "ready"},
                        EnumeratorSchema{
                            "Special", std::nullopt, "Quote\" Slash\\\n\t", false, "a\"b\\c\n"}},
             .conversions = {EnumConversion::display_string,
                             EnumConversion::lex_to_serialized_string,
                             EnumConversion::try_parse_serialized},
+            .reflection = EnumReflection::uenum,
         }}})};
 
     EXPECT_NE(output.header.find("UMETA(DisplayName = \"Quote\\\" Slash\\\\\\n\\t\")"),

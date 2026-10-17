@@ -115,11 +115,11 @@ TEST(SemanticTypeGraph, PreservesExplicitEnumSemanticWidth) {
             .declarations = {codegen::EnumSchema{
                 .name = "State",
                 .underlying_type = codegen::TypeRef{"std::uint8_t"},
-                .bit_width = 3,
-                .signedness = false,
                 .values = {codegen::EnumeratorSchema{"Idle", "0"},
                            codegen::EnumeratorSchema{
                                .name = "Active", .initializer = "7", .sentinel = true}},
+                .bit_width = 3,
+                .signedness = false,
             }}}},
     };
 
@@ -143,10 +143,10 @@ TEST(SemanticTypeGraph, KeepsDerivedEnumBackingOutOfSemanticDependencies) {
             .declarations = {codegen::EnumSchema{
                 .name = "State",
                 .underlying_type = std::nullopt,
-                .bit_width = 3,
-                .signedness = false,
                 .values = {codegen::EnumeratorSchema{"Idle", "0"},
                            codegen::EnumeratorSchema{"Active", "7"}},
+                .bit_width = 3,
+                .signedness = false,
             }}}},
     };
 
@@ -748,7 +748,8 @@ TEST(SemanticTypeGraph, ResolvesTaggedUnionDiscriminantMappingsAndDependencies) 
             .underlying_type = codegen::TypeRef{"std::uint8_t"},
             .values = {codegen::EnumeratorSchema{"Spawn"},
                        codegen::EnumeratorSchema{"Damage"},
-                       codegen::EnumeratorSchema{.name = "Invalid", .sentinel = true}}}}};
+                       codegen::EnumeratorSchema{.name = "Invalid", .sentinel = true}},
+        }}};
     codegen::NormalModuleSchema unions{
         .settings = codegen::ModuleSettings{.name = "payloads",
                                             .header = "Payloads.h",

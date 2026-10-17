@@ -160,9 +160,11 @@ TEST(RecordLowering, ForwardDeclarationsMatchGeneratedRecordKindsAndExcludeAlias
             .layout_only = true},
         RecordSchema{.name = "Record"},
         UnionSchema{.name = "Raw", .alternatives = {{.name = "value", .type = TypeRef{"float"}}}},
-        EnumSchema{.name = "Tag",
-                   .underlying_type = TypeRef{"std::uint8_t"},
-                   .values = {{.name = "Value"}}},
+        EnumSchema{
+            .name = "Tag",
+            .underlying_type = TypeRef{"std::uint8_t"},
+            .values = {{.name = "Value"}},
+        },
         TaggedUnionSchema{
             .name = "Tagged",
             .discriminant = TypeRef{"Tag"},

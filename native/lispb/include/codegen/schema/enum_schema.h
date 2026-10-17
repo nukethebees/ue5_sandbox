@@ -16,16 +16,16 @@ namespace codegen {
 struct EnumSchema {
     std::string name;
     std::optional<TypeRef> underlying_type;
-    std::optional<std::uint32_t> bit_width;
-    std::optional<bool> signedness;
-    EnumReflection reflection{EnumReflection::none};
     std::vector<EnumeratorSchema> values;
-    bool enum_array{false};
     std::optional<std::string> count;
     std::vector<EnumConversion> conversions;
     std::optional<std::string> export_specifier;
-    bool native_api{false};
     std::optional<EnumUnrealProjection> unreal_projection;
+    std::optional<std::uint32_t> bit_width;
+    EnumReflection reflection{EnumReflection::none};
+    std::optional<bool> signedness;
+    bool enum_array{false};
+    bool native_api{false};
 };
 
 } // namespace codegen

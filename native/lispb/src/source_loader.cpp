@@ -770,16 +770,16 @@ auto parse_enum(Form const& form) -> EnumSchema {
         .name = text(fields.positional(0), "enum name"),
         .underlying_type = has_underlying_type ? std::optional{parse_type_ref(fields.positional(1))}
                                                : std::nullopt,
-        .bit_width = bit_width,
-        .signedness = optional_boolean(fields, "signed"),
-        .reflection = reflection,
         .values = std::move(values),
-        .enum_array = boolean_or(fields, "enum-array"),
         .count = optional_text(fields, "count"),
         .conversions = std::move(conversions),
         .export_specifier = optional_text(fields, "export-specifier"),
-        .native_api = boolean_or(fields, "native-api"),
         .unreal_projection = std::move(unreal_projection),
+        .bit_width = bit_width,
+        .reflection = reflection,
+        .signedness = optional_boolean(fields, "signed"),
+        .enum_array = boolean_or(fields, "enum-array"),
+        .native_api = boolean_or(fields, "native-api"),
     };
 }
 

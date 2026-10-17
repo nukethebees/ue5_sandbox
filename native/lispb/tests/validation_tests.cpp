@@ -192,9 +192,9 @@ auto valid_enum_module() -> NormalModuleSchema {
                               .declarations = {EnumSchema{
                                   .name = "EMode",
                                   .underlying_type = TypeRef{"uint8"},
-                                  .reflection = EnumReflection::uenum,
                                   .values = {EnumeratorSchema{"Value"}},
                                   .conversions = {EnumConversion::string_view},
+                                  .reflection = EnumReflection::uenum,
                               }},
                               .enum_helper_namespace = "project"};
 }
@@ -1898,9 +1898,11 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
                                   .components = {"xs", "ys"},
                                   .equivalent_type = TypeRef{"int32"}};
     auto module = normal_module({vector,
-                                 EnumSchema{.name = "FooView",
-                                            .underlying_type = TypeRef{"uint8"},
-                                            .values = {{.name = "One"}}}},
+                                 EnumSchema{
+                                     .name = "FooView",
+                                     .underlying_type = TypeRef{"uint8"},
+                                     .values = {{.name = "One"}},
+                                 }},
                                 "Mixed.cpp");
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
@@ -1940,17 +1942,22 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
         .name = "Data",
         .members = {{.name = "values", .kind = SoaMemberKind::array, .type = TypeRef{"int32"}}}};
     module = normal_module({std::move(soa),
-                            EnumSchema{.name = "DataView",
-                                       .underlying_type = TypeRef{"uint8"},
-                                       .values = {{.name = "One"}}}},
+                            EnumSchema{
+                                .name = "DataView",
+                                .underlying_type = TypeRef{"uint8"},
+                                .values = {{.name = "One"}},
+                            }},
                            "Mixed.cpp");
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
-    module = normal_module(
-        {EnumSchema{
-             .name = "State", .underlying_type = TypeRef{"uint8"}, .values = {{.name = "One"}}},
-         RecordSchema{.name = "Snapshot",
-                      .members = {{.name = "value", .type = TypeRef{"int32"}}}}});
+    module =
+        normal_module({EnumSchema{
+                           .name = "State",
+                           .underlying_type = TypeRef{"uint8"},
+                           .values = {{.name = "One"}},
+                       },
+                       RecordSchema{.name = "Snapshot",
+                                    .members = {{.name = "value", .type = TypeRef{"int32"}}}}});
     EXPECT_NO_THROW(lower_modules(manifest_with(std::move(module))));
 }
 
@@ -1976,13 +1983,17 @@ TEST(Validation, NormalModuleAppliesSourceRequirementsPerDeclaration) {
 }
 
 TEST(Validation, NormalModuleCanMixIndependentEnumApis) {
-    auto module = normal_module({EnumSchema{.name = "NativeMode",
-                                            .underlying_type = TypeRef{"uint8"},
-                                            .values = {{.name = "One"}},
-                                            .native_api = true},
-                                 EnumSchema{.name = "UnrealMode",
-                                            .underlying_type = TypeRef{"uint8"},
-                                            .values = {{.name = "One"}}}});
+    auto module = normal_module({EnumSchema{
+                                     .name = "NativeMode",
+                                     .underlying_type = TypeRef{"uint8"},
+                                     .values = {{.name = "One"}},
+                                     .native_api = true,
+                                 },
+                                 EnumSchema{
+                                     .name = "UnrealMode",
+                                     .underlying_type = TypeRef{"uint8"},
+                                     .values = {{.name = "One"}},
+                                 }});
     EXPECT_NO_THROW(lower_modules(manifest_with(std::move(module))));
 }
 

@@ -2889,22 +2889,23 @@ TEST(EditableSchemaDocument, CreatesPreviewsSavesAndReloadsEnumDeclarations) {
     ASSERT_TRUE(existing.has_value());
     auto const module_index{document.declaration(*existing)->module_index};
     auto const created{document.allocate_declaration_id()};
-    auto create{document.apply(
-        CreateEnum{.declaration = created,
-                   .module_index = module_index,
-                   .schema = codegen::EnumSchema{.name = "DesignedState",
-                                                 .underlying_type = std::nullopt,
-                                                 .bit_width = 3,
-                                                 .signedness = false,
-                                                 .values = {{.name = "Idle",
-                                                             .initializer = "0",
-                                                             .display_name = "Idle State",
-                                                             .serialized_name = "idle"},
-                                                            {.name = "Active",
-                                                             .initializer = "7",
-                                                             .display_name = "Active State",
-                                                             .serialized_name = "active",
-                                                             .sentinel = true}}}})};
+    auto create{document.apply(CreateEnum{.declaration = created,
+                                          .module_index = module_index,
+                                          .schema = codegen::EnumSchema{
+                                              .name = "DesignedState",
+                                              .underlying_type = std::nullopt,
+                                              .values = {{.name = "Idle",
+                                                          .initializer = "0",
+                                                          .display_name = "Idle State",
+                                                          .serialized_name = "idle"},
+                                                         {.name = "Active",
+                                                          .initializer = "7",
+                                                          .display_name = "Active State",
+                                                          .serialized_name = "active",
+                                                          .sentinel = true}},
+                                              .bit_width = 3,
+                                              .signedness = false,
+                                          }})};
     ASSERT_TRUE(create.has_value());
     EXPECT_TRUE(*create);
 
@@ -2989,15 +2990,17 @@ TEST(EditableSchemaDocument, CreatesEnumAndBindsPackedFieldAcrossModules) {
     auto const packed{declaration_id(document, "authored_packed", "ExistingPacked", "authored")};
     auto const enumeration{document.allocate_declaration_id()};
 
-    auto created{document.apply(CreateEnum{
-        .declaration = enumeration,
-        .module_index = document.declaration(existing_enum)->module_index,
-        .schema = codegen::EnumSchema{.name = "PackedState",
+    auto created{
+        document.apply(CreateEnum{.declaration = enumeration,
+                                  .module_index = document.declaration(existing_enum)->module_index,
+                                  .schema = codegen::EnumSchema{
+                                      .name = "PackedState",
                                       .underlying_type = codegen::TypeRef{"std::uint8_t"},
+                                      .values = {{.name = "Idle", .initializer = "0"},
+                                                 {.name = "Active", .initializer = "1"}},
                                       .bit_width = 3,
                                       .signedness = false,
-                                      .values = {{.name = "Idle", .initializer = "0"},
-                                                 {.name = "Active", .initializer = "1"}}}})};
+                                  }})};
     ASSERT_TRUE(created.has_value()) << created.error().message;
     ASSERT_TRUE(*created);
 
@@ -5207,9 +5210,10 @@ TEST(EditableSchemaDocument, RenamesEnumAndRepairsPackedSemanticReference) {
         .schema = codegen::EnumSchema{
             .name = "PackedMode",
             .underlying_type = codegen::TypeRef{"std::uint8_t"},
+            .values = {{.name = "Off", .initializer = "0"}, {.name = "On", .initializer = "1"}},
             .bit_width = 1,
             .signedness = false,
-            .values = {{.name = "Off", .initializer = "0"}, {.name = "On", .initializer = "1"}}}})};
+        }})};
     ASSERT_TRUE(created.has_value()) << created.error().message;
     auto const packed{declaration_id(document, "authored_packed", "ExistingPacked", "authored")};
     auto replacement{*document.packed_value_schema(packed)};
@@ -8857,12 +8861,13 @@ TEST(EditableDocument, PendingNormalModuleCreatesMixedDeclarationsAndReloads) {
                                                              .namespace_name = "pending"}}})};
     ASSERT_TRUE(created.has_value()) << created.error().message;
     auto const state{document.allocate_declaration_id()};
-    created = document.apply(CreateEnum{
-        .declaration = state,
-        .module_index = module_index,
-        .schema = codegen::EnumSchema{.name = "State",
-                                      .underlying_type = codegen::TypeRef{"std::uint8_t"},
-                                      .values = {{.name = "Alive"}}}});
+    created = document.apply(CreateEnum{.declaration = state,
+                                        .module_index = module_index,
+                                        .schema = codegen::EnumSchema{
+                                            .name = "State",
+                                            .underlying_type = codegen::TypeRef{"std::uint8_t"},
+                                            .values = {{.name = "Alive"}},
+                                        }});
     ASSERT_TRUE(created.has_value()) << created.error().message;
     auto const snapshot{document.allocate_declaration_id()};
     created = document.apply(

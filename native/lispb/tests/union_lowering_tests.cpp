@@ -61,7 +61,8 @@ TEST(UnionLowering, GeneratesTaggedAggregateWithExplicitPayloadUnion) {
                         .declarations = {EnumSchema{
                             .name = "EventKind",
                             .underlying_type = TypeRef{"std::uint8_t"},
-                            .values = {EnumeratorSchema{"Spawn"}, EnumeratorSchema{"Damage"}}}}},
+                            .values = {EnumeratorSchema{"Spawn"}, EnumeratorSchema{"Damage"}},
+                        }}},
                     NormalModuleSchema{.settings = ModuleSettings{.name = "unions",
                                                                   .header = "Unions.h",
                                                                   .namespace_name = "events"},

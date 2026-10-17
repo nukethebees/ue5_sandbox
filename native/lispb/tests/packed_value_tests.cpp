@@ -475,11 +475,13 @@ TEST(PackedValue, MostSignificantFirstEnumDomainCanExcludeInvalidRawValue) {
 
     auto const header{
         lower_known_enum(std::move(module),
-                         EnumSchema{.name = "FighterStateKind",
-                                    .underlying_type = TypeRef{"uint8"},
-                                    .values = {EnumeratorSchema{"Zero", "0"},
-                                               EnumeratorSchema{"COUNT", "5", std::nullopt, true}},
-                                    .count = "COUNT"})};
+                         EnumSchema{
+                             .name = "FighterStateKind",
+                             .underlying_type = TypeRef{"uint8"},
+                             .values = {EnumeratorSchema{"Zero", "0"},
+                                        EnumeratorSchema{"COUNT", "5", std::nullopt, true}},
+                             .count = "COUNT",
+                         })};
 
     EXPECT_EQ(header.find("assert(raw != invalid_value);"), std::string::npos);
 }
@@ -1165,10 +1167,10 @@ TEST(PackedValue, RejectsFieldsNarrowerThanEnumSemanticDomain) {
                                  .declarations = {EnumSchema{
                                      .name = "FighterStateKind",
                                      .underlying_type = TypeRef{"uint8"},
-                                     .bit_width = bit_width,
-                                     .signedness = signedness,
                                      .values = {EnumeratorSchema{"Idle", "0"},
                                                 EnumeratorSchema{"Maximum", std::move(maximum)}},
+                                     .bit_width = bit_width,
+                                     .signedness = signedness,
                                  }}};
         return {.schema_version = manifest_schema_version,
                 .modules = {std::move(enums), std::move(module)}};
@@ -1200,9 +1202,9 @@ TEST(PackedValue, DerivesAutoWidthFromEnumSemanticDomain) {
         .declarations = {EnumSchema{
             .name = "FighterStateKind",
             .underlying_type = TypeRef{"uint8"},
+            .values = {EnumeratorSchema{"Idle", "0"}, EnumeratorSchema{"Maximum", "7"}},
             .bit_width = std::nullopt,
             .signedness = false,
-            .values = {EnumeratorSchema{"Idle", "0"}, EnumeratorSchema{"Maximum", "7"}},
         }}};
     auto const files{render_modules(lower_modules(Manifest{
         .schema_version = manifest_schema_version,
