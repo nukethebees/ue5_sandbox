@@ -53,11 +53,11 @@ auto to_unreal(ioj::ui::heatmap_2d::ValueRange const range) -> FHeatmapValueRang
 }
 
 auto to_native(FHeatmapDomain const domain) -> ioj::ui::heatmap_2d::Domain {
-    return {domain.minimum_x, domain.maximum_x, domain.minimum_y, domain.maximum_y};
+    return {{domain.minimum_x, domain.maximum_x}, {domain.minimum_y, domain.maximum_y}};
 }
 
 auto to_unreal(ioj::ui::heatmap_2d::Domain const domain) -> FHeatmapDomain {
-    return {domain.minimum_x, domain.maximum_x, domain.minimum_y, domain.maximum_y};
+    return {domain.x.min, domain.x.max, domain.y.min, domain.y.max};
 }
 
 auto native_color_stops(TConstArrayView<FHeatmapColorStop> const stops)
@@ -384,7 +384,7 @@ int32 SHeatmap2D::OnPaint(FPaintArgs const&,
                        allotted_geometry,
                        {plot_origin.X, x_label_y},
                        {half_plot_width, layout.x_label_area_height},
-                       FText::AsNumber(data_->native.domain().minimum_x),
+                       FText::AsNumber(data_->native.domain().x.min),
                        style_.label_font,
                        draw_effect,
                        label_tint);
@@ -393,7 +393,7 @@ int32 SHeatmap2D::OnPaint(FPaintArgs const&,
                        allotted_geometry,
                        {plot_origin.X + half_plot_width, x_label_y},
                        {half_plot_width, layout.x_label_area_height},
-                       FText::AsNumber(data_->native.domain().maximum_x),
+                       FText::AsNumber(data_->native.domain().x.max),
                        style_.label_font,
                        draw_effect,
                        label_tint);
@@ -405,7 +405,7 @@ int32 SHeatmap2D::OnPaint(FPaintArgs const&,
                        allotted_geometry,
                        {y_label_x, plot_origin.Y},
                        {layout.y_label_area_width, half_plot_height},
-                       FText::AsNumber(data_->native.domain().maximum_y),
+                       FText::AsNumber(data_->native.domain().y.max),
                        style_.label_font,
                        draw_effect,
                        label_tint);
@@ -414,7 +414,7 @@ int32 SHeatmap2D::OnPaint(FPaintArgs const&,
                        allotted_geometry,
                        {y_label_x, plot_origin.Y + half_plot_height},
                        {layout.y_label_area_width, half_plot_height},
-                       FText::AsNumber(data_->native.domain().minimum_y),
+                       FText::AsNumber(data_->native.domain().y.min),
                        style_.label_font,
                        draw_effect,
                        label_tint);

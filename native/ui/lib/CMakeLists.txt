@@ -17,6 +17,7 @@ target_include_directories(native-ui
 target_link_libraries(native-ui
   PUBLIC
     sandbox::native_defaults
+    native-core-headers
 )
 ioj_enable_warnings(native-ui)
 ioj_apply_native_abi(native-ui)

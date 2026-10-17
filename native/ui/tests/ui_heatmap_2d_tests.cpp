@@ -20,8 +20,8 @@ TEST(Heatmap2D, ValidatesGridsRangesDomainsAndColorStops) {
     EXPECT_FALSE(is_valid_grid({.columns = 2, .rows = 0, .values = {}}));
     EXPECT_TRUE(is_valid_value_range({-1.0f, 1.0f}));
     EXPECT_FALSE(is_valid_value_range({1.0f, 1.0f}));
-    EXPECT_TRUE(is_valid_domain({-1.0f, 1.0f, -2.0f, 2.0f}));
-    EXPECT_FALSE(is_valid_domain({1.0f, -1.0f, -2.0f, 2.0f}));
+    EXPECT_TRUE(is_valid_domain({{-1.0f, 1.0f}, {-2.0f, 2.0f}}));
+    EXPECT_FALSE(is_valid_domain({{1.0f, -1.0f}, {-2.0f, 2.0f}}));
     EXPECT_TRUE(is_valid_color_stops(grayscale_stops()));
     EXPECT_FALSE(is_valid_color_stops({{{0.0f, {}}, {0.8f, {}}}}));
 }

@@ -42,9 +42,9 @@ auto is_valid_value_range(ValueRange const range) noexcept -> bool {
 }
 
 auto is_valid_domain(Domain const domain) noexcept -> bool {
-    return std::isfinite(domain.minimum_x) && std::isfinite(domain.maximum_x) &&
-           std::isfinite(domain.minimum_y) && std::isfinite(domain.maximum_y) &&
-           domain.maximum_x > domain.minimum_x && domain.maximum_y > domain.minimum_y;
+    return std::isfinite(domain.x.min) && std::isfinite(domain.x.max) &&
+           std::isfinite(domain.y.min) && std::isfinite(domain.y.max) &&
+           domain.x.max > domain.x.min && domain.y.max > domain.y.min;
 }
 
 auto is_valid_color_stops(std::span<ColorStop const> const stops) noexcept -> bool {

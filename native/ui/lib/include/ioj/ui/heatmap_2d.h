@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ioj/ui/types.h"
+#include <ioj/min_max.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -28,10 +29,8 @@ struct ValueRange {
 };
 
 struct Domain {
-    float minimum_x{};
-    float maximum_x{1.0f};
-    float minimum_y{};
-    float maximum_y{1.0f};
+    MinMax<float> x{};
+    MinMax<float> y{};
 };
 
 struct ColorStop {
