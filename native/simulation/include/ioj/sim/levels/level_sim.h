@@ -15,6 +15,7 @@
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/levels/level_read_access.h>
+#include <ioj/sim/levels/level_sim_init_data.h>
 #include <ioj/sim/memory/game_memory.h>
 #include <ioj/sim/missions/mission_manager.h>
 #include <ioj/sim/overlap_handler.h>
@@ -41,36 +42,6 @@
 namespace ioj::sim {
 
 struct LevelSimTestAccess;
-
-struct LevelSimInitData {
-    FixedTickLoop clock_settings{};
-
-    LaserSimConfig lasers;
-    OverlapResponseConfig overlap_response;
-    CapitalShipSimConfig capital_ships;
-    FighterSimConfig fighters;
-    TurretSimConfig turrets;
-    SpinnerSimConfig spinners;
-
-    TeamList participating_teams;
-
-    std::optional<player::PlayerSpawnData> player;
-    CompiledLevelEvents level_events;
-
-    collision::EntityAABBs entity_bounds{};
-    collision::WorldAABBs static_bounds{};
-    collision::GridGeometry grid_geometry{{400, 400, 5},
-                                          ml::make_vector3f(5000.f, 5000.f, 20000.f)};
-
-    std::size_t frame_memory_capacity_bytes{256 * 1024 * 1024};
-
-    float fighter_fire_point_distance{};
-
-    std::optional<LevelTelemetryRunMetadata> telemetry_metadata{};
-    LevelTelemetryHistoryConfig telemetry_history{};
-    GameMemory* game_memory{};
-    bool fighter_diagnostics_enabled{};
-};
 
 struct LevelSim {
     using tick_type = SimClock::tick_type;
