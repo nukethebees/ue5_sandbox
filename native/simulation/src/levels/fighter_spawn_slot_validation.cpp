@@ -45,7 +45,7 @@ auto validate_fighter_spawn_slots(sim::CapitalShipSimConfig const& capital_confi
             sim::to_quaternion(sim::to_float(ioj::to_rotator(slot.rotation)))));
         if (intersects(capital_bounds, fighter_bounds.back(), 0.0f, clearance)) {
             errors.push_back({.kind = FighterSpawnSlotValidationErrorKind::IntersectsCapital,
-                              .first_slot = static_cast<std::int32_t>(index),
+                              .first_slot = static_cast<FighterSpawnSlotIndex>(index),
                               .clearance = clearance});
         }
     }
@@ -54,8 +54,8 @@ auto validate_fighter_spawn_slots(sim::CapitalShipSimConfig const& capital_confi
         for (std::size_t second{first + 1}; second < fighter_bound_count; ++second) {
             if (intersects(fighter_bounds[first], fighter_bounds[second], clearance, clearance)) {
                 errors.push_back({.kind = FighterSpawnSlotValidationErrorKind::SlotsOverlap,
-                                  .first_slot = static_cast<std::int32_t>(first),
-                                  .second_slot = static_cast<std::int32_t>(second),
+                                  .first_slot = static_cast<FighterSpawnSlotIndex>(first),
+                                  .second_slot = static_cast<FighterSpawnSlotIndex>(second),
                                   .clearance = clearance});
             }
         }

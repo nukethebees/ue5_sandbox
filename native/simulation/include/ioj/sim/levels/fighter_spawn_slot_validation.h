@@ -1,5 +1,7 @@
 #pragma once
 
+// Check authored fighter spawn slots for capital hull intersections and mutual overlap.
+
 #include <ioj/sim/entity_aabbs.h>
 #include <ioj/sim/sim_config.h>
 
@@ -7,6 +9,8 @@
 #include <vector>
 
 namespace ioj::levels {
+using FighterSpawnSlotIndex = std::int32_t;
+
 enum class FighterSpawnSlotValidationErrorKind : std::uint8_t {
     IntersectsCapital,
     SlotsOverlap,
@@ -14,8 +18,8 @@ enum class FighterSpawnSlotValidationErrorKind : std::uint8_t {
 
 struct FighterSpawnSlotValidationError {
     FighterSpawnSlotValidationErrorKind kind{};
-    std::int32_t first_slot{};
-    std::int32_t second_slot{};
+    FighterSpawnSlotIndex first_slot{};
+    FighterSpawnSlotIndex second_slot{};
     float clearance{};
 };
 
