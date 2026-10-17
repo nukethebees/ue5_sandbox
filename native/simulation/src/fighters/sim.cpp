@@ -1,5 +1,6 @@
 #include "ioj/sim/fighters/sim.h"
 
+#include <ioj/column_math.h>
 #include <ioj/countdown.h>
 #include <ioj/diagnostics.h>
 #include <ioj/frame_array.h>
@@ -11,7 +12,6 @@
 #include <ioj/sim/collision/frame_range_query_results.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/collision/trace_hits.h>
-#include <ioj/sim/column_math.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/deterministic_bias.h>
 #include <ioj/sim/entities/entity_ledger.h>

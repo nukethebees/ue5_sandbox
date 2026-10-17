@@ -1,6 +1,6 @@
 #include "WorldlessSimulationTest.h"
 
-#include <ioj/sim/column_math.h>
+#include <ioj/column_math.h>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/sim_config.h>
 #include <ioj/sim/testing/entity_observations.h>

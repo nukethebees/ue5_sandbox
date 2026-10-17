@@ -1,5 +1,5 @@
 #include "test_level_loader_scenario.h"
-#include <ioj/sim/column_math.h>
+#include <ioj/column_math.h>
 #include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/entities/entity_types.h>
 #include <ioj/sim/lasers/laser_source.h>

@@ -1,6 +1,6 @@
 #include "SpaceGamePresentation/presentation/CapitalPresentation.h"
 
-#include <ioj/sim/column_math.h>
+#include <ioj/column_math.h>
 #include <ioj/sim/entities/entity_types.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGamePresentation/entities/TestBatchActorCore.h>

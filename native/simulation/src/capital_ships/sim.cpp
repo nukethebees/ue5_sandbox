@@ -1,12 +1,12 @@
 #include "ioj/sim/capital_ships/sim.h"
 
 #include <ioj/array_math.h>
+#include <ioj/column_math.h>
 #include <ioj/countdown.h>
 #include <ioj/frame_array.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/batch_operations.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
-#include <ioj/sim/column_math.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/health.h>

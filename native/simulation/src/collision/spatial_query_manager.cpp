@@ -1,9 +1,9 @@
 #include "ioj/sim/collision/spatial_query_manager.h"
 
+#include <ioj/column_math.h>
 #include <ioj/diagnostics.h>
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/collision/line_trace_batch.h>
-#include <ioj/sim/column_math.h>
 #include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/levels/level_read_access.h>
 #include <ioj/sim/profiling.h>
@@ -73,10 +73,10 @@ auto trace_impl(ioj::sim::collision::CollisionUniformGrid const& uniform_grid,
             auto const starts{trace_columns.view_starts()};
             auto const ends{trace_columns.view_ends()};
             for (std::uint32_t i{}; i < count; ++i) {
-                ioj::sim::set_vector(starts, i, request.scalar_start);
+                ioj::set_vector(starts, i, request.scalar_start);
                 auto const end{Mode == QueryMode::TargetLineOfSight ? request.end_locations[i]
                                                                     : request.scalar_end};
-                ioj::sim::set_vector(ends, i, end);
+                ioj::set_vector(ends, i, end);
             }
             return ioj::sim::LineTraceBatch{traces.get_const_view()};
         } else {

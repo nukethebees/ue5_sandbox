@@ -1,5 +1,6 @@
 #include "ioj/sim/turrets/sim.h"
 
+#include <ioj/column_math.h>
 #include <ioj/countdown.h>
 #include <ioj/fixed_array.h>
 #include <ioj/frame_array.h>
@@ -10,7 +11,6 @@
 #include <ioj/projectile_intercept.h>
 #include <ioj/sim/batch_operations.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
-#include <ioj/sim/column_math.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/deterministic_bias.h>
 #include <ioj/sim/entities/entity_ledger.h>

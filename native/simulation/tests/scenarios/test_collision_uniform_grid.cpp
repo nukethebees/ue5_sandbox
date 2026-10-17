@@ -2,6 +2,7 @@
 
 #include "../support/collision_agent_storage.h"
 #include "../support/simulation_test_support.h"
+#include <ioj/column_math.h>
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/collision/collision_system.h>
 #include <ioj/sim/collision/collision_uniform_grid.h>
@@ -9,7 +10,6 @@
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/collision/trace_hits.h>
 #include <ioj/sim/collision/world_aabb_operations.h>
-#include <ioj/sim/column_math.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/spatial_query_manager_test_access.h>

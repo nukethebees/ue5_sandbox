@@ -1,6 +1,6 @@
 #include "SpaceGamePresentation/presentation/LaserPresentation.h"
 
-#include <ioj/sim/column_math.h>
+#include <ioj/column_math.h>
 #include <ioj/sim/entities/entity_types.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <SandboxGameShared/utilities/actor_utils.h>

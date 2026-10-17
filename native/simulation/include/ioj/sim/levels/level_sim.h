@@ -1,10 +1,10 @@
 #pragma once
+#include <ioj/column_math.h>
 #include <ioj/frame_memory_resource.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/capital_ships/phase_interface.h>
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
-#include <ioj/sim/column_math.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_tables.h>

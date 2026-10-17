@@ -1,6 +1,6 @@
 #pragma once
+#include <ioj/column_math.h>
 #include <ioj/frame_memory_resource.h>
-#include <ioj/sim/column_math.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/lasers/sim.h>

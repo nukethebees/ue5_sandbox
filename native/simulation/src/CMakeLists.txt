@@ -91,7 +91,6 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/collision/trace_hits.h
   ../include/ioj/sim/turrets/turret_entity_data.h
   ../include/ioj/sim/vector_operations.h
-  ../include/ioj/sim/column_math.h
   ../include/ioj/sim/vectors3f.h
   ../include/ioj/sim/collision/world_aabb_operations.h
   ../include/ioj/sim/collision/world_aabbs.h

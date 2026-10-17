@@ -1,8 +1,8 @@
 #include "support/simulation_test_support.h"
+#include <ioj/column_math.h>
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/capital_ships/capital_entity_data.h>
 #include <ioj/sim/collision/frame_hit_details.h>
-#include <ioj/sim/column_math.h>
 #include <ioj/sim/fighters/fighter_entity_data.h>
 #include <ioj/sim/fighters/fighter_spawn_queue.h>
 #include <ioj/sim/lasers/laser_frame_output.h>

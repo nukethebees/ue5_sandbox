@@ -1,6 +1,6 @@
 #include "SpaceGamePresentation/presentation/SpinnerPresentation.h"
 
-#include <ioj/sim/column_math.h>
+#include <ioj/column_math.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGamePresentation/entities/TestBatchActorCore.h>
 #include <SpaceGamePresentation/integration/VectorConversion.h>

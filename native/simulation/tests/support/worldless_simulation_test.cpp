@@ -1,6 +1,6 @@
 #include "worldless_simulation_test.h"
 
-#include <ioj/sim/column_math.h>
+#include <ioj/column_math.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 

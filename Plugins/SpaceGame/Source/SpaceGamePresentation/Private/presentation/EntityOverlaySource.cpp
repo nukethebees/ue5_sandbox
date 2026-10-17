@@ -2,7 +2,7 @@
 
 #include "ioj/sim/entities/entity_type.h"
 #include "ioj/sim/entities/health.h"
-#include <ioj/sim/column_math.h>
+#include <ioj/column_math.h>
 #include <ioj/sim/entities/entity_types.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGamePresentation/integration/VectorConversion.h>

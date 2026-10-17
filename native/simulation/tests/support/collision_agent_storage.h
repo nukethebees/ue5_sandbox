@@ -1,6 +1,6 @@
 #include <ioj/sim/testing/sim_clock_test_access.h>
 #pragma once
-#include <ioj/sim/column_math.h>
+#include <ioj/column_math.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_tables.h>

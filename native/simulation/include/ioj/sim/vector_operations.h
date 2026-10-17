@@ -1,8 +1,8 @@
 #pragma once
+#include <ioj/column_math.h>
 #include <ioj/generated/vector_lerp_kernels.h>
 #include <ioj/rotator_math.h>
 #include <ioj/rotators3f.h>
-#include <ioj/sim/column_math.h>
 #include <ioj/sim/vectors3f.h>
 #include <ioj/vector_math.h>
 

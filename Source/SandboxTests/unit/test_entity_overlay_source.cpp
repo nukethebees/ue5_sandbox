@@ -2,7 +2,7 @@
 #include "ioj/sim/entities/entity_type_radii.h"
 #include "SpaceGamePresentation/entities/TestTeam.h"
 #include "SpaceGamePresentation/presentation/EntityOverlaySource.h"
-#include <ioj/sim/column_math.h>
+#include <ioj/column_math.h>
 #include <ioj/sim/entities/entity_identity_layout.h>
 #include <ioj/sim/entities/entity_types.h>
 #include <ioj/sim/lasers/laser_source.h>

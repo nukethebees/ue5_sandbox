@@ -1,9 +1,9 @@
 #include "ioj/sim/player/sim.h"
 
+#include <ioj/column_math.h>
 #include <ioj/diagnostics.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
-#include <ioj/sim/column_math.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entities/entity_death_info.h>

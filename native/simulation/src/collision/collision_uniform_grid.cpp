@@ -1,5 +1,6 @@
 #include "ioj/sim/collision/collision_uniform_grid.h"
 
+#include <ioj/column_math.h>
 #include <ioj/diagnostics.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/collision/collision_grid.h>
@@ -8,7 +9,6 @@
 #include <ioj/sim/collision/line_trace_batch.h>
 #include <ioj/sim/collision/trace_hits.h>
 #include <ioj/sim/collision/world_aabb_operations.h>
-#include <ioj/sim/column_math.h>
 #include <ioj/sim/entities/health.h>
 #include <ioj/sim/levels/level_read_access.h>
 #include <ioj/sim/profiling.h>

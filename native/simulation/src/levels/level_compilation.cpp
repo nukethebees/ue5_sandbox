@@ -1,7 +1,7 @@
 #include <ioj/sim/levels/level_compilation.h>
 
+#include <ioj/column_math.h>
 #include <ioj/rotator_types.h>
-#include <ioj/sim/column_math.h>
 #include <ioj/sim/levels/level_event_schedule.h>
 #include <ioj/sim/sim_clock.h>
 
@@ -194,12 +194,12 @@ auto compile_level(LevelDefinition const& definition,
             auto const capital_events{capital_storage.get_view()};
             capital_events.entity_indices()[row] = entity_index_value;
             capital_events.target_entity_indices()[row] = sim::invalid_level_entity_index;
-            sim::set_vector(capital_events.view_locations(),
+            ioj::set_vector(capital_events.view_locations(),
                             row,
                             ml::make_vector3f(static_cast<float>(entity.position.x),
                                               static_cast<float>(entity.position.y),
                                               static_cast<float>(entity.position.z)));
-            sim::set_rotation(capital_events.view_rotations(),
+            ioj::set_rotation(capital_events.view_rotations(),
                               row,
                               ioj::Rotator3f{static_cast<float>(entity.rotation.pitch),
                                              static_cast<float>(entity.rotation.yaw),
@@ -213,12 +213,12 @@ auto compile_level(LevelDefinition const& definition,
             turret_storage.add_uninitialised(1);
             auto const turret_events{turret_storage.get_view()};
             turret_events.entity_indices()[row] = entity_index_value;
-            sim::set_vector(turret_events.view_locations(),
+            ioj::set_vector(turret_events.view_locations(),
                             row,
                             ml::make_vector3f(static_cast<float>(entity.position.x),
                                               static_cast<float>(entity.position.y),
                                               static_cast<float>(entity.position.z)));
-            sim::set_rotation(turret_events.view_rotations(),
+            ioj::set_rotation(turret_events.view_rotations(),
                               row,
                               ioj::Rotator3f{static_cast<float>(entity.rotation.pitch),
                                              static_cast<float>(entity.rotation.yaw),

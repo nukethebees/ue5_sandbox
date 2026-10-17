@@ -1,12 +1,12 @@
 #include "ioj/sim/lasers/sim.h"
 
+#include <ioj/column_math.h>
 #include <ioj/frame_array.h>
 #include <ioj/generated/array_math_kernels.h>
 #include <ioj/parallel_for.h>
 #include <ioj/sim/collision/frame_collision_scratch.h>
 #include <ioj/sim/collision/frame_hit_details.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
-#include <ioj/sim/column_math.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/profiling.h>

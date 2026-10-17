@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/sim/column_math.h>
+#include <ioj/column_math.h>
 #include <ioj/sim/lasers/laser_soa.h>
 
 namespace ioj::sim::tests {

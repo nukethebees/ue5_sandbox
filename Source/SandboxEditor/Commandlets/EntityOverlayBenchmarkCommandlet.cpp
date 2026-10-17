@@ -4,7 +4,7 @@
 #include "ioj/sim/entities/entity_type_radii.h"
 #include "ioj/sim/turrets/turret_entity_data.h"
 #include "SpaceGamePresentation/presentation/EntityOverlaySource.h"
-#include <ioj/sim/column_math.h>
+#include <ioj/column_math.h>
 #include <SpaceGamePresentation/integration/VectorConversion.h>
 
 #include "SandboxUI/EntityOverlay/EntityOverlayBenchmark.h"

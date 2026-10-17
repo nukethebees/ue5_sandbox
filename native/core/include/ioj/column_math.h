@@ -6,7 +6,7 @@
 #include <concepts>
 #include <cstdint>
 
-namespace ioj::sim {
+namespace ioj {
 template <typename View>
 concept VectorColumns = requires(View const& view) {
     view.xs();
