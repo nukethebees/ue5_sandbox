@@ -164,69 +164,12 @@ ioj_enable_warnings(native-core-tests)
 add_test(NAME native-core-tests COMMAND native-core-tests)
 set_tests_properties(native-core-tests PROPERTIES LABELS "unit;all;native;native-core")
 
-add_library(native-core-ismc-avx2-experiment OBJECT EXCLUDE_FROM_ALL)
-target_sources(native-core-ismc-avx2-experiment
-  PRIVATE
-    experiments/sandbox_ismc_packing_avx2.cpp
-)
-set_target_properties(native-core-ismc-avx2-experiment PROPERTIES UNITY_BUILD OFF)
-target_include_directories(native-core-ismc-avx2-experiment
-  PUBLIC
-    experiments
-)
-target_link_libraries(native-core-ismc-avx2-experiment
-  PUBLIC
-    native-core
-  PRIVATE
-    sandbox::native_defaults ioj::arch_avx2 ioj::fp_precise
-)
-ioj_apply_native_abi(native-core-ismc-avx2-experiment)
-ioj_enable_warnings(native-core-ismc-avx2-experiment)
-
-add_library(native-core-ismc-avx512-experiment OBJECT EXCLUDE_FROM_ALL)
-target_sources(native-core-ismc-avx512-experiment
-  PRIVATE
-    experiments/sandbox_ismc_packing_avx512.cpp
-)
-set_target_properties(native-core-ismc-avx512-experiment PROPERTIES UNITY_BUILD OFF)
-target_include_directories(native-core-ismc-avx512-experiment
-  PUBLIC
-    experiments
-)
-target_link_libraries(native-core-ismc-avx512-experiment
-  PUBLIC
-    native-core CpuFeatures::cpu_features
-  PRIVATE
-    sandbox::native_defaults ioj::arch_avx512 ioj::fp_precise
-)
-ioj_apply_native_abi(native-core-ismc-avx512-experiment)
-ioj_enable_warnings(native-core-ismc-avx512-experiment)
-
-add_library(native-core-ismc-highway-avx512 OBJECT EXCLUDE_FROM_ALL)
-target_sources(native-core-ismc-highway-avx512
-  PRIVATE
-    src/sandbox_ismc_packing_highway.cpp
-)
-ioj_configure_highway_target(native-core-ismc-highway-avx512 avx512)
-target_include_directories(native-core-ismc-highway-avx512
-  PUBLIC
-    experiments
-)
-target_link_libraries(native-core-ismc-highway-avx512
-  PUBLIC
-    native-core
-)
 target_link_libraries(native-core-tests
   PRIVATE
     native-core
     sandbox::native_defaults
     ioj::test_pch
     GTest::gtest_main
-    CpuFeatures::cpu_features
-    native-core-ismc-avx2-experiment
-    native-core-ismc-avx512-experiment
-    native-core-ismc-highway-avx512
-    hwy
 )
 
 add_subdirectory(benchmarks)

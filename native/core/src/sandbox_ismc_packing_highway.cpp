@@ -9,8 +9,6 @@
 
 #if HWY_TARGET == HWY_AVX2
 #define IOJ_HIGHWAY_NAMESPACE ml::sandbox_ismc::highway_avx2
-#elif HWY_TARGET == HWY_AVX3
-#define IOJ_HIGHWAY_NAMESPACE ml::sandbox_ismc::experiment::highway_avx512
 #else
 #error Unsupported Highway packing target
 #endif
@@ -36,7 +34,7 @@ using VF = hn::Vec<DF>;
 using VI = hn::Vec<DI>;
 
 inline constexpr auto lanes{HWY_LANES(float)};
-static_assert(lanes == (HWY_TARGET == HWY_AVX2 ? 8 : 16));
+static_assert(lanes == 8);
 
 inline constexpr auto index_bits{2};
 inline constexpr auto component_bits{10};

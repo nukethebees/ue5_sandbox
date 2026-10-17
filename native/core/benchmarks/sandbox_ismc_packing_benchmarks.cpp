@@ -1,11 +1,6 @@
 #include "ioj/sandbox_ismc_packing.h"
-#include "sandbox_ismc_packing_avx2.h"
-#include "sandbox_ismc_packing_avx512.h"
-#include "sandbox_ismc_packing_highway.h"
 
 #include <benchmark/benchmark.h>
-#include <cpuinfo_x86.h>
-#include <hwy/targets.h>
 
 #include <array>
 #include <random>
@@ -22,10 +17,7 @@ enum class Operation {
 
 enum class Implementation {
     Scalar,
-    Avx2,
-    Avx512,
     Production,
-    HighwayAvx512,
 };
 
 struct Buffers {
@@ -51,24 +43,6 @@ struct Buffers {
 
 template <Operation operation, Implementation implementation, bool Coherent = false>
 auto run(benchmark::State& state) -> void {
-    if constexpr (implementation == Implementation::Avx2) {
-        if (cpu_features::GetX86Info().features.avx2 == 0) {
-            state.SkipWithMessage("AVX2 unavailable");
-            return;
-        }
-    }
-    if constexpr (implementation == Implementation::Avx512) {
-        if (!experiment::supports_avx512()) {
-            state.SkipWithMessage("AVX512 unavailable");
-            return;
-        }
-    }
-    if constexpr (implementation == Implementation::HighwayAvx512) {
-        if ((hwy::SupportedTargets() & HWY_AVX3) == 0) {
-            state.SkipWithMessage("Highway target unavailable");
-            return;
-        }
-    }
     auto const count{static_cast<std::size_t>(state.range(0))};
     Buffers buffers{count};
     if constexpr (Coherent) {
@@ -88,31 +62,19 @@ auto run(benchmark::State& state) -> void {
     for (auto _ : state) {
         static_cast<void>(_);
         if constexpr (operation == Operation::Position) {
-            constexpr auto kernel{
-                implementation == Implementation::Production ? ml::sandbox_ismc::pack_positions
-                : implementation == Implementation::HighwayAvx512
-                    ? experiment::highway_avx512::pack_positions
-                : implementation == Implementation::Avx512 ? experiment::pack_positions_avx512
-                : implementation == Implementation::Avx2   ? experiment::pack_positions_avx2
-                                                           : pack_positions_scalar};
+            constexpr auto kernel{implementation == Implementation::Production
+                                      ? ml::sandbox_ismc::pack_positions
+                                      : pack_positions_scalar};
             kernel(input.positions, parameters.position_root, buffers.output);
         } else if constexpr (operation == Operation::Quaternion) {
-            constexpr auto kernel{
-                implementation == Implementation::Production ? ml::sandbox_ismc::pack_rotations
-                : implementation == Implementation::HighwayAvx512
-                    ? experiment::highway_avx512::pack_rotations
-                : implementation == Implementation::Avx512 ? experiment::pack_rotations_avx512
-                : implementation == Implementation::Avx2   ? experiment::pack_rotations_avx2
-                                                           : pack_rotations_scalar};
+            constexpr auto kernel{implementation == Implementation::Production
+                                      ? ml::sandbox_ismc::pack_rotations
+                                      : pack_rotations_scalar};
             kernel(input.rotations, buffers.output);
         } else {
-            constexpr auto kernel{
-                implementation == Implementation::Production ? ml::sandbox_ismc::pack_transforms
-                : implementation == Implementation::HighwayAvx512
-                    ? experiment::highway_avx512::pack_transforms
-                : implementation == Implementation::Avx512 ? experiment::pack_transforms_avx512
-                : implementation == Implementation::Avx2   ? experiment::pack_transforms_avx2
-                                                           : pack_transforms_scalar};
+            constexpr auto kernel{implementation == Implementation::Production
+                                      ? ml::sandbox_ismc::pack_transforms
+                                      : pack_transforms_scalar};
             kernel(input,
                    parameters,
                    buffers.output,
@@ -127,25 +89,11 @@ auto run(benchmark::State& state) -> void {
 
 template <Operation operation, bool Coherent = false>
 auto register_comparison(char const* name) -> void {
-    for (auto const implementation : {Implementation::Scalar,
-                                      Implementation::Avx2,
-                                      Implementation::Avx512,
-                                      Implementation::Production,
-                                      Implementation::HighwayAvx512}) {
-        auto const suffix{implementation == Implementation::Production      ? "/production"
-                          : implementation == Implementation::HighwayAvx512 ? "/highway-avx512"
-                          : implementation == Implementation::Avx512        ? "/avx512"
-                          : implementation == Implementation::Avx2          ? "/avx2"
-                                                                            : "/scalar"};
+    for (auto const implementation : {Implementation::Scalar, Implementation::Production}) {
+        auto const suffix{implementation == Implementation::Production ? "/production" : "/scalar"};
         auto const label{std::string{"ismc/"} + name + suffix};
         auto const function{implementation == Implementation::Production
                                 ? run<operation, Implementation::Production, Coherent>
-                            : implementation == Implementation::HighwayAvx512
-                                ? run<operation, Implementation::HighwayAvx512, Coherent>
-                            : implementation == Implementation::Avx512
-                                ? run<operation, Implementation::Avx512, Coherent>
-                            : implementation == Implementation::Avx2
-                                ? run<operation, Implementation::Avx2, Coherent>
                                 : run<operation, Implementation::Scalar, Coherent>};
         benchmark::RegisterBenchmark(label, function)
             ->Arg(17)
