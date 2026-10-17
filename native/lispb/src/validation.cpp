@@ -1,7 +1,6 @@
 #include "validation.h"
 
 #include "packed_value_internal.h"
-#include "schema_internal.h"
 
 #include <codegen/path_utils.h>
 #include <codegen/schema/fixed_point_value.h>

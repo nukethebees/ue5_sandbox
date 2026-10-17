@@ -1,7 +1,5 @@
 #include <codegen/schema.h>
 
-#include "schema_internal.h"
-
 #include <codegen/schema/physical_type_use.h>
 #include <codegen/schema/registered_type_schema.h>
 #include <codegen/schema/storage_operation.h>
@@ -9,7 +7,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cctype>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
@@ -125,17 +122,3 @@ auto all_storage_operations() -> std::vector<StorageOperation> {
 }
 
 } // namespace codegen
-
-namespace codegen::detail {
-
-auto output_path_key(std::filesystem::path const& path) -> std::string {
-    auto result{path.lexically_normal().generic_string()};
-#ifdef _WIN32
-    std::ranges::transform(result, result.begin(), [](unsigned char const character) {
-        return static_cast<char>(std::tolower(character));
-    });
-#endif
-    return result;
-}
-
-} // namespace codegen::detail

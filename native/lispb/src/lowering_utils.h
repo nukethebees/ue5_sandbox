@@ -1,7 +1,5 @@
 #pragma once
 
-#include "schema_internal.h"
-
 #include <codegen/generator.h>
 
 #include <string_view>

@@ -3,6 +3,25 @@ ioj_find_llvm_tool(IOJ_CLANG_FORMAT_EXECUTABLE clang-format)
 add_subdirectory(sexpr)
 add_subdirectory(material)
 
+add_library(lispb-paths)
+if(WIN32)
+  target_sources(lispb-paths
+    PRIVATE
+      src/platform/windows/output_path_key.cpp
+  )
+else()
+  target_sources(lispb-paths
+    PRIVATE
+      src/platform/posix/output_path_key.cpp
+  )
+endif()
+target_include_directories(lispb-paths PUBLIC include)
+target_link_libraries(lispb-paths
+  PUBLIC
+    sandbox::native_defaults
+)
+ioj_enable_warnings(lispb-paths CODEGEN)
+
 add_library(lispb-output
   src/generator.cpp
   src/format_generated.cpp
@@ -14,6 +33,8 @@ target_include_directories(lispb-output PUBLIC include)
 target_link_libraries(lispb-output
   PUBLIC
     sandbox::native_defaults
+  PRIVATE
+    lispb-paths
 )
 ioj_enable_warnings(lispb-output CODEGEN)
 
@@ -23,6 +44,7 @@ target_link_libraries(lispb-project
   PUBLIC
     sandbox::native_defaults
   PRIVATE
+    lispb-paths
     lispb-schema
     lispb-syntax
 )
@@ -51,6 +73,7 @@ target_link_libraries(lispb-schema
   PUBLIC
     sandbox::native_defaults
   PRIVATE
+    lispb-paths
     lispb-syntax
 )
 ioj_enable_warnings(lispb-schema CODEGEN)
@@ -95,6 +118,7 @@ target_link_libraries(codegen-lib
     lispb-output
     lispb-schema
   PRIVATE
+    lispb-paths
     ioj::codegen_pch
 )
 ioj_enable_warnings(codegen-lib CODEGEN)
