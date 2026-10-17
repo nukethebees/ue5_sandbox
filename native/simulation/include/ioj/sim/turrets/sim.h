@@ -10,8 +10,8 @@
 #include <ioj/sim/levels/level_spinner_spawn_events.h>
 #include <ioj/sim/levels/level_turret_spawn_events.h>
 #include <ioj/sim/sim_clock.h>
-#include <ioj/sim/sim_config.h>
 #include <ioj/sim/turrets/turret_entity_data.h>
+#include <ioj/sim/turrets/turret_sim_config.h>
 
 #include <cstdint>
 #include <memory_resource>

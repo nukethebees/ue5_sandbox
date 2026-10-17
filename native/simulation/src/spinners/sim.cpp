@@ -6,7 +6,7 @@
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/lasers/frame_laser_spawn_requests.h>
 #include <ioj/sim/profiling.h>
-#include <ioj/sim/sim_config.h>
+#include <ioj/sim/spinners/spinner_sim_config.h>
 #include <ioj/tick_countdown.h>
 
 #include <algorithm>

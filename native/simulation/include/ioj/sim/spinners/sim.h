@@ -6,8 +6,8 @@
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/sim_clock.h>
-#include <ioj/sim/sim_config.h>
 #include <ioj/sim/spinners/spinner_entity_data.h>
+#include <ioj/sim/spinners/spinner_sim_config.h>
 
 #include <cassert>
 #include <cstdint>

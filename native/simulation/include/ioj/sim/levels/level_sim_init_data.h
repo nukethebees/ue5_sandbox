@@ -1,18 +1,23 @@
 #pragma once
 
+#include <ioj/sim/capital_ships/capital_ship_sim_config.h>
 #include <ioj/sim/collision/cell_coord.h>
 #include <ioj/sim/collision/cell_coord_bounds.h>
 #include <ioj/sim/collision/entity_aabbs.h>
 #include <ioj/sim/collision/grid_geometry.h>
+#include <ioj/sim/collision/overlap_response_config.h>
 #include <ioj/sim/collision/world_aabbs.h>
 #include <ioj/sim/entities/team_list.h>
+#include <ioj/sim/fighters/fighter_sim_config.h>
 #include <ioj/sim/fixed_tick_loop.h>
+#include <ioj/sim/lasers/laser_sim_config.h>
 #include <ioj/sim/levels/compiled_level_events.h>
 #include <ioj/sim/memory/game_memory.h>
 #include <ioj/sim/player/sim.h>
-#include <ioj/sim/sim_config.h>
+#include <ioj/sim/spinners/spinner_sim_config.h>
 #include <ioj/sim/telemetry/block_history_types.h>
 #include <ioj/sim/telemetry/run_metadata.h>
+#include <ioj/sim/turrets/turret_sim_config.h>
 
 #include <cstddef>
 #include <optional>

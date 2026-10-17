@@ -1,9 +1,9 @@
 #pragma once
 
 #include <ioj/sim/collision/collision_system.h>
+#include <ioj/sim/collision/overlap_response_config.h>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entities/health_type.h>
-#include <ioj/sim/sim_config.h>
 
 #include <cstdint>
 

@@ -5,28 +5,11 @@
 
 #include "ioj/sim/entities/health.h"
 #include "ioj/sim/fighters/attack_distance_band.h"
+#include "ioj/sim/lasers/laser_weapon_sim_config.h"
 
 #include <cstdint>
 
 namespace ioj::sim {
-struct LaserWeaponSimConfig {
-    std::int32_t damage{5};
-
-    float projectile_speed{10000.f};
-
-    float max_distance{10000.f};
-
-    float fire_cooldown{0.33f};
-};
-
-struct LaserSimConfig {
-    std::int32_t n_preallocated_instances{5000};
-};
-
-struct OverlapResponseConfig {
-    std::int32_t damage_per_overlap_detection{50};
-};
-
 struct FighterSimConfig {
     std::int32_t max_live_fighters{2000};
 

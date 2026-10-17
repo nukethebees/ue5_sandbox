@@ -2,6 +2,7 @@
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/capital_ships/capital_death_event.h>
 #include <ioj/sim/capital_ships/capital_entity_data.h>
+#include <ioj/sim/capital_ships/capital_ship_sim_config.h>
 #include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_frame_change.h>
 #include <ioj/sim/entities/entity_tables.h>
@@ -14,7 +15,6 @@
 #include <ioj/sim/levels/level_spawn_groups.h>
 #include <ioj/sim/levels/level_spinner_spawn_events.h>
 #include <ioj/sim/levels/level_turret_spawn_events.h>
-#include <ioj/sim/sim_config.h>
 
 #include <cstdint>
 #include <optional>

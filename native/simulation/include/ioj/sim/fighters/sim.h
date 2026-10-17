@@ -8,12 +8,12 @@
 #include <ioj/sim/fighters/fighter_navigation.h>
 #include <ioj/sim/fighters/fighter_navigation_scratch.h>
 #include <ioj/sim/fighters/fighter_order_queue.h>
+#include <ioj/sim/fighters/fighter_sim_config.h>
 #include <ioj/sim/fighters/fighter_spawn_queue.h>
 #include <ioj/sim/fighters/fighter_types.h>
 #include <ioj/sim/index_span.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/sim_clock.h>
-#include <ioj/sim/sim_config.h>
 #include <ioj/sim/telemetry/navigation_telemetry.h>
 
 #include <array>

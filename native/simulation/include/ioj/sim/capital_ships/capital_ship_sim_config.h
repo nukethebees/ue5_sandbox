@@ -1,0 +1,16 @@
+#pragma once
+
+#include <ioj/sim/entities/health_type.h>
+#include <ioj/transform3d.h>
+
+#include <cstdint>
+#include <vector>
+
+namespace ioj::sim {
+struct CapitalShipSimConfig {
+    float spawn_delay{5.f};
+    std::int32_t fighter_spawn_slots{};
+    std::vector<Transform3d> fighter_spawn_slots_relative_transforms;
+    Health max_health{5000};
+};
+}

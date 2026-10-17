@@ -1,7 +1,8 @@
 #pragma once
+#include <ioj/sim/capital_ships/capital_ship_sim_config.h>
 #include <ioj/sim/levels/compiled_level_events.h>
 #include <ioj/sim/sim_clock.h>
-#include <ioj/sim/sim_config.h>
+#include <ioj/sim/turrets/turret_sim_config.h>
 #include <SpaceGame/levels/LevelDefinition.h>
 #include <SpaceGameSimulation/levels/LevelStartErrors.h>
 

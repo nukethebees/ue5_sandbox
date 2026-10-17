@@ -36,7 +36,10 @@ native/levels/lib/include/ioj/levels/entity_archetype.h
 native/levels/lib/include/ioj/levels/level_mission_mode.h
 native/levels/lib/include/ioj/levels/team.h
 native/simulation/include/ioj/sim/fighters/attack_distance_band.h
-native/simulation/include/ioj/sim/base_sim_config.h
+native/simulation/include/ioj/sim/lasers/laser_weapon_sim_config.h
+native/simulation/include/ioj/sim/lasers/laser_sim_config.h
+native/simulation/include/ioj/sim/collision/overlap_response_config.h
+native/simulation/include/ioj/sim/fighters/fighter_sim_config.h
 native/simulation/include/ioj/sim/capital_ships/capital_death_event.h
 native/simulation/include/ioj/sim/capital_ships/capital_entity_data.h
 native/simulation/include/ioj/sim/capital_ships/phase_interface.h

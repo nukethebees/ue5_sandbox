@@ -206,20 +206,38 @@
     (member maximum_ratio float :initializer "0.6f")
     (function values_are_valid bool :const true :noexcept true :nodiscard true)))
 
-(module native_base_sim_config
-  :header "native/simulation/include/ioj/sim/base_sim_config.h"
-  :header-include "ioj/sim/base_sim_config.h"
+(module native_base_sim_config_laser_weapon_sim_config
+  :header "native/simulation/include/ioj/sim/lasers/laser_weapon_sim_config.h"
+  :header-include "ioj/sim/lasers/laser_weapon_sim_config.h"
   :backend standard-library
   :namespace ioj::sim
   (record LaserWeaponSimConfig
     (member damage std::int32_t :initializer "5")
     (member projectile_speed float :initializer "10000.f")
     (member max_distance float :initializer "10000.f")
-    (member fire_cooldown float :initializer "0.33f"))
+    (member fire_cooldown float :initializer "0.33f")))
+
+(module native_base_sim_config_laser_sim_config
+  :header "native/simulation/include/ioj/sim/lasers/laser_sim_config.h"
+  :header-include "ioj/sim/lasers/laser_sim_config.h"
+  :backend standard-library
+  :namespace ioj::sim
   (record LaserSimConfig
-    (member n_preallocated_instances std::int32_t :initializer "5000"))
+    (member n_preallocated_instances std::int32_t :initializer "5000")))
+
+(module native_base_sim_config_overlap_response_config
+  :header "native/simulation/include/ioj/sim/collision/overlap_response_config.h"
+  :header-include "ioj/sim/collision/overlap_response_config.h"
+  :backend standard-library
+  :namespace ioj::sim
   (record OverlapResponseConfig
-    (member damage_per_overlap_detection std::int32_t :initializer "50"))
+    (member damage_per_overlap_detection std::int32_t :initializer "50")))
+
+(module native_base_sim_config_fighter_sim_config
+  :header "native/simulation/include/ioj/sim/fighters/fighter_sim_config.h"
+  :header-include "ioj/sim/fighters/fighter_sim_config.h"
+  :backend standard-library
+  :namespace ioj::sim
   (record FighterSimConfig
     (member max_live_fighters std::int32_t :initializer "2000")
     (member fire_dot_product_threshold float :initializer "0.95f")

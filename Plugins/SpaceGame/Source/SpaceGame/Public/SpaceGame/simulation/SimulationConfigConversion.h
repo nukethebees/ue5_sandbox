@@ -1,5 +1,10 @@
 #pragma once
-#include <ioj/sim/sim_config.h>
+#include <ioj/sim/capital_ships/capital_ship_sim_config.h>
+#include <ioj/sim/fighters/fighter_sim_config.h>
+#include <ioj/sim/lasers/laser_sim_config.h>
+#include <ioj/sim/player/player_sim_config.h>
+#include <ioj/sim/spinners/spinner_sim_config.h>
+#include <ioj/sim/turrets/turret_sim_config.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 auto SPACEGAME_API make_simulation_config(FLaserWeaponConfig const& source)
     -> ::ioj::sim::LaserWeaponSimConfig;

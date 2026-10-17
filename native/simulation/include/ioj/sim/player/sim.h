@@ -10,11 +10,11 @@
 #include <ioj/sim/player/player_flight_intent.h>
 #include <ioj/sim/player/player_presentation_state.h>
 #include <ioj/sim/player/player_resource_state.h>
+#include <ioj/sim/player/player_sim_config.h>
 #include <ioj/sim/player/player_simulation_state.h>
 #include <ioj/sim/player/ship_laser_mode.h>
 #include <ioj/sim/player/space_ship_common.h>
 #include <ioj/sim/sim_clock.h>
-#include <ioj/sim/sim_config.h>
 #include <ioj/transform3d.h>
 #include <ioj/vector2d.h>
 
