@@ -3,15 +3,12 @@
 
 #pragma once
 
-#include "ioj/enum_lookup.h"
 #include "ioj/enum_traits.h"
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <optional>
 #include <string_view>
-#include <unordered_map>
 
 namespace ioj::sim {
 enum class ShipFireRate : std::uint8_t {
@@ -34,66 +31,6 @@ enum class ShipFireRate : std::uint8_t {
     }
 
     return "<invalid ShipFireRate>";
-}
-
-[[nodiscard]] constexpr auto try_parse_ship_fire_rate(std::string_view const value) noexcept
-    -> std::optional<ShipFireRate> {
-    if (value == "Single") {
-        return ShipFireRate::Single;
-    }
-    if (value == "Burst3") {
-        return ShipFireRate::Burst3;
-    }
-    if (value == "FullAuto") {
-        return ShipFireRate::FullAuto;
-    }
-
-    return std::nullopt;
-}
-
-[[nodiscard]] constexpr auto to_display_string(ShipFireRate const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case ShipFireRate::Single: {
-            return "Single";
-        }
-        case ShipFireRate::Burst3: {
-            return "Burst 3";
-        }
-        case ShipFireRate::FullAuto: {
-            return "Full Auto";
-        }
-    }
-
-    return "<invalid ShipFireRate>";
-}
-
-[[nodiscard]] constexpr auto to_serialized_string(ShipFireRate const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case ShipFireRate::Single: {
-            return "single";
-        }
-        case ShipFireRate::Burst3: {
-            return "burst_3";
-        }
-        case ShipFireRate::FullAuto: {
-            return "full_auto";
-        }
-        default: {
-            return "<invalid ShipFireRate>";
-        }
-    }
-}
-
-[[nodiscard]] inline auto try_parse_serialized_ship_fire_rate(std::string_view const value)
-    -> std::optional<ShipFireRate> {
-    static std::unordered_map<std::string_view, ShipFireRate> const values{
-        {"single", ShipFireRate::Single},
-        {"burst_3", ShipFireRate::Burst3},
-        {"full_auto", ShipFireRate::FullAuto},
-    };
-    return ioj::lookup_enum(values, value);
 }
 
 } // namespace ioj::sim

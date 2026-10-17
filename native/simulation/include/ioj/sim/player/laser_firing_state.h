@@ -8,7 +8,6 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <optional>
 #include <string_view>
 
 namespace ioj::sim {
@@ -28,18 +27,6 @@ enum class LaserFiringState : std::uint8_t {
     }
 
     return "<invalid LaserFiringState>";
-}
-
-[[nodiscard]] constexpr auto try_parse_laser_firing_state(std::string_view const value) noexcept
-    -> std::optional<LaserFiringState> {
-    if (value == "idle") {
-        return LaserFiringState::idle;
-    }
-    if (value == "burst") {
-        return LaserFiringState::burst;
-    }
-
-    return std::nullopt;
 }
 
 } // namespace ioj::sim

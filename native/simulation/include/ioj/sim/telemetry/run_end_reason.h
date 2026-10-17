@@ -49,31 +49,6 @@ enum class LevelTelemetryRunEndReason : std::uint8_t {
     return "<invalid LevelTelemetryRunEndReason>";
 }
 
-[[nodiscard]] constexpr auto
-    try_parse_level_telemetry_run_end_reason(std::string_view const value) noexcept
-    -> std::optional<LevelTelemetryRunEndReason> {
-    if (value == "MissionSucceeded") {
-        return LevelTelemetryRunEndReason::MissionSucceeded;
-    }
-    if (value == "MissionFailed") {
-        return LevelTelemetryRunEndReason::MissionFailed;
-    }
-    if (value == "BattleResolved") {
-        return LevelTelemetryRunEndReason::BattleResolved;
-    }
-    if (value == "DurationReached") {
-        return LevelTelemetryRunEndReason::DurationReached;
-    }
-    if (value == "OrchestratorReset") {
-        return LevelTelemetryRunEndReason::OrchestratorReset;
-    }
-    if (value == "WorldEnd") {
-        return LevelTelemetryRunEndReason::WorldEnd;
-    }
-
-    return std::nullopt;
-}
-
 [[nodiscard]] constexpr auto to_serialized_string(LevelTelemetryRunEndReason const value) noexcept
     -> std::string_view {
     switch (value) {

@@ -44,50 +44,6 @@ enum class MissionState : std::uint8_t {
     return "<invalid MissionState>";
 }
 
-[[nodiscard]] constexpr auto try_parse_mission_state(std::string_view const value) noexcept
-    -> std::optional<MissionState> {
-    if (value == "NotStarted") {
-        return MissionState::NotStarted;
-    }
-    if (value == "Running") {
-        return MissionState::Running;
-    }
-    if (value == "Succeeded") {
-        return MissionState::Succeeded;
-    }
-    if (value == "Failed") {
-        return MissionState::Failed;
-    }
-    if (value == "Disabled") {
-        return MissionState::Disabled;
-    }
-
-    return std::nullopt;
-}
-
-[[nodiscard]] constexpr auto to_display_string(MissionState const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case MissionState::NotStarted: {
-            return "Not Started";
-        }
-        case MissionState::Running: {
-            return "Running";
-        }
-        case MissionState::Succeeded: {
-            return "Succeeded";
-        }
-        case MissionState::Failed: {
-            return "Failed";
-        }
-        case MissionState::Disabled: {
-            return "Disabled";
-        }
-    }
-
-    return "<invalid MissionState>";
-}
-
 [[nodiscard]] constexpr auto to_serialized_string(MissionState const value) noexcept
     -> std::string_view {
     switch (value) {

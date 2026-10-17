@@ -8,7 +8,6 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <optional>
 #include <string_view>
 
 namespace ioj::sim::player {
@@ -36,24 +35,6 @@ enum class BoostBrakeState : std::uint8_t {
     }
 
     return "<invalid BoostBrakeState>";
-}
-
-[[nodiscard]] constexpr auto try_parse_boost_brake_state(std::string_view const value) noexcept
-    -> std::optional<BoostBrakeState> {
-    if (value == "None") {
-        return BoostBrakeState::None;
-    }
-    if (value == "Boost") {
-        return BoostBrakeState::Boost;
-    }
-    if (value == "Brake") {
-        return BoostBrakeState::Brake;
-    }
-    if (value == "EmergencyBrake") {
-        return BoostBrakeState::EmergencyBrake;
-    }
-
-    return std::nullopt;
 }
 
 } // namespace ioj::sim::player

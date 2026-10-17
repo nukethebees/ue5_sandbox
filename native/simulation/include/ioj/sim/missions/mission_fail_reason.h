@@ -40,44 +40,6 @@ enum class MissionFailReason : std::uint8_t {
     return "<invalid MissionFailReason>";
 }
 
-[[nodiscard]] constexpr auto try_parse_mission_fail_reason(std::string_view const value) noexcept
-    -> std::optional<MissionFailReason> {
-    if (value == "None") {
-        return MissionFailReason::None;
-    }
-    if (value == "PlayerKilled") {
-        return MissionFailReason::PlayerKilled;
-    }
-    if (value == "TimeElapsed") {
-        return MissionFailReason::TimeElapsed;
-    }
-    if (value == "DefenceObjectiveFailed") {
-        return MissionFailReason::DefenceObjectiveFailed;
-    }
-
-    return std::nullopt;
-}
-
-[[nodiscard]] constexpr auto to_display_string(MissionFailReason const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case MissionFailReason::None: {
-            return "None";
-        }
-        case MissionFailReason::PlayerKilled: {
-            return "PlayerKilled";
-        }
-        case MissionFailReason::TimeElapsed: {
-            return "TimeElapsed";
-        }
-        case MissionFailReason::DefenceObjectiveFailed: {
-            return "DefenceObjectiveFailed";
-        }
-    }
-
-    return "<invalid MissionFailReason>";
-}
-
 [[nodiscard]] constexpr auto to_serialized_string(MissionFailReason const value) noexcept
     -> std::string_view {
     switch (value) {

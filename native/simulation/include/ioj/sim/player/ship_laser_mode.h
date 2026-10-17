@@ -3,15 +3,12 @@
 
 #pragma once
 
-#include "ioj/enum_lookup.h"
 #include "ioj/enum_traits.h"
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <optional>
 #include <string_view>
-#include <unordered_map>
 
 namespace ioj::sim {
 enum class ShipLaserMode : std::uint8_t {
@@ -34,66 +31,6 @@ enum class ShipLaserMode : std::uint8_t {
     }
 
     return "<invalid ShipLaserMode>";
-}
-
-[[nodiscard]] constexpr auto try_parse_ship_laser_mode(std::string_view const value) noexcept
-    -> std::optional<ShipLaserMode> {
-    if (value == "Single") {
-        return ShipLaserMode::Single;
-    }
-    if (value == "Double") {
-        return ShipLaserMode::Double;
-    }
-    if (value == "Hyper") {
-        return ShipLaserMode::Hyper;
-    }
-
-    return std::nullopt;
-}
-
-[[nodiscard]] constexpr auto to_display_string(ShipLaserMode const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case ShipLaserMode::Single: {
-            return "Single";
-        }
-        case ShipLaserMode::Double: {
-            return "Double";
-        }
-        case ShipLaserMode::Hyper: {
-            return "Hyper";
-        }
-    }
-
-    return "<invalid ShipLaserMode>";
-}
-
-[[nodiscard]] constexpr auto to_serialized_string(ShipLaserMode const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case ShipLaserMode::Single: {
-            return "single";
-        }
-        case ShipLaserMode::Double: {
-            return "double";
-        }
-        case ShipLaserMode::Hyper: {
-            return "hyper";
-        }
-        default: {
-            return "<invalid ShipLaserMode>";
-        }
-    }
-}
-
-[[nodiscard]] inline auto try_parse_serialized_ship_laser_mode(std::string_view const value)
-    -> std::optional<ShipLaserMode> {
-    static std::unordered_map<std::string_view, ShipLaserMode> const values{
-        {"single", ShipLaserMode::Single},
-        {"double", ShipLaserMode::Double},
-        {"hyper", ShipLaserMode::Hyper},
-    };
-    return ioj::lookup_enum(values, value);
 }
 
 } // namespace ioj::sim

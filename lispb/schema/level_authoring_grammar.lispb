@@ -3,6 +3,7 @@
   :namespace ioj::levels::authoring
   (enum Property @native_uint8
     :native-api true
+    :helpers (to-string try-parse traits to-serialized-string try-parse-serialized)
     (value Id :serialized-name "id")
     (value Title :serialized-name "title")
     (value Description :serialized-name "description")
@@ -41,6 +42,7 @@
     (value SpawnAt :serialized-name "spawn-at"))
   (enum RecordKind @native_uint8
     :native-api true
+    :helpers (to-string try-parse traits to-serialized-string try-parse-serialized)
     (value Level :serialized-name "level")
     (value Campaign :serialized-name "campaign")
     (value Catalog :serialized-name "catalog")

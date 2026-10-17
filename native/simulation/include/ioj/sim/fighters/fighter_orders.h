@@ -6,13 +6,11 @@
 #include "ioj/enum_traits.h"
 #include "ioj/packed_value.h"
 
-#include <array>
 #include <cassert>
 #include <compare>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <optional>
 #include <string_view>
 #include <type_traits>
 
@@ -37,21 +35,6 @@ enum class FighterTask : std::uint8_t {
     }
 
     return "<invalid FighterTask>";
-}
-
-[[nodiscard]] constexpr auto try_parse_fighter_task(std::string_view const value) noexcept
-    -> std::optional<FighterTask> {
-    if (value == "Standby") {
-        return FighterTask::Standby;
-    }
-    if (value == "MoveToDestination") {
-        return FighterTask::MoveToDestination;
-    }
-    if (value == "Attack") {
-        return FighterTask::Attack;
-    }
-
-    return std::nullopt;
 }
 
 struct FighterOrder {
@@ -105,19 +88,6 @@ struct FighterOrder {
 static_assert(ml::valid_packed_value_layout<FighterOrder>());
 } // namespace ioj::sim
 namespace ml {
-template <>
-struct EnumTraits<::ioj::sim::FighterTask> {
-    inline static constexpr std::array values{
-        ::ioj::sim::FighterTask::Standby,
-        ::ioj::sim::FighterTask::MoveToDestination,
-        ::ioj::sim::FighterTask::Attack,
-    };
-    inline static constexpr std::array names{
-        std::string_view{"Standby"},
-        std::string_view{"MoveToDestination"},
-        std::string_view{"Attack"},
-    };
-};
 
 template <>
 [[nodiscard]] constexpr auto enum_count<::ioj::sim::FighterTask>() noexcept -> std::size_t {

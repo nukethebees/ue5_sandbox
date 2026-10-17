@@ -40,24 +40,6 @@ enum class MissionMode : std::uint8_t {
     return "<invalid MissionMode>";
 }
 
-[[nodiscard]] constexpr auto try_parse_mission_mode(std::string_view const value) noexcept
-    -> std::optional<MissionMode> {
-    if (value == "None") {
-        return MissionMode::None;
-    }
-    if (value == "SurviveTime") {
-        return MissionMode::SurviveTime;
-    }
-    if (value == "KillEnemies") {
-        return MissionMode::KillEnemies;
-    }
-    if (value == "KillEnemiesWithinTime") {
-        return MissionMode::KillEnemiesWithinTime;
-    }
-
-    return std::nullopt;
-}
-
 [[nodiscard]] constexpr auto to_display_string(MissionMode const value) noexcept
     -> std::string_view {
     switch (value) {

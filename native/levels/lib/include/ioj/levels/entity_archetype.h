@@ -7,7 +7,6 @@
 #include "ioj/enum_traits.h"
 
 #include <array>
-#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -34,21 +33,6 @@ enum class EntityArchetype : std::uint8_t {
     }
 
     return "<invalid EntityArchetype>";
-}
-
-[[nodiscard]] constexpr auto try_parse_entity_archetype(std::string_view const value) noexcept
-    -> std::optional<EntityArchetype> {
-    if (value == "PlayerFighter") {
-        return EntityArchetype::PlayerFighter;
-    }
-    if (value == "CapitalShip") {
-        return EntityArchetype::CapitalShip;
-    }
-    if (value == "StaticTurret") {
-        return EntityArchetype::StaticTurret;
-    }
-
-    return std::nullopt;
 }
 
 [[nodiscard]] constexpr auto to_serialized_string(EntityArchetype const value) noexcept

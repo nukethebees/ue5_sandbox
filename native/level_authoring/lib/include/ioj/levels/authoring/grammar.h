@@ -7,7 +7,6 @@
 #include "ioj/enum_traits.h"
 
 #include <array>
-#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string_view>

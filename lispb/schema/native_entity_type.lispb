@@ -4,6 +4,7 @@
   :namespace ioj::sim
   (enum EntityType @native_uint8
     :native-api true
+    :helpers (to-string try-parse traits to-display-string to-serialized-string try-parse-serialized)
     :enum-array true
     (value PlayerShip :value "0" :display-name "Player Ship" :serialized-name "player_ship")
     (value Turret :value "1" :display-name "Turret" :serialized-name "turret")

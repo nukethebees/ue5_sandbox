@@ -7,7 +7,6 @@
 #include "ioj/enum_traits.h"
 
 #include <array>
-#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -38,24 +37,6 @@ enum class LevelMissionMode : std::uint8_t {
     }
 
     return "<invalid LevelMissionMode>";
-}
-
-[[nodiscard]] constexpr auto try_parse_level_mission_mode(std::string_view const value) noexcept
-    -> std::optional<LevelMissionMode> {
-    if (value == "Unspecified") {
-        return LevelMissionMode::Unspecified;
-    }
-    if (value == "SurviveTime") {
-        return LevelMissionMode::SurviveTime;
-    }
-    if (value == "KillEnemies") {
-        return LevelMissionMode::KillEnemies;
-    }
-    if (value == "KillEnemiesWithinTime") {
-        return LevelMissionMode::KillEnemiesWithinTime;
-    }
-
-    return std::nullopt;
 }
 
 [[nodiscard]] constexpr auto to_serialized_string(LevelMissionMode const value) noexcept
