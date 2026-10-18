@@ -512,8 +512,7 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
     LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
     auto const initial{simulation.get_read_access().get_capitals().get_entities()};
-    std::vector<EntityId> visual_ids{initial.entity_ids().begin(),
-                                           initial.entity_ids().end()};
+    std::vector<EntityId> visual_ids{initial.entity_ids().begin(), initial.entity_ids().end()};
     auto const survivor_id{initial.entity_ids()[2]};
     DirectDamageEvents damage;
     damage.add(initial.entity_ids()[0], 100, {});

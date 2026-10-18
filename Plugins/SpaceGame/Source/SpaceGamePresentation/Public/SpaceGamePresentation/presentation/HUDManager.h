@@ -205,14 +205,17 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     auto get_kill_data() const noexcept -> ioj::hud_manager::FKillDataCache const& {
         return kill_data_buffers.current();
     }
-    auto get_player_status_data() const noexcept -> ioj::hud_manager::FPlayerStatusDataCache const& {
+    auto get_player_status_data() const noexcept
+        -> ioj::hud_manager::FPlayerStatusDataCache const& {
         return player_status_data_buffers.current();
     }
-    auto get_player_flight_data() const noexcept -> ioj::hud_manager::FPlayerFlightDataCache const& {
+    auto get_player_flight_data() const noexcept
+        -> ioj::hud_manager::FPlayerFlightDataCache const& {
         return player_flight_data_buffers.current();
     }
 #if WITH_EDITOR
-    auto get_sampled_speed_data() const noexcept -> ioj::hud_manager::FSampledSpeedDataCache const& {
+    auto get_sampled_speed_data() const noexcept
+        -> ioj::hud_manager::FSampledSpeedDataCache const& {
         return sampled_speed_data_buffers.current();
     }
 #endif
@@ -301,8 +304,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     ioj::MultiBuffer<ioj::hud_manager::FKillDataCache, 2> kill_data_buffers;
     ioj::MultiBuffer<ioj::hud_manager::FPlayerStatusDataCache, 2> player_status_data_buffers;
     ioj::MultiBuffer<ioj::hud_manager::FPlayerFlightDataCache, 2> player_flight_data_buffers;
-    TArray<::ioj::sim::EntityId,
-           TInlineAllocator<ioj::ship_hud::FTopKillerEntries::minimum_size>>
+    TArray<::ioj::sim::EntityId, TInlineAllocator<ioj::ship_hud::FTopKillerEntries::minimum_size>>
         top_killer_ids_buffer;
 
     bool has_mission_data{false};

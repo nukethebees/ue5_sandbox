@@ -3,8 +3,8 @@
 #include "SpaceGamePresentation/entities/TestTeam.h"
 #include "SpaceGamePresentation/presentation/EntityOverlaySource.h"
 #include <ioj/column_math.h>
-#include <ioj/sim/entities/entity_identity_layout.h>
 #include <ioj/sim/entities/entity_id.h>
+#include <ioj/sim/entities/entity_identity_layout.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <SandboxTests/support/DisplayEntityTestData.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
@@ -56,8 +56,8 @@ void add_entity(ioj::tests::FDisplayEntityTestData& entities,
     entity_type_radii[type] = radius;
     entities.teams[index] = ioj::to_native(team);
     entities.entity_types[index] = type;
-    auto const owner{::ioj::sim::EntityId(static_cast<std::uint32_t>(index),
-                                                entities.entity_types[index])};
+    auto const owner{
+        ::ioj::sim::EntityId(static_cast<std::uint32_t>(index), entities.entity_types[index])};
     entities.add_health(index, owner, alive ? health : 0);
 }
 

@@ -15,11 +15,7 @@ struct FrameSpawnQueue {
     explicit FrameSpawnQueue(std::pmr::memory_resource* const scratch_resource);
     void reserve(std::uint32_t count);
     void clear();
-    void add(Vector3f location,
-             Rotator3f rotation,
-             Team team,
-             EntityId parent,
-             EntityId target);
+    void add(Vector3f location, Rotator3f rotation, Team team, EntityId parent, EntityId target);
 
     auto view_locations() -> FrameVectors3f& { return locations_; }
     auto view_locations() const -> FrameVectors3f const& { return locations_; }

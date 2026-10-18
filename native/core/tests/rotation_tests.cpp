@@ -98,9 +98,9 @@ TEST(NativeCoreRotation, ComputesNormalisedShortestDelta) {
     };
 
     for (auto const& test_case : cases) {
-        EXPECT_EQ(
-            ioj::shortest_signed_angle_delta_degrees_normalised(test_case.current, test_case.target),
-            test_case.expected);
+        EXPECT_EQ(ioj::shortest_signed_angle_delta_degrees_normalised(test_case.current,
+                                                                      test_case.target),
+                  test_case.expected);
     }
 }
 

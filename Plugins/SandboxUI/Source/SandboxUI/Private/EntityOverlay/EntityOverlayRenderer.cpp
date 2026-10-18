@@ -220,7 +220,8 @@ auto measure_entity_overlay_gpu(FRHICommandListImmediate& rhi_command_list,
     auto start_query{query_pool->AllocateQuery()};
     auto end_query{query_pool->AllocateQuery()};
     rhi_command_list.EndRenderQuery(start_query.GetQuery());
-    ioj::ui::entity_overlay::execute_graph(rhi_command_list, frame, view, style, output_texture_rhi);
+    ioj::ui::entity_overlay::execute_graph(
+        rhi_command_list, frame, view, style, output_texture_rhi);
     rhi_command_list.EndRenderQuery(end_query.GetQuery());
     rhi_command_list.ImmediateFlush(EImmediateFlushType::FlushRHIThread);
 

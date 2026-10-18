@@ -15,12 +15,12 @@ TEST(NativeCoreArrayUtils, AssignsSplitVectorColumns) {
     std::array<std::int32_t, 3> destination_z{};
 
     ioj::kernel::assign_from(destination_x.data(),
-                            destination_y.data(),
-                            destination_z.data(),
-                            source_x.data(),
-                            source_y.data(),
-                            source_z.data(),
-                            3);
+                             destination_y.data(),
+                             destination_z.data(),
+                             source_x.data(),
+                             source_y.data(),
+                             source_z.data(),
+                             3);
 
     EXPECT_EQ(destination_x, source_x);
     EXPECT_EQ(destination_y, source_y);

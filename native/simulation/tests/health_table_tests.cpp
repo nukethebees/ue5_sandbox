@@ -9,8 +9,7 @@
 namespace ioj::sim::tests {
 TEST(HealthTable, SeparatesFixedTypeRangesAndCopiesBulkValues) {
     HealthTable health;
-    std::array const fighters{EntityId{0, EntityType::Fighter},
-                              EntityId{1, EntityType::Fighter}};
+    std::array const fighters{EntityId{0, EntityType::Fighter}, EntityId{1, EntityType::Fighter}};
     std::array const capitals{EntityId{0, EntityType::CapitalShip}};
     health.initialise_rows<EntityType::Fighter>(0, std::array<Health, 2>{10, 20});
     health.initialise_rows<EntityType::CapitalShip>(0, capitals.size(), 900);
@@ -71,8 +70,7 @@ TEST(HealthTable, WritesHealthDirectlyThroughBorrowedViews) {
 TEST(EntityTables, RebuildsHandlesAfterOwnerReorderingAndMaximumHealthChanges) {
     SimClock clock;
     EntityTables tables{clock};
-    std::array const ids{EntityId{2, EntityType::Fighter},
-                         EntityId{6, EntityType::Fighter}};
+    std::array const ids{EntityId{2, EntityType::Fighter}, EntityId{6, EntityType::Fighter}};
     std::array const teams{Team::Blue, Team::Red};
     tables.health.initialise_rows<EntityType::Fighter>(0, std::array<Health, 2>{50, 100});
     tables.publish<EntityType::Fighter>(ids, teams, 100);
@@ -108,8 +106,7 @@ TEST(EntityTables, RebuildsHandlesAfterOwnerReorderingAndMaximumHealthChanges) {
 TEST(EntityTables, KeepsRetiredIdsInvalidAndOtherTypeHealthUnchanged) {
     SimClock clock;
     EntityTables tables{clock};
-    std::array const ids{EntityId{0, EntityType::Fighter},
-                         EntityId{1, EntityType::Fighter}};
+    std::array const ids{EntityId{0, EntityType::Fighter}, EntityId{1, EntityType::Fighter}};
     std::array const player{EntityId{0, EntityType::PlayerShip}};
     tables.health.initialise_rows<EntityType::Fighter>(0, ids.size(), 100);
     tables.health.initialise_rows<EntityType::PlayerShip>(0, player.size(), 75);

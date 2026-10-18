@@ -27,15 +27,15 @@ TEST_P(NativeCoreVectorLerp, ScalarAndArrayAlpha) {
             from_double[0], from_double[1], to_double[0], to_double[1], .25, output[0], output[1]);
     } else {
         ioj::lerp_3d(from_double[0],
-                    from_double[1],
-                    from_double[2],
-                    to_double[0],
-                    to_double[1],
-                    to_double[2],
-                    .25,
-                    output[0],
-                    output[1],
-                    output[2]);
+                     from_double[1],
+                     from_double[2],
+                     to_double[0],
+                     to_double[1],
+                     to_double[2],
+                     .25,
+                     output[0],
+                     output[1],
+                     output[2]);
     }
     for (auto axis{0}; axis < dimensions; ++axis) {
         EXPECT_EQ(from[axis], expected[axis]) << axis;

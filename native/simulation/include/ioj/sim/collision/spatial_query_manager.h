@@ -4,10 +4,10 @@
 #include <ioj/sim/collision/line_traces.h>
 #include <ioj/sim/collision/query_result_types.h>
 #include <ioj/sim/collision/trace_hits.h>
+#include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/entities/entity_instance_handle.h>
 #include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/entities/entity_type_radii.h>
-#include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/player/player_spatial_data.h>
 
 #include <cstddef>
@@ -121,8 +121,7 @@ struct SpatialQueryManager {
                                            std::span<EntityId> out_entities,
                                            ioj::FrameMemoryResource* scratch_resource) const
         -> std::uint32_t;
-    auto get_any_non_team_entity(Team const team, EntityType const entity_type) const
-        -> EntityId;
+    auto get_any_non_team_entity(Team const team, EntityType const entity_type) const -> EntityId;
     void are_spheres_in_bounds(Vectors3fConstView centres,
                                float radius,
                                std::span<collision::SphereInBoundsResult> out_results) const;

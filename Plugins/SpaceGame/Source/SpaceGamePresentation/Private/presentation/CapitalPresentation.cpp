@@ -100,11 +100,11 @@ void FCapitalPresentation::end_tick_presentation() {
 
 void FCapitalPresentation::configure_ismc() {
     ioj::batch::configure_ismc(*instances,
-                              {
-                                  .mesh = actor_config->mesh.Get(),
-                                  .material = actor_config->material.Get(),
-                                  .num_custom_data_floats = n_custom_ismc_floats,
-                              });
+                               {
+                                   .mesh = actor_config->mesh.Get(),
+                                   .material = actor_config->material.Get(),
+                                   .num_custom_data_floats = n_custom_ismc_floats,
+                               });
 }
 
 void FCapitalPresentation::add_initial_visual_instances() {

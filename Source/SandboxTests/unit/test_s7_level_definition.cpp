@@ -79,7 +79,8 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         auto const result{reader.read_level_source(scheduled_level)};
         if (!TestRunner->TestTrue(TEXT("Scheduled script produces a definition"),
                                   static_cast<bool>(result))) {
-            TestRunner->AddError(ioj::to_fstring(::ioj::levels::format_diagnostics(result.error())));
+            TestRunner->AddError(
+                ioj::to_fstring(::ioj::levels::format_diagnostics(result.error())));
             return;
         }
 
@@ -103,7 +104,8 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
         if (!TestRunner->TestTrue(TEXT("Script produces a definition"),
                                   static_cast<bool>(result))) {
-            TestRunner->AddError(ioj::to_fstring(::ioj::levels::format_diagnostics(result.error())));
+            TestRunner->AddError(
+                ioj::to_fstring(::ioj::levels::format_diagnostics(result.error())));
             return;
         }
 
@@ -166,7 +168,8 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
         if (!TestRunner->TestTrue(TEXT("Camera script produces a definition"),
                                   static_cast<bool>(result))) {
-            TestRunner->AddError(ioj::to_fstring(::ioj::levels::format_diagnostics(result.error())));
+            TestRunner->AddError(
+                ioj::to_fstring(::ioj::levels::format_diagnostics(result.error())));
             return;
         }
 

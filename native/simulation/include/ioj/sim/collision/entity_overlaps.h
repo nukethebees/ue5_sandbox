@@ -49,7 +49,8 @@ struct EntityEntityOverlapsSingleLayout {
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
         ioj::native_soa::capacity_block_bound(columns.SecondEntitiesColumn)};
-    static constexpr size_type max_capacity{ioj::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr size_type max_capacity{
+        ioj::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return blocks == 0 ? 0 : columns.SecondEntitiesColumn.data_end(blocks);
     }
@@ -102,7 +103,8 @@ struct EntityEntityOverlapsSingleConstView : EntityEntityOverlapsSingleViewImpl<
     using Base = EntityEntityOverlapsSingleViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<EntityEntityOverlapsSingleConstView>());
+static_assert(
+    ioj::soa_storage_detail::validate_compact_view<EntityEntityOverlapsSingleConstView>());
 struct EntityEntityOverlapsSingleView : EntityEntityOverlapsSingleViewImpl<false> {
     using Base = EntityEntityOverlapsSingleViewImpl<false>;
     using Base::Base;
@@ -306,7 +308,8 @@ struct EntityStaticOverlapsSingleLayout {
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
         ioj::native_soa::capacity_block_bound(columns.StaticGeometryIndicesColumn)};
-    static constexpr size_type max_capacity{ioj::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr size_type max_capacity{
+        ioj::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return blocks == 0 ? 0 : columns.StaticGeometryIndicesColumn.data_end(blocks);
     }
@@ -361,7 +364,8 @@ struct EntityStaticOverlapsSingleConstView : EntityStaticOverlapsSingleViewImpl<
     using Base = EntityStaticOverlapsSingleViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<EntityStaticOverlapsSingleConstView>());
+static_assert(
+    ioj::soa_storage_detail::validate_compact_view<EntityStaticOverlapsSingleConstView>());
 struct EntityStaticOverlapsSingleView : EntityStaticOverlapsSingleViewImpl<false> {
     using Base = EntityStaticOverlapsSingleViewImpl<false>;
     using Base::Base;

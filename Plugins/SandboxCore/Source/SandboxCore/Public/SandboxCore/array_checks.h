@@ -15,7 +15,7 @@ struct NamedNum {
     TCHAR const* name{};
 };
 
-#define SANDBOX_NAMED_NUM(value)                                                      \
+#define SANDBOX_NAMED_NUM(value)                                                       \
     ioj::NamedNum {                                                                    \
         ioj::NumTraits<std::remove_cvref_t<decltype(value)>>::num(value), TEXT(#value) \
     }

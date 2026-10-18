@@ -257,7 +257,7 @@ TEST(NativeSimulationFlightModels, SkaterCanFaceBackwardWhilePreservingForwardTr
 
     expect_velocity_near(velocity(simulation), preserved, 1.e-5);
     EXPECT_LT(ioj::dot(velocity(simulation),
-                      player_sim(simulation).get_physical_state().transform.forward()),
+                       player_sim(simulation).get_physical_state().transform.forward()),
               0.0);
 }
 

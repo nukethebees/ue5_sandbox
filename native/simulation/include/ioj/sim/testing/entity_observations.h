@@ -109,8 +109,7 @@ inline auto entity_is_alive(LevelSim const& source, EntityId const id) -> bool {
     return observe_live_entity(source, id).has_value();
 }
 
-inline auto observe_entity_row(LevelSim const& source, EntityId const id)
-    -> EntityFrameIndex {
+inline auto observe_entity_row(LevelSim const& source, EntityId const id) -> EntityFrameIndex {
     auto const entity{observe_entity(source, id)};
     return entity ? entity->row : EntityInstanceHandle::invalid_value;
 }

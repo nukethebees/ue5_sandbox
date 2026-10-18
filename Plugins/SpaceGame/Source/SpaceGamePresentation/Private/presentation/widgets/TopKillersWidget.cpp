@@ -1,8 +1,8 @@
 #include "SpaceGamePresentation/presentation/widgets/TopKillersWidget.h"
 
 #include <ioj/levels/team.h>
-#include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/entities/entity_id.h>
+#include <ioj/sim/entities/entity_type.h>
 #include <SpaceGamePresentation/entities/EntityTypeDisplayNames.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 

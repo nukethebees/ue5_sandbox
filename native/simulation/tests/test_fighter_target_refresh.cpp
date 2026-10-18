@@ -129,7 +129,8 @@ class FighterTargetRefresh : public ::testing::Test {
     LevelSim simulation{simulation_memory, make_world()};
     EntityId fighter;
     EntityId target;
-    alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 256 * 1024> backing{};
+    alignas(
+        ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 256 * 1024> backing{};
     ioj::FrameMemoryResource memory{backing};
 };
 

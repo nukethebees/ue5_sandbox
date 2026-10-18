@@ -47,7 +47,7 @@ void MissionManager::begin_play(ioj::FrameMemoryResource* const scratch_resource
         case MissionMode::SurviveTime: {
             if (entity_ids_that_must_survive.empty()) {
                 ioj::log_error("MissionManager: SurviveTime requires at least one entity that "
-                              "must survive");
+                               "must survive");
                 set_mission_state(MissionState::Disabled);
                 break;
             }
@@ -90,9 +90,8 @@ MissionManager::MissionManager(SimClock const& clock,
 /* **************************************** */
 // Level mission setup
 /* **************************************** */
-void MissionManager::initialise_level_mission(
-    LevelMissionInitialisationData const& data,
-    std::span<EntityId const> const level_entity_ids) {
+void MissionManager::initialise_level_mission(LevelMissionInitialisationData const& data,
+                                              std::span<EntityId const> const level_entity_ids) {
     assert(!level_initialisation_applied_);
     set_level_identity(data.level_id, data.level_title);
     set_save_mission_results(data.save_results);
@@ -181,7 +180,7 @@ void MissionManager::consume_level_events(LevelMissionEventGroups::ConstView con
             }
             default: {
                 ioj::fatal_error(std::format("Unsupported level mission event type: {}",
-                                            static_cast<std::int32_t>(types[index])));
+                                             static_cast<std::int32_t>(types[index])));
             }
         }
     }

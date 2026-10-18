@@ -33,9 +33,9 @@ static bool is_view_record(CXXRecordDecl const* record) {
     if (llvm::StringSwitch<bool>(name)
             .Cases({"std::span", "ioj::Vector3SoAView"}, true)
             .Cases({"ioj::TickCountdownView", "ioj::PeriodicTickCountdownView"}, true)
-            .Cases(
-                {"ioj::soa_storage_detail::CompactViewState", "ioj::soa_storage_detail::VectorView"},
-                true)
+            .Cases({"ioj::soa_storage_detail::CompactViewState",
+                    "ioj::soa_storage_detail::VectorView"},
+                   true)
             .Cases({"ioj::sim::HealthView", "ioj::sim::HealthConstView"}, true)
             .Cases({"ioj::sim::DirectDamageEventsView", "ioj::sim::DirectDamageEventsConstView"},
                    true)

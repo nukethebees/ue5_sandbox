@@ -61,9 +61,9 @@ struct EntityInstanceHandle {
         assert(static_cast<std::size_t>(team_value) < ioj::enum_count<team_type>());
         assert((health_state_value >= health_state_minimum &&
                 health_state_value <= health_state_maximum));
-        value_ = static_cast<storage_type>(ioj::packed_pack<index_field>(index_value) |
-                                           ioj::packed_pack<team_field>(team_value) |
-                                           ioj::packed_pack<health_state_field>(health_state_value));
+        value_ = static_cast<storage_type>(
+            ioj::packed_pack<index_field>(index_value) | ioj::packed_pack<team_field>(team_value) |
+            ioj::packed_pack<health_state_field>(health_state_value));
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {

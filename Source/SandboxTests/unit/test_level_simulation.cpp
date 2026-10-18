@@ -735,10 +735,9 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
         for (int32 index{}; index < active_count; ++index) {
             auto const source_index{presentation.visible_indices_[index]};
             auto const source_y{lasers.get_entities().view_locations().ys()[source_index]};
-            auto const decoded_y{packed[index].position[1] * ioj::sandbox_ismc::position_quantum};
+            auto const decoded_y{packed[index].position[1] * ioj::ismc::position_quantum};
             TestTrue(TEXT("Packed laser position matches its source within half a quantum"),
-                     FMath::Abs(decoded_y - source_y) <=
-                         ioj::sandbox_ismc::position_quantum * 0.5f);
+                     FMath::Abs(decoded_y - source_y) <= ioj::ismc::position_quantum * 0.5f);
             auto const id{FMath::RoundToInt(source_y / 10.f)};
             auto const& expected{expected_material_data[id - 1]};
             auto const actual{writer.custom_data(index)};

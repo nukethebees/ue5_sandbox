@@ -121,8 +121,8 @@ TEST(KernelStandardInvariants, RejectsOverlappingInPlaceInput) {
     EXPECT_DEATH_IF_SUPPORTED(([] {
                                   std::array<float, 2> storage{};
                                   ioj::kernel_lab::lerp_in_place(std::span<float>{storage},
-                                                                std::span<float const>{storage},
-                                                                0.5f);
+                                                                 std::span<float const>{storage},
+                                                                 0.5f);
                               }()),
                               "");
 }

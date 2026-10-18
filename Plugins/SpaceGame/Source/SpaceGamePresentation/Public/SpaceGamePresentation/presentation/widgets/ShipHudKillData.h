@@ -1,7 +1,7 @@
 #pragma once
 
-#include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/entities/entity_id.h>
+#include <ioj/sim/entities/entity_type.h>
 #include <SpaceGamePresentation/entities/TestTeam.h>
 
 #include <SandboxCore/soa_array_mixin.h>

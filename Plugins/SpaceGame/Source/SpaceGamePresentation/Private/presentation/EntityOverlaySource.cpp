@@ -119,8 +119,7 @@ auto select_soft_target(std::span<::ioj::presentation::AgentDisplayBatch const> 
                         TConstArrayView<EEntityOverlayObjectiveRole> const objective_roles,
                         FSoftTargetSelectionContext const& context,
                         FSoftTargetSelectionSettings const& settings,
-                        ::ioj::sim::EntityId const current_target)
-    -> FSoftTargetSelectionResult {
+                        ::ioj::sim::EntityId const current_target) -> FSoftTargetSelectionResult {
     check(objective_roles.Num() == ::ioj::presentation::display_entity_count(batches));
     if (!context.view.is_valid()) {
         return {};

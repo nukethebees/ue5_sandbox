@@ -33,8 +33,7 @@ void LevelSpawnManager::initialise(std::uint32_t const entity_count,
     entity_ids_.resize(static_cast<std::size_t>(entity_count));
 }
 
-void LevelSpawnManager::set_entity_id(LevelEntityIndex const entity_index,
-                                      EntityId const id) {
+void LevelSpawnManager::set_entity_id(LevelEntityIndex const entity_index, EntityId const id) {
     assert(static_cast<std::size_t>(entity_index) < entity_ids_.size());
     assert(id.is_valid());
     entity_ids_[entity_index] = id;
@@ -67,7 +66,7 @@ void LevelSpawnManager::spawn(LevelSpawnGroups::ConstView const groups) {
             }
             default: {
                 ioj::fatal_error(std::format("Unsupported level spawn entity type: {}",
-                                            std::to_underlying(types[index])));
+                                             std::to_underlying(types[index])));
             }
         }
     }

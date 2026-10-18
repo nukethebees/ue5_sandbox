@@ -33,8 +33,7 @@ struct EntityId {
     inline static constexpr storage_type invalid_value{storage_type{0xffffffff}};
 
     constexpr EntityId() noexcept = default;
-    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
-        -> EntityId {
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> EntityId {
         EntityId result;
         result.value_ = raw;
         return result;
@@ -43,7 +42,7 @@ struct EntityId {
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
     explicit constexpr EntityId(index_type const index_value,
-                                      entity_type_type const entity_type_value) noexcept {
+                                entity_type_type const entity_type_value) noexcept {
         assert(index_value <= index_maximum);
         assert(static_cast<std::size_t>(entity_type_value) < ioj::enum_count<entity_type_type>());
         value_ = static_cast<storage_type>(ioj::packed_pack<index_field>(index_value) |

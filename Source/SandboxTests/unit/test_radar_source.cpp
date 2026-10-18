@@ -1,7 +1,7 @@
 #include <ioj/column_math.h>
+#include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/entities/entity_identity_layout.h>
 #include <ioj/sim/entities/entity_type.h>
-#include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <SandboxTests/support/DisplayEntityTestData.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
@@ -40,8 +40,8 @@ void add_entity(ioj::tests::FDisplayEntityTestData& entities,
     ::ioj::set_vector(entities.motion.get_view().view_locations(), index, ioj::to_native(location));
     entities.teams[index] = ioj::to_native(team);
     entities.entity_types[index] = type;
-    auto const owner{::ioj::sim::EntityId(static_cast<std::uint32_t>(index),
-                                                entities.entity_types[index])};
+    auto const owner{
+        ::ioj::sim::EntityId(static_cast<std::uint32_t>(index), entities.entity_types[index])};
     entities.add_health(index, owner, alive ? 100 : 0);
 }
 
@@ -101,7 +101,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         std::vector<::ioj::sim::EntityId> ids;
         for (int32 index{}; index < entities.num(); ++index) {
             ids.push_back(::ioj::sim::EntityId(static_cast<std::uint32_t>(index),
-                                                     entities.entity_types[index]));
+                                               entities.entity_types[index]));
         }
         TArray<EEntityOverlayObjectiveRole> objective_roles;
         objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
@@ -190,7 +190,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         std::vector<::ioj::sim::EntityId> ids;
         for (int32 index{}; index < entities.num(); ++index) {
             ids.push_back(::ioj::sim::EntityId(static_cast<std::uint32_t>(index),
-                                                     entities.entity_types[index]));
+                                               entities.entity_types[index]));
         }
         TArray<EEntityOverlayObjectiveRole> objective_roles;
         objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
@@ -229,15 +229,15 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
 
         ioj::tests::FDisplayEntityTestData entities;
         ioj::test_radar_source::add_entity(entities,
-                                          FVector3f{player_location},
-                                          ETestTeam::Blue,
-                                          ::ioj::sim::EntityType::PlayerShip);
+                                           FVector3f{player_location},
+                                           ETestTeam::Blue,
+                                           ::ioj::sim::EntityType::PlayerShip);
         ioj::test_radar_source::add_entity(
             entities, world_contact, ETestTeam::Red, ::ioj::sim::EntityType::Fighter);
         std::vector<::ioj::sim::EntityId> ids;
         for (int32 index{}; index < entities.num(); ++index) {
             ids.push_back(::ioj::sim::EntityId(static_cast<std::uint32_t>(index),
-                                                     entities.entity_types[index]));
+                                               entities.entity_types[index]));
         }
         TArray<EEntityOverlayObjectiveRole> objective_roles;
         objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
@@ -272,7 +272,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         TestRunner->TestTrue(
             TEXT("Roll does not rotate the contact field"),
             ioj::test_radar_source::nearly_equal(no_roll_instances[0].radar_position,
-                                                rolled_instances[0].radar_position));
+                                                 rolled_instances[0].radar_position));
         TestRunner->TestTrue(
             TEXT("Yaw and pitch recover player-relative height"),
             FMath::IsNearlyEqual(no_roll_instances[0].radar_position.Z, 0.2f, 0.0001f));
@@ -312,7 +312,8 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         }
 
         for (auto const boundary : {settings.combat_range, settings.tactical_range}) {
-            auto const before{ioj::radar_source::to_radar_display_radius(boundary - 1.0f, settings)};
+            auto const before{
+                ioj::radar_source::to_radar_display_radius(boundary - 1.0f, settings)};
             auto const at{ioj::radar_source::to_radar_display_radius(boundary, settings)};
             auto const after{ioj::radar_source::to_radar_display_radius(boundary + 1.0f, settings)};
             TestRunner->TestTrue(TEXT("Movement remains finite across a semantic boundary"),
@@ -339,7 +340,8 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
 
         auto previous_height{0.0f};
         for (float const height : {25.0f, 100.0f, 400.0f, 1000.0f}) {
-            auto const above{ioj::radar_source::to_radar_position({0.0f, 0.0f, height}, settings).Z};
+            auto const above{
+                ioj::radar_source::to_radar_position({0.0f, 0.0f, height}, settings).Z};
             auto const below{
                 ioj::radar_source::to_radar_position({0.0f, 0.0f, -height}, settings).Z};
             TestRunner->TestTrue(TEXT("Vertical compression is signed and symmetric"),
@@ -361,7 +363,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         std::vector<::ioj::sim::EntityId> ids;
         for (int32 index{}; index < entities.num(); ++index) {
             ids.push_back(::ioj::sim::EntityId(static_cast<std::uint32_t>(index),
-                                                     entities.entity_types[index]));
+                                               entities.entity_types[index]));
         }
         TArray<EEntityOverlayObjectiveRole> objective_roles;
         objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
@@ -379,11 +381,11 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         auto const original_position{frame.instances[0].radar_position};
 
         ioj::test_radar_source::add_entity(entities,
-                                          {1500.0f, 100.0f, 0.0f},
-                                          ETestTeam::Green,
-                                          ::ioj::sim::EntityType::CapitalShip);
+                                           {1500.0f, 100.0f, 0.0f},
+                                           ETestTeam::Green,
+                                           ::ioj::sim::EntityType::CapitalShip);
         ids.push_back(::ioj::sim::EntityId(static_cast<std::uint32_t>(entities.num() - 1),
-                                                 entities.entity_types.back()));
+                                           entities.entity_types.back()));
         objective_roles.Add(EEntityOverlayObjectiveRole::None);
         static_cast<void>(collect_radar_instances(ioj::test_radar_source::make_view(entities, ids),
                                                   objective_roles,
@@ -417,7 +419,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         std::vector<::ioj::sim::EntityId> ids;
         for (int32 index{}; index < entities.num(); ++index) {
             ids.push_back(::ioj::sim::EntityId(static_cast<std::uint32_t>(index),
-                                                     entities.entity_types[index]));
+                                               entities.entity_types[index]));
         }
         TArray<EEntityOverlayObjectiveRole> objective_roles;
         objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());

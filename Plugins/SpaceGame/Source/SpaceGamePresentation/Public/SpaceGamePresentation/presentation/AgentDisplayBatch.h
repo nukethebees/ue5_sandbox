@@ -2,8 +2,8 @@
 
 #include <ioj/column_math.h>
 #include <ioj/levels/team.h>
-#include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/entities/entity_id.h>
+#include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/entities/health_table.h>
 #include <ioj/vectors3f.h>
 
@@ -13,8 +13,8 @@ namespace ioj::presentation {
 using ::ioj::Team;
 using ::ioj::Vector3f;
 using ::ioj::Vectors3fConstView;
-using ::ioj::sim::EntityType;
 using ::ioj::sim::EntityId;
+using ::ioj::sim::EntityType;
 using ::ioj::sim::Health;
 using ::ioj::sim::HealthConstView;
 // Borrowed owner columns, valid only until the next structural mutation.

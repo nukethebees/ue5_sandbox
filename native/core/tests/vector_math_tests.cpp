@@ -40,16 +40,16 @@ TEST(NativeCoreVectorMath, ProducesDirectionsDistancesAndRotations) {
     std::array<float, 2> distances{};
 
     ioj::native_math::direction_and_distance(out_x.data(),
-                                            out_y.data(),
-                                            out_z.data(),
-                                            distances.data(),
-                                            from_x.data(),
-                                            from_y.data(),
-                                            from_z.data(),
-                                            to_x.data(),
-                                            to_y.data(),
-                                            to_z.data(),
-                                            2);
+                                             out_y.data(),
+                                             out_z.data(),
+                                             distances.data(),
+                                             from_x.data(),
+                                             from_y.data(),
+                                             from_z.data(),
+                                             to_x.data(),
+                                             to_y.data(),
+                                             to_z.data(),
+                                             2);
 
     EXPECT_FLOAT_EQ(out_x[0], 0.6f);
     EXPECT_FLOAT_EQ(out_y[0], 0.8f);

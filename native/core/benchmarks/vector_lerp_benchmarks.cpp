@@ -41,12 +41,12 @@ using Kernel = void (*)(Buffers&, float) noexcept;
 
 void run_fused(Buffers& buffers, float const alpha) noexcept {
     ioj::lerp_3d_in_place(buffers.current_x,
-                         buffers.current_y,
-                         buffers.current_z,
-                         buffers.target_x,
-                         buffers.target_y,
-                         buffers.target_z,
-                         alpha);
+                          buffers.current_y,
+                          buffers.current_z,
+                          buffers.target_x,
+                          buffers.target_y,
+                          buffers.target_z,
+                          alpha);
 }
 
 void run_three_1d(Buffers& buffers, float const alpha) noexcept {

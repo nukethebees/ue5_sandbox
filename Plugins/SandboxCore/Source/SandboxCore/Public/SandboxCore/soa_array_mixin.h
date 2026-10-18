@@ -115,7 +115,8 @@ struct FSoAArrayMixin : public FSoACommonMixin {
     template <typename Other, typename Self>
         requires SupportsApplyArrayPairsWith<Self, Other>
     void append_from(this Self& self, Other const& other) {
-        self.apply_array_pairs(other, [](auto&&... arrays) -> void { ioj::append_from(arrays...); });
+        self.apply_array_pairs(other,
+                               [](auto&&... arrays) -> void { ioj::append_from(arrays...); });
     }
 };
 

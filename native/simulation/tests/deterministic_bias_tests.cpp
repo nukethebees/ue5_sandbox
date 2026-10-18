@@ -38,9 +38,9 @@ TEST(DeterministicBias, ValidFloatRange) {
         BiasInputs{0, 1},
         BiasInputs{-1, -1},
         BiasInputs{std::numeric_limits<std::int32_t>::min(),
-                  std::numeric_limits<std::int32_t>::max()},
+                   std::numeric_limits<std::int32_t>::max()},
         BiasInputs{std::numeric_limits<std::int32_t>::max(),
-                  std::numeric_limits<std::int32_t>::min()},
+                   std::numeric_limits<std::int32_t>::min()},
     };
 
     for (auto const [first, second] : cases) {
@@ -70,8 +70,7 @@ TEST(DeterministicBias, AcceptsEmptyBatches) {
 }
 
 TEST(DeterministicBias, GeneratesIntegralBiasesFromEntityIds) {
-    std::array const ids{EntityId(42, EntityType::Fighter),
-                         EntityId(43, EntityType::Fighter)};
+    std::array const ids{EntityId(42, EntityType::Fighter), EntityId(43, EntityType::Fighter)};
     std::array<std::uint32_t, 2> integral_out{};
 
     ASSERT_TRUE(make_deterministic_biases(ids, integral_out));

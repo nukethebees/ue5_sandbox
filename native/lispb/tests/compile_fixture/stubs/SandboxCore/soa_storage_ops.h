@@ -28,7 +28,8 @@ void reserve(Soa& value, int32 const count) {
 
 template <typename Soa>
 void add_uninitialised(Soa& value, int32 const count) {
-    value.apply_arrays([count](auto&... columns) { (ioj::add_uninitialised(columns, count), ...); });
+    value.apply_arrays(
+        [count](auto&... columns) { (ioj::add_uninitialised(columns, count), ...); });
 }
 
 template <typename Soa>

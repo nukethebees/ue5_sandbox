@@ -32,7 +32,7 @@ SANDBOXCOREENGINE_API void fatal_if_uobject_ptrs_invalid(
     std::initializer_list<std::initializer_list<NamedUObjectPtr>> ptr_batches);
 
 #define SANDBOX_NAMED_UOBJECT_PTR(ptr) \
-    ioj::NamedUObjectPtr {              \
+    ioj::NamedUObjectPtr {             \
         ptr, TEXT(#ptr)                \
     }
 }

@@ -8,8 +8,8 @@
 #include "SpaceGamePresentation/presentation/widgets/SimulationHudWidget.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 #include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/entities/entity_id.h>
+#include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/spinners/sim.h>
 #include <ioj/sim/turrets/sim.h>
@@ -661,7 +661,8 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
 
         if (!custom_data.IsEmpty()) {
             auto* const instances{soft_target_instances_.Get()};
-            auto const instance_count{custom_data.Num() / ioj::soft_target_world::custom_data_count};
+            auto const instance_count{custom_data.Num() /
+                                      ioj::soft_target_world::custom_data_count};
             check(IsValid(instances));
             check(custom_data.Num() == instance_count * ioj::soft_target_world::custom_data_count);
             check(instance_count == instances->GetInstanceCount());
@@ -939,15 +940,14 @@ void FHUDManager::collect_kill_data() {
         }
         top_killer_ids_buffer.Add(entity_ids[entity_index]);
     }
-    Algo::Sort(
-        top_killer_ids_buffer,
-        [this, kills](::ioj::sim::EntityId const lhs, ::ioj::sim::EntityId const rhs) {
-            auto const lhs_kills{kills[entity_ledger->get_history_index(lhs)]};
-            auto const rhs_kills{kills[entity_ledger->get_history_index(rhs)]};
-            return lhs_kills != rhs_kills ? lhs_kills > rhs_kills
-                                          : entity_ledger->get_history_index(lhs) <
-                                                entity_ledger->get_history_index(rhs);
-        });
+    Algo::Sort(top_killer_ids_buffer,
+               [this, kills](::ioj::sim::EntityId const lhs, ::ioj::sim::EntityId const rhs) {
+                   auto const lhs_kills{kills[entity_ledger->get_history_index(lhs)]};
+                   auto const rhs_kills{kills[entity_ledger->get_history_index(rhs)]};
+                   return lhs_kills != rhs_kills ? lhs_kills > rhs_kills
+                                                 : entity_ledger->get_history_index(lhs) <
+                                                       entity_ledger->get_history_index(rhs);
+               });
 
     next_data.top_killers.reset();
     next_data.top_killers.add_defaulted(top_killer_ids_buffer.Num());

@@ -48,9 +48,7 @@ class CommandInterface {
         fighters.reassign_pending_spawns(parent, replacement);
     }
 
-    std::span<EntityId const> get_target_ids() const noexcept {
-        return fighters.get_target_ids();
-    }
+    std::span<EntityId const> get_target_ids() const noexcept { return fighters.get_target_ids(); }
   private:
     Sim& fighters;
 };

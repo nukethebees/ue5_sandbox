@@ -44,8 +44,7 @@ TEST(EntityTypeRuns, GroupsWithoutChangingIdsAndOmitsEmptyIds) {
 
 TEST(EntityLookupTables, PublishedCountIncludesDeadRowsUntilRepublished) {
     EntityLookupTable lookup{EntityType::Fighter};
-    std::array const ids{EntityId{0, EntityType::Fighter},
-                         EntityId{1, EntityType::Fighter}};
+    std::array const ids{EntityId{0, EntityType::Fighter}, EntityId{1, EntityType::Fighter}};
     lookup.publish_rows(ids, {}, std::array<Health, 2>{0, 100}, 100);
     EXPECT_EQ(lookup.row_count(), 2u);
     EXPECT_FALSE(lookup.entries()[0].is_valid());
@@ -61,8 +60,7 @@ TEST(EntityLookupTables, PublishedCountIncludesDeadRowsUntilRepublished) {
 TEST(EntityLookupTables, ResolvesArbitraryIdsInCallerOrder) {
     SimClock clock;
     EntityLookupTables lookups{clock};
-    std::array const fighters{EntityId{2, EntityType::Fighter},
-                              EntityId{3, EntityType::Fighter}};
+    std::array const fighters{EntityId{2, EntityType::Fighter}, EntityId{3, EntityType::Fighter}};
     std::array const capitals{EntityId{0, EntityType::CapitalShip}};
     lookups.for_type(EntityType::Fighter)
         .publish_rows(fighters, std::array{Team::Blue, Team::Blue});
@@ -83,8 +81,7 @@ TEST(EntityLookupTables, ResolvesArbitraryIdsInCallerOrder) {
 TEST(EntityLookupTables, ResolvesTypeRunsAndPreservesDuplicateAndMissingSlots) {
     SimClock clock;
     EntityLookupTables lookups{clock};
-    std::array const fighters{EntityId{2, EntityType::Fighter},
-                              EntityId{5, EntityType::Fighter}};
+    std::array const fighters{EntityId{2, EntityType::Fighter}, EntityId{5, EntityType::Fighter}};
     std::array const capitals{EntityId{0, EntityType::CapitalShip}};
     lookups.for_type(EntityType::Fighter).publish_rows(fighters, std::array{Team::Blue, Team::Red});
     lookups.for_type(EntityType::CapitalShip).publish_rows(capitals, std::array{Team::Green});
@@ -133,13 +130,8 @@ TEST(EntityMotion, CopiesMixedTypesAndReportsMissingEntitiesWithoutChangingIds) 
     owners.fighters.get_view().view_velocities().set(0, {{1, 2, 3}});
     owners.player_velocity = {4, 5, 6};
     owners.publish();
-    std::array ids{fighter,
-                   EntityId{},
-                   capital,
-                   fighter,
-                   EntityId{99, EntityType::Fighter},
-                   player,
-                   dead};
+    std::array ids{
+        fighter, EntityId{}, capital, fighter, EntityId{99, EntityType::Fighter}, player, dead};
     auto const original{ids};
     Vectors3f locations;
     Vectors3f velocities;

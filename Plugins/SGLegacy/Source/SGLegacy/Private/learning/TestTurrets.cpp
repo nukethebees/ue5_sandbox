@@ -78,42 +78,42 @@ auto FTestTurretsSearchData::num_turrets_to_move() const -> int32 {
 
 void FTestTurretsSearchData::add_uninitialised(int32 const n) {
     ioj::invoke_on_all([n](auto& array) { array.AddDefaulted(n); },
-                      body_meshes,
-                      cannon_meshes,
-                      yaw_pivots,
-                      pitch_pivots,
-                      collision_shapes);
+                       body_meshes,
+                       cannon_meshes,
+                       yaw_pivots,
+                       pitch_pivots,
+                       collision_shapes);
 
     ioj::invoke_on_all([n](auto& array) { array.AddUninitialized(n); },
-                      location_xs,
-                      location_ys,
-                      location_zs,
-                      yaw_radians,
-                      healths);
+                       location_xs,
+                       location_ys,
+                       location_zs,
+                       yaw_radians,
+                       healths);
 }
 
 void FTestTurretsSearchData::reset() {
     ioj::invoke_on_all([](auto& x) { ioj::destroy_components_array(x); },
-                      body_meshes,
-                      cannon_meshes,
-                      yaw_pivots,
-                      pitch_pivots,
-                      collision_shapes);
+                       body_meshes,
+                       cannon_meshes,
+                       yaw_pivots,
+                       pitch_pivots,
+                       collision_shapes);
 
     ioj::reset(
         location_xs, location_ys, location_zs, yaw_radians, to_attack, attack_targets, healths);
 }
 bool FTestTurretsSearchData::array_sizes_consistent() const {
     return ioj::all_num_equal(body_meshes,
-                             cannon_meshes,
-                             yaw_pivots,
-                             pitch_pivots,
-                             collision_shapes,
-                             location_xs,
-                             location_ys,
-                             location_zs,
-                             yaw_radians,
-                             healths);
+                              cannon_meshes,
+                              yaw_pivots,
+                              pitch_pivots,
+                              collision_shapes,
+                              location_xs,
+                              location_ys,
+                              location_zs,
+                              yaw_radians,
+                              healths);
 }
 void FTestTurretsSearchData::rotate_by(float* yaw_radians,
                                        int32 const n,
@@ -140,31 +140,31 @@ auto FTestTurretsAttackData::num_turrets_to_move() const -> int32 {
 }
 bool FTestTurretsAttackData::array_sizes_consistent() const {
     return ioj::all_num_equal(body_meshes,
-                             cannon_meshes,
-                             yaw_pivots,
-                             pitch_pivots,
-                             collision_shapes,
-                             location_xs,
-                             location_ys,
-                             location_zs,
-                             target_location_xs,
-                             target_location_ys,
-                             target_location_zs,
-                             pitch_radians,
-                             yaw_radians,
-                             target_pitch_radians,
-                             target_yaw_radians,
-                             targets,
-                             healths,
-                             firing_cooldowns);
+                              cannon_meshes,
+                              yaw_pivots,
+                              pitch_pivots,
+                              collision_shapes,
+                              location_xs,
+                              location_ys,
+                              location_zs,
+                              target_location_xs,
+                              target_location_ys,
+                              target_location_zs,
+                              pitch_radians,
+                              yaw_radians,
+                              target_pitch_radians,
+                              target_yaw_radians,
+                              targets,
+                              healths,
+                              firing_cooldowns);
 }
 void FTestTurretsAttackData::reset() {
     ioj::invoke_on_all([](auto& x) { ioj::destroy_components_array(x); },
-                      body_meshes,
-                      cannon_meshes,
-                      yaw_pivots,
-                      pitch_pivots,
-                      collision_shapes);
+                       body_meshes,
+                       cannon_meshes,
+                       yaw_pivots,
+                       pitch_pivots,
+                       collision_shapes);
 
     ioj::reset(yaw_radians, yaw_radians, target_pitch_radians, target_yaw_radians);
 }
@@ -339,10 +339,10 @@ void ATestTurrets::update_target_rotations() {
     using T = float;
     for (int32 i{0}; i < n; ++i) {
         ioj::compute_desired_yaws_radians(TConstArrayView<T>{attacking.location_xs},
-                                         TConstArrayView<T>{attacking.location_ys},
-                                         TConstArrayView<T>{attacking.target_location_xs},
-                                         TConstArrayView<T>{attacking.target_location_ys},
-                                         TArrayView<T>{attacking.target_yaw_radians});
+                                          TConstArrayView<T>{attacking.location_ys},
+                                          TConstArrayView<T>{attacking.target_location_xs},
+                                          TConstArrayView<T>{attacking.target_location_ys},
+                                          TArrayView<T>{attacking.target_yaw_radians});
     }
 }
 void ATestTurrets::integrate_rotations(float const dt) {

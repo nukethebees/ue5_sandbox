@@ -74,7 +74,8 @@ struct CapitalEntityDataSingleLayout {
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
         ioj::native_soa::capacity_block_bound(columns.TargetIdsColumn)};
-    static constexpr size_type max_capacity{ioj::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr size_type max_capacity{
+        ioj::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return blocks == 0 ? 0 : columns.TargetIdsColumn.data_end(blocks);
     }

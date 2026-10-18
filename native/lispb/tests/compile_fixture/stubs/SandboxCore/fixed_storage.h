@@ -25,8 +25,8 @@ class TFixedStorage {
     auto operator[](int32 const index) noexcept -> T& { return data()[index]; }
     auto operator[](int32 const index) const noexcept -> T const& { return data()[index]; }
   private:
-    static constexpr auto byte_count = Capacity > 0 ? sizeof(T) * static_cast<std::size_t>(Capacity)
-                                                    : sizeof(T);
+    static constexpr auto byte_count =
+        Capacity > 0 ? sizeof(T) * static_cast<std::size_t>(Capacity) : sizeof(T);
     alignas(T) std::byte storage_[byte_count];
 };
 

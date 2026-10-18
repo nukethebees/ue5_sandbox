@@ -432,10 +432,10 @@ void FTestHUDManagerScenario::player_kill_pre_begin_play(UWorld& world,
     }
 
     ioj::spawn_capital_proxy(world,
-                            config,
-                            checks,
-                            FName{TEXT("player_kill_target_capital")},
-                            FVector{2000.f, 0.f, 0.f});
+                             config,
+                             checks,
+                             FName{TEXT("player_kill_target_capital")},
+                             FVector{2000.f, 0.f, 0.f});
 }
 
 void FTestHUDManagerScenario::player_kill_begin() {
@@ -453,8 +453,7 @@ void FTestHUDManagerScenario::player_kill_begin() {
     auto const& capitals{test_driver->get_capital_ships()};
     check(capitals.get_num_instances() == 1);
 
-    std::array<::ioj::sim::EntityId, 1> const targets{
-        capitals.get_entities().entity_ids()[0]};
+    std::array<::ioj::sim::EntityId, 1> const targets{capitals.get_entities().entity_ids()[0]};
     auto const instigator{player_ship->get_unique_id()};
     test_driver->timeline.then_after(damage_queue_time, [this, targets, instigator] {
         test_driver->queue_kills(targets, instigator);

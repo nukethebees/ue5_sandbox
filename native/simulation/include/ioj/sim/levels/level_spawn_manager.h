@@ -42,9 +42,7 @@ class LevelSpawnManager {
     void set_entity_id(LevelEntityIndex entity_index, EntityId id);
     void spawn(LevelSpawnGroups::ConstView groups);
     void reset_tick_output() { spawned_ids_this_tick_.clear(); }
-    auto get_spawned_ids() const -> std::span<EntityId const> {
-        return spawned_ids_this_tick_;
-    }
+    auto get_spawned_ids() const -> std::span<EntityId const> { return spawned_ids_this_tick_; }
     auto get_id(LevelEntityIndex entity_index) const -> EntityId;
     auto get_entity_ids() const noexcept -> std::span<EntityId const> { return entity_ids_; }
   private:

@@ -125,7 +125,8 @@ TEST(NativeCoreFixedArray, CleansUpAfterThrowingMoveConstruction) {
             source.emplace_back(counts);
             counts.moves_before_throw = prefix;
 
-            EXPECT_THROW((ioj::FixedArray<ThrowingValue, 3>{std::move(source)}), std::runtime_error);
+            EXPECT_THROW((ioj::FixedArray<ThrowingValue, 3>{std::move(source)}),
+                         std::runtime_error);
             EXPECT_EQ(counts.live, 3);
             // NOLINTNEXTLINE(bugprone-use-after-move): Check the failed move's source range.
             EXPECT_EQ(source.num(), 3);

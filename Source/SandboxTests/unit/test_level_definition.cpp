@@ -15,7 +15,7 @@ auto contains_error(ioj::FLevelValidationResult const& result,
 auto make_camera_level() -> ioj::FLevelDefinition {
     ioj::FLevelBuilder builder;
     builder.set_metadata(ioj::FLevelMetadata{.id = ioj::FLevelId{FName{TEXT("camera-level")}},
-                                            .title = TEXT("Camera Level")});
+                                             .title = TEXT("Camera Level")});
     builder.add_entity(ioj::FEntitySpawnDefinition{
         .id = ioj::FLevelEntityId{FName{TEXT("blue-capital")}},
         .archetype = ioj::level_archetypes::capital_ship,
@@ -53,7 +53,8 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
         TestRunner->TestFalse(TEXT("Omitted par time remains unset"),
                               definition.metadata.par_time_seconds.IsSet());
         TestRunner->TestTrue(TEXT("Stable level id is preserved"),
-                             definition.metadata.id == ioj::FLevelId{FName{TEXT("native-example")}});
+                             definition.metadata.id ==
+                                 ioj::FLevelId{FName{TEXT("native-example")}});
         TestRunner->TestTrue(TEXT("Player id is preserved"),
                              definition.player_entity_id ==
                                  ioj::FLevelEntityId{FName{TEXT("player")}});
@@ -177,8 +178,8 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
             TEXT("Player entity position is preserved"),
             first.entities.positions.get_const_view()[0].Equals(FVector{10.0, 20.0, 30.0}));
 
-        builder.set_metadata(
-            ioj::FLevelMetadata{.id = ioj::FLevelId{FName{TEXT("second")}}, .title = TEXT("Second")});
+        builder.set_metadata(ioj::FLevelMetadata{.id = ioj::FLevelId{FName{TEXT("second")}},
+                                                 .title = TEXT("Second")});
         auto const second_player{builder.add_entity(ioj::FEntitySpawnDefinition{
             .id = ioj::FLevelEntityId{FName{TEXT("second-player")}},
             .archetype = ioj::level_archetypes::player_fighter,
@@ -211,8 +212,8 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
     TEST_METHOD(BuilderReuseClearsCameraState)
     {
         ioj::FLevelBuilder builder;
-        builder.set_metadata(
-            ioj::FLevelMetadata{.id = ioj::FLevelId{FName{TEXT("camera")}}, .title = TEXT("Camera")});
+        builder.set_metadata(ioj::FLevelMetadata{.id = ioj::FLevelId{FName{TEXT("camera")}},
+                                                 .title = TEXT("Camera")});
         builder.add_entity(ioj::FEntitySpawnDefinition{
             .id = ioj::FLevelEntityId{FName{TEXT("capital")}},
             .archetype = ioj::level_archetypes::capital_ship,
@@ -232,8 +233,8 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("First definition has a camera"), camera_level.camera.IsSet());
         TestRunner->TestTrue(TEXT("First definition has a mission"), camera_level.mission.IsSet());
 
-        builder.set_metadata(
-            ioj::FLevelMetadata{.id = ioj::FLevelId{FName{TEXT("player")}}, .title = TEXT("Player")});
+        builder.set_metadata(ioj::FLevelMetadata{.id = ioj::FLevelId{FName{TEXT("player")}},
+                                                 .title = TEXT("Player")});
         auto const player_id{builder.add_entity(ioj::FEntitySpawnDefinition{
             .id = ioj::FLevelEntityId{FName{TEXT("player")}},
             .archetype = ioj::level_archetypes::player_fighter,
@@ -334,7 +335,8 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
                            ioj::ELevelValidationErrorCode::ConflictingMissionEntityRoles));
 
         auto ambiguous_teams{ioj::example_levels::make_native_example()};
-        ambiguous_teams.mission->hero_entity_ids.Add(ioj::FLevelEntityId{FName{TEXT("red-turret")}});
+        ambiguous_teams.mission->hero_entity_ids.Add(
+            ioj::FLevelEntityId{FName{TEXT("red-turret")}});
         auto const ambiguous_teams_validation{ioj::validate_level(ambiguous_teams)};
         TestRunner->TestTrue(
             TEXT("Automatic count requires one hero team"),

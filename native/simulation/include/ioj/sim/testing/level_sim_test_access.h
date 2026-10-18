@@ -36,8 +36,7 @@ struct LevelSimTestAccess {
                                            ioj::FrameMemoryResource* const scratch_resource) {
         simulation.capital_ships_simulation_.refresh_fighter_ids(scratch_resource);
     }
-    static void
-        set_fighter_parent(LevelSim& simulation, EntityId fighter, EntityId parent) {
+    static void set_fighter_parent(LevelSim& simulation, EntityId fighter, EntityId parent) {
         simulation.fighters_simulation_.set_parent_id(fighter, parent);
     }
     static void prepare_fighters(LevelSim& simulation) {

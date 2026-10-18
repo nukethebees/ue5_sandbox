@@ -263,10 +263,10 @@ bool ATestUniformFieldFly2::try_find_target() {
     GetActorBounds(false, origin, extent);
 
     auto hits{ioj::find_actors_within_cone(*this,
-                                          vision_radius,
-                                          extent.Z * 2.0,
-                                          FMath::RadiansToDegrees(vision_angle_deg / 2.f),
-                                          target_classes)};
+                                           vision_radius,
+                                           extent.Z * 2.0,
+                                           FMath::RadiansToDegrees(vision_angle_deg / 2.f),
+                                           target_classes)};
 
     target = ioj::get_centre_actor_in_fov(*this, hits);
     if (!target.IsValid()) {
@@ -274,7 +274,8 @@ bool ATestUniformFieldFly2::try_find_target() {
     }
 
     if (can_log(EActorLogVerbosity::Basic)) {
-        UE_LOG(LogSandboxLearning, Display, TEXT("Found: %s"), *ioj::get_best_display_name(*target));
+        UE_LOG(
+            LogSandboxLearning, Display, TEXT("Found: %s"), *ioj::get_best_display_name(*target));
     }
 
     return true;

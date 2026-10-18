@@ -248,8 +248,7 @@ void run_worldless_fighter_ownership(tests::SimulationFixture const& config,
             auto const main_index{capitals.find_first_index_on_team(Team::Green)};
             assert(main_index.has_value());
             auto const owned{capitals.get_fighter_ids(*main_index)};
-            green_fighters_before_capital_kill =
-                std::vector<EntityId>{owned.begin(), owned.end()};
+            green_fighters_before_capital_kill = std::vector<EntityId>{owned.begin(), owned.end()};
             auto const id{capitals.get_target_id(*main_index)};
             auto const row{observe_entity_row(harness.get_simulation(), id)};
             harness.queue_kills(std::array{capitals.get_entities().entity_ids()[row]});

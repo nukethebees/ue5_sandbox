@@ -106,7 +106,8 @@ template <VectorStorageSoa Soa>
 void apply_permutation(Soa& soa, std::span<std::int32_t> const indices) {
     soa.validate_array_sizes();
     assert(indices.size() == static_cast<std::size_t>(soa.num()));
-    soa.each_column([indices](auto& column) { ioj::apply_permutation(std::span{column}, indices); });
+    soa.each_column(
+        [indices](auto& column) { ioj::apply_permutation(std::span{column}, indices); });
 }
 
 template <VectorStorageSoa Soa, typename Compare>

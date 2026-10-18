@@ -157,8 +157,7 @@ auto Sim::is_valid(EntityId const id) const noexcept -> bool {
     return std::ranges::find(entities.get_const_view().entity_ids(), id) !=
            entities.get_const_view().entity_ids().end();
 }
-auto Sim::get_fighter_ids(std::uint32_t const index) const noexcept
-    -> std::span<EntityId const> {
+auto Sim::get_fighter_ids(std::uint32_t const index) const noexcept -> std::span<EntityId const> {
     auto const entities{this->entities.get_const_view()};
     return get_fighter_ids(entities.fighter_id_spans()[index]);
 }
@@ -280,9 +279,9 @@ void Sim::queue_fighter_spawns(ioj::FrameMemoryResource* const scratch_resource)
     ships_ready_to_spawn_fighters_indices.set_num(n_capital_ships);
     ships_ready_to_spawn_fighters_indices.set_num(
         ioj::kernel::collect_indices_less_equal(entities.fighter_spawn_timers().data(),
-                                               n_capital_ships,
-                                               0.f,
-                                               ships_ready_to_spawn_fighters_indices.data()));
+                                                n_capital_ships,
+                                                0.f,
+                                                ships_ready_to_spawn_fighters_indices.data()));
     auto const target_ids{entities.target_ids()};
 
     for (auto remaining{ships_ready_to_spawn_fighters_indices.num()}; remaining > 0; --remaining) {

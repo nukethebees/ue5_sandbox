@@ -55,7 +55,8 @@ struct LineTracesSingleLayout {
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
         ioj::native_soa::capacity_block_bound(columns.EndsZsColumn)};
-    static constexpr size_type max_capacity{ioj::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr size_type max_capacity{
+        ioj::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return blocks == 0 ? 0 : columns.EndsZsColumn.data_end(blocks);
     }
@@ -97,11 +98,11 @@ struct LineTracesSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations
     auto view_ends() const {
         using ioj::soa_storage_detail::three_column_view;
         return three_column_view<ioj::Vector3SoAView<Element<float>>>(state_,
-                                                                     offset_,
-                                                                     count_,
-                                                                     Layout::columns.EndsXsColumn,
-                                                                     Layout::columns.EndsYsColumn,
-                                                                     Layout::columns.EndsZsColumn);
+                                                                      offset_,
+                                                                      count_,
+                                                                      Layout::columns.EndsXsColumn,
+                                                                      Layout::columns.EndsYsColumn,
+                                                                      Layout::columns.EndsZsColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {

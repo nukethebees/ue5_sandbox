@@ -294,12 +294,12 @@ auto legacy_analyze_level_telemetry_run(FLevelTelemetryReport const& record)
     };
 
     ioj::reserve(record.battle_samples.Num(),
-                result.battle_simulated_seconds,
-                result.battle_alive_entities,
-                result.battle_shots,
-                result.battle_hits,
-                result.battle_damage_dealt,
-                result.battle_kills);
+                 result.battle_simulated_seconds,
+                 result.battle_alive_entities,
+                 result.battle_shots,
+                 result.battle_hits,
+                 result.battle_damage_dealt,
+                 result.battle_kills);
     for (auto const& sample : record.battle_samples) {
         result.battle_simulated_seconds.Add(static_cast<float>(sample.simulated_elapsed_seconds));
         result.battle_alive_entities.Add(sum_counts(sample.alive));

@@ -139,11 +139,11 @@ auto validate_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& docume
         return std::unexpected{TEXT("The authored collision-grid settings are invalid.")};
     }
     auto const build{ioj::make_level_simulation_init_data(*effective_config,
-                                                         {},
-                                                         levels::authoring::to_unreal(*definition),
-                                                         MoveTemp(player_spawn),
-                                                         {},
-                                                         player_mesh)};
+                                                          {},
+                                                          levels::authoring::to_unreal(*definition),
+                                                          MoveTemp(player_spawn),
+                                                          {},
+                                                          player_mesh)};
     if (!build) {
         return std::unexpected{build.error().format()};
     }

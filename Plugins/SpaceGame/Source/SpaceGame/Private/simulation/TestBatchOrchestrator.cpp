@@ -290,13 +290,13 @@ void ATestBatchOrchestrator::reset_for_new_level() {
 
     auto is_retained_actor{[this, &recreated_actors](AActor const* const actor) {
         if (actor == this || ioj::actor_is_any<AWorldSettings,
-                                              AGameModeBase,
-                                              AGameStateBase,
-                                              APlayerController,
-                                              APlayerState,
-                                              AHUD,
-                                              ALevelScriptActor,
-                                              APhysicsVolume>(*actor)) {
+                                               AGameModeBase,
+                                               AGameStateBase,
+                                               APlayerController,
+                                               APlayerState,
+                                               AHUD,
+                                               ALevelScriptActor,
+                                               APhysicsVolume>(*actor)) {
             return true;
         }
 
@@ -454,11 +454,11 @@ auto ATestBatchOrchestrator::initialise_simulation(USpaceGameLevelConfig const& 
 
     if (level_definition_.IsSet()) {
         auto result{ioj::make_level_simulation_init_data(config,
-                                                        clock_settings,
-                                                        level_definition_.GetValue(),
-                                                        MoveTemp(player),
-                                                        {},
-                                                        player_collision_mesh)};
+                                                         clock_settings,
+                                                         level_definition_.GetValue(),
+                                                         MoveTemp(player),
+                                                         {},
+                                                         player_collision_mesh)};
         if (!result) {
             errors = MoveTemp(result.error());
             return false;
@@ -514,12 +514,12 @@ auto ATestBatchOrchestrator::initialise_simulation(USpaceGameLevelConfig const& 
     }
 
     auto result{ioj::make_proxy_level_simulation_init_data(config,
-                                                          clock_settings,
-                                                          world,
-                                                          mission_definition,
-                                                          MoveTemp(player),
-                                                          player_ship.Get(),
-                                                          player_collision_mesh)};
+                                                           clock_settings,
+                                                           world,
+                                                           mission_definition,
+                                                           MoveTemp(player),
+                                                           player_ship.Get(),
+                                                           player_collision_mesh)};
     if (!result) {
         errors = MoveTemp(result.error());
         return false;
@@ -541,7 +541,8 @@ auto ATestBatchOrchestrator::initialise_simulation(USpaceGameLevelConfig const& 
         errors.add(TEXT("Cannot create level simulation without game memory"));
         return false;
     }
-    data.fighter_diagnostics_enabled = ioj::fighter_diagnostics::enabled.GetValueOnGameThread() != 0;
+    data.fighter_diagnostics_enabled =
+        ioj::fighter_diagnostics::enabled.GetValueOnGameThread() != 0;
     grid_geometry = data.grid_geometry;
     level_simulation_.Emplace(game_subsystem->get_game_memory(), MoveTemp(data));
     return true;

@@ -30,9 +30,9 @@ class EntityLookupTable {
         assert(teams.empty() || teams.size() == ids.size());
         assert(healths.empty() || healths.size() == ids.size());
         assert(ioj::range_fits<std::size_t>(0,
-                                           ids.size(),
-                                           EntityInstanceHandle::index_minimum,
-                                           EntityInstanceHandle::index_maximum));
+                                            ids.size(),
+                                            EntityInstanceHandle::index_minimum,
+                                            EntityInstanceHandle::index_maximum));
         auto const count{ids.size()};
         row_count_ = static_cast<std::uint32_t>(count);
         [[maybe_unused]] auto const handle_count{handles_.size()};
@@ -80,8 +80,7 @@ class EntityLookupTable {
         [[maybe_unused]] auto const handle_count{handles.size()};
         for (std::size_t index{}; index < count; ++index) {
             auto const id{ids[index]};
-            assert(id != EntityId{} && id.entity_type() == type_ &&
-                   id.index() < handle_count);
+            assert(id != EntityId{} && id.entity_type() == type_ && id.index() < handle_count);
             output[index] = handles[id.index()];
         }
     }

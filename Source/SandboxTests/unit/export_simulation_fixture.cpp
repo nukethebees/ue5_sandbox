@@ -126,33 +126,33 @@ TEST_CLASS(SimulationFixtureExport, "Sandbox.FixtureTools")
         ioj::fixture_export::write(
             out, "data.lasers.n_preallocated_instances", data.lasers.n_preallocated_instances);
         ioj::fixture_export::write(out,
-                                  "data.overlap_response.damage_per_overlap_detection",
-                                  data.overlap_response.damage_per_overlap_detection);
+                                   "data.overlap_response.damage_per_overlap_detection",
+                                   data.overlap_response.damage_per_overlap_detection);
         ioj::fixture_export::write(
             out, "data.fighters.max_live_fighters", data.fighters.max_live_fighters);
         ioj::fixture_export::write(out,
-                                  "data.fighters.fire_dot_product_threshold",
-                                  data.fighters.fire_dot_product_threshold);
+                                   "data.fighters.fire_dot_product_threshold",
+                                   data.fighters.fire_dot_product_threshold);
         ioj::fixture_export::write(out, "data.fighters.speed", data.fighters.speed);
         ioj::fixture_export::write(
             out, "data.fighters.turn_speed_unitless", data.fighters.turn_speed_unitless);
         ioj::fixture_export::write(out,
-                                  "data.fighters.avoidance_clear_update_frequency",
-                                  data.fighters.avoidance_clear_update_frequency);
+                                   "data.fighters.avoidance_clear_update_frequency",
+                                   data.fighters.avoidance_clear_update_frequency);
         ioj::fixture_export::write(out,
-                                  "data.fighters.avoidance_update_frequency",
-                                  data.fighters.avoidance_update_frequency);
+                                   "data.fighters.avoidance_update_frequency",
+                                   data.fighters.avoidance_update_frequency);
         ioj::fixture_export::write(out,
-                                  "data.fighters.avoidance_active_update_frequency",
-                                  data.fighters.avoidance_active_update_frequency);
+                                   "data.fighters.avoidance_active_update_frequency",
+                                   data.fighters.avoidance_active_update_frequency);
         ioj::fixture_export::write(out,
-                                  "data.fighters.avoidance_immediate_update_frequency",
-                                  data.fighters.avoidance_immediate_update_frequency);
+                                   "data.fighters.avoidance_immediate_update_frequency",
+                                   data.fighters.avoidance_immediate_update_frequency);
         ioj::fixture_export::write(
             out, "data.fighters.avoidance_lookahead_time", data.fighters.avoidance_lookahead_time);
         ioj::fixture_export::write(out,
-                                  "data.fighters.avoidance_clearance_buffer",
-                                  data.fighters.avoidance_clearance_buffer);
+                                   "data.fighters.avoidance_clearance_buffer",
+                                   data.fighters.avoidance_clearance_buffer);
         ioj::fixture_export::write(
             out, "data.fighters.separation_radius", data.fighters.separation_radius);
         ioj::fixture_export::write(
@@ -160,17 +160,17 @@ TEST_CLASS(SimulationFixtureExport, "Sandbox.FixtureTools")
         ioj::fixture_export::write(
             out, "data.fighters.steering_memory_duration", data.fighters.steering_memory_duration);
         ioj::fixture_export::write(out,
-                                  "data.fighters.dense_traffic_neighbour_threshold",
-                                  data.fighters.dense_traffic_neighbour_threshold);
+                                   "data.fighters.dense_traffic_neighbour_threshold",
+                                   data.fighters.dense_traffic_neighbour_threshold);
         ioj::fixture_export::write(out, "data.fighters.health", data.fighters.health);
         ioj::fixture_export::write(
             out, "data.fighters.attack_retry_cooldown", data.fighters.attack_retry_cooldown);
         ioj::fixture_export::write(out,
-                                  "data.fighters.attack_engagement_threshold",
-                                  data.fighters.attack_engagement_threshold);
+                                   "data.fighters.attack_engagement_threshold",
+                                   data.fighters.attack_engagement_threshold);
         ioj::fixture_export::write(out,
-                                  "data.fighters.attack_reposition_frequency",
-                                  data.fighters.attack_reposition_frequency);
+                                   "data.fighters.attack_reposition_frequency",
+                                   data.fighters.attack_reposition_frequency);
         ioj::fixture_export::write(
             out, "data.fighters.arrival_distance", data.fighters.arrival_distance);
         ioj::fixture_export::write(
@@ -195,8 +195,8 @@ TEST_CLASS(SimulationFixtureExport, "Sandbox.FixtureTools")
             out, "data.turrets.target_refresh_frequency", data.turrets.target_refresh_frequency);
         ioj::fixture_export::write(out, "data.turrets.max_health", data.turrets.max_health);
         ioj::fixture_export::write(out,
-                                  "data.spinners.yaw_rotation_speed_degrees",
-                                  data.spinners.yaw_rotation_speed_degrees);
+                                   "data.spinners.yaw_rotation_speed_degrees",
+                                   data.spinners.yaw_rotation_speed_degrees);
         ioj::fixture_export::write(
             out, "player.config.thrust_energy_max", player.config.thrust_energy_max);
         ioj::fixture_export::write(
@@ -237,14 +237,14 @@ TEST_CLASS(SimulationFixtureExport, "Sandbox.FixtureTools")
         ioj::fixture_export::write(
             out, "player.config.laser.fire_cooldown", player.config.laser.fire_cooldown);
         ioj::fixture_export::write(out,
-                                  "data.fighters.attack_distance_band.minimum_ratio",
-                                  data.fighters.attack_distance_band.minimum_ratio);
+                                   "data.fighters.attack_distance_band.minimum_ratio",
+                                   data.fighters.attack_distance_band.minimum_ratio);
         ioj::fixture_export::write(out,
-                                  "data.fighters.attack_distance_band.desired_ratio",
-                                  data.fighters.attack_distance_band.desired_ratio);
+                                   "data.fighters.attack_distance_band.desired_ratio",
+                                   data.fighters.attack_distance_band.desired_ratio);
         ioj::fixture_export::write(out,
-                                  "data.fighters.attack_distance_band.maximum_ratio",
-                                  data.fighters.attack_distance_band.maximum_ratio);
+                                   "data.fighters.attack_distance_band.maximum_ratio",
+                                   data.fighters.attack_distance_band.maximum_ratio);
         ioj::fixture_export::write(
             out, "data.fighter_fire_point_distance", data.fighter_fire_point_distance);
         ioj::fixture_export::write(
@@ -302,9 +302,9 @@ TEST_CLASS(SimulationFixtureExport, "Sandbox.FixtureTools")
             ioj::fixture_export::write_vector3(
                 out, "data.entity_bounds.set_centre", type, data.entity_bounds.get_centre(type));
             ioj::fixture_export::write_vector3(out,
-                                              "data.entity_bounds.set_half_extents",
-                                              type,
-                                              data.entity_bounds.get_half_extents(type));
+                                               "data.entity_bounds.set_half_extents",
+                                               type,
+                                               data.entity_bounds.get_half_extents(type));
         }
         out << "    return fixture;\n}\n}\n";
         out.flush();

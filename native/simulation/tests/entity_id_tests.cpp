@@ -1,6 +1,6 @@
 #include <ioj/range_fits.h>
-#include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/entities/entity_id.h>
+#include <ioj/sim/entities/entity_type.h>
 
 #include <gtest/gtest.h>
 
@@ -19,8 +19,7 @@ static_assert(EntityId::entity_type_field::bits == 8);
 static_assert(EntityId::entity_type_field::value_mask == 0x000000ffu);
 static_assert(EntityId::entity_type_field::mask == 0xff000000u);
 static_assert((EntityId::index_field::mask & EntityId::entity_type_field::mask) == 0);
-static_assert((EntityId::index_field::mask | EntityId::entity_type_field::mask) ==
-              0xffffffffu);
+static_assert((EntityId::index_field::mask | EntityId::entity_type_field::mask) == 0xffffffffu);
 static_assert(EntityId::invalid_value == 0xffffffffu);
 static_assert(sizeof(EntityId) == sizeof(std::uint32_t));
 static_assert(std::is_trivially_copyable_v<EntityId>);
@@ -47,8 +46,7 @@ static_assert(zero_player_id.index() == 0);
 static_assert(zero_player_id.entity_type() == EntityType::PlayerShip);
 static_assert(zero_player_id.is_valid());
 
-constexpr auto maximum_fighter_id{
-    EntityId(EntityId::index_field::value_mask, EntityType::Fighter)};
+constexpr auto maximum_fighter_id{EntityId(EntityId::index_field::value_mask, EntityType::Fighter)};
 static_assert(maximum_fighter_id.index() == EntityId::index_field::value_mask);
 static_assert(maximum_fighter_id.entity_type() == EntityType::Fighter);
 static_assert(!HasTryMake<EntityId>);
@@ -114,12 +112,10 @@ TEST(EntityId, InvalidRepresentationAndDomainArePreserved) {
 }
 
 TEST(EntityId, AssertsWhenConstructionViolatesThePackedDomain) {
-    EXPECT_DEATH(static_cast<void>(EntityId(EntityId::index_field::value_mask + 1,
-                                                  EntityType::Turret)),
-                 "");
     EXPECT_DEATH(
-        static_cast<void>(EntityId(0, static_cast<EntityType>(ioj::enum_count<EntityType>()))),
-        "");
+        static_cast<void>(EntityId(EntityId::index_field::value_mask + 1, EntityType::Turret)), "");
+    EXPECT_DEATH(
+        static_cast<void>(EntityId(0, static_cast<EntityType>(ioj::enum_count<EntityType>()))), "");
 }
 
 TEST(EntityId, AllocationRangeDetectsExhaustionWithoutWrapping) {

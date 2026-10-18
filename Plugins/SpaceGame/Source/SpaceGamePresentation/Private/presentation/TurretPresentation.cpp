@@ -110,10 +110,10 @@ void FTurretPresentation::end_tick_presentation() {
 void FTurretPresentation::configure_ismc() {
     instances->SetMobility(EComponentMobility::Static);
     ioj::batch::configure_ismc(*instances,
-                              {
-                                  .mesh = actor_config->mesh.Get(),
-                                  .num_custom_data_floats = n_custom_ismc_floats,
-                              });
+                               {
+                                   .mesh = actor_config->mesh.Get(),
+                                   .num_custom_data_floats = n_custom_ismc_floats,
+                               });
 }
 
 void FTurretPresentation::add_initial_visual_instances() {

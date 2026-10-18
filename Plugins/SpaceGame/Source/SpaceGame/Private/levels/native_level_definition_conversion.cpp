@@ -192,8 +192,8 @@ auto to_unreal(LevelDefinition const& level) -> ioj::FLevelDefinition {
     for (auto const& level_id : definition.unlock_level_ids) {
         builder.add_unlock_criterion(
             ioj::FLevelUnlockCriterion{TInPlaceType<ioj::FLevelCompletedUnlockCriterion>{},
-                                      ioj::FLevelCompletedUnlockCriterion{
-                                          .level_id = ioj::FLevelId{to_fname(level_id.value)}}});
+                                       ioj::FLevelCompletedUnlockCriterion{
+                                           .level_id = ioj::FLevelId{to_fname(level_id.value)}}});
     }
     if (!definition.player_entity_id.empty()) {
         builder.set_player_entity(ioj::FLevelEntityId{to_fname(definition.player_entity_id.value)});

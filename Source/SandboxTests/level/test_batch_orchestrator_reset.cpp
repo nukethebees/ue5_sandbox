@@ -64,13 +64,13 @@ auto FTestBatchOrchestratorResetScenario::count_actors(UWorld const& world) cons
 
 auto FTestBatchOrchestratorResetScenario::is_core_runtime_actor(AActor const& actor) const -> bool {
     return ioj::actor_is_any<AWorldSettings,
-                            AGameModeBase,
-                            AGameStateBase,
-                            APlayerController,
-                            APlayerState,
-                            AHUD,
-                            ALevelScriptActor,
-                            APhysicsVolume>(actor);
+                             AGameModeBase,
+                             AGameStateBase,
+                             APlayerController,
+                             APlayerState,
+                             AHUD,
+                             ALevelScriptActor,
+                             APhysicsVolume>(actor);
 }
 
 void FTestBatchOrchestratorResetScenario::save_old_owned_actors(

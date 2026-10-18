@@ -14,8 +14,8 @@ auto Transform3d::operator*(Transform3d const& parent) const -> Transform3d {
     }
 
     std::array<ioj::Vector3d, 3> axes{ioj::Vector3d{scale.x(), 0.0, 0.0},
-                                     ioj::Vector3d{0.0, scale.y(), 0.0},
-                                     ioj::Vector3d{0.0, 0.0, scale.z()}};
+                                      ioj::Vector3d{0.0, scale.y(), 0.0},
+                                      ioj::Vector3d{0.0, 0.0, scale.z()}};
     std::array const signs{result.scale.x() < 0.0 ? -1.0 : 1.0,
                            result.scale.y() < 0.0 ? -1.0 : 1.0,
                            result.scale.z() < 0.0 ? -1.0 : 1.0};

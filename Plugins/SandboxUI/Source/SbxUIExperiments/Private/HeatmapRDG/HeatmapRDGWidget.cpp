@@ -66,9 +66,9 @@ bool UHeatmapRDGWidget::set_grid(FHeatmapRDGGrid const& grid) {
         return false;
     }
 
-    auto const uv_max{
-        FVector2f{static_cast<float>(grid.width) / ioj::ui::heatmap_rdg::output_texture_dimension,
-                  static_cast<float>(grid.height) / ioj::ui::heatmap_rdg::output_texture_dimension}};
+    auto const uv_max{FVector2f{
+        static_cast<float>(grid.width) / ioj::ui::heatmap_rdg::output_texture_dimension,
+        static_cast<float>(grid.height) / ioj::ui::heatmap_rdg::output_texture_dimension}};
     brush_.SetUVRegion(FBox2f{FVector2f::ZeroVector, uv_max});
     brush_.ImageSize = FVector2D{grid_dimensions};
     if (image_.IsValid()) {
@@ -164,7 +164,7 @@ void UHeatmapRDGWidget::ReleaseSlateResources(bool const release_children) {
 }
 
 #if WITH_EDITOR
-const FText UHeatmapRDGWidget::GetPaletteCategory() {
+FText const UHeatmapRDGWidget::GetPaletteCategory() {
     return FText::FromString(TEXT("Sandbox Experiments"));
 }
 #endif

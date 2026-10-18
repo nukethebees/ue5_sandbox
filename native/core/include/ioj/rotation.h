@@ -124,8 +124,8 @@ void rotate_towards_1d_normalised(T const* const current,
         auto const delta{ioj::detail::shortest_signed_angle_delta_normalised<AngleTraits, T>(
             current[i], target[i])};
         auto const clamped_delta{std::clamp(delta, -max_step, max_step)};
-        out[i] =
-            ioj::detail::normalise_signed_half_open_once<AngleTraits, T>(current[i] + clamped_delta);
+        out[i] = ioj::detail::normalise_signed_half_open_once<AngleTraits, T>(current[i] +
+                                                                              clamped_delta);
     }
 }
 
@@ -144,8 +144,8 @@ void rotate_towards_1d_normalised_in_place(T* const current,
         auto const delta{ioj::detail::shortest_signed_angle_delta_normalised<AngleTraits, T>(
             current[i], target[i])};
         auto const clamped_delta{std::clamp(delta, -max_step, max_step)};
-        current[i] =
-            ioj::detail::normalise_signed_half_open_once<AngleTraits, T>(current[i] + clamped_delta);
+        current[i] = ioj::detail::normalise_signed_half_open_once<AngleTraits, T>(current[i] +
+                                                                                  clamped_delta);
     }
 }
 }

@@ -47,7 +47,8 @@ void
     rebuild_table();
 }
 
-void UTeamEntityTableWidget::set_team_kill_matrix(ioj::ship_hud::FTeamKillMatrix const& new_matrix) {
+void
+    UTeamEntityTableWidget::set_team_kill_matrix(ioj::ship_hud::FTeamKillMatrix const& new_matrix) {
     constexpr auto n_teams{ioj::ship_hud::FTeamKillMatrix::team_count};
     constexpr auto n_types{ioj::ship_hud::FTeamKillMatrix::entity_type_count};
     for (int32 team{0}; team < n_teams; ++team) {

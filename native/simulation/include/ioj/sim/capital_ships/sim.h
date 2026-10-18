@@ -5,9 +5,9 @@
 #include <ioj/sim/capital_ships/capital_ship_sim_config.h>
 #include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_frame_change.h>
+#include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/entities/entity_type.h>
-#include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/fighters/command_interface.h>
 #include <ioj/sim/fighters/fighter_order_queue.h>
 #include <ioj/sim/index_span.h>
@@ -122,8 +122,7 @@ struct Sim {
     /* **************************************** */
     // Ship spawning
     /* **************************************** */
-    auto register_ships(LevelCapitalSpawnEvents::ConstView spawn_data)
-        -> std::vector<EntityId>;
+    auto register_ships(LevelCapitalSpawnEvents::ConstView spawn_data) -> std::vector<EntityId>;
     void spawn_ships(LevelCapitalSpawnEvents::ConstView spawn_data);
 
     /* **************************************** */

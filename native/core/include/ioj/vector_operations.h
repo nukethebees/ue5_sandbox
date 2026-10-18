@@ -113,13 +113,13 @@ inline void distance_and_squared(std::span<float> const distances,
     }
     assert(distances.data() != squared_distances.data());
     ioj::native_math::distance_and_squared_vector(distances.data(),
-                                                 squared_distances.data(),
-                                                 from.xs().data(),
-                                                 from.ys().data(),
-                                                 from.zs().data(),
-                                                 to.xs().data(),
-                                                 to.ys().data(),
-                                                 to.zs().data(),
-                                                 count);
+                                                  squared_distances.data(),
+                                                  from.xs().data(),
+                                                  from.ys().data(),
+                                                  from.zs().data(),
+                                                  to.xs().data(),
+                                                  to.ys().data(),
+                                                  to.zs().data(),
+                                                  count);
 }
 }

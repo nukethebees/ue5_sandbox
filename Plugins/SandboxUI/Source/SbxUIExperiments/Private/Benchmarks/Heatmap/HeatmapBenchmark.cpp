@@ -124,9 +124,9 @@ auto run_heatmap_benchmark(FHeatmapBenchmarkOptions const& options) -> FHeatmapB
             TEXT("Slate"), TEXT("api_submission"), resolution, MoveTemp(slate_submission_samples)));
         report.results.Add(
             ioj::ui::heatmap_benchmark::summarize(TEXT("Slate"),
-                                                 TEXT("geometry_batches"),
-                                                 resolution,
-                                                 MoveTemp(slate_preparation_samples)));
+                                                  TEXT("geometry_batches"),
+                                                  resolution,
+                                                  MoveTemp(slate_preparation_samples)));
     }
     return report;
 }

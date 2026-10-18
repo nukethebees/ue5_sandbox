@@ -407,9 +407,10 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
         for (auto const& campaign : result.campaigns) {
             TestRunner->TestTrue(TEXT("Cross-list campaign is valid"), static_cast<bool>(campaign));
             if (campaign) {
-                TestRunner->TestTrue(TEXT("Cross-listed level reference is retained"),
-                                     campaign.definition->level_ids ==
-                                         TArray<ioj::FLevelId>{ioj::FLevelId{FName{TEXT("alpha")}}});
+                TestRunner->TestTrue(
+                    TEXT("Cross-listed level reference is retained"),
+                    campaign.definition->level_ids ==
+                        TArray<ioj::FLevelId>{ioj::FLevelId{FName{TEXT("alpha")}}});
             }
         }
     }

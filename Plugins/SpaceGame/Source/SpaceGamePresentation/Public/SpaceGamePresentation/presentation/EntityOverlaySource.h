@@ -1,7 +1,7 @@
 #pragma once
 
-#include "ioj/sim/entities/entity_type_radii.h"
 #include "ioj/sim/entities/entity_id.h"
+#include "ioj/sim/entities/entity_type_radii.h"
 #include "SpaceGamePresentation/entities/TeamColours.h"
 #include "SpaceGamePresentation/presentation/AgentDisplayBatch.h"
 
@@ -64,14 +64,13 @@ struct SPACEGAMEPRESENTATION_API FEntityOverlayCollectionResult {
                        FSoftTargetSelectionSettings const& settings,
                        ::ioj::sim::EntityId current_target) -> FSoftTargetSelectionResult;
 
-[[nodiscard]] SPACEGAMEPRESENTATION_API auto
-    collect_entity_overlay_instances(std::span<::ioj::presentation::AgentDisplayBatch const> batches,
-                                     ::ioj::sim::EntityTypeRadii const& entity_type_radii,
-                                     TConstArrayView<EEntityOverlayObjectiveRole> objective_roles,
-                                     FEntityOverlayTeamColours const& team_colours,
-                                     FEntityOverlayHealthMaximums const& maximum_health,
-                                     FVector3f origin,
-                                     float maximum_range,
-                                     TArray<FEntityOverlayInstance>& output_instances,
-                                     FEntityOverlayCollector& collector)
-        -> FEntityOverlayCollectionResult;
+[[nodiscard]] SPACEGAMEPRESENTATION_API auto collect_entity_overlay_instances(
+    std::span<::ioj::presentation::AgentDisplayBatch const> batches,
+    ::ioj::sim::EntityTypeRadii const& entity_type_radii,
+    TConstArrayView<EEntityOverlayObjectiveRole> objective_roles,
+    FEntityOverlayTeamColours const& team_colours,
+    FEntityOverlayHealthMaximums const& maximum_health,
+    FVector3f origin,
+    float maximum_range,
+    TArray<FEntityOverlayInstance>& output_instances,
+    FEntityOverlayCollector& collector) -> FEntityOverlayCollectionResult;

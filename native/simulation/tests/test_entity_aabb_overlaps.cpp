@@ -55,8 +55,7 @@ struct OverlapFixture {
         return owners.spawn(type, location, rotation);
     }
 
-    auto ids(std::span<EntityId const> const entity_ids) const
-        -> std::vector<EntityId> {
+    auto ids(std::span<EntityId const> const entity_ids) const -> std::vector<EntityId> {
         return {entity_ids.begin(), entity_ids.end()};
     }
 

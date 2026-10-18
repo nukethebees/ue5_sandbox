@@ -184,10 +184,10 @@ auto ATestFlySeekDestroyEvade::scan_for_target() -> bool {
     GetActorBounds(false, origin, extent);
 
     auto hits{ioj::find_actors_within_cone(*this,
-                                          config.vision.radius,
-                                          extent.Z * 2.0,
-                                          config.vision.half_angle_rad(),
-                                          ThisClass::StaticClass())};
+                                           config.vision.radius,
+                                           extent.Z * 2.0,
+                                           config.vision.half_angle_rad(),
+                                           ThisClass::StaticClass())};
 
     target = ioj::get_centre_actor_in_fov(*this, hits);
     if (!target.IsValid()) {
