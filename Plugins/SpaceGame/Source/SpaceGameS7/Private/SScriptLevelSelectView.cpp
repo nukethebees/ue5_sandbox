@@ -15,7 +15,7 @@
 #include <Widgets/SBoxPanel.h>
 #include <Widgets/Text/STextBlock.h>
 
-#include "generated/ml/s7/SScriptLevelSelectView.slate.generated.h"
+#include "generated/ioj/s7/SScriptLevelSelectView.slate.generated.h"
 
 namespace ioj::s7 {
 using ioj::levels::authoring::ELevelCatalogCategory;
