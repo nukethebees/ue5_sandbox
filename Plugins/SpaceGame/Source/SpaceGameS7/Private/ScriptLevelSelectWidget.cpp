@@ -2,11 +2,14 @@
 
 #include "SScriptLevelSelectView.h"
 #include <SpaceGame/levels/LevelUnlock.h>
+#include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/persistence/SpaceSaveSubsystem.h>
 #include <SpaceGame/system/GameSubsystem.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 #include <SpaceGamePresentation/ui/style/SpaceGameUiTheme.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
+
+#include <SandboxCoreEngine/strings.h>
 
 #include <Engine/GameInstance.h>
 #include <IPlatformCrypto.h>
@@ -33,9 +36,9 @@ auto level_completion_indicator_state(ioj::FLevelProgressSummary const& progress
 }
 
 namespace {
-auto progress_label(FLevelDefinition const& definition, ioj::FLevelProgressSummary const& progress)
-    -> FString {
-    if (!definition.mission.IsSet()) {
+auto progress_label(levels::LevelDefinition const& definition,
+                    ioj::FLevelProgressSummary const& progress) -> FString {
+    if (!definition.mission().has_value()) {
         return TEXT("No objective");
     }
 
@@ -55,25 +58,26 @@ auto level_details(FLevelScriptEntry const& entry, ioj::FLevelProgressSummary co
     -> FString {
     check(entry.definition.IsSet());
     auto const& definition{entry.definition.GetValue()};
-    TSet<ioj::Team> const teams{definition.entities.teams};
+    auto const teams{levels::participating_teams(definition)};
     auto details{
         FString::Printf(TEXT("LEVEL ID  //  %s\nTEAMS  //  %d    ENTITIES  //  %d    "
                              "PLAYER ASSET  //  %s\nPROGRESS  //  %s"),
-                        *definition.metadata.id.value.ToString(),
-                        teams.Num(),
-                        definition.entities.num(),
-                        definition.player_entity_id.is_set() ? TEXT("ASSIGNED") : TEXT("NONE"),
+                        *to_fstring(definition.metadata().id.value),
+                        static_cast<int32>(teams.size()),
+                        static_cast<int32>(definition.entities().size()),
+                        !definition.player_entity_id().empty() ? TEXT("ASSIGNED") : TEXT("NONE"),
                         *progress_label(definition, progress).ToUpper())};
-    if (!definition.mission.IsSet()) {
+    if (!definition.mission().has_value()) {
         return details;
     }
 
-    auto const par_time{definition.metadata.par_time_seconds};
-    if (par_time.IsSet()) {
-        auto const par_achieved{level_completion_indicator_state(progress, par_time) ==
-                                ELevelCompletionIndicatorState::ParAchieved};
+    auto const par_time{definition.metadata().par_time_seconds};
+    if (par_time.has_value()) {
+        auto const par_achieved{
+            level_completion_indicator_state(progress, TOptional<float>{*par_time}) ==
+            ELevelCompletionIndicatorState::ParAchieved};
         details += FString::Printf(TEXT("\nPAR TIME  //  %.1f S    PAR STATUS  //  %s"),
-                                   par_time.GetValue(),
+                                   *par_time,
                                    par_achieved ? TEXT("ACHIEVED") : TEXT("NOT ACHIEVED"));
     }
     if (progress.attempt_count == 0) {
@@ -94,7 +98,7 @@ auto level_details(FLevelScriptEntry const& entry, ioj::FLevelProgressSummary co
 
 auto find_level_title(TArray<FLevelScriptEntry> const& entries, FLevelId const id) -> FText {
     for (auto const& entry : entries) {
-        if (entry && entry.definition->metadata.id == id) {
+        if (entry && levels::authoring::to_unreal(entry.definition->metadata().id) == id) {
             return FText::FromString(entry.display_title);
         }
     }
@@ -273,7 +277,8 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
         auto const count{entries_.Num()};
         for (int32 index{}; index < count; ++index) {
             if (entries_[index]) {
-                result.Add(entries_[index].definition->metadata.id, index);
+                result.Add(levels::authoring::to_unreal(entries_[index].definition->metadata().id),
+                           index);
             }
         }
         return result;
@@ -291,11 +296,14 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
             auto const& entry{entries_[entry_index]};
             auto indicator_state{ELevelCompletionIndicatorState::Incomplete};
             if (entry) {
-                auto const id{entry.definition->metadata.id};
+                auto const id{levels::authoring::to_unreal(entry.definition->metadata().id)};
                 auto const progress{IsValid(save_subsystem) ? save_subsystem->get_level_progress(id)
                                                             : ioj::FLevelProgressSummary{}};
                 indicator_state = level_completion_indicator_state(
-                    progress, entry.definition->metadata.par_time_seconds);
+                    progress,
+                    entry.definition->metadata().par_time_seconds
+                        ? TOptional<float>{*entry.definition->metadata().par_time_seconds}
+                        : TOptional<float>{});
                 if (preferred_button_index == INDEX_NONE && !focus_level_id.IsNone() &&
                     id.value == focus_level_id) {
                     preferred_button_index = level_entry_indices_.Num();
@@ -329,7 +337,8 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
         ++visible_campaign_count;
         for (auto const entry_index : visible_indices) {
             add_level(entry_index);
-            auto const level_id{entries_[entry_index].definition->metadata.id};
+            auto const level_id{
+                levels::authoring::to_unreal(entries_[entry_index].definition->metadata().id)};
             grouped_levels.Add(level_id);
         }
     }
@@ -338,7 +347,8 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
     auto const entry_count{entries_.Num()};
     for (int32 index{}; index < entry_count; ++index) {
         if (!entries_[index] || !entry_matches_category(entries_[index], active_category_) ||
-            grouped_levels.Contains(entries_[index].definition->metadata.id)) {
+            grouped_levels.Contains(
+                levels::authoring::to_unreal(entries_[index].definition->metadata().id))) {
             continue;
         }
         if (!has_other_levels) {
@@ -431,7 +441,9 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
     }
     selected_entry_index_ = entry_index;
     selected_level_id_ =
-        entries_[entry_index] ? entries_[entry_index].definition->metadata.id.value : NAME_None;
+        entries_[entry_index]
+            ? levels::authoring::to_unreal(entries_[entry_index].definition->metadata().id).value
+            : NAME_None;
     view_state_.selected_button_index = button_index;
 
     auto const& entry{entries_[entry_index]};
@@ -446,7 +458,8 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
         auto* const save_subsystem{
             IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>() : nullptr};
         auto const progress{IsValid(save_subsystem)
-                                ? save_subsystem->get_level_progress(entry.definition->metadata.id)
+                                ? save_subsystem->get_level_progress(
+                                      levels::authoring::to_unreal(entry.definition->metadata().id))
                                 : ioj::FLevelProgressSummary{}};
         auto const evaluator{make_unlock_evaluator(entries_, save_subsystem)};
         auto const unlock_status{evaluator.evaluate(entry.definition.GetValue())};

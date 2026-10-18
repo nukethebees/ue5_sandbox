@@ -291,20 +291,11 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
 
 auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
                                      ::ioj::sim::FixedTickLoop const& clock_settings,
-                                     FLevelDefinition const& definition,
+                                     levels::LevelDefinition const& definition,
                                      TOptional<::ioj::sim::player::PlayerSpawnData> player,
                                      ::ioj::sim::collision::WorldAABBs static_bounds,
                                      UStaticMesh const* const player_collision_mesh)
     -> FLevelSimBuildResult {
-    auto const native{::ioj::levels::authoring::to_native(definition)};
-    if (!native) {
-        FLevelStartErrors errors;
-        for (auto const& error : native.error()) {
-            errors.add(to_fstring(error.message));
-        }
-        return FLevelSimBuildResult{std::unexpect, MoveTemp(errors)};
-    }
-
     auto result{make_level_simulation_init_data(
         config, clock_settings, MoveTemp(player), player_collision_mesh)};
     if (!result) {
@@ -314,7 +305,8 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     data.static_bounds = MoveTemp(static_bounds);
     ::ioj::sim::SimClock clock;
     clock.initialise(clock_settings);
-    auto compiled{::ioj::levels::compile_level(*native, clock, data.capital_ships, data.turrets)};
+    auto compiled{
+        ::ioj::levels::compile_level(definition, clock, data.capital_ships, data.turrets)};
     if (!compiled) {
         FLevelStartErrors errors;
         for (auto const& error : compiled.error()) {

@@ -2,6 +2,7 @@
 #include <SandboxTests/support/test_setup.h>
 #include <SpaceGame/levels/ExampleLevels.h>
 #include <SpaceGame/levels/LevelLoader.h>
+#include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -47,7 +48,7 @@ TEST_CLASS(S7CollisionGridRuntime, "Sandbox.LevelTests")
             auto check_level = [&](TOptional<FVector3f> const size,
                                    TOptional<FVector3f> const cells,
                                    TCHAR const* const label) {
-                auto definition{ioj::example_levels::make_native_example()};
+                auto definition{ioj::example_levels::make_example_draft()};
                 if (size.IsSet() || cells.IsSet()) {
                     definition.collision_grid =
                         ioj::FLevelCollisionGridDefinition{.level_size = size, .cell_size = cells};
@@ -56,7 +57,9 @@ TEST_CLASS(S7CollisionGridRuntime, "Sandbox.LevelTests")
                 }
 
                 ioj::FLevelLoader loader{*orchestrator};
-                if (!checks.is_true(static_cast<bool>(loader.load(definition)), label)) {
+                if (!checks.is_true(static_cast<bool>(loader.load(
+                                        ioj::levels::authoring::to_native(definition).value())),
+                                    label)) {
                     return;
                 }
                 orchestrator->start_simulation();

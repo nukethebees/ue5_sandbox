@@ -12,7 +12,7 @@ auto contains_error(ioj::FLevelValidationResult const& result,
         [code](ioj::FLevelValidationError const& error) { return error.code == code; });
 }
 
-auto make_camera_level() -> ioj::FLevelDefinition {
+auto make_camera_level() -> ioj::FLevelDraft {
     ioj::FLevelBuilder builder;
     builder.set_metadata(ioj::FLevelMetadata{.id = ioj::FLevelId{FName{TEXT("camera-level")}},
                                              .title = TEXT("Camera Level")});
@@ -42,7 +42,7 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
 {
     TEST_METHOD(BuilderConstructsValidSoALevel)
     {
-        auto const definition{ioj::example_levels::make_native_example()};
+        auto const definition{ioj::example_levels::make_example_draft()};
         auto const validation{ioj::validate_level(definition)};
 
         TestRunner->TestTrue(TEXT("Definition is valid"), static_cast<bool>(validation));
@@ -85,7 +85,7 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(UnsupportedTeamFailsValidation)
     {
-        auto definition{ioj::example_levels::make_native_example()};
+        auto definition{ioj::example_levels::make_example_draft()};
         definition.entities.teams[1] = static_cast<::ioj::Team>(255);
 
         auto const validation{ioj::validate_level(definition)};
@@ -116,7 +116,7 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(ParTimeRequiresAPositivePlayerMissionTarget)
     {
-        auto valid{ioj::example_levels::make_native_example()};
+        auto valid{ioj::example_levels::make_example_draft()};
         valid.metadata.par_time_seconds = 45.0f;
         TestRunner->TestTrue(TEXT("Positive mission par time is valid"),
                              static_cast<bool>(ioj::validate_level(valid)));
@@ -199,7 +199,7 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(DuplicateAuthoredEntityIdFailsValidation)
     {
-        auto definition{ioj::example_levels::make_native_example()};
+        auto definition{ioj::example_levels::make_example_draft()};
         definition.entities.ids[1] = definition.player_entity_id;
 
         auto const validation{ioj::validate_level(definition)};
@@ -253,14 +253,14 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(MissionModeRequirementsAreValidated)
     {
-        auto missing_mode{ioj::example_levels::make_native_example()};
+        auto missing_mode{ioj::example_levels::make_example_draft()};
         missing_mode.mission->mode = ::ioj::levels::LevelMissionMode::Unspecified;
         auto const missing_mode_validation{ioj::validate_level(missing_mode)};
         TestRunner->TestTrue(TEXT("Missing mission mode is reported"),
                              contains_error(missing_mode_validation,
                                             ioj::ELevelValidationErrorCode::MissingMissionMode));
 
-        auto missing_time{ioj::example_levels::make_native_example()};
+        auto missing_time{ioj::example_levels::make_example_draft()};
         missing_time.mission->mode = ::ioj::levels::LevelMissionMode::KillEnemiesWithinTime;
         auto const missing_time_validation{ioj::validate_level(missing_time)};
         TestRunner->TestTrue(
@@ -268,14 +268,14 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
             contains_error(missing_time_validation,
                            ioj::ELevelValidationErrorCode::InvalidMissionTimeLimit));
 
-        auto missing_heroes{ioj::example_levels::make_native_example()};
+        auto missing_heroes{ioj::example_levels::make_example_draft()};
         missing_heroes.mission->hero_entity_ids.Reset();
         auto const missing_heroes_validation{ioj::validate_level(missing_heroes)};
         TestRunner->TestTrue(TEXT("Missing kill mission heroes are reported"),
                              contains_error(missing_heroes_validation,
                                             ioj::ELevelValidationErrorCode::MissingMissionHeroes));
 
-        auto invalid_count{ioj::example_levels::make_native_example()};
+        auto invalid_count{ioj::example_levels::make_example_draft()};
         invalid_count.mission->kill_count = 0;
         auto const invalid_count_validation{ioj::validate_level(invalid_count)};
         TestRunner->TestTrue(
@@ -283,7 +283,7 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
             contains_error(invalid_count_validation,
                            ioj::ELevelValidationErrorCode::InvalidMissionKillCount));
 
-        auto unexpected_time{ioj::example_levels::make_native_example()};
+        auto unexpected_time{ioj::example_levels::make_example_draft()};
         unexpected_time.mission->time_limit_seconds = 10.0f;
         auto const unexpected_time_validation{ioj::validate_level(unexpected_time)};
         TestRunner->TestTrue(
@@ -291,7 +291,7 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
             contains_error(unexpected_time_validation,
                            ioj::ELevelValidationErrorCode::UnexpectedMissionTimeLimit));
 
-        auto survive{ioj::example_levels::make_native_example()};
+        auto survive{ioj::example_levels::make_example_draft()};
         survive.mission = ioj::FLevelMissionDefinition{
             .mode = ::ioj::levels::LevelMissionMode::SurviveTime,
             .time_limit_seconds = 10.0f,
@@ -310,14 +310,14 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(MissionEntityReferencesAreValidated)
     {
-        auto unknown{ioj::example_levels::make_native_example()};
+        auto unknown{ioj::example_levels::make_example_draft()};
         unknown.mission->must_survive_entity_ids[0] = ioj::FLevelEntityId{FName{TEXT("missing")}};
         auto const unknown_validation{ioj::validate_level(unknown)};
         TestRunner->TestTrue(TEXT("Unknown mission entity is reported"),
                              contains_error(unknown_validation,
                                             ioj::ELevelValidationErrorCode::MissionEntityNotFound));
 
-        auto duplicate{ioj::example_levels::make_native_example()};
+        auto duplicate{ioj::example_levels::make_example_draft()};
         auto const duplicate_hero{duplicate.mission->hero_entity_ids[0]};
         duplicate.mission->hero_entity_ids.Add(duplicate_hero);
         auto const duplicate_validation{ioj::validate_level(duplicate)};
@@ -326,7 +326,7 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
             contains_error(duplicate_validation,
                            ioj::ELevelValidationErrorCode::DuplicateMissionEntityReference));
 
-        auto conflicting{ioj::example_levels::make_native_example()};
+        auto conflicting{ioj::example_levels::make_example_draft()};
         conflicting.mission->hero_entity_ids.Add(conflicting.mission->required_kill_entity_ids[0]);
         auto const conflicting_validation{ioj::validate_level(conflicting)};
         TestRunner->TestTrue(
@@ -334,7 +334,7 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
             contains_error(conflicting_validation,
                            ioj::ELevelValidationErrorCode::ConflictingMissionEntityRoles));
 
-        auto ambiguous_teams{ioj::example_levels::make_native_example()};
+        auto ambiguous_teams{ioj::example_levels::make_example_draft()};
         ambiguous_teams.mission->hero_entity_ids.Add(
             ioj::FLevelEntityId{FName{TEXT("red-turret")}});
         auto const ambiguous_teams_validation{ioj::validate_level(ambiguous_teams)};
@@ -346,21 +346,21 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(MalformedDefinitionsReportStructuredErrors)
     {
-        auto missing_id{ioj::example_levels::make_native_example()};
+        auto missing_id{ioj::example_levels::make_example_draft()};
         missing_id.metadata.id = {};
         auto const missing_id_validation{ioj::validate_level(missing_id)};
         TestRunner->TestTrue(
             TEXT("Missing stable id is reported"),
             contains_error(missing_id_validation, ioj::ELevelValidationErrorCode::MissingLevelId));
 
-        auto missing_player{ioj::example_levels::make_native_example()};
+        auto missing_player{ioj::example_levels::make_example_draft()};
         missing_player.player_entity_id = {};
         auto const missing_player_validation{ioj::validate_level(missing_player)};
         TestRunner->TestTrue(TEXT("Missing viewpoint is reported"),
                              contains_error(missing_player_validation,
                                             ioj::ELevelValidationErrorCode::MissingViewpoint));
 
-        auto unsupported_archetype{ioj::example_levels::make_native_example()};
+        auto unsupported_archetype{ioj::example_levels::make_example_draft()};
         unsupported_archetype.entities.archetypes[1] =
             ioj::FEntityArchetypeId{FName{TEXT("pirate-fighter")}};
         auto const unsupported_archetype_validation{ioj::validate_level(unsupported_archetype)};
@@ -368,14 +368,14 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
                              contains_error(unsupported_archetype_validation,
                                             ioj::ELevelValidationErrorCode::UnsupportedArchetype));
 
-        auto invalid_placement{ioj::example_levels::make_native_example()};
+        auto invalid_placement{ioj::example_levels::make_example_draft()};
         invalid_placement.entities.positions.xs[1] = std::numeric_limits<double>::quiet_NaN();
         auto const invalid_placement_validation{ioj::validate_level(invalid_placement)};
         TestRunner->TestTrue(TEXT("Invalid placement is reported"),
                              contains_error(invalid_placement_validation,
                                             ioj::ELevelValidationErrorCode::InvalidPlacement));
 
-        auto mismatched_columns{ioj::example_levels::make_native_example()};
+        auto mismatched_columns{ioj::example_levels::make_example_draft()};
         mismatched_columns.entities.teams.Pop();
         auto const mismatched_columns_validation{ioj::validate_level(mismatched_columns)};
         TestRunner->TestTrue(
@@ -386,7 +386,7 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(CameraAndPlayerAreMutuallyExclusive)
     {
-        auto both{ioj::example_levels::make_native_example()};
+        auto both{ioj::example_levels::make_example_draft()};
         both.camera = make_camera_level().camera;
         auto const both_validation{ioj::validate_level(both)};
         TestRunner->TestTrue(

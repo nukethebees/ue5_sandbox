@@ -1,5 +1,7 @@
 #include <SpaceGameS7/level_script_catalog.h>
 
+#include <SandboxCoreEngine/strings.h>
+
 #include <CQTest.h>
 #include <HAL/FileManager.h>
 #include <Misc/FileHelper.h>
@@ -222,10 +224,10 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
         }
 
         TestRunner->TestEqual(TEXT("Library function supplies the title"),
-                              result.entries[0].definition->metadata.title,
+                              ioj::to_fstring(result.entries[0].definition->metadata().title),
                               FString{TEXT("Shared Level")});
         TestRunner->TestEqual(TEXT("Library macro supplies the description"),
-                              result.entries[0].definition->metadata.description,
+                              ioj::to_fstring(result.entries[0].definition->metadata().description),
                               FString{TEXT("From library")});
     }
 

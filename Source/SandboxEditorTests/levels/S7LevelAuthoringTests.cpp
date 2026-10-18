@@ -41,7 +41,7 @@
 #include <expected>
 
 namespace {
-auto emit_source(ioj::FLevelDefinition const& definition) -> std::expected<FString, FString> {
+auto emit_source(ioj::FLevelDraft const& definition) -> std::expected<FString, FString> {
     auto checked{ioj::levels::authoring::to_native(definition)};
     if (!checked) {
         return std::unexpected{ioj::to_fstring(ioj::levels::format_diagnostics(checked.error()))};
@@ -54,7 +54,7 @@ auto emit_source(ioj::FLevelDefinition const& definition) -> std::expected<FStri
 }
 
 auto collect_level(ULevel const& level, AS7LevelAuthoringDocument const& document)
-    -> std::expected<ioj::FLevelDefinition, FString> {
+    -> std::expected<ioj::FLevelDraft, FString> {
     return ioj::editor::collect_s7_editor_level(level, document).transform([](auto const& checked) {
         return ioj::levels::authoring::to_unreal(checked);
     });
@@ -62,7 +62,7 @@ auto collect_level(ULevel const& level, AS7LevelAuthoringDocument const& documen
 
 auto make_plan(ULevel const& level,
                AS7LevelAuthoringDocument const& document,
-               ioj::FLevelDefinition const& definition)
+               ioj::FLevelDraft const& definition)
     -> std::expected<ioj::editor::FS7LevelSyncPlan, FString> {
     auto checked{ioj::levels::authoring::to_native(definition)};
     if (!checked) {
@@ -154,8 +154,7 @@ auto make_preview_fixture(bool const observer_camera = false) -> FPreviewFixture
 }
 
 template <typename TTestRunner>
-auto assert_valid_definition(TTestRunner& test_runner, ioj::FLevelDefinition const& definition)
-    -> bool {
+auto assert_valid_definition(TTestRunner& test_runner, ioj::FLevelDraft const& definition) -> bool {
     auto const validation{ioj::validate_level(definition)};
     if (test_runner.TestTrue(TEXT("Fixture definition is valid"), static_cast<bool>(validation))) {
         return true;
@@ -483,11 +482,11 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             TestRunner->AddError(ioj::to_fstring(ioj::levels::format_diagnostics(read.error())));
             return;
         }
-        auto const& grid{read->collision_grid};
-        TestRunner->TestTrue(TEXT("Grid clause persists"), grid.IsSet());
-        if (grid.IsSet()) {
-            TestRunner->TestFalse(TEXT("Size stays inherited"), grid->level_size.IsSet());
-            TestRunner->TestTrue(TEXT("Cell override persists"), grid->cell_size.IsSet());
+        auto const& grid{read->collision_grid()};
+        TestRunner->TestTrue(TEXT("Grid clause persists"), grid.has_value());
+        if (grid.has_value()) {
+            TestRunner->TestFalse(TEXT("Size stays inherited"), grid->level_size.has_value());
+            TestRunner->TestTrue(TEXT("Cell override persists"), grid->cell_size.has_value());
         }
     }
 
@@ -896,9 +895,10 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(TEXT("Generated source reads"), static_cast<bool>(read))) {
             return;
         }
-        TestRunner->TestTrue(TEXT("Mission survives"), read->mission.IsSet());
-        TestRunner->TestEqual(
-            TEXT("Required kill survives"), read->mission->required_kill_entity_ids.Num(), 1);
+        TestRunner->TestTrue(TEXT("Mission survives"), read->mission().has_value());
+        TestRunner->TestEqual(TEXT("Required kill survives"),
+                              static_cast<int32>(read->mission()->required_kill_entity_ids.size()),
+                              1);
     }
 
     TEST_METHOD(PreviewReportsMetadataOnlyChange)

@@ -1,5 +1,8 @@
 #include <SpaceGame/levels/ExampleLevels.h>
+#include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/system/GameSubsystem.h>
+
+#include <SandboxCoreEngine/strings.h>
 
 #include <CQTest.h>
 #include <Engine/GameInstance.h>
@@ -17,12 +20,13 @@ TEST_CLASS(PendingLevelDefinition, "Sandbox.UnitTests")
         }
 
         subsystem->set_level_launch_error(TEXT("old error"));
-        subsystem->set_pending_level(ioj::example_levels::make_native_example(),
-                                     TEXT("LevelScripts/Example.scm"),
-                                     TEXT("0123456789abcdef"),
-                                     {.launch_mode = ioj::ELevelLaunchMode::Paused,
-                                      .requested_time_scale = 4.0,
-                                      .control_context = EPlayerControlContext::Benchmark});
+        subsystem->set_pending_level(
+            ioj::levels::authoring::to_native(ioj::example_levels::make_example_draft()).value(),
+            TEXT("LevelScripts/Example.scm"),
+            TEXT("0123456789abcdef"),
+            {.launch_mode = ioj::ELevelLaunchMode::Paused,
+             .requested_time_scale = 4.0,
+             .control_context = EPlayerControlContext::Benchmark});
 
         TestRunner->TestFalse(TEXT("Selecting a new level clears an old launch error"),
                               subsystem->has_level_launch_error());
@@ -35,7 +39,7 @@ TEST_CLASS(PendingLevelDefinition, "Sandbox.UnitTests")
                               pending->source_path,
                               FString{TEXT("LevelScripts/Example.scm")});
         TestRunner->TestEqual(TEXT("Native definition is retained"),
-                              pending->definition.metadata.title,
+                              ioj::to_fstring(pending->definition.metadata().title),
                               FString{TEXT("Native Example")});
         TestRunner->TestTrue(TEXT("Launch mode is retained"),
                              pending->options.launch_mode == ioj::ELevelLaunchMode::Paused);

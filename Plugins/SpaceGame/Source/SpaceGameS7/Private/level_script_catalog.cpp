@@ -31,12 +31,9 @@ auto to_native_levels(TArray<FLevelScriptEntry> const& entries) -> std::vector<L
     for (int32 index{}; index < count; ++index) {
         auto const& entry{entries[index]};
         if (entry.definition) {
-            auto definition{to_native(*entry.definition)};
-            // Catalog entries have already passed decoding and semantic validation.
-            check(definition.has_value());
             result.emplace_back(static_cast<CatalogEntryIndex>(index),
                                 std::filesystem::path{*entry.path},
-                                std::move(*definition));
+                                *entry.definition);
         }
     }
     return result;
@@ -104,9 +101,9 @@ void sort_campaigns(FLevelScriptCatalogResult& result) {
 }
 } // namespace
 
-auto catalog_category(ioj::FLevelDefinition const& definition) noexcept -> ELevelCatalogCategory {
-    return definition.player_entity_id.is_set() ? ELevelCatalogCategory::Mission
-                                                : ELevelCatalogCategory::BattleViewer;
+auto catalog_category(LevelDefinition const& definition) noexcept -> ELevelCatalogCategory {
+    return !definition.player_entity_id().empty() ? ELevelCatalogCategory::Mission
+                                                  : ELevelCatalogCategory::BattleViewer;
 }
 
 auto default_level_script_directory() -> FString {
@@ -146,9 +143,9 @@ auto load_level_script_catalog(FStringView const root_path) -> FLevelScriptCatal
         } else if (!source_read) {
             entry.error = FString::Printf(TEXT("Could not read level script '%s'."), *path);
         } else {
-            entry.definition = to_unreal(std::move(*native.definition));
-            entry.display_title = entry.definition->metadata.title;
-            entry.description = entry.definition->metadata.description;
+            entry.definition = std::move(*native.definition);
+            entry.display_title = ioj::to_fstring(entry.definition->metadata().title);
+            entry.description = ioj::to_fstring(entry.definition->metadata().description);
         }
         result.entries.Add(MoveTemp(entry));
     }

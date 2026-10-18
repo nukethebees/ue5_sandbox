@@ -64,7 +64,8 @@ struct SPACEGAME_API FLevelMissionObjectiveEvent {
     int32 kill_target_increase{};
 };
 
-struct SPACEGAME_API FLevelDefinition {
+// Hold mutable Unreal authoring data until to_native constructs a trusted LevelDefinition.
+struct SPACEGAME_API FLevelDraft {
     FLevelMetadata metadata{};
     TArray<FLevelUnlockCriterion> unlock_criteria{};
     FLevelEntityId player_entity_id{};
@@ -85,9 +86,9 @@ class SPACEGAME_API FLevelBuilder {
     void add_unlock_criterion(FLevelUnlockCriterion criterion);
     void add_mission_event(FLevelMissionObjectiveEvent const& event);
     auto add_entity(FEntitySpawnDefinition const& entity) -> FLevelEntityId;
-    auto finish() -> FLevelDefinition;
+    auto finish() -> FLevelDraft;
   private:
-    FLevelDefinition definition_{};
+    FLevelDraft definition_{};
 };
 
 using ELevelValidationErrorCode = ::ioj::levels::DiagnosticCode;
@@ -103,5 +104,5 @@ struct SPACEGAME_API FLevelValidationResult {
     explicit operator bool() const noexcept { return errors.IsEmpty(); }
 };
 
-SPACEGAME_API auto validate_level(FLevelDefinition const& definition) -> FLevelValidationResult;
+SPACEGAME_API auto validate_level(FLevelDraft const& definition) -> FLevelValidationResult;
 }

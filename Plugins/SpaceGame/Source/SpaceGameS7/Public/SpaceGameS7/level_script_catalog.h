@@ -17,7 +17,7 @@ struct SPACEGAMES7_API FLevelScriptEntry {
     FString display_title{};
     FString description{};
     FString error{};
-    TOptional<ioj::FLevelDefinition> definition{NullOpt};
+    TOptional<ioj::levels::LevelDefinition> definition{NullOpt};
 
     explicit operator bool() const noexcept { return definition.IsSet(); }
 };
@@ -38,7 +38,7 @@ struct SPACEGAMES7_API FLevelScriptCatalogResult {
     TArray<FCampaignScriptEntry> campaigns{};
 };
 
-SPACEGAMES7_API auto catalog_category(ioj::FLevelDefinition const& definition) noexcept
+SPACEGAMES7_API auto catalog_category(ioj::levels::LevelDefinition const& definition) noexcept
     -> ELevelCatalogCategory;
 SPACEGAMES7_API auto default_level_script_directory() -> FString;
 SPACEGAMES7_API auto default_campaign_script_directory() -> FString;

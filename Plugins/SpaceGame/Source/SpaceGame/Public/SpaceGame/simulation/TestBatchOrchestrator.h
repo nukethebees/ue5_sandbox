@@ -70,12 +70,17 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void set_presentation_enabled(bool enabled);
     void set_collision_grid_override(FVector3f level_size, FVector3f cell_size);
     void clear_collision_grid_override();
-    void set_level_definition(ioj::FLevelDefinition definition) {
-        if (definition.collision_grid.IsSet()) {
-            auto const& grid{definition.collision_grid.GetValue()};
+    void set_level_definition(ioj::levels::LevelDefinition definition) {
+        if (definition.collision_grid()) {
+            auto const& grid{*definition.collision_grid()};
             set_collision_grid_override(
-                grid.level_size.IsSet() ? grid.level_size.GetValue() : FVector3f::ZeroVector,
-                grid.cell_size.IsSet() ? grid.cell_size.GetValue() : FVector3f::ZeroVector);
+                grid.level_size
+                    ? FVector3f{FVector{
+                          grid.level_size->x(), grid.level_size->y(), grid.level_size->z()}}
+                    : FVector3f::ZeroVector,
+                grid.cell_size ? FVector3f{FVector{
+                                     grid.cell_size->x(), grid.cell_size->y(), grid.cell_size->z()}}
+                               : FVector3f::ZeroVector);
         } else {
             clear_collision_grid_override();
         }
@@ -264,7 +269,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     TOptional<FLevelPresentation> level_presentation_;
     TArray<FTransform> initial_turret_transforms_;
     FLevelTelemetryEnvironment telemetry_environment_;
-    TOptional<ioj::FLevelDefinition> level_definition_;
+    TOptional<ioj::levels::LevelDefinition> level_definition_;
     bool launched_paused_{};
     ioj::FLevelLaunchOptions launch_options_{};
     FString level_source_sha256_{};

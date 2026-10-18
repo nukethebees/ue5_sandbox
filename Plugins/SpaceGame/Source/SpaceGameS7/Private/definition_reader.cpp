@@ -5,28 +5,18 @@
 
 #include <SandboxCoreEngine/strings.h>
 namespace ioj::levels::authoring {
-namespace {
-auto convert_level_result(LevelDefinitionReadResult native) -> FLevelDefinitionReadResult {
-    if (!native) {
-        return FLevelDefinitionReadResult{std::unexpect, std::move(native.error())};
-    }
-    return to_unreal(std::move(*native));
-}
-}
 FDefinitionReader::FDefinitionReader(FString script_library_root)
     : script_library_root_{MoveTemp(script_library_root)} {}
 auto FDefinitionReader::read_level_source(FStringView const source) const
     -> FLevelDefinitionReadResult {
     auto const utf8{FTCHARToUTF8{source.GetData(), source.Len()}};
-    return convert_level_result(
-        DefinitionReader{std::filesystem::path{*script_library_root_}}.read_level_source(
-            std::string_view{utf8.Get(), static_cast<std::size_t>(utf8.Length())}));
+    return DefinitionReader{std::filesystem::path{*script_library_root_}}.read_level_source(
+        std::string_view{utf8.Get(), static_cast<std::size_t>(utf8.Length())});
 }
 auto FDefinitionReader::read_level_file(FStringView const path) const
     -> FLevelDefinitionReadResult {
-    return convert_level_result(
-        DefinitionReader{std::filesystem::path{*script_library_root_}}.read_level_file(
-            std::filesystem::path{*FString{path}}));
+    return DefinitionReader{std::filesystem::path{*script_library_root_}}.read_level_file(
+        std::filesystem::path{*FString{path}});
 }
 }
 

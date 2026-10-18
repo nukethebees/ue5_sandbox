@@ -4,6 +4,7 @@
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/levels/LevelEntityResolution.h>
 #include <SpaceGame/levels/LevelEntityTableOperations.h>
+#include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
@@ -91,7 +92,7 @@ auto spawn_player(UWorld& world,
     return player;
 }
 
-auto initial_camera_transform(FLevelDefinition const& definition,
+auto initial_camera_transform(FLevelDraft const& definition,
                               FLevelEntityTableConstView const& entities) -> FTransform {
     auto const& camera{definition.camera.GetValue()};
     TArray<FVector> target_positions;
@@ -109,7 +110,7 @@ auto initial_camera_transform(FLevelDefinition const& definition,
 
 auto spawn_initial_camera(UWorld& world,
                           ASpaceGamePlayerController& player_controller,
-                          FLevelDefinition const& definition,
+                          FLevelDraft const& definition,
                           FLevelEntityTableConstView const& entities,
                           FSpawnedActorTransaction& transaction,
                           FLevelLoadResult& result,
@@ -143,18 +144,11 @@ auto spawn_initial_camera(UWorld& world,
 
 }
 
-auto FLevelLoader::load(FLevelDefinition const& definition,
+auto FLevelLoader::load(levels::LevelDefinition const& level,
                         EPlayerControlContext const playerless_control_context) const
     -> FLevelLoadResult {
     FLevelLoadResult result;
-    auto validation{validate_level(definition)};
-    if (!validation) {
-        result.validation_errors = MoveTemp(validation.errors);
-        add_error(result,
-                  ELevelLoadErrorCode::InvalidDefinition,
-                  TEXT("Level definition failed validation"));
-        return result;
-    }
+    auto const definition{levels::authoring::to_unreal(level)};
 
     if (orchestrator_.get_state() != ::ioj::sim::OrchestratorState::Uninitialised) {
         add_error(result,
@@ -254,7 +248,7 @@ auto FLevelLoader::load(FLevelDefinition const& definition,
         player_controller->Possess(player);
     }
 
-    orchestrator_.set_level_definition(definition);
+    orchestrator_.set_level_definition(level);
     transaction.commit();
     return result;
 }

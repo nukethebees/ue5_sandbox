@@ -51,8 +51,7 @@ auto to_unreal_ids(std::vector<NativeId> const& source) -> TArray<Id> {
 }
 } // namespace
 
-auto to_native(ioj::FLevelDefinition const& definition)
-    -> std::expected<LevelDefinition, Diagnostics> {
+auto to_native(ioj::FLevelDraft const& definition) -> std::expected<LevelDefinition, Diagnostics> {
     if (!columns_have_equal_size(definition.entities)) {
         return std::unexpected{Diagnostics{{DiagnosticCode::MismatchedEntityColumns,
                                             "level.entities",
@@ -160,7 +159,11 @@ auto to_native(ioj::FLevelDefinition const& definition)
     return LevelDefinition::make(std::move(result));
 }
 
-auto to_unreal(LevelDefinition const& level) -> ioj::FLevelDefinition {
+auto to_unreal(LevelId const& id) -> ioj::FLevelId {
+    return ioj::FLevelId{FName{ioj::to_fstring(id.value)}};
+}
+
+auto to_unreal(LevelDefinition const& level) -> ioj::FLevelDraft {
     auto const& definition{level};
     ioj::FLevelBuilder builder;
     ioj::FLevelMetadata metadata{

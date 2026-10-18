@@ -1,5 +1,7 @@
 #include "SpaceGame/levels/LevelUnlock.h"
 
+#include <SpaceGame/levels/native_level_definition_conversion.h>
+
 namespace ioj {
 FLevelUnlockEvaluator::FLevelUnlockEvaluator(FCompletionQuery completion_query,
                                              FTitleQuery title_query,
@@ -8,11 +10,14 @@ FLevelUnlockEvaluator::FLevelUnlockEvaluator(FCompletionQuery completion_query,
     , title_query_{MoveTemp(title_query)}
     , force_unlocked_{force_unlocked} {}
 
-auto FLevelUnlockEvaluator::evaluate(FLevelDefinition const& definition) const
+auto FLevelUnlockEvaluator::evaluate(levels::LevelDefinition const& definition) const
     -> FLevelUnlockStatus {
     FLevelUnlockStatus status;
-    status.criteria.Reserve(definition.unlock_criteria.Num());
-    for (auto const& criterion : definition.unlock_criteria) {
+    status.criteria.Reserve(static_cast<int32>(definition.unlock_level_ids().size()));
+    for (auto const& id : definition.unlock_level_ids()) {
+        FLevelUnlockCriterion criterion{
+            TInPlaceType<FLevelCompletedUnlockCriterion>{},
+            FLevelCompletedUnlockCriterion{.level_id = levels::authoring::to_unreal(id)}};
         auto criterion_status{evaluate(criterion)};
         status.unlocked = status.unlocked && criterion_status.satisfied;
         status.criteria.Add(MoveTemp(criterion_status));

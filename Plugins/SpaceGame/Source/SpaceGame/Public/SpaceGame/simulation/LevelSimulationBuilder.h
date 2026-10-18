@@ -42,7 +42,7 @@ SPACEGAME_API auto
 SPACEGAME_API auto
     make_level_simulation_init_data(USpaceGameLevelConfig const& config,
                                     ::ioj::sim::FixedTickLoop const& clock_settings,
-                                    FLevelDefinition const& definition,
+                                    levels::LevelDefinition const& definition,
                                     TOptional<::ioj::sim::player::PlayerSpawnData> player = NullOpt,
                                     ::ioj::sim::collision::WorldAABBs static_bounds = {},
                                     UStaticMesh const* player_collision_mesh = nullptr)

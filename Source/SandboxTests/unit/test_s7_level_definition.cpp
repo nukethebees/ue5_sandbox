@@ -63,7 +63,7 @@ constexpr TCHAR scheduled_level[]{LR"(
 )"};
 
 auto contains_error(::ioj::levels::authoring::FLevelDefinitionReadResult const& result,
-                    ioj::ELevelValidationErrorCode const code) -> bool {
+                    ioj::levels::DiagnosticCode const code) -> bool {
     return !result &&
            std::ranges::any_of(result.error(), [code](ioj::levels::Diagnostic const& error) {
                return error.code == code;
@@ -86,18 +86,20 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
         auto const& definition{result.value()};
         TestRunner->TestEqual(
-            TEXT("Spawn time is decoded"), definition.entities.spawn_times_seconds[1], 1.25);
-        TestRunner->TestEqual(
-            TEXT("One objective event is decoded"), definition.mission_events.Num(), 1);
-        auto const& event{definition.mission_events[0]};
+            TEXT("Spawn time is decoded"), definition.entities()[1].spawn_time_seconds, 1.25);
+        TestRunner->TestEqual(TEXT("One objective event is decoded"),
+                              static_cast<int32>(definition.mission_events().size()),
+                              1);
+        auto const& event{definition.mission_events()[0]};
         TestRunner->TestEqual(TEXT("Objective event time is decoded"), event.time_seconds, 1.25);
         TestRunner->TestEqual(
             TEXT("Kill target increase is decoded"), event.kill_target_increase, 2);
-        TestRunner->TestEqual(
-            TEXT("Required kill is decoded"), event.required_kill_entity_ids.Num(), 1);
+        TestRunner->TestEqual(TEXT("Required kill is decoded"),
+                              static_cast<int32>(event.required_kill_entity_ids.size()),
+                              1);
     }
 
-    TEST_METHOD(DecodesSchemeDataIntoAValidatedNativeSoA)
+    TEST_METHOD(DecodesSchemeDataIntoATrustedDefinition)
     {
         ::ioj::levels::authoring::FDefinitionReader reader;
         auto const result{reader.read_level_source(valid_level)};
@@ -110,39 +112,38 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         }
 
         auto const& definition{result.value()};
-        TestRunner->TestEqual(TEXT("Definition has four entities"), definition.entities.num(), 4);
+        TestRunner->TestEqual(TEXT("Definition has four entities"),
+                              static_cast<int32>(definition.entities().size()),
+                              4);
         TestRunner->TestTrue(TEXT("Stable level id is decoded"),
-                             definition.metadata.id ==
-                                 ioj::FLevelId{FName{TEXT("scripted-example")}});
+                             definition.metadata().id == ioj::levels::LevelId{"scripted-example"});
+        TestRunner->TestEqual(TEXT("Title is decoded"),
+                              ioj::to_fstring(definition.metadata().title),
+                              FString{TEXT("Scripted Example")});
         TestRunner->TestEqual(
-            TEXT("Title is decoded"), definition.metadata.title, FString{TEXT("Scripted Example")});
-        TestRunner->TestEqual(
-            TEXT("Par time is decoded"), definition.metadata.par_time_seconds.GetValue(), 75.5f);
+            TEXT("Par time is decoded"), definition.metadata().par_time_seconds.value(), 75.5f);
         TestRunner->TestTrue(TEXT("Player id is decoded"),
-                             definition.player_entity_id ==
-                                 ioj::FLevelEntityId{FName{TEXT("player")}});
-        TestRunner->TestTrue(
-            TEXT("Player position is decoded"),
-            definition.entities.positions.get_const_view()[0].Equals(FVector{100.0, 200.0, 300.0}));
+                             definition.player_entity_id() == ioj::levels::EntityId{"player"});
+        TestRunner->TestTrue(TEXT("Player position is decoded"),
+                             definition.entities()[0].position ==
+                                 (ioj::Vector3d{100.0, 200.0, 300.0}));
         TestRunner->TestTrue(TEXT("Entity rotation is decoded"),
-                             FRotator{definition.entities.rotations.pitches[3],
-                                      definition.entities.rotations.yaws[3],
-                                      definition.entities.rotations.rolls[3]}
-                                 .Equals(FRotator{0.0, 90.0, 0.0}));
-        if (TestRunner->TestTrue(TEXT("Mission is decoded"), definition.mission.IsSet())) {
-            auto const& mission{definition.mission.GetValue()};
+                             definition.entities()[3].rotation == (ioj::Rotator3d{0.0, 90.0, 0.0}));
+        if (TestRunner->TestTrue(TEXT("Mission is decoded"), definition.mission().has_value())) {
+            auto const& mission{definition.mission().value()};
             TestRunner->TestTrue(TEXT("Mission mode is decoded"),
                                  mission.mode == ::ioj::levels::LevelMissionMode::KillEnemies);
             TestRunner->TestFalse(TEXT("Omitted kill count selects automatic targeting"),
-                                  mission.kill_count.IsSet());
-            TestRunner->TestEqual(
-                TEXT("Mission heroes are decoded"), mission.hero_entity_ids.Num(), 2);
+                                  mission.kill_count.has_value());
+            TestRunner->TestEqual(TEXT("Mission heroes are decoded"),
+                                  static_cast<int32>(mission.hero_entity_ids.size()),
+                                  2);
             TestRunner->TestEqual(TEXT("Mission survivor is decoded"),
-                                  mission.must_survive_entity_ids[0].value,
-                                  FName{TEXT("blue-capital")});
+                                  ioj::to_fstring(mission.must_survive_entity_ids[0].value),
+                                  FString{TEXT("blue-capital")});
             TestRunner->TestEqual(TEXT("Mission required kill is decoded"),
-                                  mission.required_kill_entity_ids[0].value,
-                                  FName{TEXT("red-capital")});
+                                  ioj::to_fstring(mission.required_kill_entity_ids[0].value),
+                                  FString{TEXT("red-capital")});
         }
     }
 
@@ -175,17 +176,18 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
         auto const& definition{result.value()};
         TestRunner->TestFalse(TEXT("Camera level has no player"),
-                              definition.player_entity_id.is_set());
+                              !definition.player_entity_id().empty());
         TestRunner->TestFalse(TEXT("Omitted par time remains unset"),
-                              definition.metadata.par_time_seconds.IsSet());
-        if (!TestRunner->TestTrue(TEXT("Camera is decoded"), definition.camera.IsSet())) {
+                              definition.metadata().par_time_seconds.has_value());
+        if (!TestRunner->TestTrue(TEXT("Camera is decoded"), definition.camera().has_value())) {
             return;
         }
 
-        auto const& camera{definition.camera.GetValue()};
-        TestRunner->TestEqual(TEXT("Camera has two targets"), camera.target_entity_ids.Num(), 2);
+        auto const& camera{definition.camera().value()};
+        TestRunner->TestEqual(
+            TEXT("Camera has two targets"), static_cast<int32>(camera.target_entity_ids.size()), 2);
         TestRunner->TestTrue(TEXT("Camera direction is decoded"),
-                             camera.offset_direction.Equals(FVector{-1.0, -1.0, 0.5}));
+                             camera.offset_direction == (ioj::Vector3d{-1.0, -1.0, 0.5}));
         TestRunner->TestEqual(TEXT("Camera distance is decoded"), camera.distance, 10000.0);
     }
 
@@ -212,16 +214,17 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(TEXT("Timed mission is valid"), static_cast<bool>(result))) {
             return;
         }
-        if (!TestRunner->TestTrue(TEXT("Timed mission is decoded"), result->mission.IsSet())) {
+        if (!TestRunner->TestTrue(TEXT("Timed mission is decoded"),
+                                  result->mission().has_value())) {
             return;
         }
-        auto const& mission{result->mission.GetValue()};
+        auto const& mission{result->mission().value()};
         TestRunner->TestTrue(TEXT("Timed mode is decoded"),
                              mission.mode ==
                                  ::ioj::levels::LevelMissionMode::KillEnemiesWithinTime);
         TestRunner->TestEqual(
-            TEXT("Time limit is decoded"), mission.time_limit_seconds.GetValue(), 45.5f);
-        TestRunner->TestEqual(TEXT("Kill count is decoded"), mission.kill_count.GetValue(), 3);
+            TEXT("Time limit is decoded"), mission.time_limit_seconds.value(), 45.5f);
+        TestRunner->TestEqual(TEXT("Kill count is decoded"), mission.kill_count.value(), 3);
     }
 
     TEST_METHOD(DecodesDeclarativeUnlockCriteria)
@@ -243,10 +246,10 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(TEXT("Unlock criteria are valid"), static_cast<bool>(result))) {
             return;
         }
-        auto const& criteria{result->unlock_criteria};
-        TestRunner->TestEqual(TEXT("Both criteria are decoded"), criteria.Num(), 2);
+        auto const& criteria{result->unlock_level_ids()};
+        TestRunner->TestEqual(
+            TEXT("Both criteria are decoded"), static_cast<int32>(criteria.size()), 2);
         TestRunner->TestTrue(TEXT("First prerequisite id is decoded"),
-                             criteria[0].Get<ioj::FLevelCompletedUnlockCriterion>().level_id ==
-                                 ioj::FLevelId{FName{TEXT("first-level")}});
+                             criteria[0] == ioj::levels::LevelId{"first-level"});
     }
 };

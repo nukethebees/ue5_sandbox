@@ -39,13 +39,13 @@ auto FLevelBuilder::add_entity(FEntitySpawnDefinition const& entity) -> FLevelEn
     return entity.id;
 }
 
-auto FLevelBuilder::finish() -> FLevelDefinition {
+auto FLevelBuilder::finish() -> FLevelDraft {
     auto definition{MoveTemp(definition_)};
-    definition_ = FLevelDefinition{};
+    definition_ = FLevelDraft{};
     return definition;
 }
 
-auto validate_level(FLevelDefinition const& definition) -> FLevelValidationResult {
+auto validate_level(FLevelDraft const& definition) -> FLevelValidationResult {
     FLevelValidationResult result;
     auto native_result{::ioj::levels::authoring::to_native(definition)};
     if (native_result) {

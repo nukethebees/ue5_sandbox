@@ -471,10 +471,8 @@ auto ATestBatchOrchestrator::initialise_simulation(USpaceGameLevelConfig const& 
         }
 
         result->telemetry_metadata = make_level_telemetry_run_metadata(world, mission_definition);
-        result->telemetry_metadata->level_id =
-            TCHAR_TO_UTF8(*level_definition_->metadata.id.value.ToString());
-        result->telemetry_metadata->level_display_name =
-            TCHAR_TO_UTF8(*level_definition_->metadata.title);
+        result->telemetry_metadata->level_id = level_definition_->metadata().id.value;
+        result->telemetry_metadata->level_display_name = level_definition_->metadata().title;
         result->telemetry_metadata->source_sha256 = TCHAR_TO_UTF8(*level_source_sha256_);
         if (launch_options_.simulated_duration_seconds.IsSet()) {
             result->telemetry_metadata->requested_duration_seconds =
@@ -758,10 +756,7 @@ void ATestBatchOrchestrator::load_authored_level() {
     auto const result{loader.load(pending->definition, options.control_context)};
     if (!result) {
         TArray<FString> messages;
-        messages.Reserve(result.validation_errors.Num() + result.errors.Num());
-        for (auto const& error : result.validation_errors) {
-            messages.Add(error.message);
-        }
+        messages.Reserve(result.errors.Num());
         for (auto const& error : result.errors) {
             messages.Add(error.message);
         }
@@ -980,9 +975,10 @@ void ATestBatchOrchestrator::process_mission_result() {
     if (!result.has_value()) {
         return;
     }
-    auto const par_time_seconds{level_definition_.IsSet()
-                                    ? level_definition_->metadata.par_time_seconds
-                                    : TOptional<float>{}};
+    TOptional<float> par_time_seconds;
+    if (level_definition_.IsSet() && level_definition_->metadata().par_time_seconds) {
+        par_time_seconds = *level_definition_->metadata().par_time_seconds;
+    }
     bool persisted{};
     bool new_best_time{};
     if (result->save_results) {

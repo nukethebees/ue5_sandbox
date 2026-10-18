@@ -1,4 +1,6 @@
+#include <SpaceGame/levels/ExampleLevels.h>
 #include <SpaceGame/levels/LevelUnlock.h>
+#include <SpaceGame/levels/native_level_definition_conversion.h>
 
 #include <CQTest.h>
 
@@ -30,20 +32,22 @@ TEST_CLASS(LevelUnlock, "Sandbox.UnitTests")
     {
         TSet<ioj::FLevelId> const completed_levels;
         auto const evaluator{make_evaluator(completed_levels)};
-        ioj::FLevelDefinition const definition;
+        auto const definition{ioj::example_levels::make_example_draft()};
 
-        auto const status{evaluator.evaluate(definition)};
+        auto const status{
+            evaluator.evaluate(ioj::levels::authoring::to_native(definition).value())};
         TestRunner->TestTrue(TEXT("Level is unlocked"), status.unlocked);
         TestRunner->TestTrue(TEXT("There are no criterion statuses"), status.criteria.IsEmpty());
     }
 
     TEST_METHOD(CompletionCriterionTracksProgression)
     {
-        ioj::FLevelDefinition definition;
+        auto definition{ioj::example_levels::make_example_draft()};
         definition.unlock_criteria.Add(completed_criterion(TEXT("asteroid-field")));
 
         TSet<ioj::FLevelId> const incomplete;
-        auto const before{make_evaluator(incomplete).evaluate(definition)};
+        auto const before{make_evaluator(incomplete)
+                              .evaluate(ioj::levels::authoring::to_native(definition).value())};
         TestRunner->TestFalse(TEXT("Prerequisite initially fails"), before.unlocked);
         if (TestRunner->TestEqual(TEXT("One criterion is reported"), before.criteria.Num(), 1)) {
             TestRunner->TestFalse(TEXT("Criterion is unsatisfied"), before.criteria[0].satisfied);
@@ -55,14 +59,15 @@ TEST_CLASS(LevelUnlock, "Sandbox.UnitTests")
         TSet<ioj::FLevelId> const completed{
             ioj::FLevelId{FName{TEXT("asteroid-field")}},
         };
-        auto const after{make_evaluator(completed).evaluate(definition)};
+        auto const after{make_evaluator(completed).evaluate(
+            ioj::levels::authoring::to_native(definition).value())};
         TestRunner->TestTrue(TEXT("Completed prerequisite passes"), after.unlocked);
         TestRunner->TestTrue(TEXT("Criterion is satisfied"), after.criteria[0].satisfied);
     }
 
     TEST_METHOD(MultipleCriteriaMustAllPass)
     {
-        ioj::FLevelDefinition definition;
+        auto definition{ioj::example_levels::make_example_draft()};
         definition.unlock_criteria.Add(completed_criterion(TEXT("first")));
         definition.unlock_criteria.Add(completed_criterion(TEXT("second")));
 
@@ -70,23 +75,28 @@ TEST_CLASS(LevelUnlock, "Sandbox.UnitTests")
             ioj::FLevelId{FName{TEXT("first")}},
         };
         TestRunner->TestFalse(TEXT("One of two completed is locked"),
-                              make_evaluator(one_completed).evaluate(definition).unlocked);
+                              make_evaluator(one_completed)
+                                  .evaluate(ioj::levels::authoring::to_native(definition).value())
+                                  .unlocked);
 
         TSet<ioj::FLevelId> const both_completed{
             ioj::FLevelId{FName{TEXT("first")}},
             ioj::FLevelId{FName{TEXT("second")}},
         };
         TestRunner->TestTrue(TEXT("Both completed is unlocked"),
-                             make_evaluator(both_completed).evaluate(definition).unlocked);
+                             make_evaluator(both_completed)
+                                 .evaluate(ioj::levels::authoring::to_native(definition).value())
+                                 .unlocked);
     }
 
     TEST_METHOD(AccessOverridePreservesRealCriterionStatus)
     {
-        ioj::FLevelDefinition definition;
+        auto definition{ioj::example_levels::make_example_draft()};
         definition.unlock_criteria.Add(completed_criterion(TEXT("asteroid-field")));
         TSet<ioj::FLevelId> const incomplete;
 
-        auto const overridden{make_evaluator(incomplete, true).evaluate(definition)};
+        auto const overridden{make_evaluator(incomplete, true)
+                                  .evaluate(ioj::levels::authoring::to_native(definition).value())};
         TestRunner->TestTrue(TEXT("Access override unlocks the level"), overridden.unlocked);
         if (TestRunner->TestEqual(
                 TEXT("Real criterion is still reported"), overridden.criteria.Num(), 1)) {
@@ -94,7 +104,8 @@ TEST_CLASS(LevelUnlock, "Sandbox.UnitTests")
                                   overridden.criteria[0].satisfied);
         }
 
-        auto const restored{make_evaluator(incomplete, false).evaluate(definition)};
+        auto const restored{make_evaluator(incomplete, false)
+                                .evaluate(ioj::levels::authoring::to_native(definition).value())};
         TestRunner->TestFalse(TEXT("Disabling the override restores real access"),
                               restored.unlocked);
     }

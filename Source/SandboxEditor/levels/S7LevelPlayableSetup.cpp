@@ -97,8 +97,7 @@ auto prepare_s7_level_for_pie(UWorld& world) -> std::expected<void, FString> {
             return fail(TEXT("Could not remove a duplicated authoring actor before PIE."));
         }
     }
-    game->set_pending_level(
-        levels::authoring::to_unreal(*definition), TEXT("PIE scene"), {}, options);
+    game->set_pending_level(*definition, TEXT("PIE scene"), {}, options);
     return {};
 }
 
@@ -138,12 +137,8 @@ auto validate_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& docume
     if (!effective_config->is_valid(true)) {
         return std::unexpected{TEXT("The authored collision-grid settings are invalid.")};
     }
-    auto const build{ioj::make_level_simulation_init_data(*effective_config,
-                                                          {},
-                                                          levels::authoring::to_unreal(*definition),
-                                                          MoveTemp(player_spawn),
-                                                          {},
-                                                          player_mesh)};
+    auto const build{ioj::make_level_simulation_init_data(
+        *effective_config, {}, *definition, MoveTemp(player_spawn), {}, player_mesh)};
     if (!build) {
         return std::unexpected{build.error().format()};
     }

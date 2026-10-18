@@ -22,12 +22,9 @@ struct SPACEGAME_API FLevelLoadError {
 };
 
 struct SPACEGAME_API FLevelLoadResult {
-    TArray<FLevelValidationError> validation_errors{};
     TArray<FLevelLoadError> errors{};
 
-    explicit operator bool() const noexcept {
-        return validation_errors.IsEmpty() && errors.IsEmpty();
-    }
+    explicit operator bool() const noexcept { return errors.IsEmpty(); }
 };
 
 class SPACEGAME_API FLevelLoader {
@@ -35,7 +32,7 @@ class SPACEGAME_API FLevelLoader {
     explicit FLevelLoader(ATestBatchOrchestrator& orchestrator)
         : orchestrator_{orchestrator} {}
 
-    auto load(FLevelDefinition const& definition,
+    auto load(levels::LevelDefinition const& definition,
               EPlayerControlContext playerless_control_context =
                   EPlayerControlContext::Observer) const -> FLevelLoadResult;
   private:

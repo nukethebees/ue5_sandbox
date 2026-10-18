@@ -1,7 +1,7 @@
 #include <SpaceGame/levels/ExampleLevels.h>
 
 namespace ioj::example_levels {
-auto make_native_example() -> FLevelDefinition {
+auto make_example_draft() -> FLevelDraft {
     FLevelBuilder builder;
     builder.set_metadata(FLevelMetadata{
         .id = FLevelId{FName{TEXT("native-example")}},

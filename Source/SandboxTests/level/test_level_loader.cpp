@@ -12,6 +12,7 @@
 #include <SpaceGame/levels/ExampleLevels.h>
 #include <SpaceGame/levels/LevelDefinition.h>
 #include <SpaceGame/levels/LevelLoader.h>
+#include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/missions/TestMissionFailReasonConversion.h>
 #include <SpaceGame/missions/TestMissionModeConversion.h>
 #include <SpaceGame/missions/TestMissionStateConversion.h>
@@ -55,14 +56,14 @@ void FLevelLoaderCameraScenario::load_fixture() {
         return;
     }
 
-    auto definition{scripted_definition.value()};
+    auto definition{levels::authoring::to_unreal(scripted_definition.value())};
     auto const red_capital_index{
         definition.entities.ids.IndexOfByKey(FLevelEntityId{FName{TEXT("red-capital")}})};
     check(red_capital_index != INDEX_NONE);
     definition.entities.positions.xs[red_capital_index] = 90000.0;
 
     FLevelLoader loader{context_.orchestrator};
-    auto const load_result{loader.load(definition)};
+    auto const load_result{loader.load(levels::authoring::to_native(definition).value())};
     if (!checks.is_true(static_cast<bool>(load_result), TEXT("Playerless definition loads"))) {
         return;
     }
@@ -261,7 +262,8 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
     orchestrator.set_level_config(*config);
 
     FLevelLoader loader{orchestrator};
-    auto const player_result{loader.load(example_levels::make_native_example())};
+    auto const player_result{
+        loader.load(levels::authoring::to_native(example_levels::make_example_draft()).value())};
     checks.is_true(!static_cast<bool>(player_result),
                    TEXT("Headless loading rejects player levels"));
     checks.are_equal(0,
@@ -362,9 +364,9 @@ void FLevelLoaderScenario::load_fixture() {
     initialise_test_driver();
     FLevelLoader loader{context_.orchestrator};
 
-    auto invalid_definition{example_levels::make_native_example()};
+    auto invalid_definition{example_levels::make_example_draft()};
     invalid_definition.entities.teams[1] = static_cast<::ioj::Team>(255);
-    auto const invalid_result{loader.load(invalid_definition)};
+    auto const invalid_result{levels::authoring::to_native(invalid_definition)};
     checks.is_true(!static_cast<bool>(invalid_result), TEXT("Invalid definition is rejected"));
     checks.are_equal(
         0, count_actors<ATestSpaceShip>(context_.world), TEXT("Rejected load spawns no player"));

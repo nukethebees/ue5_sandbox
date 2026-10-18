@@ -24,7 +24,8 @@ class SPACEGAME_API FLevelUnlockEvaluator final {
                           FTitleQuery title_query,
                           bool force_unlocked = false);
 
-    [[nodiscard]] auto evaluate(FLevelDefinition const& definition) const -> FLevelUnlockStatus;
+    [[nodiscard]] auto evaluate(levels::LevelDefinition const& definition) const
+        -> FLevelUnlockStatus;
     [[nodiscard]] auto evaluate(FLevelUnlockCriterion const& criterion) const
         -> FLevelUnlockCriterionStatus;
   private:
