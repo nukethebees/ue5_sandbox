@@ -33,9 +33,10 @@
 
 #include <cctype>
 #include <cstddef>
+#include <format>
+#include <iterator>
 #include <set>
 #include <span>
-#include <sstream>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -45,7 +46,7 @@ namespace lispb::codegen::detail {
 namespace {
 
 auto title_case(std::string const& value) -> std::string {
-    std::ostringstream result;
+    std::string result{};
     bool capitalize{true};
     std::string token;
     auto flush_token = [&]() {
@@ -53,15 +54,15 @@ auto title_case(std::string const& value) -> std::string {
             return;
         }
         if (token == "aa") {
-            result << "AA";
+            result += "AA";
         } else if (token == "vsync") {
-            result << "VSync";
+            result += "VSync";
         } else if (token == "ui") {
-            result << "UI";
+            result += "UI";
         } else {
             token.front() =
                 static_cast<char>(std::toupper(static_cast<unsigned char>(token.front())));
-            result << token;
+            result += token;
         }
         token.clear();
         capitalize = true;
@@ -77,7 +78,7 @@ auto title_case(std::string const& value) -> std::string {
         }
     }
     flush_token();
-    return result.str();
+    return result;
 }
 
 auto escaped(std::string const& value) -> std::string {
@@ -292,124 +293,136 @@ auto build_header(LoweringContext& context,
         }
     }
 
-    std::ostringstream output;
-    output << "enum class EGameSetting : uint8 {\n";
+    std::string output{};
+    auto output_it{std::back_inserter(output)};
+    output += "enum class EGameSetting : uint8 {\n";
     for (auto const setting_id : context.declarations.items(
              context.declarations.settings_modules
                  .settings_list[context.declarations.settings_modules.index(module)])) {
         auto const setting{setting_id};
 
-        output << "    "
-               << title_case(context.text(context.declarations.settings
-                                              .name[context.declarations.settings.index(setting)]))
-               << ",\n";
+        std::format_to(
+            output_it,
+            "    {},\n",
+            title_case(context.text(
+                context.declarations.settings.name[context.declarations.settings.index(setting)])));
     }
-    output << "};\n\n";
-    output << "enum class EGameSettingCategory : uint8 {\n";
+    output += "};\n\n";
+    output += "enum class EGameSettingCategory : uint8 {\n";
     for (auto const category_id : context.declarations.items(
              context.declarations.settings_modules
                  .categories[context.declarations.settings_modules.index(module)])) {
         auto const category{category_id};
-        output << "    "
-               << title_case(context.text(
-                      context.declarations.setting_categories
-                          .name[context.declarations.setting_categories.index(category)]))
-               << ",\n";
+        std::format_to(output_it,
+                       "    {},\n",
+                       title_case(context.text(
+                           context.declarations.setting_categories
+                               .name[context.declarations.setting_categories.index(category)])));
     }
-    output << "};\n\n";
-    output << "enum class ESettingApplyMode : uint8 { Immediate, Deferred, Confirm };\n";
-    output << "enum class ESettingControlKind : uint8 { Toggle, Choice, FloatRange, IntegerRange, "
+    output += "};\n\n";
+    output += "enum class ESettingApplyMode : uint8 { Immediate, Deferred, Confirm };\n";
+    output += "enum class ESettingControlKind : uint8 { Toggle, Choice, FloatRange, IntegerRange, "
               "Custom };\n";
-    output << "enum class EGameSettingDevice : uint8 { Shared, KeyboardMouse, Controller };\n";
-    output << "enum class EGameSettingValueType : uint8 { " << join(type_names, ", ") << " };\n";
-    output << "enum class EGameSettingBackend : uint8 { ";
+    output += "enum class EGameSettingDevice : uint8 { Shared, KeyboardMouse, Controller };\n";
+    std::format_to(
+        output_it, "enum class EGameSettingValueType : uint8 {{ {} }};\n", join(type_names, ", "));
+    output += "enum class EGameSettingBackend : uint8 { ";
     {
         std::vector<std::string> names;
         for (auto const& backend : backends) {
             names.push_back(title_case(backend));
         }
-        output << join(names, ", ");
+        std::format_to(output_it, "{}", join(names, ", "));
     }
-    output << " };\n";
-    output << "enum class EGameSettingOptionProvider : uint8 { None";
+    output += " };\n";
+    output += "enum class EGameSettingOptionProvider : uint8 { None";
     for (auto const& provider : option_providers) {
-        output << ", " << title_case(provider);
+        std::format_to(output_it, ", {}", title_case(provider));
     }
-    output << " };\n";
-    output << "enum class EGameSettingAvailabilityProvider : uint8 { Always";
+    output += " };\n";
+    output += "enum class EGameSettingAvailabilityProvider : uint8 { Always";
     for (auto const& provider : availability_providers) {
-        output << ", " << title_case(provider);
+        std::format_to(output_it, ", {}", title_case(provider));
     }
-    output << " };\n\n";
+    output += " };\n\n";
 
-    output << "struct " << export_prefix(context, module) << "FGameSettingCategoryDescriptor {\n"
-           << "    EGameSettingCategory id;\n"
-           << "    FText label;\n"
-           << "};\n\n";
+    std::format_to(output_it,
+                   "struct {}FGameSettingCategoryDescriptor {{\n    EGameSettingCategory id;\n    "
+                   "FText label;\n}};\n\n",
+                   export_prefix(context, module));
 
-    output << "struct " << export_prefix(context, module) << "FGameSettingDescriptor {\n"
-           << "    EGameSetting id;\n"
-           << "    EGameSettingCategory category;\n"
-           << "    EGameSettingValueType value_type;\n"
-           << "    EGameSettingBackend backend;\n"
-           << "    ESettingApplyMode apply_mode;\n"
-           << "    EGameSettingDevice device;\n"
-           << "    ESettingControlKind control_kind;\n"
-           << "    EGameSettingOptionProvider options_provider;\n"
-           << "    EGameSettingAvailabilityProvider availability_provider;\n"
-           << "    TCHAR const* name;\n"
-           << "    FText label;\n"
-           << "    FText tooltip;\n"
-           << "    double minimum;\n"
-           << "    double maximum;\n"
-           << "    double step;\n"
-           << "    TCHAR const* custom_row;\n"
-           << "};\n\n";
+    std::format_to(
+        output_it,
+        "struct {}FGameSettingDescriptor {{\n    EGameSetting id;\n    EGameSettingCategory "
+        "category;\n "
+        "   EGameSettingValueType value_type;\n    EGameSettingBackend backend;\n    "
+        "ESettingApplyMode "
+        "apply_mode;\n    EGameSettingDevice device;\n    ESettingControlKind control_kind;\n    "
+        "EGameSettingOptionProvider options_provider;\n    EGameSettingAvailabilityProvider "
+        "availability_provider;\n    TCHAR const* name;\n    FText label;\n    FText tooltip;\n    "
+        "double minimum;\n    double maximum;\n    double step;\n    TCHAR const* "
+        "custom_row;\n}};\n\n",
+        export_prefix(context, module));
 
-    output << "struct " << export_prefix(context, module)
-           << context.text(context.declarations.settings_modules
-                               .state_name[context.declarations.settings_modules.index(module)])
-           << " {\n";
+    std::format_to(
+        output_it,
+        "struct {}{} {{\n",
+        export_prefix(context, module),
+        context.text(context.declarations.settings_modules
+                         .state_name[context.declarations.settings_modules.index(module)]));
     for (std::size_t index{}; index < setting_count; ++index) {
         auto const setting{context.declarations.items(
             context.declarations.settings_modules
                 .settings_list[context.declarations.settings_modules.index(module)])[index]};
 
-        output << "    " << ir.types.spelling(setting_types[index]) << " "
-               << context.text(context.declarations.settings
-                                   .name[context.declarations.settings.index(setting)])
-               << "{};\n";
+        std::format_to(
+            output_it,
+            "    {} {}{{}};\n",
+            ir.types.spelling(setting_types[index]),
+            context.text(
+                context.declarations.settings.name[context.declarations.settings.index(setting)]));
     }
-    output << "\n    auto operator==("
-           << context.text(context.declarations.settings_modules
-                               .state_name[context.declarations.settings_modules.index(module)])
-           << " const&) const -> bool = default;\n";
-    output << "};\n\n";
+    std::format_to(
+        output_it,
+        "\n    auto operator==({} const&) const -> bool = default;\n",
+        context.text(context.declarations.settings_modules
+                         .state_name[context.declarations.settings_modules.index(module)]));
+    output += "};\n\n";
 
     std::vector<std::string> variant_types;
     for (auto const type : value_types) {
         variant_types.emplace_back(ir.types.spelling(type));
     }
-    output << "using FGameSettingValue = std::variant<" << join(variant_types, ", ") << ">;\n\n";
-    output << export_prefix(context, module)
-           << "auto game_setting_category_descriptors() -> "
-              "TConstArrayView<FGameSettingCategoryDescriptor>;\n";
-    output << export_prefix(context, module)
-           << "auto game_setting_descriptors() -> TConstArrayView<FGameSettingDescriptor>;\n";
-    output << export_prefix(context, module)
-           << "auto game_setting_descriptor(EGameSetting id) -> FGameSettingDescriptor const&;\n";
-    output << export_prefix(context, module) << "auto game_setting_value("
-           << context.text(context.declarations.settings_modules
-                               .state_name[context.declarations.settings_modules.index(module)])
-           << " const& state, EGameSetting id) -> FGameSettingValue;\n";
-    output << export_prefix(context, module) << "auto set_game_setting_value("
-           << context.text(context.declarations.settings_modules
-                               .state_name[context.declarations.settings_modules.index(module)])
-           << "& state, EGameSetting id, FGameSettingValue const& value) -> bool;\n\n";
+    std::format_to(
+        output_it, "using FGameSettingValue = std::variant<{}>;\n\n", join(variant_types, ", "));
+    std::format_to(output_it,
+                   "{}auto game_setting_category_descriptors() -> "
+                   "TConstArrayView<FGameSettingCategoryDescriptor>;\n",
+                   export_prefix(context, module));
+    std::format_to(
+        output_it,
+        "{}auto game_setting_descriptors() -> TConstArrayView<FGameSettingDescriptor>;\n",
+        export_prefix(context, module));
+    std::format_to(
+        output_it,
+        "{}auto game_setting_descriptor(EGameSetting id) -> FGameSettingDescriptor const&;\n",
+        export_prefix(context, module));
+    std::format_to(
+        output_it,
+        "{}auto game_setting_value({} const& state, EGameSetting id) -> FGameSettingValue;\n",
+        export_prefix(context, module),
+        context.text(context.declarations.settings_modules
+                         .state_name[context.declarations.settings_modules.index(module)]));
+    std::format_to(
+        output_it,
+        "{}auto set_game_setting_value({}& state, EGameSetting id, FGameSettingValue const& value) "
+        "-> bool;\n\n",
+        export_prefix(context, module),
+        context.text(context.declarations.settings_modules
+                         .state_name[context.declarations.settings_modules.index(module)]));
 
     NodeListBuilder result{ir};
-    result.add(ir.raw(output.str(), dependencies), 2)
-        .add(settings_api(context, module, setting_types));
+    result.add(ir.raw(output, dependencies), 2).add(settings_api(context, module, setting_types));
     auto nodes{result.build()};
     if (auto const namespace_name{
             context.declarations.module_settings_store
@@ -425,25 +438,25 @@ auto build_source(LoweringContext& context,
     auto& ir{context.ir};
     auto const settings{context.declarations.settings_modules
                             .settings[context.declarations.settings_modules.index(module)]};
-    std::ostringstream output;
-    output << namespace_open(context, settings);
-    output << "namespace {\n\nstatic TArray<FGameSettingCategoryDescriptor> const "
+    std::string output{};
+    auto output_it{std::back_inserter(output)};
+    std::format_to(output_it, "{}", namespace_open(context, settings));
+    output += "namespace {\n\nstatic TArray<FGameSettingCategoryDescriptor> const "
               "category_descriptors{\n";
     for (auto const category_id : context.declarations.items(
              context.declarations.settings_modules
                  .categories[context.declarations.settings_modules.index(module)])) {
         auto const category{category_id};
-        output << "    {EGameSettingCategory::"
-               << title_case(context.text(
-                      context.declarations.setting_categories
-                          .name[context.declarations.setting_categories.index(category)]))
-               << ", FText::FromString(TEXT(\""
-               << escaped(context.text(
-                      context.declarations.setting_categories
-                          .label[context.declarations.setting_categories.index(category)]))
-               << "\"))},\n";
+        std::format_to(output_it,
+                       "    {{EGameSettingCategory::{}, FText::FromString(TEXT(\"{}\"))}},\n",
+                       title_case(context.text(
+                           context.declarations.setting_categories
+                               .name[context.declarations.setting_categories.index(category)])),
+                       escaped(context.text(
+                           context.declarations.setting_categories
+                               .label[context.declarations.setting_categories.index(category)])));
     }
-    output << "};\n\nstatic TArray<FGameSettingDescriptor> const descriptors{\n";
+    output += "};\n\nstatic TArray<FGameSettingDescriptor> const descriptors{\n";
     for (auto const setting_id : context.declarations.items(
              context.declarations.settings_modules
                  .settings_list[context.declarations.settings_modules.index(module)])) {
@@ -465,116 +478,109 @@ auto build_source(LoweringContext& context,
                       context.declarations.type_refs.name[context.declarations.type_refs.index(
                           context.declarations.settings
                               .value_type[context.declarations.settings.index(setting)])]))};
-        output
-            << "    {EGameSetting::"
-            << title_case(context.text(context.declarations.settings
-                                           .name[context.declarations.settings.index(setting)]))
-            << ", EGameSettingCategory::"
-            << title_case(context.text(context.declarations.settings
-                                           .category[context.declarations.settings.index(setting)]))
-            << ", EGameSettingValueType::" << type_name << ", EGameSettingBackend::"
-            << title_case(context.text(context.declarations.settings
-                                           .backend[context.declarations.settings.index(setting)]))
-            << ", ESettingApplyMode::"
-            << enum_name(context.declarations.settings
-                             .apply_mode[context.declarations.settings.index(setting)])
-            << ", EGameSettingDevice::"
-            << enum_name(context.declarations.settings
-                             .device[context.declarations.settings.index(setting)])
-            << ", ESettingControlKind::"
-            << enum_name(context.declarations.setting_controls
-                             .kind[context.declarations.setting_controls.index(control)])
-            << ", EGameSettingOptionProvider::"
-            << (context.declarations.setting_controls
-                        .options_provider[context.declarations.setting_controls.index(control)]
-                        .has_value()
-                    ? title_case(
-                          context.text(*context.declarations.setting_controls.options_provider
-                                            [context.declarations.setting_controls.index(control)]))
-                    : "None")
-            << ", EGameSettingAvailabilityProvider::"
-            << (context.declarations.setting_controls
-                        .availability_provider[context.declarations.setting_controls.index(control)]
-                        .has_value()
-                    ? title_case(
-                          context.text(*context.declarations.setting_controls.availability_provider
-                                            [context.declarations.setting_controls.index(control)]))
-                    : "Always")
-            << ", TEXT(\""
-            << escaped(context.text(context.declarations.settings
-                                        .name[context.declarations.settings.index(setting)]))
-            << "\"), FText::FromString(TEXT(\""
-            << escaped(context.text(context.declarations.settings
-                                        .label[context.declarations.settings.index(setting)]))
-            << "\")), FText::FromString(TEXT(\""
-            << escaped(
-                   context
-                       .optional_text(context.declarations.settings
-                                          .tooltip[context.declarations.settings.index(setting)])
-                       .value_or(""))
-            << "\")), "
-            << context.declarations.setting_controls
-                   .minimum[context.declarations.setting_controls.index(control)]
-                   .value_or(0.0)
-            << ", "
-            << context.declarations.setting_controls
-                   .maximum[context.declarations.setting_controls.index(control)]
-                   .value_or(0.0)
-            << ", "
-            << context.declarations.setting_controls
-                   .step[context.declarations.setting_controls.index(control)]
-                   .value_or(0.0)
-            << ", TEXT(\""
-            << escaped(
-                   context
-                       .optional_text(
-                           context.declarations.setting_controls
-                               .custom_row[context.declarations.setting_controls.index(control)])
-                       .value_or(""))
-            << "\")},\n";
+        std::format_to(
+            output_it,
+            "    {{EGameSetting::{}, EGameSettingCategory::{}, EGameSettingValueType::{}, "
+            "EGameSettingBackend::{}, ESettingApplyMode::{}, EGameSettingDevice::{}, "
+            "ESettingControlKind::{}, EGameSettingOptionProvider::{}, "
+            "EGameSettingAvailabilityProvider::{}, "
+            "TEXT(\"{}\"), FText::FromString(TEXT(\"{}\")), FText::FromString(TEXT(\"{}\")), "
+            "{:.6g}, "
+            "{:.6g}, {:.6g}, TEXT(\"{}\")}},\n",
+            title_case(context.text(
+                context.declarations.settings.name[context.declarations.settings.index(setting)])),
+            title_case(context.text(context.declarations.settings
+                                        .category[context.declarations.settings.index(setting)])),
+            type_name,
+            title_case(context.text(context.declarations.settings
+                                        .backend[context.declarations.settings.index(setting)])),
+            enum_name(context.declarations.settings
+                          .apply_mode[context.declarations.settings.index(setting)]),
+            enum_name(
+                context.declarations.settings.device[context.declarations.settings.index(setting)]),
+            enum_name(context.declarations.setting_controls
+                          .kind[context.declarations.setting_controls.index(control)]),
+            (context.declarations.setting_controls
+                     .options_provider[context.declarations.setting_controls.index(control)]
+                     .has_value()
+                 ? title_case(
+                       context.text(*context.declarations.setting_controls.options_provider
+                                         [context.declarations.setting_controls.index(control)]))
+                 : "None"),
+            (context.declarations.setting_controls
+                     .availability_provider[context.declarations.setting_controls.index(control)]
+                     .has_value()
+                 ? title_case(
+                       context.text(*context.declarations.setting_controls.availability_provider
+                                         [context.declarations.setting_controls.index(control)]))
+                 : "Always"),
+            escaped(context.text(
+                context.declarations.settings.name[context.declarations.settings.index(setting)])),
+            escaped(context.text(
+                context.declarations.settings.label[context.declarations.settings.index(setting)])),
+            escaped(context
+                        .optional_text(context.declarations.settings
+                                           .tooltip[context.declarations.settings.index(setting)])
+                        .value_or("")),
+            context.declarations.setting_controls
+                .minimum[context.declarations.setting_controls.index(control)]
+                .value_or(0.0),
+            context.declarations.setting_controls
+                .maximum[context.declarations.setting_controls.index(control)]
+                .value_or(0.0),
+            context.declarations.setting_controls
+                .step[context.declarations.setting_controls.index(control)]
+                .value_or(0.0),
+            escaped(context
+                        .optional_text(
+                            context.declarations.setting_controls
+                                .custom_row[context.declarations.setting_controls.index(control)])
+                        .value_or("")));
     }
-    output << "};\n\n} // namespace\n\n";
-    output << "auto game_setting_category_descriptors() -> "
+    output += "};\n\n} // namespace\n\n";
+    output += "auto game_setting_category_descriptors() -> "
               "TConstArrayView<FGameSettingCategoryDescriptor> {\n"
-           << "    return category_descriptors;\n}\n\n";
-    output << "auto game_setting_descriptors() -> TConstArrayView<FGameSettingDescriptor> {\n"
-           << "    return descriptors;\n}\n\n"
-           << "auto game_setting_descriptor(EGameSetting const id) -> FGameSettingDescriptor "
-              "const& {\n"
-           << "    return descriptors[static_cast<int32>(id)];\n}\n\n";
+              "    return category_descriptors;\n}\n\n";
+    output +=
+        "auto game_setting_descriptors() -> TConstArrayView<FGameSettingDescriptor> {\n    return "
+        "descriptors;\n}\n\nauto game_setting_descriptor(EGameSetting const id) -> "
+        "FGameSettingDescriptor const& {\n    return descriptors[static_cast<int32>(id)];\n}\n\n";
 
-    output << "auto game_setting_value("
-           << context.text(context.declarations.settings_modules
-                               .state_name[context.declarations.settings_modules.index(module)])
-           << " const& state, EGameSetting const id) -> FGameSettingValue {\n"
-           << "    switch (id) {\n";
+    std::format_to(
+        output_it,
+        "auto game_setting_value({} const& state, EGameSetting const id) -> FGameSettingValue {{\n "
+        "   switch (id) {{\n",
+        context.text(context.declarations.settings_modules
+                         .state_name[context.declarations.settings_modules.index(module)]));
     for (auto const setting_id : context.declarations.items(
              context.declarations.settings_modules
                  .settings_list[context.declarations.settings_modules.index(module)])) {
         auto const setting{setting_id};
 
-        output << "    case EGameSetting::"
-               << title_case(context.text(context.declarations.settings
-                                              .name[context.declarations.settings.index(setting)]))
-               << ": return FGameSettingValue{state."
-               << context.text(context.declarations.settings
-                                   .name[context.declarations.settings.index(setting)])
-               << "};\n";
+        std::format_to(
+            output_it,
+            "    case EGameSetting::{}: return FGameSettingValue{{state.{}}};\n",
+            title_case(context.text(
+                context.declarations.settings.name[context.declarations.settings.index(setting)])),
+            context.text(
+                context.declarations.settings.name[context.declarations.settings.index(setting)]));
     }
-    output
-        << "    }\n    checkNoEntry();\n    return FGameSettingValue{state."
-        << context.text(context.declarations.settings.name[context.declarations.settings.index(
-               context.declarations
-                   .items(context.declarations.settings_modules
-                              .settings_list[context.declarations.settings_modules.index(module)])
-                   .front())])
-        << "};\n}\n\n";
+    std::format_to(
+        output_it,
+        "    }}\n    checkNoEntry();\n    return FGameSettingValue{{state.{}}};\n}}\n\n",
+        context.text(context.declarations.settings.name[context.declarations.settings.index(
+            context.declarations
+                .items(context.declarations.settings_modules
+                           .settings_list[context.declarations.settings_modules.index(module)])
+                .front())]));
 
-    output << "auto set_game_setting_value("
-           << context.text(context.declarations.settings_modules
-                               .state_name[context.declarations.settings_modules.index(module)])
-           << "& state, EGameSetting const id, FGameSettingValue const& value) -> bool {\n"
-           << "    switch (id) {\n";
+    std::format_to(
+        output_it,
+        "auto set_game_setting_value({}& state, EGameSetting const id, FGameSettingValue const& "
+        "value) "
+        "-> bool {{\n    switch (id) {{\n",
+        context.text(context.declarations.settings_modules
+                         .state_name[context.declarations.settings_modules.index(module)]));
     auto const setting_count{context.declarations.settings_modules
                                  .settings_list[context.declarations.settings_modules.index(module)]
                                  .size()};
@@ -584,22 +590,22 @@ auto build_source(LoweringContext& context,
                 .settings_list[context.declarations.settings_modules.index(module)])[index]};
 
         auto const type{ir.types.spelling(setting_types[index])};
-        output << "    case EGameSetting::"
-               << title_case(context.text(context.declarations.settings
-                                              .name[context.declarations.settings.index(setting)]))
-               << ": {\n"
-               << "        auto const* typed_value{std::get_if<" << type << ">(&value)};\n"
-               << "        if (typed_value == nullptr) { return false; }\n"
-               << "        state."
-               << context.text(context.declarations.settings
-                                   .name[context.declarations.settings.index(setting)])
-               << " = *typed_value;\n"
-               << "        return true;\n"
-               << "    }\n";
+        std::format_to(
+            output_it,
+            "    case EGameSetting::{}: {{\n        auto const* "
+            "typed_value{{std::get_if<{}>(&value)}};\n   "
+            "     if (typed_value == nullptr) {{ return false; }}\n        state.{} = "
+            "*typed_value;\n       "
+            " return true;\n    }}\n",
+            title_case(context.text(
+                context.declarations.settings.name[context.declarations.settings.index(setting)])),
+            type,
+            context.text(
+                context.declarations.settings.name[context.declarations.settings.index(setting)]));
     }
-    output << "    }\n    return false;\n}\n";
-    output << namespace_close(context, settings);
-    return output.str();
+    output += "    }\n    return false;\n}\n";
+    std::format_to(output_it, "{}", namespace_close(context, settings));
+    return output;
 }
 
 } // namespace

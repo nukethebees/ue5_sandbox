@@ -23,7 +23,6 @@
 #include <cstddef>
 #include <filesystem>
 #include <optional>
-#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -33,15 +32,15 @@
 namespace lispb::codegen::detail {
 
 auto join(std::vector<std::string> const& values, std::string_view separator) -> std::string {
-    std::ostringstream output;
+    std::string output;
     auto const count{values.size()};
     for (std::size_t index{0}; index < count; ++index) {
         if (index != 0) {
-            output << separator;
+            output.append(separator);
         }
-        output << values[index];
+        output.append(values[index]);
     }
-    return output.str();
+    return output;
 }
 
 auto join_lines(std::vector<std::string> const& values) -> std::string {

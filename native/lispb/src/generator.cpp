@@ -84,6 +84,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <format>
 #include <iterator>
 #include <limits>
 #include <map>
@@ -91,7 +92,6 @@
 #include <ranges>
 #include <set>
 #include <span>
-#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -436,11 +436,13 @@ auto lower_scalar(detail::LoweringContext& context, DeclarationHandle scalar)
                                                             ir.types.dependencies(cpp_type).end()}};
             dependencies.push_back(ir.types.dependency("std::string_view", "string_view"));
 
-            std::ostringstream lookup;
-            lookup << "[[nodiscard]] constexpr auto " << scalar_name << "_name("
-                   << std::string{ir.types.spelling(cpp_type)}
-                   << " const value) noexcept -> std::string_view {\n"
-                      "    switch (value) {\n";
+            std::string lookup;
+            auto const out{std::back_inserter(lookup)};
+            std::format_to(out,
+                           "[[nodiscard]] constexpr auto {}_name({} const value) noexcept -> "
+                           "std::string_view {{\n    switch (value) {{\n",
+                           scalar_name,
+                           ir.types.spelling(cpp_type));
             for (auto const code_id : context.declarations.items(
                      context.declarations.integer_scalars
                          .named_codes[context.declarations.integer_scalars.index(scalar)])) {
@@ -448,18 +450,17 @@ auto lower_scalar(detail::LoweringContext& context, DeclarationHandle scalar)
                 auto const code_name{
                     context.text(context.declarations.packed_named_codes
                                      .name[context.declarations.packed_named_codes.index(code)])};
-                lookup << "        case " << scalar_name << '_' << code_name << ": {\n"
-                       << "            return "
-                       << ir.render(ir.string_literal(string_id(
-                              context.declarations.packed_named_codes
-                                  .name[context.declarations.packed_named_codes.index(code)])))
-                       << ";\n"
-                       << "        }\n";
+                std::format_to(
+                    out,
+                    "        case {}_{}: {{\n            return {};\n        }}\n",
+                    scalar_name,
+                    code_name,
+                    ir.render(ir.string_literal(string_id(
+                        context.declarations.packed_named_codes
+                            .name[context.declarations.packed_named_codes.index(code)]))));
             }
-            lookup << "    }\n\n"
-                      "    return {};\n"
-                      "}";
-            declarations.add(ir.raw(lookup.str(), std::move(dependencies)), 2);
+            lookup += "    }\n\n    return {};\n}";
+            declarations.add(ir.raw(lookup, std::move(dependencies)), 2);
         }
     }
 

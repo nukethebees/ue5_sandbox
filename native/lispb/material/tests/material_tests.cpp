@@ -28,11 +28,11 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <ranges>
 #include <span>
-#include <sstream>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -78,9 +78,7 @@ auto resolve(void const*, std::string_view const path) -> std::optional<std::str
 
 auto read(std::filesystem::path const& path) -> std::string {
     std::ifstream stream{path};
-    std::ostringstream contents;
-    contents << stream.rdbuf();
-    return contents.str();
+    return std::string{std::istreambuf_iterator<char>{stream}, std::istreambuf_iterator<char>{}};
 }
 
 TEST(MaterialFrontend, LowersUiGlowGoldenSourceWithStableHandles) {

@@ -25,10 +25,11 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <format>
+#include <iterator>
 #include <map>
 #include <optional>
 #include <span>
-#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -39,32 +40,39 @@ namespace lispb::codegen::detail {
 namespace {
 
 void render_parameters(LoweringContext& context,
-                       std::ostringstream& out,
+                       std::string& out,
                        std::span<RowParameterId const> const parameters,
                        bool const leading_comma = true) {
+    auto out_it{std::back_inserter(out)};
     auto const& parameters_store{context.ir.lowering.row_parameters};
     auto separator{leading_comma ? ", " : ""};
     for (auto const parameter : parameters) {
-        out << separator
-            << context.ir.types.spelling(parameters_store.type[parameters_store.index(parameter)])
-            << " const new_"
-            << context.text(parameters_store.name[parameters_store.index(parameter)]);
+        std::format_to(
+            out_it,
+            "{}{} const new_{}",
+            separator,
+            context.ir.types.spelling(parameters_store.type[parameters_store.index(parameter)]),
+            context.text(parameters_store.name[parameters_store.index(parameter)]));
         separator = ", ";
     }
 }
 
 void render_arguments(LoweringContext& context,
-                      std::ostringstream& out,
+                      std::string& out,
                       std::span<RowParameterId const> const parameters) {
+    auto out_it{std::back_inserter(out)};
     auto const& parameters_store{context.ir.lowering.row_parameters};
     for (auto const parameter : parameters) {
-        out << ", new_" << context.text(parameters_store.name[parameters_store.index(parameter)]);
+        std::format_to(out_it,
+                       ", new_{}",
+                       context.text(parameters_store.name[parameters_store.index(parameter)]));
     }
 }
 
 void render_vector_storage_operations(LoweringContext& context,
-                                      std::ostringstream& out,
+                                      std::string& out,
                                       DeclarationHandle schema) {
+    auto out_it{std::back_inserter(out)};
     for (auto const operation : context.declarations.items(
              context.declarations.soas.operations[context.declarations.soas.index(schema)])) {
         std::string name;
@@ -99,11 +107,14 @@ void render_vector_storage_operations(LoweringContext& context,
             parameters = "size_type const count";
             arguments = ", count";
         }
-        out << "void " << name << "(" << parameters
-            << ") { ioj::native_soa::vector_storage_ops::" << name << "(*this" << arguments
-            << "); }\n";
+        std::format_to(out_it,
+                       "void {}({}) {{ ioj::native_soa::vector_storage_ops::{}(*this{}); }}\n",
+                       name,
+                       parameters,
+                       name,
+                       arguments);
     }
-    out << "void apply_permutation(std::span<std::int32_t> const indices) { "
+    out += "void apply_permutation(std::span<std::int32_t> const indices) { "
            "ioj::native_soa::vector_storage_ops::apply_permutation(*this, indices); }\n";
 }
 
@@ -228,13 +239,14 @@ auto lower_native_soa(LoweringContext& context,
                             ir.types.dependencies(*equivalent_type).begin(),
                             ir.types.dependencies(*equivalent_type).end());
     }
-    std::ostringstream out;
+    std::string out{};
+    auto out_it{std::back_inserter(out)};
     NodeListBuilder header{ir};
     NodeListBuilder source{ir};
     Nodes record_members;
     auto building_record{false};
     auto flush = [&] {
-        auto const content{out.str()};
+        auto const content{out};
         if (!content.empty()) {
             auto const node{ir.raw(content, dependencies)};
             if (building_record) {
@@ -242,7 +254,7 @@ auto lower_native_soa(LoweringContext& context,
             } else {
                 header.add(node);
             }
-            out.str("");
+            out.clear();
         }
     };
     auto begin_record = [&] {
@@ -294,8 +306,10 @@ auto lower_native_soa(LoweringContext& context,
     };
 
     if (vector3f_schema) {
-        out << "using " << view << " = ioj::Vector3fSoAView;\n"
-            << "using " << const_view << " = ioj::Vector3fSoAConstView;\n";
+        std::format_to(out_it,
+                       "using {} = ioj::Vector3fSoAView;\nusing {} = ioj::Vector3fSoAConstView;\n",
+                       view,
+                       const_view);
     } else {
         header.add(ir.forward_declaration(ir.strings.intern(view))).new_lines();
         header.add(ir.forward_declaration(ir.strings.intern(const_view))).new_lines();
@@ -344,72 +358,79 @@ auto lower_native_soa(LoweringContext& context,
         for (bool const immutable : {true, false}) {
             auto const view_type{immutable ? const_view : view};
             begin_record();
-            out << "using View = " << view << ";\n"
-                << "using ConstView = " << const_view << ";\n"
-                << "using size_type = std::uint32_t;\n";
+            std::format_to(
+                out_it,
+                "using View = {};\nusing ConstView = {};\nusing size_type = std::uint32_t;\n",
+                view,
+                const_view);
             if (equivalent_type.has_value()) {
-                out << "using equivalent_type = "
-                    << native_spelling(std::string{ir.types.spelling(*equivalent_type)}) << ";\n"
-                    << "auto operator[](size_type const index) const -> equivalent_type { return ";
+                std::format_to(out_it,
+                               "using equivalent_type = {};\nauto operator[](size_type const "
+                               "index) const -> equivalent_type {{ return ",
+                               native_spelling(std::string{ir.types.spelling(*equivalent_type)}));
                 if (equivalent_constructor.value == 0) {
-                    out << "{";
+                    out += "{";
                 } else {
-                    out << ir.strings.view(equivalent_constructor) << "(";
+                    std::format_to(out_it, "{}(", ir.strings.view(equivalent_constructor));
                 }
                 for (std::size_t index{}; index < layout_members.size(); ++index) {
                     if (index > 0) {
-                        out << ", ";
+                        out += ", ";
                     }
-                    out << context.text(
-                               context.declarations.soa_members
-                                   .name[context.declarations.soa_members.index(
-                                       fixed_members
-                                           .source[fixed_members.index(layout_members[index])])])
-                        << "[static_cast<std::size_t>(index)]";
+                    std::format_to(out_it,
+                                   "{}[static_cast<std::size_t>(index)]",
+                                   context.text(context.declarations.soa_members
+                                                    .name[context.declarations.soa_members.index(
+                                                        fixed_members.source[fixed_members.index(
+                                                            layout_members[index])])]));
                 }
-                out << (equivalent_constructor.value == 0 ? "}; }\n" : "); }\n");
+                std::format_to(
+                    out_it, "{}", (equivalent_constructor.value == 0 ? "}; }\n" : "); }\n"));
             }
             for (auto const member : layout_members) {
                 auto const resolved{fixed_members.member[fixed_members.index(member)]};
                 if (context.declarations.soa_members.kind[context.declarations.soa_members.index(
                         fixed_members.source[fixed_members.index(member)])] ==
                     SoaMemberKind::array) {
-                    out << "std::span<"
-                        << native_spelling(std::string{ir.types.spelling(
-                               resolved_members.element_type[resolved_members.index(resolved)])})
-                        << (immutable ? " const" : "") << "> "
-                        << context.text(context.declarations.soa_members
-                                            .name[context.declarations.soa_members.index(
-                                                fixed_members.source[fixed_members.index(member)])])
-                        << ";\n";
+                    std::format_to(
+                        out_it,
+                        "std::span<{}{}> {};\n",
+                        native_spelling(std::string{ir.types.spelling(
+                            resolved_members.element_type[resolved_members.index(resolved)])}),
+                        (immutable ? " const" : ""),
+                        context.text(context.declarations.soa_members
+                                         .name[context.declarations.soa_members.index(
+                                             fixed_members.source[fixed_members.index(member)])]));
                 } else {
                     auto const& child{
                         schemas.at(*context.declarations.soa_members
                                         .nested_schema[context.declarations.soa_members.index(
                                             fixed_members.source[fixed_members.index(member)])])};
-                    out << (immutable
-                                ? context
-                                      .optional_text(context.declarations.soas.const_view_name
-                                                         [context.declarations.soas.index(child)])
-                                      .value_or(
-                                          context.text(
-                                              context.declarations.soas
-                                                  .name[context.declarations.soas.index(child)]) +
-                                          "ConstView")
-                                : context
-                                      .optional_text(
-                                          context.declarations.soas
-                                              .view_name[context.declarations.soas.index(child)])
-                                      .value_or(
-                                          context.text(
-                                              context.declarations.soas
-                                                  .name[context.declarations.soas.index(child)]) +
-                                          "View"))
-                        << " "
-                        << context.text(context.declarations.soa_members
-                                            .name[context.declarations.soa_members.index(
-                                                fixed_members.source[fixed_members.index(member)])])
-                        << ";\n";
+                    std::format_to(
+                        out_it,
+                        "{} {};\n",
+                        (immutable
+                             ? context
+                                   .optional_text(
+                                       context.declarations.soas
+                                           .const_view_name[context.declarations.soas.index(child)])
+                                   .value_or(
+                                       context.text(
+                                           context.declarations.soas
+                                               .name[context.declarations.soas.index(child)]) +
+                                       "ConstView")
+                             : context
+                                   .optional_text(
+                                       context.declarations.soas
+                                           .view_name[context.declarations.soas.index(child)])
+                                   .value_or(
+                                       context.text(
+                                           context.declarations.soas
+                                               .name[context.declarations.soas.index(child)]) +
+                                       "View")),
+                        context.text(context.declarations.soa_members
+                                         .name[context.declarations.soa_members.index(
+                                             fixed_members.source[fixed_members.index(member)])]));
                 }
             }
 
@@ -420,70 +441,80 @@ auto lower_native_soa(LoweringContext& context,
                 nested_vector3f(first_component)
                     ? context.text(first_component) + ".num()"
                     : context.path_text(leaves.path[leaves.index(first_leaf)], ".") + ".size()"};
-            out << "auto num() const noexcept -> size_type { return static_cast<size_type>("
-                << first_count << "); }\n"
-                << "auto is_empty() const noexcept -> bool { return num() == 0; }\n";
+            std::format_to(out_it,
+                           "auto num() const noexcept -> size_type {{ return "
+                           "static_cast<size_type>({}); }}\nauto "
+                           "is_empty() const noexcept -> bool {{ return num() == 0; }}\n",
+                           first_count);
             Nodes column_calls;
             for (auto const leaf : layout_leaves) {
                 column_calls.push_back(ir.expression_statement(
                     ir.call(ir.named("fn"), {column_expression(leaf, true)})));
             }
             each_column(column_calls, true);
-            out << "void validate_array_sizes() const { "
-                   "ioj::native_soa::vector_storage_ops::validate_array_sizes(*this); }\n"
-                << "auto slice(size_type const offset, size_type const count) const -> "
-                << view_type
-                << " { assert(offset <= num() && "
-                   "count "
-                   "<= num() - offset); return {\n";
+            std::format_to(out_it,
+                           "void validate_array_sizes() const {{ "
+                           "ioj::native_soa::vector_storage_ops::validate_array_sizes(*this); "
+                           "}}\nauto slice(size_type const offset, size_type const count) const -> "
+                           "{} {{ assert(offset <= num() && count <= num() - offset); return {{\n",
+                           view_type);
             for (auto const member : layout_members) {
-                out << context.text(context.declarations.soa_members
-                                        .name[context.declarations.soa_members.index(
-                                            fixed_members.source[fixed_members.index(member)])])
-                    << (context.declarations.soa_members
-                                    .kind[context.declarations.soa_members.index(
-                                        fixed_members.source[fixed_members.index(member)])] ==
-                                SoaMemberKind::array
-                            ? ".subspan(static_cast<std::size_t>(offset), "
-                              "static_cast<std::size_t>(count))"
-                            : ".slice(offset, count)")
-                    << ",\n";
+                std::format_to(
+                    out_it,
+                    "{}{},\n",
+                    context.text(context.declarations.soa_members
+                                     .name[context.declarations.soa_members.index(
+                                         fixed_members.source[fixed_members.index(member)])]),
+                    (context.declarations.soa_members.kind[context.declarations.soa_members.index(
+                         fixed_members.source[fixed_members.index(member)])] == SoaMemberKind::array
+                         ? ".subspan(static_cast<std::size_t>(offset), "
+                           "static_cast<std::size_t>(count))"
+                         : ".slice(offset, count)"));
             }
-            out << "}; }\n"
-                << "auto get_view() const -> " << view_type << " { return *this; }\n"
-                << "auto get_view(size_type const offset, size_type const count) const -> "
-                << view_type << " { return slice(offset, count); }\n"
-                << "auto get_const_view() const -> ConstView { return {\n";
+            std::format_to(out_it,
+                           "}}; }}\nauto get_view() const -> {} {{ return *this; }}\nauto "
+                           "get_view(size_type const offset, "
+                           "size_type const count) const -> {} {{ return slice(offset, count); "
+                           "}}\nauto get_const_view() "
+                           "const -> ConstView {{ return {{\n",
+                           view_type,
+                           view_type);
             for (auto const member : layout_members) {
-                out << context.text(
-                    context.declarations.soa_members.name[context.declarations.soa_members.index(
-                        fixed_members.source[fixed_members.index(member)])]);
+                std::format_to(
+                    out_it,
+                    "{}",
+                    context.text(context.declarations.soa_members
+                                     .name[context.declarations.soa_members.index(
+                                         fixed_members.source[fixed_members.index(member)])]));
                 if (context.declarations.soa_members.kind[context.declarations.soa_members.index(
                         fixed_members.source[fixed_members.index(member)])] ==
                     SoaMemberKind::nested) {
-                    out << ".get_const_view()";
+                    out += ".get_const_view()";
                 }
-                out << ",\n";
+                out += ",\n";
             }
-            out << "}; }\n"
-                << "auto get_const_view(size_type const offset, size_type const count) const -> "
-                   "ConstView { return get_const_view().slice(offset, count); }\n"
-                << "auto left(size_type const count) const -> " << view_type
-                << " { return slice(0, count); }\n"
-                << "auto right(size_type const count) const -> " << view_type
-                << " { assert(count <= num()); return slice(num() - count, "
-                   "count); }\n";
+            std::format_to(out_it,
+                           "}}; }}\nauto get_const_view(size_type const offset, size_type const "
+                           "count) const -> ConstView "
+                           "{{ return get_const_view().slice(offset, count); }}\nauto "
+                           "left(size_type const count) const -> "
+                           "{} {{ return slice(0, count); }}\nauto right(size_type const count) "
+                           "const -> {} {{ "
+                           "assert(count <= num()); return slice(num() - count, count); }}\n",
+                           view_type,
+                           view_type);
 
             if (!immutable) {
-                out << "void set(size_type const index";
+                out += "void set(size_type const index";
                 render_parameters(context, out, row_parameters);
-                out << ") const { assert(index < num());\n";
+                out += ") const { assert(index < num());\n";
                 for (auto const parameter : row_parameters) {
                     if (parameters.nested[parameters.index(parameter)]) {
-                        out << context.path_text(parameters.column[parameters.index(parameter)],
-                                                 ".")
-                            << ".set(index, new_"
-                            << context.text(parameters.name[parameters.index(parameter)]) << ");\n";
+                        std::format_to(
+                            out_it,
+                            "{}.set(index, new_{});\n",
+                            context.path_text(parameters.column[parameters.index(parameter)], "."),
+                            context.text(parameters.name[parameters.index(parameter)]));
                     } else {
                         auto column{
                             context.path_text(parameters.column[parameters.index(parameter)], ".")};
@@ -492,19 +523,23 @@ auto lower_native_soa(LoweringContext& context,
                                     .front())) {
                             column += "()";
                         }
-                        out << column << "[static_cast<std::size_t>(index)] = new_"
-                            << context.text(parameters.name[parameters.index(parameter)]) << ";\n";
+                        std::format_to(out_it,
+                                       "{}[static_cast<std::size_t>(index)] = new_{};\n",
+                                       column,
+                                       context.text(parameters.name[parameters.index(parameter)]));
                     }
                 }
-                out << "}\n";
+                out += "}\n";
                 if (equivalent_type.has_value() && allow_equivalent_type) {
-                    out << "void set(size_type const index, equivalent_type const value) const { "
+                    out += "void set(size_type const index, equivalent_type const value) const { "
                            "set(index";
                     for (std::size_t index{}; index < layout_members.size(); ++index) {
-                        out << ", value." << equivalent_members[index]
-                            << (equivalent_accessors ? "()" : "");
+                        std::format_to(out_it,
+                                       ", value.{}{}",
+                                       equivalent_members[index],
+                                       (equivalent_accessors ? "()" : ""));
                     }
-                    out << "); }\n";
+                    out += "); }\n";
                 }
             }
             api(immutable ? SoaReceiver::const_view : SoaReceiver::mutable_view, view_type);
@@ -513,14 +548,16 @@ auto lower_native_soa(LoweringContext& context,
     }
 
     begin_record();
-    out << "using View = " << view << ";\n"
-        << "using ConstView = " << const_view << ";\n"
-        << "using size_type = std::uint32_t;\n";
+    std::format_to(out_it,
+                   "using View = {};\nusing ConstView = {};\nusing size_type = std::uint32_t;\n",
+                   view,
+                   const_view);
     if (equivalent_type.has_value()) {
-        out << "using equivalent_type = "
-            << native_spelling(std::string{ir.types.spelling(*equivalent_type)}) << ";\n"
-            << "auto operator[](size_type const index) const -> equivalent_type { return "
-               "get_const_view()[index]; }\n";
+        std::format_to(out_it,
+                       "using equivalent_type = {};\nauto operator[](size_type const index) const "
+                       "-> equivalent_type "
+                       "{{ return get_const_view()[index]; }}\n",
+                       native_spelling(std::string{ir.types.spelling(*equivalent_type)}));
     }
     for (auto const member : layout_members) {
         auto const type{resolved_members.element_type[resolved_members.index(
@@ -528,22 +565,24 @@ auto lower_native_soa(LoweringContext& context,
         dependencies.insert(dependencies.end(),
                             ir.types.dependencies(type).begin(),
                             ir.types.dependencies(type).end());
-        out << (context.declarations.soa_members.kind[context.declarations.soa_members.index(
-                    fixed_members.source[fixed_members.index(member)])] == SoaMemberKind::array
-                    ? "ioj::native_soa::Vector<" +
-                          native_spelling(std::string{ir.types.spelling(type)}) + ">"
-                    : std::string{ir.types.spelling(type)})
-            << " "
-            << context.text(
-                   context.declarations.soa_members.name[context.declarations.soa_members.index(
-                       fixed_members.source[fixed_members.index(member)])])
-            << ";\n";
+        std::format_to(
+            out_it,
+            "{} {};\n",
+            (context.declarations.soa_members.kind[context.declarations.soa_members.index(
+                 fixed_members.source[fixed_members.index(member)])] == SoaMemberKind::array
+                 ? "ioj::native_soa::Vector<" +
+                       native_spelling(std::string{ir.types.spelling(type)}) + ">"
+                 : std::string{ir.types.spelling(type)}),
+            context.text(
+                context.declarations.soa_members.name[context.declarations.soa_members.index(
+                    fixed_members.source[fixed_members.index(member)])]));
     }
 
-    out << "auto num() const noexcept -> size_type { return static_cast<size_type>("
-        << context.path_text(leaves.path[leaves.index(layout_leaves.front())], ".")
-        << ".size()); }\n"
-        << "auto is_empty() const noexcept -> bool { return num() == 0; }\n";
+    std::format_to(out_it,
+                   "auto num() const noexcept -> size_type {{ return "
+                   "static_cast<size_type>({}.size()); }}\nauto "
+                   "is_empty() const noexcept -> bool {{ return num() == 0; }}\n",
+                   context.path_text(leaves.path[leaves.index(layout_leaves.front())], "."));
     Nodes column_calls;
     for (auto const leaf : layout_leaves) {
         column_calls.push_back(
@@ -551,7 +590,7 @@ auto lower_native_soa(LoweringContext& context,
     }
     each_column(column_calls, false);
     each_column(column_calls, true);
-    out << "void validate_array_sizes() const { get_const_view().validate_array_sizes(); }\n";
+    out += "void validate_array_sizes() const { get_const_view().validate_array_sizes(); }\n";
 
     render_vector_storage_operations(context, out, schema);
     flush();
@@ -580,38 +619,44 @@ auto lower_native_soa(LoweringContext& context,
     record_members.push_back(ir.lines(1));
 
     {
-        out << "void set(size_type const index";
+        out += "void set(size_type const index";
         render_parameters(context, out, row_parameters);
-        out << ") { get_view().set(index";
+        out += ") { get_view().set(index";
         render_arguments(context, out, row_parameters);
-        out << "); }\n"
-            << "auto add(";
+        out += "); }\nauto add(";
         render_parameters(context, out, row_parameters, false);
-        out << ") -> size_type { return ioj::native_soa::vector_storage_ops::append_rows("
-               "*this, 1, [&] {\n";
+        out += ") -> size_type { return ioj::native_soa::vector_storage_ops::append_rows(*this, 1, "
+               "[&] {\n";
         for (auto const parameter : row_parameters) {
             if (parameters.nested[parameters.index(parameter)]) {
-                out << context.path_text(parameters.column[parameters.index(parameter)], ".")
-                    << ".add(new_" << context.text(parameters.name[parameters.index(parameter)])
-                    << ");\n";
+                std::format_to(
+                    out_it,
+                    "{}.add(new_{});\n",
+                    context.path_text(parameters.column[parameters.index(parameter)], "."),
+                    context.text(parameters.name[parameters.index(parameter)]));
             } else {
-                out << context.path_text(parameters.column[parameters.index(parameter)], ".")
-                    << ".emplace_back(new_"
-                    << context.text(parameters.name[parameters.index(parameter)]) << ");\n";
+                std::format_to(
+                    out_it,
+                    "{}.emplace_back(new_{});\n",
+                    context.path_text(parameters.column[parameters.index(parameter)], "."),
+                    context.text(parameters.name[parameters.index(parameter)]));
             }
         }
-        out << "}); }\n";
+        out += "}); }\n";
         if (equivalent_type.has_value() && allow_equivalent_type) {
-            out << "void set(size_type const index, equivalent_type const value) { "
+            out += "void set(size_type const index, equivalent_type const value) { "
                    "get_view().set(index, value); }\n"
-                << "auto add(equivalent_type const value) -> size_type { return add(";
+                   "auto add(equivalent_type const value) -> size_type { return add(";
             for (std::size_t index{}; index < layout_members.size(); ++index) {
                 if (index > 0) {
-                    out << ", ";
+                    out += ", ";
                 }
-                out << "value." << equivalent_members[index] << (equivalent_accessors ? "()" : "");
+                std::format_to(out_it,
+                               "value.{}{}",
+                               equivalent_members[index],
+                               (equivalent_accessors ? "()" : ""));
             }
-            out << "); }\n";
+            out += "); }\n";
         }
     }
 
@@ -619,70 +664,83 @@ auto lower_native_soa(LoweringContext& context,
             context.declarations.items(
                 context.declarations.soas.operations[context.declarations.soas.index(schema)]),
             StorageOperation::append_from)) {
-        out << "void append_from(ConstView source) { auto const count{source.num()};\n"
-            << "assert(count <= std::numeric_limits<size_type>::max() - num());\n"
-            << "source.validate_array_sizes(); if (count == 0) { return; }\n";
+        out +=
+            "void append_from(ConstView source) { auto const count{source.num()};\nassert(count <= "
+            "std::numeric_limits<size_type>::max() - num());\nsource.validate_array_sizes(); if "
+            "(count == "
+            "0) { return; }\n";
         for (auto const leaf : layout_leaves) {
             auto const column{context.path_text(leaves.path[leaves.index(leaf)], ".")};
-            out << "assert(ioj::native_soa::is_external_source(" << column << ", "
-                << view_leaf(leaf, "source.") << "));\n";
+            std::format_to(out_it,
+                           "assert(ioj::native_soa::is_external_source({}, {}));\n",
+                           column,
+                           view_leaf(leaf, "source."));
         }
-        out << "ioj::native_soa::vector_storage_ops::append_rows(*this, count, [&] {\n";
+        out += "ioj::native_soa::vector_storage_ops::append_rows(*this, count, [&] {\n";
         for (auto const leaf : layout_leaves) {
             auto const column{context.path_text(leaves.path[leaves.index(leaf)], ".")};
             auto const source_data{view_leaf_data(leaf, "source.")};
-            out << column << ".insert(" << column << ".end(), " << source_data << ", "
-                << source_data << " + count);\n";
+            std::format_to(out_it,
+                           "{}.insert({}.end(), {}, {} + count);\n",
+                           column,
+                           column,
+                           source_data,
+                           source_data);
         }
-        out << "});\n}\n";
+        out += "});\n}\n";
     }
 
     for (bool const immutable : {false, true}) {
-        out << "auto get_view()" << (immutable ? " const" : "") << " -> "
-            << (immutable ? "ConstView" : "View") << " { return {\n";
+        std::format_to(out_it,
+                       "auto get_view(){} -> {} {{ return {{\n",
+                       (immutable ? " const" : ""),
+                       (immutable ? "ConstView" : "View"));
         if (vector3f_schema) {
             for (auto const member : layout_members) {
-                out << context.text(context.declarations.soa_members
-                                        .name[context.declarations.soa_members.index(
-                                            fixed_members.source[fixed_members.index(member)])])
-                    << ".data(),\n";
+                std::format_to(
+                    out_it,
+                    "{}.data(),\n",
+                    context.text(context.declarations.soa_members
+                                     .name[context.declarations.soa_members.index(
+                                         fixed_members.source[fixed_members.index(member)])]));
             }
-            out << "num(),\n";
+            out += "num(),\n";
         } else {
             for (auto const member : layout_members) {
-                out << context.text(
-                    context.declarations.soa_members.name[context.declarations.soa_members.index(
-                        fixed_members.source[fixed_members.index(member)])]);
+                std::format_to(
+                    out_it,
+                    "{}",
+                    context.text(context.declarations.soa_members
+                                     .name[context.declarations.soa_members.index(
+                                         fixed_members.source[fixed_members.index(member)])]));
                 if (context.declarations.soa_members.kind[context.declarations.soa_members.index(
                         fixed_members.source[fixed_members.index(member)])] ==
                     SoaMemberKind::nested) {
-                    out << ".get_view()";
+                    out += ".get_view()";
                 }
-                out << ",\n";
+                out += ",\n";
             }
         }
-        out << "}; }\n";
+        out += "}; }\n";
     }
-    out << "auto get_const_view() const -> ConstView { return get_view(); }\n"
-        << "auto get_view(size_type const offset, size_type const count) -> View { return "
-           "get_view().slice(offset, count); }\n"
-        << "auto get_view(size_type const offset, size_type const count) const -> ConstView { "
-           "return "
-           "get_view().slice(offset, count); }\n"
-        << "auto get_const_view(size_type const offset, size_type const count) const -> ConstView "
-           "{ "
-           "return get_const_view().slice(offset, count); }\n"
-        << "auto slice(size_type const offset, size_type const count) -> View { return "
-           "get_view(offset, count); }\n"
-        << "auto slice(size_type const offset, size_type const count) const -> ConstView { return "
-           "get_const_view(offset, count); }\n"
-        << "auto left(size_type const count) -> View { return slice(0, count); }\n"
-        << "auto right(size_type const count) -> View { assert(count <= num()); "
-           "return slice(num() - count, count); }\n"
-        << "auto left(size_type const count) const -> ConstView { return slice(0, count); }\n"
-        << "auto right(size_type const count) const -> ConstView { assert(count "
-           "<= num()); return slice(num() - count, "
-           "count); }\n";
+    out +=
+        "auto get_const_view() const -> ConstView { return get_view(); }\nauto get_view(size_type "
+        "const "
+        "offset, size_type const count) -> View { return get_view().slice(offset, count); }\nauto "
+        "get_view(size_type const offset, size_type const count) const -> ConstView { return "
+        "get_view().slice(offset, count); }\nauto get_const_view(size_type const offset, size_type "
+        "const count) const -> ConstView { return get_const_view().slice(offset, count); }\nauto "
+        "slice(size_type const offset, size_type const count) -> View { return get_view(offset, "
+        "count); "
+        "}\nauto slice(size_type const offset, size_type const count) const -> ConstView { return "
+        "get_const_view(offset, count); }\nauto left(size_type const count) -> View { return "
+        "slice(0, "
+        "count); }\nauto right(size_type const count) -> View { assert(count <= num()); return "
+        "slice(num() - count, count); }\nauto left(size_type const count) const -> ConstView { "
+        "return "
+        "slice(0, count); }\nauto right(size_type const count) const -> ConstView { assert(count "
+        "<= "
+        "num()); return slice(num() - count, count); }\n";
     if (std::ranges::contains(
             context.declarations.items(
                 context.declarations.soas.operations[context.declarations.soas.index(schema)]),
@@ -704,40 +762,42 @@ auto lower_native_soa(LoweringContext& context,
                            fixed_members.source[fixed_members.index(member)])] ==
                        SoaMemberKind::array;
             })) {
-            out << "auto const destination_index{static_cast<std::size_t>(dst_index)};\n"
-                << "auto const source_index{static_cast<std::size_t>(src_index)};\n";
+            out += "auto const destination_index{static_cast<std::size_t>(dst_index)};\nauto const "
+                   "source_index{static_cast<std::size_t>(src_index)};\n";
         }
         for (auto const member : layout_members) {
             if (context.declarations.soas
                     .copy_element_memberwise[context.declarations.soas.index(schema)] ||
                 context.declarations.soa_members.kind[context.declarations.soa_members.index(
                     fixed_members.source[fixed_members.index(member)])] == SoaMemberKind::array) {
-                out << context.text(context.declarations.soa_members
-                                        .name[context.declarations.soa_members.index(
-                                            fixed_members.source[fixed_members.index(member)])])
-                    << "[destination_index] = other."
-                    << context.text(context.declarations.soa_members
-                                        .name[context.declarations.soa_members.index(
-                                            fixed_members.source[fixed_members.index(member)])])
-                    << "[source_index];\n";
+                std::format_to(
+                    out_it,
+                    "{}[destination_index] = other.{}[source_index];\n",
+                    context.text(context.declarations.soa_members
+                                     .name[context.declarations.soa_members.index(
+                                         fixed_members.source[fixed_members.index(member)])]),
+                    context.text(context.declarations.soa_members
+                                     .name[context.declarations.soa_members.index(
+                                         fixed_members.source[fixed_members.index(member)])]));
             } else {
-                out << context.text(context.declarations.soa_members
-                                        .name[context.declarations.soa_members.index(
-                                            fixed_members.source[fixed_members.index(member)])])
-                    << ".copy_element(dst_index, other."
-                    << context.text(context.declarations.soa_members
-                                        .name[context.declarations.soa_members.index(
-                                            fixed_members.source[fixed_members.index(member)])])
-                    << ", src_index);\n";
+                std::format_to(
+                    out_it,
+                    "{}.copy_element(dst_index, other.{}, src_index);\n",
+                    context.text(context.declarations.soa_members
+                                     .name[context.declarations.soa_members.index(
+                                         fixed_members.source[fixed_members.index(member)])]),
+                    context.text(context.declarations.soa_members
+                                     .name[context.declarations.soa_members.index(
+                                         fixed_members.source[fixed_members.index(member)])]));
             }
         }
-        auto copy_body{out.str()};
+        auto copy_body{out};
         if (!copy_body.empty()) {
             copy_body.pop_back();
         }
         ir.set_function_body(copy_element, {ir.raw(copy_body)});
         ir.function_flags(copy_element).set_define_in_header(true);
-        out.str("");
+        out.clear();
         ir.function_formatting(copy_element).template_placement =
             FunctionTemplatePlacement::same_line;
         record_members.push_back(ir.header_function(copy_element));

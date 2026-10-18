@@ -32,11 +32,11 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
-#include <ios>
+#include <format>
+#include <iterator>
 #include <limits>
 #include <optional>
 #include <span>
-#include <sstream>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -46,9 +46,9 @@ namespace lispb::codegen::detail {
 namespace {
 
 auto hex_value(std::uint64_t const value) -> std::string {
-    std::ostringstream output;
-    output << "0x" << std::hex << value;
-    return output.str();
+    std::string output{};
+    std::format_to(std::back_inserter(output), "0x{:x}", value);
+    return output;
 }
 
 auto integer_cast_literal(std::string const& type, PackedIntegerValue const value) -> std::string {

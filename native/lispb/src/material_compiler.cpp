@@ -20,11 +20,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
-#include <iomanip>
+#include <format>
+#include <iterator>
 #include <optional>
-#include <ostream>
 #include <span>
-#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -165,7 +164,20 @@ auto kind_name(material_synth::NodeKind const kind) -> std::string_view {
     return "unknown";
 }
 
-void dump_ir(std::ostream& stream, material_synth::MaterialIR const& material) {
+auto dump_ir(material_synth::MaterialIR const& material) -> std::string {
+    std::string result;
+    auto const out{std::back_inserter(result)};
+    auto quoted = [&result](std::string_view const text) {
+        result += '"';
+        for (auto const character : text) {
+            if (character == '"' || character == '\\') {
+                result += '\\';
+            }
+            result += character;
+        }
+        result += '"';
+    };
+
     auto const domain{material.settings.domain == material_synth::MaterialDomain::ui ? "ui"
                       : material.settings.domain == material_synth::MaterialDomain::surface
                           ? "surface"
@@ -179,104 +191,137 @@ void dump_ir(std::ostream& stream, material_synth::MaterialIR const& material) {
     auto const shading{material.settings.shading_model == material_synth::ShadingModel::unlit
                            ? "unlit"
                            : "default-lit"};
-    stream << "material " << material.text(material.settings.name) << '\n'
-           << "asset " << material.text(material.settings.package_path) << '\n'
-           << "domain " << domain << "\nblend " << blend << "\nshading " << shading << '\n'
-           << "two-sided " << material.settings.two_sided << "\ndisable-depth-test "
-           << material.settings.disable_depth_test << "\nused-with-instanced-static-meshes "
-           << material.settings.used_with_instanced_static_meshes << "\nused-with-particle-sprites "
-           << material.settings.used_with_particle_sprites << "\nadopt-existing "
-           << material.settings.adopt_existing << "\nopacity-mask-clip "
-           << material.settings.opacity_mask_clip_value << '\n';
+    std::format_to(
+        out,
+        "material {}\nasset {}\ndomain {}\nblend {}\nshading {}\n"
+        "two-sided {:d}\ndisable-depth-test {:d}\nused-with-instanced-static-meshes {:d}\n"
+        "used-with-particle-sprites {:d}\nadopt-existing {:d}\nopacity-mask-clip {:.6g}\n",
+        material.text(material.settings.name),
+        material.text(material.settings.package_path),
+        domain,
+        blend,
+        shading,
+        material.settings.two_sided,
+        material.settings.disable_depth_test,
+        material.settings.used_with_instanced_static_meshes,
+        material.settings.used_with_particle_sprites,
+        material.settings.adopt_existing,
+        material.settings.opacity_mask_clip_value);
 
-    stream << "parameters " << material.parameters.size() << '\n';
+    std::format_to(out, "parameters {}\n", material.parameters.size());
     for (auto const parameter : material.parameters.handles()) {
         auto const index{parameter.value};
-        stream << "  [" << index << "] " << material.text(material.parameters.name[parameter.value])
-               << ' ' << type_name(material.parameters.type[parameter.value])
-               << " node=" << material.parameters.node[parameter.value].value;
+        std::format_to(out,
+                       "  [{}] {} {} node={}",
+                       index,
+                       material.text(material.parameters.name[parameter.value]),
+                       type_name(material.parameters.type[parameter.value]),
+                       material.parameters.node[parameter.value].value);
         if (material.parameters.type[parameter.value] == material_synth::ValueType::texture) {
             auto const sampler{material.parameters.texture_sampler_type[parameter.value] ==
                                        material_synth::TextureSamplerType::linear_grayscale
                                    ? "linear-grayscale"
                                    : "linear-color"};
-            stream << " default="
-                   << material.text(material.parameters.texture_path[parameter.value])
-                   << " sampler=" << sampler;
+            std::format_to(out,
+                           " default={} sampler={}",
+                           material.text(material.parameters.texture_path[parameter.value]),
+                           sampler);
         } else {
-            stream << " default=[";
+            result += " default=[";
             auto const components{
                 material_synth::component_count(material.parameters.type[parameter.value])};
             for (std::size_t component{}; component < components; ++component) {
-                stream << (component == 0 ? "" : ",")
-                       << material.parameters.default_values[component][parameter.value];
+                std::format_to(out,
+                               "{}{:.6g}",
+                               component == 0 ? "" : ",",
+                               material.parameters.default_values[component][parameter.value]);
             }
-            stream << ']';
+            result += ']';
         }
-        stream << '\n';
+        result += '\n';
     }
 
-    stream << "nodes " << material.nodes.size() << '\n';
+    std::format_to(out, "nodes {}\n", material.nodes.size());
     for (auto const node : material.nodes.handles()) {
         auto const index{node.value};
-        stream << "  [" << index << "] " << kind_name(material.nodes.kind(node)) << ' '
-               << type_name(material.nodes.type(node)) << " inputs=";
+        std::format_to(out,
+                       "  [{}] {} {} inputs=",
+                       index,
+                       kind_name(material.nodes.kind(node)),
+                       type_name(material.nodes.type(node)));
         for (std::size_t input{}; input < material.nodes.inputs(node).size(); ++input) {
-            stream << (input == 0 ? "[" : ",") << material.nodes.inputs(node)[input].value;
+            std::format_to(
+                out, "{}{}", input == 0 ? "[" : ",", material.nodes.inputs(node)[input].value);
         }
-        stream << (material.nodes.inputs(node).empty() ? "[]" : "]");
+        result += material.nodes.inputs(node).empty() ? "[]" : "]";
         if (material.nodes.kind(node) == material_synth::NodeKind::constant) {
-            stream << " value=[";
+            result += " value=[";
             for (std::size_t component{}; component < material.nodes.component_count(node);
                  ++component) {
-                stream << (component == 0 ? "" : ",") << material.nodes.constant(node, component);
+                std::format_to(out,
+                               "{}{:.6g}",
+                               component == 0 ? "" : ",",
+                               material.nodes.constant(node, component));
             }
-            stream << ']';
+            result += ']';
         } else if (material.nodes.kind(node) == material_synth::NodeKind::parameter) {
-            stream << " parameter=" << material.nodes.parameter(node).value;
+            std::format_to(out, " parameter={}", material.nodes.parameter(node).value);
         } else if (material.nodes.kind(node) == material_synth::NodeKind::texture_coordinate) {
-            stream << " coordinate=" << material.nodes.coordinate_index(node);
+            std::format_to(out, " coordinate={}", material.nodes.coordinate_index(node));
         } else if (material.nodes.kind(node) ==
                    material_synth::NodeKind::per_instance_custom_data) {
-            stream << " data-index=" << material.nodes.instance_data_index(node);
+            std::format_to(out, " data-index={}", material.nodes.instance_data_index(node));
         } else if (material.nodes.kind(node) == material_synth::NodeKind::custom) {
-            stream << " description="
-                   << std::quoted(material.text(material.nodes.description(node)))
-                   << " code=" << std::quoted(material.text(material.nodes.code(node)));
+            result += " description=";
+            quoted(material.text(material.nodes.description(node)));
+            result += " code=";
+            quoted(material.text(material.nodes.code(node)));
         } else if (material.nodes.kind(node) == material_synth::NodeKind::texture_object) {
-            stream << " texture=" << std::quoted(material.text(material.nodes.texture_path(node)));
+            result += " texture=";
+            quoted(material.text(material.nodes.texture_path(node)));
         } else if (material.nodes.kind(node) == material_synth::NodeKind::component_mask) {
-            stream << " mask=" << material.text(material.nodes.component_mask(node));
+            std::format_to(out, " mask={}", material.text(material.nodes.component_mask(node)));
         } else if (material.nodes.kind(node) == material_synth::NodeKind::shader_call) {
-            stream << " include=" << std::quoted(material.text(material.nodes.shader_path(node)))
-                   << " function=" << material.text(material.nodes.shader_function(node));
+            result += " include=";
+            quoted(material.text(material.nodes.shader_path(node)));
+            std::format_to(
+                out, " function={}", material.text(material.nodes.shader_function(node)));
         }
-        stream << " @ " << material.text(material.nodes.span(node).path) << ':'
-               << material.nodes.span(node).line << ':' << material.nodes.span(node).column << '\n';
+        std::format_to(out,
+                       " @ {}:{}:{}\n",
+                       material.text(material.nodes.span(node).path),
+                       material.nodes.span(node).line,
+                       material.nodes.span(node).column);
         if (material.nodes.kind(node) == material_synth::NodeKind::custom ||
             material.nodes.kind(node) == material_synth::NodeKind::shader_call) {
             for (std::size_t input{}; input < material.nodes.custom_inputs(node).size(); ++input) {
                 auto const& custom_input{material.nodes.custom_inputs(node)[input]};
-                stream << "    custom-input "
-                       << material.text(material.nodes.input_declarations.name[custom_input.value])
-                       << ' '
-                       << type_name(material.nodes.input_declarations.type[custom_input.value])
-                       << " node=" << material.nodes.inputs(node)[input].value << '\n';
+                std::format_to(
+                    out,
+                    "    custom-input {} {} node={}\n",
+                    material.text(material.nodes.input_declarations.name[custom_input.value]),
+                    type_name(material.nodes.input_declarations.type[custom_input.value]),
+                    material.nodes.inputs(node)[input].value);
             }
         }
     }
 
     for (auto const binding : material.bindings.handles()) {
-        stream << "binding " << material.text(material.bindings.name[binding.value])
-               << " node=" << material.bindings.node[binding.value].value << '\n';
+        std::format_to(out,
+                       "binding {} node={}\n",
+                       material.text(material.bindings.name[binding.value]),
+                       material.bindings.node[binding.value].value);
     }
     for (auto const output : material.outputs.handles()) {
-        stream << "output " << material.text(material.outputs.name[output.value])
-               << " node=" << material.outputs.node[output.value].value << '\n';
+        std::format_to(out,
+                       "output {} node={}\n",
+                       material.text(material.outputs.name[output.value]),
+                       material.outputs.node[output.value].value);
     }
     for (auto const& dependency : material.texture_dependencies) {
-        stream << "texture " << material.text(dependency) << '\n';
+        std::format_to(out, "texture {}\n", material.text(dependency));
     }
+    return result;
 }
 
 } // namespace
@@ -295,12 +340,17 @@ void lispb::compile_material(lispb::codegen::sexpr::Syntax& syntax,
     auto const analysis{
         material_synth::analyze(syntax, source, {&resolver, resolve_texture}, material)};
     if (!analysis.empty()) {
-        std::ostringstream diagnostics;
+        std::string diagnostics;
+        auto const out{std::back_inserter(diagnostics)};
         for (auto const& diagnostic : analysis) {
-            diagnostics << diagnostic.path << ':' << diagnostic.line << ':' << diagnostic.column
-                        << ": error: " << diagnostic.message << '\n';
+            std::format_to(out,
+                           "{}:{}:{}: error: {}\n",
+                           diagnostic.path,
+                           diagnostic.line,
+                           diagnostic.column,
+                           diagnostic.message);
         }
-        throw std::runtime_error{diagnostics.str()};
+        throw std::runtime_error{diagnostics};
     }
 
     std::vector<fs::path> shader_dependencies;
@@ -342,9 +392,7 @@ void lispb::compile_material(lispb::codegen::sexpr::Syntax& syntax,
         return;
     }
 
-    std::ostringstream debug_dump;
-    dump_ir(debug_dump, material);
-    result.debug_dump = std::move(debug_dump).str();
+    result.debug_dump = dump_ir(material);
 
     auto const source_text{syntax.sources().text(source)};
     auto const source_bytes{
