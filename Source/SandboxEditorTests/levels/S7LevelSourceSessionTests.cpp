@@ -326,6 +326,10 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
             return;
         }
         session.set_buffer(level_source(TEXT("New Buffer")));
+        TestRunner->TestTrue(TEXT("Missing file refresh succeeds"),
+                             session.refresh_external_conflict().has_value());
+        TestRunner->TestFalse(TEXT("A missing file baseline is not an external change"),
+                              session.has_external_conflict());
         TestRunner->TestTrue(TEXT("Unexpected source is created"),
                              write_source(TEXT("unrelated"), source_path));
 
@@ -365,14 +369,35 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
             return;
         }
         session.set_buffer(TEXT("unsaved buffer"));
+        session.state().scene_dirty = true;
+        session.state().preview = ::ioj::levels::authoring::PreviewState::Valid;
         auto const preserved{session.buffer()};
 
         auto const switched{session.attach(*second)};
         TestRunner->TestFalse(TEXT("Unsafe automatic switch is refused"), switched.has_value());
         TestRunner->TestFalse(TEXT("Dirty buffer is detached"), session.is_attached());
-        TestRunner->TestTrue(TEXT("Detached buffer is conflicted"),
-                             session.has_external_conflict());
+        TestRunner->TestFalse(TEXT("Detachment is distinct from disk conflict"),
+                              session.has_external_conflict());
         TestRunner->TestEqual(TEXT("Dirty buffer is preserved"), session.buffer(), preserved);
+        TestRunner->TestFalse(TEXT("Switch clears stale scene-dirty state"),
+                              session.state().scene_dirty);
+        TestRunner->TestTrue(TEXT("Switch clears the previous preview"),
+                             session.state().preview ==
+                                 ::ioj::levels::authoring::PreviewState::None);
+
+        auto const recovery_path{FPaths::Combine(directory.path, TEXT("recovered.scm"))};
+        TestRunner->TestTrue(
+            TEXT("Detached buffer can be recovered to a new file"),
+            session.save_as(recovery_path, ml::editor::ES7SourceOverwritePolicy::RefuseExisting)
+                .has_value());
+        TestRunner->TestFalse(TEXT("Recovery does not attach to the new document"),
+                              session.is_attached());
+        TestRunner->TestFalse(
+            TEXT("Automatic attachment still requires explicit recovery resolution"),
+            session.attach(*second).has_value());
+        FString recovered;
+        FFileHelper::LoadFileToString(recovered, *recovery_path);
+        TestRunner->TestEqual(TEXT("Recovery preserves exact text"), recovered, preserved);
 
         auto const discarded{session.discard_and_attach(*second)};
         if (!TestRunner->TestTrue(TEXT("Explicit discard permits switch"), discarded.has_value())) {

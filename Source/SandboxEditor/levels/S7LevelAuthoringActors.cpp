@@ -1,13 +1,47 @@
 #include "SandboxEditor/levels/S7LevelAuthoringActors.h"
 
+#include <ioj/levels/authoring/identifiers.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
+#include <SandboxCoreEngine/strings.h>
+
 #include <algorithm>
 
 namespace ml::editor {
+auto s7_mission_mode(ETestMissionMode const mode) -> ::ioj::levels::LevelMissionMode {
+    using Mode = ::ioj::levels::LevelMissionMode;
+    switch (mode) {
+        case ETestMissionMode::None:
+            return Mode::Unspecified;
+        case ETestMissionMode::SurviveTime:
+            return Mode::SurviveTime;
+        case ETestMissionMode::KillEnemies:
+            return Mode::KillEnemies;
+        case ETestMissionMode::KillEnemiesWithinTime:
+            return Mode::KillEnemiesWithinTime;
+    }
+    checkNoEntry();
+    return Mode::Unspecified;
+}
+auto s7_mission_mode(::ioj::levels::LevelMissionMode const mode) -> ETestMissionMode {
+    using Mode = ::ioj::levels::LevelMissionMode;
+    switch (mode) {
+        case Mode::Unspecified:
+            return ETestMissionMode::None;
+        case Mode::SurviveTime:
+            return ETestMissionMode::SurviveTime;
+        case Mode::KillEnemies:
+            return ETestMissionMode::KillEnemies;
+        case Mode::KillEnemiesWithinTime:
+            return ETestMissionMode::KillEnemiesWithinTime;
+    }
+    checkNoEntry();
+    return ETestMissionMode::None;
+}
+
 auto resolve_s7_level_actor(AActor const& actor) -> TOptional<FS7LevelResolvedActor> {
     EResolvedLevelArchetype archetype{};
     ETestTeam team{};
@@ -71,42 +105,12 @@ void configure_s7_level_actor(AActor& actor,
 }
 
 auto canonical_s7_level_entity_id(FStringView const text, FStringView const fallback) -> FName {
-    FString result;
-    for (auto const character : text) {
-        auto const alpha{FChar::IsAlpha(character)};
-        auto const digit{FChar::IsDigit(character)};
-        if (!alpha && !digit) {
-            if (!result.IsEmpty() && !result.EndsWith(TEXT("-"))) {
-                result.AppendChar(TEXT('-'));
-            }
-            continue;
-        }
-        result.AppendChar(FChar::ToLower(character));
-    }
-    while (result.EndsWith(TEXT("-"))) {
-        result.LeftChopInline(1, EAllowShrinking::No);
-    }
-    if (result.IsEmpty()) {
-        result = fallback;
-    }
-    if (!FChar::IsAlpha(result[0])) {
-        result = FString{fallback} + TEXT("-") + result;
-    }
-    return FName{result};
+    return FName{ml::to_fstring(::ioj::levels::authoring::canonical_symbol(
+        TCHAR_TO_UTF8(*FString{text}), TCHAR_TO_UTF8(*FString{fallback})))};
 }
 
 auto is_canonical_s7_level_entity_id(FStringView const value) -> bool {
-    if (value.IsEmpty() || value[0] < TEXT('a') || value[0] > TEXT('z')) {
-        return false;
-    }
-    for (auto const character : value) {
-        auto const lower{character >= TEXT('a') && character <= TEXT('z')};
-        auto const digit{character >= TEXT('0') && character <= TEXT('9')};
-        if (!lower && !digit && character != TEXT('-')) {
-            return false;
-        }
-    }
-    return true;
+    return ::ioj::levels::authoring::is_canonical_symbol(TCHAR_TO_UTF8(*FString{value}));
 }
 
 auto is_canonical_s7_level_entity_id(FName const id) -> bool {

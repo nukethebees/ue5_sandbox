@@ -16,31 +16,26 @@ auto FS7LevelSourceSession::attach(AS7LevelAuthoringDocument& document)
     if (document_.Get() == &document && path_ == normalized_path) {
         return {};
     }
-    if (dirty_) {
-        document_.Reset();
-        external_conflict_ = true;
+    if (state_.dirty() || state_.recovery_required) {
+        detach();
         return std::unexpected{
             TEXT("The source buffer has unsaved changes and was detached from the new document.")};
     }
     auto const attached{load_attached(document, normalized_path)};
     if (!attached) {
-        document_.Reset();
-        external_conflict_ = true;
+        detach();
+        state_.disk_conflict = true;
     }
     return attached;
 }
 
 auto FS7LevelSourceSession::load(AS7LevelAuthoringDocument& document, FStringView const path)
     -> std::expected<void, FString> {
-    if (dirty_) {
+    if (state_.dirty() || state_.recovery_required) {
         return std::unexpected{TEXT("Save or discard the edited source buffer before loading.")};
     }
     auto const normalized_path{normalize_path(path)};
-    auto const observed{observe_disk(normalized_path)};
-    if (!observed) {
-        return std::unexpected{observed.error()};
-    }
-    if (!observed->exists) {
+    if (!IFileManager::Get().FileExists(*normalized_path)) {
         return std::unexpected{
             FString::Printf(TEXT("Could not read source file '%s'."), *normalized_path)};
     }
@@ -65,11 +60,13 @@ void FS7LevelSourceSession::set_buffer(FString buffer) {
         return;
     }
     buffer_ = MoveTemp(buffer);
-    dirty_ = source_digest(buffer_) != disk_baseline_.digest;
-    ++revision_;
+    state_.edited(TCHAR_TO_UTF8(*source_digest(buffer_)), buffer_.IsEmpty());
 }
 
 auto FS7LevelSourceSession::save() -> std::expected<void, FString> {
+    if (!is_attached()) {
+        return std::unexpected{TEXT("Use Save Buffer As to recover the detached source buffer.")};
+    }
     if (path_.IsEmpty()) {
         return std::unexpected{TEXT("Choose a source path before saving the source buffer.")};
     }
@@ -139,10 +136,10 @@ auto FS7LevelSourceSession::refresh_external_conflict() -> std::expected<void, F
     }
     auto const observed{observe_disk(path_)};
     if (!observed) {
-        external_conflict_ = true;
+        state_.disk_conflict = true;
         return std::unexpected{observed.error()};
     }
-    external_conflict_ = *observed != disk_baseline_;
+    state_.observe(*observed);
     return {};
 }
 
@@ -159,7 +156,7 @@ auto FS7LevelSourceSession::buffer() const -> FString const& {
 }
 
 auto FS7LevelSourceSession::revision() const -> uint64 {
-    return revision_;
+    return state_.revision;
 }
 
 auto FS7LevelSourceSession::is_attached() const -> bool {
@@ -167,17 +164,25 @@ auto FS7LevelSourceSession::is_attached() const -> bool {
 }
 
 auto FS7LevelSourceSession::is_dirty() const -> bool {
-    return dirty_;
+    return state_.dirty();
 }
 
 auto FS7LevelSourceSession::has_external_conflict() const -> bool {
-    return external_conflict_;
+    return state_.disk_conflict;
 }
 
 auto FS7LevelSourceSession::has_unapplied_buffer(FStringView const synchronized_source_digest) const
     -> bool {
-    return dirty_ || (!buffer_.IsEmpty() && (synchronized_source_digest.IsEmpty() ||
-                                             source_digest(buffer_) != synchronized_source_digest));
+    return state_.unapplied(TCHAR_TO_UTF8(*FString{synchronized_source_digest}));
+}
+
+void FS7LevelSourceSession::detach() {
+    if (document_.IsValid() || state_.scene_dirty ||
+        state_.preview != ::ioj::levels::authoring::PreviewState::None ||
+        (state_.dirty() && !state_.recovery_required)) {
+        state_.document_changed();
+    }
+    document_.Reset();
 }
 
 auto FS7LevelSourceSession::source_digest(FStringView const source) -> FString {
@@ -196,7 +201,7 @@ auto FS7LevelSourceSession::normalize_path(FStringView const path) -> FString {
     return normalized;
 }
 
-auto FS7LevelSourceSession::observe_disk(FStringView const path)
+auto FS7LevelSourceSession::observe_disk(FStringView const path, FString* const output)
     -> std::expected<FDiskState, FString> {
     auto const owned_path{FString{path}};
     if (!IFileManager::Get().FileExists(*owned_path)) {
@@ -207,7 +212,11 @@ auto FS7LevelSourceSession::observe_disk(FStringView const path)
         return std::unexpected{
             FString::Printf(TEXT("Could not read source file '%s'."), *owned_path)};
     }
-    return FDiskState{.exists = true, .digest = source_digest(source)};
+    auto const digest{std::string{TCHAR_TO_UTF8(*source_digest(source))}};
+    if (output) {
+        *output = MoveTemp(source);
+    }
+    return FDiskState{.exists = true, .digest = digest};
 }
 
 auto FS7LevelSourceSession::load_attached(AS7LevelAuthoringDocument& document,
@@ -216,42 +225,35 @@ auto FS7LevelSourceSession::load_attached(AS7LevelAuthoringDocument& document,
     FString loaded_buffer;
     FDiskState loaded_disk;
     if (!normalized_path.IsEmpty()) {
-        auto const observed{observe_disk(normalized_path)};
+        auto const observed{observe_disk(normalized_path, &loaded_buffer)};
         if (!observed) {
             return std::unexpected{observed.error()};
         }
-        if (observed->exists && !FFileHelper::LoadFileToString(loaded_buffer, *normalized_path)) {
-            return std::unexpected{
-                FString::Printf(TEXT("Could not read source file '%s'."), *normalized_path)};
-        }
-        loaded_disk = observed->exists
-                        ? *observed
-                        : FDiskState{.exists = false, .digest = source_digest(loaded_buffer)};
-    } else {
-        loaded_disk.digest = source_digest(loaded_buffer);
+        loaded_disk = *observed;
     }
 
     auto const source_changed{path_ != normalized_path || buffer_ != loaded_buffer};
+    if (document_.Get() != &document) {
+        state_.document_changed();
+    }
     document_ = &document;
     path_ = normalized_path;
     buffer_ = MoveTemp(loaded_buffer);
-    disk_baseline_ = MoveTemp(loaded_disk);
-    dirty_ = false;
-    external_conflict_ = false;
-    if (source_changed) {
-        ++revision_;
-    }
+    state_.loaded(MoveTemp(loaded_disk),
+                  TCHAR_TO_UTF8(*source_digest(buffer_)),
+                  buffer_.IsEmpty(),
+                  source_changed);
     return {};
 }
 
 auto FS7LevelSourceSession::verify_disk_baseline() -> std::expected<void, FString> {
     auto const observed{observe_disk(path_)};
     if (!observed) {
-        external_conflict_ = true;
+        state_.disk_conflict = true;
         return std::unexpected{observed.error()};
     }
-    if (*observed != disk_baseline_) {
-        external_conflict_ = true;
+    state_.observe(*observed);
+    if (state_.disk_conflict) {
         return std::unexpected{
             TEXT("The source file changed externally; reload it or choose another path.")};
     }
@@ -296,12 +298,12 @@ auto FS7LevelSourceSession::write(FString const& source,
     if (replace_buffer) {
         buffer_ = source;
     }
-    disk_baseline_ = {.exists = true, .digest = source_digest(source)};
-    dirty_ = replace_buffer ? false : source_digest(buffer_) != disk_baseline_.digest;
-    external_conflict_ = false;
-    if (source_changed) {
-        ++revision_;
+    auto const digest{replace_buffer ? std::string{TCHAR_TO_UTF8(*source_digest(source))}
+                                     : state_.buffer_digest};
+    if (replace_buffer) {
+        state_.edited(digest, buffer_.IsEmpty());
     }
+    state_.saved(digest, source_changed);
     return {};
 }
 }

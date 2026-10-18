@@ -28,7 +28,13 @@ void SS7LevelScriptEditor::Construct(FArguments const& arguments) {
                                       .OnClicked(this, &SS7LevelScriptEditor::load_source)] +
                         SUniformGridPanel::Slot(
                             1, 0)[SNew(SButton)
-                                      .Text(LOCTEXT("Reload", "Reload/Revert"))
+                                      .Text_Lambda([this] {
+                                          auto const* mode{active_mode()};
+                                          return IsValid(mode) &&
+                                                         mode->script_editor_state().detached
+                                                   ? LOCTEXT("Recover", "Discard and Attach")
+                                                   : LOCTEXT("Reload", "Reload/Revert");
+                                      })
                                       .IsEnabled(this, &SS7LevelScriptEditor::can_reload_source)
                                       .OnClicked(this, &SS7LevelScriptEditor::reload_source)] +
                         SUniformGridPanel::Slot(
@@ -49,7 +55,7 @@ void SS7LevelScriptEditor::Construct(FArguments const& arguments) {
                         SUniformGridPanel::Slot(
                             1, 2)[SNew(SButton)
                                       .Text(LOCTEXT("SaveAs", "Save Buffer As"))
-                                      .IsEnabled(this, &SS7LevelScriptEditor::can_save_buffer)
+                                      .IsEnabled(this, &SS7LevelScriptEditor::can_save_buffer_as)
                                       .OnClicked(this, &SS7LevelScriptEditor::save_buffer_as)] +
                         SUniformGridPanel::Slot(
                             0, 3)[SNew(SButton)
@@ -178,13 +184,13 @@ auto SS7LevelScriptEditor::state_text() const -> FText {
 
 auto SS7LevelScriptEditor::can_load_source() const -> bool {
     auto* const mode{active_mode()};
-    return IsValid(mode) && !mode->source_session().is_dirty();
+    return IsValid(mode) && !mode->source_session().is_dirty() &&
+           !mode->source_session().state().recovery_required;
 }
 
 auto SS7LevelScriptEditor::can_reload_source() const -> bool {
     auto* const mode{active_mode()};
-    return IsValid(mode) && mode->source_session().is_attached() &&
-           !mode->source_session().path().IsEmpty();
+    return IsValid(mode) && mode->document() != nullptr;
 }
 
 auto SS7LevelScriptEditor::can_preview_buffer() const -> bool {
@@ -202,6 +208,11 @@ auto SS7LevelScriptEditor::can_save_buffer() const -> bool {
     return IsValid(mode) && mode->source_session().is_attached() &&
            !mode->source_session().buffer().TrimStartAndEnd().IsEmpty() &&
            !mode->source_session().has_external_conflict();
+}
+
+auto SS7LevelScriptEditor::can_save_buffer_as() const -> bool {
+    auto* const mode{active_mode()};
+    return IsValid(mode) && !mode->source_session().buffer().TrimStartAndEnd().IsEmpty();
 }
 
 auto SS7LevelScriptEditor::can_save_canonical() const -> bool {

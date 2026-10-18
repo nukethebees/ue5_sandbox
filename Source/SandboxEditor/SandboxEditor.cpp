@@ -2,6 +2,7 @@
 
 #include "SandboxEditor/codegen/TypedefCodeGenerator.h"
 #include "SandboxEditor/levels/S7LevelAuthoringMode.h"
+#include "SandboxEditor/levels/S7LevelPlayableSetup.h"
 #include "SandboxEditor/levels/S7LevelScriptEditor.h"
 #include "SandboxEditor/slate/BoxSizeCustomisation.h"
 #include "SandboxEditor/slate/StrongTypedefPreview.h"
@@ -22,6 +23,7 @@
 #include "Widgets/Docking/SDockTab.h"
 #include "WorkspaceMenuStructure.h"
 #include "WorkspaceMenuStructureModule.h"
+#include <Engine/World.h>
 
 #define LOCTEXT_NAMESPACE "FSandboxEditorModule"
 
@@ -34,6 +36,13 @@ FName const FSandboxEditorModule::s7_level_script_editor_tab_id{
     TEXT("Sandbox.S7LevelScriptEditor")};
 
 void FSandboxEditorModule::StartupModule() {
+    s7_pie_handle_ = FWorldDelegates::OnWorldInitializedActors.AddLambda(
+        [](FActorsInitializedParams const& params) {
+            auto const prepared{ml::editor::prepare_s7_level_for_pie(*params.World)};
+            if (!prepared) {
+                UE_LOG(LogTemp, Error, TEXT("S7 PIE preparation failed: %s"), *prepared.error());
+            }
+        });
     constexpr auto logger{NestedLogger<"StartupModule">()};
     logger.log_verbose(TEXT("Module starting up!"));
     // No factory registration needed - MaterialExpressions control their own UI
@@ -62,6 +71,7 @@ void FSandboxEditorModule::StartupModule() {
     create_sandbox_editor_menus();
 }
 void FSandboxEditorModule::ShutdownModule() {
+    FWorldDelegates::OnWorldInitializedActors.Remove(s7_pie_handle_);
     if (IsValid(GEditor) && GEditor->PlayWorld != nullptr) {
         GEditor->EndPlayMap();
     }

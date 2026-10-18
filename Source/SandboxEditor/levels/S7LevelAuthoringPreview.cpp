@@ -7,7 +7,10 @@
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGameS7/level_definition_writer.h>
 
+#include <SandboxCoreEngine/strings.h>
+
 #include <Engine/Level.h>
+#include <ScopedTransaction.h>
 #include <UObject/UnrealType.h>
 
 namespace ml::editor {
@@ -31,46 +34,35 @@ auto level_config_digest(USpaceGameLevelConfig const* const level_config) -> FSt
                                          0);
         signature += property->GetName();
         signature.AppendChar(TEXT('='));
-        signature += FS7LevelSourceSession::source_digest(value);
+        signature += value;
         signature.AppendChar(TEXT('|'));
     }
     return FS7LevelSourceSession::source_digest(signature);
 }
 
-auto scene_digest(ULevel const& level, AS7LevelAuthoringDocument const& document) -> FString {
-    auto const definition{collect_s7_editor_level(level, document)};
-    if (!definition) {
-        return FS7LevelSourceSession::source_digest(TEXT("invalid:") + definition.error());
-    }
-    auto const source{::ioj::levels::authoring::emit_editor_level_source(*definition)};
-    if (!source) {
-        return FS7LevelSourceSession::source_digest(TEXT("invalid:") + source.error());
-    }
-    return FS7LevelSourceSession::source_digest(*source);
-}
-
-auto bindings(AS7LevelAuthoringDocument const& document) -> TArray<FS7LevelPreviewBindingSnapshot> {
-    TArray<FS7LevelPreviewBindingSnapshot> result;
-    result.Reserve(document.entities.Num());
+auto actor_identities(ULevel const& level, AS7LevelAuthoringDocument const& document)
+    -> TArray<TWeakObjectPtr<AActor>> {
+    TArray<TWeakObjectPtr<AActor>> result;
     for (auto const& binding : document.entities) {
-        result.Add({.id = binding.id, .actor = binding.actor});
+        result.Add(binding.actor.Get());
     }
-    return result;
-}
-
-auto bindings_match(TArray<FS7LevelPreviewBindingSnapshot> const& expected,
-                    AS7LevelAuthoringDocument const& document) -> bool {
-    if (expected.Num() != document.entities.Num()) {
-        return false;
-    }
-    auto const binding_count{expected.Num()};
-    for (int32 index{}; index < binding_count; ++index) {
-        if (expected[index].id != document.entities[index].id ||
-            expected[index].actor.Get() != document.entities[index].actor.Get()) {
-            return false;
+    auto append{[&](auto const& actors) {
+        result.Add(nullptr);
+        for (auto const actor : actors) {
+            result.Add(actor.Get());
+        }
+    }};
+    append(document.camera.targets);
+    append(document.mission.heroes);
+    append(document.mission.must_survive);
+    append(document.mission.required_kills);
+    result.Add(nullptr);
+    for (auto const actor : level.Actors) {
+        if (IsValid(actor) && resolve_s7_level_actor(*actor).IsSet()) {
+            result.Add(actor.Get());
         }
     }
-    return true;
+    return result;
 }
 
 auto stale_message(bool const source_changed,
@@ -100,8 +92,10 @@ auto make_s7_level_authoring_preview(ULevel& level,
     if (source_session.document() != &document) {
         return std::unexpected{TEXT("The source buffer is not attached to this level document.")};
     }
-    auto const captured_scene_digest{
-        s7_level_authoring_preview_detail::scene_digest(level, document)};
+    auto scene{collect_s7_scene(level, document)};
+    if (!scene) {
+        return std::unexpected{scene.error()};
+    }
 
     auto* const level_config{document.level_config.Get()};
     return FS7LevelAuthoringPreview{
@@ -113,22 +107,22 @@ auto make_s7_level_authoring_preview(ULevel& level,
         .level_config = level_config,
         .level_config_class = IsValid(level_config) ? level_config->GetClass() : nullptr,
         .level_config_digest = s7_level_authoring_preview_detail::level_config_digest(level_config),
-        .bindings = s7_level_authoring_preview_detail::bindings(document),
-        .scene_digest = captured_scene_digest};
+        .actor_identities = s7_level_authoring_preview_detail::actor_identities(level, document),
+        .scene = MoveTemp(*scene)};
 }
 
 auto validate_s7_level_authoring_preview(ULevel& level,
                                          AS7LevelAuthoringDocument& document,
                                          FS7LevelSourceSession const& source_session,
                                          FS7LevelAuthoringPreview const& preview)
-    -> std::expected<void, FString> {
+    -> std::expected<void, FS7LevelPreviewError> {
     auto const source_changed{source_session.document() != preview.document.Get() ||
                               source_session.revision() != preview.source_revision ||
                               source_session.path() != preview.source_path};
     auto const level_or_document_changed{preview.level.Get() != &level ||
                                          preview.document.Get() != &document};
-    auto const bindings_changed{
-        !s7_level_authoring_preview_detail::bindings_match(preview.bindings, document)};
+    auto const bindings_changed{s7_level_authoring_preview_detail::actor_identities(
+                                    level, document) != preview.actor_identities};
 
     auto* const level_config{document.level_config.Get()};
     auto const configuration_changed{
@@ -138,14 +132,16 @@ auto validate_s7_level_authoring_preview(ULevel& level,
         preview.level_config_digest !=
             s7_level_authoring_preview_detail::level_config_digest(level_config)};
 
-    auto const current_scene_digest{
-        s7_level_authoring_preview_detail::scene_digest(level, document)};
-    auto const scene_changed{current_scene_digest != preview.scene_digest};
+    auto const current_scene{collect_s7_scene(level, document)};
+    auto const scene_changed{!current_scene ||
+                             !::ioj::levels::authoring::same_scene(*current_scene, preview.scene)};
     auto const authoring_state_changed{level_or_document_changed || bindings_changed ||
                                        scene_changed};
     if (source_changed || authoring_state_changed || configuration_changed) {
-        return std::unexpected{s7_level_authoring_preview_detail::stale_message(
-            source_changed, authoring_state_changed, configuration_changed)};
+        return std::unexpected{FS7LevelPreviewError{
+            ES7LevelPreviewError::Stale,
+            s7_level_authoring_preview_detail::stale_message(
+                source_changed, authoring_state_changed, configuration_changed)}};
     }
     return {};
 }
@@ -154,12 +150,28 @@ auto apply_s7_level_authoring_preview(ULevel& level,
                                       AS7LevelAuthoringDocument& document,
                                       FS7LevelSourceSession const& source_session,
                                       FS7LevelAuthoringPreview const& preview)
-    -> std::expected<void, FString> {
+    -> std::expected<void, FS7LevelPreviewError> {
     auto const validated{
         validate_s7_level_authoring_preview(level, document, source_session, preview)};
     if (!validated) {
         return std::unexpected{validated.error()};
     }
-    return apply_s7_level_sync_plan(level, document, preview.plan);
+    FScopedTransaction transaction{
+        NSLOCTEXT("S7LevelAuthoring", "ApplyPreview", "Apply S7 Preview")};
+    auto applied{apply_s7_level_sync_plan(level, document, preview.plan)};
+    if (!applied) {
+        transaction.Cancel();
+        return std::unexpected{
+            FS7LevelPreviewError{ES7LevelPreviewError::Execution, applied.error()}};
+    }
+    document.Modify();
+    document.synchronized_source_hash = ml::to_fstring(source_session.state().buffer_digest);
+    auto const definition{collect_s7_editor_level(level, document)};
+    auto const source{definition
+                          ? ::ioj::levels::authoring::emit_editor_level_source(*definition)
+                          : std::expected<FString, FString>{std::unexpected{definition.error()}}};
+    document.synchronized_scene_hash =
+        source ? FS7LevelSourceSession::source_digest(*source) : FString{};
+    return {};
 }
 }

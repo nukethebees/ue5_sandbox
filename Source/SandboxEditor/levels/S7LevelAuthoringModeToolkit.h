@@ -7,6 +7,7 @@ class SEditableTextBox;
 class SMultiLineEditableTextBox;
 class UEdMode;
 class US7LevelAuthoringMode;
+class AS7LevelAuthoringDocument;
 
 class FS7LevelAuthoringModeToolkit final : public FModeToolkit {
   public:
@@ -37,6 +38,7 @@ class FS7LevelAuthoringModeToolkit final : public FModeToolkit {
     auto save_canonical_from_scene() -> FReply;
 
     TWeakObjectPtr<US7LevelAuthoringMode> mode_{};
+    TWeakObjectPtr<AS7LevelAuthoringDocument> displayed_document_{};
     TSharedPtr<IDetailsView> details_{};
     TSharedPtr<SEditableTextBox> entity_id_{};
     TSharedPtr<SMultiLineEditableTextBox> status_{};

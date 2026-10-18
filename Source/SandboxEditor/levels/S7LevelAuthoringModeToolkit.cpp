@@ -169,7 +169,10 @@ void FS7LevelAuthoringModeToolkit::refresh() {
     if (!mode_.IsValid()) {
         return;
     }
-    details_->SetObject(mode_->document());
+    if (displayed_document_.Get() != mode_->document()) {
+        displayed_document_ = mode_->document();
+        details_->SetObject(displayed_document_.Get());
+    }
     status_->SetText(mode_->status());
 }
 
@@ -211,11 +214,7 @@ FORWARD_ACTION(preview_apply)
 FORWARD_ACTION(apply_preview)
 auto FS7LevelAuthoringModeToolkit::save() -> FReply {
     if (mode_.IsValid()) {
-        if (mode_->source_session().buffer().TrimStartAndEnd().IsEmpty()) {
-            mode_->save_canonical_from_scene();
-        } else {
-            mode_->save();
-        }
+        mode_->save();
     }
     return FReply::Handled();
 }

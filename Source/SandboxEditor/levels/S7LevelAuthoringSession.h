@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/levels/authoring/scene.h>
 #include <SpaceGame/levels/LevelDefinition.h>
 
 #include <CoreMinimal.h>
@@ -32,4 +33,8 @@ SANDBOXEDITOR_API auto repair_s7_level_bindings(ULevel& level, AS7LevelAuthoring
 SANDBOXEDITOR_API auto collect_s7_editor_level(ULevel const& level,
                                                AS7LevelAuthoringDocument const& document)
     -> std::expected<FLevelDefinition, FString>;
+// Check binding structure, but retain invalid numeric values and unresolved references for repair.
+SANDBOXEDITOR_API auto collect_s7_scene(ULevel const& level,
+                                        AS7LevelAuthoringDocument const& document)
+    -> std::expected<::ioj::levels::authoring::SceneSnapshot, FString>;
 }

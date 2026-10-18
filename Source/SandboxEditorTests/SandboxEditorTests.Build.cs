@@ -13,6 +13,7 @@ public class SandboxEditorTests : ModuleRules
             "SandboxEditor",
             "NativeMemory",
             "NativeSimulation",
+            "NativeLevelAuthoring",
             "SpaceGame",
             "SpaceGameS7",
             "SpaceGameSimulation",

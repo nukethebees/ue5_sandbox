@@ -1,3 +1,5 @@
+#include "S7LevelAuthoringTestActor.h"
+#include <ioj/sim/capital_ships/sim.h>
 #include <SandboxEditor/levels/S7LevelAuthoringDocument.h>
 #include <SandboxEditor/levels/S7LevelAuthoringMode.h>
 #include <SandboxEditor/levels/S7LevelAuthoringPreview.h>
@@ -9,6 +11,7 @@
 #include <SandboxEditor/SandboxEditor.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
+#include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -17,13 +20,16 @@
 
 #include <SandboxCoreEngine/strings.h>
 
+#include <Camera/CameraActor.h>
 #include <CQTest.h>
 #include <Editor.h>
 #include <EditorModeManager.h>
 #include <Engine/Level.h>
 #include <Engine/World.h>
+#include <EngineUtils.h>
 #include <Framework/Docking/TabManager.h>
 #include <HAL/FileManager.h>
+#include <Kismet/GameplayStatics.h>
 #include <Misc/FileHelper.h>
 #include <Misc/Guid.h>
 #include <Misc/Paths.h>
@@ -204,7 +210,8 @@ void assert_stale_preview_does_not_apply(TTestRunner& test_runner,
     test_runner.TestFalse(TEXT("Stale preview is rejected"), applied.has_value());
     if (!applied) {
         test_runner.TestTrue(TEXT("Stale reason is useful"),
-                             applied.error().Contains(expected_reason));
+                             applied.error().code == ml::editor::ES7LevelPreviewError::Stale &&
+                                 applied.error().message.Contains(expected_reason));
     }
     test_runner.TestEqual(TEXT("Stale apply preserves title"),
                           fixture.document->title,
@@ -895,7 +902,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Metadata change is reported"), plan->metadata_changed);
         TestRunner->TestFalse(TEXT("Viewpoint is unchanged"), plan->viewpoint_changed);
         TestRunner->TestFalse(TEXT("Mission is unchanged"), plan->mission_changed);
-        TestRunner->TestEqual(TEXT("Entities are unchanged"), plan->changes.Num(), 0);
+        TestRunner->TestEqual(
+            TEXT("Entities are unchanged"), static_cast<int32>(plan->changes.size()), 0);
 
         auto const applied{ml::editor::apply_s7_level_sync_plan(
             *fixture.world->GetCurrentLevel(), *fixture.document, *plan)};
@@ -947,7 +955,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestFalse(TEXT("Metadata is unchanged"), plan->metadata_changed);
         TestRunner->TestFalse(TEXT("Viewpoint is unchanged"), plan->viewpoint_changed);
         TestRunner->TestTrue(TEXT("Mission change is reported"), plan->mission_changed);
-        TestRunner->TestEqual(TEXT("Entities are unchanged"), plan->changes.Num(), 0);
+        TestRunner->TestEqual(
+            TEXT("Entities are unchanged"), static_cast<int32>(plan->changes.size()), 0);
 
         auto const applied{ml::editor::apply_s7_level_sync_plan(
             *fixture.world->GetCurrentLevel(), *fixture.document, *plan)};
@@ -1002,7 +1011,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestFalse(TEXT("Metadata is unchanged"), plan->metadata_changed);
         TestRunner->TestTrue(TEXT("Viewpoint change is reported"), plan->viewpoint_changed);
         TestRunner->TestFalse(TEXT("Mission is unchanged"), plan->mission_changed);
-        TestRunner->TestEqual(TEXT("Entities are unchanged"), plan->changes.Num(), 0);
+        TestRunner->TestEqual(
+            TEXT("Entities are unchanged"), static_cast<int32>(plan->changes.size()), 0);
 
         auto const applied{ml::editor::apply_s7_level_sync_plan(
             *fixture.world->GetCurrentLevel(), *fixture.document, *plan)};
@@ -1053,9 +1063,10 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestFalse(TEXT("Metadata is unchanged"), plan->metadata_changed);
         TestRunner->TestTrue(TEXT("Viewpoint change is reported"), plan->viewpoint_changed);
         TestRunner->TestFalse(TEXT("Mission is unchanged"), plan->mission_changed);
-        TestRunner->TestEqual(TEXT("Player actor is removed"),
-                              plan->count(ml::editor::ES7LevelSyncAction::Remove),
-                              1);
+        TestRunner->TestEqual(
+            TEXT("Player actor is removed"),
+            static_cast<int32>(plan->count(ml::editor::ES7LevelSyncAction::Remove)),
+            1);
 
         auto const applied{ml::editor::apply_s7_level_sync_plan(
             *fixture.world->GetCurrentLevel(), *fixture.document, *plan)};
@@ -1076,52 +1087,49 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                              bound_actor(*fixture.document, TEXT("player")));
     }
 
-    TEST_METHOD(EquivalentDefinitionReportsNoChanges)
+    TEST_METHOD(UnchangedActorIsNeverModifiedOrReconstructed)
     {
-        auto const fixture{make_preview_fixture(true)};
-        if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
+        auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
+        auto* const document{spawn<AS7LevelAuthoringDocument>(*world, TEXT("S7 Document"))};
+        auto* const level_config{config(*world)};
+        if (!TestRunner->TestNotNull(TEXT("Config"), level_config)) {
             return;
         }
-        fixture.document->camera.targets = {fixture.ally, fixture.enemy};
-        fixture.document->mission.mode = ETestMissionMode::KillEnemies;
-        fixture.document->mission.use_explicit_kill_count = true;
-        fixture.document->mission.kill_count = 1;
-        fixture.document->mission.heroes = {fixture.ally, fixture.enemy};
-        auto definition{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
-                                                            *fixture.document)};
-        if (!TestRunner->TestTrue(TEXT("Baseline collects"), definition.has_value())) {
-            TestRunner->AddError(definition.error());
-            return;
-        }
-        definition->camera->target_entity_ids.Swap(0, 1);
-        definition->mission->hero_entity_ids.Swap(0, 1);
-        if (!assert_valid_definition(*TestRunner, *definition)) {
+        level_config->classes.player_ship_class = AS7LevelAuthoringTestActor::StaticClass();
+        document->level_config = level_config;
+        document->level_id = TEXT("unchanged");
+        document->title = TEXT("Unchanged");
+        auto* const actor{spawn<AS7LevelAuthoringTestActor>(*world, TEXT("player"))};
+        actor->set_team(ETestTeam::Blue);
+        document->entities = {{.id = TEXT("player"), .actor = actor}};
+        auto definition{ml::editor::collect_s7_editor_level(*world->GetCurrentLevel(), *document)};
+        if (!TestRunner->TestTrue(TEXT("Definition collects"), definition.has_value())) {
             return;
         }
 
-        auto const plan{ml::editor::make_s7_level_sync_plan(
-            *fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
-        if (!TestRunner->TestTrue(TEXT("Preview builds"), plan.has_value())) {
-            TestRunner->AddError(plan.error());
-            return;
+        auto const modifications{actor->modifications};
+        auto const constructions{actor->constructions};
+        auto* const root{actor->GetRootComponent()};
+        for (auto const metadata_change : {false, true}) {
+            if (metadata_change) {
+                definition->metadata.title = TEXT("Updated title");
+            }
+            auto const plan{ml::editor::make_s7_level_sync_plan(
+                *world->GetCurrentLevel(), *document, *definition)};
+            if (!TestRunner->TestTrue(TEXT("Plan builds"), plan.has_value())) {
+                return;
+            }
+            TestRunner->TestTrue(
+                TEXT("Plan applies"),
+                ml::editor::apply_s7_level_sync_plan(*world->GetCurrentLevel(), *document, *plan)
+                    .has_value());
+            TestRunner->TestEqual(
+                TEXT("Actor is not modified"), actor->modifications, modifications);
+            TestRunner->TestEqual(
+                TEXT("Construction is not rerun"), actor->constructions, constructions);
+            TestRunner->TestTrue(TEXT("Component identity survives"),
+                                 actor->GetRootComponent() == root);
         }
-        TestRunner->TestFalse(TEXT("Metadata is unchanged"), plan->metadata_changed);
-        TestRunner->TestFalse(TEXT("Target order is semantically unchanged"),
-                              plan->viewpoint_changed);
-        TestRunner->TestFalse(TEXT("Mission role order is semantically unchanged"),
-                              plan->mission_changed);
-        TestRunner->TestEqual(TEXT("Entities are unchanged"), plan->changes.Num(), 0);
-        TestRunner->TestFalse(TEXT("Plan reports no changes"), plan->has_changes());
-
-        auto const applied{ml::editor::apply_s7_level_sync_plan(
-            *fixture.world->GetCurrentLevel(), *fixture.document, *plan)};
-        if (!TestRunner->TestTrue(TEXT("No-op preview applies"), applied.has_value())) {
-            TestRunner->AddError(applied.error());
-            return;
-        }
-        auto const collected{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
-                                                                 *fixture.document)};
-        TestRunner->TestTrue(TEXT("Applied scene still collects"), collected.has_value());
     }
 
     TEST_METHOD(ApplyAddsConfiguredActor)
@@ -1151,8 +1159,9 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             TestRunner->AddError(plan.error());
             return;
         }
-        TestRunner->TestEqual(
-            TEXT("One actor adds"), plan->count(ml::editor::ES7LevelSyncAction::Add), 1);
+        TestRunner->TestEqual(TEXT("One actor adds"),
+                              static_cast<int32>(plan->count(ml::editor::ES7LevelSyncAction::Add)),
+                              1);
         auto const applied{
             ml::editor::apply_s7_level_sync_plan(*world->GetCurrentLevel(), *document, *plan)};
         if (!TestRunner->TestTrue(TEXT("Preview applies"), applied.has_value())) {
@@ -1213,7 +1222,9 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             return;
         }
         TestRunner->TestEqual(
-            TEXT("One actor updates"), plan->count(ml::editor::ES7LevelSyncAction::Update), 1);
+            TEXT("One actor updates"),
+            static_cast<int32>(plan->count(ml::editor::ES7LevelSyncAction::Update)),
+            1);
 
         auto const applied{
             ml::editor::apply_s7_level_sync_plan(*world->GetCurrentLevel(), *document, *plan)};
@@ -1269,7 +1280,9 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             return;
         }
         TestRunner->TestEqual(
-            TEXT("One actor replaces"), plan->count(ml::editor::ES7LevelSyncAction::Replace), 1);
+            TEXT("One actor replaces"),
+            static_cast<int32>(plan->count(ml::editor::ES7LevelSyncAction::Replace)),
+            1);
 
         auto const applied{
             ml::editor::apply_s7_level_sync_plan(*world->GetCurrentLevel(), *document, *plan)};
@@ -1325,7 +1338,9 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             return;
         }
         TestRunner->TestEqual(
-            TEXT("One actor removes"), plan->count(ml::editor::ES7LevelSyncAction::Remove), 1);
+            TEXT("One actor removes"),
+            static_cast<int32>(plan->count(ml::editor::ES7LevelSyncAction::Remove)),
+            1);
 
         auto const applied{
             ml::editor::apply_s7_level_sync_plan(*world->GetCurrentLevel(), *document, *plan)};
@@ -1573,14 +1588,21 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             TestRunner->AddError(plan.error());
             return;
         }
+        TestRunner->TestEqual(TEXT("One actor adds"),
+                              static_cast<int32>(plan->count(ml::editor::ES7LevelSyncAction::Add)),
+                              1);
         TestRunner->TestEqual(
-            TEXT("One actor adds"), plan->count(ml::editor::ES7LevelSyncAction::Add), 1);
+            TEXT("One actor updates"),
+            static_cast<int32>(plan->count(ml::editor::ES7LevelSyncAction::Update)),
+            1);
         TestRunner->TestEqual(
-            TEXT("One actor updates"), plan->count(ml::editor::ES7LevelSyncAction::Update), 1);
+            TEXT("One actor replaces"),
+            static_cast<int32>(plan->count(ml::editor::ES7LevelSyncAction::Replace)),
+            1);
         TestRunner->TestEqual(
-            TEXT("One actor replaces"), plan->count(ml::editor::ES7LevelSyncAction::Replace), 1);
-        TestRunner->TestEqual(
-            TEXT("One actor removes"), plan->count(ml::editor::ES7LevelSyncAction::Remove), 1);
+            TEXT("One actor removes"),
+            static_cast<int32>(plan->count(ml::editor::ES7LevelSyncAction::Remove)),
+            1);
 
         auto const applied{
             ml::editor::apply_s7_level_sync_plan(*world->GetCurrentLevel(), *document, *plan)};
@@ -1742,9 +1764,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
         TestRunner->TestEqual(
             TEXT("Dead and duplicate bindings are removed"), repaired->removed_bindings, 2);
-        TestRunner->TestEqual(TEXT("Invalid and formerly unbound references are removed"),
-                              repaired->removed_references,
-                              5);
+        TestRunner->TestEqual(
+            TEXT("Only dead references are removed"), repaired->removed_references, 3);
         TestRunner->TestEqual(
             TEXT("Both duplicated actors are adopted"), repaired->adopted_entities, 2);
         TestRunner->TestTrue(TEXT("Stable binding ID is preserved"),
@@ -1753,16 +1774,17 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                              bound_actor(*document, TEXT("enemy-group-2")) == duplicate_one);
         TestRunner->TestTrue(TEXT("Second canonical collision receives suffix"),
                              bound_actor(*document, TEXT("enemy-group-3")) == duplicate_two);
-        TestRunner->TestEqual(
-            TEXT("Only retained camera reference survives"), document->camera.targets.Num(), 1);
+        TestRunner->TestEqual(TEXT("Retained and adopted camera references survive"),
+                              document->camera.targets.Num(),
+                              2);
         TestRunner->TestTrue(TEXT("Camera reference remains bound"),
                              document->camera.targets[0] == retained);
         TestRunner->TestEqual(
             TEXT("Only retained hero reference survives"), document->mission.heroes.Num(), 1);
         TestRunner->TestTrue(TEXT("No stale must-survive references remain"),
                              document->mission.must_survive.IsEmpty());
-        TestRunner->TestTrue(TEXT("No stale required-kill references remain"),
-                             document->mission.required_kills.IsEmpty());
+        TestRunner->TestTrue(TEXT("Adopted required-kill reference survives"),
+                             document->mission.required_kills.Contains(duplicate_two));
 
         GEditor->UndoTransaction();
 
@@ -1865,8 +1887,9 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             TestRunner->AddError(plan.error());
             return;
         }
-        TestRunner->TestEqual(
-            TEXT("Delayed actor adds"), plan->count(ml::editor::ES7LevelSyncAction::Add), 1);
+        TestRunner->TestEqual(TEXT("Delayed actor adds"),
+                              static_cast<int32>(plan->count(ml::editor::ES7LevelSyncAction::Add)),
+                              1);
 
         auto const applied{
             ml::editor::apply_s7_level_sync_plan(*world->GetCurrentLevel(), *document, *plan)};
@@ -1905,9 +1928,10 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             TestRunner->AddError(update_plan.error());
             return;
         }
-        TestRunner->TestEqual(TEXT("Delay-only change updates"),
-                              update_plan->count(ml::editor::ES7LevelSyncAction::Update),
-                              1);
+        TestRunner->TestEqual(
+            TEXT("Delay-only change updates"),
+            static_cast<int32>(update_plan->count(ml::editor::ES7LevelSyncAction::Update)),
+            1);
 
         auto const updated{ml::editor::apply_s7_level_sync_plan(
             *world->GetCurrentLevel(), *document, *update_plan)};
@@ -1960,4 +1984,97 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestFalse(TEXT("Mode deactivates"),
                               modes.IsModeActive(US7LevelAuthoringMode::mode_id));
     }
+};
+
+TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
+{
+    AFTER_EACH()
+    {
+        if (GEditor && GEditor->PlayWorld) {
+            GEditor->EndPlayMap();
+        }
+    }
+
+    void play_authored_scene(bool const observer) {
+        auto fixture{make_preview_fixture(observer)};
+        if (!TestRunner->TestTrue(TEXT("PIE fixture"), fixture.is_valid())) {
+            return;
+        }
+        fixture.document->level_config = ml::s7_level_config::load_canonical();
+        fixture.enemy->SetActorLocation(FVector{30000.0, 0.0, 0.0});
+        fixture.document->entities[1].spawn_time_seconds = 5.0;
+        if (observer) {
+            fixture.ally->SetActorLocation(FVector{-30000.0, 0.0, 0.0});
+        }
+        auto const setup{ml::editor::set_up_playable_s7_level(*fixture.world->GetCurrentLevel(),
+                                                              *fixture.document)};
+        if (!TestRunner->TestTrue(TEXT("Playable setup"), setup.has_value())) {
+            TestRunner->AddError(setup.error());
+            return;
+        }
+
+        if (observer) {
+            for (TActorIterator<ATestBatchOrchestrator> it{fixture.world}; it; ++it) {
+                it->set_start_mode(EOrchestratorStartMode::Automatic);
+            }
+        }
+
+        TestCommandBuilder.Do([] { FStartPIECommand{false}.Update(); })
+            .Until([] { return GEditor->PlayWorld && GEditor->PlayWorld->HasBegunPlay(); },
+                   FTimespan::FromSeconds(30))
+            .Then([this, fixture, observer] {
+                auto* const world{GEditor->PlayWorld.Get()};
+                if (!TestRunner->TestNotNull(TEXT("PIE world"), world)) {
+                    return;
+                }
+                TActorIterator<ATestBatchOrchestrator> it{world};
+                if (!TestRunner->TestTrue(TEXT("PIE orchestrator"), static_cast<bool>(it))) {
+                    return;
+                }
+                auto& orchestrator{**it};
+                if (!TestRunner->TestTrue(TEXT("Authored simulation starts"),
+                                          orchestrator.get_state() ==
+                                              ::ioj::sim::OrchestratorState::Running)) {
+                    return;
+                }
+                orchestrator.SetActorTickEnabled(false);
+                auto* const controller{Cast<ASpaceGamePlayerController>(
+                    UGameplayStatics::GetPlayerController(world, 0))};
+                if (!TestRunner->TestNotNull(TEXT("Space-game controller"), controller)) {
+                    return;
+                }
+                TestRunner->TestTrue(TEXT("Runtime control context matches viewpoint"),
+                                     controller->get_active_control_context() ==
+                                         (observer ? EPlayerControlContext::Observer
+                                                   : EPlayerControlContext::Player));
+                TestRunner->TestTrue(TEXT("Runtime uses the authored player or observer camera"),
+                                     observer
+                                         ? IsValid(Cast<ACameraActor>(controller->GetViewTarget()))
+                                         : controller->GetPawn() == orchestrator.get_player_ship());
+                auto const initial_capitals{observer ? 1 : 0};
+                TestRunner->TestEqual(TEXT("Delayed entity is absent at startup"),
+                                      orchestrator.get_capital_ships()->get_num_instances(),
+                                      initial_capitals);
+                TestRunner->TestTrue(TEXT("Startup precedes scheduled spawn"),
+                                     orchestrator.get_simulation_time() < 4.0);
+                orchestrator.tick(FMath::Max(0.0, 4.0 - orchestrator.get_simulation_time()));
+                TestRunner->TestEqual(TEXT("Delayed entity remains absent before its time"),
+                                      orchestrator.get_capital_ships()->get_num_instances(),
+                                      initial_capitals);
+                orchestrator.tick(1.1);
+                TestRunner->TestEqual(TEXT("Existing authored scheduler spawns the entity"),
+                                      orchestrator.get_capital_ships()->get_num_instances(),
+                                      initial_capitals + 1);
+                GEditor->EndPlayMap();
+                TestRunner->TestTrue(TEXT("PIE preserves editor actor identity and bindings"),
+                                     IsValid(fixture.enemy) &&
+                                         bound_actor(*fixture.document, TEXT("enemy")) ==
+                                             fixture.enemy);
+            });
+    }
+
+    TEST_METHOD(DelayedObserverScenePlaysThroughAuthoredRuntime)
+    { play_authored_scene(true); }
+    TEST_METHOD(DelayedPlayerScenePlaysThroughAuthoredRuntime)
+    { play_authored_scene(false); }
 };

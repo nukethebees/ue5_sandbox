@@ -2,8 +2,13 @@
 
 #include "SandboxEditor/levels/S7LevelAuthoringActors.h"
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
+#include <ioj/levels/authoring/identifiers.h>
+#include <ioj/levels/authoring/level_definition_writer.h>
+#include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+
+#include <SandboxCoreEngine/strings.h>
 
 #include <Editor.h>
 #include <Engine/Level.h>
@@ -12,32 +17,43 @@
 
 namespace ml::editor {
 namespace s7_level_authoring_session_detail {
-auto mission_mode(ETestMissionMode const mode) -> ::ioj::levels::LevelMissionMode {
-    using Result = ::ioj::levels::LevelMissionMode;
-    switch (mode) {
-        case ETestMissionMode::SurviveTime:
-            return Result::SurviveTime;
-        case ETestMissionMode::KillEnemies:
-            return Result::KillEnemies;
-        case ETestMissionMode::KillEnemiesWithinTime:
-            return Result::KillEnemiesWithinTime;
-        case ETestMissionMode::None:
-            return Result::Unspecified;
-    }
-    return Result::Unspecified;
+using namespace ::ioj::levels;
+using namespace ::ioj::levels::authoring;
+
+auto text(FString const& value) -> std::string {
+    auto const utf8{FTCHARToUTF8{*value, value.Len()}};
+    return {utf8.Get(), static_cast<std::size_t>(utf8.Length())};
+}
+auto entity_id(FName const value) -> EntityId {
+    return EntityId{value.IsNone() ? std::string{} : text(value.ToString().ToLower())};
+}
+auto vector(FVector const value) -> ml::Vector3d {
+    return {value.X, value.Y, value.Z};
 }
 
-auto validation_error(FLevelDefinition const& definition) -> FString {
-    auto const validation{validate_level(definition)};
-    TArray<FString> messages;
-    for (auto const& error : validation.errors) {
-        messages.Add(error.message);
+auto adopt(ULevel& level, TArray<FS7LevelEntityBinding>& bindings) -> int32 {
+    TSet<AActor const*> bound;
+    std::unordered_set<EntityId> ids;
+    for (auto const& binding : bindings) {
+        bound.Add(binding.actor);
+        ids.insert(entity_id(binding.id));
     }
-    return FString::Join(messages, TEXT("\n"));
+    int32 count{};
+    for (auto const actor_ptr : level.Actors) {
+        auto* const actor{actor_ptr.Get()};
+        auto const resolved{IsValid(actor) ? resolve_s7_level_actor(*actor) : NullOpt};
+        if (!resolved.IsSet() || bound.Contains(actor)) {
+            continue;
+        }
+        auto const id{allocate_entity_id(
+            text(actor->GetActorLabel()), to_serialized_string(resolved->archetype), ids)};
+        bindings.Add({.id = FName{ml::to_fstring(id.value)}, .actor = actor});
+        bound.Add(actor);
+        ++count;
+    }
+    return count;
 }
 }
-
-using namespace s7_level_authoring_session_detail;
 
 auto find_level_authoring_document(ULevel const& level)
     -> std::expected<AS7LevelAuthoringDocument*, FString> {
@@ -97,39 +113,13 @@ auto create_level_authoring_document(ULevel& level)
 
 auto adopt_unbound_level_entities(ULevel& level, AS7LevelAuthoringDocument& document)
     -> std::expected<int32, FString> {
-    TSet<AActor const*> bound;
-    TSet<FName> ids;
-    for (auto const& binding : document.entities) {
-        if (IsValid(binding.actor)) {
-            bound.Add(binding.actor);
-        }
-        if (!binding.id.IsNone()) {
-            ids.Add(binding.id);
-        }
-    }
-
-    FScopedTransaction transaction{NSLOCTEXT("S7LevelAuthoring", "Adopt", "Adopt Level Entities")};
-    document.Modify();
-    int32 adopted{};
-    for (auto const actor_ptr : level.Actors) {
-        auto* const actor{actor_ptr.Get()};
-        auto const resolved{IsValid(actor) ? resolve_s7_level_actor(*actor) : NullOpt};
-        if (!resolved.IsSet() || bound.Contains(actor)) {
-            continue;
-        }
-        auto const fallback{to_level_archetype_id(resolved->archetype).value.ToString()};
-        auto id{canonical_s7_level_entity_id(actor->GetActorLabel(), fallback)};
-        auto const base{id.ToString()};
-        int32 suffix{2};
-        while (ids.Contains(id)) {
-            id = FName{FString::Printf(TEXT("%s-%d"), *base, suffix++)};
-        }
-        document.entities.Add({.id = id, .actor = actor});
-        ids.Add(id);
-        ++adopted;
-    }
-    if (adopted == 0) {
-        transaction.Cancel();
+    auto bindings{document.entities};
+    auto const adopted{s7_level_authoring_session_detail::adopt(level, bindings)};
+    if (adopted != 0) {
+        FScopedTransaction transaction{
+            NSLOCTEXT("S7LevelAuthoring", "Adopt", "Adopt Level Entities")};
+        document.Modify();
+        document.entities = MoveTemp(bindings);
     }
     return adopted;
 }
@@ -137,178 +127,138 @@ auto adopt_unbound_level_entities(ULevel& level, AS7LevelAuthoringDocument& docu
 auto repair_s7_level_bindings(ULevel& level, AS7LevelAuthoringDocument& document)
     -> std::expected<FS7LevelBindingRepairResult, FString> {
     FS7LevelBindingRepairResult result;
-    TArray<FS7LevelEntityBinding> repaired_bindings;
-    repaired_bindings.Reserve(document.entities.Num());
-    TSet<AActor const*> bound_actors;
+    TArray<FS7LevelEntityBinding> bindings;
+    TSet<AActor const*> bound;
     TSet<FName> ids;
-
+    TMap<AActor const*, double> spawn_times;
     for (auto const& binding : document.entities) {
         auto* const actor{binding.actor.Get()};
+        if (IsValid(actor) && actor->GetLevel() == &level && !spawn_times.Contains(actor)) {
+            spawn_times.Add(actor, binding.spawn_time_seconds);
+        }
         if (!IsValid(actor) || actor->GetLevel() != &level ||
             !resolve_s7_level_actor(*actor).IsSet() ||
-            !is_canonical_s7_level_entity_id(binding.id) || bound_actors.Contains(actor) ||
+            !is_canonical_s7_level_entity_id(binding.id) || bound.Contains(actor) ||
             ids.Contains(binding.id)) {
             ++result.removed_bindings;
             continue;
         }
-        repaired_bindings.Add(binding);
-        bound_actors.Add(actor);
+        bindings.Add(binding);
+        bound.Add(actor);
         ids.Add(binding.id);
     }
 
-    auto remove_unbound_references = [&bound_actors](TArray<TObjectPtr<AActor>>& references) {
-        TArray<TObjectPtr<AActor>> repaired_references;
-        repaired_references.Reserve(references.Num());
-        int32 removed{};
-        for (auto const actor : references) {
-            if (IsValid(actor) && bound_actors.Contains(actor)) {
-                repaired_references.Add(actor);
-            } else {
-                ++removed;
-            }
+    // Adopt before pruning so references to successfully recovered actors survive.
+    result.adopted_entities = s7_level_authoring_session_detail::adopt(level, bindings);
+    for (auto& binding : bindings) {
+        bound.Add(binding.actor);
+        if (auto const* const previous{spawn_times.Find(binding.actor)}; previous) {
+            binding.spawn_time_seconds = *previous;
         }
-        references = MoveTemp(repaired_references);
-        return removed;
-    };
-
-    auto camera_targets{document.camera.targets};
-    auto mission_heroes{document.mission.heroes};
-    auto mission_must_survive{document.mission.must_survive};
-    auto mission_required_kills{document.mission.required_kills};
-    result.removed_references += remove_unbound_references(camera_targets);
-    result.removed_references += remove_unbound_references(mission_heroes);
-    result.removed_references += remove_unbound_references(mission_must_survive);
-    result.removed_references += remove_unbound_references(mission_required_kills);
-
-    for (auto const actor_ptr : level.Actors) {
-        auto* const actor{actor_ptr.Get()};
-        auto const resolved{IsValid(actor) ? resolve_s7_level_actor(*actor) : NullOpt};
-        if (!resolved.IsSet() || bound_actors.Contains(actor)) {
-            continue;
-        }
-
-        auto const fallback{to_level_archetype_id(resolved->archetype).value.ToString()};
-        auto id{canonical_s7_level_entity_id(actor->GetActorLabel(), fallback)};
-        auto const base{id.ToString()};
-        int32 suffix{2};
-        while (ids.Contains(id)) {
-            id = FName{FString::Printf(TEXT("%s-%d"), *base, suffix++)};
-        }
-        repaired_bindings.Add({.id = id, .actor = actor});
-        bound_actors.Add(actor);
-        ids.Add(id);
-        ++result.adopted_entities;
     }
-
-    if (!result.has_changes()) {
-        return result;
+    auto camera{document.camera.targets};
+    auto heroes{document.mission.heroes};
+    auto survivors{document.mission.must_survive};
+    auto kills{document.mission.required_kills};
+    auto prune{[&](auto& references) {
+        result.removed_references += references.RemoveAll(
+            [&](auto const actor) { return !IsValid(actor) || !bound.Contains(actor); });
+    }};
+    prune(camera);
+    prune(heroes);
+    prune(survivors);
+    prune(kills);
+    if (result.has_changes()) {
+        FScopedTransaction transaction{
+            NSLOCTEXT("S7LevelAuthoring", "RepairBindings", "Repair S7 Level Bindings")};
+        document.Modify();
+        document.entities = MoveTemp(bindings);
+        document.camera.targets = MoveTemp(camera);
+        document.mission.heroes = MoveTemp(heroes);
+        document.mission.must_survive = MoveTemp(survivors);
+        document.mission.required_kills = MoveTemp(kills);
     }
-
-    FScopedTransaction transaction{
-        NSLOCTEXT("S7LevelAuthoring", "RepairBindings", "Repair S7 Level Bindings")};
-    document.Modify();
-    document.entities = MoveTemp(repaired_bindings);
-    document.camera.targets = MoveTemp(camera_targets);
-    document.mission.heroes = MoveTemp(mission_heroes);
-    document.mission.must_survive = MoveTemp(mission_must_survive);
-    document.mission.required_kills = MoveTemp(mission_required_kills);
     return result;
 }
 
-auto collect_s7_editor_level(ULevel const& level, AS7LevelAuthoringDocument const& document)
-    -> std::expected<FLevelDefinition, FString> {
-    auto const* const config{document.level_config.Get()};
-    auto const* const canonical{ml::s7_level_config::load_canonical()};
-    auto const temporary_preview{level.GetOutermost()->GetName().StartsWith(TEXT("/Temp/"))};
-    if (!IsValid(config) || !IsValid(canonical) || (config != canonical && !temporary_preview)) {
-        return std::unexpected{
-            TEXT("S7 authoring requires the canonical GameRuntime level configuration asset.")};
-    }
-
-    TMap<AActor const*, FLevelEntityId> ids_by_actor;
-    TSet<FName> ids;
-    FLevelBuilder builder;
-    builder.set_metadata({
-        .id = FLevelId{document.level_id},
-        .title = document.title,
-        .description = document.description,
-    });
+auto collect_s7_scene(ULevel const& level, AS7LevelAuthoringDocument const& document)
+    -> std::expected<::ioj::levels::authoring::SceneSnapshot, FString> {
+    using namespace s7_level_authoring_session_detail;
+    SceneSnapshot snapshot;
+    auto& definition{snapshot.definition};
+    definition.metadata = {.id = LevelId{document.level_id.IsNone()
+                                             ? std::string{}
+                                             : text(document.level_id.ToString().ToLower())},
+                           .title = text(document.title),
+                           .description = text(document.description)};
     auto const grid{document.collision_grid_overrides()};
     if (grid.level_size.IsSet() || grid.cell_size.IsSet()) {
-        builder.set_collision_grid(grid);
+        definition.collision_grid.emplace();
+        if (grid.level_size.IsSet()) {
+            definition.collision_grid->level_size = vector(FVector{*grid.level_size});
+        }
+        if (grid.cell_size.IsSet()) {
+            definition.collision_grid->cell_size = vector(FVector{*grid.cell_size});
+        }
     }
 
-    TArray<FEntitySpawnDefinition> entities;
+    TMap<AActor const*, EntityId> ids_by_actor;
+    TSet<FName> ids;
+    int32 player_count{};
     for (auto const& binding : document.entities) {
-        if (!IsValid(binding.actor) || !is_canonical_s7_level_entity_id(binding.id)) {
+        auto* const actor{binding.actor.Get()};
+        if (!IsValid(actor) || actor->GetLevel() != &level || binding.id.IsNone()) {
             return std::unexpected{
-                TEXT("Every entity binding must have a valid actor and canonical S7 id.")};
+                TEXT("Every entity binding must have a valid actor in this level and an id.")};
         }
-        if (binding.actor->GetLevel() != &level) {
-            return std::unexpected{FString::Printf(TEXT("Entity '%s' belongs to another level."),
-                                                   *binding.id.ToString())};
-        }
-        if (ids.Contains(binding.id) || ids_by_actor.Contains(binding.actor)) {
+        if (ids.Contains(binding.id) || ids_by_actor.Contains(actor)) {
             return std::unexpected{TEXT("Entity bindings contain a duplicate id or actor.")};
         }
-        auto const resolved{resolve_s7_level_actor(*binding.actor)};
-        if (!resolved.IsSet()) {
-            return std::unexpected{FString::Printf(
-                TEXT("Entity '%s' has an unsupported class or team."), *binding.id.ToString())};
-        }
+        auto const id{entity_id(binding.id)};
+        auto const resolved{resolve_s7_level_actor(*actor)};
+        auto const rotation{actor->GetActorRotation()};
+        definition.entities.push_back(
+            {.id = id,
+             .archetype = resolved.IsSet() ? resolved->archetype : EntityArchetype::PlayerFighter,
+             .team = resolved.IsSet() ? resolved->team : static_cast<::ioj::Team>(255),
+             .position = vector(actor->GetActorLocation()),
+             .rotation = {rotation.Pitch, rotation.Yaw, rotation.Roll},
+             .spawn_time_seconds = binding.spawn_time_seconds});
+        snapshot.properties.push_back(
+            {.label = text(actor->GetActorLabel()),
+             .scale = vector(actor->GetActorScale3D()),
+             .class_matches = resolved.IsSet() && IsValid(document.level_config) &&
+                              actor->GetClass() == s7_level_actor_class(resolved->archetype,
+                                                                        *document.level_config)});
         ids.Add(binding.id);
-        ids_by_actor.Add(binding.actor, FLevelEntityId{binding.id});
-        entities.Add({
-            .id = FLevelEntityId{binding.id},
-            .archetype = to_level_archetype_id(resolved->archetype),
-            .team = resolved->team,
-            .position = binding.actor->GetActorLocation(),
-            .rotation = binding.actor->GetActorRotation(),
-            .spawn_time_seconds = binding.spawn_time_seconds,
-        });
-    }
-    for (auto const actor_ptr : level.Actors) {
-        auto const* const actor{actor_ptr.Get()};
-        if (IsValid(actor) && resolve_s7_level_actor(*actor).IsSet() &&
-            !ids_by_actor.Contains(actor)) {
-            return std::unexpected{FString::Printf(
-                TEXT("Supported actor '%s' is not adopted by the authoring document."),
-                *actor->GetActorLabel())};
+        ids_by_actor.Add(actor, id);
+        if (IsValid(Cast<ATestSpaceShip>(actor))) {
+            definition.player_entity_id = id;
+            ++player_count;
         }
     }
-    for (auto const& entity : entities) {
-        builder.add_entity(entity);
-    }
 
-    if (document.use_observer_camera) {
-        FLevelCameraDefinition camera{
-            .offset_direction = document.camera.offset_direction,
-            .distance = document.camera.distance,
-        };
-        for (auto const actor : document.camera.targets) {
+    auto references{[&](auto const& actors, bool& valid) {
+        std::vector<EntityId> result;
+        for (auto const actor : actors) {
             auto const* const id{ids_by_actor.Find(actor)};
-            if (!id) {
-                return std::unexpected{TEXT("Every camera target must be an adopted entity.")};
-            }
-            camera.target_entity_ids.Add(*id);
+            valid = valid && id != nullptr;
+            result.push_back(id ? *id : EntityId{});
         }
-        builder.set_camera(camera);
+        return result;
+    }};
+    if (document.use_observer_camera) {
+        definition.player_entity_id = {};
+        definition.camera = {.target_entity_ids =
+                                 references(document.camera.targets, snapshot.viewpoint_valid),
+                             .offset_direction = vector(document.camera.offset_direction),
+                             .distance = document.camera.distance};
     } else {
-        TArray<FLevelEntityId> players;
-        for (auto const& binding : document.entities) {
-            if (IsValid(Cast<ATestSpaceShip>(binding.actor))) {
-                players.Add(FLevelEntityId{binding.id});
-            }
-        }
-        if (players.Num() != 1) {
-            return std::unexpected{
-                TEXT("Player-authored levels require exactly one player actor.")};
-        }
-        builder.set_player_entity(players[0]);
+        snapshot.viewpoint_valid = player_count == 1;
     }
-
     if (document.mission.mode != ETestMissionMode::None) {
-        FLevelMissionDefinition mission{.mode = mission_mode(document.mission.mode)};
+        auto& mission{definition.mission.emplace()};
+        mission.mode = s7_mission_mode(document.mission.mode);
         if (document.mission.mode == ETestMissionMode::SurviveTime ||
             document.mission.mode == ETestMissionMode::KillEnemiesWithinTime) {
             mission.time_limit_seconds = document.mission.time_limit_seconds;
@@ -317,44 +267,49 @@ auto collect_s7_editor_level(ULevel const& level, AS7LevelAuthoringDocument cons
             document.mission.mode != ETestMissionMode::SurviveTime) {
             mission.kill_count = document.mission.kill_count;
         }
-        auto append_ids = [&ids_by_actor](TArray<FLevelEntityId>& output,
-                                          TArray<TObjectPtr<AActor>> const& actors,
-                                          FStringView const role) -> FString {
-            for (auto const actor : actors) {
-                auto const* const id{ids_by_actor.Find(actor)};
-                if (!id) {
-                    return FString::Printf(TEXT("Every %.*s objective must be an adopted entity."),
-                                           role.Len(),
-                                           role.GetData());
-                }
-                output.Add(*id);
-            }
-            return {};
-        };
-        if (auto const error{
-                append_ids(mission.hero_entity_ids, document.mission.heroes, TEXTVIEW("hero"))};
-            !error.IsEmpty()) {
-            return std::unexpected{error};
-        }
-        if (auto const error{append_ids(mission.must_survive_entity_ids,
-                                        document.mission.must_survive,
-                                        TEXTVIEW("must-survive"))};
-            !error.IsEmpty()) {
-            return std::unexpected{error};
-        }
-        if (auto const error{append_ids(mission.required_kill_entity_ids,
-                                        document.mission.required_kills,
-                                        TEXTVIEW("required-kill"))};
-            !error.IsEmpty()) {
-            return std::unexpected{error};
-        }
-        builder.set_mission(mission);
+        mission.hero_entity_ids =
+            references(document.mission.heroes, snapshot.mission_references_valid);
+        mission.must_survive_entity_ids =
+            references(document.mission.must_survive, snapshot.mission_references_valid);
+        mission.required_kill_entity_ids =
+            references(document.mission.required_kills, snapshot.mission_references_valid);
     }
+    return snapshot;
+}
 
-    auto definition{builder.finish()};
-    if (auto const error{validation_error(definition)}; !error.IsEmpty()) {
-        return std::unexpected{error};
+auto collect_s7_editor_level(ULevel const& level, AS7LevelAuthoringDocument const& document)
+    -> std::expected<FLevelDefinition, FString> {
+    using namespace s7_level_authoring_session_detail;
+    auto const* const config{document.level_config.Get()};
+    auto const* const canonical{ml::s7_level_config::load_canonical()};
+    if (!IsValid(config) || !IsValid(canonical) ||
+        (config != canonical && !level.GetOutermost()->GetName().StartsWith(TEXT("/Temp/")))) {
+        return std::unexpected{
+            TEXT("S7 authoring requires the canonical GameRuntime level configuration asset.")};
     }
-    return definition;
+    auto scene{collect_s7_scene(level, document)};
+    if (!scene) {
+        return std::unexpected{scene.error()};
+    }
+    TSet<AActor const*> bound;
+    for (auto const& binding : document.entities) {
+        bound.Add(binding.actor);
+    }
+    for (auto const actor : level.Actors) {
+        if (IsValid(actor) && resolve_s7_level_actor(*actor).IsSet() && !bound.Contains(actor)) {
+            return std::unexpected{FString::Printf(
+                TEXT("Supported actor '%s' is not adopted by the authoring document."),
+                *actor->GetActorLabel())};
+        }
+    }
+    auto validation{validate_editor_level(scene->definition)};
+    if (!validation) {
+        return std::unexpected{ml::to_fstring(format_diagnostics(validation.error()))};
+    }
+    if (!scene->viewpoint_valid || !scene->mission_references_valid) {
+        return std::unexpected{
+            TEXT("Every viewpoint and mission reference must identify an adopted entity.")};
+    }
+    return ::ioj::levels::authoring::to_unreal(MoveTemp(scene->definition));
 }
 }

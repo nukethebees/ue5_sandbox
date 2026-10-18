@@ -46,6 +46,7 @@ class SANDBOXEDITOR_API FSandboxEditorModule
     void unregister_custom_properties();
 
     FDelegateHandle context_menu_delegate;
+    FDelegateHandle s7_pie_handle_{};
     TArray<FName> registered_properties;
     TArray<FName> registered_class_layouts;
     TWeakPtr<SS7LevelScriptEditor> s7_level_script_editor_{};

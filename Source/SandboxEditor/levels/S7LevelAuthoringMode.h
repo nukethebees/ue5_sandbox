@@ -77,7 +77,8 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
     void refresh_document();
     void set_status(FText text);
     void update_document_source_path();
-    void assign_selected_objective(int32 role);
+    enum class ObjectiveRole { Clear, Hero, MustSurvive, RequiredKill };
+    void assign_selected_objective(ObjectiveRole role);
 
     TWeakObjectPtr<AS7LevelAuthoringDocument> document_{};
     ml::editor::FS7LevelSourceSession source_session_{};
@@ -85,6 +86,7 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
     FText status_{};
     FOnS7LevelAuthoringChanged changed_{};
     float refresh_elapsed_seconds_{};
-    bool scene_dirty_{};
-    bool preview_stale_{};
+    TOptional<::ioj::levels::authoring::SceneSnapshot> observed_scene_{};
+    FString observed_sync_hash_{};
+    int32 observed_actor_count_{-1};
 };

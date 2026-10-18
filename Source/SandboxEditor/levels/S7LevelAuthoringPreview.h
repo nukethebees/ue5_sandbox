@@ -15,9 +15,10 @@ class USpaceGameLevelConfig;
 namespace ml::editor {
 class FS7LevelSourceSession;
 
-struct SANDBOXEDITOR_API FS7LevelPreviewBindingSnapshot {
-    FName id{NAME_None};
-    TWeakObjectPtr<AActor> actor{};
+enum class ES7LevelPreviewError { Stale, Execution };
+struct FS7LevelPreviewError {
+    ES7LevelPreviewError code{};
+    FString message{};
 };
 
 struct SANDBOXEDITOR_API FS7LevelAuthoringPreview {
@@ -29,8 +30,8 @@ struct SANDBOXEDITOR_API FS7LevelAuthoringPreview {
     TWeakObjectPtr<USpaceGameLevelConfig> level_config{};
     TWeakObjectPtr<UClass> level_config_class{};
     FString level_config_digest{};
-    TArray<FS7LevelPreviewBindingSnapshot> bindings{};
-    FString scene_digest{};
+    TArray<TWeakObjectPtr<AActor>> actor_identities{};
+    ::ioj::levels::authoring::SceneSnapshot scene{};
 };
 
 SANDBOXEDITOR_API auto make_s7_level_authoring_preview(ULevel& level,
@@ -43,10 +44,10 @@ SANDBOXEDITOR_API auto
                                         AS7LevelAuthoringDocument& document,
                                         FS7LevelSourceSession const& source_session,
                                         FS7LevelAuthoringPreview const& preview)
-        -> std::expected<void, FString>;
+        -> std::expected<void, FS7LevelPreviewError>;
 SANDBOXEDITOR_API auto apply_s7_level_authoring_preview(ULevel& level,
                                                         AS7LevelAuthoringDocument& document,
                                                         FS7LevelSourceSession const& source_session,
                                                         FS7LevelAuthoringPreview const& preview)
-    -> std::expected<void, FString>;
+    -> std::expected<void, FS7LevelPreviewError>;
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/levels/authoring/source_session.h>
 #include <SpaceGameS7/definition_reader.h>
 
 #include <CoreMinimal.h>
@@ -44,18 +45,17 @@ class SANDBOXEDITOR_API FS7LevelSourceSession final {
     [[nodiscard]] auto is_dirty() const -> bool;
     [[nodiscard]] auto has_external_conflict() const -> bool;
     [[nodiscard]] auto has_unapplied_buffer(FStringView synchronized_source_digest) const -> bool;
+    void detach();
+    auto state() -> ::ioj::levels::authoring::SourceSessionState& { return state_; }
+    auto state() const -> ::ioj::levels::authoring::SourceSessionState const& { return state_; }
 
     [[nodiscard]] static auto source_digest(FStringView source) -> FString;
   private:
-    struct FDiskState {
-        bool exists{};
-        FString digest{};
-
-        auto operator==(FDiskState const&) const -> bool = default;
-    };
+    using FDiskState = ::ioj::levels::authoring::SourceDiskState;
 
     [[nodiscard]] static auto normalize_path(FStringView path) -> FString;
-    [[nodiscard]] static auto observe_disk(FStringView path) -> std::expected<FDiskState, FString>;
+    [[nodiscard]] static auto observe_disk(FStringView path, FString* source = nullptr)
+        -> std::expected<FDiskState, FString>;
     [[nodiscard]] auto load_attached(AS7LevelAuthoringDocument& document, FStringView path)
         -> std::expected<void, FString>;
     [[nodiscard]] auto verify_disk_baseline() -> std::expected<void, FString>;
@@ -67,9 +67,6 @@ class SANDBOXEDITOR_API FS7LevelSourceSession final {
     TWeakObjectPtr<AS7LevelAuthoringDocument> document_{};
     FString path_{};
     FString buffer_{};
-    FDiskState disk_baseline_{};
-    bool dirty_{};
-    bool external_conflict_{};
-    uint64 revision_{};
+    ::ioj::levels::authoring::SourceSessionState state_{};
 };
 }

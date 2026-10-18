@@ -66,6 +66,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
         return level_config.Get();
     }
     void set_start_mode(EOrchestratorStartMode mode);
+    auto get_start_mode() const noexcept -> EOrchestratorStartMode { return start_mode; }
     void set_presentation_enabled(bool enabled);
     void set_collision_grid_override(FVector3f level_size, FVector3f cell_size);
     void clear_collision_grid_override();

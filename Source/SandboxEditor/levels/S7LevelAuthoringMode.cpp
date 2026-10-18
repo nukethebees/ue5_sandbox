@@ -110,6 +110,7 @@ auto selected_bound_entity(AS7LevelAuthoringDocument& document)
 }
 
 using namespace ml::editor::s7_level_authoring_mode_detail;
+using ::ioj::levels::authoring::PreviewState;
 
 FEditorModeID const US7LevelAuthoringMode::mode_id{TEXT("EM_SpaceGameLevelAuthoring")};
 
@@ -128,9 +129,11 @@ void US7LevelAuthoringMode::Enter() {
 
 void US7LevelAuthoringMode::Exit() {
     preview_.Reset();
-    preview_stale_ = false;
-    scene_dirty_ = false;
+    source_session_.state().preview = PreviewState::None;
+    source_session_.state().scene_dirty = false;
     document_.Reset();
+    source_session_.detach();
+    observed_scene_.Reset();
     Super::Exit();
 }
 
@@ -156,77 +159,63 @@ void US7LevelAuthoringMode::Tick(FEditorViewportClient* const viewport_client,
         return;
     }
 
+    auto* const level{current_level()};
+    if (!IsValid(level)) {
+        return;
+    }
+    auto& state{source_session_.state()};
+    auto const was_scene_dirty{state.scene_dirty};
+    auto const was_disk_conflict{state.disk_conflict};
     auto const disk_refreshed{source_session_.refresh_external_conflict()};
-    if (!disk_refreshed || source_session_.has_external_conflict()) {
-        auto const stale{
-            LOCTEXT("ExternalChange",
-                    "The S7 source changed externally. Saving is blocked; an unchanged "
-                    "preview can still apply.")};
-        if (!status_.EqualTo(stale)) {
-            set_status(stale);
-            changed_.Broadcast();
-        }
-    }
-    if (preview_.IsSet()) {
-        auto* const level{current_level()};
-        auto const current{IsValid(level)
-                               ? ml::editor::validate_s7_level_authoring_preview(
-                                     *level, *document_, source_session_, preview_.GetValue())
-                               : std::expected<void, FString>{
-                                     std::unexpected{TEXT("The current level is unavailable.")}}};
-        if (!current) {
-            preview_.Reset();
-            preview_stale_ = true;
-            set_status(FText::FromString(current.error()));
-            changed_.Broadcast();
-        }
-        return;
-    }
-    if (!disk_refreshed || source_session_.has_external_conflict()) {
-        return;
-    }
-    auto* const active_level{current_level()};
-    if (IsValid(active_level)) {
-        auto const observer_camera{
-            ml::editor::make_s7_observer_camera_transform(*active_level, *document_)};
-        if (!observer_camera) {
-            auto const error{FText::FromString(observer_camera.error())};
-            if (!status_.EqualTo(error)) {
-                set_status(error);
-                changed_.Broadcast();
-            }
-            return;
-        }
-    }
-    if (source_session_.is_dirty()) {
-        auto const dirty{LOCTEXT("SourceDirty", "The S7 source buffer has unsaved changes.")};
-        if (!status_.EqualTo(dirty)) {
-            set_status(dirty);
-            changed_.Broadcast();
-        }
-        return;
-    }
-    if (!document_->synchronized_scene_hash.IsEmpty()) {
-        auto const definition{IsValid(active_level)
-                                  ? ml::editor::collect_s7_editor_level(*active_level, *document_)
-                                  : std::expected<ml::FLevelDefinition, FString>{std::unexpected{
-                                        TEXT("The current level is unavailable.")}}};
+    auto const scene{ml::editor::collect_s7_scene(*level, *document_)};
+    if (!scene || !observed_scene_.IsSet() ||
+        !::ioj::levels::authoring::same_scene(*scene, *observed_scene_) ||
+        observed_sync_hash_ != document_->synchronized_scene_hash ||
+        observed_actor_count_ != level->Actors.Num()) {
+        auto const definition{ml::editor::collect_s7_editor_level(*level, *document_)};
         auto const generated{
             definition ? ::ioj::levels::authoring::emit_editor_level_source(*definition)
                        : std::expected<FString, FString>{std::unexpected{definition.error()}}};
-        if (!generated || document_->synchronized_scene_hash !=
-                              ml::editor::FS7LevelSourceSession::source_digest(*generated)) {
-            scene_dirty_ = true;
-            auto const dirty{
-                LOCTEXT("SceneDirty", "The scene has unsaved level-authoring changes.")};
-            if (!status_.EqualTo(dirty)) {
-                set_status(dirty);
-                changed_.Broadcast();
-            }
-        } else {
-            scene_dirty_ = false;
+        state.scene_dirty =
+            !generated || (!document_->synchronized_scene_hash.IsEmpty() &&
+                           document_->synchronized_scene_hash !=
+                               ml::editor::FS7LevelSourceSession::source_digest(*generated));
+        observed_scene_ = scene ? TOptional{*scene} : NullOpt;
+        observed_sync_hash_ = document_->synchronized_scene_hash;
+        observed_actor_count_ = level->Actors.Num();
+    }
+    if (preview_.IsSet() && state.preview == PreviewState::Valid) {
+        auto const current{ml::editor::validate_s7_level_authoring_preview(
+            *level, *document_, source_session_, *preview_)};
+        if (!current) {
+            state.invalidate_preview();
+            preview_.Reset();
+            set_status(FText::FromString(current.error().message));
+            changed_.Broadcast();
+            return;
         }
     }
+    if (!disk_refreshed || state.disk_conflict) {
+        set_status(LOCTEXT("ExternalChange",
+                           "The S7 source changed externally. Saving is blocked; an unchanged "
+                           "preview can still apply."));
+    } else if (state.preview == PreviewState::Valid) {
+        if (was_disk_conflict) {
+            set_status(LOCTEXT("ConflictCleared",
+                               "The disk conflict cleared. The preview remains valid."));
+        }
+    } else if (!source_session_.is_attached()) {
+        set_status(LOCTEXT(
+            "DetachedSource",
+            "Source is detached. Save Buffer As to recover it, or use Discard and Attach."));
+    } else if (source_session_.is_dirty()) {
+        set_status(LOCTEXT("SourceDirty", "The S7 source buffer has unsaved changes."));
+    } else if (state.scene_dirty) {
+        set_status(LOCTEXT("SceneDirty", "The scene has unsaved level-authoring changes."));
+    } else if (was_scene_dirty || was_disk_conflict) {
+        set_status(LOCTEXT("StateClean", "There are no scene changes or disk conflicts."));
+    }
+    changed_.Broadcast();
 }
 
 void US7LevelAuthoringMode::Render(FSceneView const* const view,
@@ -363,10 +352,11 @@ auto US7LevelAuthoringMode::script_editor_state() const -> FS7LevelScriptEditorS
             .source_dirty = source_session_.is_dirty(),
             .unapplied_buffer = has_document && source_session_.has_unapplied_buffer(
                                                     document_->synchronized_source_hash),
-            .scene_dirty = scene_dirty_,
+            .scene_dirty = source_session_.state().scene_dirty,
             .disk_conflict = source_session_.has_external_conflict(),
-            .preview_valid = preview_.IsSet() && !preview_stale_,
-            .preview_stale = preview_stale_,
+            .preview_valid =
+                preview_.IsSet() && source_session_.state().preview == PreviewState::Valid,
+            .preview_stale = source_session_.state().preview == PreviewState::Stale,
             .detached = !attached};
 }
 
@@ -385,18 +375,21 @@ auto US7LevelAuthoringMode::current_level() const -> ULevel* {
 
 void US7LevelAuthoringMode::refresh_document() {
     auto* const level{current_level()};
-    if (!IsValid(level)) {
-        document_.Reset();
-        set_status(LOCTEXT("NoLevel", "The current editor level is unavailable."));
-        return;
+    auto const found{IsValid(level)
+                         ? ml::editor::find_level_authoring_document(*level)
+                         : std::expected<AS7LevelAuthoringDocument*, FString>{
+                               std::unexpected{TEXT("The current editor level is unavailable.")}}};
+    auto* const next{found ? *found : nullptr};
+    if (document_.Get() != next || !IsValid(next)) {
+        preview_.Reset();
+        observed_scene_.Reset();
+        source_session_.detach();
+        document_ = next;
     }
-    auto const found{ml::editor::find_level_authoring_document(*level)};
     if (!found) {
-        document_.Reset();
         set_status(FText::FromString(found.error()));
         return;
     }
-    document_ = *found;
     if (!document_.IsValid()) {
         create_document();
         return;
@@ -476,7 +469,7 @@ void US7LevelAuthoringMode::repair_and_adopt_entities() {
     } else {
         if (preview_.IsSet()) {
             preview_.Reset();
-            preview_stale_ = true;
+            source_session_.state().preview = PreviewState::Stale;
         }
         set_status(FText::Format(
             LOCTEXT("BindingsRepaired",
@@ -528,7 +521,7 @@ void US7LevelAuthoringMode::rename_selected_entity(FString const id) {
     (*binding)->id = new_id;
     if (preview_.IsSet()) {
         preview_.Reset();
-        preview_stale_ = true;
+        source_session_.state().preview = PreviewState::Stale;
     }
     set_status(FText::Format(LOCTEXT("RenamedEntityId", "Renamed selected entity to '{0}'."),
                              FText::FromName(new_id)));
@@ -536,22 +529,22 @@ void US7LevelAuthoringMode::rename_selected_entity(FString const id) {
 }
 
 void US7LevelAuthoringMode::assign_selected_heroes() {
-    assign_selected_objective(1);
+    assign_selected_objective(ObjectiveRole::Hero);
 }
 
 void US7LevelAuthoringMode::assign_selected_must_survive() {
-    assign_selected_objective(2);
+    assign_selected_objective(ObjectiveRole::MustSurvive);
 }
 
 void US7LevelAuthoringMode::assign_selected_required_kills() {
-    assign_selected_objective(3);
+    assign_selected_objective(ObjectiveRole::RequiredKill);
 }
 
 void US7LevelAuthoringMode::clear_selected_objectives() {
-    assign_selected_objective(0);
+    assign_selected_objective(ObjectiveRole::Clear);
 }
 
-void US7LevelAuthoringMode::assign_selected_objective(int32 const role) {
+void US7LevelAuthoringMode::assign_selected_objective(ObjectiveRole const role) {
     if (!document_.IsValid() || !GEditor) {
         return;
     }
@@ -574,13 +567,13 @@ void US7LevelAuthoringMode::assign_selected_objective(int32 const role) {
         LOCTEXT("AssignObjectivesTransaction", "Assign Level Objectives")};
     document_->Modify();
     for (auto* const actor : selected) {
-        if (role == 1) {
+        if (role == ObjectiveRole::Hero) {
             document_->mission.required_kills.Remove(actor);
             document_->mission.heroes.AddUnique(actor);
-        } else if (role == 2) {
+        } else if (role == ObjectiveRole::MustSurvive) {
             document_->mission.required_kills.Remove(actor);
             document_->mission.must_survive.AddUnique(actor);
-        } else if (role == 3) {
+        } else if (role == ObjectiveRole::RequiredKill) {
             document_->mission.heroes.Remove(actor);
             document_->mission.must_survive.Remove(actor);
             document_->mission.required_kills.AddUnique(actor);
@@ -675,7 +668,7 @@ void US7LevelAuthoringMode::import_orchestrator_mission() {
     document_->mission.required_kills = startup.entities_required_to_kill;
     if (preview_.IsSet()) {
         preview_.Reset();
-        preview_stale_ = true;
+        source_session_.state().preview = PreviewState::Stale;
     }
     set_status(LOCTEXT("ImportedOrchestratorMission",
                        "Imported the batch orchestrator mission into the S7 document."));
@@ -739,35 +732,35 @@ auto US7LevelAuthoringMode::load_s7() -> bool {
     document_->Modify();
     document_->source_path = source_session_.path();
     preview_apply();
-    return preview_.IsSet() && !preview_stale_;
+    return preview_.IsSet() && source_session_.state().preview == PreviewState::Valid;
 }
 
 void US7LevelAuthoringMode::reload_s7() {
-    if (!source_session_.is_attached() || source_session_.path().IsEmpty()) {
-        set_status(LOCTEXT("NoReloadableSource", "Choose an S7 source file before reloading."));
-        changed_.Broadcast();
+    if (!document_.IsValid()) {
         return;
     }
-    if (source_session_.is_dirty() && !confirm_discard_source_buffer()) {
+    if ((source_session_.is_dirty() || source_session_.state().recovery_required) &&
+        !confirm_discard_source_buffer()) {
         return;
     }
-
-    auto const reloaded{source_session_.reload()};
+    auto const reloaded{source_session_.document() == document_.Get()
+                            ? source_session_.reload()
+                            : source_session_.discard_and_attach(*document_)};
     if (!reloaded) {
         set_status(FText::FromString(reloaded.error()));
     } else {
         preview_.Reset();
-        preview_stale_ = false;
-        set_status(FText::FromString(FString::Printf(TEXT("Reloaded the S7 source buffer from %s."),
-                                                     *source_session_.path())));
+        source_session_.state().preview = PreviewState::None;
+        set_status(LOCTEXT("SourceReloaded", "Attached the document source from disk."));
     }
     changed_.Broadcast();
 }
 
 void US7LevelAuthoringMode::set_source_buffer(FString source) {
+    auto const revision{source_session_.revision()};
     source_session_.set_buffer(MoveTemp(source));
-    if (preview_.IsSet()) {
-        preview_stale_ = true;
+    if (source_session_.revision() != revision) {
+        set_status(LOCTEXT("BufferUpdated", "Source buffer updated. Preview before applying."));
     }
     changed_.Broadcast();
 }
@@ -784,7 +777,7 @@ void US7LevelAuthoringMode::preview_apply() {
         set_status(
             FText::FromString(ml::to_fstring(::ioj::levels::format_diagnostics(read.error()))));
         preview_.Reset();
-        preview_stale_ = false;
+        source_session_.state().preview = PreviewState::None;
         changed_.Broadcast();
         return;
     }
@@ -792,7 +785,7 @@ void US7LevelAuthoringMode::preview_apply() {
     if (!plan) {
         set_status(FText::FromString(plan.error()));
         preview_.Reset();
-        preview_stale_ = false;
+        source_session_.state().preview = PreviewState::None;
         changed_.Broadcast();
         return;
     }
@@ -801,12 +794,12 @@ void US7LevelAuthoringMode::preview_apply() {
     if (!preview) {
         set_status(FText::FromString(preview.error()));
         preview_.Reset();
-        preview_stale_ = false;
+        source_session_.state().preview = PreviewState::None;
         changed_.Broadcast();
         return;
     }
     preview_ = MoveTemp(*preview);
-    preview_stale_ = false;
+    source_session_.state().preview = PreviewState::Valid;
     if (!preview_->plan.has_changes()) {
         set_status(LOCTEXT("PreviewMatches", "Preview: the source and scene already match."));
     } else {
@@ -855,25 +848,15 @@ void US7LevelAuthoringMode::apply_preview() {
     auto const applied{ml::editor::apply_s7_level_authoring_preview(
         *level, *document_, source_session_, preview_.GetValue())};
     if (!applied) {
-        set_status(FText::FromString(applied.error()));
-        if (applied.error().StartsWith(TEXT("Preview is stale"))) {
+        set_status(FText::FromString(applied.error().message));
+        if (applied.error().code == ml::editor::ES7LevelPreviewError::Stale) {
             preview_.Reset();
-            preview_stale_ = true;
+            source_session_.state().preview = PreviewState::Stale;
         }
     } else {
-        document_->synchronized_source_hash =
-            ml::editor::FS7LevelSourceSession::source_digest(source_session_.buffer());
-        auto const definition{ml::editor::collect_s7_editor_level(*level, *document_)};
-        auto const generated{
-            definition ? ::ioj::levels::authoring::emit_editor_level_source(*definition)
-                       : std::expected<FString, FString>{std::unexpected{definition.error()}}};
-        if (generated) {
-            document_->synchronized_scene_hash =
-                ml::editor::FS7LevelSourceSession::source_digest(*generated);
-        }
         preview_.Reset();
-        preview_stale_ = false;
-        scene_dirty_ = false;
+        source_session_.state().preview = PreviewState::None;
+        source_session_.state().scene_dirty = false;
         auto const validation{ml::editor::validate_playable_s7_level(*level, *document_)};
         set_status(FText::FromString(
             validation ? FString::Printf(TEXT("The scene matches the S7 source. %s"), **validation)
@@ -885,12 +868,12 @@ void US7LevelAuthoringMode::apply_preview() {
 }
 
 void US7LevelAuthoringMode::save() {
-    if (!source_session_.is_attached() && !source_session_.is_dirty()) {
+    if (source_session_.buffer().IsEmpty()) {
         set_status(LOCTEXT("NoSourceBuffer", "There is no source buffer to save."));
         changed_.Broadcast();
         return;
     }
-    if (source_session_.path().IsEmpty()) {
+    if (!source_session_.is_attached() || source_session_.path().IsEmpty()) {
         save_as();
         return;
     }
@@ -906,7 +889,7 @@ void US7LevelAuthoringMode::save() {
 }
 
 void US7LevelAuthoringMode::save_as() {
-    if (!source_session_.is_attached() && !source_session_.is_dirty()) {
+    if (source_session_.buffer().IsEmpty()) {
         set_status(LOCTEXT("NoSourceBuffer", "There is no source buffer to save."));
         changed_.Broadcast();
         return;

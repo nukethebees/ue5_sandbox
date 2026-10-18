@@ -50,6 +50,7 @@ public class SandboxEditor : ModuleRules
         {
             "SandboxCore",
             "NativeMemory",
+            "NativeLevelAuthoring",
             "Core",
             "CoreUObject",
             "Engine",

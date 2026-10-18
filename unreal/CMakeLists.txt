@@ -119,7 +119,13 @@ add_unreal_automation_test(
   Sandbox.S7AuthoringTests
   FILTERS
     Sandbox.UnitTests.S7LevelAuthoring
+    Sandbox.UnitTests.S7LevelSourceSession
     Sandbox.UnitTests.SpaceGameLevelConfig.CollisionGridDimensionOverridesKeepUnspecifiedAssetValues
+  LABELS s7-authoring
+)
+add_unreal_automation_test(
+  Sandbox.S7PlayableTests
+  FILTERS Sandbox.UnitTests.S7PlayableLevel
   LABELS s7-authoring
 )
 add_unreal_automation_test(

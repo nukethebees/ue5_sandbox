@@ -29,6 +29,7 @@ class SS7LevelScriptEditor final : public SCompoundWidget {
     [[nodiscard]] auto can_preview_buffer() const -> bool;
     [[nodiscard]] auto can_apply_preview() const -> bool;
     [[nodiscard]] auto can_save_buffer() const -> bool;
+    [[nodiscard]] auto can_save_buffer_as() const -> bool;
     [[nodiscard]] auto can_save_canonical() const -> bool;
     auto load_source() -> FReply;
     auto reload_source() -> FReply;

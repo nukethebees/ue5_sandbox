@@ -1,16 +1,13 @@
 #pragma once
 
+#include <ioj/levels/entity_archetype.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGameSimulation/levels/LevelTypes.h>
 
 #include <Misc/Optional.h>
 
 namespace ml {
-enum class EResolvedLevelArchetype : uint8 {
-    PlayerFighter,
-    CapitalShip,
-    StaticTurret,
-};
+using EResolvedLevelArchetype = ::ioj::levels::EntityArchetype;
 
 inline auto resolve_level_archetype(FEntityArchetypeId const id)
     -> TOptional<EResolvedLevelArchetype> {
