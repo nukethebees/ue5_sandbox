@@ -3,12 +3,9 @@
 
 #pragma once
 
-#include "ioj/enum_lookup.h"
-
 #include <cstdint>
 #include <optional>
 #include <string_view>
-#include <unordered_map>
 
 namespace ioj::sim {
 using LevelTelemetryRunEndReasonUnderlying = std::uint8_t;
@@ -50,18 +47,50 @@ enum class LevelTelemetryRunEndReason : LevelTelemetryRunEndReasonUnderlying {
     }
 }
 
-[[nodiscard]] inline auto
-    try_parse_serialized_level_telemetry_run_end_reason(std::string_view const value)
-        -> std::optional<LevelTelemetryRunEndReason> {
-    static std::unordered_map<std::string_view, LevelTelemetryRunEndReason> const values{
-        {"mission_succeeded", LevelTelemetryRunEndReason::MissionSucceeded},
-        {"mission_failed", LevelTelemetryRunEndReason::MissionFailed},
-        {"battle_resolved", LevelTelemetryRunEndReason::BattleResolved},
-        {"duration_reached", LevelTelemetryRunEndReason::DurationReached},
-        {"orchestrator_reset", LevelTelemetryRunEndReason::OrchestratorReset},
-        {"world_end", LevelTelemetryRunEndReason::WorldEnd},
-    };
-    return ioj::lookup_enum(values, value);
+[[nodiscard]] constexpr auto
+    try_parse_serialized_level_telemetry_run_end_reason(std::string_view const value) noexcept
+    -> std::optional<LevelTelemetryRunEndReason> {
+    switch (value.size()) {
+        case 9: {
+            if (value == "world_end") {
+                return LevelTelemetryRunEndReason::WorldEnd;
+            }
+            return std::nullopt;
+        }
+        case 14: {
+            if (value == "mission_failed") {
+                return LevelTelemetryRunEndReason::MissionFailed;
+            }
+            return std::nullopt;
+        }
+        case 15: {
+            if (value == "battle_resolved") {
+                return LevelTelemetryRunEndReason::BattleResolved;
+            }
+            return std::nullopt;
+        }
+        case 16: {
+            if (value == "duration_reached") {
+                return LevelTelemetryRunEndReason::DurationReached;
+            }
+            return std::nullopt;
+        }
+        case 17: {
+            if (value == "mission_succeeded") {
+                return LevelTelemetryRunEndReason::MissionSucceeded;
+            }
+            return std::nullopt;
+        }
+        case 18: {
+            if (value == "orchestrator_reset") {
+                return LevelTelemetryRunEndReason::OrchestratorReset;
+            }
+            return std::nullopt;
+        }
+        default: {
+            return std::nullopt;
+        }
+    }
 }
 
 } // namespace ioj::sim

@@ -3,14 +3,12 @@
 
 #pragma once
 
-#include "ioj/enum_lookup.h"
 #include "ioj/sim/levels/simulation_settings.h"
 
 #include <cassert>
 #include <cstdint>
 #include <optional>
 #include <string_view>
-#include <unordered_map>
 #include <utility>
 
 namespace ioj::s7::simulation_fields {
@@ -84,88 +82,318 @@ enum class FieldsField : std::uint32_t {
     TubeSpinnersLaserFireCooldown,
 };
 
-[[nodiscard]] inline auto try_parse_fields_field(std::string_view const path)
+[[nodiscard]] constexpr auto try_parse_fields_field(std::string_view const path) noexcept
     -> std::optional<FieldsField> {
-    static std::unordered_map<std::string_view, FieldsField> const values{
-        {"tick.tick-rate", FieldsField::TickTickRate},
-        {"tick.time-scale", FieldsField::TickTimeScale},
-        {"player-ship.thrust-energy-max", FieldsField::PlayerShipThrustEnergyMax},
-        {"player-ship.pitch-angle-max", FieldsField::PlayerShipPitchAngleMax},
-        {"player-ship.pitch-speed", FieldsField::PlayerShipPitchSpeed},
-        {"player-ship.yaw-angle-max", FieldsField::PlayerShipYawAngleMax},
-        {"player-ship.yaw-speed", FieldsField::PlayerShipYawSpeed},
-        {"player-ship.turn-bank-angle-max", FieldsField::PlayerShipTurnBankAngleMax},
-        {"player-ship.turn-bank-speed", FieldsField::PlayerShipTurnBankSpeed},
-        {"player-ship.health", FieldsField::PlayerShipHealth},
-        {"player-ship.laser-mode", FieldsField::PlayerShipLaserMode},
-        {"player-ship.laser-fire-rate", FieldsField::PlayerShipLaserFireRate},
-        {"laser-projectiles.n-preallocated-instances",
-         FieldsField::LaserProjectilesNPreallocatedInstances},
-        {"capital-ships.spawn-delay", FieldsField::CapitalShipsSpawnDelay},
-        {"capital-ships.max-health", FieldsField::CapitalShipsMaxHealth},
-        {"fighters.max-live-fighters", FieldsField::FightersMaxLiveFighters},
-        {"fighters.fire-dot-product-threshold", FieldsField::FightersFireDotProductThreshold},
-        {"fighters.speed", FieldsField::FightersSpeed},
-        {"fighters.turn-speed-unitless", FieldsField::FightersTurnSpeedUnitless},
-        {"fighters.avoidance-clear-update-frequency",
-         FieldsField::FightersAvoidanceClearUpdateFrequency},
-        {"fighters.avoidance-update-frequency", FieldsField::FightersAvoidanceUpdateFrequency},
-        {"fighters.avoidance-active-update-frequency",
-         FieldsField::FightersAvoidanceActiveUpdateFrequency},
-        {"fighters.avoidance-immediate-update-frequency",
-         FieldsField::FightersAvoidanceImmediateUpdateFrequency},
-        {"fighters.avoidance-lookahead-time", FieldsField::FightersAvoidanceLookaheadTime},
-        {"fighters.avoidance-clearance-buffer", FieldsField::FightersAvoidanceClearanceBuffer},
-        {"fighters.separation-radius", FieldsField::FightersSeparationRadius},
-        {"fighters.separation-strength", FieldsField::FightersSeparationStrength},
-        {"fighters.steering-memory-duration", FieldsField::FightersSteeringMemoryDuration},
-        {"fighters.dense-traffic-neighbour-threshold",
-         FieldsField::FightersDenseTrafficNeighbourThreshold},
-        {"fighters.health", FieldsField::FightersHealth},
-        {"fighters.attack-retry-cooldown", FieldsField::FightersAttackRetryCooldown},
-        {"fighters.attack-engagement-threshold", FieldsField::FightersAttackEngagementThreshold},
-        {"fighters.attack-reposition-frequency", FieldsField::FightersAttackRepositionFrequency},
-        {"fighters.attack-distance-band.minimum-ratio",
-         FieldsField::FightersAttackDistanceBandMinimumRatio},
-        {"fighters.attack-distance-band.desired-ratio",
-         FieldsField::FightersAttackDistanceBandDesiredRatio},
-        {"fighters.attack-distance-band.maximum-ratio",
-         FieldsField::FightersAttackDistanceBandMaximumRatio},
-        {"fighters.arrival-distance", FieldsField::FightersArrivalDistance},
-        {"fighters.los-check-buffer", FieldsField::FightersLosCheckBuffer},
-        {"fighters.awareness-radius", FieldsField::FightersAwarenessRadius},
-        {"fighters.awareness-scan-frequency", FieldsField::FightersAwarenessScanFrequency},
-        {"fighters.minimum-opportunistic-intercept-deviation-dot-product",
-         FieldsField::FightersMinimumOpportunisticInterceptDeviationDotProduct},
-        {"turrets.detection-radius", FieldsField::TurretsDetectionRadius},
-        {"turrets.target-refresh-frequency", FieldsField::TurretsTargetRefreshFrequency},
-        {"turrets.max-health", FieldsField::TurretsMaxHealth},
-        {"tube-spinners.yaw-rotation-speed-degrees",
-         FieldsField::TubeSpinnersYawRotationSpeedDegrees},
-        {"collision-grid.level-size", FieldsField::CollisionGridLevelSize},
-        {"collision-grid.cell-size", FieldsField::CollisionGridCellSize},
-        {"collision-grid.damage-per-overlap-detection",
-         FieldsField::CollisionGridDamagePerOverlapDetection},
-        {"hud.player-status-update-period", FieldsField::HudPlayerStatusUpdatePeriod},
-        {"hud.entity-count-update-period", FieldsField::HudEntityCountUpdatePeriod},
-        {"hud.mission-status-update-period", FieldsField::HudMissionStatusUpdatePeriod},
-        {"player-ship.laser.damage", FieldsField::PlayerShipLaserDamage},
-        {"player-ship.laser.projectile-speed", FieldsField::PlayerShipLaserProjectileSpeed},
-        {"player-ship.laser.max-distance", FieldsField::PlayerShipLaserMaxDistance},
-        {"player-ship.laser.fire-cooldown", FieldsField::PlayerShipLaserFireCooldown},
-        {"fighters.laser.damage", FieldsField::FightersLaserDamage},
-        {"fighters.laser.projectile-speed", FieldsField::FightersLaserProjectileSpeed},
-        {"fighters.laser.max-distance", FieldsField::FightersLaserMaxDistance},
-        {"fighters.laser.fire-cooldown", FieldsField::FightersLaserFireCooldown},
-        {"turrets.laser.damage", FieldsField::TurretsLaserDamage},
-        {"turrets.laser.projectile-speed", FieldsField::TurretsLaserProjectileSpeed},
-        {"turrets.laser.max-distance", FieldsField::TurretsLaserMaxDistance},
-        {"turrets.laser.fire-cooldown", FieldsField::TurretsLaserFireCooldown},
-        {"tube-spinners.laser.damage", FieldsField::TubeSpinnersLaserDamage},
-        {"tube-spinners.laser.projectile-speed", FieldsField::TubeSpinnersLaserProjectileSpeed},
-        {"tube-spinners.laser.max-distance", FieldsField::TubeSpinnersLaserMaxDistance},
-        {"tube-spinners.laser.fire-cooldown", FieldsField::TubeSpinnersLaserFireCooldown}};
-    return ioj::lookup_enum(values, path);
+    switch (path.size()) {
+        case 14: {
+            if (path == "tick.tick-rate") {
+                return FieldsField::TickTickRate;
+            }
+            if (path == "fighters.speed") {
+                return FieldsField::FightersSpeed;
+            }
+            return std::nullopt;
+        }
+        case 15: {
+            if (path == "tick.time-scale") {
+                return FieldsField::TickTimeScale;
+            }
+            if (path == "fighters.health") {
+                return FieldsField::FightersHealth;
+            }
+            return std::nullopt;
+        }
+        case 18: {
+            if (path == "player-ship.health") {
+                return FieldsField::PlayerShipHealth;
+            }
+            if (path == "turrets.max-health") {
+                return FieldsField::TurretsMaxHealth;
+            }
+            return std::nullopt;
+        }
+        case 20: {
+            if (path == "turrets.laser.damage") {
+                return FieldsField::TurretsLaserDamage;
+            }
+            return std::nullopt;
+        }
+        case 21: {
+            if (path == "player-ship.yaw-speed") {
+                return FieldsField::PlayerShipYawSpeed;
+            }
+            if (path == "fighters.laser.damage") {
+                return FieldsField::FightersLaserDamage;
+            }
+            return std::nullopt;
+        }
+        case 22: {
+            if (path == "player-ship.laser-mode") {
+                return FieldsField::PlayerShipLaserMode;
+            }
+            return std::nullopt;
+        }
+        case 23: {
+            if (path == "player-ship.pitch-speed") {
+                return FieldsField::PlayerShipPitchSpeed;
+            }
+            return std::nullopt;
+        }
+        case 24: {
+            if (path == "capital-ships.max-health") {
+                return FieldsField::CapitalShipsMaxHealth;
+            }
+            if (path == "turrets.detection-radius") {
+                return FieldsField::TurretsDetectionRadius;
+            }
+            if (path == "collision-grid.cell-size") {
+                return FieldsField::CollisionGridCellSize;
+            }
+            if (path == "player-ship.laser.damage") {
+                return FieldsField::PlayerShipLaserDamage;
+            }
+            return std::nullopt;
+        }
+        case 25: {
+            switch (static_cast<unsigned char>(path.front())) {
+                case 99: {
+                    if (path == "capital-ships.spawn-delay") {
+                        return FieldsField::CapitalShipsSpawnDelay;
+                    }
+                    if (path == "collision-grid.level-size") {
+                        return FieldsField::CollisionGridLevelSize;
+                    }
+                    return std::nullopt;
+                }
+                case 102: {
+                    if (path == "fighters.arrival-distance") {
+                        return FieldsField::FightersArrivalDistance;
+                    }
+                    if (path == "fighters.los-check-buffer") {
+                        return FieldsField::FightersLosCheckBuffer;
+                    }
+                    if (path == "fighters.awareness-radius") {
+                        return FieldsField::FightersAwarenessRadius;
+                    }
+                    return std::nullopt;
+                }
+                case 112: {
+                    if (path == "player-ship.yaw-angle-max") {
+                        return FieldsField::PlayerShipYawAngleMax;
+                    }
+                    return std::nullopt;
+                }
+                default: {
+                    return std::nullopt;
+                }
+            }
+        }
+        case 26: {
+            if (path == "fighters.max-live-fighters") {
+                return FieldsField::FightersMaxLiveFighters;
+            }
+            if (path == "fighters.separation-radius") {
+                return FieldsField::FightersSeparationRadius;
+            }
+            if (path == "turrets.laser.max-distance") {
+                return FieldsField::TurretsLaserMaxDistance;
+            }
+            if (path == "tube-spinners.laser.damage") {
+                return FieldsField::TubeSpinnersLaserDamage;
+            }
+            return std::nullopt;
+        }
+        case 27: {
+            switch (static_cast<unsigned char>(path.front())) {
+                case 102: {
+                    if (path == "fighters.laser.max-distance") {
+                        return FieldsField::FightersLaserMaxDistance;
+                    }
+                    return std::nullopt;
+                }
+                case 112: {
+                    if (path == "player-ship.pitch-angle-max") {
+                        return FieldsField::PlayerShipPitchAngleMax;
+                    }
+                    if (path == "player-ship.turn-bank-speed") {
+                        return FieldsField::PlayerShipTurnBankSpeed;
+                    }
+                    if (path == "player-ship.laser-fire-rate") {
+                        return FieldsField::PlayerShipLaserFireRate;
+                    }
+                    return std::nullopt;
+                }
+                case 116: {
+                    if (path == "turrets.laser.fire-cooldown") {
+                        return FieldsField::TurretsLaserFireCooldown;
+                    }
+                    return std::nullopt;
+                }
+                default: {
+                    return std::nullopt;
+                }
+            }
+        }
+        case 28: {
+            if (path == "fighters.turn-speed-unitless") {
+                return FieldsField::FightersTurnSpeedUnitless;
+            }
+            if (path == "fighters.separation-strength") {
+                return FieldsField::FightersSeparationStrength;
+            }
+            if (path == "fighters.laser.fire-cooldown") {
+                return FieldsField::FightersLaserFireCooldown;
+            }
+            return std::nullopt;
+        }
+        case 29: {
+            if (path == "player-ship.thrust-energy-max") {
+                return FieldsField::PlayerShipThrustEnergyMax;
+            }
+            return std::nullopt;
+        }
+        case 30: {
+            if (path == "fighters.attack-retry-cooldown") {
+                return FieldsField::FightersAttackRetryCooldown;
+            }
+            if (path == "hud.entity-count-update-period") {
+                return FieldsField::HudEntityCountUpdatePeriod;
+            }
+            if (path == "player-ship.laser.max-distance") {
+                return FieldsField::PlayerShipLaserMaxDistance;
+            }
+            if (path == "turrets.laser.projectile-speed") {
+                return FieldsField::TurretsLaserProjectileSpeed;
+            }
+            return std::nullopt;
+        }
+        case 31: {
+            if (path == "player-ship.turn-bank-angle-max") {
+                return FieldsField::PlayerShipTurnBankAngleMax;
+            }
+            if (path == "hud.player-status-update-period") {
+                return FieldsField::HudPlayerStatusUpdatePeriod;
+            }
+            if (path == "player-ship.laser.fire-cooldown") {
+                return FieldsField::PlayerShipLaserFireCooldown;
+            }
+            if (path == "fighters.laser.projectile-speed") {
+                return FieldsField::FightersLaserProjectileSpeed;
+            }
+            return std::nullopt;
+        }
+        case 32: {
+            if (path == "turrets.target-refresh-frequency") {
+                return FieldsField::TurretsTargetRefreshFrequency;
+            }
+            if (path == "hud.mission-status-update-period") {
+                return FieldsField::HudMissionStatusUpdatePeriod;
+            }
+            if (path == "tube-spinners.laser.max-distance") {
+                return FieldsField::TubeSpinnersLaserMaxDistance;
+            }
+            return std::nullopt;
+        }
+        case 33: {
+            if (path == "fighters.avoidance-lookahead-time") {
+                return FieldsField::FightersAvoidanceLookaheadTime;
+            }
+            if (path == "fighters.steering-memory-duration") {
+                return FieldsField::FightersSteeringMemoryDuration;
+            }
+            if (path == "fighters.awareness-scan-frequency") {
+                return FieldsField::FightersAwarenessScanFrequency;
+            }
+            if (path == "tube-spinners.laser.fire-cooldown") {
+                return FieldsField::TubeSpinnersLaserFireCooldown;
+            }
+            return std::nullopt;
+        }
+        case 34: {
+            if (path == "player-ship.laser.projectile-speed") {
+                return FieldsField::PlayerShipLaserProjectileSpeed;
+            }
+            return std::nullopt;
+        }
+        case 35: {
+            if (path == "fighters.fire-dot-product-threshold") {
+                return FieldsField::FightersFireDotProductThreshold;
+            }
+            if (path == "fighters.avoidance-update-frequency") {
+                return FieldsField::FightersAvoidanceUpdateFrequency;
+            }
+            if (path == "fighters.avoidance-clearance-buffer") {
+                return FieldsField::FightersAvoidanceClearanceBuffer;
+            }
+            return std::nullopt;
+        }
+        case 36: {
+            if (path == "fighters.attack-engagement-threshold") {
+                return FieldsField::FightersAttackEngagementThreshold;
+            }
+            if (path == "fighters.attack-reposition-frequency") {
+                return FieldsField::FightersAttackRepositionFrequency;
+            }
+            if (path == "tube-spinners.laser.projectile-speed") {
+                return FieldsField::TubeSpinnersLaserProjectileSpeed;
+            }
+            return std::nullopt;
+        }
+        case 40: {
+            if (path == "tube-spinners.yaw-rotation-speed-degrees") {
+                return FieldsField::TubeSpinnersYawRotationSpeedDegrees;
+            }
+            return std::nullopt;
+        }
+        case 41: {
+            if (path == "fighters.avoidance-clear-update-frequency") {
+                return FieldsField::FightersAvoidanceClearUpdateFrequency;
+            }
+            return std::nullopt;
+        }
+        case 42: {
+            if (path == "laser-projectiles.n-preallocated-instances") {
+                return FieldsField::LaserProjectilesNPreallocatedInstances;
+            }
+            if (path == "fighters.avoidance-active-update-frequency") {
+                return FieldsField::FightersAvoidanceActiveUpdateFrequency;
+            }
+            if (path == "fighters.dense-traffic-neighbour-threshold") {
+                return FieldsField::FightersDenseTrafficNeighbourThreshold;
+            }
+            return std::nullopt;
+        }
+        case 43: {
+            if (path == "fighters.attack-distance-band.minimum-ratio") {
+                return FieldsField::FightersAttackDistanceBandMinimumRatio;
+            }
+            if (path == "fighters.attack-distance-band.desired-ratio") {
+                return FieldsField::FightersAttackDistanceBandDesiredRatio;
+            }
+            if (path == "fighters.attack-distance-band.maximum-ratio") {
+                return FieldsField::FightersAttackDistanceBandMaximumRatio;
+            }
+            if (path == "collision-grid.damage-per-overlap-detection") {
+                return FieldsField::CollisionGridDamagePerOverlapDetection;
+            }
+            return std::nullopt;
+        }
+        case 45: {
+            if (path == "fighters.avoidance-immediate-update-frequency") {
+                return FieldsField::FightersAvoidanceImmediateUpdateFrequency;
+            }
+            return std::nullopt;
+        }
+        case 62: {
+            if (path == "fighters.minimum-opportunistic-intercept-deviation-dot-product") {
+                return FieldsField::FightersMinimumOpportunisticInterceptDeviationDotProduct;
+            }
+            return std::nullopt;
+        }
+        default: {
+            return std::nullopt;
+        }
+    }
 }
 
 // Require a valid field returned by the schema's key parser.

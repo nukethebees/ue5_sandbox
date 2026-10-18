@@ -7,6 +7,11 @@
     :sources ("native/lispb/schema/compiler_ir.lispb")
     :output-root (project-path "native/lispb/include/codegen/ast"))
 
+  (cpp-schema compiler-schema
+    :types "native/lispb/schema/compiler_types.lispb"
+    :sources ("native/lispb/schema/compiler_schema.lispb")
+    :output-root (project-path "native/lispb/include/codegen/schema"))
+
   (cpp-schema layout-analysis
     :types "native/layout/schema/types.lispb"
     :sources (
@@ -205,7 +210,7 @@
       slate-game-options
       slate-level-select))
   (group committed-code
-    :targets (compiler-ir sandbox-code sandbox-core-test-fixture slate-production kernel-unreal kernel-native-core))
+    :targets (compiler-ir compiler-schema sandbox-code sandbox-core-test-fixture slate-production kernel-unreal kernel-native-core))
   (group materials
     :targets (
       ui-glow-material

@@ -3,12 +3,9 @@
 
 #pragma once
 
-#include "ioj/enum_lookup.h"
-
 #include <cstdint>
 #include <optional>
 #include <string_view>
-#include <unordered_map>
 
 namespace ioj::sim {
 using MissionStateUnderlying = std::uint8_t;
@@ -68,16 +65,44 @@ enum class MissionState : MissionStateUnderlying {
     }
 }
 
-[[nodiscard]] inline auto try_parse_serialized_mission_state(std::string_view const value)
+[[nodiscard]] constexpr auto
+    try_parse_serialized_mission_state(std::string_view const value) noexcept
     -> std::optional<MissionState> {
-    static std::unordered_map<std::string_view, MissionState> const values{
-        {"not_started", MissionState::NotStarted},
-        {"running", MissionState::Running},
-        {"succeeded", MissionState::Succeeded},
-        {"failed", MissionState::Failed},
-        {"disabled", MissionState::Disabled},
-    };
-    return ioj::lookup_enum(values, value);
+    switch (value.size()) {
+        case 6: {
+            if (value == "failed") {
+                return MissionState::Failed;
+            }
+            return std::nullopt;
+        }
+        case 7: {
+            if (value == "running") {
+                return MissionState::Running;
+            }
+            return std::nullopt;
+        }
+        case 8: {
+            if (value == "disabled") {
+                return MissionState::Disabled;
+            }
+            return std::nullopt;
+        }
+        case 9: {
+            if (value == "succeeded") {
+                return MissionState::Succeeded;
+            }
+            return std::nullopt;
+        }
+        case 11: {
+            if (value == "not_started") {
+                return MissionState::NotStarted;
+            }
+            return std::nullopt;
+        }
+        default: {
+            return std::nullopt;
+        }
+    }
 }
 
 } // namespace ioj::sim

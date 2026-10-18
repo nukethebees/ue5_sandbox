@@ -3,12 +3,9 @@
 
 #pragma once
 
-#include "ioj/enum_lookup.h"
-
 #include <cstdint>
 #include <optional>
 #include <string_view>
-#include <unordered_map>
 
 namespace ioj::sim {
 using ShipLaserModeUnderlying = std::uint8_t;
@@ -20,14 +17,19 @@ enum class ShipLaserMode : ShipLaserModeUnderlying {
     Hyper = 2,
 };
 
-[[nodiscard]] inline auto try_parse_serialized_ship_laser_mode(std::string_view const value)
+[[nodiscard]] constexpr auto
+    try_parse_serialized_ship_laser_mode(std::string_view const value) noexcept
     -> std::optional<ShipLaserMode> {
-    static std::unordered_map<std::string_view, ShipLaserMode> const values{
-        {"single", ShipLaserMode::Single},
-        {"double", ShipLaserMode::Double},
-        {"hyper", ShipLaserMode::Hyper},
-    };
-    return ioj::lookup_enum(values, value);
+    if (value == "single") {
+        return ShipLaserMode::Single;
+    }
+    if (value == "double") {
+        return ShipLaserMode::Double;
+    }
+    if (value == "hyper") {
+        return ShipLaserMode::Hyper;
+    }
+    return std::nullopt;
 }
 
 } // namespace ioj::sim

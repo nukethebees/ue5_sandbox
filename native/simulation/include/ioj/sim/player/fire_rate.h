@@ -3,14 +3,12 @@
 
 #pragma once
 
-#include "ioj/enum_lookup.h"
 #include "ioj/enum_traits.h"
 
 #include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string_view>
-#include <unordered_map>
 
 namespace ioj::sim {
 using ShipFireRateUnderlying = std::uint8_t;
@@ -38,14 +36,19 @@ enum class ShipFireRate : ShipFireRateUnderlying {
     return "<invalid ShipFireRate>";
 }
 
-[[nodiscard]] inline auto try_parse_serialized_ship_fire_rate(std::string_view const value)
+[[nodiscard]] constexpr auto
+    try_parse_serialized_ship_fire_rate(std::string_view const value) noexcept
     -> std::optional<ShipFireRate> {
-    static std::unordered_map<std::string_view, ShipFireRate> const values{
-        {"single", ShipFireRate::Single},
-        {"burst3", ShipFireRate::Burst3},
-        {"full-auto", ShipFireRate::FullAuto},
-    };
-    return ioj::lookup_enum(values, value);
+    if (value == "single") {
+        return ShipFireRate::Single;
+    }
+    if (value == "burst3") {
+        return ShipFireRate::Burst3;
+    }
+    if (value == "full-auto") {
+        return ShipFireRate::FullAuto;
+    }
+    return std::nullopt;
 }
 
 } // namespace ioj::sim

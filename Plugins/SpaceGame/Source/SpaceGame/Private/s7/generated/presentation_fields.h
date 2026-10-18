@@ -3,14 +3,12 @@
 
 #pragma once
 
-#include "ioj/enum_lookup.h"
 #include "SpaceGame/simulation/SpaceGameLevelConfig.h"
 
 #include <cassert>
 #include <cstdint>
 #include <optional>
 #include <string_view>
-#include <unordered_map>
 #include <utility>
 
 namespace ioj::s7::presentation_fields {
@@ -68,103 +66,243 @@ enum class FieldsField : std::uint32_t {
     PresentationRadarObjectiveRingThicknessPixels,
 };
 
-[[nodiscard]] inline auto try_parse_fields_field(std::string_view const path)
+[[nodiscard]] constexpr auto try_parse_fields_field(std::string_view const path) noexcept
     -> std::optional<FieldsField> {
-    static std::unordered_map<std::string_view, FieldsField> const values{
-        {"presentation.player-ship.boost-effect-colour-intensity",
-         FieldsField::PresentationPlayerShipBoostEffectColourIntensity},
-        {"presentation.player-ship.barrel-roll.roll-speed",
-         FieldsField::PresentationPlayerShipBarrelRollRollSpeed},
-        {"presentation.player-ship.barrel-roll.roll-duration",
-         FieldsField::PresentationPlayerShipBarrelRollRollDuration},
-        {"presentation.player-ship.barrel-roll.roll-cooldown",
-         FieldsField::PresentationPlayerShipBarrelRollRollCooldown},
-        {"presentation.laser-projectiles.min-cull-distance",
-         FieldsField::PresentationLaserProjectilesMinCullDistance},
-        {"presentation.laser-projectiles.max-cull-distance",
-         FieldsField::PresentationLaserProjectilesMaxCullDistance},
-        {"presentation.capital-ships.n-small-explosions",
-         FieldsField::PresentationCapitalShipsNSmallExplosions},
-        {"presentation.capital-ships.time-between-explosions",
-         FieldsField::PresentationCapitalShipsTimeBetweenExplosions},
-        {"presentation.capital-ships.min-small-explosion-range",
-         FieldsField::PresentationCapitalShipsMinSmallExplosionRange},
-        {"presentation.capital-ships.max-small-explosion-range",
-         FieldsField::PresentationCapitalShipsMaxSmallExplosionRange},
-        {"presentation.capital-ships.large-explosion-delay",
-         FieldsField::PresentationCapitalShipsLargeExplosionDelay},
-        {"presentation.capital-ships.proxy-arrow-size",
-         FieldsField::PresentationCapitalShipsProxyArrowSize},
-        {"presentation.turrets.death-effect-scale",
-         FieldsField::PresentationTurretsDeathEffectScale},
-        {"presentation.entity-overlay.enabled", FieldsField::PresentationEntityOverlayEnabled},
-        {"presentation.entity-overlay.maximum-range",
-         FieldsField::PresentationEntityOverlayMaximumRange},
-        {"presentation.entity-overlay.bar-size-pixels",
-         FieldsField::PresentationEntityOverlayBarSizePixels},
-        {"presentation.entity-overlay.screen-offset-pixels",
-         FieldsField::PresentationEntityOverlayScreenOffsetPixels},
-        {"presentation.entity-overlay.minimum-bar-scale",
-         FieldsField::PresentationEntityOverlayMinimumBarScale},
-        {"presentation.entity-overlay.maximum-bar-scale",
-         FieldsField::PresentationEntityOverlayMaximumBarScale},
-        {"presentation.entity-overlay.inset-pixels",
-         FieldsField::PresentationEntityOverlayInsetPixels},
-        {"presentation.entity-overlay.maximum-inset-height-ratio",
-         FieldsField::PresentationEntityOverlayMaximumInsetHeightRatio},
-        {"presentation.entity-overlay.objective-frame-pixels",
-         FieldsField::PresentationEntityOverlayObjectiveFramePixels},
-        {"presentation.entity-overlay.objective-bar-height-scale",
-         FieldsField::PresentationEntityOverlayObjectiveBarHeightScale},
-        {"presentation.entity-overlay.screen-edge-padding-pixels",
-         FieldsField::PresentationEntityOverlayScreenEdgePaddingPixels},
-        {"presentation.entity-overlay.soft-target.acquisition-radius-pixels",
-         FieldsField::PresentationEntityOverlaySoftTargetAcquisitionRadiusPixels},
-        {"presentation.entity-overlay.soft-target.retention-radius-pixels",
-         FieldsField::PresentationEntityOverlaySoftTargetRetentionRadiusPixels},
-        {"presentation.entity-overlay.soft-target.centre-tie-radius-pixels",
-         FieldsField::PresentationEntityOverlaySoftTargetCentreTieRadiusPixels},
-        {"presentation.entity-overlay.soft-target.switch-improvement-ratio",
-         FieldsField::PresentationEntityOverlaySoftTargetSwitchImprovementRatio},
-        {"presentation.entity-overlay.soft-target.range-transition-start-multiplier",
-         FieldsField::PresentationEntityOverlaySoftTargetRangeTransitionStartMultiplier},
-        {"presentation.entity-overlay.soft-target.minimum-radius-pixels",
-         FieldsField::PresentationEntityOverlaySoftTargetMinimumRadiusPixels},
-        {"presentation.entity-overlay.soft-target.maximum-radius-pixels",
-         FieldsField::PresentationEntityOverlaySoftTargetMaximumRadiusPixels},
-        {"presentation.entity-overlay.soft-target.bounds-padding-pixels",
-         FieldsField::PresentationEntityOverlaySoftTargetBoundsPaddingPixels},
-        {"presentation.entity-overlay.soft-target.bracket-start-radius-multiplier",
-         FieldsField::PresentationEntityOverlaySoftTargetBracketStartRadiusMultiplier},
-        {"presentation.entity-overlay.soft-target.opacity",
-         FieldsField::PresentationEntityOverlaySoftTargetOpacity},
-        {"presentation.entity-overlay.soft-target.pulse-opacity-boost",
-         FieldsField::PresentationEntityOverlaySoftTargetPulseOpacityBoost},
-        {"presentation.entity-overlay.soft-target.pulse-duration",
-         FieldsField::PresentationEntityOverlaySoftTargetPulseDuration},
-        {"presentation.entity-overlay.soft-target.fade-out-duration",
-         FieldsField::PresentationEntityOverlaySoftTargetFadeOutDuration},
-        {"presentation.radar.enabled", FieldsField::PresentationRadarEnabled},
-        {"presentation.radar.combat-range", FieldsField::PresentationRadarCombatRange},
-        {"presentation.radar.tactical-range", FieldsField::PresentationRadarTacticalRange},
-        {"presentation.radar.maximum-range", FieldsField::PresentationRadarMaximumRange},
-        {"presentation.radar.combat-display-radius",
-         FieldsField::PresentationRadarCombatDisplayRadius},
-        {"presentation.radar.grid-opacity", FieldsField::PresentationRadarGridOpacity},
-        {"presentation.radar.core-cell-radius", FieldsField::PresentationRadarCoreCellRadius},
-        {"presentation.radar.combat-cell-radius", FieldsField::PresentationRadarCombatCellRadius},
-        {"presentation.radar.tactical-cell-radius",
-         FieldsField::PresentationRadarTacticalCellRadius},
-        {"presentation.radar.strategic-cell-radius",
-         FieldsField::PresentationRadarStrategicCellRadius},
-        {"presentation.radar.glyph-size-scale", FieldsField::PresentationRadarGlyphSizeScale},
-        {"presentation.radar.objective-size-multiplier",
-         FieldsField::PresentationRadarObjectiveSizeMultiplier},
-        {"presentation.radar.objective-ring-padding-pixels",
-         FieldsField::PresentationRadarObjectiveRingPaddingPixels},
-        {"presentation.radar.objective-ring-thickness-pixels",
-         FieldsField::PresentationRadarObjectiveRingThicknessPixels}};
-    return ioj::lookup_enum(values, path);
+    switch (path.size()) {
+        case 26: {
+            if (path == "presentation.radar.enabled") {
+                return FieldsField::PresentationRadarEnabled;
+            }
+            return std::nullopt;
+        }
+        case 31: {
+            if (path == "presentation.radar.combat-range") {
+                return FieldsField::PresentationRadarCombatRange;
+            }
+            if (path == "presentation.radar.grid-opacity") {
+                return FieldsField::PresentationRadarGridOpacity;
+            }
+            return std::nullopt;
+        }
+        case 32: {
+            if (path == "presentation.radar.maximum-range") {
+                return FieldsField::PresentationRadarMaximumRange;
+            }
+            return std::nullopt;
+        }
+        case 33: {
+            if (path == "presentation.radar.tactical-range") {
+                return FieldsField::PresentationRadarTacticalRange;
+            }
+            return std::nullopt;
+        }
+        case 35: {
+            if (path == "presentation.entity-overlay.enabled") {
+                return FieldsField::PresentationEntityOverlayEnabled;
+            }
+            if (path == "presentation.radar.core-cell-radius") {
+                return FieldsField::PresentationRadarCoreCellRadius;
+            }
+            if (path == "presentation.radar.glyph-size-scale") {
+                return FieldsField::PresentationRadarGlyphSizeScale;
+            }
+            return std::nullopt;
+        }
+        case 37: {
+            if (path == "presentation.radar.combat-cell-radius") {
+                return FieldsField::PresentationRadarCombatCellRadius;
+            }
+            return std::nullopt;
+        }
+        case 39: {
+            if (path == "presentation.turrets.death-effect-scale") {
+                return FieldsField::PresentationTurretsDeathEffectScale;
+            }
+            if (path == "presentation.radar.tactical-cell-radius") {
+                return FieldsField::PresentationRadarTacticalCellRadius;
+            }
+            return std::nullopt;
+        }
+        case 40: {
+            if (path == "presentation.entity-overlay.inset-pixels") {
+                return FieldsField::PresentationEntityOverlayInsetPixels;
+            }
+            if (path == "presentation.radar.combat-display-radius") {
+                return FieldsField::PresentationRadarCombatDisplayRadius;
+            }
+            if (path == "presentation.radar.strategic-cell-radius") {
+                return FieldsField::PresentationRadarStrategicCellRadius;
+            }
+            return std::nullopt;
+        }
+        case 41: {
+            if (path == "presentation.entity-overlay.maximum-range") {
+                return FieldsField::PresentationEntityOverlayMaximumRange;
+            }
+            return std::nullopt;
+        }
+        case 43: {
+            if (path == "presentation.capital-ships.proxy-arrow-size") {
+                return FieldsField::PresentationCapitalShipsProxyArrowSize;
+            }
+            if (path == "presentation.entity-overlay.bar-size-pixels") {
+                return FieldsField::PresentationEntityOverlayBarSizePixels;
+            }
+            return std::nullopt;
+        }
+        case 44: {
+            if (path == "presentation.radar.objective-size-multiplier") {
+                return FieldsField::PresentationRadarObjectiveSizeMultiplier;
+            }
+            return std::nullopt;
+        }
+        case 45: {
+            if (path == "presentation.capital-ships.n-small-explosions") {
+                return FieldsField::PresentationCapitalShipsNSmallExplosions;
+            }
+            if (path == "presentation.entity-overlay.minimum-bar-scale") {
+                return FieldsField::PresentationEntityOverlayMinimumBarScale;
+            }
+            if (path == "presentation.entity-overlay.maximum-bar-scale") {
+                return FieldsField::PresentationEntityOverlayMaximumBarScale;
+            }
+            return std::nullopt;
+        }
+        case 47: {
+            if (path == "presentation.player-ship.barrel-roll.roll-speed") {
+                return FieldsField::PresentationPlayerShipBarrelRollRollSpeed;
+            }
+            if (path == "presentation.entity-overlay.soft-target.opacity") {
+                return FieldsField::PresentationEntityOverlaySoftTargetOpacity;
+            }
+            return std::nullopt;
+        }
+        case 48: {
+            if (path == "presentation.laser-projectiles.min-cull-distance") {
+                return FieldsField::PresentationLaserProjectilesMinCullDistance;
+            }
+            if (path == "presentation.laser-projectiles.max-cull-distance") {
+                return FieldsField::PresentationLaserProjectilesMaxCullDistance;
+            }
+            if (path == "presentation.capital-ships.large-explosion-delay") {
+                return FieldsField::PresentationCapitalShipsLargeExplosionDelay;
+            }
+            if (path == "presentation.entity-overlay.screen-offset-pixels") {
+                return FieldsField::PresentationEntityOverlayScreenOffsetPixels;
+            }
+            if (path == "presentation.radar.objective-ring-padding-pixels") {
+                return FieldsField::PresentationRadarObjectiveRingPaddingPixels;
+            }
+            return std::nullopt;
+        }
+        case 50: {
+            if (path == "presentation.player-ship.barrel-roll.roll-duration") {
+                return FieldsField::PresentationPlayerShipBarrelRollRollDuration;
+            }
+            if (path == "presentation.player-ship.barrel-roll.roll-cooldown") {
+                return FieldsField::PresentationPlayerShipBarrelRollRollCooldown;
+            }
+            if (path == "presentation.capital-ships.time-between-explosions") {
+                return FieldsField::PresentationCapitalShipsTimeBetweenExplosions;
+            }
+            if (path == "presentation.entity-overlay.objective-frame-pixels") {
+                return FieldsField::PresentationEntityOverlayObjectiveFramePixels;
+            }
+            if (path == "presentation.radar.objective-ring-thickness-pixels") {
+                return FieldsField::PresentationRadarObjectiveRingThicknessPixels;
+            }
+            return std::nullopt;
+        }
+        case 52: {
+            if (path == "presentation.capital-ships.min-small-explosion-range") {
+                return FieldsField::PresentationCapitalShipsMinSmallExplosionRange;
+            }
+            if (path == "presentation.capital-ships.max-small-explosion-range") {
+                return FieldsField::PresentationCapitalShipsMaxSmallExplosionRange;
+            }
+            return std::nullopt;
+        }
+        case 54: {
+            if (path == "presentation.player-ship.boost-effect-colour-intensity") {
+                return FieldsField::PresentationPlayerShipBoostEffectColourIntensity;
+            }
+            if (path == "presentation.entity-overlay.maximum-inset-height-ratio") {
+                return FieldsField::PresentationEntityOverlayMaximumInsetHeightRatio;
+            }
+            if (path == "presentation.entity-overlay.objective-bar-height-scale") {
+                return FieldsField::PresentationEntityOverlayObjectiveBarHeightScale;
+            }
+            if (path == "presentation.entity-overlay.screen-edge-padding-pixels") {
+                return FieldsField::PresentationEntityOverlayScreenEdgePaddingPixels;
+            }
+            if (path == "presentation.entity-overlay.soft-target.pulse-duration") {
+                return FieldsField::PresentationEntityOverlaySoftTargetPulseDuration;
+            }
+            return std::nullopt;
+        }
+        case 57: {
+            if (path == "presentation.entity-overlay.soft-target.fade-out-duration") {
+                return FieldsField::PresentationEntityOverlaySoftTargetFadeOutDuration;
+            }
+            return std::nullopt;
+        }
+        case 59: {
+            if (path == "presentation.entity-overlay.soft-target.pulse-opacity-boost") {
+                return FieldsField::PresentationEntityOverlaySoftTargetPulseOpacityBoost;
+            }
+            return std::nullopt;
+        }
+        case 61: {
+            if (path == "presentation.entity-overlay.soft-target.minimum-radius-pixels") {
+                return FieldsField::PresentationEntityOverlaySoftTargetMinimumRadiusPixels;
+            }
+            if (path == "presentation.entity-overlay.soft-target.maximum-radius-pixels") {
+                return FieldsField::PresentationEntityOverlaySoftTargetMaximumRadiusPixels;
+            }
+            if (path == "presentation.entity-overlay.soft-target.bounds-padding-pixels") {
+                return FieldsField::PresentationEntityOverlaySoftTargetBoundsPaddingPixels;
+            }
+            return std::nullopt;
+        }
+        case 63: {
+            if (path == "presentation.entity-overlay.soft-target.retention-radius-pixels") {
+                return FieldsField::PresentationEntityOverlaySoftTargetRetentionRadiusPixels;
+            }
+            return std::nullopt;
+        }
+        case 64: {
+            if (path == "presentation.entity-overlay.soft-target.centre-tie-radius-pixels") {
+                return FieldsField::PresentationEntityOverlaySoftTargetCentreTieRadiusPixels;
+            }
+            if (path == "presentation.entity-overlay.soft-target.switch-improvement-ratio") {
+                return FieldsField::PresentationEntityOverlaySoftTargetSwitchImprovementRatio;
+            }
+            return std::nullopt;
+        }
+        case 65: {
+            if (path == "presentation.entity-overlay.soft-target.acquisition-radius-pixels") {
+                return FieldsField::PresentationEntityOverlaySoftTargetAcquisitionRadiusPixels;
+            }
+            return std::nullopt;
+        }
+        case 71: {
+            if (path == "presentation.entity-overlay.soft-target.bracket-start-radius-multiplier") {
+                return FieldsField::PresentationEntityOverlaySoftTargetBracketStartRadiusMultiplier;
+            }
+            return std::nullopt;
+        }
+        case 73: {
+            if (path ==
+                "presentation.entity-overlay.soft-target.range-transition-start-multiplier") {
+                return FieldsField::
+                    PresentationEntityOverlaySoftTargetRangeTransitionStartMultiplier;
+            }
+            return std::nullopt;
+        }
+        default: {
+            return std::nullopt;
+        }
+    }
 }
 
 // Require a valid field returned by the schema's key parser.

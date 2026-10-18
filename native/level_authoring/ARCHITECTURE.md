@@ -66,8 +66,8 @@ Catalog validators receive only successfully decoded definitions, retaining orig
 discovery indices and filesystem paths. Diagnostics distinguish `node_path` from
 `source_path` and carry an error code and message.
 
-LispB schemas define grammar keywords and enum spellings. Generated serialized parsers share
-the small `ioj::lookup_enum` helper. See
+LispB schemas define grammar keywords and enum spellings. Generated parsers use string comparisons
+and switches without runtime lookup tables. See
 [DSL syntax](../../LevelScripts/README.md). The writer uses a small S-expression emitter
 because it emits evaluable constructors, while the AST represents their evaluated data.
 Literal vectors and ID lists are quoted; collections containing constructors use `list`.

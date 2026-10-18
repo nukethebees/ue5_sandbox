@@ -3,14 +3,12 @@
 
 #pragma once
 
-#include "ioj/enum_lookup.h"
 #include "ioj/gfx/starfield_settings.h"
 
 #include <cassert>
 #include <cstdint>
 #include <optional>
 #include <string_view>
-#include <unordered_map>
 #include <utility>
 
 namespace ioj::s7::starfield_fields {
@@ -43,39 +41,136 @@ enum class FieldsField : std::uint32_t {
     StarfieldNebularKnotSizeDegrees,
 };
 
-[[nodiscard]] inline auto try_parse_fields_field(std::string_view const path)
+[[nodiscard]] constexpr auto try_parse_fields_field(std::string_view const path) noexcept
     -> std::optional<FieldsField> {
-    static std::unordered_map<std::string_view, FieldsField> const values{
-        {"starfield.generation.star-count", FieldsField::StarfieldGenerationStarCount},
-        {"starfield.generation.random-seed", FieldsField::StarfieldGenerationRandomSeed},
-        {"starfield.star.scale", FieldsField::StarfieldStarScale},
-        {"starfield.star.size-multiplier", FieldsField::StarfieldStarSizeMultiplier},
-        {"starfield.star.global-brightness", FieldsField::StarfieldStarGlobalBrightness},
-        {"starfield.star.colour-variation-strength",
-         FieldsField::StarfieldStarColourVariationStrength},
-        {"starfield.star.parallax-strength", FieldsField::StarfieldStarParallaxStrength},
-        {"starfield.galactic-band.strength", FieldsField::StarfieldGalacticBandStrength},
-        {"starfield.galactic-band.width-degrees", FieldsField::StarfieldGalacticBandWidthDegrees},
-        {"starfield.stellar-cluster.strength", FieldsField::StarfieldStellarClusterStrength},
-        {"starfield.stellar-cluster.width-degrees",
-         FieldsField::StarfieldStellarClusterWidthDegrees},
-        {"starfield.dust-lane.strength", FieldsField::StarfieldDustLaneStrength},
-        {"starfield.dust-lane.width-degrees", FieldsField::StarfieldDustLaneWidthDegrees},
-        {"starfield.dust-lane.irregularity", FieldsField::StarfieldDustLaneIrregularity},
-        {"starfield.bright-star.fraction", FieldsField::StarfieldBrightStarFraction},
-        {"starfield.bright-star.size-multiplier", FieldsField::StarfieldBrightStarSizeMultiplier},
-        {"starfield.bright-star.brightness-multiplier",
-         FieldsField::StarfieldBrightStarBrightnessMultiplier},
-        {"starfield.bright-star.shape-strength", FieldsField::StarfieldBrightStarShapeStrength},
-        {"starfield.twinkle.strength", FieldsField::StarfieldTwinkleStrength},
-        {"starfield.twinkle.speed", FieldsField::StarfieldTwinkleSpeed},
-        {"starfield.galactic-haze.strength", FieldsField::StarfieldGalacticHazeStrength},
-        {"starfield.galactic-haze.width-degrees", FieldsField::StarfieldGalacticHazeWidthDegrees},
-        {"starfield.galactic-core.strength", FieldsField::StarfieldGalacticCoreStrength},
-        {"starfield.galactic-core.width-degrees", FieldsField::StarfieldGalacticCoreWidthDegrees},
-        {"starfield.nebular-knot.strength", FieldsField::StarfieldNebularKnotStrength},
-        {"starfield.nebular-knot.size-degrees", FieldsField::StarfieldNebularKnotSizeDegrees}};
-    return ioj::lookup_enum(values, path);
+    switch (path.size()) {
+        case 20: {
+            if (path == "starfield.star.scale") {
+                return FieldsField::StarfieldStarScale;
+            }
+            return std::nullopt;
+        }
+        case 23: {
+            if (path == "starfield.twinkle.speed") {
+                return FieldsField::StarfieldTwinkleSpeed;
+            }
+            return std::nullopt;
+        }
+        case 26: {
+            if (path == "starfield.twinkle.strength") {
+                return FieldsField::StarfieldTwinkleStrength;
+            }
+            return std::nullopt;
+        }
+        case 28: {
+            if (path == "starfield.dust-lane.strength") {
+                return FieldsField::StarfieldDustLaneStrength;
+            }
+            return std::nullopt;
+        }
+        case 30: {
+            if (path == "starfield.star.size-multiplier") {
+                return FieldsField::StarfieldStarSizeMultiplier;
+            }
+            if (path == "starfield.bright-star.fraction") {
+                return FieldsField::StarfieldBrightStarFraction;
+            }
+            return std::nullopt;
+        }
+        case 31: {
+            if (path == "starfield.generation.star-count") {
+                return FieldsField::StarfieldGenerationStarCount;
+            }
+            if (path == "starfield.nebular-knot.strength") {
+                return FieldsField::StarfieldNebularKnotStrength;
+            }
+            return std::nullopt;
+        }
+        case 32: {
+            if (path == "starfield.generation.random-seed") {
+                return FieldsField::StarfieldGenerationRandomSeed;
+            }
+            if (path == "starfield.star.global-brightness") {
+                return FieldsField::StarfieldStarGlobalBrightness;
+            }
+            if (path == "starfield.star.parallax-strength") {
+                return FieldsField::StarfieldStarParallaxStrength;
+            }
+            if (path == "starfield.galactic-band.strength") {
+                return FieldsField::StarfieldGalacticBandStrength;
+            }
+            if (path == "starfield.dust-lane.irregularity") {
+                return FieldsField::StarfieldDustLaneIrregularity;
+            }
+            if (path == "starfield.galactic-haze.strength") {
+                return FieldsField::StarfieldGalacticHazeStrength;
+            }
+            if (path == "starfield.galactic-core.strength") {
+                return FieldsField::StarfieldGalacticCoreStrength;
+            }
+            return std::nullopt;
+        }
+        case 33: {
+            if (path == "starfield.dust-lane.width-degrees") {
+                return FieldsField::StarfieldDustLaneWidthDegrees;
+            }
+            return std::nullopt;
+        }
+        case 34: {
+            if (path == "starfield.stellar-cluster.strength") {
+                return FieldsField::StarfieldStellarClusterStrength;
+            }
+            return std::nullopt;
+        }
+        case 35: {
+            if (path == "starfield.nebular-knot.size-degrees") {
+                return FieldsField::StarfieldNebularKnotSizeDegrees;
+            }
+            return std::nullopt;
+        }
+        case 36: {
+            if (path == "starfield.bright-star.shape-strength") {
+                return FieldsField::StarfieldBrightStarShapeStrength;
+            }
+            return std::nullopt;
+        }
+        case 37: {
+            if (path == "starfield.galactic-band.width-degrees") {
+                return FieldsField::StarfieldGalacticBandWidthDegrees;
+            }
+            if (path == "starfield.bright-star.size-multiplier") {
+                return FieldsField::StarfieldBrightStarSizeMultiplier;
+            }
+            if (path == "starfield.galactic-haze.width-degrees") {
+                return FieldsField::StarfieldGalacticHazeWidthDegrees;
+            }
+            if (path == "starfield.galactic-core.width-degrees") {
+                return FieldsField::StarfieldGalacticCoreWidthDegrees;
+            }
+            return std::nullopt;
+        }
+        case 39: {
+            if (path == "starfield.stellar-cluster.width-degrees") {
+                return FieldsField::StarfieldStellarClusterWidthDegrees;
+            }
+            return std::nullopt;
+        }
+        case 40: {
+            if (path == "starfield.star.colour-variation-strength") {
+                return FieldsField::StarfieldStarColourVariationStrength;
+            }
+            return std::nullopt;
+        }
+        case 43: {
+            if (path == "starfield.bright-star.brightness-multiplier") {
+                return FieldsField::StarfieldBrightStarBrightnessMultiplier;
+            }
+            return std::nullopt;
+        }
+        default: {
+            return std::nullopt;
+        }
+    }
 }
 
 // Require a valid field returned by the schema's key parser.

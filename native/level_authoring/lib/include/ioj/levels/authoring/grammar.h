@@ -3,14 +3,12 @@
 
 #pragma once
 
-#include "ioj/enum_lookup.h"
 #include "ioj/enum_traits.h"
 
 #include <array>
 #include <cstdint>
 #include <optional>
 #include <string_view>
-#include <unordered_map>
 
 namespace ioj::levels::authoring {
 using PropertyUnderlying = std::uint8_t;
@@ -196,53 +194,222 @@ enum class Property : PropertyUnderlying {
     }
 }
 
-[[nodiscard]] inline auto try_parse_serialized_property(std::string_view const value)
+[[nodiscard]] constexpr auto try_parse_serialized_property(std::string_view const value) noexcept
     -> std::optional<Property> {
-    static std::unordered_map<std::string_view, Property> const values{
-        {"id", Property::Id},
-        {"title", Property::Title},
-        {"description", Property::Description},
-        {"par-time", Property::ParTime},
-        {"collision-grid", Property::CollisionGrid},
-        {"unlock", Property::Unlock},
-        {"player", Property::Player},
-        {"camera", Property::Camera},
-        {"mission", Property::Mission},
-        {"mission-events", Property::MissionEvents},
-        {"entities", Property::Entities},
-        {"settings", Property::Settings},
-        {"levels", Property::Levels},
-        {"campaigns", Property::Campaigns},
-        {"path", Property::Path},
-        {"value", Property::Value},
-        {"error", Property::Error},
-        {"level-size", Property::LevelSize},
-        {"cell-size", Property::CellSize},
-        {"look-at", Property::LookAt},
-        {"distance", Property::Distance},
-        {"offset-direction", Property::OffsetDirection},
-        {"mode", Property::Mode},
-        {"time-limit", Property::TimeLimit},
-        {"kill-count", Property::KillCount},
-        {"heroes", Property::Heroes},
-        {"must-survive", Property::MustSurvive},
-        {"required-kills", Property::RequiredKills},
-        {"at", Property::At},
-        {"add-must-survive", Property::AddMustSurvive},
-        {"add-required-kills", Property::AddRequiredKills},
-        {"increase-kill-count", Property::IncreaseKillCount},
-        {"archetype", Property::Archetype},
-        {"team", Property::Team},
-        {"position", Property::Position},
-        {"rotation", Property::Rotation},
-        {"spawn-at", Property::SpawnAt},
-        {"health", Property::Health},
-        {"laser-damage", Property::LaserDamage},
-        {"initial-spawn-delay", Property::InitialSpawnDelay},
-        {"spawn-cooldown", Property::SpawnCooldown},
-        {"target", Property::Target},
-    };
-    return ioj::lookup_enum(values, value);
+    switch (value.size()) {
+        case 2: {
+            if (value == "id") {
+                return Property::Id;
+            }
+            if (value == "at") {
+                return Property::At;
+            }
+            return std::nullopt;
+        }
+        case 4: {
+            if (value == "path") {
+                return Property::Path;
+            }
+            if (value == "mode") {
+                return Property::Mode;
+            }
+            if (value == "team") {
+                return Property::Team;
+            }
+            return std::nullopt;
+        }
+        case 5: {
+            if (value == "title") {
+                return Property::Title;
+            }
+            if (value == "value") {
+                return Property::Value;
+            }
+            if (value == "error") {
+                return Property::Error;
+            }
+            return std::nullopt;
+        }
+        case 6: {
+            switch (static_cast<unsigned char>(value.front())) {
+                case 99: {
+                    if (value == "camera") {
+                        return Property::Camera;
+                    }
+                    return std::nullopt;
+                }
+                case 104: {
+                    if (value == "heroes") {
+                        return Property::Heroes;
+                    }
+                    if (value == "health") {
+                        return Property::Health;
+                    }
+                    return std::nullopt;
+                }
+                case 108: {
+                    if (value == "levels") {
+                        return Property::Levels;
+                    }
+                    return std::nullopt;
+                }
+                case 112: {
+                    if (value == "player") {
+                        return Property::Player;
+                    }
+                    return std::nullopt;
+                }
+                case 116: {
+                    if (value == "target") {
+                        return Property::Target;
+                    }
+                    return std::nullopt;
+                }
+                case 117: {
+                    if (value == "unlock") {
+                        return Property::Unlock;
+                    }
+                    return std::nullopt;
+                }
+                default: {
+                    return std::nullopt;
+                }
+            }
+        }
+        case 7: {
+            if (value == "mission") {
+                return Property::Mission;
+            }
+            if (value == "look-at") {
+                return Property::LookAt;
+            }
+            return std::nullopt;
+        }
+        case 8: {
+            switch (static_cast<unsigned char>(value.front())) {
+                case 100: {
+                    if (value == "distance") {
+                        return Property::Distance;
+                    }
+                    return std::nullopt;
+                }
+                case 101: {
+                    if (value == "entities") {
+                        return Property::Entities;
+                    }
+                    return std::nullopt;
+                }
+                case 112: {
+                    if (value == "par-time") {
+                        return Property::ParTime;
+                    }
+                    if (value == "position") {
+                        return Property::Position;
+                    }
+                    return std::nullopt;
+                }
+                case 114: {
+                    if (value == "rotation") {
+                        return Property::Rotation;
+                    }
+                    return std::nullopt;
+                }
+                case 115: {
+                    if (value == "settings") {
+                        return Property::Settings;
+                    }
+                    if (value == "spawn-at") {
+                        return Property::SpawnAt;
+                    }
+                    return std::nullopt;
+                }
+                default: {
+                    return std::nullopt;
+                }
+            }
+        }
+        case 9: {
+            if (value == "campaigns") {
+                return Property::Campaigns;
+            }
+            if (value == "cell-size") {
+                return Property::CellSize;
+            }
+            if (value == "archetype") {
+                return Property::Archetype;
+            }
+            return std::nullopt;
+        }
+        case 10: {
+            if (value == "level-size") {
+                return Property::LevelSize;
+            }
+            if (value == "time-limit") {
+                return Property::TimeLimit;
+            }
+            if (value == "kill-count") {
+                return Property::KillCount;
+            }
+            return std::nullopt;
+        }
+        case 11: {
+            if (value == "description") {
+                return Property::Description;
+            }
+            return std::nullopt;
+        }
+        case 12: {
+            if (value == "must-survive") {
+                return Property::MustSurvive;
+            }
+            if (value == "laser-damage") {
+                return Property::LaserDamage;
+            }
+            return std::nullopt;
+        }
+        case 14: {
+            if (value == "collision-grid") {
+                return Property::CollisionGrid;
+            }
+            if (value == "mission-events") {
+                return Property::MissionEvents;
+            }
+            if (value == "required-kills") {
+                return Property::RequiredKills;
+            }
+            if (value == "spawn-cooldown") {
+                return Property::SpawnCooldown;
+            }
+            return std::nullopt;
+        }
+        case 16: {
+            if (value == "offset-direction") {
+                return Property::OffsetDirection;
+            }
+            if (value == "add-must-survive") {
+                return Property::AddMustSurvive;
+            }
+            return std::nullopt;
+        }
+        case 18: {
+            if (value == "add-required-kills") {
+                return Property::AddRequiredKills;
+            }
+            return std::nullopt;
+        }
+        case 19: {
+            if (value == "increase-kill-count") {
+                return Property::IncreaseKillCount;
+            }
+            if (value == "initial-spawn-delay") {
+                return Property::InitialSpawnDelay;
+            }
+            return std::nullopt;
+        }
+        default: {
+            return std::nullopt;
+        }
+    }
 }
 
 using RecordKindUnderlying = std::uint8_t;

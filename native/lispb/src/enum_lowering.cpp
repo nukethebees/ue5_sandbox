@@ -2,6 +2,8 @@
 #include "lowering.h"
 #include "lowering_context.h"
 #include "lowering_utils.h"
+#include "string_enum_parser.h"
+#include <ioj/ascii.h>
 
 #include <codegen/ast/binary_operator.h>
 #include <codegen/ast/cpp_files.h>
@@ -31,7 +33,6 @@
 #include <lispb/strings.h>
 
 #include <algorithm>
-#include <cctype>
 #include <cstddef>
 #include <filesystem>
 #include <optional>
@@ -67,22 +68,19 @@ auto qualified_enum_name(LoweringContext& context,
 }
 
 auto snake_case_type_name(std::string_view const name) -> std::string {
-    auto const begin{name.size() > 1 && name.front() == 'E' &&
-                             std::isupper(static_cast<unsigned char>(name[1])) != 0
+    auto const begin{name.size() > 1 && name.front() == 'E' && ioj::isupper(name[1])
                          ? std::size_t{1}
                          : std::size_t{0}};
     std::string result;
     for (auto index{begin}; index < name.size(); ++index) {
-        auto const character{static_cast<unsigned char>(name[index])};
-        auto const upper{std::isupper(character) != 0};
-        auto const previous_lower{index > begin &&
-                                  std::islower(static_cast<unsigned char>(name[index - 1])) != 0};
-        auto const next_lower{index + 1 < name.size() &&
-                              std::islower(static_cast<unsigned char>(name[index + 1])) != 0};
+        auto const character{name[index]};
+        auto const upper{ioj::isupper(character)};
+        auto const previous_lower{index > begin && ioj::islower(name[index - 1])};
+        auto const next_lower{index + 1 < name.size() && ioj::islower(name[index + 1])};
         if (upper && !result.empty() && (previous_lower || next_lower)) {
             result += '_';
         }
-        result += static_cast<char>(std::tolower(character));
+        result += ioj::tolower(character);
     }
     return result;
 }
@@ -562,9 +560,6 @@ auto native_enum_declaration(LoweringContext& context, DeclarationHandle schema)
     }
     output << "};\n\n";
 
-    auto const snake_name{snake_case_type_name(
-        context.text(context.declarations.enums.name[context.declarations.enums.index(schema)]))};
-
     if (std::ranges::contains(
             context.declarations.items(
                 context.declarations.enums.helpers[context.declarations.enums.index(schema)]),
@@ -602,36 +597,6 @@ auto native_enum_declaration(LoweringContext& context, DeclarationHandle schema)
                           ">")
                << ";\n";
         output << "}\n\n";
-    }
-
-    if (std::ranges::contains(
-            context.declarations.items(
-                context.declarations.enums.helpers[context.declarations.enums.index(schema)]),
-            NativeEnumHelper::try_parse)) {
-        output << "[[nodiscard]] constexpr auto try_parse_" << snake_name
-               << "(std::string_view const value) noexcept -> std::optional<"
-               << context.text(
-                      context.declarations.enums.name[context.declarations.enums.index(schema)])
-               << "> {\n";
-        for (auto const value_id : context.declarations.items(
-                 context.declarations.enums.values[context.declarations.enums.index(schema)])) {
-            auto const value{value_id};
-            output << "    if (value == "
-                   << native_string_literal(
-                          ir,
-                          context.text(context.declarations.enumerators
-                                           .name[context.declarations.enumerators.index(value)]))
-                   << ") {\n";
-            output << "        return "
-                   << context.text(
-                          context.declarations.enums.name[context.declarations.enums.index(schema)])
-                   << "::"
-                   << context.text(context.declarations.enumerators
-                                       .name[context.declarations.enumerators.index(value)])
-                   << ";\n";
-            output << "    }\n";
-        }
-        output << "\n    return std::nullopt;\n}\n";
     }
 
     if (std::ranges::contains(
@@ -723,43 +688,45 @@ auto native_enum_declaration(LoweringContext& context, DeclarationHandle schema)
         output << "    }\n\n";
         output << "}\n\n";
     }
-    if (std::ranges::contains(
-            context.declarations.items(
-                context.declarations.enums.helpers[context.declarations.enums.index(schema)]),
-            NativeEnumHelper::try_parse_serialized)) {
-        output << "[[nodiscard]] inline auto try_parse_serialized_" << snake_name
-               << "(std::string_view const value) -> std::optional<"
-               << context.text(
-                      context.declarations.enums.name[context.declarations.enums.index(schema)])
-               << "> {\n";
-        output << "    static std::unordered_map<std::string_view, "
-               << context.text(
-                      context.declarations.enums.name[context.declarations.enums.index(schema)])
-               << "> const values{\n";
-        for (auto const value_id : context.declarations.items(
-                 context.declarations.enums.values[context.declarations.enums.index(schema)])) {
-            auto const value{value_id};
-            if (context.declarations.enumerators
-                    .serialized_name[context.declarations.enumerators.index(value)]
-                    .has_value()) {
-                output << "        {"
-                       << native_string_literal(
-                              ir,
-                              context.text(*context.declarations.enumerators.serialized_name
-                                                [context.declarations.enumerators.index(value)]))
-                       << ", "
-                       << context.text(context.declarations.enums
-                                           .name[context.declarations.enums.index(schema)])
-                       << "::"
-                       << context.text(context.declarations.enumerators
-                                           .name[context.declarations.enumerators.index(value)])
-                       << "},\n";
-            }
-        }
-        output << "    };\n";
-        output << "    return ioj::lookup_enum(values, value);\n}\n";
-    }
     return output.str();
+}
+
+auto native_enum_parsers(LoweringContext& context, DeclarationHandle const schema) -> Nodes {
+    auto& ir{context.ir};
+    auto const row{context.declarations.enums.index(schema)};
+    auto const name{context.text(context.declarations.enums.name[row])};
+    auto const snake_name{snake_case_type_name(name)};
+    auto const helpers{context.declarations.items(context.declarations.enums.helpers[row])};
+    NodeListBuilder parsers{ir};
+    for (auto const helper :
+         {NativeEnumHelper::try_parse, NativeEnumHelper::try_parse_serialized}) {
+        if (!std::ranges::contains(helpers, helper)) {
+            continue;
+        }
+
+        std::vector<StringEnumEntry> entries;
+        for (auto const value :
+             context.declarations.items(context.declarations.enums.values[row])) {
+            auto const value_row{context.declarations.enumerators.index(value)};
+            auto const value_name{context.text(context.declarations.enumerators.name[value_row])};
+            std::string key;
+            if (helper == NativeEnumHelper::try_parse_serialized) {
+                auto const serialized{context.declarations.enumerators.serialized_name[value_row]};
+                if (!serialized) {
+                    continue;
+                }
+                key = context.text(*serialized);
+            } else {
+                key = value_name;
+            }
+            entries.push_back({std::move(key), name + "::" + value_name});
+        }
+
+        auto const prefix{helper == NativeEnumHelper::try_parse ? "try_parse_"
+                                                                : "try_parse_serialized_"};
+        parsers.add(lower_string_enum_parser(ir, prefix + snake_name, name, "value", entries), 2);
+    }
+    return parsers.build();
 }
 
 auto native_enum_traits(LoweringContext& context,
@@ -1021,7 +988,10 @@ auto lower_enum(LoweringContext& context,
                 helper);
         };
         prefix.add(ir.include(ir.store_text("cstdint"), IncludeStyle::system), 2);
-        if (std::ranges::any_of(
+        auto const parses_strings{has(NativeEnumHelper::try_parse) ||
+                                  has(NativeEnumHelper::try_parse_serialized)};
+        if (!parses_strings &&
+            std::ranges::any_of(
                 context.declarations.items(
                     context.declarations.enums.helpers[context.declarations.enums.index(schema)]),
                 [](auto const helper) { return helper != NativeEnumHelper::traits; })) {
@@ -1037,15 +1007,11 @@ auto lower_enum(LoweringContext& context,
         if (context.declarations.enums.enum_array[context.declarations.enums.index(schema)]) {
             prefix.add(ir.include(ir.store_text("cstddef"), IncludeStyle::system), 2);
         }
-        if (has(NativeEnumHelper::try_parse) || has(NativeEnumHelper::try_parse_serialized)) {
-            prefix.add(ir.include(ir.store_text("optional"), IncludeStyle::system), 2);
-        }
-        if (has(NativeEnumHelper::try_parse_serialized)) {
-            prefix.add(ir.include(ir.store_text("unordered_map"), IncludeStyle::system), 2)
-                .add(ir.include(ir.store_text("ioj/enum_lookup.h"), IncludeStyle::quoted), 2);
-        }
         emission.header_prefix = prefix.build();
-        emission.header = {ir.raw(native_enum_declaration(context, schema))};
+        NodeListBuilder declarations{ir};
+        declarations.add(ir.raw(native_enum_declaration(context, schema)), 2);
+        declarations.append(native_enum_parsers(context, schema));
+        emission.header = declarations.build();
         if (has(NativeEnumHelper::traits) ||
             context.declarations.enums.enum_array[context.declarations.enums.index(schema)]) {
             emission.header_global = {ir.namespace_node(

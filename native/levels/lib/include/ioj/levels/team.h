@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "ioj/enum_lookup.h"
 #include "ioj/enum_traits.h"
 
 #include <array>
@@ -11,7 +10,6 @@
 #include <cstdint>
 #include <optional>
 #include <string_view>
-#include <unordered_map>
 
 namespace ioj {
 using TeamUnderlying = std::uint8_t;
@@ -77,17 +75,43 @@ enum class Team : TeamUnderlying {
     }
 }
 
-[[nodiscard]] inline auto try_parse_serialized_team(std::string_view const value)
+[[nodiscard]] constexpr auto try_parse_serialized_team(std::string_view const value) noexcept
     -> std::optional<Team> {
-    static std::unordered_map<std::string_view, Team> const values{
-        {"white", Team::White},
-        {"red", Team::Red},
-        {"green", Team::Green},
-        {"blue", Team::Blue},
-        {"orange", Team::Orange},
-        {"yellow", Team::Yellow},
-    };
-    return ioj::lookup_enum(values, value);
+    switch (value.size()) {
+        case 3: {
+            if (value == "red") {
+                return Team::Red;
+            }
+            return std::nullopt;
+        }
+        case 4: {
+            if (value == "blue") {
+                return Team::Blue;
+            }
+            return std::nullopt;
+        }
+        case 5: {
+            if (value == "white") {
+                return Team::White;
+            }
+            if (value == "green") {
+                return Team::Green;
+            }
+            return std::nullopt;
+        }
+        case 6: {
+            if (value == "orange") {
+                return Team::Orange;
+            }
+            if (value == "yellow") {
+                return Team::Yellow;
+            }
+            return std::nullopt;
+        }
+        default: {
+            return std::nullopt;
+        }
+    }
 }
 
 } // namespace ioj

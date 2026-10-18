@@ -3,12 +3,9 @@
 
 #pragma once
 
-#include "ioj/enum_lookup.h"
-
 #include <cstdint>
 #include <optional>
 #include <string_view>
-#include <unordered_map>
 
 namespace ioj::sim {
 using MissionFailReasonUnderlying = std::uint8_t;
@@ -61,15 +58,22 @@ enum class MissionFailReason : MissionFailReasonUnderlying {
     }
 }
 
-[[nodiscard]] inline auto try_parse_serialized_mission_fail_reason(std::string_view const value)
+[[nodiscard]] constexpr auto
+    try_parse_serialized_mission_fail_reason(std::string_view const value) noexcept
     -> std::optional<MissionFailReason> {
-    static std::unordered_map<std::string_view, MissionFailReason> const values{
-        {"none", MissionFailReason::None},
-        {"player_killed", MissionFailReason::PlayerKilled},
-        {"time_elapsed", MissionFailReason::TimeElapsed},
-        {"defence_objective_failed", MissionFailReason::DefenceObjectiveFailed},
-    };
-    return ioj::lookup_enum(values, value);
+    if (value == "none") {
+        return MissionFailReason::None;
+    }
+    if (value == "player_killed") {
+        return MissionFailReason::PlayerKilled;
+    }
+    if (value == "time_elapsed") {
+        return MissionFailReason::TimeElapsed;
+    }
+    if (value == "defence_objective_failed") {
+        return MissionFailReason::DefenceObjectiveFailed;
+    }
+    return std::nullopt;
 }
 
 } // namespace ioj::sim

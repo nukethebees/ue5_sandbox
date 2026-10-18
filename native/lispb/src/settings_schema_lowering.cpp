@@ -1,6 +1,7 @@
 #include "declaration_emission.h"
 #include "lowering.h"
 #include "lowering_context.h"
+#include "string_enum_parser.h"
 
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>
@@ -34,42 +35,14 @@ auto parser_function(LoweringContext& context,
                      std::string const& stem,
                      std::span<StringId const> const paths) -> NodeId {
     auto& ir{context.ir};
-    std::vector<Expr> entries;
+    std::vector<StringEnumEntry> entries;
     entries.reserve(paths.size());
     for (auto const path : paths) {
         auto const name{context.text(path)};
-        entries.push_back(
-            ir.init_list({ir.string_literal(name),
-                          ir.named(enum_name + "::" + settings_schema_field_name(name))}));
+        entries.push_back({name, enum_name + "::" + settings_schema_field_name(name)});
     }
 
-    auto const parser{
-        ir.function(ir.strings.intern("try_parse_" + stem + "_field"), ir.types.intern("auto"))};
-    ir.set_function_return_type(parser,
-                                ir.types.intern("std::optional<" + enum_name + ">",
-                                                {ir.types.dependency("std::optional", "optional")}),
-                                ReturnSyntax::trailing);
-    ir.set_function_parameters(
-        parser,
-        {ir.parameter(ir.types.intern("std::string_view const",
-                                      {ir.types.dependency("std::string_view", "string_view")}),
-                      ir.strings.intern("path"))});
-    auto& flags{ir.function_flags(parser)};
-    flags.set_define_in_header(true);
-    flags.set_is_inline(true);
-    flags.set_is_nodiscard(true);
-    ir.set_function_body(
-        parser,
-        {ir.variable(
-             ir.types.intern("static std::unordered_map<std::string_view, " + enum_name + "> const",
-                             {ir.types.dependency("std::unordered_map", "unordered_map")}),
-             ir.strings.intern("values"),
-             ir.init_list(entries)),
-         ir.return_statement(
-             ir.call(ir.named("ioj::lookup_enum",
-                              {ir.types.dependency("ioj::lookup_enum", "ioj/enum_lookup.h")}),
-                     {ir.named("values"), ir.named("path")}))});
-    return ir.header_function(parser);
+    return lower_string_enum_parser(ir, "try_parse_" + stem + "_field", enum_name, "path", entries);
 }
 
 auto visitor_function(LoweringContext& context,

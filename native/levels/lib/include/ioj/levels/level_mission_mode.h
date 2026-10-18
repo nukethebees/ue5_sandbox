@@ -3,12 +3,9 @@
 
 #pragma once
 
-#include "ioj/enum_lookup.h"
-
 #include <cstdint>
 #include <optional>
 #include <string_view>
-#include <unordered_map>
 
 namespace ioj::levels {
 using LevelMissionModeUnderlying = std::uint8_t;
@@ -42,15 +39,22 @@ enum class LevelMissionMode : LevelMissionModeUnderlying {
     }
 }
 
-[[nodiscard]] inline auto try_parse_serialized_level_mission_mode(std::string_view const value)
+[[nodiscard]] constexpr auto
+    try_parse_serialized_level_mission_mode(std::string_view const value) noexcept
     -> std::optional<LevelMissionMode> {
-    static std::unordered_map<std::string_view, LevelMissionMode> const values{
-        {"unspecified", LevelMissionMode::Unspecified},
-        {"survive-time", LevelMissionMode::SurviveTime},
-        {"kill-enemies", LevelMissionMode::KillEnemies},
-        {"kill-enemies-within-time", LevelMissionMode::KillEnemiesWithinTime},
-    };
-    return ioj::lookup_enum(values, value);
+    if (value == "unspecified") {
+        return LevelMissionMode::Unspecified;
+    }
+    if (value == "survive-time") {
+        return LevelMissionMode::SurviveTime;
+    }
+    if (value == "kill-enemies") {
+        return LevelMissionMode::KillEnemies;
+    }
+    if (value == "kill-enemies-within-time") {
+        return LevelMissionMode::KillEnemiesWithinTime;
+    }
+    return std::nullopt;
 }
 
 } // namespace ioj::levels

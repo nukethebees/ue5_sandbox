@@ -1,10 +1,11 @@
 #include <codegen/schema/settings_schema_schemas.h>
 
+#include <ioj/ascii.h>
+
 #include <cassert>
-#include <cctype>
 
 namespace lispb::codegen {
-auto SettingsSchemaSchemas::index(DeclarationHandle const id) const -> std::uint32_t {
+auto SettingsSchemaSchemas::index(DeclarationHandle const id) const -> RowIndex {
     assert(id.kind() == DeclarationKind::settings_schema);
     auto const row{id.index()};
     assert(row < name.size());
@@ -12,7 +13,7 @@ auto SettingsSchemaSchemas::index(DeclarationHandle const id) const -> std::uint
 }
 
 auto SettingsSchemaSchemas::append() -> DeclarationHandle {
-    auto const row{static_cast<std::uint32_t>(name.size())};
+    auto const row{static_cast<RowIndex>(name.size())};
     assert(row < 0x00fffffe);
     name.push_back({});
     target.push_back({});
@@ -47,16 +48,14 @@ auto settings_schema_function_stem(std::string_view const name) -> std::string {
     std::string result;
     auto const count{name.size()};
     for (std::size_t index{}; index < count; ++index) {
-        auto const character{static_cast<unsigned char>(name[index])};
-        auto const uppercase{std::isupper(character) != 0};
-        auto const previous_lower{index > 0 &&
-                                  std::islower(static_cast<unsigned char>(name[index - 1])) != 0};
-        auto const next_lower{index + 1 < count &&
-                              std::islower(static_cast<unsigned char>(name[index + 1])) != 0};
+        auto const character{name[index]};
+        auto const uppercase{ioj::isupper(character)};
+        auto const previous_lower{index > 0 && ioj::islower(name[index - 1])};
+        auto const next_lower{index + 1 < count && ioj::islower(name[index + 1])};
         if (uppercase && index > 0 && (previous_lower || next_lower)) {
             result += '_';
         }
-        result += static_cast<char>(std::tolower(character));
+        result += ioj::tolower(character);
     }
     return result;
 }
@@ -68,9 +67,7 @@ auto settings_schema_field_name(std::string_view const path) -> std::string {
         if (character == '.' || character == '-' || character == '_') {
             uppercase = true;
         } else {
-            result += uppercase
-                        ? static_cast<char>(std::toupper(static_cast<unsigned char>(character)))
-                        : character;
+            result += uppercase ? ioj::toupper(character) : character;
             uppercase = false;
         }
     }

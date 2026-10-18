@@ -10,9 +10,11 @@
 
 namespace lispb::codegen {
 struct SettingsSchemaSchemas {
+    using RowIndex = decltype(DeclarationHandle{}.index());
+
     [[nodiscard]] auto append() -> DeclarationHandle;
     [[nodiscard]] auto clone(DeclarationHandle id) -> DeclarationHandle;
-    [[nodiscard]] auto index(DeclarationHandle id) const -> std::uint32_t;
+    [[nodiscard]] auto index(DeclarationHandle id) const -> RowIndex;
     void clear();
 
     std::vector<IdentifierId> name;

@@ -3,14 +3,12 @@
 
 #pragma once
 
-#include "ioj/enum_lookup.h"
 #include "ioj/enum_traits.h"
 
 #include <array>
 #include <cstdint>
 #include <optional>
 #include <string_view>
-#include <unordered_map>
 
 namespace ioj::levels {
 using EntityArchetypeUnderlying = std::uint8_t;
@@ -40,14 +38,19 @@ enum class EntityArchetype : EntityArchetypeUnderlying {
     }
 }
 
-[[nodiscard]] inline auto try_parse_serialized_entity_archetype(std::string_view const value)
+[[nodiscard]] constexpr auto
+    try_parse_serialized_entity_archetype(std::string_view const value) noexcept
     -> std::optional<EntityArchetype> {
-    static std::unordered_map<std::string_view, EntityArchetype> const values{
-        {"player-fighter", EntityArchetype::PlayerFighter},
-        {"capital-ship", EntityArchetype::CapitalShip},
-        {"static-turret", EntityArchetype::StaticTurret},
-    };
-    return ioj::lookup_enum(values, value);
+    if (value == "player-fighter") {
+        return EntityArchetype::PlayerFighter;
+    }
+    if (value == "capital-ship") {
+        return EntityArchetype::CapitalShip;
+    }
+    if (value == "static-turret") {
+        return EntityArchetype::StaticTurret;
+    }
+    return std::nullopt;
 }
 
 } // namespace ioj::levels

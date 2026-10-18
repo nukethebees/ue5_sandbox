@@ -1,0 +1,23 @@
+(module compiler_declaration_kind
+  :header "declaration_kind.h"
+  :backend standard-library
+  :namespace lispb::codegen
+  (enum DeclarationKind std::uint8_t
+    (value enumeration)
+    (value integer_scalar)
+    (value linear_quantized)
+    (value integer_varint)
+    (value fixed_point)
+    (value mini_float)
+    (value optional_sentinel)
+    (value optional_presence_bit)
+    (value packed_value)
+    (value record)
+    (value union_type)
+    (value tagged_union)
+    (value soa)
+    (value vector_soa)
+    (value homogeneous_layout)
+    (value static_table)
+    (value facade)
+    (value settings_schema)))

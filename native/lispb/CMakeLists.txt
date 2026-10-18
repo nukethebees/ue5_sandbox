@@ -175,6 +175,7 @@ target_link_libraries(lispb-schema
     lispb-syntax
   PRIVATE
     lispb-paths
+    native-core-headers
 )
 ioj_enable_warnings(lispb-schema CODEGEN)
 
@@ -219,6 +220,7 @@ target_sources(codegen-lib PRIVATE
   src/module_assembly.cpp
   src/settings_lowering.cpp
   src/settings_schema_lowering.cpp
+  src/string_enum_parser.cpp
   src/soa_lowering.cpp
   src/soa_api.cpp
   src/soa_member_resolution.cpp
@@ -454,6 +456,10 @@ add_custom_target(generate-code
   COMMAND "$<TARGET_FILE:lispb>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
+    --target compiler-schema
+  COMMAND "$<TARGET_FILE:lispb>" generate
+    --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
+    --build-root "${CMAKE_BINARY_DIR}"
     --target sandbox-code
   COMMAND "$<TARGET_FILE:lispb>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
@@ -471,6 +477,10 @@ add_custom_target(check-generated-code
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target compiler-ir
+  COMMAND "$<TARGET_FILE:lispb>" check
+    --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
+    --build-root "${CMAKE_BINARY_DIR}"
+    --target compiler-schema
   COMMAND "$<TARGET_FILE:lispb>" check
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"

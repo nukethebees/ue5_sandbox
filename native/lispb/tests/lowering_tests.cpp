@@ -409,8 +409,7 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
         EXPECT_EQ(selected.find("std::array names"), std::string::npos);
         EXPECT_EQ(selected.find("<string_view>") != std::string::npos,
                   helper != NativeEnumHelper::traits);
-        EXPECT_EQ(selected.find("<unordered_map>") != std::string::npos,
-                  helper == NativeEnumHelper::try_parse_serialized);
+        EXPECT_EQ(selected.find("<unordered_map>"), std::string::npos);
     }
 }
 
