@@ -1,3 +1,10 @@
+add_library(lispb-sexpr-output INTERFACE)
+target_include_directories(lispb-sexpr-output
+  INTERFACE
+    include
+    ../include
+)
+
 add_library(lispb-syntax)
 target_sources(lispb-syntax
   PRIVATE

@@ -3,7 +3,8 @@
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/authoring/grammar.h>
 #include <ioj/s7/interpreter.h>
-#include <ioj/s7/sexpression_emitter.h>
+
+#include <codegen/sexpr/output.h>
 
 #include <format>
 #include <utility>
@@ -178,11 +179,11 @@ DefinitionReader::DefinitionReader(std::filesystem::path script_library_root)
 auto DefinitionReader::read_root_file(std::filesystem::path const& path) const
     -> std::expected<DefinitionCatalog, Diagnostics> {
     auto const full_path{std::filesystem::absolute(path)};
-    s7::SexpressionEmitter expression;
-    expression.begin_list("load-script");
-    expression.string(ioj::path_to_utf8(full_path.filename()));
-    expression.end_list();
-    auto ast{evaluate(std::move(expression).finish(), full_path.parent_path())};
+    lispb::codegen::sexpr::SExprIR ir;
+    auto const expression{
+        ir.form("load-script", {ir.string(ioj::path_to_utf8(full_path.filename()))}).build()};
+    auto ast{evaluate(ir.render(expression, lispb::codegen::sexpr::Dialect::scheme),
+                      full_path.parent_path())};
     if (!ast) {
         return with_source_path(
             std::expected<DefinitionCatalog, Diagnostics>{std::unexpect, std::move(ast.error())},
