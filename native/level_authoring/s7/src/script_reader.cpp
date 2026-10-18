@@ -5,6 +5,7 @@
 #include <ioj/s7/interpreter.h>
 
 #include <codegen/sexpr/form_builder.h>
+#include <codegen/sexpr/sexpr_renderer.h>
 #include <lispb/strings.h>
 
 #include <format>
@@ -184,8 +185,10 @@ auto DefinitionReader::read_root_file(std::filesystem::path const& path) const
     lispb::codegen::sexpr::SExprIR ir{strings};
     auto const expression{
         ir.form("load-script", {ir.string(ioj::path_to_utf8(full_path.filename()))}).build()};
-    auto ast{evaluate(ir.render(expression, lispb::codegen::sexpr::Dialect::scheme),
-                      full_path.parent_path())};
+    auto ast{evaluate(
+        lispb::codegen::sexpr::SExprRenderer{ir, lispb::codegen::sexpr::Dialect::scheme}.render(
+            expression),
+        full_path.parent_path())};
     if (!ast) {
         return with_source_path(
             std::expected<DefinitionCatalog, Diagnostics>{std::unexpect, std::move(ast.error())},

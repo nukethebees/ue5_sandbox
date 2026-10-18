@@ -1,6 +1,5 @@
 #pragma once
 #include <codegen/sexpr/common_atoms.h>
-#include <codegen/sexpr/dialect.h>
 #include <codegen/sexpr/output/indices.h>
 #include <codegen/sexpr/output/lists.h>
 #include <codegen/sexpr/output/texts.h>
@@ -16,6 +15,7 @@
 
 namespace lispb::codegen::sexpr {
 class FormBuilder;
+class SExprRenderer;
 
 // Handles belong to this IR and remain valid as it grows. The source string store must outlive
 // the IR and retain referenced IDs. New spellings are owned by the IR, without growing that store.
@@ -50,15 +50,11 @@ class SExprIR {
     auto form(std::string_view head, std::initializer_list<Expr> positional = {}) -> FormBuilder;
     template <Serialized T>
     auto form(T head, std::initializer_list<Expr> positional = {}) -> FormBuilder;
-    auto render(Expr value, Dialect dialect = Dialect::lispb) const -> std::string;
-    auto render_document(std::span<Expr const> roots, Dialect dialect = Dialect::lispb) const
-        -> std::string;
-    auto render_document(std::initializer_list<Expr> roots, Dialect dialect = Dialect::lispb) const
-        -> std::string;
 
     CommonAtoms atoms;
   private:
     friend class FormBuilder;
+    friend class SExprRenderer;
     using Range = output_detail::Range;
     using TextId = output_detail::TextId;
     using ListId = output_detail::ListId;
@@ -72,12 +68,6 @@ class SExprIR {
     auto save_list(std::span<Expr const> header,
                    std::span<Expr const> values,
                    std::span<Range const> rows) -> Expr;
-    static void append_string(std::string& output, std::string_view value, Dialect dialect);
-    void append_values(std::string& output,
-                       std::span<Expr const> values,
-                       std::size_t depth,
-                       Dialect dialect) const;
-    void append(std::string& output, Expr value, std::size_t depth, Dialect dialect) const;
 
     Strings const& strings_;
     output_detail::Texts texts_;

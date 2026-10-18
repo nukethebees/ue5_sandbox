@@ -70,6 +70,7 @@
 #include <codegen/schema/union_alternative_schemas.h>
 #include <codegen/schema/union_schemas.h>
 #include <codegen/schema/vector_soa_schemas.h>
+#include <codegen/sexpr/sexpr_renderer.h>
 #include <lispb/indices.h>
 #include <lispb/strings.h>
 
@@ -96,10 +97,10 @@ auto CanonicalRenderer::text(IdentifierId value) const -> std::string_view {
 }
 auto CanonicalRenderer::render_declaration_schema(codegen::DeclarationHandle const declaration)
     -> std::string {
-    return ir_.render(build_declaration_schema(declaration));
+    return codegen::sexpr::SExprRenderer{ir_}.render(build_declaration_schema(declaration));
 }
 auto CanonicalRenderer::render_module(codegen::ModuleHandle const module) -> std::string {
-    return ir_.render(build_module(module));
+    return codegen::sexpr::SExprRenderer{ir_}.render(build_module(module));
 }
 auto CanonicalRenderer::access_keyword(codegen::Access access) -> std::string_view {
     switch (access) {

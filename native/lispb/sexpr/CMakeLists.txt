@@ -19,6 +19,7 @@ target_sources(lispb-sexpr-output
   PRIVATE
     src/output/form_builder.cpp
     src/output/sexpr_ir.cpp
+    src/output/sexpr_renderer.cpp
 )
 target_include_directories(lispb-sexpr-output
   PUBLIC
