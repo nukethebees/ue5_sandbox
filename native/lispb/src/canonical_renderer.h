@@ -96,6 +96,7 @@ class CanonicalRenderer {
     auto render_homogeneous_layout(lispb::codegen::DeclarationHandle const& schema) -> std::string;
     auto render_static_table(lispb::codegen::DeclarationHandle const& schema) -> std::string;
     auto render_facade(lispb::codegen::DeclarationHandle const& schema) -> std::string;
+    auto render_settings_schema(lispb::codegen::DeclarationHandle const& schema) -> std::string;
     void render_settings_module(std::ostringstream& output, codegen::ModuleHandle const module);
   private:
     codegen::Declarations const& store_;

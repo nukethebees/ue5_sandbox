@@ -123,6 +123,9 @@ auto renamed(Declarations& store, DeclarationHandle original, std::string_view n
         case DeclarationKind::facade:
             store.facades.name[store.facades.index(result)] = value;
             break;
+        case DeclarationKind::settings_schema:
+            store.settings_schemas.name[store.settings_schemas.index(result)] = value;
+            break;
     }
     return result;
 }
