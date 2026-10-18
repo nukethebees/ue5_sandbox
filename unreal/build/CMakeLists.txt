@@ -51,4 +51,3 @@ foreach(sandbox_unreal_packaging_target IN ITEMS
       PROPERTY FOLDER "Sandbox/Unreal/Packaging")
   endif()
 endforeach()
-
