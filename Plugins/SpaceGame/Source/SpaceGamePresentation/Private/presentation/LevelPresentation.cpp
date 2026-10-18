@@ -73,22 +73,19 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
 
 void FLevelPresentation::tick(float const dt, ::ioj::sim::LevelReadAccess const& view) {
     auto const completed_tick{view.get_clock().get_completed_ticks()};
-    if (last_completed_tick_ == completed_tick) {
-        sparks.commit(dt);
-        effects.update_spawns(dt, *lasers.instances->GetWorld());
-        return;
-    }
-
+    auto const consume_changes{last_completed_tick_ != completed_tick};
     last_completed_tick_ = completed_tick;
     auto const* player{view.get_player()};
     if (player_.IsSet() && player != nullptr) {
         player_->tick(*player);
     }
-    capital_ships.update_visual_data(view.get_entity_ledger());
-    turrets.update_visual_data();
+    if (consume_changes) {
+        capital_ships.update_visual_data(view.get_entity_ledger());
+        turrets.update_visual_data();
+    }
     capital_ship_fighters.update_visual_data();
     spinners.update_visual_data();
-    lasers.update_visual_data();
+    lasers.update_visual_data(consume_changes);
     capital_ships.end_tick_presentation();
     capital_ship_fighters.end_tick_presentation();
     turrets.end_tick_presentation();

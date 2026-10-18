@@ -2,14 +2,12 @@
 
 #include "SpaceGame/levels/ObserverCameraTransform.h"
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
-#include <SpaceGame/levels/LevelEntityResolution.h>
-#include <SpaceGame/levels/LevelEntityTableOperations.h>
-#include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGamePresentation/entities/TestTeamConversion.h>
 
 #include <Camera/CameraActor.h>
 #include <Engine/World.h>
@@ -64,13 +62,13 @@ class FSpawnedActorTransaction final {
 
 auto spawn_player(UWorld& world,
                   USpaceGameLevelConfig const& config,
-                  FLevelEntityTableConstView const& entities,
-                  int32 const player_index,
+                  levels::EntitySpawnDefinition const& entity,
                   FSpawnedActorTransaction& transaction,
                   FLevelLoadResult& result) -> ATestSpaceShip* {
-    auto const entity{level_entity_table_detail::get(entities, player_index)};
     auto const team{ioj::to_unreal(entity.team)};
-    auto const transform{FTransform{entity.rotation, entity.position}};
+    auto const transform{
+        FTransform{FRotator{entity.rotation.pitch, entity.rotation.yaw, entity.rotation.roll},
+                   FVector{entity.position.x(), entity.position.y(), entity.position.z()}}};
     auto* const player{
         world.SpawnActorDeferred<ATestSpaceShip>(config.classes.player_ship_class, transform)};
     if (!IsValid(player)) {
@@ -92,30 +90,30 @@ auto spawn_player(UWorld& world,
     return player;
 }
 
-auto initial_camera_transform(FLevelDraft const& definition,
-                              FLevelEntityTableConstView const& entities) -> FTransform {
-    auto const& camera{definition.camera.GetValue()};
+auto initial_camera_transform(levels::LevelDefinition const& definition) -> FTransform {
+    auto const& camera{*definition.camera()};
     TArray<FVector> target_positions;
-    target_positions.Reserve(camera.target_entity_ids.Num());
-    for (auto const target_id : camera.target_entity_ids) {
-        auto const target_index{level_entity_table_detail::find_index(entities, target_id)};
-        check(target_index != INDEX_NONE);
-        target_positions.Add(level_entity_table_detail::get(entities, target_index).position);
+    target_positions.Reserve(static_cast<int32>(camera.target_entity_ids.size()));
+    for (auto const& target_id : camera.target_entity_ids) {
+        auto const position{definition.entity(target_id).position};
+        target_positions.Add(FVector{position.x(), position.y(), position.z()});
     }
-    auto const transform{
-        make_observer_camera_transform(target_positions, camera.offset_direction, camera.distance)};
+    auto const transform{make_observer_camera_transform(target_positions,
+                                                        FVector{camera.offset_direction.x(),
+                                                                camera.offset_direction.y(),
+                                                                camera.offset_direction.z()},
+                                                        camera.distance)};
     check(transform.IsSet());
     return transform->transform;
 }
 
 auto spawn_initial_camera(UWorld& world,
                           ASpaceGamePlayerController& player_controller,
-                          FLevelDraft const& definition,
-                          FLevelEntityTableConstView const& entities,
+                          levels::LevelDefinition const& definition,
                           FSpawnedActorTransaction& transaction,
                           FLevelLoadResult& result,
                           EPlayerControlContext const control_context) -> bool {
-    auto const transform{initial_camera_transform(definition, entities)};
+    auto const transform{initial_camera_transform(definition)};
     auto* const camera{
         world.SpawnActorDeferred<ACameraActor>(ACameraActor::StaticClass(), transform)};
     if (!IsValid(camera)) {
@@ -144,11 +142,10 @@ auto spawn_initial_camera(UWorld& world,
 
 }
 
-auto FLevelLoader::load(levels::LevelDefinition const& level,
+auto FLevelLoader::load(levels::LevelDefinition const& definition,
                         EPlayerControlContext const playerless_control_context) const
     -> FLevelLoadResult {
     FLevelLoadResult result;
-    auto const definition{levels::authoring::to_unreal(level)};
 
     if (orchestrator_.get_state() != ::ioj::sim::OrchestratorState::Uninitialised) {
         add_error(result,
@@ -164,7 +161,7 @@ auto FLevelLoader::load(levels::LevelDefinition const& level,
     }
 
     auto const* const config{orchestrator_.get_level_config()};
-    auto const has_player{definition.player_entity_id.is_set()};
+    auto const has_player{!definition.player_entity_id().empty()};
     auto const presentation_enabled{orchestrator_.is_presentation_enabled()};
     if (!has_player && presentation_enabled &&
         playerless_control_context != EPlayerControlContext::Observer &&
@@ -216,27 +213,20 @@ auto FLevelLoader::load(levels::LevelDefinition const& level,
         return result;
     }
 
-    auto const entities{definition.entities.get_const_view()};
-    auto const entity_count{entities.num()};
-    FSpawnedActorTransaction transaction{1 + (definition.camera.IsSet() ? 1 : 0)};
-
-    auto const player_index{
-        has_player ? level_entity_table_detail::find_index(entities, definition.player_entity_id)
-                   : INDEX_NONE};
+    FSpawnedActorTransaction transaction{1 + (definition.camera() ? 1 : 0)};
     ATestSpaceShip* player{nullptr};
     if (has_player) {
-        check(player_index != INDEX_NONE);
-        player = spawn_player(*world, *config, entities, player_index, transaction, result);
+        player = spawn_player(
+            *world, *config, definition.entity(definition.player_entity_id()), transaction, result);
         if (!IsValid(player)) {
             return result;
         }
     }
 
-    if (presentation_enabled && definition.camera.IsSet()) {
+    if (presentation_enabled && definition.camera()) {
         if (!spawn_initial_camera(*world,
                                   *player_controller,
                                   definition,
-                                  entities,
                                   transaction,
                                   result,
                                   playerless_control_context)) {
@@ -248,7 +238,7 @@ auto FLevelLoader::load(levels::LevelDefinition const& level,
         player_controller->Possess(player);
     }
 
-    orchestrator_.set_level_definition(level);
+    orchestrator_.set_level_definition(definition);
     transaction.commit();
     return result;
 }

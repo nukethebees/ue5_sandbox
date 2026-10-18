@@ -6,7 +6,6 @@
 #include <ioj/sim/sim_clock.h>
 
 #include <algorithm>
-#include <cassert>
 #include <format>
 #include <limits>
 #include <span>
@@ -26,9 +25,8 @@ struct MissionTickValues {
 };
 
 auto entity_index(LevelDefinition const& definition, EntityId const& id) -> sim::LevelEntityIndex {
-    auto const found{std::ranges::find(definition.entities(), id, &EntitySpawnDefinition::id)};
-    assert(found != definition.entities().end());
-    return static_cast<sim::LevelEntityIndex>(found - definition.entities().begin());
+    auto const& entity{definition.entity(id)};
+    return static_cast<sim::LevelEntityIndex>(&entity - definition.entities().data());
 }
 
 void append_indices(std::vector<std::int32_t>& output,

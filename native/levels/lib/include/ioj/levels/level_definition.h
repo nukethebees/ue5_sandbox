@@ -35,6 +35,8 @@ class LevelDefinition {
     [[nodiscard]] auto entities() const -> std::vector<EntitySpawnDefinition> const& {
         return entities_;
     }
+    // Require an entity ID belonging to this definition.
+    [[nodiscard]] auto entity(EntityId const& id) const -> EntitySpawnDefinition const&;
   private:
     explicit LevelDefinition(LevelDefinitionComponents components)
         : metadata_{std::move(components.metadata)}

@@ -2,9 +2,16 @@
 #include <ioj/ascii.h>
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 
 namespace ioj::levels {
+
+auto LevelDefinition::entity(EntityId const& id) const -> EntitySpawnDefinition const& {
+    auto const found{std::ranges::find(entities_, id, &EntitySpawnDefinition::id)};
+    assert(found != entities_.end());
+    return *found;
+}
 
 auto participating_teams(LevelDefinition const& definition) -> std::vector<Team> {
     std::vector<Team> result;
