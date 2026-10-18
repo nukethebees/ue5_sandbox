@@ -141,23 +141,18 @@ auto evaluate(ExpressionId const expression,
 }
 
 template <typename T>
-auto render_value(T const value) -> std::string {
-    auto const type{standard_type(std::is_same_v<T, std::int32_t>    ? ScalarType::int32
-                                  : std::is_same_v<T, std::uint32_t> ? ScalarType::uint32
-                                  : std::is_same_v<T, float>         ? ScalarType::float32
-                                                                     : ScalarType::float64)};
+auto render_value(T const value) -> ReferenceValue {
     if constexpr (std::is_integral_v<T>) {
-        return "static_cast<" + type + ">(" + std::to_string(value) + ")";
+        return std::to_string(value);
     } else {
         if (std::isnan(value)) {
-            return "std::numeric_limits<" + type + ">::quiet_NaN()";
+            return ConstantKind::nan;
         }
         if (std::isinf(value)) {
-            return (std::signbit(value) ? "-" : "") +
-                   ("std::numeric_limits<" + type + ">::infinity()");
+            return std::signbit(value) ? ConstantKind::negative_infinity : ConstantKind::infinity;
         }
         if (value == T{} && std::signbit(value)) {
-            return "static_cast<" + type + ">(-0.0)";
+            return std::string{"-0.0"};
         }
 
         std::array<char, 64> buffer{};
@@ -169,7 +164,7 @@ auto render_value(T const value) -> std::string {
         if (error != std::errc{}) {
             throw std::runtime_error{"could not render generated reference value"};
         }
-        return "static_cast<" + type + ">(" + std::string{buffer.data(), end} + ")";
+        return std::string{buffer.data(), end};
     }
 }
 
@@ -184,7 +179,7 @@ auto make_typed_fixture(Document const& document,
          ++operand_index) {
         auto const value_count{
             expanded.storage(id)[operand_index] == StorageKind::array ? count : std::size_t{1}};
-        std::vector<std::string> operand_literals;
+        std::vector<ReferenceValue> operand_literals;
         operand_literals.reserve(value_count);
         for (std::size_t element_index{}; element_index < value_count; ++element_index) {
             auto const value{fixture_value<T>(operand_index, element_index)};

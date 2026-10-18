@@ -279,10 +279,10 @@ TEST(KernelReferenceEvaluator, EvaluatesEveryOperatorForEveryNumericType) {
     auto const files{render_document(document, lispb::KernelProfile::standard)};
 
     ASSERT_EQ(files.size(), 3);
-    EXPECT_TRUE(files[2].content.contains("static_cast<std::int32_t>("));
-    EXPECT_TRUE(files[2].content.contains("static_cast<std::uint32_t>("));
-    EXPECT_TRUE(files[2].content.contains("static_cast<float>("));
-    EXPECT_TRUE(files[2].content.contains("static_cast<double>("));
+    EXPECT_TRUE(files[2].content.contains("make_array<std::int32_t>("));
+    EXPECT_TRUE(files[2].content.contains("make_array<std::uint32_t>("));
+    EXPECT_TRUE(files[2].content.contains("make_array<float>("));
+    EXPECT_TRUE(files[2].content.contains("make_array<double>("));
 }
 
 TEST(KernelRenderer, SkipsModulesWithoutTheSelectedProfile) {

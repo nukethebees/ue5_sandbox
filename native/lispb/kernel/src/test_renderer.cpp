@@ -65,14 +65,30 @@ auto test_arguments(lispb::codegen::CppIR& cpp,
     return result;
 }
 
-auto initializer(lispb::codegen::CppIR& cpp, std::vector<std::string> const& values)
-    -> lispb::codegen::Expr {
+auto reference_expression(lispb::codegen::CppIR& cpp,
+                          lispb::codegen::CppTypeId const type,
+                          ReferenceValue const& value) -> lispb::codegen::Expr {
+    if (auto const* literal{std::get_if<std::string>(&value)}) {
+        return cpp.literal(*literal);
+    }
+
+    auto const constant{std::get<ConstantKind>(value)};
+    auto const prefix{"std::numeric_limits<" + std::string{cpp.types.spelling(type)} + ">::"};
+    if (constant == ConstantKind::negative_infinity) {
+        return cpp.raw_expression("-" + prefix + "infinity()");
+    }
+    return cpp.call(cpp.named(prefix + (constant == ConstantKind::nan ? "quiet_NaN" : "infinity")));
+}
+
+auto array_initializer(lispb::codegen::CppIR& cpp,
+                       lispb::codegen::CppTypeId const type,
+                       std::vector<ReferenceValue> const& values) -> lispb::codegen::Expr {
     std::vector<lispb::codegen::Expr> elements;
     elements.reserve(values.size());
     for (auto const& value : values) {
-        elements.push_back(cpp.raw_expression(value));
+        elements.push_back(reference_expression(cpp, type, value));
     }
-    return cpp.init_list(elements);
+    return cpp.call(cpp.template_id(cpp.named("make_array"), {cpp.type_reference(type)}), elements);
 }
 
 void append_case(lispb::codegen::CppIR& cpp,
@@ -83,6 +99,7 @@ void append_case(lispb::codegen::CppIR& cpp,
                  ReferenceFixture const& fixture) {
     auto const& expanded{document.expanded_variants};
     auto const type{standard_type(expanded.type(id))};
+    auto const element_type{cpp.types.intern(type)};
     auto const count{fixture.expected.size()};
     auto const array_type{
         cpp.types.intern("std::array<" + type + ", " + std::to_string(count) + ">")};
@@ -91,13 +108,17 @@ void append_case(lispb::codegen::CppIR& cpp,
          ++index) {
         auto const operand{document.operations.operands(expanded.operation(id))[index]};
         if (expanded.storage(id)[index] == StorageKind::array) {
-            body.push_back(cpp.variable(array_type,
-                                        document.operands.name(operand),
-                                        initializer(cpp, fixture.operands[index])));
+            body.push_back(
+                cpp.variable(cpp.types.intern("auto"),
+                             document.operands.name(operand),
+                             array_initializer(cpp, element_type, fixture.operands[index])));
         } else {
-            body.push_back(cpp.variable(cpp.types.intern("auto const"),
-                                        document.operands.name(operand),
-                                        cpp.raw_expression(fixture.operands[index][0])));
+            body.push_back(cpp.variable(
+                cpp.types.intern("auto const"),
+                document.operands.name(operand),
+                cpp.static_cast_expr(
+                    element_type,
+                    reference_expression(cpp, element_type, fixture.operands[index][0]))));
         }
     }
 
@@ -108,7 +129,8 @@ void append_case(lispb::codegen::CppIR& cpp,
     if (document.variants.kind(expanded.variant(id)) == VariantKind::out_of_place) {
         body.push_back(cpp.variable(array_type, destination));
     }
-    body.push_back(cpp.variable(array_type, "expected", initializer(cpp, fixture.expected)));
+    body.push_back(cpp.variable(
+        "auto const", "expected", array_initializer(cpp, element_type, fixture.expected)));
 
     auto const function{cpp.named(document.text(document.emissions.cpp_namespace(emission)) + "::" +
                                   document.text(document.variants.name(expanded.variant(id))))};
@@ -150,6 +172,17 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
     }
     file_nodes.new_lines(2);
     auto const suite{"Generated_" + document.text(document.modules.name(module))};
+    auto const make_array{cpp.function("make_array", "std::array<T, sizeof...(Values)>")};
+    cpp.set_function_template(
+        make_array,
+        cpp.template_declaration(
+            {cpp.type_template_parameter(cpp.strings.intern("T")),
+             cpp.type_template_parameter(cpp.strings.intern("Values"), {}, true)}));
+    cpp.set_function_parameters(make_array, {cpp.parameter("Values...", "values")});
+    cpp.set_function_body(
+        make_array, {cpp.return_statement(cpp.raw_expression("{static_cast<T>(values)...}"))});
+    cpp.function_flags(make_array).set_is_constexpr(true);
+    cpp.function_flags(make_array).set_define_in_header(true);
     auto const expect_value{cpp.function("expect_value", "void")};
     cpp.function_flags(expect_value).set_define_in_header(true);
     cpp.set_function_template(
@@ -171,7 +204,10 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
     EXPECT_EQ(actual, expected);
 }
 )")});
-    lispb::codegen::Nodes cases{cpp.header_function(expect_value), cpp.lines(2)};
+    lispb::codegen::Nodes cases{cpp.header_function(make_array),
+                                cpp.lines(2),
+                                cpp.header_function(expect_value),
+                                cpp.lines(2)};
     auto const range{document.modules.expanded_variants(module)};
     assert(fixtures.size() == range.count);
     auto const end{range.offset + range.count};
