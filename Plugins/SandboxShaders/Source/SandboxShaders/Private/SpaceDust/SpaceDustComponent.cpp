@@ -1,6 +1,6 @@
 #include "SandboxShaders/SpaceDust/SpaceDustComponent.h"
 
-#include <ioj/space_dust_math.h>
+#include <ioj/gfx/space_dust_math.h>
 
 #include "MaterialDomain.h"
 #include "Materials/Material.h"

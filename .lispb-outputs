@@ -30,8 +30,8 @@ Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/ui/s
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/levels/LevelDefinitionSoA.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/levels/LevelDefinitionSoA.h
 native/core/include/ioj/rotators3f.h
-native/core/include/ioj/sandbox_ismc_render.h
 native/core/include/ioj/vectors3f.h
+native/ismc/lib/include/ioj/ismc/render.h
 native/level_authoring/lib/include/ioj/levels/authoring/grammar.h
 native/levels/lib/include/ioj/levels/diagnostic_code.h
 native/levels/lib/include/ioj/levels/entity_archetype.h
@@ -55,10 +55,10 @@ native/simulation/include/ioj/sim/collision/world_aabbs.h
 native/simulation/include/ioj/sim/direct_damage_events.h
 native/simulation/include/ioj/sim/entities/entity_death_info.h
 native/simulation/include/ioj/sim/entities/entity_history.h
+native/simulation/include/ioj/sim/entities/entity_id.h
 native/simulation/include/ioj/sim/entities/entity_instance_handle.h
 native/simulation/include/ioj/sim/entities/entity_life_state.h
 native/simulation/include/ioj/sim/entities/entity_type.h
-native/simulation/include/ioj/sim/entities/entity_id.h
 native/simulation/include/ioj/sim/entities/health_type.h
 native/simulation/include/ioj/sim/fighters/attack_distance_band.h
 native/simulation/include/ioj/sim/fighters/command_interface.h

@@ -9,7 +9,7 @@
 #include "Containers/AllowShrinking.h"
 #include "Containers/ArrayView.h"
 
-namespace ioj::sandbox_ismc {
+namespace ioj::ismc {
 
 auto InstanceDataConstView::get_view() const -> ConstView {
     return get_view(0, num());
@@ -219,4 +219,4 @@ auto InstanceData::left(int32 const count) const -> ConstView {
 auto InstanceData::right(int32 const count) const -> ConstView {
     return slice(num() - count, count);
 }
-} // namespace ioj::sandbox_ismc
+} // namespace ioj::ismc

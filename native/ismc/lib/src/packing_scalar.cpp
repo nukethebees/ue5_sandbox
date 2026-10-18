@@ -1,11 +1,11 @@
-#include "ioj/sandbox_ismc_packing.h"
+#include "packing_kernels.h"
 
 #include <array>
 #include <cassert>
 #include <cstring>
 #include <limits>
 
-namespace ioj::sandbox_ismc {
+namespace ioj::ismc::scalar {
 namespace scalar_detail {
 template <std::size_t Components>
 auto load(std::span<std::byte const> bytes, std::size_t index) noexcept
@@ -52,20 +52,13 @@ auto accumulate_bounds(std::array<float, 3> const& position,
 template <PackingFields fields, BoundsMode bounds_mode>
 auto pack(TransformInput input,
           PackingParameters const& parameters,
-          std::span<PackedTransform> output,
-          TransformBounds* bounds) noexcept -> void {
+          std::span<PackedTransform> output) noexcept -> TransformBounds {
     static_assert(bounds_mode == BoundsMode::Skip || fields == PackingFields::Transforms);
     assert(fields == PackingFields::Rotations ||
            input.positions.size() == output.size() * 3 * sizeof(float));
     assert(fields == PackingFields::Positions ||
            input.rotations.size() == output.size() * 4 * sizeof(float));
     TransformBounds batch{};
-    if constexpr (bounds_mode == BoundsMode::Calculate) {
-        auto const limit{std::numeric_limits<float>::max()};
-        batch = {ioj::Vector3f{limit, limit, limit},
-                 ioj::Vector3f{-limit, -limit, -limit},
-                 !output.empty()};
-    }
     auto const count{output.size()};
     for (std::size_t index{}; index < count; ++index) {
         std::array<float, 3> position{};
@@ -87,33 +80,30 @@ auto pack(TransformInput input,
             accumulate_bounds(position, rotation, parameters, batch);
         }
     }
-    if constexpr (bounds_mode == BoundsMode::Calculate) {
-        *bounds = batch;
-    }
+    return batch;
 }
 }
 
-auto pack_positions_scalar(std::span<std::byte const> positions,
-                           Vector3f root,
-                           std::span<PackedTransform> output) noexcept -> void {
+auto pack_positions(std::span<std::byte const> positions,
+                    Vector3f root,
+                    std::span<PackedTransform> output) noexcept -> void {
     scalar_detail::pack<PackingFields::Positions, BoundsMode::Skip>(
-        {positions, {}}, {root, {}, {}}, output, nullptr);
+        {positions, {}}, {root, {}, {}}, output);
 }
-auto pack_rotations_scalar(std::span<std::byte const> rotations,
-                           std::span<PackedTransform> output) noexcept -> void {
-    scalar_detail::pack<PackingFields::Rotations, BoundsMode::Skip>(
-        {{}, rotations}, {}, output, nullptr);
+auto pack_rotations(std::span<std::byte const> rotations,
+                    std::span<PackedTransform> output) noexcept -> void {
+    scalar_detail::pack<PackingFields::Rotations, BoundsMode::Skip>({{}, rotations}, {}, output);
 }
-auto pack_transforms_scalar(TransformInput input,
-                            PackingParameters const& parameters,
-                            std::span<PackedTransform> output,
-                            TransformBounds* bounds) noexcept -> void {
-    if (bounds != nullptr) {
-        scalar_detail::pack<PackingFields::Transforms, BoundsMode::Calculate>(
-            input, parameters, output, bounds);
+auto pack_transforms(TransformInput input,
+                     PackingParameters const& parameters,
+                     std::span<PackedTransform> output,
+                     BoundsMode mode) noexcept -> TransformBounds {
+    if (mode == BoundsMode::Calculate) {
+        return scalar_detail::pack<PackingFields::Transforms, BoundsMode::Calculate>(
+            input, parameters, output);
     } else {
-        scalar_detail::pack<PackingFields::Transforms, BoundsMode::Skip>(
-            input, parameters, output, nullptr);
+        return scalar_detail::pack<PackingFields::Transforms, BoundsMode::Skip>(
+            input, parameters, output);
     }
 }
 }

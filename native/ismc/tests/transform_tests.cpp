@@ -1,4 +1,4 @@
-#include "ioj/sandbox_ismc_packing.h"
+#include "ioj/ismc/packing.h"
 
 #include <gtest/gtest.h>
 
@@ -7,7 +7,7 @@
 #include <numbers>
 #include <random>
 
-namespace ioj::sandbox_ismc {
+namespace ioj::ismc {
 namespace {
 auto angular_error(Quaternion4f original, Quaternion4f decoded) -> double {
     // Double precision avoids acos amplification of float dot-product rounding.
@@ -135,21 +135,19 @@ TEST(SandboxISMCPacking, ScalarBatchPreservesPaddingAndBoundsUseSourceGeometry) 
     }
     PackingParameters const parameters{{}, ioj::Vector3f{2, -3, 4}, ioj::Vector3f{5, 6, 7}};
     TransformBounds bounds{};
-    pack_transforms_scalar(
-        {std::as_bytes(std::span{positions}), std::as_bytes(std::span{rotations})},
-        parameters,
-        output,
-        &bounds);
-    EXPECT_TRUE(bounds.valid);
+    TransformPacker const packer{parameters, BoundsMode::Calculate, PackingBackend::Scalar};
+    bounds = packer.pack_transforms(
+        {std::as_bytes(std::span{positions}), std::as_bytes(std::span{rotations})}, output);
+    EXPECT_FALSE(bounds.empty());
     EXPECT_EQ(bounds.minimum, (ioj::Vector3f{-4, -34, 6}));
     EXPECT_EQ(bounds.maximum, (ioj::Vector3f{24, 8, 42}));
     for (auto const& packed : output) {
         EXPECT_EQ(packed.reserved, 0xbeef);
         EXPECT_EQ(packed.rotation.bits, 0x80200803U);
     }
-    EXPECT_EQ(output[0].position, (std::array<std::int16_t, 3>{1, -2, 2}));
-    pack_transforms_scalar({}, parameters, {}, &bounds);
-    EXPECT_FALSE(bounds.valid);
+    EXPECT_EQ(output[0].position, (Vector<std::int16_t, 3>{1, -2, 2}));
+    bounds = packer.pack_transforms({}, {});
+    EXPECT_TRUE(bounds.empty());
 }
 
 TEST(SandboxISMCPacking, NormalizedEncoderContractAndComponentEdges) {

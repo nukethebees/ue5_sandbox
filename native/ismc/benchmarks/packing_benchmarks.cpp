@@ -1,4 +1,4 @@
-#include "ioj/sandbox_ismc_packing.h"
+#include "ioj/ismc/packing.h"
 
 #include <benchmark/benchmark.h>
 
@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-namespace ioj::sandbox_ismc::packing_benchmarks {
+namespace ioj::ismc::packing_benchmarks {
 enum class Operation {
     Position,
     Quaternion,
@@ -58,27 +58,20 @@ auto run(benchmark::State& state) -> void {
     PackingParameters const parameters{ioj::Vector3f{262144, -262144, 1000000},
                                        ioj::Vector3f{31, -57, 123},
                                        ioj::Vector3f{100, 17, 300}};
+    TransformPacker const packer{
+        parameters,
+        operation == Operation::TransformBounds ? BoundsMode::Calculate : BoundsMode::Skip,
+        implementation == Implementation::Production ? PackingBackend::Production
+                                                     : PackingBackend::Scalar};
     TransformBounds bounds{};
     for (auto _ : state) {
         static_cast<void>(_);
         if constexpr (operation == Operation::Position) {
-            constexpr auto kernel{implementation == Implementation::Production
-                                      ? ioj::sandbox_ismc::pack_positions
-                                      : pack_positions_scalar};
-            kernel(input.positions, parameters.position_root, buffers.output);
+            packer.pack_positions(input.positions, buffers.output);
         } else if constexpr (operation == Operation::Quaternion) {
-            constexpr auto kernel{implementation == Implementation::Production
-                                      ? ioj::sandbox_ismc::pack_rotations
-                                      : pack_rotations_scalar};
-            kernel(input.rotations, buffers.output);
+            packer.pack_rotations(input.rotations, buffers.output);
         } else {
-            constexpr auto kernel{implementation == Implementation::Production
-                                      ? ioj::sandbox_ismc::pack_transforms
-                                      : pack_transforms_scalar};
-            kernel(input,
-                   parameters,
-                   buffers.output,
-                   operation == Operation::TransformBounds ? &bounds : nullptr);
+            bounds = packer.pack_transforms(input, buffers.output);
         }
         benchmark::DoNotOptimize(buffers.output.data());
         benchmark::DoNotOptimize(bounds);

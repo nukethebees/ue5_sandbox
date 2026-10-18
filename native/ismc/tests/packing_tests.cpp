@@ -1,4 +1,4 @@
-#include "ioj/sandbox_ismc_packing.h"
+#include "ioj/ismc/packing.h"
 
 #include <gtest/gtest.h>
 
@@ -7,7 +7,7 @@
 #include <random>
 #include <vector>
 
-namespace ioj::sandbox_ismc::packing_tests {
+namespace ioj::ismc::packing_tests {
 struct Inputs {
     std::vector<std::array<float, 3>> positions;
     std::vector<std::array<float, 4>> rotations;
@@ -49,26 +49,40 @@ auto compare(Inputs const& inputs, PackingParameters const& parameters) -> void 
     auto const separate_output{std::span{separate}.subspan(1, count)};
     TransformBounds scalar_bounds{};
     TransformBounds simd_bounds{};
-    pack_transforms_scalar(inputs.view(), parameters, scalar_output, &scalar_bounds);
-    pack_transforms(inputs.view(), parameters, simd_output, &simd_bounds);
+    scalar_bounds = ioj::ismc::TransformPacker{parameters,
+                                               ioj::ismc::BoundsMode::Calculate,
+                                               ioj::ismc::PackingBackend::Scalar}
+                        .pack_transforms(inputs.view(), scalar_output);
+    simd_bounds =
+        ioj::ismc::TransformPacker{parameters, ioj::ismc::BoundsMode::Calculate}.pack_transforms(
+            inputs.view(), simd_output);
     ASSERT_EQ(std::memcmp(scalar.data(), simd.data(), scalar.size() * sizeof(PackedTransform)), 0);
-    EXPECT_EQ(scalar_bounds.valid, count != 0);
-    EXPECT_EQ(simd_bounds.valid, scalar_bounds.valid);
+    EXPECT_EQ(!scalar_bounds.empty(), count != 0);
+    EXPECT_EQ(!simd_bounds.empty(), !scalar_bounds.empty());
     for (auto axis{0U}; axis < 3; ++axis) {
         EXPECT_EQ(scalar_bounds.minimum[axis], simd_bounds.minimum[axis]);
         EXPECT_EQ(scalar_bounds.maximum[axis], simd_bounds.maximum[axis]);
     }
-    pack_positions(inputs.view().positions, parameters.position_root, separate_output);
-    pack_rotations(inputs.view().rotations, separate_output);
+    ioj::ismc::TransformPacker{{parameters.position_root, {}, {}}, ioj::ismc::BoundsMode::Skip}
+        .pack_positions(inputs.view().positions, separate_output);
+    ioj::ismc::TransformPacker{{}, ioj::ismc::BoundsMode::Skip}.pack_rotations(
+        inputs.view().rotations, separate_output);
     EXPECT_EQ(std::memcmp(scalar.data(), separate.data(), scalar.size() * sizeof(PackedTransform)),
               0);
-    pack_positions_scalar(inputs.view().positions, parameters.position_root, separate_output);
-    pack_rotations_scalar(inputs.view().rotations, separate_output);
+    ioj::ismc::TransformPacker{{parameters.position_root, {}, {}},
+                               ioj::ismc::BoundsMode::Skip,
+                               ioj::ismc::PackingBackend::Scalar}
+        .pack_positions(inputs.view().positions, separate_output);
+    ioj::ismc::TransformPacker{{}, ioj::ismc::BoundsMode::Skip, ioj::ismc::PackingBackend::Scalar}
+        .pack_rotations(inputs.view().rotations, separate_output);
     EXPECT_EQ(std::memcmp(scalar.data(), separate.data(), scalar.size() * sizeof(PackedTransform)),
               0);
-    pack_transforms(inputs.view(), parameters, simd_output, nullptr);
+    ioj::ismc::TransformPacker{parameters, ioj::ismc::BoundsMode::Skip}.pack_transforms(
+        inputs.view(), simd_output);
     EXPECT_EQ(std::memcmp(scalar.data(), simd.data(), scalar.size() * sizeof(PackedTransform)), 0);
-    pack_transforms_scalar(inputs.view(), parameters, separate_output);
+    ioj::ismc::TransformPacker{
+        parameters, ioj::ismc::BoundsMode::Skip, ioj::ismc::PackingBackend::Scalar}
+        .pack_transforms(inputs.view(), separate_output);
     EXPECT_EQ(std::memcmp(scalar.data(), separate.data(), scalar.size() * sizeof(PackedTransform)),
               0);
     for (std::size_t index{}; index < count; ++index) {
@@ -91,11 +105,10 @@ auto compare(Inputs const& inputs, PackingParameters const& parameters) -> void 
         std::memcpy(
             bytes.data() + 2 + view.positions.size(), view.rotations.data(), view.rotations.size());
     }
-    pack_transforms({std::span{bytes}.subspan(1, view.positions.size()),
-                     std::span{bytes}.subspan(2 + view.positions.size(), view.rotations.size())},
-                    parameters,
-                    simd_output,
-                    nullptr);
+    ioj::ismc::TransformPacker{parameters, ioj::ismc::BoundsMode::Skip}.pack_transforms(
+        {std::span{bytes}.subspan(1, view.positions.size()),
+         std::span{bytes}.subspan(2 + view.positions.size(), view.rotations.size())},
+        simd_output);
     EXPECT_EQ(std::memcmp(scalar.data(), simd.data(), scalar.size() * sizeof(PackedTransform)), 0);
 }
 
@@ -166,11 +179,12 @@ TEST(SandboxISMCBatchPacking, DirectBasisMatchesIndependentlyRotatedCorners) {
                 auto const& position{inputs.positions[index]};
                 PackedTransform packed{};
                 TransformBounds bounds{};
-                pack_transforms_scalar({std::as_bytes(std::span{&position, 1}),
-                                        std::as_bytes(std::span{&rotation, 1})},
-                                       parameters,
-                                       std::span{&packed, 1},
-                                       &bounds);
+                bounds = ioj::ismc::TransformPacker{parameters,
+                                                    ioj::ismc::BoundsMode::Calculate,
+                                                    ioj::ismc::PackingBackend::Scalar}
+                             .pack_transforms({std::as_bytes(std::span{&position, 1}),
+                                               std::as_bytes(std::span{&rotation, 1})},
+                                              std::span{&packed, 1});
                 std::array<double, 3> low{1e30, 1e30, 1e30};
                 std::array<double, 3> high{-1e30, -1e30, -1e30};
                 for (auto corner{0U}; corner < 8; ++corner) {

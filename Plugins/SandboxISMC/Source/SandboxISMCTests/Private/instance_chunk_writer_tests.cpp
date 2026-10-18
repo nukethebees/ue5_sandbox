@@ -40,15 +40,14 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
 
         for (auto index = 0; index < packed.Num(); ++index) {
             auto const& value{packed[index]};
-            auto const decoded{ioj::sandbox_ismc::unpack_quat32(value.rotation)};
+            auto const decoded{ioj::ismc::unpack_quat32(value.rotation)};
             FQuat4f const orientation{decoded.x(), decoded.y(), decoded.z(), decoded.w()};
             TestRunner->TestTrue(TEXT("Quaternion error stays below 0.3 degrees"),
                                  orientation.AngularDistance(rotations[index]) <
                                      FMath::DegreesToRadians(0.3f));
             for (int32 axis{0}; axis < 3; ++axis) {
                 TestRunner->TestEqual(TEXT("Position decodes relative to snapshot root"),
-                                      96.0f +
-                                          value.position[axis] * ioj::sandbox_ismc::position_quantum,
+                                      96.0f + value.position[axis] * ioj::ismc::position_quantum,
                                       positions[index][axis]);
             }
         }
@@ -118,11 +117,11 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
                                                                          transform_rotations);
             }
             auto const& value{packed[0]};
-            auto const q{ioj::sandbox_ismc::unpack_quat32(value.rotation)};
+            auto const q{ioj::ismc::unpack_quat32(value.rotation)};
             FVector3f const decoded_position{FVector3f{static_cast<float>(value.position[0]),
                                                        static_cast<float>(value.position[1]),
                                                        static_cast<float>(value.position[2])} *
-                                             ioj::sandbox_ismc::position_quantum};
+                                             ioj::ismc::position_quantum};
             FTransform3f const transform{FQuat4f{q.x(), q.y(), q.z(), q.w()}, decoded_position};
             for (int32 corner{0}; corner < 8; ++corner) {
                 auto const point{origin + FVector3f{(corner & 1) ? extent.X : -extent.X,
@@ -217,11 +216,11 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
                     expected.Min);
         for (int32 index{}; index < count; ++index) {
             auto const rotation{rotations[index]};
-            TestRunner->TestEqual(TEXT("Native input view preserves quaternion components"),
-                                  packed[index].rotation.bits,
-                                  ioj::sandbox_ismc::pack_normalized_quat32(
-                                      rotation.X, rotation.Y, rotation.Z, rotation.W)
-                                      .bits);
+            TestRunner->TestEqual(
+                TEXT("Native input view preserves quaternion components"),
+                packed[index].rotation.bits,
+                ioj::ismc::pack_normalized_quat32(rotation.X, rotation.Y, rotation.Z, rotation.W)
+                    .bits);
             TestRunner->TestEqual(TEXT("Reserved halfword is untouched"),
                                   packed[index].reserved,
                                   static_cast<uint16>(0xbeef));
@@ -229,7 +228,7 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
                 TestRunner->TestEqual(
                     TEXT("Native input view preserves position components"),
                     packed[index].position[axis],
-                    ioj::sandbox_ismc::quantize_position_unchecked(positions[index][axis], 0));
+                    ioj::ismc::quantize_position_unchecked(positions[index][axis], 0));
             }
         }
     }

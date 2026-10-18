@@ -1,4 +1,4 @@
-#include "sandbox_ismc_packing_highway.h"
+#include "packing_kernels.h"
 
 #include <hwy/highway.h>
 
@@ -8,7 +8,7 @@
 #include <limits>
 
 #if HWY_TARGET == HWY_AVX2
-#define IOJ_HIGHWAY_NAMESPACE ioj::sandbox_ismc::highway_avx2
+#define IOJ_HIGHWAY_NAMESPACE ioj::ismc::highway_avx2
 #else
 #error Unsupported Highway packing target
 #endif
@@ -177,8 +177,7 @@ auto reduce_axis(VF minimum, VF maximum, float& low, float& high) noexcept -> vo
 template <PackingFields fields, BoundsMode bounds_mode>
 auto pack(TransformInput input,
           PackingParameters const& params,
-          std::span<PackedTransform> output,
-          TransformBounds* bounds) noexcept -> void {
+          std::span<PackedTransform> output) noexcept -> TransformBounds {
     static_assert(bounds_mode == BoundsMode::Skip || fields == PackingFields::Transforms);
     assert(fields == PackingFields::Rotations ||
            input.positions.size() == output.size() * 3 * sizeof(float));
@@ -256,25 +255,25 @@ auto pack(TransformInput input,
 
     // Pack the remainder without reading beyond the input spans.
     auto const tail{output.subspan(simd_end)};
+    TransformBounds bounds;
     if constexpr (fields == PackingFields::Transforms) {
         TransformInput const remaining{input.positions.subspan(simd_end * 3 * sizeof(float)),
                                        input.rotations.subspan(simd_end * 4 * sizeof(float))};
-        pack_transforms_scalar(remaining, params, tail, bounds);
+        bounds = scalar::pack_transforms(remaining, params, tail, bounds_mode);
     } else if constexpr (fields == PackingFields::Positions) {
-        pack_positions_scalar(
+        scalar::pack_positions(
             input.positions.subspan(simd_end * 3 * sizeof(float)), params.position_root, tail);
     } else {
-        pack_rotations_scalar(input.rotations.subspan(simd_end * 4 * sizeof(float)), tail);
+        scalar::pack_rotations(input.rotations.subspan(simd_end * 4 * sizeof(float)), tail);
     }
 
     if constexpr (bounds_mode == BoundsMode::Calculate) {
         // Merge vector extrema into the scalar tail bounds.
-        reduce_axis(batch.min.x, batch.max.x, bounds->minimum.x(), bounds->maximum.x());
-        reduce_axis(batch.min.y, batch.max.y, bounds->minimum.y(), bounds->maximum.y());
-        reduce_axis(batch.min.z, batch.max.z, bounds->minimum.z(), bounds->maximum.z());
-
-        bounds->valid = !output.empty();
+        reduce_axis(batch.min.x, batch.max.x, bounds.minimum.x(), bounds.maximum.x());
+        reduce_axis(batch.min.y, batch.max.y, bounds.minimum.y(), bounds.maximum.y());
+        reduce_axis(batch.min.z, batch.max.z, bounds.minimum.z(), bounds.maximum.z());
     }
+    return bounds;
 }
 }
 
@@ -282,23 +281,22 @@ auto pack_positions(std::span<std::byte const> positions,
                     Vector3f root,
                     std::span<PackedTransform> output) noexcept -> void {
     highway_detail::pack<PackingFields::Positions, BoundsMode::Skip>(
-        {positions, {}}, {root, {}, {}}, output, nullptr);
+        {positions, {}}, {root, {}, {}}, output);
 }
 auto pack_rotations(std::span<std::byte const> rotations,
                     std::span<PackedTransform> output) noexcept -> void {
-    highway_detail::pack<PackingFields::Rotations, BoundsMode::Skip>(
-        {{}, rotations}, {}, output, nullptr);
+    highway_detail::pack<PackingFields::Rotations, BoundsMode::Skip>({{}, rotations}, {}, output);
 }
 auto pack_transforms(TransformInput input,
                      PackingParameters const& parameters,
                      std::span<PackedTransform> output,
-                     TransformBounds* bounds) noexcept -> void {
-    if (bounds != nullptr) {
-        highway_detail::pack<PackingFields::Transforms, BoundsMode::Calculate>(
-            input, parameters, output, bounds);
+                     BoundsMode mode) noexcept -> TransformBounds {
+    if (mode == BoundsMode::Calculate) {
+        return highway_detail::pack<PackingFields::Transforms, BoundsMode::Calculate>(
+            input, parameters, output);
     } else {
-        highway_detail::pack<PackingFields::Transforms, BoundsMode::Skip>(
-            input, parameters, output, nullptr);
+        return highway_detail::pack<PackingFields::Transforms, BoundsMode::Skip>(
+            input, parameters, output);
     }
 }
 }

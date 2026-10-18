@@ -1,5 +1,9 @@
 (include "common_scalars.lispb")
 
+(type ismc_packed_position
+  :spelling "ioj::Vector<std::int16_t, 3>"
+  :header "ioj/vector.h")
+
 (type level_telemetry_entity_type_counts
   :spelling "ioj::sim::telemetry::EntityTypeCounts"
   :header "ioj/sim/entities/entity_telemetry.h")

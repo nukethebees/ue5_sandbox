@@ -15,7 +15,7 @@
 
 #include <utility>
 
-namespace ioj::sandbox_ismc {
+namespace ioj::ismc {
 struct InstanceDataSchema;
 
 struct InstanceDataView;
@@ -178,4 +178,4 @@ struct SANDBOXISMC_API InstanceData {
     TArray<FVector3f> positions;
     TArray<FQuat4f> rotations;
 };
-} // namespace ioj::sandbox_ismc
+} // namespace ioj::ismc

@@ -80,6 +80,6 @@ class SANDBOXISMCLAB_API ASandboxISMCLabActor final : public AActor {
               meta = (ClampMin = "0.1"))
     float log_interval_seconds_{1.0f};
 
-    ioj::sandbox_ismc::InstanceData instance_data_;
+    ioj::ismc::InstanceData instance_data_;
     double next_log_time_seconds_{0.0};
 };

@@ -1,4 +1,4 @@
-#include <ioj/space_dust_math.h>
+#include <ioj/gfx/space_dust_math.h>
 
 #include <gtest/gtest.h>
 

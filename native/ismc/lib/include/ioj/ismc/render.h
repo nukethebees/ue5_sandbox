@@ -3,19 +3,20 @@
 
 #pragma once
 
-#include <array>
+#include "ioj/vector.h"
+
 #include <cstdint>
 
-namespace ioj::sandbox_ismc {
+namespace ioj::ismc {
 struct Quat32 {
     std::uint32_t bits{};
 };
 
 struct PackedTransform {
-    std::array<std::int16_t, 3> position{};
+    ioj::Vector<std::int16_t, 3> position{};
 
     std::uint16_t reserved{};
 
-    ioj::sandbox_ismc::Quat32 rotation{};
+    ioj::ismc::Quat32 rotation{};
 };
-} // namespace ioj::sandbox_ismc
+} // namespace ioj::ismc

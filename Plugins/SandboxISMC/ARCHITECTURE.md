@@ -77,10 +77,10 @@ declarations, LOD restrictions, frustum visibility and queued update/recreation/
 
 ## Packed transform ABI
 
-`ioj::sandbox_ismc::PackedTransform` (also `FSandboxISMCRenderInstance`) is little endian,
+`ioj::ismc::PackedTransform` (also `FSandboxISMCRenderInstance`) is little endian,
 standard layout, trivially copyable, 12 bytes, alignment 4. Compile-time assertions fix every offset.
 The `sandbox_ismc_render` module in `lispb/schema/sandbox_ismc.lispb` owns `PackedTransform`
-and `Quat32` storage, emitted into `ioj/sandbox_ismc_render.h`. In the memory
+and `Quat32` storage, emitted into `ioj/ismc/render.h`. In the memory
 planner, refresh `sandbox-code` and select `sandbox_ismc_render / PackedTransform` to inspect the
 record and its nested fields. Encoding and decoding remain in handwritten C++ and HLSL.
 
@@ -379,7 +379,7 @@ treating the last decimal as stable. Validation, staging/publication, uploads an
 outside this benchmark. No whole-frame improvement is inferred from these kernel measurements.
 
 Reproduce with `cmake --preset native-benchmark`, then
-`cmake --build out/build/native-benchmark --target native-core-ismc-benchmark-report`.
+`cmake --build out/build/native-benchmark --target native-ismc-benchmark-report`.
 Raw samples are retained locally in `.local/benchmarks/ismc/packing-results.json`.
 AoS deinterleaving and the partial stores into 12-byte output records remain costs; changing that
 layout is a future experiment, not a measured bottleneck conclusion or part of this change.
@@ -393,7 +393,7 @@ Static analysis was skipped at the maintainer's request; ASAN was not requested.
 
 ## Production Highway packing (2026-09-28)
 
-The chunk writer calls `pack_transforms` in `native/core`. This selects the Highway AVX2
+The chunk writer uses `TransformPacker` in `native/ismc`. This selects the Highway AVX2
 implementation after one cached CPU/OS capability check, with the scalar implementation as a
 fallback. Highway's AVX2 target also requires BMI2, FMA, F16C, AES and PCLMUL; checking its complete
 feature set avoids adding those requirements to the plugin's existing AVX2 baseline. The scalar
@@ -409,7 +409,7 @@ pass. This migration does not change the arithmetic from the validated Highway e
 The intrinsic AVX2 implementation now lives under `experiments/`, alongside the AVX512 comparison.
 AVX512 remains experimental. Native correctness cases exercise the production entry points, and
 the packing benchmark identifies this path as `production`, including capability-check overhead.
-The `native-core-ismc-benchmark-report` target compares scalar, intrinsic AVX2 and production paths.
+The `native-ismc-benchmark-report` target compares scalar, intrinsic AVX2 and production paths.
 
 Seven randomly interleaved Release repetitions (0.05 seconds minimum) on the same Ryzen 9 9950X3D
 measured these median microseconds, including the production dispatch:

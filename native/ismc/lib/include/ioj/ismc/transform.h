@@ -1,7 +1,7 @@
 #pragma once
 
+#include "ioj/ismc/render.h"
 #include "ioj/math_types.h"
-#include "ioj/sandbox_ismc_render.h"
 
 #include <algorithm>
 #include <bit>
@@ -11,7 +11,7 @@
 #include <optional>
 #include <type_traits>
 
-namespace ioj::sandbox_ismc {
+namespace ioj::ismc {
 
 inline constexpr float position_quantum{16.0f};
 inline constexpr float inverse_position_quantum{1.0f / position_quantum};

@@ -2,7 +2,7 @@
   :header "Plugins/SandboxISMC/Source/SandboxISMC/Public/SandboxISMCInstanceData.h"
   :source "Plugins/SandboxISMC/Source/SandboxISMC/Private/SandboxISMCInstanceData.cpp"
   :header-include "SandboxISMCInstanceData.h"
-  :namespace ioj::sandbox_ismc
+  :namespace ioj::ismc
   :include-order ("SandboxISMC/" "SandboxCore/")
   (struct InstanceData
     :operations (all)
@@ -11,14 +11,14 @@
     (member rotations array @quat_4f)))
 
 (module sandbox_ismc_render
-  :header "native/core/include/ioj/sandbox_ismc_render.h"
-  :header-include "ioj/sandbox_ismc_render.h"
+  :header "native/ismc/lib/include/ioj/ismc/render.h"
+  :header-include "ioj/ismc/render.h"
   :backend standard-library
-  :namespace ioj::sandbox_ismc
+  :namespace ioj::ismc
   (record Quat32
     (member bits std::uint32_t :initializer ""))
   ; 12-byte GPU ABI: position XYZ, unused padding, then aligned quat32.
   (record PackedTransform
-    (member position std::int16_t :count 3 :initializer "")
+    (member position @ismc_packed_position :initializer "")
     (member reserved std::uint16_t :initializer "")
-    (member rotation ioj::sandbox_ismc::Quat32 :initializer "")))
+    (member rotation ioj::ismc::Quat32 :initializer "")))

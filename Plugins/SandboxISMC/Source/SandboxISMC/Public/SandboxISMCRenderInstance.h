@@ -1,7 +1,7 @@
 #pragma once
 
-#include "ioj/sandbox_ismc_transform.h"
+#include "ioj/ismc/transform.h"
 
-using FSandboxISMCRenderInstance = ioj::sandbox_ismc::PackedTransform;
+using FSandboxISMCRenderInstance = ioj::ismc::PackedTransform;
 
 static_assert(sizeof(FSandboxISMCRenderInstance) == 12);

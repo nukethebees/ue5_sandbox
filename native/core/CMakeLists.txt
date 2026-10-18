@@ -41,7 +41,6 @@ target_sources(native-core
     include/ioj/native_soa/storage.h
     include/ioj/native_soa/vector_storage_ops.h
     include/ioj/periodic_tick_countdown.h
-    include/ioj/space_dust_math.h
     include/ioj/tick_countdown.h
     include/ioj/vector_normalization.h
     src/generated/array_math_kernels.cpp
@@ -65,47 +64,12 @@ target_include_directories(native-core
 # Keep file-only static-library consumers independent of the runtime allocation/profiling code.
 set_source_files_properties(src/files.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 
-# Separate translation units keep AVX2 out of the scalar reference and prevent
-# unity builds or contraction from changing the packing arithmetic.
-add_library(native-core-ismc-scalar OBJECT)
-target_sources(native-core-ismc-scalar
-  PRIVATE
-    src/sandbox_ismc_packing.cpp
-    src/sandbox_ismc_packing_dispatch.cpp
-)
-set_target_properties(native-core-ismc-scalar PROPERTIES UNITY_BUILD OFF)
-target_include_directories(native-core-ismc-scalar
-  PRIVATE
-    include
-)
-target_link_libraries(native-core-ismc-scalar
-  PRIVATE
-    hwy sandbox::native_defaults ioj::fp_precise
-)
-ioj_apply_native_abi(native-core-ismc-scalar)
-ioj_enable_warnings(native-core-ismc-scalar)
-add_library(native-core-ismc-highway-avx2 OBJECT)
-target_sources(native-core-ismc-highway-avx2
-  PRIVATE
-    src/sandbox_ismc_packing_highway.cpp
-)
-ioj_configure_highway_target(native-core-ismc-highway-avx2 avx2)
-target_include_directories(native-core-ismc-highway-avx2
-  PRIVATE
-    include
-)
-target_link_libraries(native-core-ismc-highway-avx2
-  PRIVATE
-
-)
 target_link_libraries(native-core
   PUBLIC
     sandbox::native_defaults
     TBB::tbb
 
   PRIVATE
-    native-core-ismc-scalar
-    native-core-ismc-highway-avx2
     ioj::core_pch
     "$<$<BOOL:${IOJ_WITH_TRACY}>:sandbox::profiling>"
     "$<$<BOOL:${IOJ_WITH_UNREAL}>:ioj::unreal_avx2>"
@@ -152,9 +116,6 @@ target_sources(native-core-tests
     tests/projectile_intercept_tests.cpp
     tests/quantized_decimal_tests.cpp
     tests/rotation_tests.cpp
-    tests/sandbox_ismc_transform_tests.cpp
-    tests/sandbox_ismc_packing_tests.cpp
-    tests/space_dust_math_tests.cpp
     tests/static_string_view_tests.cpp
     tests/time_series_data_tests.cpp
     tests/timing_tests.cpp
