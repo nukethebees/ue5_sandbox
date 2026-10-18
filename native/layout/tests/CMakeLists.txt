@@ -51,15 +51,3 @@ add_test(NAME layout-exported-probe
     "-DOUTPUT=${CMAKE_CURRENT_BINARY_DIR}/probed.profile"
     -P "${CMAKE_CURRENT_SOURCE_DIR}/probe_fixture.cmake")
 set_tests_properties(layout-exported-probe PROPERTIES LABELS "unit;developer-tool;layout")
-
-add_executable(native-layout-document-benchmark)
-target_sources(native-layout-document-benchmark
-  PRIVATE
-    document_benchmark.cpp
-)
-target_link_libraries(native-layout-document-benchmark
-  PRIVATE
-    native-layout
-    sandbox::native_defaults
-)
-ioj_enable_warnings(native-layout-document-benchmark)

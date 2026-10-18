@@ -31,6 +31,12 @@ The dedicated planner workflow also runs the UI tests. The CMake install
 component `layout-planner` installs the executable under the selected prefix's
 `bin` directory.
 
+Build `native-layout-benchmarks` in Release to measure edits, undo and redo with
+bulk analysis at fixed history depths. Run the Google Benchmark executable from
+`native/layout/benchmarks/` in that build directory; standard benchmark filtering,
+repetition and JSON output flags are supported. Request an exclusive jobs-board
+ticket before timing runs.
+
 ## Edit a document
 
 1. Enter a manifest path and target in **Project**, then choose **Open project**.

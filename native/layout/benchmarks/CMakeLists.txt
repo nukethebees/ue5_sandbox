@@ -1,0 +1,16 @@
+add_executable(native-layout-benchmarks)
+target_sources(native-layout-benchmarks
+  PRIVATE
+    document_benchmarks.cpp
+)
+target_link_libraries(native-layout-benchmarks
+  PRIVATE
+    native-layout
+    benchmark::benchmark_main
+    sandbox::native_defaults
+)
+target_compile_definitions(native-layout-benchmarks
+  PRIVATE
+    IOJ_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+)
+ioj_enable_warnings(native-layout-benchmarks)
