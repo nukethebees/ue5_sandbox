@@ -104,6 +104,10 @@ auto storage_lifetime_nodes(LoweringContext& context, SingleAllocationModelId mo
     auto& model_store{context.ir.lowering.single_allocation_models};
     auto const model_store_index{model_store.index(model)};
     auto& ir{context.ir};
+    auto const copy_parameter{
+        ir.parameter(context.text(model_store.owner_name[model_store_index]) + " const&", "")};
+    auto const move_parameter{
+        ir.parameter(context.text(model_store.owner_name[model_store_index]) + "&&", "other")};
     auto const free_data{ir.call(ir.named("Operations::release_storage"), {ir.named("*this")})};
     auto const default_constructor{ir.constructor(model_store.owner_name[model_store_index])};
     ir.set_function_noexcept(default_constructor);
@@ -130,32 +134,24 @@ auto storage_lifetime_nodes(LoweringContext& context, SingleAllocationModelId mo
     auto const destructor{ir.destructor(model_store.owner_name[model_store_index])};
     ir.set_function_body(destructor, {ir.expression_statement(free_data)});
     auto const copy_constructor{ir.constructor(model_store.owner_name[model_store_index])};
-    ir.set_function_parameters(
-        copy_constructor,
-        {ir.parameter(context.text(model_store.owner_name[model_store_index]) + " const&", "")});
+    ir.set_function_parameters(copy_constructor, {copy_parameter});
     ir.set_function_deleted(copy_constructor);
     auto const copy_assignment{ir.function("operator=", "auto")};
-    ir.set_function_parameters(
-        copy_assignment,
-        {ir.parameter(context.text(model_store.owner_name[model_store_index]) + " const&", "")});
+    ir.set_function_parameters(copy_assignment, {copy_parameter});
     ir.set_function_return_type(
         copy_assignment,
         ir.types.intern(context.text(model_store.owner_name[model_store_index]) + "&"),
         ReturnSyntax::trailing);
     ir.set_function_deleted(copy_assignment);
     auto const move_constructor{ir.constructor(model_store.owner_name[model_store_index])};
-    ir.set_function_parameters(
-        move_constructor,
-        {ir.parameter(context.text(model_store.owner_name[model_store_index]) + "&&", "other")});
+    ir.set_function_parameters(move_constructor, {move_parameter});
     ir.set_function_noexcept(move_constructor);
     ir.set_function_body(
         move_constructor,
         {ir.raw("Operations::take_storage(*this, other);")},
         {ir.member_initializer(ir.strings.intern("resource_"), ir.store_text("other.resource_"))});
     auto const move_assignment{ir.function("operator=", "auto")};
-    ir.set_function_parameters(
-        move_assignment,
-        {ir.parameter(context.text(model_store.owner_name[model_store_index]) + "&&", "other")});
+    ir.set_function_parameters(move_assignment, {move_parameter});
     ir.set_function_body(move_assignment,
                          {ir.raw("return Operations::move_assign(*this, other);")});
     ir.set_function_return_type(
@@ -238,8 +234,9 @@ auto data_pointers_node(LoweringContext& context, SingleAllocationModelId model)
 
 auto storage_access_nodes(LoweringContext& context, SingleAllocationModelId model) -> Nodes {
     auto& ir{context.ir};
+    auto const self{ir.parameter("this Self&", "self")};
     auto const get_data{ir.function("get_data", "auto")};
-    ir.set_function_parameters(get_data, {ir.parameter("this Self&", "self")});
+    ir.set_function_parameters(get_data, {self});
     ir.set_function_body(
         get_data,
         {ir.using_declaration(
@@ -260,9 +257,7 @@ auto storage_access_nodes(LoweringContext& context, SingleAllocationModelId mode
     ir.set_function_template(
         get_data, ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Self"))}));
     auto const get_data_offset{ir.function("get_data", "auto")};
-    ir.set_function_parameters(
-        get_data_offset,
-        {ir.parameter("this Self&", "self"), ir.parameter("size_type const", "offset")});
+    ir.set_function_parameters(get_data_offset, {self, ir.parameter("size_type const", "offset")});
     ir.set_function_body(
         get_data_offset,
         {ir.return_statement(ir.binary(BinaryOperator::add,

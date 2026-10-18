@@ -152,7 +152,7 @@ auto build_functions(LoweringContext& context,
     auto const state{ir.named("state")};
     auto const id{ir.named("id")};
     auto const value{ir.named("value")};
-    auto const game_setting{ir.types.intern("EGameSetting const")};
+    auto const id_parameter{ir.parameter("EGameSetting const", "id")};
     auto create = [&](std::string_view const name, std::string_view const return_type) {
         auto const type{ir.types.intern(return_type)};
         auto const function{ir.function(name, type)};
@@ -171,15 +171,15 @@ auto build_functions(LoweringContext& context,
     ir.set_function_body(descriptors, {ir.return_statement(ir.named("descriptors"))});
 
     auto const descriptor{create("game_setting_descriptor", "FGameSettingDescriptor const&")};
-    ir.set_function_parameters(descriptor, {ir.parameter(game_setting, "id")});
+    ir.set_function_parameters(descriptor, {id_parameter});
     ir.set_function_body(
         descriptor,
         {ir.return_statement(ir.subscript(ir.named("descriptors"),
                                           ir.static_cast_expr(ir.types.intern("int32"), id)))});
 
     auto const getter{create("game_setting_value", "FGameSettingValue")};
-    ir.set_function_parameters(
-        getter, {ir.parameter(state_name + " const&", "state"), ir.parameter(game_setting, "id")});
+    ir.set_function_parameters(getter,
+                               {ir.parameter(state_name + " const&", "state"), id_parameter});
     std::vector<SwitchCaseId> getter_cases;
     for (auto const setting : settings) {
         auto const name{declarations.settings.name[declarations.settings.index(setting)]};
@@ -199,7 +199,7 @@ auto build_functions(LoweringContext& context,
     auto const setter{create("set_game_setting_value", "bool")};
     ir.set_function_parameters(setter,
                                {ir.parameter(state_name + "&", "state"),
-                                ir.parameter(game_setting, "id"),
+                                id_parameter,
                                 ir.parameter("FGameSettingValue const&", "value")});
     std::vector<SwitchCaseId> setter_cases;
     auto const setting_count{settings.size()};

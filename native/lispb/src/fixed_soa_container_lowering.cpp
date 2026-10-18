@@ -148,29 +148,29 @@ auto fixed_function(LoweringContext& context,
     return created_function;
 }
 
-auto add_compact_function(LoweringContext& context,
-                          NodeListBuilder& nodes,
-                          std::string_view name,
-                          CppTypeId return_type,
-                          std::vector<FunctionParameterId> parameters,
-                          std::string body,
-                          FunctionReceiver receiver = FunctionReceiver::unqualified,
-                          ReturnSyntax return_syntax = ReturnSyntax::direct,
-                          TemplateId function_template = {},
-                          Expr requirement = {},
-                          int trailing_new_lines = 1) -> FunctionId {
-    auto const function{fixed_function(context,
-                                       name,
-                                       return_type,
-                                       std::move(parameters),
-                                       std::move(body),
-                                       receiver,
-                                       return_syntax,
-                                       function_template,
-                                       requirement,
-                                       compact_function_formatting())};
-    nodes.add(context.ir.header_function(function), trailing_new_lines);
-    return function;
+auto compact_function_writer(LoweringContext& context, NodeListBuilder& nodes) {
+    return [&context, &nodes](std::string_view name,
+                              CppTypeId return_type,
+                              std::vector<FunctionParameterId> parameters,
+                              std::string body,
+                              FunctionReceiver receiver = FunctionReceiver::unqualified,
+                              ReturnSyntax return_syntax = ReturnSyntax::direct,
+                              TemplateId function_template = {},
+                              Expr requirement = {},
+                              int trailing_new_lines = 1) -> FunctionId {
+        auto const function{fixed_function(context,
+                                           name,
+                                           return_type,
+                                           std::move(parameters),
+                                           std::move(body),
+                                           receiver,
+                                           return_syntax,
+                                           function_template,
+                                           requirement,
+                                           compact_function_formatting())};
+        nodes.add(context.ir.header_function(function), trailing_new_lines);
+        return function;
+    };
 }
 
 auto fixed_container_prelude_nodes(LoweringContext& context, DeclarationHandle schema) -> Nodes {
@@ -399,7 +399,12 @@ auto fixed_container_lifecycle_nodes(LoweringContext& context,
 
 auto fixed_container_access_nodes(LoweringContext& context, DeclarationHandle schema) -> Nodes {
     auto& ir{context.ir};
+    auto const offset{ir.parameter("size_type const", "offset")};
+    auto const count{ir.parameter("size_type const", "count")};
+    auto const func{ir.parameter("TFunc&&", "func")};
+    std::vector<FunctionParameterId> const range_parameters{offset, count};
     NodeListBuilder result{ir};
+    auto add{compact_function_writer(context, result)};
     result.add(ir.header_function([&] {
         auto const created_function{ir.function("capacity", "size_type")};
         ir.set_function_body(created_function, {ir.raw("return capacity_value;")});
@@ -414,153 +419,112 @@ auto fixed_container_access_nodes(LoweringContext& context, DeclarationHandle sc
         return created_function;
     }()),
                1);
-    ir.set_function_noexcept(add_compact_function(context,
-                                                  result,
-                                                  "num",
-                                                  ir.types.intern("size_type"),
-                                                  {},
-                                                  "return size_;",
-                                                  FunctionReceiver::const_,
-                                                  ReturnSyntax::trailing));
-    ir.set_function_noexcept(add_compact_function(context,
-                                                  result,
-                                                  "is_empty",
-                                                  ir.types.intern("bool"),
-                                                  {},
-                                                  "return size_ == 0;",
-                                                  FunctionReceiver::const_,
-                                                  ReturnSyntax::trailing));
-    ir.set_function_noexcept(add_compact_function(context,
-                                                  result,
-                                                  "is_full",
-                                                  ir.types.intern("bool"),
-                                                  {},
-                                                  "return size_ == capacity();",
-                                                  FunctionReceiver::const_,
-                                                  ReturnSyntax::trailing,
-                                                  {},
-                                                  {},
-                                                  2));
-    add_compact_function(context,
-                         result,
-                         "get_view",
-                         ir.types.intern("View"),
-                         {},
-                         "return storage_.get_view(0, size_);",
-                         FunctionReceiver::unqualified,
-                         ReturnSyntax::trailing);
-    add_compact_function(
-        context,
-        result,
-        "get_view",
+    ir.set_function_noexcept(add("num",
+                                 ir.types.intern("size_type"),
+                                 {},
+                                 "return size_;",
+                                 FunctionReceiver::const_,
+                                 ReturnSyntax::trailing));
+    ir.set_function_noexcept(add("is_empty",
+                                 ir.types.intern("bool"),
+                                 {},
+                                 "return size_ == 0;",
+                                 FunctionReceiver::const_,
+                                 ReturnSyntax::trailing));
+    ir.set_function_noexcept(add("is_full",
+                                 ir.types.intern("bool"),
+                                 {},
+                                 "return size_ == capacity();",
+                                 FunctionReceiver::const_,
+                                 ReturnSyntax::trailing,
+                                 {},
+                                 {},
+                                 2));
+    add("get_view",
         ir.types.intern("View"),
-        {ir.parameter("size_type const", "offset"), ir.parameter("size_type const", "count")},
+        {},
+        "return storage_.get_view(0, size_);",
+        FunctionReceiver::unqualified,
+        ReturnSyntax::trailing);
+    add("get_view",
+        ir.types.intern("View"),
+        range_parameters,
         "check_view_range(offset, count); return storage_.get_view(offset, count);",
         FunctionReceiver::unqualified,
         ReturnSyntax::trailing);
-    add_compact_function(context,
-                         result,
-                         "get_view",
-                         ir.types.intern("ConstView"),
-                         {},
-                         "return get_const_view();",
-                         FunctionReceiver::const_,
-                         ReturnSyntax::trailing);
-    add_compact_function(
-        context,
-        result,
-        "get_view",
+    add("get_view",
         ir.types.intern("ConstView"),
-        {ir.parameter("size_type const", "offset"), ir.parameter("size_type const", "count")},
+        {},
+        "return get_const_view();",
+        FunctionReceiver::const_,
+        ReturnSyntax::trailing);
+    add("get_view",
+        ir.types.intern("ConstView"),
+        range_parameters,
         "return get_const_view(offset, count);",
         FunctionReceiver::const_,
         ReturnSyntax::trailing);
-    add_compact_function(context,
-                         result,
-                         "get_const_view",
-                         ir.types.intern("ConstView"),
-                         {},
-                         "return storage_.get_const_view(0, size_);",
-                         FunctionReceiver::const_,
-                         ReturnSyntax::trailing);
-    add_compact_function(
-        context,
-        result,
-        "get_const_view",
+    add("get_const_view",
         ir.types.intern("ConstView"),
-        {ir.parameter("size_type const", "offset"), ir.parameter("size_type const", "count")},
+        {},
+        "return storage_.get_const_view(0, size_);",
+        FunctionReceiver::const_,
+        ReturnSyntax::trailing);
+    add("get_const_view",
+        ir.types.intern("ConstView"),
+        range_parameters,
         "check_view_range(offset, count); return storage_.get_const_view(offset, count);",
         FunctionReceiver::const_,
         ReturnSyntax::trailing);
-    add_compact_function(
-        context,
-        result,
-        "slice",
+    add("slice",
         ir.types.intern("View"),
-        {ir.parameter("size_type const", "offset"), ir.parameter("size_type const", "count")},
+        range_parameters,
         "return get_view(offset, count);",
         FunctionReceiver::unqualified,
         ReturnSyntax::trailing);
-    add_compact_function(context,
-                         result,
-                         "left",
-                         ir.types.intern("View"),
-                         {ir.parameter("size_type const", "count")},
-                         "return slice(0, count);",
-                         FunctionReceiver::unqualified,
-                         ReturnSyntax::trailing);
-    add_compact_function(context,
-                         result,
-                         "right",
-                         ir.types.intern("View"),
-                         {ir.parameter("size_type const", "count")},
-                         "return slice(size_ - count, count);",
-                         FunctionReceiver::unqualified,
-                         ReturnSyntax::trailing);
-    add_compact_function(
-        context,
-        result,
-        "slice",
+    add("left",
+        ir.types.intern("View"),
+        {count},
+        "return slice(0, count);",
+        FunctionReceiver::unqualified,
+        ReturnSyntax::trailing);
+    add("right",
+        ir.types.intern("View"),
+        {count},
+        "return slice(size_ - count, count);",
+        FunctionReceiver::unqualified,
+        ReturnSyntax::trailing);
+    add("slice",
         ir.types.intern("ConstView"),
-        {ir.parameter("size_type const", "offset"), ir.parameter("size_type const", "count")},
+        range_parameters,
         "return get_const_view(offset, count);",
         FunctionReceiver::const_,
         ReturnSyntax::trailing);
-    add_compact_function(context,
-                         result,
-                         "left",
-                         ir.types.intern("ConstView"),
-                         {ir.parameter("size_type const", "count")},
-                         "return slice(0, count);",
-                         FunctionReceiver::const_,
-                         ReturnSyntax::trailing);
-    add_compact_function(context,
-                         result,
-                         "right",
-                         ir.types.intern("ConstView"),
-                         {ir.parameter("size_type const", "count")},
-                         "return slice(size_ - count, count);",
-                         FunctionReceiver::const_,
-                         ReturnSyntax::trailing,
-                         {},
-                         {},
-                         2);
-    add_compact_function(
-        context,
-        result,
-        "apply_arrays",
+    add("left",
+        ir.types.intern("ConstView"),
+        {count},
+        "return slice(0, count);",
+        FunctionReceiver::const_,
+        ReturnSyntax::trailing);
+    add("right",
+        ir.types.intern("ConstView"),
+        {count},
+        "return slice(size_ - count, count);",
+        FunctionReceiver::const_,
+        ReturnSyntax::trailing,
+        {},
+        {},
+        2);
+    add("apply_arrays",
         ir.types.intern("decltype(auto)"),
-        {ir.parameter("TFunc&&", "func")},
+        {func},
         "auto view{get_view()}; return view.apply_arrays(std::forward<TFunc>(func));",
         FunctionReceiver::unqualified,
         ReturnSyntax::trailing,
         ir.template_declaration({ir.type_template_parameter(ir.strings.intern("TFunc"))}));
-    add_compact_function(
-        context,
-        result,
-        "apply_arrays",
+    add("apply_arrays",
         ir.types.intern("decltype(auto)"),
-        {ir.parameter("TFunc&&", "func")},
+        {func},
         "auto view{get_const_view()}; return view.apply_arrays(std::forward<TFunc>(func));",
         FunctionReceiver::const_,
         ReturnSyntax::trailing,
@@ -569,10 +533,11 @@ auto fixed_container_access_nodes(LoweringContext& context, DeclarationHandle sc
         2);
     if (context.declarations.soas.equivalent_type[context.declarations.soas.index(schema)]
             .has_value()) {
+        auto const index{ir.parameter("size_type const", "index")};
         result.add(ir.header_function(fixed_function(context,
                                                      "operator[]",
                                                      ir.types.intern("equivalent_type"),
-                                                     {ir.parameter("size_type const", "index")},
+                                                     {index},
                                                      "return get_const_view()[index];",
                                                      FunctionReceiver::const_,
                                                      ReturnSyntax::trailing)),
@@ -580,7 +545,7 @@ auto fixed_container_access_nodes(LoweringContext& context, DeclarationHandle sc
         result.add(ir.header_function(fixed_function(context,
                                                      "at",
                                                      ir.types.intern("equivalent_type"),
-                                                     {ir.parameter("size_type const", "index")},
+                                                     {index},
                                                      "check_index(index);\nreturn (*this)[index];",
                                                      FunctionReceiver::const_,
                                                      ReturnSyntax::trailing)));
@@ -664,6 +629,7 @@ auto fixed_container_construction_nodes(LoweringContext& context, FixedLayoutId 
     auto& layout_store{context.ir.lowering.fixed_layouts};
     auto const layout_store_index{layout_store.index(layout)};
     auto& ir{context.ir};
+    auto const new_size{ir.parameter("size_type const", "new_size")};
     std::vector<TemplateParameterId> template_parameters;
     std::vector<FunctionParameterId> parameters;
     std::vector<std::string> forwarded;
@@ -685,6 +651,7 @@ auto fixed_container_construction_nodes(LoweringContext& context, FixedLayoutId 
     auto const constructible{
         ir.template_id(ir.named("supports_element_construction_from"), argument_types)};
     NodeListBuilder result{ir};
+    auto add{compact_function_writer(context, result)};
     result
         .add(ir.header_function(fixed_function(context,
                                                "emplace_back",
@@ -714,100 +681,85 @@ auto fixed_container_construction_nodes(LoweringContext& context, FixedLayoutId 
                                                constructible,
                                                compact_prefixed_constraint_formatting())),
              2);
-    add_compact_function(context,
-                         result,
-                         "add_defaulted",
-                         ir.types.intern("void"),
-                         {ir.parameter("size_type const", "count", ir.store_text("1"))},
-                         "check_has_sufficient_capacity(count); for (size_type i{}; i < count; "
-                         "++i) { storage_.default_construct_at(size_); ++size_; }",
-                         FunctionReceiver::unqualified,
-                         ReturnSyntax::direct,
-                         {},
-                         ir.named("supports_default_construction"));
-    add_compact_function(
-        context,
-        result,
-        "set_num",
+    add("add_defaulted",
         ir.types.intern("void"),
-        {ir.parameter("size_type const", "new_size")},
+        {ir.parameter("size_type const", "count", ir.store_text("1"))},
+        "check_has_sufficient_capacity(count); for (size_type i{}; i < count; "
+        "++i) { storage_.default_construct_at(size_); ++size_; }",
+        FunctionReceiver::unqualified,
+        ReturnSyntax::direct,
+        {},
+        ir.named("supports_default_construction"));
+    add("set_num",
+        ir.types.intern("void"),
+        {new_size},
         "check(new_size >= 0); check(new_size <= capacity()); if (new_size < size_) { "
         "destroy_from(new_size); return; } add_defaulted(new_size - size_);",
         FunctionReceiver::unqualified,
         ReturnSyntax::direct,
         {},
         ir.named("supports_default_construction"));
-    add_compact_function(
-        context,
-        result,
-        "set_num",
+    add("set_num",
         ir.types.intern("void"),
-        {ir.parameter("size_type const", "new_size"), ir.parameter("EAllowShrinking const")},
+        {new_size, ir.parameter("EAllowShrinking const")},
         "set_num(new_size);",
         FunctionReceiver::unqualified,
         ReturnSyntax::direct,
         {},
         ir.named("supports_default_construction"));
-    add_compact_function(context,
-                         result,
-                         "capacity_view",
-                         ir.types.intern("View"),
-                         {},
-                         "return storage_.get_view(0, capacity());",
-                         FunctionReceiver::unqualified,
-                         ReturnSyntax::trailing,
-                         {},
-                         ir.named("supports_uninitialised_storage"));
-    add_compact_function(context,
-                         result,
-                         "set_num_uninitialised",
-                         ir.types.intern("void"),
-                         {ir.parameter("size_type const", "new_size")},
-                         "check(new_size >= 0); check(new_size <= capacity()); size_ = new_size;",
-                         FunctionReceiver::unqualified,
-                         ReturnSyntax::direct,
-                         {},
-                         ir.named("supports_uninitialised_storage"));
-    add_compact_function(context,
-                         result,
-                         "add_uninitialised",
-                         ir.types.intern("void"),
-                         {ir.parameter("size_type const", "count")},
-                         "check_has_sufficient_capacity(count); size_ += count;",
-                         FunctionReceiver::unqualified,
-                         ReturnSyntax::direct,
-                         {},
-                         ir.named("supports_uninitialised_storage"),
-                         2);
+    add("capacity_view",
+        ir.types.intern("View"),
+        {},
+        "return storage_.get_view(0, capacity());",
+        FunctionReceiver::unqualified,
+        ReturnSyntax::trailing,
+        {},
+        ir.named("supports_uninitialised_storage"));
+    add("set_num_uninitialised",
+        ir.types.intern("void"),
+        {new_size},
+        "check(new_size >= 0); check(new_size <= capacity()); size_ = new_size;",
+        FunctionReceiver::unqualified,
+        ReturnSyntax::direct,
+        {},
+        ir.named("supports_uninitialised_storage"));
+    add("add_uninitialised",
+        ir.types.intern("void"),
+        {ir.parameter("size_type const", "count")},
+        "check_has_sufficient_capacity(count); size_ += count;",
+        FunctionReceiver::unqualified,
+        ReturnSyntax::direct,
+        {},
+        ir.named("supports_uninitialised_storage"),
+        2);
     return result.build();
 }
 
 auto fixed_container_mutation_nodes(LoweringContext& context) -> Nodes {
     auto& ir{context.ir};
+    auto const count{ir.parameter("size_type const", "count")};
+    auto const destination_index{ir.parameter("size_type const", "dst_index")};
+    auto const source_index{ir.parameter("size_type const", "source_index")};
+    auto const other{ir.parameter("Other const&", "other")};
     NodeListBuilder result{ir};
-    add_compact_function(context,
-                         result,
-                         "pop",
-                         ir.types.intern("void"),
-                         {},
-                         "check(!is_empty()); --size_; storage_.destroy_at(size_);");
-    ir.set_function_noexcept(add_compact_function(
-        context, result, "reset", ir.types.intern("void"), {}, "destroy_from(0);"));
-    ir.set_function_noexcept(
-        add_compact_function(context, result, "empty", ir.types.intern("void"), {}, "reset();"));
-    add_compact_function(context,
-                         result,
-                         "reserve",
-                         ir.types.intern("void"),
-                         {ir.parameter("size_type const", "requested_capacity")},
-                         "check(requested_capacity >= 0); check(requested_capacity <= capacity());",
-                         FunctionReceiver::const_);
+    auto add{compact_function_writer(context, result)};
+    add("pop",
+        ir.types.intern("void"),
+        {},
+        "check(!is_empty()); --size_; storage_.destroy_at(size_);");
+    ir.set_function_noexcept(add("reset", ir.types.intern("void"), {}, "destroy_from(0);"));
+    ir.set_function_noexcept(add("empty", ir.types.intern("void"), {}, "reset();"));
+    add("reserve",
+        ir.types.intern("void"),
+        {ir.parameter("size_type const", "requested_capacity")},
+        "check(requested_capacity >= 0); check(requested_capacity <= capacity());",
+        FunctionReceiver::const_);
     result.add(ir.header_function(fixed_function(
                    context,
                    "remove_at_swap",
                    ir.types.intern("void"),
                    {ir.parameter("size_type const", "index"),
-                    ir.parameter("size_type const", "count"),
+                    count,
                     ir.parameter("EAllowShrinking const")},
                    "check(index >= 0); check(count >= 0); check(index + count <= size_);\nif "
                    "(count == 0) { return; }\nauto const available_tail{size_ - (index + "
@@ -816,29 +768,18 @@ auto fixed_container_mutation_nodes(LoweringContext& context) -> Nodes {
                    "(size_type i{}; i < move_count; ++i) { storage_.move_assign_at(index + i, "
                    "storage_, source_begin + i); }\ndestroy_from(size_ - count);")),
                1);
-    add_compact_function(
-        context,
-        result,
-        "copy_element",
+    add("copy_element",
         ir.types.intern("void"),
-        {ir.parameter("size_type const", "dst_index"),
-         ir.parameter("Other const&", "other"),
-         ir.parameter("size_type const", "source_index")},
+        {destination_index, other, source_index},
         "check_index(dst_index); auto const source{other.get_const_view()}; "
         "check(source_index >= 0); check(source_index < source.num()); "
         "storage_.copy_assign_from_view_at(dst_index, source, source_index);",
         FunctionReceiver::unqualified,
         ReturnSyntax::direct,
         ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Other"))}));
-    add_compact_function(
-        context,
-        result,
-        "copy_elements",
+    add("copy_elements",
         ir.types.intern("void"),
-        {ir.parameter("size_type const", "dst_index"),
-         ir.parameter("Other const&", "other"),
-         ir.parameter("size_type const", "source_index"),
-         ir.parameter("size_type const", "count")},
+        {destination_index, other, source_index, count},
         "check(dst_index >= 0); check(source_index >= 0); check(count >= 0); check(dst_index + "
         "count <= size_); auto const source{other.get_const_view()}; check(source_index + count <= "
         "source.num()); for (size_type i{}; i < count; ++i) { "
@@ -846,12 +787,9 @@ auto fixed_container_mutation_nodes(LoweringContext& context) -> Nodes {
         FunctionReceiver::unqualified,
         ReturnSyntax::direct,
         ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Other"))}));
-    add_compact_function(
-        context,
-        result,
-        "append_from",
+    add("append_from",
         ir.types.intern("void"),
-        {ir.parameter("Other const&", "other")},
+        {other},
         "auto const source{other.get_const_view()}; auto const count{source.num()}; "
         "check_has_sufficient_capacity(count); for (size_type i{}; i < count; ++i) { "
         "storage_.construct_from_view_at(size_, source, i); ++size_; }",
@@ -865,43 +803,36 @@ auto fixed_container_mutation_nodes(LoweringContext& context) -> Nodes {
 
 auto fixed_container_private_nodes(LoweringContext& context, DeclarationHandle schema) -> Nodes {
     auto& ir{context.ir};
+    auto const count{ir.parameter("size_type const", "count")};
     NodeListBuilder result{ir};
+    auto add{compact_function_writer(context, result)};
     result.add(ir.access(Access::private_), 1);
-    add_compact_function(context,
-                         result,
-                         "check_index",
-                         ir.types.intern("void"),
-                         {ir.parameter("size_type const", "index")},
-                         "check(index >= 0); check(index < size_);",
-                         FunctionReceiver::const_);
-    add_compact_function(
-        context,
-        result,
-        "check_view_range",
+    add("check_index",
         ir.types.intern("void"),
-        {ir.parameter("size_type const", "offset"), ir.parameter("size_type const", "count")},
+        {ir.parameter("size_type const", "index")},
+        "check(index >= 0); check(index < size_);",
+        FunctionReceiver::const_);
+    add("check_view_range",
+        ir.types.intern("void"),
+        {ir.parameter("size_type const", "offset"), count},
         "check(offset >= 0); check(count >= 0); check(offset + count <= size_);",
         FunctionReceiver::const_);
-    add_compact_function(context,
-                         result,
-                         "check_has_sufficient_capacity",
-                         ir.types.intern("void"),
-                         {ir.parameter("size_type const", "count")},
-                         "check(count >= 0); check(count <= capacity() - size_);",
-                         FunctionReceiver::const_);
-    ir.set_function_noexcept(add_compact_function(
-        context,
-        result,
-        "destroy_from",
+    add("check_has_sufficient_capacity",
         ir.types.intern("void"),
-        {ir.parameter("size_type const", "first_index")},
-        "for (size_type i{size_}; i > first_index; --i) { storage_.destroy_at(i - "
-        "1); } size_ = first_index;",
-        FunctionReceiver::unqualified,
-        ReturnSyntax::direct,
-        {},
-        {},
-        2));
+        {count},
+        "check(count >= 0); check(count <= capacity() - size_);",
+        FunctionReceiver::const_);
+    ir.set_function_noexcept(
+        add("destroy_from",
+            ir.types.intern("void"),
+            {ir.parameter("size_type const", "first_index")},
+            "for (size_type i{size_}; i > first_index; --i) { storage_.destroy_at(i - "
+            "1); } size_ = first_index;",
+            FunctionReceiver::unqualified,
+            ReturnSyntax::direct,
+            {},
+            {},
+            2));
     result
         .add(ir.instance_member(
                  ir.types.intern(

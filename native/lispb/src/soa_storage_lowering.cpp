@@ -260,6 +260,15 @@ auto soa_storage_functions(LoweringContext& context,
                            std::span<ResolvedMemberId const> members) -> std::vector<FunctionId> {
     auto& resolved_store{context.ir.lowering.resolved_members};
     auto& ir{context.ir};
+    auto const count{ir.parameter("int32 const", "count")};
+    auto const other{ir.parameter("Other const&", "other")};
+    auto const destination_index{ir.parameter("int32 const", "dst_i")};
+    auto const source_index{ir.parameter("int32 const", "src_i")};
+    auto const allow_shrinking{ir.parameter(
+        ir.types.intern("EAllowShrinking const",
+                        {ir.types.dependency("EAllowShrinking", "Containers/AllowShrinking.h")}),
+        "allow_shrinking")};
+
     std::vector<FunctionId> result;
     auto contains = [&](StorageOperation operation) {
         auto const operations{context.declarations.items(
@@ -276,7 +285,7 @@ auto soa_storage_functions(LoweringContext& context,
     if (contains(StorageOperation::reserve)) {
         result.push_back([&] {
             auto const created_function{ir.function("reserve", "void")};
-            ir.set_function_parameters(created_function, {ir.parameter("int32 const", "count")});
+            ir.set_function_parameters(created_function, {count});
             ir.set_function_body(created_function,
                                  storage_operation_body(context, "reserve", {"count"}));
             return created_function;
@@ -285,7 +294,7 @@ auto soa_storage_functions(LoweringContext& context,
     if (contains(StorageOperation::add_uninitialised)) {
         result.push_back([&] {
             auto const created_function{ir.function("add_uninitialised", "void")};
-            ir.set_function_parameters(created_function, {ir.parameter("int32 const", "count")});
+            ir.set_function_parameters(created_function, {count});
             ir.set_function_body(created_function,
                                  storage_operation_body(context, "add_uninitialised", {"count"}));
             return created_function;
@@ -294,7 +303,7 @@ auto soa_storage_functions(LoweringContext& context,
     if (contains(StorageOperation::add_defaulted)) {
         result.push_back([&] {
             auto const created_function{ir.function("add_defaulted", "void")};
-            ir.set_function_parameters(created_function, {ir.parameter("int32 const", "count")});
+            ir.set_function_parameters(created_function, {count});
             ir.set_function_body(created_function,
                                  storage_operation_body(context, "add_defaulted", {"count"}));
             return created_function;
@@ -308,13 +317,7 @@ auto soa_storage_functions(LoweringContext& context,
         result.push_back([&] {
             auto const created_function{ir.function("remove_at_swap", "void")};
             ir.set_function_parameters(
-                created_function,
-                {ir.parameter("int32 const", "index"),
-                 ir.parameter("int32 const", "count"),
-                 ir.parameter(ir.types.intern("EAllowShrinking const",
-                                              {ir.types.dependency("EAllowShrinking",
-                                                                   "Containers/AllowShrinking.h")}),
-                              "allow_shrinking")});
+                created_function, {ir.parameter("int32 const", "index"), count, allow_shrinking});
             ir.set_function_body(created_function, std::move(body));
             ir.function_flags(created_function).set_is_inline(true);
             ir.function_flags(created_function).set_define_in_header(true);
@@ -324,13 +327,7 @@ auto soa_storage_functions(LoweringContext& context,
     if (contains(StorageOperation::set_num)) {
         result.push_back([&] {
             auto const created_function{ir.function("set_num", "void")};
-            ir.set_function_parameters(
-                created_function,
-                {ir.parameter("int32 const", "count"),
-                 ir.parameter(ir.types.intern("EAllowShrinking const",
-                                              {ir.types.dependency("EAllowShrinking",
-                                                                   "Containers/AllowShrinking.h")}),
-                              "allow_shrinking")});
+            ir.set_function_parameters(created_function, {count, allow_shrinking});
             ir.set_function_body(
                 created_function,
                 storage_operation_body(context, "set_num", {"count", "allow_shrinking"}));
@@ -361,10 +358,7 @@ auto soa_storage_functions(LoweringContext& context,
         }
         result.push_back([&] {
             auto const created_function{ir.function("copy_element", "void")};
-            ir.set_function_parameters(created_function,
-                                       {ir.parameter("int32 const", "dst_i"),
-                                        ir.parameter("Other const&", "other"),
-                                        ir.parameter("int32 const", "src_i")});
+            ir.set_function_parameters(created_function, {destination_index, other, source_index});
             ir.set_function_body(created_function, copy_one.build());
             ir.function_flags(created_function).set_is_inline(true);
             ir.function_flags(created_function).set_define_in_header(true);
@@ -376,10 +370,7 @@ auto soa_storage_functions(LoweringContext& context,
         result.push_back([&] {
             auto const created_function{ir.function("copy_elements", "void")};
             ir.set_function_parameters(created_function,
-                                       {ir.parameter("int32 const", "dst_i"),
-                                        ir.parameter("Other const&", "other"),
-                                        ir.parameter("int32 const", "src_i"),
-                                        ir.parameter("int32 const", "count")});
+                                       {destination_index, other, source_index, count});
             ir.set_function_body(created_function, copy_range.build());
             ir.function_flags(created_function).set_is_inline(true);
             ir.function_flags(created_function).set_define_in_header(true);
@@ -390,7 +381,7 @@ auto soa_storage_functions(LoweringContext& context,
         }());
         result.push_back([&] {
             auto const created_function{ir.function("copy_to_tail", "void")};
-            ir.set_function_parameters(created_function, {ir.parameter("Other const&", "other")});
+            ir.set_function_parameters(created_function, {other});
             ir.set_function_body(
                 created_function,
                 {
@@ -440,7 +431,7 @@ auto soa_storage_functions(LoweringContext& context,
         }
         result.push_back([&] {
             auto const created_function{ir.function("append_from", "void")};
-            ir.set_function_parameters(created_function, {ir.parameter("Other const&", "other")});
+            ir.set_function_parameters(created_function, {other});
             ir.set_function_body(created_function, calls.build());
             ir.function_flags(created_function).set_is_inline(true);
             ir.function_flags(created_function).set_define_in_header(true);
@@ -465,6 +456,10 @@ auto soa_storage_functions(LoweringContext& context,
 auto soa_permutation_functions(LoweringContext& context, std::span<ResolvedMemberId const>)
     -> std::vector<FunctionId> {
     auto& ir{context.ir};
+    auto const scratch_indices{
+        ir.parameter(ir.types.intern("TArrayView<int32>",
+                                     {ir.types.dependency("TArrayView", "Containers/ArrayView.h")}),
+                     "scratch_indices")};
     auto const apply_body{storage_operation_body(context, "apply_permutation", {"indices"})};
     return {
         [&] {
@@ -480,13 +475,8 @@ auto soa_permutation_functions(LoweringContext& context, std::span<ResolvedMembe
         }(),
         [&] {
             auto const created_function{ir.function("sort", "void")};
-            ir.set_function_parameters(
-                created_function,
-                {ir.parameter("Compare&&", "compare"),
-                 ir.parameter(
-                     ir.types.intern("TArrayView<int32>",
-                                     {ir.types.dependency("TArrayView", "Containers/ArrayView.h")}),
-                     "scratch_indices")});
+            ir.set_function_parameters(created_function,
+                                       {ir.parameter("Compare&&", "compare"), scratch_indices});
             ir.set_function_body(
                 created_function,
                 {ir.expression_statement(ir.call(
@@ -509,12 +499,7 @@ auto soa_permutation_functions(LoweringContext& context, std::span<ResolvedMembe
         }(),
         [&] {
             auto const created_function{ir.function("sort", "void")};
-            ir.set_function_parameters(
-                created_function,
-                {ir.parameter(
-                    ir.types.intern("TArrayView<int32>",
-                                    {ir.types.dependency("TArrayView", "Containers/ArrayView.h")}),
-                    "scratch_indices")});
+            ir.set_function_parameters(created_function, {scratch_indices});
             ir.set_function_body(
                 created_function,
                 {ir.expression_statement(ir.call(

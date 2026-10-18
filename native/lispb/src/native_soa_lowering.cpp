@@ -69,7 +69,7 @@ void render_arguments(LoweringContext& context,
 auto lower_vector_storage_operations(LoweringContext& context, DeclarationHandle schema) -> Nodes {
     auto& ir{context.ir};
     auto const void_type{ir.types.intern("void")};
-    auto const size_type{ir.types.intern("size_type const")};
+    auto const count{ir.parameter("size_type const", "count")};
     auto const self{ir.unary(UnaryOperator::dereference, ir.named("this"))};
     Nodes functions;
     for (auto const operation : context.declarations.items(
@@ -100,11 +100,11 @@ auto lower_vector_storage_operations(LoweringContext& context, DeclarationHandle
         std::vector<FunctionParameterId> parameters;
         std::vector<Expr> arguments{self};
         if (operation == StorageOperation::remove_at_swap) {
-            parameters.push_back(ir.parameter(size_type, "index"));
+            parameters.push_back(ir.parameter("size_type const", "index"));
             arguments.push_back(ir.named("index"));
         }
         if (operation != StorageOperation::reset) {
-            parameters.push_back(ir.parameter(size_type, "count"));
+            parameters.push_back(count);
             arguments.push_back(ir.named("count"));
         }
         auto const function{ir.function(name, void_type)};
@@ -294,13 +294,13 @@ auto lower_native_soa(LoweringContext& context,
     };
     auto const fn_template{
         ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Fn"))})};
-    auto const fn_parameter_type{ir.types.intern("Fn&&")};
+    auto const fn{ir.parameter("Fn&&", "fn")};
     auto const void_type{ir.types.intern("void")};
     auto each_column = [&](Nodes const& body, bool const immutable) {
         flush();
         auto const function{ir.function("each_column", void_type)};
         ir.set_function_template(function, fn_template);
-        ir.set_function_parameters(function, {ir.parameter(fn_parameter_type, "fn")});
+        ir.set_function_parameters(function, {fn});
         ir.set_function_body(function, body);
         ir.set_function_receiver(
             function, immutable ? FunctionReceiver::const_ : FunctionReceiver::unqualified);

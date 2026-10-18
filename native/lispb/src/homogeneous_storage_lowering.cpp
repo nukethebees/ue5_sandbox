@@ -142,27 +142,6 @@ auto component_assignments(LoweringContext& context,
     return result.build();
 }
 
-void add_compact_function(LoweringContext& context,
-                          NodeListBuilder& nodes,
-                          std::string_view name,
-                          CppTypeId return_type,
-                          std::vector<FunctionParameterId> parameters,
-                          std::string body,
-                          FunctionReceiver receiver = FunctionReceiver::unqualified,
-                          ReturnSyntax return_syntax = ReturnSyntax::direct,
-                          TemplateId function_template = {}) {
-    nodes.add(homogeneous_function(context,
-                                   name,
-                                   return_type,
-                                   std::move(parameters),
-                                   std::move(body),
-                                   receiver,
-                                   return_syntax,
-                                   function_template,
-                                   compact_function_formatting()),
-              1);
-}
-
 auto homogeneous_pointer_struct(LoweringContext& context,
                                 DeclarationHandle layout,
                                 std::string name,
@@ -233,6 +212,10 @@ auto homogeneous_storage_prelude_nodes(LoweringContext& context,
 
 auto homogeneous_storage_access_nodes(LoweringContext& context, DeclarationHandle layout) -> Nodes {
     auto& ir{context.ir};
+    auto const offset{ir.parameter("size_type const", "offset")};
+    auto const count{ir.parameter("size_type const", "count")};
+    auto const func{ir.parameter("TFunc&&", "func")};
+    std::vector<FunctionParameterId> const slice_parameters{offset, count};
     std::vector<std::string> pointers;
     for (auto const component_id : context.declarations.items(
              context.declarations.homogeneous_layouts
@@ -266,97 +249,88 @@ auto homogeneous_storage_access_nodes(LoweringContext& context, DeclarationHandl
     }
 
     NodeListBuilder result{ir};
-    add_compact_function(context,
-                         result,
-                         "get_data",
-                         ir.types.intern("Data"),
-                         {},
-                         "return Data{" + join(pointers, ", ") + "};",
-                         FunctionReceiver::unqualified,
-                         ReturnSyntax::trailing);
-    add_compact_function(context,
-                         result,
-                         "get_data",
-                         ir.types.intern("ConstData"),
-                         {},
-                         "return ConstData{" + join(pointers, ", ") + "};",
-                         FunctionReceiver::const_,
-                         ReturnSyntax::trailing);
-    add_compact_function(context,
-                         result,
-                         "get_view",
-                         ir.types.intern("View"),
-                         {},
-                         "return View{" + components + "};",
-                         FunctionReceiver::unqualified,
-                         ReturnSyntax::trailing);
-    add_compact_function(
-        context,
-        result,
-        "get_view",
+    auto add = [&context, &result](std::string_view name,
+                                   CppTypeId return_type,
+                                   std::vector<FunctionParameterId> parameters,
+                                   std::string body,
+                                   FunctionReceiver receiver = FunctionReceiver::unqualified,
+                                   ReturnSyntax return_syntax = ReturnSyntax::direct,
+                                   TemplateId function_template = {}) {
+        result.add(homogeneous_function(context,
+                                        name,
+                                        return_type,
+                                        std::move(parameters),
+                                        std::move(body),
+                                        receiver,
+                                        return_syntax,
+                                        function_template,
+                                        compact_function_formatting()),
+                   1);
+    };
+
+    add("get_data",
+        ir.types.intern("Data"),
+        {},
+        "return Data{" + join(pointers, ", ") + "};",
+        FunctionReceiver::unqualified,
+        ReturnSyntax::trailing);
+    add("get_data",
+        ir.types.intern("ConstData"),
+        {},
+        "return ConstData{" + join(pointers, ", ") + "};",
+        FunctionReceiver::const_,
+        ReturnSyntax::trailing);
+    add("get_view",
         ir.types.intern("View"),
-        {ir.parameter("size_type const", "offset"), ir.parameter("size_type const", "count")},
+        {},
+        "return View{" + components + "};",
+        FunctionReceiver::unqualified,
+        ReturnSyntax::trailing);
+    add("get_view",
+        ir.types.intern("View"),
+        slice_parameters,
         "return get_view().slice(offset, count);",
         FunctionReceiver::unqualified,
         ReturnSyntax::trailing);
-    add_compact_function(context,
-                         result,
-                         "get_view",
-                         ir.types.intern("ConstView"),
-                         {},
-                         "return ConstView{" + components + "};",
-                         FunctionReceiver::const_,
-                         ReturnSyntax::trailing);
-    add_compact_function(
-        context,
-        result,
-        "get_view",
+    add("get_view",
         ir.types.intern("ConstView"),
-        {ir.parameter("size_type const", "offset"), ir.parameter("size_type const", "count")},
+        {},
+        "return ConstView{" + components + "};",
+        FunctionReceiver::const_,
+        ReturnSyntax::trailing);
+    add("get_view",
+        ir.types.intern("ConstView"),
+        slice_parameters,
         "return get_view().slice(offset, count);",
         FunctionReceiver::const_,
         ReturnSyntax::trailing);
-    add_compact_function(context,
-                         result,
-                         "get_const_view",
-                         ir.types.intern("ConstView"),
-                         {},
-                         "return ConstView{" + components + "};",
-                         FunctionReceiver::const_,
-                         ReturnSyntax::trailing);
-    add_compact_function(
-        context,
-        result,
-        "get_const_view",
+    add("get_const_view",
         ir.types.intern("ConstView"),
-        {ir.parameter("size_type const", "offset"), ir.parameter("size_type const", "count")},
+        {},
+        "return ConstView{" + components + "};",
+        FunctionReceiver::const_,
+        ReturnSyntax::trailing);
+    add("get_const_view",
+        ir.types.intern("ConstView"),
+        slice_parameters,
         "return get_const_view().slice(offset, count);",
         FunctionReceiver::const_,
         ReturnSyntax::trailing);
-    add_compact_function(
-        context,
-        result,
-        "apply_arrays",
+    add("apply_arrays",
         ir.types.intern("decltype(auto)"),
-        {ir.parameter("TFunc&&", "func")},
+        {func},
         "return std::forward<TFunc>(func)(" + components + ");",
         FunctionReceiver::unqualified,
         ReturnSyntax::trailing,
         ir.template_declaration({ir.type_template_parameter(ir.strings.intern("TFunc"))}));
-    add_compact_function(
-        context,
-        result,
-        "apply_arrays",
+    add("apply_arrays",
         ir.types.intern("decltype(auto)"),
-        {ir.parameter("TFunc&&", "func")},
+        {func},
         "return std::forward<TFunc>(func)(" + components + ");",
         FunctionReceiver::const_,
         ReturnSyntax::trailing,
         ir.template_declaration({ir.type_template_parameter(ir.strings.intern("TFunc"))}));
-    add_compact_function(
-        context,
-        result,
-        "num",
+    add("num",
         ir.types.intern("size_type"),
         {},
         "return " +
@@ -379,28 +353,27 @@ auto homogeneous_storage_access_nodes(LoweringContext& context, DeclarationHandl
                                     {},
                                     {ir.types.dependency("check", "CoreMinimal.h")}),
                1);
-    add_compact_function(context,
-                         result,
-                         "is_empty",
-                         ir.types.intern("bool"),
-                         {},
-                         "return num() == 0;",
-                         FunctionReceiver::const_,
-                         ReturnSyntax::trailing);
+    add("is_empty",
+        ir.types.intern("bool"),
+        {},
+        "return num() == 0;",
+        FunctionReceiver::const_,
+        ReturnSyntax::trailing);
     return result.build();
 }
 
 auto homogeneous_storage_copy_nodes(LoweringContext& context, DeclarationHandle layout) -> Nodes {
     auto& ir{context.ir};
+    auto const dst_i{ir.parameter("size_type const", "dst_i")};
+    auto const src{ir.parameter("Other const&", "src")};
+    auto const src_i{ir.parameter("size_type const", "src_i")};
     NodeListBuilder result{ir};
     result.add(
         homogeneous_function(
             context,
             "copy_element",
             ir.types.intern("void"),
-            {ir.parameter("size_type const", "dst_i"),
-             ir.parameter("Other const&", "src"),
-             ir.parameter("size_type const", "src_i")},
+            {dst_i, src, src_i},
             component_assignments(context, layout, "{}[dst_i]", "src.{}[src_i]"),
             FunctionReceiver::unqualified,
             ReturnSyntax::trailing,
@@ -412,10 +385,7 @@ auto homogeneous_storage_copy_nodes(LoweringContext& context, DeclarationHandle 
             context,
             "copy_elements",
             ir.types.intern("void"),
-            {ir.parameter("size_type const", "dst_i"),
-             ir.parameter("Other const&", "src"),
-             ir.parameter("size_type const", "src_i"),
-             ir.parameter("size_type const", "count")},
+            {dst_i, src, src_i, ir.parameter("size_type const", "count")},
             "for (auto i{0}; i < count; ++i) {\n" +
                 component_lines(context, layout, "    {}[dst_i + i] = src.{}[src_i + i];") + "\n}",
             FunctionReceiver::unqualified,
@@ -428,7 +398,7 @@ auto homogeneous_storage_copy_nodes(LoweringContext& context, DeclarationHandle 
             context,
             "copy_to_tail",
             ir.types.intern("void"),
-            {ir.parameter("Other const&", "src")},
+            {src},
             Nodes{
                 ir.variable("auto const", "count", ir.raw_expression("src.num()")),
                 ir.expression_statement(ir.raw_expression("check(num() >= count)"),
@@ -458,6 +428,7 @@ auto homogeneous_storage_copy_nodes(LoweringContext& context, DeclarationHandle 
 auto homogeneous_storage_sort_nodes(LoweringContext& context, FunctionId const permutation)
     -> Nodes {
     auto& ir{context.ir};
+    auto const scratch_indices{ir.parameter("TArrayView<int32>", "scratch_indices")};
     NodeListBuilder result{ir};
     result.add(ir.declaration(permutation), 1);
     auto sort_body = [&ir](std::string sort_expression) {
@@ -478,8 +449,7 @@ auto homogeneous_storage_sort_nodes(LoweringContext& context, FunctionId const p
             context,
             "sort",
             ir.types.intern("void"),
-            {ir.parameter("Compare&&", "compare"),
-             ir.parameter("TArrayView<int32>", "scratch_indices")},
+            {ir.parameter("Compare&&", "compare"), scratch_indices},
             sort_body("scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) { "
                       "return compare(*this, lhs, rhs); });"),
             FunctionReceiver::unqualified,
@@ -492,7 +462,7 @@ auto homogeneous_storage_sort_nodes(LoweringContext& context, FunctionId const p
             context,
             "sort",
             ir.types.intern("void"),
-            {ir.parameter("TArrayView<int32>", "scratch_indices")},
+            {scratch_indices},
             sort_body("scratch_indices.Sort([this](int32 const lhs, int32 const rhs) { return "
                       "Compare(*this, lhs, rhs); });"),
             FunctionReceiver::unqualified,
@@ -507,6 +477,8 @@ auto homogeneous_storage_sort_nodes(LoweringContext& context, FunctionId const p
 auto homogeneous_storage_array_operation_nodes(LoweringContext& context, DeclarationHandle layout)
     -> Nodes {
     auto& ir{context.ir};
+    auto const count{ir.parameter("size_type const", "count")};
+    auto const allow_shrinking{ir.parameter("EAllowShrinking const", "allow_shrinking")};
     NodeListBuilder result{ir};
     auto add_each = [&](std::string name,
                         std::vector<FunctionParameterId> parameters,
@@ -522,27 +494,18 @@ auto homogeneous_storage_array_operation_nodes(LoweringContext& context, Declara
     };
     add_each("reset", {}, "{}.Reset()");
     add_each("empty", {}, "{}.Empty()");
-    add_each("reserve", {ir.parameter("size_type const", "count")}, "{}.Reserve(count)");
-    add_each("set_num",
-             {ir.parameter("size_type const", "count"),
-              ir.parameter("EAllowShrinking const", "allow_shrinking")},
-             "{}.SetNum(count, allow_shrinking)");
-    add_each("set_num_uninitialised",
-             {ir.parameter("size_type const", "count")},
-             "{}.SetNumUninitialized(count)");
-    add_each("add_uninitialised",
-             {ir.parameter("size_type const", "count")},
-             "{}.AddUninitialized(count)");
+    add_each("reserve", {count}, "{}.Reserve(count)");
+    add_each("set_num", {count, allow_shrinking}, "{}.SetNum(count, allow_shrinking)");
+    add_each("set_num_uninitialised", {count}, "{}.SetNumUninitialized(count)");
+    add_each("add_uninitialised", {count}, "{}.AddUninitialized(count)");
     add_each("remove_at_swap",
-             {ir.parameter("size_type const", "index"),
-              ir.parameter("size_type const", "count"),
-              ir.parameter("EAllowShrinking const", "allow_shrinking")},
+             {ir.parameter("size_type const", "index"), count, allow_shrinking},
              "{}.RemoveAtSwap(index, count, allow_shrinking)");
-    add_each("add_zeroed", {ir.parameter("size_type const", "count")}, "{}.AddZeroed(count)");
+    add_each("add_zeroed", {count}, "{}.AddZeroed(count)");
     result.add(homogeneous_function(context,
                                     "add_defaulted",
                                     ir.types.intern("void"),
-                                    {ir.parameter("size_type const", "count")},
+                                    {count},
                                     component_statements(context, layout, "{}.AddDefaulted(count)"),
                                     FunctionReceiver::unqualified,
                                     ReturnSyntax::trailing));
@@ -553,6 +516,7 @@ auto homogeneous_storage_value_nodes(LoweringContext& context,
                                      DeclarationHandle layout,
                                      HomogeneousValueId value) -> Nodes {
     auto& ir{context.ir};
+    auto const index_id{ir.parameter("size_type const", "index")};
     NodeListBuilder result{ir};
     if (context.declarations.homogeneous_values
             .equivalent_type[context.declarations.homogeneous_values.index(value)]
@@ -568,7 +532,7 @@ auto homogeneous_storage_value_nodes(LoweringContext& context,
             .add(homogeneous_function(context,
                                       "operator[]",
                                       ir.types.intern("equivalent_type"),
-                                      {ir.parameter("size_type const", "index")},
+                                      {index_id},
                                       "return {" + join(values, ", ") + "};",
                                       FunctionReceiver::const_,
                                       ReturnSyntax::trailing),
@@ -577,7 +541,7 @@ auto homogeneous_storage_value_nodes(LoweringContext& context,
                      context,
                      "at",
                      ir.types.intern("equivalent_type"),
-                     {ir.parameter("size_type const", "index")},
+                     {index_id},
                      Nodes{
                          ir.expression_statement(ir.raw_expression("validate_array_sizes()")),
                          ir.expression_statement(ir.raw_expression("check(index >= 0)"),
@@ -607,7 +571,7 @@ auto homogeneous_storage_value_nodes(LoweringContext& context,
                                    ir.raw_expression(std::string{component.front()})));
     }
     auto set_parameters{component_parameters};
-    set_parameters.insert(set_parameters.begin(), ir.parameter("size_type const", "index"));
+    set_parameters.insert(set_parameters.begin(), index_id);
     result.add(
         homogeneous_function(
             context, "set", ir.types.intern("void"), std::move(set_parameters), set_body.build()),
@@ -671,20 +635,19 @@ auto homogeneous_storage_value_nodes(LoweringContext& context,
     for (auto const input_reference : context.declarations.items(
              context.declarations.homogeneous_values
                  .input_types[context.declarations.homogeneous_values.index(value)])) {
-        auto input_type{qualify(ir, context.resolve(input_reference), " const&")};
+        auto const input_type{qualify(ir, context.resolve(input_reference), " const&")};
         result
-            .add(homogeneous_function(
-                     context,
-                     "set",
-                     ir.types.intern("void"),
-                     {ir.parameter("size_type const", "index"), ir.parameter(input_type, "value")},
-                     Nodes{ir.expression_statement(
-                         ir.raw_expression("set(index, " + join(arguments, ", ") + ")"))}),
+            .add(homogeneous_function(context,
+                                      "set",
+                                      ir.types.intern("void"),
+                                      {index_id, ir.parameter(input_type, "value")},
+                                      Nodes{ir.expression_statement(ir.raw_expression(
+                                          "set(index, " + join(arguments, ", ") + ")"))}),
                  1)
             .add(homogeneous_function(context,
                                       "add",
                                       ir.types.intern("size_type"),
-                                      {ir.parameter(std::move(input_type), "value")},
+                                      {ir.parameter(input_type, "value")},
                                       Nodes{ir.return_statement(
                                           ir.raw_expression("add(" + join(arguments, ", ") + ")"))},
                                       FunctionReceiver::unqualified,
