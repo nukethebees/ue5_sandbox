@@ -61,7 +61,7 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
         }
         document->source_path = source_path;
 
-        ml::editor::FS7LevelSourceSession session;
+        ioj::editor::FS7LevelSourceSession session;
         auto const loaded{session.load(*document, source_path)};
         if (!TestRunner->TestTrue(TEXT("Source loads"), loaded.has_value())) {
             TestRunner->AddError(loaded.error());
@@ -133,7 +133,7 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
         }
         document->source_path = source_path;
 
-        ml::editor::FS7LevelSourceSession session;
+        ioj::editor::FS7LevelSourceSession session;
         auto const loaded{session.attach(*document)};
         if (!TestRunner->TestTrue(TEXT("Source loads"), loaded.has_value())) {
             TestRunner->AddError(loaded.error());
@@ -145,7 +145,7 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
             return;
         }
         TestRunner->TestEqual(TEXT("Sibling library supplies title"),
-                              read->metadata.title,
+                              ml::to_fstring(read->definition().metadata.title),
                               FString{TEXT("From Sibling Library")});
 
         session.set_buffer(source.Replace(TEXT("shared-title"), TEXT("\"From Buffer\"")));
@@ -157,7 +157,7 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
             return;
         }
         TestRunner->TestEqual(TEXT("Preview input comes from the buffer"),
-                              edited_read->metadata.title,
+                              ml::to_fstring(edited_read->definition().metadata.title),
                               FString{TEXT("From Buffer")});
         FString unchanged_disk_source;
         FFileHelper::LoadFileToString(unchanged_disk_source, *source_path);
@@ -175,7 +175,7 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
             return;
         }
 
-        ml::editor::FS7LevelSourceSession session;
+        ioj::editor::FS7LevelSourceSession session;
         auto const attached{session.attach(*document)};
         if (!TestRunner->TestTrue(TEXT("Unsaved buffer attaches"), attached.has_value())) {
             TestRunner->AddError(attached.error());
@@ -188,7 +188,7 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
                              write_source(TEXT("unrelated"), target));
 
         auto const refused{
-            session.save_as(target, ml::editor::ES7SourceOverwritePolicy::RefuseExisting)};
+            session.save_as(target, ioj::editor::ES7SourceOverwritePolicy::RefuseExisting)};
         TestRunner->TestFalse(TEXT("Existing target is refused"), refused.has_value());
         FString retained;
         FFileHelper::LoadFileToString(retained, *target);
@@ -197,7 +197,7 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
 
         auto const prior_revision{session.revision()};
         auto const replaced{
-            session.save_as(target, ml::editor::ES7SourceOverwritePolicy::ReplaceExisting)};
+            session.save_as(target, ioj::editor::ES7SourceOverwritePolicy::ReplaceExisting)};
         if (!TestRunner->TestTrue(TEXT("Confirmed replacement saves"), replaced.has_value())) {
             TestRunner->AddError(replaced.error());
             return;
@@ -222,7 +222,7 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
         }
         document->source_path = source_path;
 
-        ml::editor::FS7LevelSourceSession session;
+        ioj::editor::FS7LevelSourceSession session;
         auto const loaded{session.attach(*document)};
         if (!TestRunner->TestTrue(TEXT("Source loads"), loaded.has_value())) {
             TestRunner->AddError(loaded.error());
@@ -252,7 +252,7 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
             return;
         }
         auto const synchronized_digest{
-            ml::editor::FS7LevelSourceSession::source_digest(session.buffer())};
+            ioj::editor::FS7LevelSourceSession::source_digest(session.buffer())};
         TestRunner->TestTrue(TEXT("Second external edit is written"),
                              write_source(TEXT("external again"), source_path));
         TestRunner->TestFalse(
@@ -275,10 +275,10 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
         }
         document->source_path = source_path;
         document->synchronized_source_hash =
-            ml::editor::FS7LevelSourceSession::source_digest(initial);
+            ioj::editor::FS7LevelSourceSession::source_digest(initial);
         document->synchronized_scene_hash = TEXT("scene-baseline");
 
-        ml::editor::FS7LevelSourceSession session;
+        ioj::editor::FS7LevelSourceSession session;
         auto const loaded{session.attach(*document)};
         if (!TestRunner->TestTrue(TEXT("Source loads"), loaded.has_value())) {
             TestRunner->AddError(loaded.error());
@@ -292,7 +292,7 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
         }
         TestRunner->TestEqual(TEXT("Raw save preserves applied-source synchronization"),
                               document->synchronized_source_hash,
-                              ml::editor::FS7LevelSourceSession::source_digest(initial));
+                              ioj::editor::FS7LevelSourceSession::source_digest(initial));
         TestRunner->TestEqual(TEXT("Raw save preserves scene synchronization"),
                               document->synchronized_scene_hash,
                               FString{TEXT("scene-baseline")});
@@ -319,7 +319,7 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
         }
         document->source_path = source_path;
 
-        ml::editor::FS7LevelSourceSession session;
+        ioj::editor::FS7LevelSourceSession session;
         auto const attached{session.attach(*document)};
         if (!TestRunner->TestTrue(TEXT("Absent source baseline attaches"), attached.has_value())) {
             TestRunner->AddError(attached.error());
@@ -362,7 +362,7 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
         first->source_path = first_path;
         second->source_path = second_path;
 
-        ml::editor::FS7LevelSourceSession session;
+        ioj::editor::FS7LevelSourceSession session;
         auto const loaded{session.attach(*first)};
         if (!TestRunner->TestTrue(TEXT("First source loads"), loaded.has_value())) {
             TestRunner->AddError(loaded.error());
@@ -388,7 +388,7 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
         auto const recovery_path{FPaths::Combine(directory.path, TEXT("recovered.scm"))};
         TestRunner->TestTrue(
             TEXT("Detached buffer can be recovered to a new file"),
-            session.save_as(recovery_path, ml::editor::ES7SourceOverwritePolicy::RefuseExisting)
+            session.save_as(recovery_path, ioj::editor::ES7SourceOverwritePolicy::RefuseExisting)
                 .has_value());
         TestRunner->TestFalse(TEXT("Recovery does not attach to the new document"),
                               session.is_attached());

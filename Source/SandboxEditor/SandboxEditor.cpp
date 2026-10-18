@@ -38,7 +38,7 @@ FName const FSandboxEditorModule::s7_level_script_editor_tab_id{
 void FSandboxEditorModule::StartupModule() {
     s7_pie_handle_ = FWorldDelegates::OnWorldInitializedActors.AddLambda(
         [](FActorsInitializedParams const& params) {
-            auto const prepared{ml::editor::prepare_s7_level_for_pie(*params.World)};
+            auto const prepared{ioj::editor::prepare_s7_level_for_pie(*params.World)};
             if (!prepared) {
                 UE_LOG(LogTemp, Error, TEXT("S7 PIE preparation failed: %s"), *prepared.error());
             }

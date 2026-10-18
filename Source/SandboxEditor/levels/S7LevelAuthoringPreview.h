@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SandboxEditor/levels/S7LevelReconciliation.h"
+#include <ioj/levels/authoring/scene_snapshot.h>
 
 #include <CoreMinimal.h>
 #include <UObject/WeakObjectPtr.h>
@@ -12,7 +13,7 @@ class AS7LevelAuthoringDocument;
 class ULevel;
 class USpaceGameLevelConfig;
 
-namespace ml::editor {
+namespace ioj::editor {
 class FS7LevelSourceSession;
 
 enum class ES7LevelPreviewError { Stale, Execution };
@@ -22,13 +23,11 @@ struct FS7LevelPreviewError {
 };
 
 struct SANDBOXEDITOR_API FS7LevelAuthoringPreview {
-    FS7LevelSyncPlan plan{};
+    FS7LevelSyncPlan plan;
     uint64 source_revision{};
-    FString source_path{};
     TWeakObjectPtr<ULevel> level{};
     TWeakObjectPtr<AS7LevelAuthoringDocument> document{};
     TWeakObjectPtr<USpaceGameLevelConfig> level_config{};
-    TWeakObjectPtr<UClass> level_config_class{};
     FString level_config_digest{};
     TArray<TWeakObjectPtr<AActor>> actor_identities{};
     ::ioj::levels::authoring::SceneSnapshot scene{};

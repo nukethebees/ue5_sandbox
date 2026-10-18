@@ -1,7 +1,7 @@
 #pragma once
 
+#include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/authoring/source_session.h>
-#include <SpaceGameS7/definition_reader.h>
 
 #include <CoreMinimal.h>
 #include <UObject/WeakObjectPtr.h>
@@ -10,7 +10,7 @@
 
 class AS7LevelAuthoringDocument;
 
-namespace ml::editor {
+namespace ioj::editor {
 enum class ES7SourceOverwritePolicy { RefuseExisting, ReplaceExisting };
 
 class SANDBOXEDITOR_API FS7LevelSourceSession final {
@@ -34,7 +34,8 @@ class SANDBOXEDITOR_API FS7LevelSourceSession final {
                                            ES7SourceOverwritePolicy overwrite)
         -> std::expected<void, FString>;
 
-    [[nodiscard]] auto read() const -> ::ioj::levels::authoring::FLevelDefinitionReadResult;
+    [[nodiscard]] auto read() const
+        -> std::expected<::ioj::levels::authoring::EditorLevel, ::ioj::levels::Diagnostics>;
     [[nodiscard]] auto refresh_external_conflict() -> std::expected<void, FString>;
 
     [[nodiscard]] auto document() const -> AS7LevelAuthoringDocument*;

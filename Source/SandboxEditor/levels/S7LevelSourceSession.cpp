@@ -9,7 +9,7 @@
 #include <Misc/Paths.h>
 #include <Misc/SecureHash.h>
 
-namespace ml::editor {
+namespace ioj::editor {
 auto FS7LevelSourceSession::attach(AS7LevelAuthoringDocument& document)
     -> std::expected<void, FString> {
     auto const normalized_path{normalize_path(document.source_path)};
@@ -106,18 +106,16 @@ auto FS7LevelSourceSession::save_replacement_as(FString source,
     return write(source, path, overwrite, true);
 }
 
-auto FS7LevelSourceSession::read() const -> ::ioj::levels::authoring::FLevelDefinitionReadResult {
+auto FS7LevelSourceSession::read() const
+    -> std::expected<::ioj::levels::authoring::EditorLevel, ::ioj::levels::Diagnostics> {
     if (!is_attached()) {
-        return ::ioj::levels::authoring::FLevelDefinitionReadResult{
-            std::unexpect,
-            ::ioj::levels::Diagnostics{
-                {::ioj::levels::DiagnosticCode::ExpectedRecord,
-                 "$",
-                 "The source buffer is not attached to the current level."}}};
+        return std::unexpected{::ioj::levels::Diagnostics{
+            {::ioj::levels::DiagnosticCode::ExpectedRecord,
+             "$",
+             "The source buffer is not attached to the current level."}}};
     }
     if (buffer_.TrimStartAndEnd().IsEmpty()) {
-        return ::ioj::levels::authoring::FLevelDefinitionReadResult{
-            std::unexpect,
+        return std::unexpected{
             ::ioj::levels::Diagnostics{{::ioj::levels::DiagnosticCode::ExpectedRecord,
                                         "$",
                                         "The S7 source buffer is empty. Use Save Canonical from "
@@ -127,7 +125,10 @@ auto FS7LevelSourceSession::read() const -> ::ioj::levels::authoring::FLevelDefi
                                     ? ::ioj::levels::authoring::default_level_script_directory()
                                     : FPaths::GetPath(path_)};
     auto const library_root{FPaths::Combine(source_directory, TEXT("Libraries"))};
-    return ::ioj::levels::authoring::FDefinitionReader{library_root}.read_level_source(buffer_);
+    auto const utf8{FTCHARToUTF8{*buffer_, buffer_.Len()}};
+    return ::ioj::levels::authoring::DefinitionReader{std::filesystem::path{*library_root}}
+        .read_editor_level_source(
+            std::string_view{utf8.Get(), static_cast<std::size_t>(utf8.Length())});
 }
 
 auto FS7LevelSourceSession::refresh_external_conflict() -> std::expected<void, FString> {

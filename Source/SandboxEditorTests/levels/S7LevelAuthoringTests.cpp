@@ -1,4 +1,5 @@
 #include "S7LevelAuthoringTestActor.h"
+#include <ioj/levels/authoring/level_definition_writer.h>
 #include <ioj/sim/capital_ships/sim.h>
 #include <SandboxEditor/levels/S7LevelAuthoringDocument.h>
 #include <SandboxEditor/levels/S7LevelAuthoringMode.h>
@@ -10,13 +11,13 @@
 #include <SandboxEditor/levels/S7LevelSourceSession.h>
 #include <SandboxEditor/SandboxEditor.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
+#include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGameS7/definition_reader.h>
-#include <SpaceGameS7/level_definition_writer.h>
 
 #include <SandboxCoreEngine/strings.h>
 
@@ -40,6 +41,34 @@
 #include <expected>
 
 namespace {
+auto emit_source(ml::FLevelDefinition const& definition) -> std::expected<FString, FString> {
+    auto checked{ioj::levels::authoring::to_native(definition)
+                     .and_then(ioj::levels::authoring::EditorLevel::make)};
+    if (!checked) {
+        return std::unexpected{ml::to_fstring(ioj::levels::format_diagnostics(checked.error()))};
+    }
+    return ml::to_fstring(ioj::levels::authoring::emit_editor_level_source(*checked));
+}
+
+auto collect_level(ULevel const& level, AS7LevelAuthoringDocument const& document)
+    -> std::expected<ml::FLevelDefinition, FString> {
+    return ioj::editor::collect_s7_editor_level(level, document).transform([](auto const& checked) {
+        return ioj::levels::authoring::to_unreal(checked.definition());
+    });
+}
+
+auto make_plan(ULevel const& level,
+               AS7LevelAuthoringDocument const& document,
+               ml::FLevelDefinition const& definition)
+    -> std::expected<ioj::editor::FS7LevelSyncPlan, FString> {
+    auto checked{ioj::levels::authoring::to_native(definition)
+                     .and_then(ioj::levels::authoring::EditorLevel::make)};
+    if (!checked) {
+        return std::unexpected{ml::to_fstring(ioj::levels::format_diagnostics(checked.error()))};
+    }
+    return ioj::editor::make_s7_level_sync_plan(level, document, MoveTemp(*checked));
+}
+
 template <typename T>
 auto spawn(UWorld& world, TCHAR const* label, UClass* const actor_class = T::StaticClass()) -> T* {
     auto* const actor{world.SpawnActor<T>(actor_class, FTransform::Identity)};
@@ -173,44 +202,43 @@ auto write_source(FStringView const source, FString const& path) -> bool {
         FString{source}, *path, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
 }
 
-auto make_stale_preview(FPreviewFixture& fixture, ml::editor::FS7LevelSourceSession& source_session)
-    -> std::expected<ml::editor::FS7LevelAuthoringPreview, FString> {
+auto make_stale_preview(FPreviewFixture& fixture,
+                        ioj::editor::FS7LevelSourceSession& source_session)
+    -> std::expected<ioj::editor::FS7LevelAuthoringPreview, FString> {
     auto const attached{source_session.attach(*fixture.document)};
     if (!attached) {
         return std::unexpected{attached.error()};
     }
     source_session.set_buffer(TEXT("preview source"));
 
-    auto definition{
-        ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
+    auto definition{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
     if (!definition) {
         return std::unexpected{definition.error()};
     }
     definition->metadata.title = TEXT("From Preview");
-    auto const plan{ml::editor::make_s7_level_sync_plan(
-        *fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
+    auto const plan{make_plan(*fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
     if (!plan) {
         return std::unexpected{plan.error()};
     }
-    return ml::editor::make_s7_level_authoring_preview(
+    return ioj::editor::make_s7_level_authoring_preview(
         *fixture.world->GetCurrentLevel(), *fixture.document, source_session, *plan);
 }
 
 template <typename TTestRunner>
 void assert_stale_preview_does_not_apply(TTestRunner& test_runner,
                                          FPreviewFixture const& fixture,
-                                         ml::editor::FS7LevelSourceSession const& source_session,
-                                         ml::editor::FS7LevelAuthoringPreview const& preview,
+                                         ioj::editor::FS7LevelSourceSession const& source_session,
+                                         ioj::editor::FS7LevelAuthoringPreview const& preview,
                                          FStringView const expected_reason) {
     auto const player_count{count_actors<ATestSpaceShip>(*fixture.world->GetCurrentLevel())};
     auto const capital_count{
         count_actors<ATestCapitalShipProxy>(*fixture.world->GetCurrentLevel())};
-    auto const applied{ml::editor::apply_s7_level_authoring_preview(
+    auto const applied{ioj::editor::apply_s7_level_authoring_preview(
         *fixture.world->GetCurrentLevel(), *fixture.document, source_session, preview)};
     test_runner.TestFalse(TEXT("Stale preview is rejected"), applied.has_value());
     if (!applied) {
         test_runner.TestTrue(TEXT("Stale reason is useful"),
-                             applied.error().code == ml::editor::ES7LevelPreviewError::Stale &&
+                             applied.error().code == ioj::editor::ES7LevelPreviewError::Stale &&
                                  applied.error().message.Contains(expected_reason));
     }
     test_runner.TestEqual(TEXT("Stale apply preserves title"),
@@ -230,7 +258,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
     TEST_METHOD(NewDocumentAndGameRuntimeUseTheSameCanonicalBase)
     {
         auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
-        auto const created{ml::editor::create_level_authoring_document(*world->GetCurrentLevel())};
+        auto const created{ioj::editor::create_level_authoring_document(*world->GetCurrentLevel())};
         auto* const canonical{ml::s7_level_config::load_canonical()};
         if (!TestRunner->TestTrue(TEXT("Authoring document is created"), created.has_value()) ||
             !TestRunner->TestNotNull(TEXT("Canonical S7 config loads"), canonical)) {
@@ -268,8 +296,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                               fixture.document->grid_override_schema_version,
                               1);
 
-        auto const inherited{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
-                                                                 *fixture.document)};
+        auto const inherited{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
         if (!TestRunner->TestTrue(TEXT("Inherited grid collects"), inherited.has_value())) {
             TestRunner->AddError(inherited.error());
             return;
@@ -296,7 +323,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Cell override survives asset size change"),
                              updated.cell_size == fixture.document->grid_cell_size);
 
-        auto const playable{ml::editor::validate_playable_s7_level(
+        auto const playable{ioj::editor::validate_playable_s7_level(
             *fixture.world->GetCurrentLevel(), *fixture.document)};
         if (!TestRunner->TestTrue(TEXT("Partial grid validates for play"), playable.has_value())) {
             TestRunner->AddError(playable.error());
@@ -304,24 +331,24 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
 
         fixture.level_config->collision_grid.grid_size = FVector3f::ZeroVector;
         fixture.document->level_size = original_size;
-        auto const fully_authored{ml::editor::validate_playable_s7_level(
+        auto const fully_authored{ioj::editor::validate_playable_s7_level(
             *fixture.world->GetCurrentLevel(), *fixture.document)};
         TestRunner->TestFalse(TEXT("Valid S7 override cannot repair invalid base asset"),
                               fully_authored.has_value());
         fixture.document->level_size = FVector3f::ZeroVector;
         TestRunner->TestFalse(TEXT("Invalid base without override fails"),
-                              ml::editor::validate_playable_s7_level(
+                              ioj::editor::validate_playable_s7_level(
                                   *fixture.world->GetCurrentLevel(), *fixture.document)
                                   .has_value());
         fixture.level_config->collision_grid.grid_size = original_size;
         fixture.document->level_size = FVector3f{-1.f, 100.f, 100.f};
         TestRunner->TestFalse(TEXT("Invalid explicit override fails"),
-                              ml::editor::validate_playable_s7_level(
+                              ioj::editor::validate_playable_s7_level(
                                   *fixture.world->GetCurrentLevel(), *fixture.document)
                                   .has_value());
         fixture.document->level_size = original_size;
         TestRunner->TestTrue(TEXT("Valid full override passes"),
-                             ml::editor::validate_playable_s7_level(
+                             ioj::editor::validate_playable_s7_level(
                                  *fixture.world->GetCurrentLevel(), *fixture.document)
                                  .has_value());
     }
@@ -352,8 +379,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                              pinned.level_size.IsSet());
 
         fixture.document->level_size = FVector3f{0.f, 100.f, 100.f};
-        auto const invalid{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
-                                                               *fixture.document)};
+        auto const invalid{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
         TestRunner->TestFalse(TEXT("Malformed explicit size does not fall back"),
                               invalid.has_value());
     }
@@ -367,22 +393,21 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         fixture.document->migrate_collision_grid_overrides();
         fixture.document->level_size = FVector3f{2100000.f, 2100000.f, 500000.f};
 
-        auto definition{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
-                                                            *fixture.document)};
+        auto definition{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
         if (!TestRunner->TestTrue(TEXT("Authored grid collects"), definition.has_value())) {
             TestRunner->AddError(definition.error());
             return;
         }
         definition->collision_grid = NullOpt;
-        auto const plan{ml::editor::make_s7_level_sync_plan(
-            *fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
+        auto const plan{
+            make_plan(*fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
         if (!TestRunner->TestTrue(TEXT("Grid removal plans"), plan.has_value())) {
             TestRunner->AddError(plan.error());
             return;
         }
         TestRunner->TestTrue(TEXT("Grid removal is a change"), plan->collision_grid_changed);
 
-        auto const applied{ml::editor::apply_s7_level_sync_plan(
+        auto const applied{ioj::editor::apply_s7_level_sync_plan(
             *fixture.world->GetCurrentLevel(), *fixture.document, *plan)};
         if (!TestRunner->TestTrue(TEXT("Grid removal applies"), applied.has_value())) {
             TestRunner->AddError(applied.error());
@@ -390,8 +415,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
         TestRunner->TestTrue(TEXT("Size inherits again"),
                              fixture.document->level_size == FVector3f::ZeroVector);
-        auto const recollected{ml::editor::collect_s7_editor_level(
-            *fixture.world->GetCurrentLevel(), *fixture.document)};
+        auto const recollected{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
         TestRunner->TestTrue(TEXT("No grid override is reintroduced"),
                              recollected.has_value() && !recollected->collision_grid.IsSet());
     }
@@ -406,20 +430,19 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         fixture.document->level_size = FVector3f{2100000.f, 2100000.f, 500000.f};
         fixture.document->grid_cell_size = FVector3f{6000.f, 6000.f, 20000.f};
 
-        auto definition{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
-                                                            *fixture.document)};
+        auto definition{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
         if (!TestRunner->TestTrue(TEXT("Existing overrides collect"), definition.has_value())) {
             return;
         }
         auto const incoming_cells{FVector3f{7000.f, 8000.f, 22000.f}};
         definition->collision_grid =
             ml::FLevelCollisionGridDefinition{.level_size = NullOpt, .cell_size = incoming_cells};
-        auto const plan{ml::editor::make_s7_level_sync_plan(
-            *fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
+        auto const plan{
+            make_plan(*fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
         if (!TestRunner->TestTrue(TEXT("Partial replacement plans"), plan.has_value())) {
             return;
         }
-        auto const applied{ml::editor::apply_s7_level_sync_plan(
+        auto const applied{ioj::editor::apply_s7_level_sync_plan(
             *fixture.world->GetCurrentLevel(), *fixture.document, *plan)};
         TestRunner->TestTrue(TEXT("Partial replacement applies"), applied.has_value());
         TestRunner->TestTrue(TEXT("Omitted size returns to inheritance"),
@@ -437,13 +460,12 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         fixture.document->migrate_collision_grid_overrides();
         fixture.document->grid_cell_size = FVector3f{6000.f, 6000.f, 20000.f};
 
-        auto const collected{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
-                                                                 *fixture.document)};
+        auto const collected{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
         if (!TestRunner->TestTrue(TEXT("Partial grid collects"), collected.has_value())) {
             TestRunner->AddError(collected.error());
             return;
         }
-        auto const source{::ioj::levels::authoring::emit_editor_level_source(*collected)};
+        auto const source{emit_source(*collected)};
         if (!TestRunner->TestTrue(TEXT("Partial grid writes"), source.has_value())) {
             TestRunner->AddError(source.error());
             return;
@@ -481,7 +503,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         fixture.document->camera.offset_direction = FVector{3.0, 4.0, 0.0};
         fixture.document->camera.distance = 1000.0;
 
-        auto const one_target{ml::editor::make_s7_observer_camera_transform(
+        auto const one_target{ioj::editor::make_s7_observer_camera_transform(
             *fixture.world->GetCurrentLevel(), *fixture.document)};
         if (!TestRunner->TestTrue(TEXT("Single-target observer camera is valid"),
                                   one_target.has_value()) ||
@@ -502,7 +524,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                 (one_target->GetValue().focus - expected_one_target_position).Rotation(), 0.001));
 
         fixture.document->camera.targets = {fixture.player, fixture.enemy};
-        auto const multiple_targets{ml::editor::make_s7_observer_camera_transform(
+        auto const multiple_targets{ioj::editor::make_s7_observer_camera_transform(
             *fixture.world->GetCurrentLevel(), *fixture.document)};
         if (!TestRunner->TestTrue(TEXT("Multiple-target observer camera is valid"),
                                   multiple_targets.has_value()) ||
@@ -518,20 +540,20 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                                  FVector{1000.0, 1400.0, 800.0}, 0.001));
 
         fixture.document->camera.targets.Reset();
-        auto const missing_targets{ml::editor::make_s7_observer_camera_transform(
+        auto const missing_targets{ioj::editor::make_s7_observer_camera_transform(
             *fixture.world->GetCurrentLevel(), *fixture.document)};
         TestRunner->TestFalse(TEXT("Missing camera targets are rejected"),
                               missing_targets.has_value());
 
         fixture.document->camera.targets = {fixture.player};
         fixture.document->camera.offset_direction = FVector::ZeroVector;
-        auto const invalid_direction{ml::editor::make_s7_observer_camera_transform(
+        auto const invalid_direction{ioj::editor::make_s7_observer_camera_transform(
             *fixture.world->GetCurrentLevel(), *fixture.document)};
         TestRunner->TestFalse(TEXT("Zero camera direction is rejected"),
                               invalid_direction.has_value());
 
         fixture.document->use_observer_camera = false;
-        auto const player_camera{ml::editor::make_s7_observer_camera_transform(
+        auto const player_camera{ioj::editor::make_s7_observer_camera_transform(
             *fixture.world->GetCurrentLevel(), *fixture.document)};
         TestRunner->TestTrue(TEXT("Player-authored levels have no observer visualization"),
                              player_camera.has_value() && !player_camera->IsSet());
@@ -543,7 +565,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(TEXT("Fixture"), fixture.is_valid())) {
             return;
         }
-        ml::editor::FS7LevelSourceSession source_session;
+        ioj::editor::FS7LevelSourceSession source_session;
         auto const preview{make_stale_preview(fixture, source_session)};
         if (!TestRunner->TestTrue(TEXT("Preview builds"), preview.has_value())) {
             TestRunner->AddError(preview.error());
@@ -554,7 +576,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         assert_stale_preview_does_not_apply(
             *TestRunner, fixture, source_session, *preview, TEXT("source or source path"));
 
-        ml::editor::FS7LevelSourceSession path_session;
+        ioj::editor::FS7LevelSourceSession path_session;
         auto const path_preview{make_stale_preview(fixture, path_session)};
         if (!TestRunner->TestTrue(TEXT("Path preview builds"), path_preview.has_value())) {
             TestRunner->AddError(path_preview.error());
@@ -564,7 +586,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         auto const path{FPaths::Combine(directory.path, TEXT("other.scm"))};
         if (!TestRunner->TestTrue(
                 TEXT("Source path changes"),
-                path_session.save_as(path, ml::editor::ES7SourceOverwritePolicy::ReplaceExisting)
+                path_session.save_as(path, ioj::editor::ES7SourceOverwritePolicy::ReplaceExisting)
                     .has_value())) {
             return;
         }
@@ -578,7 +600,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(TEXT("Fixture"), fixture.is_valid())) {
             return;
         }
-        ml::editor::FS7LevelSourceSession source_session;
+        ioj::editor::FS7LevelSourceSession source_session;
         auto const transform_preview{make_stale_preview(fixture, source_session)};
         if (!TestRunner->TestTrue(TEXT("Transform preview builds"),
                                   transform_preview.has_value())) {
@@ -593,7 +615,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                               FVector{100.0, 0.0, 0.0});
 
         fixture.player->SetActorLocation(FVector::ZeroVector);
-        ml::editor::FS7LevelSourceSession team_session;
+        ioj::editor::FS7LevelSourceSession team_session;
         auto const team_preview{make_stale_preview(fixture, team_session)};
         if (!TestRunner->TestTrue(TEXT("Team preview builds"), team_preview.has_value())) {
             TestRunner->AddError(team_preview.error());
@@ -606,7 +628,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             TEXT("Stale apply preserves team"), fixture.enemy->get_team(), ETestTeam::Blue);
 
         fixture.enemy->set_team(ETestTeam::Red);
-        ml::editor::FS7LevelSourceSession metadata_session;
+        ioj::editor::FS7LevelSourceSession metadata_session;
         auto const metadata_preview{make_stale_preview(fixture, metadata_session)};
         if (!TestRunner->TestTrue(TEXT("Metadata preview builds"), metadata_preview.has_value())) {
             TestRunner->AddError(metadata_preview.error());
@@ -621,7 +643,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
 
         fixture.document->description = TEXT("Before");
         auto const original_mission{fixture.document->mission};
-        ml::editor::FS7LevelSourceSession mission_session;
+        ioj::editor::FS7LevelSourceSession mission_session;
         auto const mission_preview{make_stale_preview(fixture, mission_session)};
         if (!TestRunner->TestTrue(TEXT("Mission preview builds"), mission_preview.has_value())) {
             TestRunner->AddError(mission_preview.error());
@@ -635,7 +657,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                               ETestMissionMode::SurviveTime);
 
         fixture.document->mission = original_mission;
-        ml::editor::FS7LevelSourceSession camera_session;
+        ioj::editor::FS7LevelSourceSession camera_session;
         auto const camera_preview{make_stale_preview(fixture, camera_session)};
         if (!TestRunner->TestTrue(TEXT("Camera preview builds"), camera_preview.has_value())) {
             TestRunner->AddError(camera_preview.error());
@@ -655,7 +677,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(TEXT("Fixture"), fixture.is_valid())) {
             return;
         }
-        ml::editor::FS7LevelSourceSession source_session;
+        ioj::editor::FS7LevelSourceSession source_session;
         auto const id_preview{make_stale_preview(fixture, source_session)};
         if (!TestRunner->TestTrue(TEXT("Binding preview builds"), id_preview.has_value())) {
             TestRunner->AddError(id_preview.error());
@@ -666,7 +688,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             *TestRunner, fixture, source_session, *id_preview, TEXT("bindings"));
 
         fixture.document->entities[1].id = TEXT("enemy");
-        ml::editor::FS7LevelSourceSession replacement_session;
+        ioj::editor::FS7LevelSourceSession replacement_session;
         auto const replacement_preview{make_stale_preview(fixture, replacement_session)};
         if (!TestRunner->TestTrue(TEXT("Replacement preview builds"),
                                   replacement_preview.has_value())) {
@@ -690,7 +712,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
 
         fixture.document->entities[1].actor = fixture.enemy;
         replacement->Destroy();
-        ml::editor::FS7LevelSourceSession deletion_session;
+        ioj::editor::FS7LevelSourceSession deletion_session;
         auto const deletion_preview{make_stale_preview(fixture, deletion_session)};
         if (!TestRunner->TestTrue(TEXT("Deletion preview builds"), deletion_preview.has_value())) {
             TestRunner->AddError(deletion_preview.error());
@@ -707,7 +729,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(TEXT("Fixture"), fixture.is_valid())) {
             return;
         }
-        ml::editor::FS7LevelSourceSession source_session;
+        ioj::editor::FS7LevelSourceSession source_session;
         auto const pointer_preview{make_stale_preview(fixture, source_session)};
         if (!TestRunner->TestTrue(TEXT("Pointer preview builds"), pointer_preview.has_value())) {
             TestRunner->AddError(pointer_preview.error());
@@ -718,7 +740,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             *TestRunner, fixture, source_session, *pointer_preview, TEXT("level configuration"));
 
         fixture.document->level_config = fixture.level_config;
-        ml::editor::FS7LevelSourceSession value_session;
+        ioj::editor::FS7LevelSourceSession value_session;
         auto const value_preview{make_stale_preview(fixture, value_session)};
         if (!TestRunner->TestTrue(TEXT("Value preview builds"), value_preview.has_value())) {
             TestRunner->AddError(value_preview.error());
@@ -729,7 +751,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             *TestRunner, fixture, value_session, *value_preview, TEXT("level configuration"));
 
         fixture.level_config->laser_debug_shapes = !fixture.level_config->laser_debug_shapes;
-        ml::editor::FS7LevelSourceSession class_session;
+        ioj::editor::FS7LevelSourceSession class_session;
         auto const class_preview{make_stale_preview(fixture, class_session)};
         if (!TestRunner->TestTrue(TEXT("Class preview builds"), class_preview.has_value())) {
             TestRunner->AddError(class_preview.error());
@@ -746,7 +768,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(TEXT("Fixture"), fixture.is_valid())) {
             return;
         }
-        ml::editor::FS7LevelSourceSession source_session;
+        ioj::editor::FS7LevelSourceSession source_session;
         auto const level_preview{make_stale_preview(fixture, source_session)};
         if (!TestRunner->TestTrue(TEXT("Level preview builds"), level_preview.has_value())) {
             TestRunner->AddError(level_preview.error());
@@ -756,14 +778,14 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!TestRunner->TestNotNull(TEXT("Other level"), other_level)) {
             return;
         }
-        auto const applied{ml::editor::apply_s7_level_authoring_preview(
+        auto const applied{ioj::editor::apply_s7_level_authoring_preview(
             *other_level, *fixture.document, source_session, *level_preview)};
         TestRunner->TestFalse(TEXT("Different level is rejected"), applied.has_value());
         TestRunner->TestEqual(TEXT("Different level preserves original document title"),
                               fixture.document->title,
                               FString{TEXT("Preview Level")});
 
-        ml::editor::FS7LevelSourceSession document_session;
+        ioj::editor::FS7LevelSourceSession document_session;
         auto const document_preview{make_stale_preview(fixture, document_session)};
         if (!TestRunner->TestTrue(TEXT("Document preview builds"), document_preview.has_value())) {
             TestRunner->AddError(document_preview.error());
@@ -775,10 +797,10 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             return;
         }
         auto const document_applied{
-            ml::editor::apply_s7_level_authoring_preview(*fixture.world->GetCurrentLevel(),
-                                                         *other_document,
-                                                         document_session,
-                                                         *document_preview)};
+            ioj::editor::apply_s7_level_authoring_preview(*fixture.world->GetCurrentLevel(),
+                                                          *other_document,
+                                                          document_session,
+                                                          *document_preview)};
         TestRunner->TestFalse(TEXT("Different document is rejected"), document_applied.has_value());
         TestRunner->TestEqual(TEXT("Different document preserves original title"),
                               fixture.document->title,
@@ -791,13 +813,13 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(TEXT("Fixture"), fixture.is_valid())) {
             return;
         }
-        ml::editor::FS7LevelSourceSession source_session;
+        ioj::editor::FS7LevelSourceSession source_session;
         auto const preview{make_stale_preview(fixture, source_session)};
         if (!TestRunner->TestTrue(TEXT("Preview builds"), preview.has_value())) {
             TestRunner->AddError(preview.error());
             return;
         }
-        auto const applied{ml::editor::apply_s7_level_authoring_preview(
+        auto const applied{ioj::editor::apply_s7_level_authoring_preview(
             *fixture.world->GetCurrentLevel(), *fixture.document, source_session, *preview)};
         TestRunner->TestTrue(TEXT("Unchanged preview applies"), applied.has_value());
         TestRunner->TestEqual(TEXT("Unchanged preview applies planned title"),
@@ -812,7 +834,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             return;
         }
         fixture.document->source_path = source_path;
-        ml::editor::FS7LevelSourceSession disk_session;
+        ioj::editor::FS7LevelSourceSession disk_session;
         auto const disk_preview{make_stale_preview(fixture, disk_session)};
         if (!TestRunner->TestTrue(TEXT("Disk preview builds"), disk_preview.has_value())) {
             TestRunner->AddError(disk_preview.error());
@@ -826,7 +848,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
         TestRunner->TestTrue(TEXT("External source marks a conflict"),
                              disk_session.has_external_conflict());
-        auto const disk_applied{ml::editor::apply_s7_level_authoring_preview(
+        auto const disk_applied{ioj::editor::apply_s7_level_authoring_preview(
             *fixture.world->GetCurrentLevel(), *fixture.document, disk_session, *disk_preview)};
         TestRunner->TestTrue(TEXT("External disk edit leaves preview valid"),
                              disk_applied.has_value());
@@ -858,13 +880,12 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         document->mission.must_survive = {player};
         document->mission.required_kills = {enemy};
 
-        auto const definition{
-            ml::editor::collect_s7_editor_level(*world->GetCurrentLevel(), *document)};
+        auto const definition{collect_level(*world->GetCurrentLevel(), *document)};
         if (!TestRunner->TestTrue(TEXT("Document collects"), definition.has_value())) {
             TestRunner->AddError(definition.error());
             return;
         }
-        auto const source{::ioj::levels::authoring::emit_editor_level_source(*definition)};
+        auto const source{emit_source(*definition)};
         if (!TestRunner->TestTrue(TEXT("Definition writes"), source.has_value())) {
             return;
         }
@@ -884,8 +905,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
             return;
         }
-        auto definition{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
-                                                            *fixture.document)};
+        auto definition{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
         if (!TestRunner->TestTrue(TEXT("Baseline collects"), definition.has_value())) {
             TestRunner->AddError(definition.error());
             return;
@@ -893,8 +913,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         definition->metadata.title = TEXT("After");
         definition->metadata.description = TEXT("After description");
 
-        auto const plan{ml::editor::make_s7_level_sync_plan(
-            *fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
+        auto const plan{
+            make_plan(*fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
         if (!TestRunner->TestTrue(TEXT("Preview builds"), plan.has_value())) {
             TestRunner->AddError(plan.error());
             return;
@@ -905,14 +925,13 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestEqual(
             TEXT("Entities are unchanged"), static_cast<int32>(plan->changes.size()), 0);
 
-        auto const applied{ml::editor::apply_s7_level_sync_plan(
+        auto const applied{ioj::editor::apply_s7_level_sync_plan(
             *fixture.world->GetCurrentLevel(), *fixture.document, *plan)};
         if (!TestRunner->TestTrue(TEXT("Preview applies"), applied.has_value())) {
             TestRunner->AddError(applied.error());
             return;
         }
-        auto const collected{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
-                                                                 *fixture.document)};
+        auto const collected{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
         if (!TestRunner->TestTrue(TEXT("Applied scene collects"), collected.has_value())) {
             TestRunner->AddError(collected.error());
             return;
@@ -936,8 +955,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         fixture.document->mission.kill_count = 1;
         fixture.document->mission.heroes = {fixture.player};
         fixture.document->mission.required_kills = {fixture.enemy};
-        auto definition{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
-                                                            *fixture.document)};
+        auto definition{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
         if (!TestRunner->TestTrue(TEXT("Baseline collects"), definition.has_value())) {
             TestRunner->AddError(definition.error());
             return;
@@ -946,8 +964,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         definition->mission->kill_count = 2;
         definition->mission->required_kill_entity_ids.Reset();
 
-        auto const plan{ml::editor::make_s7_level_sync_plan(
-            *fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
+        auto const plan{
+            make_plan(*fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
         if (!TestRunner->TestTrue(TEXT("Preview builds"), plan.has_value())) {
             TestRunner->AddError(plan.error());
             return;
@@ -958,14 +976,13 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestEqual(
             TEXT("Entities are unchanged"), static_cast<int32>(plan->changes.size()), 0);
 
-        auto const applied{ml::editor::apply_s7_level_sync_plan(
+        auto const applied{ioj::editor::apply_s7_level_sync_plan(
             *fixture.world->GetCurrentLevel(), *fixture.document, *plan)};
         if (!TestRunner->TestTrue(TEXT("Preview applies"), applied.has_value())) {
             TestRunner->AddError(applied.error());
             return;
         }
-        auto const collected{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
-                                                                 *fixture.document)};
+        auto const collected{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
         if (!TestRunner->TestTrue(TEXT("Applied scene collects"), collected.has_value()) ||
             !TestRunner->TestTrue(TEXT("Mission is present"), collected->mission.IsSet())) {
             return;
@@ -991,8 +1008,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
             return;
         }
-        auto definition{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
-                                                            *fixture.document)};
+        auto definition{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
         if (!TestRunner->TestTrue(TEXT("Baseline collects"), definition.has_value())) {
             TestRunner->AddError(definition.error());
             return;
@@ -1002,8 +1018,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             return;
         }
 
-        auto const plan{ml::editor::make_s7_level_sync_plan(
-            *fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
+        auto const plan{
+            make_plan(*fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
         if (!TestRunner->TestTrue(TEXT("Preview builds"), plan.has_value())) {
             TestRunner->AddError(plan.error());
             return;
@@ -1014,14 +1030,13 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestEqual(
             TEXT("Entities are unchanged"), static_cast<int32>(plan->changes.size()), 0);
 
-        auto const applied{ml::editor::apply_s7_level_sync_plan(
+        auto const applied{ioj::editor::apply_s7_level_sync_plan(
             *fixture.world->GetCurrentLevel(), *fixture.document, *plan)};
         if (!TestRunner->TestTrue(TEXT("Preview applies"), applied.has_value())) {
             TestRunner->AddError(applied.error());
             return;
         }
-        auto const collected{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
-                                                                 *fixture.document)};
+        auto const collected{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
         if (!TestRunner->TestTrue(TEXT("Applied scene collects"), collected.has_value()) ||
             !TestRunner->TestTrue(TEXT("Camera is present"), collected->camera.IsSet())) {
             return;
@@ -1037,8 +1052,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
             return;
         }
-        auto definition{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
-                                                            *fixture.document)};
+        auto definition{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
         if (!TestRunner->TestTrue(TEXT("Baseline collects"), definition.has_value())) {
             TestRunner->AddError(definition.error());
             return;
@@ -1054,8 +1068,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             return;
         }
 
-        auto const plan{ml::editor::make_s7_level_sync_plan(
-            *fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
+        auto const plan{
+            make_plan(*fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
         if (!TestRunner->TestTrue(TEXT("Preview builds"), plan.has_value())) {
             TestRunner->AddError(plan.error());
             return;
@@ -1065,17 +1079,16 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestFalse(TEXT("Mission is unchanged"), plan->mission_changed);
         TestRunner->TestEqual(
             TEXT("Player actor is removed"),
-            static_cast<int32>(plan->count(ml::editor::ES7LevelSyncAction::Remove)),
+            static_cast<int32>(plan->count(ioj::editor::ES7LevelSyncAction::Remove)),
             1);
 
-        auto const applied{ml::editor::apply_s7_level_sync_plan(
+        auto const applied{ioj::editor::apply_s7_level_sync_plan(
             *fixture.world->GetCurrentLevel(), *fixture.document, *plan)};
         if (!TestRunner->TestTrue(TEXT("Preview applies"), applied.has_value())) {
             TestRunner->AddError(applied.error());
             return;
         }
-        auto const collected{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
-                                                                 *fixture.document)};
+        auto const collected{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
         if (!TestRunner->TestTrue(TEXT("Applied scene collects"), collected.has_value())) {
             TestRunner->AddError(collected.error());
             return;
@@ -1102,7 +1115,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         auto* const actor{spawn<AS7LevelAuthoringTestActor>(*world, TEXT("player"))};
         actor->set_team(ETestTeam::Blue);
         document->entities = {{.id = TEXT("player"), .actor = actor}};
-        auto definition{ml::editor::collect_s7_editor_level(*world->GetCurrentLevel(), *document)};
+        auto definition{collect_level(*world->GetCurrentLevel(), *document)};
         if (!TestRunner->TestTrue(TEXT("Definition collects"), definition.has_value())) {
             return;
         }
@@ -1114,14 +1127,13 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             if (metadata_change) {
                 definition->metadata.title = TEXT("Updated title");
             }
-            auto const plan{ml::editor::make_s7_level_sync_plan(
-                *world->GetCurrentLevel(), *document, *definition)};
+            auto const plan{make_plan(*world->GetCurrentLevel(), *document, *definition)};
             if (!TestRunner->TestTrue(TEXT("Plan builds"), plan.has_value())) {
                 return;
             }
             TestRunner->TestTrue(
                 TEXT("Plan applies"),
-                ml::editor::apply_s7_level_sync_plan(*world->GetCurrentLevel(), *document, *plan)
+                ioj::editor::apply_s7_level_sync_plan(*world->GetCurrentLevel(), *document, *plan)
                     .has_value());
             TestRunner->TestEqual(
                 TEXT("Actor is not modified"), actor->modifications, modifications);
@@ -1153,17 +1165,16 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                             .team = ::ioj::Team::Blue,
                             .position = FVector{100.0, 200.0, 300.0},
                             .rotation = FRotator{10.0, 20.0, 30.0}});
-        auto const plan{ml::editor::make_s7_level_sync_plan(
-            *world->GetCurrentLevel(), *document, builder.finish())};
+        auto const plan{make_plan(*world->GetCurrentLevel(), *document, builder.finish())};
         if (!TestRunner->TestTrue(TEXT("Preview builds"), plan.has_value())) {
             TestRunner->AddError(plan.error());
             return;
         }
         TestRunner->TestEqual(TEXT("One actor adds"),
-                              static_cast<int32>(plan->count(ml::editor::ES7LevelSyncAction::Add)),
+                              static_cast<int32>(plan->count(ioj::editor::ES7LevelSyncAction::Add)),
                               1);
         auto const applied{
-            ml::editor::apply_s7_level_sync_plan(*world->GetCurrentLevel(), *document, *plan)};
+            ioj::editor::apply_s7_level_sync_plan(*world->GetCurrentLevel(), *document, *plan)};
         if (!TestRunner->TestTrue(TEXT("Preview applies"), applied.has_value())) {
             TestRunner->AddError(applied.error());
             return;
@@ -1215,19 +1226,18 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                             .team = ::ioj::Team::Blue,
                             .position = FVector{100.0, 200.0, 300.0},
                             .rotation = FRotator{10.0, 20.0, 30.0}});
-        auto const plan{ml::editor::make_s7_level_sync_plan(
-            *world->GetCurrentLevel(), *document, builder.finish())};
+        auto const plan{make_plan(*world->GetCurrentLevel(), *document, builder.finish())};
         if (!TestRunner->TestTrue(TEXT("Preview builds"), plan.has_value())) {
             TestRunner->AddError(plan.error());
             return;
         }
         TestRunner->TestEqual(
             TEXT("One actor updates"),
-            static_cast<int32>(plan->count(ml::editor::ES7LevelSyncAction::Update)),
+            static_cast<int32>(plan->count(ioj::editor::ES7LevelSyncAction::Update)),
             1);
 
         auto const applied{
-            ml::editor::apply_s7_level_sync_plan(*world->GetCurrentLevel(), *document, *plan)};
+            ioj::editor::apply_s7_level_sync_plan(*world->GetCurrentLevel(), *document, *plan)};
         if (!TestRunner->TestTrue(TEXT("Preview applies"), applied.has_value())) {
             TestRunner->AddError(applied.error());
             return;
@@ -1273,19 +1283,18 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         builder.add_entity({.id = ml::FLevelEntityId{TEXT("ship")},
                             .archetype = ml::level_archetypes::capital_ship,
                             .team = ::ioj::Team::Blue});
-        auto const plan{ml::editor::make_s7_level_sync_plan(
-            *world->GetCurrentLevel(), *document, builder.finish())};
+        auto const plan{make_plan(*world->GetCurrentLevel(), *document, builder.finish())};
         if (!TestRunner->TestTrue(TEXT("Preview builds"), plan.has_value())) {
             TestRunner->AddError(plan.error());
             return;
         }
         TestRunner->TestEqual(
             TEXT("One actor replaces"),
-            static_cast<int32>(plan->count(ml::editor::ES7LevelSyncAction::Replace)),
+            static_cast<int32>(plan->count(ioj::editor::ES7LevelSyncAction::Replace)),
             1);
 
         auto const applied{
-            ml::editor::apply_s7_level_sync_plan(*world->GetCurrentLevel(), *document, *plan)};
+            ioj::editor::apply_s7_level_sync_plan(*world->GetCurrentLevel(), *document, *plan)};
         if (!TestRunner->TestTrue(TEXT("Preview applies"), applied.has_value())) {
             TestRunner->AddError(applied.error());
             return;
@@ -1331,19 +1340,18 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         builder.add_entity({.id = ml::FLevelEntityId{TEXT("kept")},
                             .archetype = ml::level_archetypes::capital_ship,
                             .team = ::ioj::Team::Blue});
-        auto const plan{ml::editor::make_s7_level_sync_plan(
-            *world->GetCurrentLevel(), *document, builder.finish())};
+        auto const plan{make_plan(*world->GetCurrentLevel(), *document, builder.finish())};
         if (!TestRunner->TestTrue(TEXT("Preview builds"), plan.has_value())) {
             TestRunner->AddError(plan.error());
             return;
         }
         TestRunner->TestEqual(
             TEXT("One actor removes"),
-            static_cast<int32>(plan->count(ml::editor::ES7LevelSyncAction::Remove)),
+            static_cast<int32>(plan->count(ioj::editor::ES7LevelSyncAction::Remove)),
             1);
 
         auto const applied{
-            ml::editor::apply_s7_level_sync_plan(*world->GetCurrentLevel(), *document, *plan)};
+            ioj::editor::apply_s7_level_sync_plan(*world->GetCurrentLevel(), *document, *plan)};
         if (!TestRunner->TestTrue(TEXT("Preview applies"), applied.has_value())) {
             TestRunner->AddError(applied.error());
             return;
@@ -1383,8 +1391,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         builder.add_entity({.id = ml::FLevelEntityId{TEXT("capital")},
                             .archetype = ml::level_archetypes::capital_ship,
                             .team = ::ioj::Team::Red});
-        auto const plan{ml::editor::make_s7_level_sync_plan(
-            *world->GetCurrentLevel(), *document, builder.finish())};
+        auto const plan{make_plan(*world->GetCurrentLevel(), *document, builder.finish())};
         if (!TestRunner->TestTrue(TEXT("Preview builds with valid classes"), plan.has_value())) {
             TestRunner->AddError(plan.error());
             return;
@@ -1392,7 +1399,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
 
         level_config->classes.capital_ship_proxy_class = nullptr;
         auto const applied{
-            ml::editor::apply_s7_level_sync_plan(*world->GetCurrentLevel(), *document, *plan)};
+            ioj::editor::apply_s7_level_sync_plan(*world->GetCurrentLevel(), *document, *plan)};
         TestRunner->TestFalse(TEXT("Invalid later class is rejected"), applied.has_value());
         TestRunner->TestEqual(TEXT("No player was staged"),
                               count_actors<ATestSpaceShip>(*world->GetCurrentLevel()),
@@ -1442,18 +1449,13 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                             .team = static_cast<::ioj::Team>(255)});
         auto const definition{builder.finish()};
 
-        auto const preview{
-            ml::editor::make_s7_level_sync_plan(*world->GetCurrentLevel(), *document, definition)};
+        auto const preview{make_plan(*world->GetCurrentLevel(), *document, definition)};
         TestRunner->TestFalse(TEXT("Preview rejects invalid team"), preview.has_value());
         if (!preview) {
             TestRunner->TestTrue(TEXT("Error explains invalid team"),
                                  preview.error().Contains(TEXT("invalid team")));
         }
 
-        ml::editor::FS7LevelSyncPlan const unchecked_plan{.definition = definition};
-        auto const applied{ml::editor::apply_s7_level_sync_plan(
-            *world->GetCurrentLevel(), *document, unchecked_plan)};
-        TestRunner->TestFalse(TEXT("Apply revalidates invalid team"), applied.has_value());
         TestRunner->TestEqual(TEXT("No actor is added"),
                               count_actors<ATestCapitalShipProxy>(*world->GetCurrentLevel()),
                               0);
@@ -1485,20 +1487,17 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         auto const definition{builder.finish()};
 
         document->entities = {{.id = NAME_None, .actor = actor}};
-        auto invalid{
-            ml::editor::make_s7_level_sync_plan(*world->GetCurrentLevel(), *document, definition)};
+        auto invalid{make_plan(*world->GetCurrentLevel(), *document, definition)};
         TestRunner->TestFalse(TEXT("Invalid binding is rejected"), invalid.has_value());
 
         document->entities = {{.id = TEXT("ship"), .actor = actor},
                               {.id = TEXT("ship"), .actor = actor}};
-        auto duplicate_id{
-            ml::editor::make_s7_level_sync_plan(*world->GetCurrentLevel(), *document, definition)};
+        auto duplicate_id{make_plan(*world->GetCurrentLevel(), *document, definition)};
         TestRunner->TestFalse(TEXT("Duplicate id is rejected"), duplicate_id.has_value());
 
         document->entities = {{.id = TEXT("ship"), .actor = actor},
                               {.id = TEXT("other"), .actor = actor}};
-        auto duplicate_actor{
-            ml::editor::make_s7_level_sync_plan(*world->GetCurrentLevel(), *document, definition)};
+        auto duplicate_actor{make_plan(*world->GetCurrentLevel(), *document, definition)};
         TestRunner->TestFalse(TEXT("Duplicate actor is rejected"), duplicate_actor.has_value());
     }
 
@@ -1545,8 +1544,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         document->mission.time_limit_seconds = 12.0f;
         document->mission.must_survive = {removed};
 
-        auto const baseline{
-            ml::editor::collect_s7_editor_level(*world->GetCurrentLevel(), *document)};
+        auto const baseline{collect_level(*world->GetCurrentLevel(), *document)};
         if (!TestRunner->TestTrue(TEXT("Undo baseline is valid"), baseline.has_value())) {
             TestRunner->AddError(baseline.error());
             return;
@@ -1582,30 +1580,29 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!assert_valid_definition(*TestRunner, definition)) {
             return;
         }
-        auto const plan{
-            ml::editor::make_s7_level_sync_plan(*world->GetCurrentLevel(), *document, definition)};
+        auto const plan{make_plan(*world->GetCurrentLevel(), *document, definition)};
         if (!TestRunner->TestTrue(TEXT("Mixed preview builds"), plan.has_value())) {
             TestRunner->AddError(plan.error());
             return;
         }
         TestRunner->TestEqual(TEXT("One actor adds"),
-                              static_cast<int32>(plan->count(ml::editor::ES7LevelSyncAction::Add)),
+                              static_cast<int32>(plan->count(ioj::editor::ES7LevelSyncAction::Add)),
                               1);
         TestRunner->TestEqual(
             TEXT("One actor updates"),
-            static_cast<int32>(plan->count(ml::editor::ES7LevelSyncAction::Update)),
+            static_cast<int32>(plan->count(ioj::editor::ES7LevelSyncAction::Update)),
             1);
         TestRunner->TestEqual(
             TEXT("One actor replaces"),
-            static_cast<int32>(plan->count(ml::editor::ES7LevelSyncAction::Replace)),
+            static_cast<int32>(plan->count(ioj::editor::ES7LevelSyncAction::Replace)),
             1);
         TestRunner->TestEqual(
             TEXT("One actor removes"),
-            static_cast<int32>(plan->count(ml::editor::ES7LevelSyncAction::Remove)),
+            static_cast<int32>(plan->count(ioj::editor::ES7LevelSyncAction::Remove)),
             1);
 
         auto const applied{
-            ml::editor::apply_s7_level_sync_plan(*world->GetCurrentLevel(), *document, *plan)};
+            ioj::editor::apply_s7_level_sync_plan(*world->GetCurrentLevel(), *document, *plan)};
         if (!TestRunner->TestTrue(TEXT("Mixed preview applies"), applied.has_value())) {
             TestRunner->AddError(applied.error());
             return;
@@ -1697,7 +1694,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         auto& modes{GLevelEditorModeTools()};
         modes.ActivateMode(US7LevelAuthoringMode::mode_id);
 
-        auto const document{ml::editor::find_level_authoring_document(*world->GetCurrentLevel())};
+        auto const document{ioj::editor::find_level_authoring_document(*world->GetCurrentLevel())};
         TestRunner->TestTrue(TEXT("Document is created on mode entry"), document.has_value());
         if (!document || !*document) {
             modes.DeactivateMode(US7LevelAuthoringMode::mode_id);
@@ -1709,8 +1706,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                                  [capital](FS7LevelEntityBinding const& binding) {
                                      return binding.actor == capital;
                                  }));
-        auto const definition{
-            ml::editor::collect_s7_editor_level(*world->GetCurrentLevel(), **document)};
+        auto const definition{collect_level(*world->GetCurrentLevel(), **document)};
         TestRunner->TestTrue(TEXT("Adopted proxies can be exported"), definition.has_value());
 
         modes.DeactivateMode(US7LevelAuthoringMode::mode_id);
@@ -1757,7 +1753,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         document->mission.required_kills = {duplicate_two};
 
         auto const repaired{
-            ml::editor::repair_s7_level_bindings(*world->GetCurrentLevel(), *document)};
+            ioj::editor::repair_s7_level_bindings(*world->GetCurrentLevel(), *document)};
         if (!TestRunner->TestTrue(TEXT("Bindings repair succeeds"), repaired.has_value())) {
             TestRunner->AddError(repaired.error());
             return;
@@ -1881,18 +1877,17 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                             .archetype = ml::level_archetypes::capital_ship,
                             .team = ::ioj::Team::Blue,
                             .spawn_time_seconds = 2.5});
-        auto const plan{ml::editor::make_s7_level_sync_plan(
-            *world->GetCurrentLevel(), *document, builder.finish())};
+        auto const plan{make_plan(*world->GetCurrentLevel(), *document, builder.finish())};
         if (!TestRunner->TestTrue(TEXT("Delayed spawn preview builds"), plan.has_value())) {
             TestRunner->AddError(plan.error());
             return;
         }
         TestRunner->TestEqual(TEXT("Delayed actor adds"),
-                              static_cast<int32>(plan->count(ml::editor::ES7LevelSyncAction::Add)),
+                              static_cast<int32>(plan->count(ioj::editor::ES7LevelSyncAction::Add)),
                               1);
 
         auto const applied{
-            ml::editor::apply_s7_level_sync_plan(*world->GetCurrentLevel(), *document, *plan)};
+            ioj::editor::apply_s7_level_sync_plan(*world->GetCurrentLevel(), *document, *plan)};
         if (!TestRunner->TestTrue(TEXT("Delayed spawn applies"), applied.has_value())) {
             TestRunner->AddError(applied.error());
             return;
@@ -1906,13 +1901,12 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestEqual(
             TEXT("Delay is stored in the world document"), binding->spawn_time_seconds, 2.5);
 
-        auto const collected{
-            ml::editor::collect_s7_editor_level(*world->GetCurrentLevel(), *document)};
+        auto const collected{collect_level(*world->GetCurrentLevel(), *document)};
         if (!TestRunner->TestTrue(TEXT("Delayed scene collects"), collected.has_value())) {
             TestRunner->AddError(collected.error());
             return;
         }
-        auto const source{::ioj::levels::authoring::emit_editor_level_source(*collected)};
+        auto const source{emit_source(*collected)};
         if (!TestRunner->TestTrue(TEXT("Delayed scene writes"), source.has_value())) {
             TestRunner->AddError(source.error());
             return;
@@ -1922,18 +1916,17 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
 
         auto updated_definition{*collected};
         updated_definition.entities.spawn_times_seconds[0] = 4.0;
-        auto const update_plan{ml::editor::make_s7_level_sync_plan(
-            *world->GetCurrentLevel(), *document, updated_definition)};
+        auto const update_plan{make_plan(*world->GetCurrentLevel(), *document, updated_definition)};
         if (!TestRunner->TestTrue(TEXT("Delay-only preview builds"), update_plan.has_value())) {
             TestRunner->AddError(update_plan.error());
             return;
         }
         TestRunner->TestEqual(
             TEXT("Delay-only change updates"),
-            static_cast<int32>(update_plan->count(ml::editor::ES7LevelSyncAction::Update)),
+            static_cast<int32>(update_plan->count(ioj::editor::ES7LevelSyncAction::Update)),
             1);
 
-        auto const updated{ml::editor::apply_s7_level_sync_plan(
+        auto const updated{ioj::editor::apply_s7_level_sync_plan(
             *world->GetCurrentLevel(), *document, *update_plan)};
         if (!TestRunner->TestTrue(TEXT("Delay-only update applies"), updated.has_value())) {
             TestRunner->AddError(updated.error());
@@ -2006,8 +1999,8 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
         if (observer) {
             fixture.ally->SetActorLocation(FVector{-30000.0, 0.0, 0.0});
         }
-        auto const setup{ml::editor::set_up_playable_s7_level(*fixture.world->GetCurrentLevel(),
-                                                              *fixture.document)};
+        auto const setup{ioj::editor::set_up_playable_s7_level(*fixture.world->GetCurrentLevel(),
+                                                               *fixture.document)};
         if (!TestRunner->TestTrue(TEXT("Playable setup"), setup.has_value())) {
             TestRunner->AddError(setup.error());
             return;

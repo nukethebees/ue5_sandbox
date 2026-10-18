@@ -154,23 +154,13 @@ auto to_native(ml::FLevelDefinition const& definition)
             .spawn_time_seconds = entities.spawn_times_seconds[index],
         });
     }
-    auto validation{validate_level(result)};
-    if (!validation) {
-        for (auto& diagnostic : validation.error()) {
-            if (std::ranges::none_of(errors, [&](Diagnostic const& error) {
-                    return error.node_path == diagnostic.node_path;
-                })) {
-                errors.push_back(std::move(diagnostic));
-            }
-        }
-    }
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
     return result;
 }
 
-auto to_unreal(LevelDefinition definition) -> ml::FLevelDefinition {
+auto to_unreal(LevelDefinition const& definition) -> ml::FLevelDefinition {
     ml::FLevelBuilder builder;
     ml::FLevelMetadata metadata{
         .id = ml::FLevelId{to_fname(definition.metadata.id.value)},

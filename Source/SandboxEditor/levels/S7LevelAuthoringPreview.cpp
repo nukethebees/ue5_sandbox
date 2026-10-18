@@ -4,8 +4,8 @@
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringSession.h"
 #include "SandboxEditor/levels/S7LevelSourceSession.h"
+#include <ioj/levels/authoring/level_definition_writer.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGameS7/level_definition_writer.h>
 
 #include <SandboxCoreEngine/strings.h>
 
@@ -13,7 +13,7 @@
 #include <ScopedTransaction.h>
 #include <UObject/UnrealType.h>
 
-namespace ml::editor {
+namespace ioj::editor {
 namespace s7_level_authoring_preview_detail {
 auto level_config_digest(USpaceGameLevelConfig const* const level_config) -> FString {
     if (!IsValid(level_config)) {
@@ -101,11 +101,9 @@ auto make_s7_level_authoring_preview(ULevel& level,
     return FS7LevelAuthoringPreview{
         .plan = MoveTemp(plan),
         .source_revision = source_session.revision(),
-        .source_path = source_session.path(),
         .level = &level,
         .document = &document,
         .level_config = level_config,
-        .level_config_class = IsValid(level_config) ? level_config->GetClass() : nullptr,
         .level_config_digest = s7_level_authoring_preview_detail::level_config_digest(level_config),
         .actor_identities = s7_level_authoring_preview_detail::actor_identities(level, document),
         .scene = MoveTemp(*scene)};
@@ -117,8 +115,7 @@ auto validate_s7_level_authoring_preview(ULevel& level,
                                          FS7LevelAuthoringPreview const& preview)
     -> std::expected<void, FS7LevelPreviewError> {
     auto const source_changed{source_session.document() != preview.document.Get() ||
-                              source_session.revision() != preview.source_revision ||
-                              source_session.path() != preview.source_path};
+                              source_session.revision() != preview.source_revision};
     auto const level_or_document_changed{preview.level.Get() != &level ||
                                          preview.document.Get() != &document};
     auto const bindings_changed{s7_level_authoring_preview_detail::actor_identities(
@@ -127,14 +124,11 @@ auto validate_s7_level_authoring_preview(ULevel& level,
     auto* const level_config{document.level_config.Get()};
     auto const configuration_changed{
         preview.level_config.Get() != level_config ||
-        preview.level_config_class.Get() !=
-            (IsValid(level_config) ? level_config->GetClass() : nullptr) ||
         preview.level_config_digest !=
             s7_level_authoring_preview_detail::level_config_digest(level_config)};
 
     auto const current_scene{collect_s7_scene(level, document)};
-    auto const scene_changed{!current_scene ||
-                             !::ioj::levels::authoring::same_scene(*current_scene, preview.scene)};
+    auto const scene_changed{!current_scene || *current_scene != preview.scene};
     auto const authoring_state_changed{level_or_document_changed || bindings_changed ||
                                        scene_changed};
     if (source_changed || authoring_state_changed || configuration_changed) {
@@ -167,11 +161,10 @@ auto apply_s7_level_authoring_preview(ULevel& level,
     document.Modify();
     document.synchronized_source_hash = ml::to_fstring(source_session.state().buffer_digest);
     auto const definition{collect_s7_editor_level(level, document)};
-    auto const source{definition
-                          ? ::ioj::levels::authoring::emit_editor_level_source(*definition)
-                          : std::expected<FString, FString>{std::unexpected{definition.error()}}};
     document.synchronized_scene_hash =
-        source ? FS7LevelSourceSession::source_digest(*source) : FString{};
+        definition ? FS7LevelSourceSession::source_digest(ml::to_fstring(
+                         ::ioj::levels::authoring::emit_editor_level_source(*definition)))
+                   : FString{};
     return {};
 }
 }

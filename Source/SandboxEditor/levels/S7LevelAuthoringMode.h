@@ -13,6 +13,10 @@ class AS7LevelAuthoringDocument;
 
 DECLARE_MULTICAST_DELEGATE(FOnS7LevelAuthoringChanged);
 
+namespace ioj::editor {
+enum class ObjectiveRole { Clear, Hero, MustSurvive, RequiredKill };
+}
+
 struct SANDBOXEDITOR_API FS7LevelScriptEditorState {
     FString path{};
     bool source_dirty{};
@@ -46,8 +50,8 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
                  FCanvas* canvas) override;
 
     [[nodiscard]] auto document() const -> AS7LevelAuthoringDocument*;
-    [[nodiscard]] auto source_session() -> ml::editor::FS7LevelSourceSession&;
-    [[nodiscard]] auto source_session() const -> ml::editor::FS7LevelSourceSession const&;
+    [[nodiscard]] auto source_session() -> ioj::editor::FS7LevelSourceSession&;
+    [[nodiscard]] auto source_session() const -> ioj::editor::FS7LevelSourceSession const&;
     [[nodiscard]] auto script_editor_state() const -> FS7LevelScriptEditorState;
     [[nodiscard]] auto status() const -> FText const&;
     auto on_changed() -> FOnS7LevelAuthoringChanged&;
@@ -77,16 +81,15 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
     void refresh_document();
     void set_status(FText text);
     void update_document_source_path();
-    enum class ObjectiveRole { Clear, Hero, MustSurvive, RequiredKill };
-    void assign_selected_objective(ObjectiveRole role);
+    void assign_selected_objective(ioj::editor::ObjectiveRole role);
 
     TWeakObjectPtr<AS7LevelAuthoringDocument> document_{};
-    ml::editor::FS7LevelSourceSession source_session_{};
-    TOptional<ml::editor::FS7LevelAuthoringPreview> preview_{};
+    ioj::editor::FS7LevelSourceSession source_session_{};
+    TOptional<ioj::editor::FS7LevelAuthoringPreview> preview_{};
     FText status_{};
     FOnS7LevelAuthoringChanged changed_{};
     float refresh_elapsed_seconds_{};
     TOptional<::ioj::levels::authoring::SceneSnapshot> observed_scene_{};
-    FString observed_sync_hash_{};
+    FString observed_scene_digest_{};
     int32 observed_actor_count_{-1};
 };

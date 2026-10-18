@@ -3,8 +3,6 @@
 #include "SandboxEditor/levels/S7LevelAuthoringActors.h"
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include <ioj/levels/authoring/identifiers.h>
-#include <ioj/levels/authoring/level_definition_writer.h>
-#include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
@@ -15,7 +13,7 @@
 #include <Misc/PackageName.h>
 #include <ScopedTransaction.h>
 
-namespace ml::editor {
+namespace ioj::editor {
 namespace s7_level_authoring_session_detail {
 using namespace ::ioj::levels;
 using namespace ::ioj::levels::authoring;
@@ -278,7 +276,7 @@ auto collect_s7_scene(ULevel const& level, AS7LevelAuthoringDocument const& docu
 }
 
 auto collect_s7_editor_level(ULevel const& level, AS7LevelAuthoringDocument const& document)
-    -> std::expected<FLevelDefinition, FString> {
+    -> std::expected<::ioj::levels::authoring::EditorLevel, FString> {
     using namespace s7_level_authoring_session_detail;
     auto const* const config{document.level_config.Get()};
     auto const* const canonical{ml::s7_level_config::load_canonical()};
@@ -302,14 +300,14 @@ auto collect_s7_editor_level(ULevel const& level, AS7LevelAuthoringDocument cons
                 *actor->GetActorLabel())};
         }
     }
-    auto validation{validate_editor_level(scene->definition)};
-    if (!validation) {
-        return std::unexpected{ml::to_fstring(format_diagnostics(validation.error()))};
-    }
     if (!scene->viewpoint_valid || !scene->mission_references_valid) {
         return std::unexpected{
             TEXT("Every viewpoint and mission reference must identify an adopted entity.")};
     }
-    return ::ioj::levels::authoring::to_unreal(MoveTemp(scene->definition));
+    auto checked{EditorLevel::make(MoveTemp(scene->definition))};
+    if (!checked) {
+        return std::unexpected{ml::to_fstring(format_diagnostics(checked.error()))};
+    }
+    return MoveTemp(*checked);
 }
 }

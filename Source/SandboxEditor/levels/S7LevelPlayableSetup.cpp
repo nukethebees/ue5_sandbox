@@ -3,12 +3,14 @@
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringSession.h"
 #include <Sandbox/environment/effects/ShipPostProcessing.h>
+#include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGame/system/GameSubsystem.h>
 
+#include <SandboxCoreEngine/strings.h>
 #include <SandboxShaders/GpuStarfield/GpuStarfieldActor.h>
 
 #include <Editor.h>
@@ -20,18 +22,20 @@
 #include <ScopedTransaction.h>
 #include <UObject/StrongObjectPtr.h>
 
-namespace ml::editor {
+namespace ioj::editor {
 namespace s7_level_playable_setup_detail {
 inline constexpr TCHAR game_mode_class_path[]{
     TEXT("/Game/GameModes/BP_SpaceShipGameMode.BP_SpaceShipGameMode_C")};
 // Resolve the optional player only after collecting and validating the scene.
-auto find_player(AS7LevelAuthoringDocument const& document, FLevelEntityId const id)
+auto find_player(AS7LevelAuthoringDocument const& document, ::ioj::levels::EntityId const& id)
     -> ATestSpaceShip* {
-    if (!id.is_set()) {
+    if (id.empty()) {
         return nullptr;
     }
     auto const* const binding{document.entities.FindByPredicate(
-        [id](auto const& candidate) { return candidate.id == id.value; })};
+        [name = FName{ml::to_fstring(id.value)}](auto const& candidate) {
+            return candidate.id == name;
+        })};
     check(binding);
     return CastChecked<ATestSpaceShip>(binding->actor.Get());
 }
@@ -83,8 +87,8 @@ auto prepare_s7_level_for_pie(UWorld& world) -> std::expected<void, FString> {
     }
 
     ioj::FLevelLaunchOptions options;
-    options.control_context = definition->camera.IsSet() ? EPlayerControlContext::Observer
-                                                         : EPlayerControlContext::Player;
+    options.control_context = definition->definition().camera ? EPlayerControlContext::Observer
+                                                              : EPlayerControlContext::Player;
     // Upgrade old authoring maps in the PIE copy without changing their saved actors.
     orchestrator->set_start_mode(EOrchestratorStartMode::AuthoredLevel);
     orchestrator->clear_player_ship();
@@ -93,7 +97,10 @@ auto prepare_s7_level_for_pie(UWorld& world) -> std::expected<void, FString> {
             return fail(TEXT("Could not remove a duplicated authoring actor before PIE."));
         }
     }
-    game->set_pending_level(MoveTemp(*definition), TEXT("PIE scene"), {}, options);
+    game->set_pending_level(::ioj::levels::authoring::to_unreal(definition->definition()),
+                            TEXT("PIE scene"),
+                            {},
+                            options);
     return {};
 }
 
@@ -115,8 +122,8 @@ auto validate_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& docume
     if (!definition) {
         return std::unexpected{definition.error()};
     }
-    auto* const player{
-        s7_level_playable_setup_detail::find_player(document, definition->player_entity_id)};
+    auto* const player{s7_level_playable_setup_detail::find_player(
+        document, definition->definition().player_entity_id)};
 
     TOptional<::ioj::sim::player::PlayerSpawnData> player_spawn;
     UStaticMesh const* player_mesh{};
@@ -133,8 +140,13 @@ auto validate_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& docume
     if (!effective_config->is_valid(true)) {
         return std::unexpected{TEXT("The authored collision-grid settings are invalid.")};
     }
-    auto const build{make_level_simulation_init_data(
-        *effective_config, {}, *definition, MoveTemp(player_spawn), {}, player_mesh)};
+    auto const build{ml::make_level_simulation_init_data(
+        *effective_config,
+        {},
+        ::ioj::levels::authoring::to_unreal(definition->definition()),
+        MoveTemp(player_spawn),
+        {},
+        player_mesh)};
     if (!build) {
         return std::unexpected{build.error().format()};
     }

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <ioj/levels/authoring/scene.h>
-#include <SpaceGame/levels/LevelDefinition.h>
+#include <ioj/levels/authoring/editor_level.h>
+#include <ioj/levels/authoring/scene_snapshot.h>
 
 #include <CoreMinimal.h>
 
@@ -10,7 +10,7 @@
 class AS7LevelAuthoringDocument;
 class ULevel;
 
-namespace ml::editor {
+namespace ioj::editor {
 struct FS7LevelBindingRepairResult {
     int32 removed_bindings{};
     int32 removed_references{};
@@ -32,7 +32,7 @@ SANDBOXEDITOR_API auto repair_s7_level_bindings(ULevel& level, AS7LevelAuthoring
     -> std::expected<FS7LevelBindingRepairResult, FString>;
 SANDBOXEDITOR_API auto collect_s7_editor_level(ULevel const& level,
                                                AS7LevelAuthoringDocument const& document)
-    -> std::expected<FLevelDefinition, FString>;
+    -> std::expected<::ioj::levels::authoring::EditorLevel, FString>;
 // Check binding structure, but retain invalid numeric values and unresolved references for repair.
 SANDBOXEDITOR_API auto collect_s7_scene(ULevel const& level,
                                         AS7LevelAuthoringDocument const& document)

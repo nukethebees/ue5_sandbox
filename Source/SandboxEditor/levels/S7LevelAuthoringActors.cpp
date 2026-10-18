@@ -10,7 +10,7 @@
 
 #include <algorithm>
 
-namespace ml::editor {
+namespace ioj::editor {
 auto s7_mission_mode(ETestMissionMode const mode) -> ::ioj::levels::LevelMissionMode {
     using Mode = ::ioj::levels::LevelMissionMode;
     switch (mode) {
@@ -43,16 +43,16 @@ auto s7_mission_mode(::ioj::levels::LevelMissionMode const mode) -> ETestMission
 }
 
 auto resolve_s7_level_actor(AActor const& actor) -> TOptional<FS7LevelResolvedActor> {
-    EResolvedLevelArchetype archetype{};
+    ml::EResolvedLevelArchetype archetype{};
     ETestTeam team{};
     if (auto const* const player{Cast<ATestSpaceShip>(&actor)}) {
-        archetype = EResolvedLevelArchetype::PlayerFighter;
+        archetype = ml::EResolvedLevelArchetype::PlayerFighter;
         team = player->get_team();
     } else if (auto const* const capital{Cast<ATestCapitalShipProxy>(&actor)}) {
-        archetype = EResolvedLevelArchetype::CapitalShip;
+        archetype = ml::EResolvedLevelArchetype::CapitalShip;
         team = capital->get_team();
     } else if (auto const* const turret{Cast<ATestStaticTurretsProxy>(&actor)}) {
-        archetype = EResolvedLevelArchetype::StaticTurret;
+        archetype = ml::EResolvedLevelArchetype::StaticTurret;
         team = turret->get_team();
     } else {
         return NullOpt;
@@ -65,32 +65,32 @@ auto resolve_s7_level_actor(AActor const& actor) -> TOptional<FS7LevelResolvedAc
     return FS7LevelResolvedActor{archetype, native_team};
 }
 
-auto s7_level_actor_class(EResolvedLevelArchetype const archetype,
+auto s7_level_actor_class(ml::EResolvedLevelArchetype const archetype,
                           USpaceGameLevelConfig const& config) -> UClass* {
     switch (archetype) {
-        case EResolvedLevelArchetype::PlayerFighter:
+        case ml::EResolvedLevelArchetype::PlayerFighter:
             return config.classes.player_ship_class.Get();
-        case EResolvedLevelArchetype::CapitalShip:
+        case ml::EResolvedLevelArchetype::CapitalShip:
             return config.classes.capital_ship_proxy_class.Get();
-        case EResolvedLevelArchetype::StaticTurret:
+        case ml::EResolvedLevelArchetype::StaticTurret:
             return config.classes.static_turret_proxy_class.Get();
     }
     return nullptr;
 }
 
 void configure_s7_level_actor(AActor& actor,
-                              EResolvedLevelArchetype const archetype,
+                              ml::EResolvedLevelArchetype const archetype,
                               ETestTeam const team,
                               USpaceGameLevelConfig& config,
                               FTransform const& transform,
                               FName const label) {
     actor.Modify();
     actor.SetActorTransform(transform);
-    if (archetype == EResolvedLevelArchetype::PlayerFighter) {
+    if (archetype == ml::EResolvedLevelArchetype::PlayerFighter) {
         auto& player{*CastChecked<ATestSpaceShip>(&actor)};
         player.set_actor_config(&config.player_ship);
         player.set_team(team);
-    } else if (archetype == EResolvedLevelArchetype::CapitalShip) {
+    } else if (archetype == ml::EResolvedLevelArchetype::CapitalShip) {
         auto& capital{*CastChecked<ATestCapitalShipProxy>(&actor)};
         capital.set_level_config_asset(&config);
         capital.set_team(team);
