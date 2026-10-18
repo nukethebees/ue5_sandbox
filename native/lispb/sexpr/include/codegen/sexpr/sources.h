@@ -57,6 +57,8 @@ class Sources {
     // Recheck disk-backed files on their next load; preserve unsaved document overlays.
     void refresh();
     void clear_expansions();
+    // Discard loaded documents and lookup state without changing the owning stores.
+    void clear();
     void rebind(Strings& strings) { strings_ = &strings; }
   private:
     Strings* strings_;

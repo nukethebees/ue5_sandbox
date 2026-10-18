@@ -35,6 +35,8 @@ class Strings {
 
     // Release temporary handles first. Retained source/document handles remain valid.
     void reset_temporary();
+    // Invalidate every handle after all consumers have released their rows.
+    void clear();
 
     [[nodiscard]] auto byte_size() const -> std::size_t;
     [[nodiscard]] auto slice_count() const -> std::size_t;

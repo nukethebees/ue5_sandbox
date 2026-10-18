@@ -192,5 +192,18 @@ void Sources::clear_expansions() {
     invocations_.resize(1);
     definitions_.resize(1);
 }
+void Sources::clear() {
+    paths_.resize(1);
+    texts_.resize(1);
+    lines_.resize(1);
+    kinds_.resize(1);
+    states_.resize(1);
+    includes_.resize(1);
+    include_targets_.clear();
+    include_spans_.clear();
+    line_offsets_.clear();
+    loaded_files_.clear();
+    clear_expansions();
+}
 
 }

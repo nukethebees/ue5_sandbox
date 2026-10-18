@@ -18,6 +18,10 @@ struct CompilerStorage {
     auto operator=(CompilerStorage const&) -> CompilerStorage& = delete;
     auto operator=(CompilerStorage&&) -> CompilerStorage& = delete;
 
+    // Release every external handle before resetting. Store addresses and reusable
+    // capacity remain stable; source text is discarded along with parsed rows.
+    void reset();
+
     Strings strings;
     Diagnostics diagnostics{strings};
     codegen::Declarations declarations{strings};

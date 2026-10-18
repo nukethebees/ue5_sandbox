@@ -3,127 +3,142 @@
 #include "document_io.hpp"
 
 #include <codegen/sexpr/source_error.h>
-#include <codegen/source_loader.h>
-#include <lispb/diagnostic_severity.h>
-#include <lispb/project_loader.h>
 
-#include <algorithm>
+#include <cassert>
+#include <limits>
 #include <stdexcept>
 
 namespace ioj::layout {
 
-auto EditorSession::from_source(std::string_view source, std::string_view registry) -> Document {
+auto EditorSession::from_source(std::string_view const source, std::string_view const registry)
+    -> Document {
     DocumentSource const input{"document.lispb", source};
     return from_sources(std::span{&input, 1}, registry);
 }
-auto EditorSession::from_sources(std::span<DocumentSource const> sources, std::string_view registry)
-    -> Document {
-    begin_operation();
-    Document document{*this};
-    auto& state{document.state_};
+auto EditorSession::from_sources(std::span<DocumentSource const> const sources,
+                                  std::string_view const registry) -> Document {
+    auto const id{create_document()};
+    begin_operation(id);
+    Document document{*this, id};
+    auto& record{state(id)};
     try {
-        std::vector<std::string> paths;
-        std::vector<std::string> texts;
-        for (auto const source : sources) {
-            paths.emplace_back(source.path);
-            texts.emplace_back(source.text);
+        document_io::initialize_inputs(record, sources, registry);
+        capture_diagnostics(id);
+        if (document.replay(0)) {
+            document_io::finish_load(record);
         }
-        std::vector<DocumentSource> inputs;
-        auto const count{paths.size()};
-        for (std::size_t index{}; index < count; ++index) {
-            inputs.push_back({paths[index], texts[index]});
-        }
-        std::string const registry_text{registry};
-        if (!registry_text.empty()) {
-            auto const file{state.storage().sources.add("document-types.lispb", registry_text)};
-            state.io.registry_text = state.storage().sources.text_id(file);
-            state.registered_types =
-                lispb::codegen::parse_type_registry(state.storage(), file).types.entries;
-        }
-        for (auto const& input : inputs) {
-            auto const path{std::filesystem::path{input.path}.lexically_normal()};
-            if (path.empty() || path == "." || path.has_root_path() ||
-                std::ranges::find(path, std::filesystem::path{".."}) != path.end()) {
-                throw std::invalid_argument{
-                    "Source path must be relative and stay within the project"};
-            }
-            auto const name{path.generic_string()};
-            auto const key{state.storage().strings.intern_retained(name)};
-            if (std::ranges::any_of(state.source_order, [&](auto file) {
-                    return state.storage().strings.find(state.storage().sources.path(file)) == key;
-                })) {
-                throw std::invalid_argument{"Duplicate source path"};
-            }
-            document_io::append_source(state, state.storage().sources.add(name, input.text));
-        }
-        document_io::finish_load(state);
     } catch (lispb::codegen::sexpr::SourceError const&) {
-    } catch (std::runtime_error const& error) {
-        state.session->record_error(error.what());
+        capture_diagnostics(id);
     } catch (std::invalid_argument const& error) {
-        state.session->record_error(error.what());
+        record_error(error.what());
+    } catch (std::runtime_error const& error) {
+        record_error(error.what());
     }
     return document;
 }
-auto EditorSession::load(std::filesystem::path const& project_path, std::string_view target_value)
-    -> Document {
-    begin_operation();
-    std::string const target_name{target_value};
-    Document document{*this};
-    auto& state{document.state_};
+auto EditorSession::load(std::filesystem::path const& project_path,
+                          std::string_view const target) -> Document {
+    auto const id{create_document()};
+    begin_operation(id);
+    Document document{*this, id};
+    auto& record{state(id)};
     try {
-        state.storage().sources.refresh();
-        state.project_path = std::filesystem::absolute(project_path).lexically_normal();
-        state.project.emplace(lispb::load_project(state.storage().syntax, state.project_path));
-        state.target = state.project->find_target(target_name);
-        if (!state.target || state.target->kind() != lispb::TargetKind::cpp_schema) {
-            throw std::invalid_argument{"Expected an existing C++ schema target"};
+        document_io::load_inputs(record, project_path, target);
+        capture_diagnostics(id);
+        if (document.replay(0)) {
+            document_io::finish_load(record);
         }
-        state.io.project_source = state.storage().sources.load(state.project_path);
-        state.io.saved_project_text = state.storage().sources.text_id(state.io.project_source);
-        state.io.project_sources_span =
-            document_io::sources_span(state, state.io.project_source, target_name);
-        state.registered_types =
-            lispb::codegen::load_type_registry(
-                state.storage(), state.project->root / state.project->types(*state.target))
-                .types.entries;
-        for (auto const& source : state.project->sources(*state.target)) {
-            auto const file{state.storage().sources.load(state.project->root / source,
-                                                         source.generic_string())};
-            document_io::append_source(state, file);
-        }
-        document_io::finish_load(state);
     } catch (lispb::codegen::sexpr::SourceError const&) {
+        capture_diagnostics(id);
     } catch (std::invalid_argument const& error) {
-        state.session->record_error(error.what());
+        record_error(error.what());
     } catch (std::runtime_error const& error) {
-        state.session->record_error(error.what());
+        record_error(error.what());
     }
     return document;
 }
-
-auto EditorSession::storage() -> lispb::CompilerStorage& {
-    return storage_;
+auto EditorSession::command_strings() -> lispb::Strings& {
+    return command_strings_;
 }
-auto EditorSession::diagnostics() const -> lispb::Diagnostics const& {
-    return storage_.diagnostics;
+auto EditorSession::command_strings() const -> lispb::Strings const& {
+    return command_strings_;
 }
-auto EditorSession::format_diagnostic(lispb::DiagnosticId diagnostic) const -> std::string {
-    return storage_.diagnostics.format(diagnostic, storage_.sources);
+auto EditorSession::storage(DocumentId const document) -> lispb::CompilerStorage& {
+    auto const found{workspaces_.find(document)};
+    assert(found != workspaces_.end());
+    return found->second;
+}
+auto EditorSession::state(DocumentId const document) -> DocumentState& {
+    auto const found{states_.find(document)};
+    assert(found != states_.end());
+    return found->second;
+}
+auto EditorSession::state(DocumentId const document) const -> DocumentState const& {
+    auto const found{states_.find(document)};
+    assert(found != states_.end());
+    return found->second;
+}
+auto EditorSession::create_document() -> DocumentId {
+    assert(next_document_id_.value < std::numeric_limits<std::uint32_t>::max());
+    auto const id{next_document_id_};
+    ++next_document_id_.value;
+    workspaces_.try_emplace(id);
+    states_.try_emplace(id, *this, id);
+    return id;
+}
+void EditorSession::release_document(DocumentId const document) {
+    assert(states_.contains(document));
+    states_.erase(document);
+    workspaces_.erase(document);
+}
+void EditorSession::reset_storage(DocumentId const document) {
+    storage(document).reset();
+}
+auto EditorSession::diagnostics() const -> EditorDiagnostics const& {
+    return diagnostics_;
+}
+auto EditorSession::format_diagnostic(lispb::DiagnosticId const diagnostic) const -> std::string {
+    return diagnostics_.format(diagnostic);
 }
 auto EditorSession::last_diagnostic_begin() const -> std::size_t {
     return diagnostic_begin_;
 }
-void EditorSession::begin_operation() {
-    diagnostic_begin_ = storage_.diagnostics.size();
+void EditorSession::begin_operation(DocumentId const document) {
+    assert(current_operation_.value < std::numeric_limits<std::uint32_t>::max());
+    diagnostic_begin_ = diagnostics_.size();
+    current_document_ = document;
+    ++current_operation_.value;
+    current_instruction_.reset();
 }
-void EditorSession::record_error(std::string_view message) {
-    storage_.diagnostics.add(lispb::DiagnosticSeverity::error, {}, message);
+void EditorSession::set_instruction(std::optional<InstructionId> const instruction) {
+    current_instruction_ = instruction;
 }
-auto EditorSession::allocate_document_id() -> DocumentId {
-    auto const id{next_document_id_};
-    ++next_document_id_.value;
-    return id;
+void EditorSession::record_error(std::string_view const message) {
+    record_diagnostic(lispb::DiagnosticSeverity::error, message);
+}
+auto EditorSession::record_diagnostic(lispb::DiagnosticSeverity const severity,
+                                       std::string_view const message,
+                                       std::string_view const path,
+                                       std::uint32_t const line,
+                                       std::uint32_t const column) -> lispb::DiagnosticId {
+    return diagnostics_.add(current_document_, current_operation_, current_instruction_,
+                            severity, message, path, line, column);
+}
+void EditorSession::capture_diagnostics(DocumentId const document) {
+    auto& scratch{storage(document)};
+    auto const count{scratch.diagnostics.size()};
+    for (std::uint32_t index{}; index < count; ++index) {
+        auto const id{lispb::DiagnosticId{index}};
+        auto const span{scratch.diagnostics.span(id)};
+        auto const location{scratch.sources.location(span)};
+        auto message{std::string{scratch.diagnostics.message(id)}};
+        message += scratch.sources.expansion_text(span);
+        diagnostics_.add(document, current_operation_, current_instruction_,
+                          scratch.diagnostics.severity(id), message, location.path,
+                          span.file.value == 0 ? 0 : location.line,
+                          span.file.value == 0 ? 0 : location.column);
+    }
+    scratch.diagnostics.clear();
 }
 
-}
+} // namespace ioj::layout

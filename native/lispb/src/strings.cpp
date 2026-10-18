@@ -70,6 +70,12 @@ void Strings::reset_temporary() {
     transient_.slices.resize(1);
     transient_.identifiers.clear();
 }
+void Strings::clear() {
+    reset_temporary();
+    retained_.bytes.clear();
+    retained_.slices.resize(1);
+    retained_.identifiers.clear();
+}
 auto Strings::byte_size() const -> std::size_t {
     return retained_.bytes.size() + transient_.bytes.size();
 }
