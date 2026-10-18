@@ -1,5 +1,7 @@
 #include <codegen/schema/declaration_schema.h>
 
+#include <ioj/is_any.h>
+
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/integer_scalar_cpp_emission.h>
 #include <codegen/schema/soa_member_kind.h>
@@ -502,8 +504,8 @@ auto declaration_head(DeclarationHandle declaration) -> std::string_view {
 }
 
 auto has_primary_semantic_type(DeclarationHandle declaration) -> bool {
-    return declaration.kind() != DeclarationKind::homogeneous_layout &&
-           declaration.kind() != DeclarationKind::settings_schema;
+    return !ioj::is_any(declaration.kind(),
+                        {DeclarationKind::homogeneous_layout, DeclarationKind::settings_schema});
 }
 
 void visit_type_references(

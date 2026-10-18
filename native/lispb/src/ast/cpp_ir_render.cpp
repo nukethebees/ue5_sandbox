@@ -1,3 +1,5 @@
+#include <ioj/is_any.h>
+
 #include <codegen/ast/access.h>
 #include <codegen/ast/access_indentation.h>
 #include <codegen/ast/cpp_ir.h>
@@ -183,8 +185,8 @@ auto CppIR::signature(std::uint32_t index, bool record_scope) const -> std::stri
         prefix += format.template_placement == FunctionTemplatePlacement::same_line ? " " : "\n";
         output.insert(0, prefix);
     }
-    if (implementation.kind() == FunctionImplementationKind::defaulted ||
-        implementation.kind() == FunctionImplementationKind::deleted) {
+    if (ioj::is_any(implementation.kind(),
+                    {FunctionImplementationKind::defaulted, FunctionImplementationKind::deleted})) {
         output += format.disposition_placement == FunctionDispositionPlacement::next_line ? "\n= "
                                                                                           : " = ";
         output +=

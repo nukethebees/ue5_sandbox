@@ -1,5 +1,7 @@
 #include "renderer.h"
 
+#include <ioj/is_any.h>
+
 #include <codegen/ast/access.h>
 #include <codegen/ast/binary_operator.h>
 #include <codegen/ast/cpp_files.h>
@@ -293,7 +295,7 @@ class Renderer {
             return ir_.call(ir_.member_access(object, name + "_Lambda"),
                             {forward_parameter(parameter)});
         }
-        if (value.kind() == ValueKind::method || value.kind() == ValueKind::uobject) {
+        if (ioj::is_any(value.kind(), {ValueKind::method, ValueKind::uobject})) {
             auto const member{name + (value.kind() == ValueKind::uobject ? "_UObject" : "")};
             return ir_.call(
                 ir_.member_access(object, member),

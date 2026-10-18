@@ -1,5 +1,7 @@
 #include <codegen/ast/cpp_ir.h>
 
+#include <ioj/is_any.h>
+
 #include <codegen/ast/cpp_types.h>
 #include <codegen/ast/function_exception_id.h>
 #include <codegen/ast/function_exception_kind.h>
@@ -122,9 +124,10 @@ auto CppIR::switch_case(std::optional<Expr> label, BlockId body) -> SwitchCaseId
 
 auto CppIR::for_statement(NodeId initializer, Expr condition, Expr increment, BlockId body)
     -> NodeId {
-    assert(initializer.kind() == NodeKind::variable_declaration_stmt ||
-           initializer.kind() == NodeKind::assignment_stmt ||
-           initializer.kind() == NodeKind::expression_stmt);
+    assert(ioj::is_any(initializer.kind(),
+                       {NodeKind::variable_declaration_stmt,
+                        NodeKind::assignment_stmt,
+                        NodeKind::expression_stmt}));
     auto const index{for_stmt_nodes_.initializer.size()};
     for_stmt_nodes_.initializer.push_back(initializer);
     for_stmt_nodes_.condition.push_back(condition);

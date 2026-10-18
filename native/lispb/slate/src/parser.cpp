@@ -1,5 +1,7 @@
 #include "parser.h"
 
+#include <ioj/is_any.h>
+
 #include <codegen/sexpr/source_span.h>
 #include <codegen/sexpr/sources.h>
 #include <codegen/sexpr/syntax.h>
@@ -320,8 +322,8 @@ class Parser {
                                      head != "method" && head != "uobject"
                                  ? parse_margin(initializer)
                                  : parse_value(initializer)};
-            if (value.kind() == ValueKind::callback || value.kind() == ValueKind::method ||
-                value.kind() == ValueKind::uobject) {
+            if (ioj::is_any(value.kind(),
+                            {ValueKind::callback, ValueKind::method, ValueKind::uobject})) {
                 fail(syntax_.token_span(initializer),
                      "callable values cannot initialize let bindings");
             }
@@ -502,8 +504,8 @@ class Parser {
             auto const count{syntax_.children(form).size()};
             for (std::size_t index{2}; index < count; ++index) {
                 auto const value{parse_value(syntax_.children(form)[index])};
-                if (value.kind() == ValueKind::callback || value.kind() == ValueKind::method ||
-                    value.kind() == ValueKind::uobject) {
+                if (ioj::is_any(value.kind(),
+                                {ValueKind::callback, ValueKind::method, ValueKind::uobject})) {
                     fail(syntax_.token_span(syntax_.children(form)[index]),
                          "callable forms cannot be child factory arguments");
                 }
