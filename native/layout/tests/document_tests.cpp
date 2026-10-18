@@ -300,8 +300,10 @@ TEST(EditorSession, DocumentMovesPreserveQueuedTransactionsAndHistory) {
 
     auto next{moved.transaction()};
     next.set_field_bits("game", "ShipState", "health", 6);
-    auto replacement{editor.from_source("")};
+    EditorSession other_editor;
+    auto replacement{other_editor.from_source("")};
     replacement = std::move(moved);
+    EXPECT_EQ(&replacement.session(), &editor);
     ASSERT_TRUE(replacement.commit(next)) << diagnostic_messages(editor);
     EXPECT_EQ(health_bits(replacement), 6);
     ASSERT_TRUE(replacement.undo());
