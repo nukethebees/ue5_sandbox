@@ -244,7 +244,7 @@ auto unlocks(AstParser& parser,
 
 auto parse_level(s7::Ast const& ast, s7::NodeIndex const root) -> LevelDefinitionReadResult {
     AstParser parser{ast};
-    LevelDefinition result;
+    LevelDefinition::Components result;
     auto const fields{parser.record(root, RecordKind::Level, "level")};
     for (auto const& field : fields) {
         switch (field.property) {
@@ -307,6 +307,6 @@ auto parse_level(s7::Ast const& ast, s7::NodeIndex const root) -> LevelDefinitio
         return std::unexpected{parser.take_errors()};
     }
     assign_generated_entity_ids(result.entities);
-    return result;
+    return LevelDefinition::make(std::move(result));
 }
 }

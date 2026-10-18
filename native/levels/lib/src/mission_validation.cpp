@@ -147,7 +147,7 @@ auto validate_mission(LevelMissionDefinition const& mission,
     return {std::move(survivors), std::move(required)};
 }
 
-void validate_mission_events(LevelDefinition const& definition,
+void validate_mission_events(LevelDefinition::Components const& definition,
                              EntityValidationState const& entities,
                              MissionReferences references,
                              Diagnostics& result) {

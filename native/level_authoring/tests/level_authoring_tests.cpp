@@ -3,6 +3,7 @@
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/authoring/level_definition_writer.h>
 #include <ioj/levels/authoring/level_parser.h>
+#include <ioj/levels/authoring/source_session.h>
 #include <ioj/levels/catalog_validation.h>
 
 #include <gtest/gtest.h>
@@ -17,14 +18,19 @@
 
 namespace ioj::levels::authoring::tests {
 namespace {
-auto emit_source(LevelDefinition definition) -> std::expected<std::string, Diagnostics> {
-    return EditorLevel::make(std::move(definition)).transform([](EditorLevel const& level) {
+auto emit_source(LevelDefinition const& level) -> std::expected<std::string, Diagnostics> {
+    return emit_editor_level_source(level);
+}
+
+auto emit_source(LevelDefinition::Components definition)
+    -> std::expected<std::string, Diagnostics> {
+    return LevelDefinition::make(std::move(definition)).and_then([](LevelDefinition const& level) {
         return emit_editor_level_source(level);
     });
 }
 
-auto make_level(std::string id, std::vector<LevelId> unlocks = {}) -> LevelDefinition {
-    LevelDefinition result{
+auto make_level(std::string id, std::vector<LevelId> unlocks = {}) -> LevelDefinition::Components {
+    LevelDefinition::Components result{
         .metadata = {.id = LevelId{std::move(id)}, .title = "Test Level"},
         .unlock_level_ids = std::move(unlocks),
         .player_entity_id = EntityId{"player"},
@@ -34,6 +40,10 @@ auto make_level(std::string id, std::vector<LevelId> unlocks = {}) -> LevelDefin
                                .team = Team::Blue});
     return result;
 }
+auto checked_level(std::string id, std::vector<LevelId> unlocks = {}) -> LevelDefinition {
+    return LevelDefinition::make(make_level(std::move(id), std::move(unlocks))).value();
+}
+
 auto has_code(Diagnostics const& errors, DiagnosticCode const code) -> bool {
     return std::ranges::any_of(errors,
                                [code](Diagnostic const& error) { return error.code == code; });
@@ -65,6 +75,133 @@ class TemporaryLevelDirectory {
 static_assert(!std::is_convertible_v<LevelId, CampaignId>);
 static_assert(!std::is_convertible_v<EntityId, Team>);
 static_assert(!std::is_convertible_v<std::string, LevelId>);
+static_assert(!std::is_default_constructible_v<LevelDefinition>);
+static_assert(std::is_same_v<decltype(std::declval<LevelDefinition&>().components()),
+                             LevelDefinition::Components const&>);
+
+TEST(NativeLevelDefinition, VerifiesComponentsBeforeConstructionAndOwnsThem) {
+    auto components{make_level("owned")};
+    auto level{LevelDefinition::make(components)};
+    ASSERT_TRUE(level);
+
+    components.metadata.title.clear();
+    components.entities.clear();
+    auto invalid{LevelDefinition::make(components)};
+    ASSERT_FALSE(invalid);
+    EXPECT_TRUE(has_code(invalid.error(), DiagnosticCode::MissingTitle));
+    EXPECT_TRUE(has_code(invalid.error(), DiagnosticCode::PlayerEntityNotFound));
+    EXPECT_EQ(level->components().metadata.title, "Test Level");
+    EXPECT_EQ(level->components().entities.size(), 1u);
+}
+
+TEST(NativeSourceSession, PreservesTextAndSeparatesSavedFromAppliedState) {
+    TemporaryLevelDirectory directory;
+    auto const path{directory.path() / "source.scm"};
+    SourceSession session;
+    ASSERT_TRUE(session.attach(path));
+    EXPECT_FALSE(session.state().disk_conflict);
+    auto const source{minimal_source() + "\r\n;; exact \xcf\x80 text\n"};
+    session.set_buffer(source);
+    auto const revision{session.state().revision};
+    session.set_buffer(source);
+    EXPECT_EQ(session.state().revision, revision);
+
+    ASSERT_TRUE(session.save());
+    EXPECT_EQ(read_file(path).value(), source);
+    EXPECT_FALSE(session.state().dirty());
+    EXPECT_TRUE(session.state().unapplied("original"));
+    EXPECT_FALSE(session.save_replacement("canonical", "original"));
+    EXPECT_EQ(read_file(path).value(), source);
+
+    session.state().preview = PreviewState::Valid;
+    ASSERT_TRUE(session.save_replacement("canonical", session.state().buffer_digest));
+    EXPECT_EQ(session.buffer(), "canonical");
+    EXPECT_EQ(session.state().preview, PreviewState::Stale);
+    EXPECT_GT(session.state().revision, revision);
+
+    std::ofstream{path} << "external";
+    ASSERT_TRUE(session.refresh_external_conflict());
+    EXPECT_TRUE(session.state().disk_conflict);
+    EXPECT_FALSE(session.save());
+    ASSERT_TRUE(session.reload());
+    EXPECT_EQ(session.buffer(), "external");
+    EXPECT_FALSE(session.state().dirty());
+    EXPECT_FALSE(session.state().disk_conflict);
+}
+
+TEST(NativeSourceSession, ProtectsDiskChangesAndRecoversDetachedBuffers) {
+    TemporaryLevelDirectory directory;
+    auto const path{directory.path() / "source.scm"};
+    auto const recovery{directory.path() / "recovery.scm"};
+    auto const next{directory.path() / "next.scm"};
+    for (auto const change : {"edit", "delete", "create"}) {
+        SCOPED_TRACE(change);
+        std::filesystem::remove(path);
+        if (std::string_view{change} != "create") {
+            std::ofstream{path} << "original";
+        }
+        SourceSession session;
+        ASSERT_TRUE(session.attach(path));
+        session.set_buffer("unsaved");
+        session.state().preview = PreviewState::Valid;
+        if (std::string_view{change} == "delete") {
+            std::filesystem::remove(path);
+        } else {
+            std::ofstream{path} << "external";
+        }
+        ASSERT_TRUE(session.refresh_external_conflict());
+        EXPECT_TRUE(session.state().disk_conflict);
+        EXPECT_EQ(session.state().preview, PreviewState::Valid);
+        EXPECT_FALSE(session.save());
+
+        session.state().scene_dirty = true;
+        session.detach();
+        EXPECT_FALSE(session.attach(next));
+        EXPECT_EQ(session.buffer(), "unsaved");
+        EXPECT_FALSE(session.state().scene_dirty);
+        EXPECT_EQ(session.state().preview, PreviewState::None);
+        std::ofstream{recovery} << "unrelated";
+        EXPECT_FALSE(session.save_as(recovery, SourceOverwritePolicy::RefuseExisting));
+        EXPECT_EQ(read_file(recovery).value(), "unrelated");
+
+        auto const revision{session.state().revision};
+        ASSERT_TRUE(session.save_as(recovery, SourceOverwritePolicy::ReplaceExisting));
+        EXPECT_GT(session.state().revision, revision);
+        EXPECT_EQ(read_file(recovery).value(), "unsaved");
+        EXPECT_FALSE(session.is_attached());
+        EXPECT_FALSE(session.attach(next));
+        ASSERT_TRUE(session.discard_and_attach(next));
+        EXPECT_TRUE(session.is_attached());
+        EXPECT_FALSE(session.state().recovery_required);
+    }
+}
+
+TEST(NativeSourceSession, PreservesExistingDigestsAndDecodesBomText) {
+    EXPECT_EQ(SourceSession::source_digest(""), "DA39A3EE5E6B4B0D3255BFEF95601890AFD80709");
+    EXPECT_EQ(SourceSession::source_digest("abc"), "A9993E364706816ABA3E25717850C26C9CD0D89D");
+    EXPECT_EQ(
+        SourceSession::source_digest("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"),
+        "84983E441C3BD26EBAAE4AA1F95129E5E54670F1");
+
+    TemporaryLevelDirectory directory;
+    auto const path{directory.path() / "encoding.scm"};
+    for (auto const& bytes : {std::string{"\xef\xbb\xbf"
+                                          "A\xcf\x80"},
+                              std::string{"\xff\xfe"
+                                          "A\0\xc0\x03",
+                                          6},
+                              std::string{"\xfe\xff"
+                                          "\0A\x03\xc0",
+                                          6}}) {
+        std::ofstream{path, std::ios::binary}.write(bytes.data(),
+                                                    static_cast<std::streamsize>(bytes.size()));
+        SourceSession session;
+        ASSERT_TRUE(session.attach(path));
+        EXPECT_EQ(session.buffer(), "A\xcf\x80");
+        ASSERT_TRUE(session.save());
+        EXPECT_EQ(read_file(path).value(), session.buffer());
+    }
+}
 
 TEST(NativeLevelAuthoringReader, ReadsFileWithRootRelativeLibrary) {
     TemporaryLevelDirectory directory;
@@ -76,7 +213,7 @@ TEST(NativeLevelAuthoringReader, ReadsFileWithRootRelativeLibrary) {
     std::ofstream{path} << "(load-script \"Libraries/metadata.scm\")\n" << source;
     auto const result{DefinitionReader{}.read_level_file(path)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
-    EXPECT_EQ(result->metadata.title, "Loaded From Library");
+    EXPECT_EQ(result->components().metadata.title, "Loaded From Library");
 }
 TEST(NativeLevelAuthoringReader, ReportsMissingFile) {
     auto const result{DefinitionReader{}.read_level_file("missing-level.scm")};
@@ -106,11 +243,11 @@ TEST(NativeLevelAuthoringReader, RootControlsImportsAndPreservesFailuresAndSourc
     ASSERT_EQ(catalog->levels.size(), 3u);
     ASSERT_EQ(catalog->campaigns.size(), 1u);
     ASSERT_TRUE(catalog->levels[0].definition);
-    EXPECT_EQ(catalog->levels[0].definition->metadata.title, "Shared");
+    EXPECT_EQ(catalog->levels[0].definition->components().metadata.title, "Shared");
     ASSERT_FALSE(catalog->levels[1].definition);
     EXPECT_EQ(catalog->levels[1].definition.error().front().source_path, root / "broken.scm");
     ASSERT_TRUE(catalog->levels[2].definition);
-    EXPECT_EQ(catalog->levels[2].definition->metadata.title, "Shared");
+    EXPECT_EQ(catalog->levels[2].definition->components().metadata.title, "Shared");
     ASSERT_TRUE(catalog->campaigns[0].definition);
     EXPECT_EQ(catalog->campaigns[0].definition->title, "Shared");
 
@@ -120,7 +257,7 @@ TEST(NativeLevelAuthoringReader, RootControlsImportsAndPreservesFailuresAndSourc
     ASSERT_FALSE(variation->levels[0].definition);
     EXPECT_EQ(variation->levels[0].definition.error().front().code,
               DiagnosticCode::ScriptEvaluationFailed);
-    EXPECT_EQ(catalog->levels[0].definition->metadata.title, "Shared");
+    EXPECT_EQ(catalog->levels[0].definition->components().metadata.title, "Shared");
 }
 TEST(NativeLevelAuthoringReader, RootLoadsSharedLibrariesOnce) {
     TemporaryLevelDirectory directory;
@@ -140,7 +277,7 @@ TEST(NativeLevelAuthoringReader, RootLoadsSharedLibrariesOnce) {
     ASSERT_EQ(catalog->levels.size(), 2u);
     for (auto const& entry : catalog->levels) {
         ASSERT_TRUE(entry.definition) << format_diagnostics(entry.definition.error());
-        EXPECT_EQ(entry.definition->metadata.title, "1");
+        EXPECT_EQ(entry.definition->components().metadata.title, "1");
     }
 }
 TEST(NativeLevelAuthoringReader, RootReportsEvaluationAndGrammarErrors) {
@@ -195,9 +332,9 @@ TEST(NativeLevelAuthoringReader, ParsesClosedVocabulariesWithoutTeamDeclarations
     auto const result{DefinitionReader{}.read_level_source(source)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
     EXPECT_EQ(participating_teams(*result), (std::vector{Team::Blue}));
-    ASSERT_EQ(result->entities.size(), 1u);
-    EXPECT_EQ(result->entities.front().team, Team::Blue);
-    EXPECT_EQ(result->entities.front().archetype, EntityArchetype::PlayerFighter);
+    ASSERT_EQ(result->components().entities.size(), 1u);
+    EXPECT_EQ(result->components().entities.front().team, Team::Blue);
+    EXPECT_EQ(result->components().entities.front().archetype, EntityArchetype::PlayerFighter);
 }
 TEST(NativeLevelAuthoringReader, GeneratesLevelLocalIdsAndDefaultsRotations) {
     auto const source{R"((level :id 'defaults :title "Defaults" :player 'player
@@ -217,10 +354,10 @@ TEST(NativeLevelAuthoringReader, GeneratesLevelLocalIdsAndDefaultsRotations) {
     for (int iteration{}; iteration < 2; ++iteration) {
         auto const result{DefinitionReader{}.read_level_source(source)};
         ASSERT_TRUE(result) << format_diagnostics(result.error());
-        ASSERT_EQ(result->entities.size(), expected.size());
+        ASSERT_EQ(result->components().entities.size(), expected.size());
         auto const count{expected.size()};
         for (std::size_t index{}; index < count; ++index) {
-            auto const& entity{result->entities[index]};
+            auto const& entity{result->components().entities[index]};
             EXPECT_EQ(entity.id, expected[index]);
             EXPECT_DOUBLE_EQ(entity.rotation.pitch, 0.0);
             EXPECT_DOUBLE_EQ(entity.rotation.yaw, 0.0);
@@ -233,10 +370,10 @@ TEST(NativeLevelAuthoringReader, GeneratesLevelLocalIdsAndDefaultsRotations) {
         EXPECT_TRUE(emitted->contains(":id 'red-capital-ship-1"));
         auto const round_trip{DefinitionReader{}.read_level_source(*emitted)};
         ASSERT_TRUE(round_trip) << format_diagnostics(round_trip.error());
-        for (auto const& original : result->entities) {
-            auto const found{
-                std::ranges::find(round_trip->entities, original.id, &EntitySpawnDefinition::id)};
-            ASSERT_NE(found, round_trip->entities.end());
+        for (auto const& original : result->components().entities) {
+            auto const found{std::ranges::find(
+                round_trip->components().entities, original.id, &EntitySpawnDefinition::id)};
+            ASSERT_NE(found, round_trip->components().entities.end());
             EXPECT_DOUBLE_EQ(found->position.x(), original.position.x());
             EXPECT_DOUBLE_EQ(found->spawn_time_seconds, original.spawn_time_seconds);
         }
@@ -276,8 +413,9 @@ TEST(NativeLevelAuthoringReader, RestartsGeneratedIdsForEachDefinitionInOneRoot)
     ASSERT_EQ(catalog->levels.size(), 2u);
     for (auto const& entry : catalog->levels) {
         ASSERT_TRUE(entry.definition) << format_diagnostics(entry.definition.error());
-        ASSERT_EQ(entry.definition->entities.size(), 2u);
-        EXPECT_EQ(entry.definition->entities.back().id, EntityId{"red-static-turret-0"});
+        ASSERT_EQ(entry.definition->components().entities.size(), 2u);
+        EXPECT_EQ(entry.definition->components().entities.back().id,
+                  EntityId{"red-static-turret-0"});
     }
 }
 TEST(NativeLevelAuthoringReader, MapsPositionsAndConstructsExplicitIdsInScheme) {
@@ -293,14 +431,14 @@ TEST(NativeLevelAuthoringReader, MapsPositionsAndConstructsExplicitIdsInScheme) 
                (entity :archetype 'static-turret :team 'red :position position))
              '((200 0 0) (300 10 20))))))")};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
-    ASSERT_EQ(result->entities.size(), 4u);
-    EXPECT_EQ(result->entities[0].id, EntityId{"flagship-0"});
-    EXPECT_EQ(result->entities[1].id, EntityId{"flagship-1"});
-    EXPECT_DOUBLE_EQ(result->entities[1].position.x(), 100.0);
-    EXPECT_EQ(result->entities[2].id, EntityId{"red-static-turret-0"});
-    EXPECT_EQ(result->entities[3].id, EntityId{"red-static-turret-1"});
-    EXPECT_DOUBLE_EQ(result->entities[3].position.y(), 10.0);
-    EXPECT_DOUBLE_EQ(result->entities[3].position.z(), 20.0);
+    ASSERT_EQ(result->components().entities.size(), 4u);
+    EXPECT_EQ(result->components().entities[0].id, EntityId{"flagship-0"});
+    EXPECT_EQ(result->components().entities[1].id, EntityId{"flagship-1"});
+    EXPECT_DOUBLE_EQ(result->components().entities[1].position.x(), 100.0);
+    EXPECT_EQ(result->components().entities[2].id, EntityId{"red-static-turret-0"});
+    EXPECT_EQ(result->components().entities[3].id, EntityId{"red-static-turret-1"});
+    EXPECT_DOUBLE_EQ(result->components().entities[3].position.y(), 10.0);
+    EXPECT_DOUBLE_EQ(result->components().entities[3].position.z(), 20.0);
 }
 TEST(NativeLevelAuthoringReader, DerivesDistinctTeamsIncludingScheduledSpawns) {
     auto definition{make_level("teams")};
@@ -311,16 +449,18 @@ TEST(NativeLevelAuthoringReader, DerivesDistinctTeamsIncludingScheduledSpawns) {
                               .spawn_time_seconds = 10.0});
     definition.entities.emplace_back(EntitySpawnDefinition{
         .id = EntityId{"ally"}, .archetype = EntityArchetype::CapitalShip, .team = Team::Blue});
-    EXPECT_TRUE(validate_level(definition));
-    EXPECT_EQ(participating_teams(definition), (std::vector{Team::Red, Team::Blue}));
+    EXPECT_TRUE(LevelDefinition::make(definition));
+    EXPECT_EQ(participating_teams(LevelDefinition::make(definition).value()),
+              (std::vector{Team::Red, Team::Blue}));
     auto const source{emit_source(definition)};
     ASSERT_TRUE(source) << format_diagnostics(source.error());
     EXPECT_FALSE(source->contains(":teams"));
     auto const parsed{DefinitionReader{}.read_level_source(*source)};
     ASSERT_TRUE(parsed);
-    EXPECT_EQ(participating_teams(*parsed), participating_teams(definition));
+    EXPECT_EQ(participating_teams(*parsed),
+              participating_teams(LevelDefinition::make(definition).value()));
     definition.entities.back().team = static_cast<Team>(255);
-    auto const invalid{validate_level(definition)};
+    auto const invalid{LevelDefinition::make(definition)};
     ASSERT_FALSE(invalid);
     EXPECT_TRUE(has_code(invalid.error(), DiagnosticCode::UnsupportedTeam));
 }
@@ -397,9 +537,9 @@ TEST(NativeLevelAuthoringWriter, EmitsDeterministicReadableSource) {
     EXPECT_TRUE(a->contains(":spawn-at 2.5"));
     auto const loaded{DefinitionReader{}.read_level_source(*a)};
     ASSERT_TRUE(loaded) << format_diagnostics(loaded.error());
-    EXPECT_EQ(loaded->metadata.title, first.metadata.title);
-    EXPECT_EQ(loaded->metadata.description, first.metadata.description);
-    EXPECT_EQ(loaded->entities.size(), 2u);
+    EXPECT_EQ(loaded->components().metadata.title, first.metadata.title);
+    EXPECT_EQ(loaded->components().metadata.description, first.metadata.description);
+    EXPECT_EQ(loaded->components().entities.size(), 2u);
 }
 TEST(NativeLevelAuthoringWriter, HandlesEmptyCollectionsEscapesAndNumericBoundaries) {
     auto definition{make_level("numbers")};
@@ -410,8 +550,8 @@ TEST(NativeLevelAuthoringWriter, HandlesEmptyCollectionsEscapesAndNumericBoundar
     EXPECT_TRUE(source->contains(":position '(0 0.001 "));
     auto parsed{DefinitionReader{}.read_level_source(*source)};
     ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
-    EXPECT_EQ(parsed->metadata.description, definition.metadata.description);
-    EXPECT_DOUBLE_EQ(parsed->entities[0].position.x(), 0.0);
+    EXPECT_EQ(parsed->components().metadata.description, definition.metadata.description);
+    EXPECT_DOUBLE_EQ(parsed->components().entities[0].position.x(), 0.0);
 }
 TEST(NativeLevelAuthoringCollisionGrid, PreservesIndependentOverridesAcrossSourceRoundTrip) {
     for (int mask{}; mask < 4; ++mask) {
@@ -429,10 +569,10 @@ TEST(NativeLevelAuthoringCollisionGrid, PreservesIndependentOverridesAcrossSourc
         ASSERT_TRUE(source) << format_diagnostics(source.error());
         auto const parsed{DefinitionReader{}.read_level_source(*source)};
         ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
-        ASSERT_EQ(parsed->collision_grid.has_value(), mask != 0);
+        ASSERT_EQ(parsed->components().collision_grid.has_value(), mask != 0);
         if (mask != 0) {
-            EXPECT_EQ(parsed->collision_grid->level_size.has_value(), (mask & 1) != 0);
-            EXPECT_EQ(parsed->collision_grid->cell_size.has_value(), (mask & 2) != 0);
+            EXPECT_EQ(parsed->components().collision_grid->level_size.has_value(), (mask & 1) != 0);
+            EXPECT_EQ(parsed->components().collision_grid->cell_size.has_value(), (mask & 2) != 0);
         }
     }
 }
@@ -462,40 +602,43 @@ TEST(NativeLevelAuthoringWriter, RoundTripsInitialMissionObjectives) {
     ASSERT_TRUE(source);
     auto const parsed{DefinitionReader{}.read_level_source(*source)};
     ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
-    ASSERT_TRUE(parsed->mission);
-    EXPECT_EQ(parsed->mission->mode, LevelMissionMode::KillEnemies);
-    EXPECT_EQ(parsed->mission->required_kill_entity_ids,
+    ASSERT_TRUE(parsed->components().mission);
+    EXPECT_EQ(parsed->components().mission->mode, LevelMissionMode::KillEnemies);
+    EXPECT_EQ(parsed->components().mission->required_kill_entity_ids,
               definition.mission->required_kill_entity_ids);
 }
-TEST(NativeEditorLevel, RejectsUnsupportedEditorFeaturesAtConstruction) {
+TEST(NativeLevelAuthoringWriter, ReportsUnsupportedEditorFeatures) {
     auto definition{make_level("unsupported")};
     definition.metadata.par_time_seconds = 10;
     definition.unlock_level_ids.emplace_back("other");
     definition.mission_events.push_back({});
-    auto const result{EditorLevel::make(std::move(definition))};
+    definition.mission = {.mode = LevelMissionMode::KillEnemies,
+                          .kill_count = 1,
+                          .hero_entity_ids = {EntityId{"player"}}};
+    auto const result{emit_source(std::move(definition))};
     ASSERT_FALSE(result);
     EXPECT_EQ(std::ranges::count(
                   result.error(), DiagnosticCode::UnsupportedEditorFeature, &Diagnostic::code),
               3);
 }
 TEST(NativeLevelAuthoringCatalog, RejectsDuplicatesCyclesAndUnavailableDependencies) {
-    std::vector<LevelCatalogEntry> duplicates{{7, "a.scm", make_level("same")},
-                                              {31, "b.scm", make_level("same")}};
+    std::vector<LevelCatalogEntry> duplicates{{7, "a.scm", checked_level("same")},
+                                              {31, "b.scm", checked_level("same")}};
     auto const duplicate_issues{validate_level_catalog(duplicates)};
     ASSERT_EQ(duplicate_issues.size(), 2u);
     EXPECT_EQ(duplicate_issues[0].entry_index, 7u);
     EXPECT_EQ(duplicate_issues[1].entry_index, 31u);
-    std::vector<LevelCatalogEntry> cycles{{2, "a.scm", make_level("a", {LevelId{"b"}})},
-                                          {4, "b.scm", make_level("b", {LevelId{"a"}})},
-                                          {9, "c.scm", make_level("c", {LevelId{"a"}})}};
+    std::vector<LevelCatalogEntry> cycles{{2, "a.scm", checked_level("a", {LevelId{"b"}})},
+                                          {4, "b.scm", checked_level("b", {LevelId{"a"}})},
+                                          {9, "c.scm", checked_level("c", {LevelId{"a"}})}};
     auto const cycle_issues{validate_level_catalog(cycles)};
     EXPECT_EQ(cycle_issues.size(), 3u);
-    std::vector<LevelCatalogEntry> missing{{2, "a.scm", make_level("a", {LevelId{"missing"}})},
-                                           {8, "b.scm", make_level("b", {LevelId{"a"}})}};
+    std::vector<LevelCatalogEntry> missing{{2, "a.scm", checked_level("a", {LevelId{"missing"}})},
+                                           {8, "b.scm", checked_level("b", {LevelId{"a"}})}};
     EXPECT_EQ(validate_level_catalog(missing).size(), 2u);
 }
 TEST(NativeLevelAuthoringCatalog, ValidatesCampaignIdsAndLevelReferences) {
-    std::vector<LevelCatalogEntry> levels{{3, "a.scm", make_level("a")}};
+    std::vector<LevelCatalogEntry> levels{{3, "a.scm", checked_level("a")}};
     std::vector<CampaignCatalogEntry> campaigns{
         {5, "first.scm", {CampaignId{"same"}, "First", {LevelId{"a"}}}},
         {8, "second.scm", {CampaignId{"same"}, "Second", {LevelId{"missing"}}}}};

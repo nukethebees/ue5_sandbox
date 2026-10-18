@@ -12,7 +12,7 @@ auto owner(EntitySpawnDefinition const& entity, std::size_t const index) -> std:
 }
 }
 
-auto validate_entities(LevelDefinition const& definition, Diagnostics& result)
+auto validate_entities(LevelDefinition::Components const& definition, Diagnostics& result)
     -> EntityValidationState {
     EntityValidationState state;
     state.by_id.reserve(definition.entities.size());

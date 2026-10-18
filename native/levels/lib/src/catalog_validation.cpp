@@ -46,7 +46,7 @@ auto validate_level_catalog(std::span<LevelCatalogEntry const> const entries)
     std::unordered_map<LevelId, std::size_t> indices;
     auto const count{entries.size()};
     for (std::size_t index{}; index < count; ++index) {
-        auto const& id{entries[index].definition.metadata.id};
+        auto const& id{entries[index].definition.components().metadata.id};
         auto const [found, inserted]{indices.emplace(id, index)};
         if (!inserted) {
             auto const message{std::format("Level id '{}' is declared in '{}' and '{}'",
@@ -72,7 +72,7 @@ auto validate_level_catalog(std::span<LevelCatalogEntry const> const entries)
         states[start].visit = EntryState::Visit::Active;
         while (!stack.empty()) {
             auto& frame{stack.back()};
-            auto const& dependencies{entries[frame.index].definition.unlock_level_ids};
+            auto const& dependencies{entries[frame.index].definition.components().unlock_level_ids};
             if (frame.next == dependencies.size()) {
                 states[frame.index].visit = EntryState::Visit::Complete;
                 stack.pop_back();
@@ -91,9 +91,10 @@ auto validate_level_catalog(std::span<LevelCatalogEntry const> const entries)
                 auto const cycle{std::ranges::find(stack, next, &Frame::index)};
                 std::string cycle_path;
                 for (auto position{cycle}; position != stack.end(); ++position) {
-                    std::format_to(std::back_inserter(cycle_path),
-                                   "{} -> ",
-                                   entries[position->index].definition.metadata.id.value);
+                    std::format_to(
+                        std::back_inserter(cycle_path),
+                        "{} -> ",
+                        entries[position->index].definition.components().metadata.id.value);
                 }
                 cycle_path.append(target.value);
                 for (auto position{cycle}; position != stack.end(); ++position) {
@@ -115,7 +116,7 @@ auto validate_level_catalog(std::span<LevelCatalogEntry const> const entries)
             if (!states[index].issues.empty()) {
                 continue;
             }
-            for (auto const& dependency : entries[index].definition.unlock_level_ids) {
+            for (auto const& dependency : entries[index].definition.components().unlock_level_ids) {
                 auto const found{indices.find(dependency)};
                 if (found == indices.end() || !states[found->second].issues.empty()) {
                     add_issue(states[index],
@@ -134,7 +135,7 @@ auto validate_campaign_catalog(std::span<CampaignCatalogEntry const> const campa
     -> std::vector<CatalogValidationIssue> {
     std::unordered_set<LevelId> available;
     for (auto const& level : levels) {
-        available.insert(level.definition.metadata.id);
+        available.insert(level.definition.components().metadata.id);
     }
     std::unordered_map<CampaignId, std::size_t> indices;
     std::vector<EntryState> states(campaigns.size());

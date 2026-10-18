@@ -25,14 +25,15 @@ struct MissionTickValues {
     std::vector<std::int32_t> kill_target_increases{};
 };
 
-auto entity_index(LevelDefinition const& definition, EntityId const& id) -> sim::LevelEntityIndex {
+auto entity_index(LevelDefinition::Components const& definition, EntityId const& id)
+    -> sim::LevelEntityIndex {
     auto const found{std::ranges::find(definition.entities, id, &EntitySpawnDefinition::id)};
     assert(found != definition.entities.end());
     return static_cast<sim::LevelEntityIndex>(found - definition.entities.begin());
 }
 
 void append_indices(std::vector<std::int32_t>& output,
-                    LevelDefinition const& definition,
+                    LevelDefinition::Components const& definition,
                     std::vector<EntityId> const& ids) {
     for (auto const& id : ids) {
         output.push_back(static_cast<std::int32_t>(entity_index(definition, id)));
@@ -104,19 +105,11 @@ auto append_spawn_groups(sim::LevelEventSchedule& schedule,
 
 } // namespace
 
-auto compile_level(LevelDefinition const& definition,
+auto compile_level(LevelDefinition const& level,
                    sim::SimClock const& clock,
                    sim::CapitalShipSimConfig const& capital_config,
                    sim::TurretSimConfig const& turret_config) -> LevelCompilationResult {
-    auto validation{validate_level(definition)};
-    if (!validation) {
-        LevelCompilationErrors errors;
-        errors.reserve(validation.error().size());
-        for (auto& error : validation.error()) {
-            errors.push_back(std::move(error.message));
-        }
-        return std::unexpected{std::move(errors)};
-    }
+    auto const& definition{level.components()};
 
     sim::CompiledLevelEvents compiled;
     auto& initialisation{compiled.initialisation};

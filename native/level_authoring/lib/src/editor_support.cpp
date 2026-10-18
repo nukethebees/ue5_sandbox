@@ -1,4 +1,4 @@
-#include <ioj/levels/authoring/editor_level.h>
+#include <ioj/levels/authoring/editor_support.h>
 
 #include <ioj/levels/authoring/identifiers.h>
 
@@ -16,12 +16,9 @@ void check_symbol(Diagnostics& errors, std::string_view const value, std::string
 
 }
 
-auto EditorLevel::make(LevelDefinition definition) -> std::expected<EditorLevel, Diagnostics> {
+auto check_editor_support(LevelDefinition const& level) -> std::expected<void, Diagnostics> {
+    auto const& definition{level.components()};
     Diagnostics errors;
-    auto validation{validate_level(definition)};
-    if (!validation) {
-        errors = std::move(validation.error());
-    }
     if (definition.metadata.par_time_seconds) {
         errors.emplace_back(DiagnosticCode::UnsupportedEditorFeature,
                             "level.par-time",
@@ -48,6 +45,6 @@ auto EditorLevel::make(LevelDefinition definition) -> std::expected<EditorLevel,
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
-    return EditorLevel{std::move(definition)};
+    return {};
 }
 }

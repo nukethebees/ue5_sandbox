@@ -12,7 +12,7 @@ template <typename Definition>
 struct DecodedCatalogEntry {
     CatalogEntryIndex source_index{};
     std::filesystem::path source_path{};
-    Definition definition{};
+    Definition definition;
 };
 using LevelCatalogEntry = DecodedCatalogEntry<LevelDefinition>;
 using CampaignCatalogEntry = DecodedCatalogEntry<CampaignDefinition>;

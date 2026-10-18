@@ -1,7 +1,6 @@
 #pragma once
 #include <ioj/levels/authoring/campaign_parser.h>
 #include <ioj/levels/authoring/definition_catalog.h>
-#include <ioj/levels/authoring/editor_level.h>
 #include <ioj/levels/authoring/level_parser.h>
 
 #include <filesystem>
@@ -18,8 +17,6 @@ class DefinitionReader {
         -> std::expected<DefinitionCatalog, Diagnostics>;
     [[nodiscard]] auto read_level_source(std::string_view source) const
         -> LevelDefinitionReadResult;
-    [[nodiscard]] auto read_editor_level_source(std::string_view source) const
-        -> std::expected<EditorLevel, Diagnostics>;
     [[nodiscard]] auto read_campaign_source(std::string_view source) const
         -> CampaignDefinitionReadResult;
     // Standalone reads use this reader's import root, or the conventional level/campaign directory.

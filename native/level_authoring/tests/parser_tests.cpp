@@ -16,10 +16,7 @@ TEST(NativeLevelParser, ParsesOwnedAstWithoutLinkingTheInterpreter) {
     };
     ast.child_indices = {1, 2, 3, 4, 5};
     auto const result{parse_level(ast, ast.root)};
-    ASSERT_TRUE(result);
-    EXPECT_EQ(result->metadata.id, LevelId{"fixture"});
-    EXPECT_EQ(result->metadata.title, "Title");
-    auto const validation{validate_level(*result)};
-    EXPECT_FALSE(validation);
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error().front().code, DiagnosticCode::MissingViewpoint);
 }
 }

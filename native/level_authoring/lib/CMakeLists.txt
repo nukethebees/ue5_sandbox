@@ -6,7 +6,7 @@ target_sources(native-level-authoring
     src/campaign_parser.cpp
     src/catalog_parser.cpp
     src/level_definition_writer.cpp
-    src/editor_level.cpp
+    src/editor_support.cpp
     src/identifiers.cpp
     src/scene.cpp
     src/source_session.cpp
@@ -20,6 +20,8 @@ target_link_libraries(native-level-authoring
     native-levels
     native-s7-data
     sandbox::native_defaults
+  PRIVATE
+    native-core
 )
 ioj_enable_warnings(native-level-authoring)
 ioj_apply_native_abi(native-level-authoring)

@@ -74,7 +74,8 @@ auto operator==(LevelCollisionGridDefinition const& lhs, LevelCollisionGridDefin
     return lhs.level_size == rhs.level_size && lhs.cell_size == rhs.cell_size;
 }
 
-auto same_viewpoint(LevelDefinition const& lhs, LevelDefinition const& rhs) -> bool {
+auto same_viewpoint(LevelDefinition::Components const& lhs, LevelDefinition::Components const& rhs)
+    -> bool {
     return lhs.player_entity_id == rhs.player_entity_id && lhs.camera == rhs.camera;
 }
 
@@ -93,7 +94,7 @@ auto operator==(SceneEntityProperties const& lhs, SceneEntityProperties const& r
 }
 
 auto document_changes(SceneSnapshot const& scene,
-                      LevelDefinition const& incoming,
+                      LevelDefinition::Components const& incoming,
                       bool const repair_invalid = true) -> SyncPlan {
     auto const& current{scene.definition};
     return {.collision_grid_changed =
@@ -117,9 +118,9 @@ auto SyncPlan::has_changes() const -> bool {
            mission_changed;
 }
 
-auto reconcile_scene(SceneSnapshot const& scene, EditorLevel const& level) -> SyncPlan {
+auto reconcile_scene(SceneSnapshot const& scene, LevelDefinition const& level) -> SyncPlan {
     using namespace scene_comparison;
-    auto const& incoming{level.definition()};
+    auto const& incoming{level.components()};
     assert(scene.definition.entities.size() == scene.properties.size());
 
     auto result{document_changes(scene, incoming)};

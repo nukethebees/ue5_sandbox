@@ -106,15 +106,7 @@ auto with_source_path(Result result, std::filesystem::path const& path) -> Resul
 }
 
 auto decode_level(s7::Ast const& ast) -> LevelDefinitionReadResult {
-    auto definition{parse_level(ast, ast.root)};
-    if (!definition) {
-        return definition;
-    }
-    auto validation{validate_level(*definition)};
-    if (!validation) {
-        return std::unexpected{std::move(validation.error())};
-    }
-    return definition;
+    return parse_level(ast, ast.root);
 }
 
 auto decode_campaign(s7::Ast const& ast) -> CampaignDefinitionReadResult {
@@ -164,12 +156,6 @@ auto DefinitionReader::read_root_file(std::filesystem::path const& path) const
     auto catalog{parse_catalog(*ast, full_path.parent_path())};
     if (catalog) {
         for (auto& entry : catalog->levels) {
-            if (entry.definition) {
-                auto validation{validate_level(*entry.definition)};
-                if (!validation) {
-                    entry.definition = std::unexpected{std::move(validation.error())};
-                }
-            }
             entry.definition = with_source_path(std::move(entry.definition), entry.source_path);
         }
         for (auto& entry : catalog->campaigns) {
@@ -190,12 +176,6 @@ auto DefinitionReader::read_level_source(std::string_view const source) const
     return evaluate(source, script_library_root_).and_then(decode_level);
 }
 
-auto DefinitionReader::read_editor_level_source(std::string_view const source) const
-    -> std::expected<EditorLevel, Diagnostics> {
-    return evaluate(source, script_library_root_).and_then([](s7::Ast const& ast) {
-        return parse_level(ast, ast.root).and_then(EditorLevel::make);
-    });
-}
 auto DefinitionReader::read_campaign_source(std::string_view const source) const
     -> CampaignDefinitionReadResult {
     return evaluate(source, script_library_root_).and_then(decode_campaign);

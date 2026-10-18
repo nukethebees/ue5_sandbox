@@ -8,7 +8,7 @@ namespace ioj::levels {
 
 auto participating_teams(LevelDefinition const& definition) -> std::vector<Team> {
     std::vector<Team> result;
-    for (auto const& entity : definition.entities) {
+    for (auto const& entity : definition.components().entities) {
         if (!std::ranges::contains(result, entity.team)) {
             result.emplace_back(entity.team);
         }
@@ -17,7 +17,7 @@ auto participating_teams(LevelDefinition const& definition) -> std::vector<Team>
     return result;
 }
 
-auto validate_level(LevelDefinition const& definition) -> std::expected<void, Diagnostics> {
+auto LevelDefinition::make(Components definition) -> std::expected<LevelDefinition, Diagnostics> {
     Diagnostics result;
     if (definition.metadata.id.empty()) {
         result.emplace_back(
@@ -88,6 +88,6 @@ auto validate_level(LevelDefinition const& definition) -> std::expected<void, Di
     if (!result.empty()) {
         return std::unexpected{std::move(result)};
     }
-    return {};
+    return LevelDefinition{std::move(definition)};
 }
 } // namespace ioj::levels
