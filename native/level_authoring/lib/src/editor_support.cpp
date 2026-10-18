@@ -34,6 +34,11 @@ auto check_editor_support(LevelDefinition const& level) -> std::expected<void, D
                             "level.mission-events",
                             "Editor level source does not support mission events");
     }
+    if (!definition.settings().empty()) {
+        errors.emplace_back(DiagnosticCode::UnsupportedEditorFeature,
+                            "level.settings",
+                            "Editor level source does not support settings layers");
+    }
     check_symbol(errors, definition.metadata().id.value, "level.id");
     // Semantic validation already requires every reference to name one of these entities.
     auto const count{definition.entities().size()};
@@ -41,6 +46,11 @@ auto check_editor_support(LevelDefinition const& level) -> std::expected<void, D
         auto const& entity{definition.entities()[index]};
         auto const path{std::format("level.entities[{}]", index)};
         check_symbol(errors, entity.id.value, path + ".id");
+        if (!entity.overrides.empty()) {
+            errors.emplace_back(DiagnosticCode::UnsupportedEditorFeature,
+                                path,
+                                "Editor level source does not support entity overrides");
+        }
     }
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};

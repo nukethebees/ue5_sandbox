@@ -43,6 +43,7 @@ target_sources(native-simulation-tests PRIVATE
   scenarios/test_turrets_kill_one.cpp
   worldless_simulation_tests.cpp
   support/worldless_simulation_test.cpp
+  support/simulation_fixture.cpp
   deterministic_bias_tests.cpp
   fixed_tick_tests.cpp
   health_table_tests.cpp
@@ -58,6 +59,18 @@ set_tests_properties(native-simulation-tests PROPERTIES LABELS "unit;all;native;
 add_native_simulation_test(native-simulation-soak-tests
   test_moved_entities_battle.cpp
   support/worldless_simulation_test.cpp
+  support/simulation_fixture.cpp
 )
 set_tests_properties(native-simulation-soak-tests PROPERTIES
   LABELS "all;native;native-simulation;integration;soak")
+
+foreach(simulation_test_target IN ITEMS native-simulation-tests native-simulation-soak-tests)
+  target_link_libraries(${simulation_test_target}
+    PRIVATE
+      native-level-authoring-s7
+  )
+  target_compile_definitions(${simulation_test_target}
+    PRIVATE
+      IOJ_PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+  )
+endforeach()

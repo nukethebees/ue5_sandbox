@@ -2,6 +2,7 @@ add_library(native-level-authoring STATIC)
 target_sources(native-level-authoring
   PRIVATE
     src/ast_parser.cpp
+    src/settings_parser.cpp
     src/level_parser.cpp
     src/campaign_parser.cpp
     src/catalog_parser.cpp

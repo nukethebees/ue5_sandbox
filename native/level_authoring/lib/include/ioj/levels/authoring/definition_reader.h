@@ -2,6 +2,7 @@
 #include <ioj/levels/authoring/campaign_parser.h>
 #include <ioj/levels/authoring/definition_catalog.h>
 #include <ioj/levels/authoring/level_parser.h>
+#include <ioj/levels/authoring/settings_parser.h>
 
 #include <filesystem>
 #include <string_view>
@@ -19,6 +20,9 @@ class DefinitionReader {
         -> LevelDefinitionReadResult;
     [[nodiscard]] auto read_campaign_source(std::string_view source) const
         -> CampaignDefinitionReadResult;
+    [[nodiscard]] auto read_settings_source(std::string_view source) const -> SettingsReadResult;
+    [[nodiscard]] auto read_settings_file(std::filesystem::path const& path) const
+        -> SettingsReadResult;
     // Standalone reads use this reader's import root, or the conventional level/campaign directory.
     [[nodiscard]] auto read_level_file(std::filesystem::path const& path) const
         -> LevelDefinitionReadResult;

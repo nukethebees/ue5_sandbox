@@ -14,12 +14,38 @@ Records use keyword properties, symbols for identifiers, and strings for text:
       :position '(0 0 0) :rotation '(0 -90 0))))
 ```
 
+Game tuning lives in `Settings/base.scm`. Records are data: imports and overrides have no
+implicit global effect. Combine them explicitly, in application order:
+
+```scheme
+(settings-layers
+  (load-script "Settings/base.scm")
+  (fighters :speed 3000 :awareness-scan-frequency 10))
+```
+
+A level can supply overrides with `:settings (fighters :speed 3000)`, or combine several
+records using `settings-layers`. The selected game settings are applied first, then the level's
+settings. Later supplied fields win; omitted fields inherit, including nested records such as
+`:laser (laser :damage 20)`. Zero and `#f` are values. Duplicate properties within one record
+are errors. Numeric vector lists replace the whole vector. Unknown properties and incompatible
+values fail when their owning subsystem applies the settings.
+
+Standalone settings reads resolve imports relative to their supplied library root, or the
+settings file's directory. Game reads use `LevelScripts/` as the root. Editor scene saving does
+not yet support levels with settings layers and reports that limitation before rewriting them.
+
 Teams are derived from entity assignments, including scheduled spawns; no team list is declared.
 Entity `:rotation` is optional and defaults to `(0 0 0)`. Entity `:id` is also optional:
 the parser assigns `<team>-<archetype>-<number>`, such as `red-static-turret-0`.
 Numbering starts at zero for each team/archetype within each level, follows entity order,
 and skips all explicit IDs, including those on later entities. Use explicit IDs for units
 referenced by the player, camera, or mission: generated names can change when a group is edited.
+
+Entities can override initial `:health`. Static turrets also accept `:laser-damage`, and capital
+ships accept `:initial-spawn-delay`, `:spawn-cooldown`, and `:target 'enemy-capital-id`.
+Targets must name an enemy capital spawning at or before the source ship. Omitted values use
+the resolved game settings; an omitted target selects automatically. Editor scene saving does
+not yet support entity overrides and reports that limitation before rewriting them.
 
 Use `map` to share entity properties across a formation:
 

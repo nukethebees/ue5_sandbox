@@ -1,4 +1,4 @@
-// Captured from DA_FT_soa_entities_LevelConfig via Unreal's production conversion.
+// Mesh bounds and socket transforms captured from the Unreal presentation assets.
 #include <ioj/sim/levels/reference_level_simulation_data.h>
 
 namespace ioj::sim {
@@ -6,77 +6,10 @@ auto make_reference_level_simulation_data() -> ReferenceLevelSimulationData {
     ReferenceLevelSimulationData fixture;
     auto& data{fixture.data};
     auto& player{fixture.player};
-    data.lasers.n_preallocated_instances = 50000;
-    data.overlap_response.damage_per_overlap_detection = 50;
-    data.fighters.max_live_fighters = 2000;
-    data.fighters.fire_dot_product_threshold = 9.499999881e-01f;
-    data.fighters.speed = 4.500000000e+03f;
-    data.fighters.turn_speed_unitless = 1.000000000e+00f;
-    data.fighters.avoidance_clear_update_frequency = 2.000000000e+00f;
-    data.fighters.avoidance_update_frequency = 5.000000000e+00f;
-    data.fighters.avoidance_active_update_frequency = 1.200000000e+01f;
-    data.fighters.avoidance_immediate_update_frequency = 3.000000000e+01f;
-    data.fighters.avoidance_lookahead_time = 1.000000000e+00f;
-    data.fighters.avoidance_clearance_buffer = 1.000000000e+02f;
-    data.fighters.separation_radius = 2.000000000e+03f;
-    data.fighters.separation_strength = 1.000000000e+00f;
-    data.fighters.steering_memory_duration = 7.500000000e-01f;
-    data.fighters.dense_traffic_neighbour_threshold = 4;
-    data.fighters.health = 50;
-    data.fighters.attack_retry_cooldown = 1.500000060e-01f;
-    data.fighters.attack_engagement_threshold = 5.000000000e+03f;
-    data.fighters.attack_reposition_frequency = 1.000000000e+01f;
-    data.fighters.arrival_distance = 5.000000000e+02f;
-    data.fighters.los_check_buffer = 1.000000000e+02f;
-    data.fighters.awareness_radius = 1.000000000e+04f;
-    data.fighters.awareness_scan_frequency = 6.000000000e+00f;
-    data.fighters.minimum_opportunistic_intercept_deviation_dot_product = 5.000000000e-01f;
-    data.capital_ships.spawn_delay = 5.000000000e+00f;
     data.capital_ships.fighter_spawn_slots = 6;
-    data.capital_ships.max_health = 5000;
-    data.turrets.detection_radius = 5.000000000e+04f;
-    data.turrets.target_refresh_frequency = 5.000000000e+00f;
-    data.turrets.max_health = 20;
-    data.spinners.yaw_rotation_speed_degrees = 6.600000000e+01f;
-    player.config.thrust_energy_max = 1.000000000e+00f;
-    player.config.pitch_angle_max = 3.000000000e+01f;
-    player.config.pitch_speed = 3.000000000e+00f;
-    player.config.yaw_angle_max = 3.000000000e+01f;
-    player.config.yaw_speed = 3.000000000e+00f;
-    player.config.turn_bank_angle_max = 3.000000000e+01f;
-    player.config.turn_bank_speed = 2.000000000e+00f;
-    data.fighters.laser.damage = 10;
-    data.fighters.laser.projectile_speed = 1.000000000e+04f;
-    data.fighters.laser.max_distance = 4.000000000e+04f;
-    data.fighters.laser.fire_cooldown = 3.300000131e-01f;
-    data.turrets.laser.damage = 5;
-    data.turrets.laser.projectile_speed = 1.500000000e+04f;
-    data.turrets.laser.max_distance = 4.000000000e+04f;
-    data.turrets.laser.fire_cooldown = 3.300000131e-01f;
-    data.spinners.laser.damage = 2;
-    data.spinners.laser.projectile_speed = 1.000000000e+04f;
-    data.spinners.laser.max_distance = 1.000000000e+04f;
-    data.spinners.laser.fire_cooldown = 3.000000119e-01f;
-    player.config.laser.damage = 50;
-    player.config.laser.projectile_speed = 4.000000000e+04f;
-    player.config.laser.max_distance = 3.000000000e+04f;
-    player.config.laser.fire_cooldown = 1.500000060e-01f;
-    data.fighters.attack_distance_band.minimum_ratio = 4.000000060e-01f;
-    data.fighters.attack_distance_band.desired_ratio = 5.000000000e-01f;
-    data.fighters.attack_distance_band.maximum_ratio = 6.000000238e-01f;
     data.fighter_fire_point_distance = 1.807294556e+03f;
-    data.frame_memory_capacity_bytes = 268435456;
-    data.clock_settings.tick_rate = 6.00000000000000000e+01;
-    data.clock_settings.time_scale = 1.00000000000000000e+00;
-    data.clock_settings.accumulator = 0.00000000000000000e+00;
-    data.grid_geometry.dimensions = {400, 400, 5};
-    data.grid_geometry.cell_dimensions = {{5.000000000e+03f, 5.000000000e+03f, 2.000000000e+04f}};
     data.turrets.fire_point_offset = {{0.000000000e+00f, 0.000000000e+00f, 1.560000000e+03f}};
-    player.team = static_cast<decltype(player.team)>(0);
-    player.laser_mode = static_cast<decltype(player.laser_mode)>(0);
-    player.laser_fire_rate = static_cast<decltype(player.laser_fire_rate)>(2);
-    player.health.health = 1000;
-    player.health.max_health = 1000;
+    player.laser_fire_rate = ShipFireRate::FullAuto;
     player.transform = {
         {0.00000000000000000e+00,
          0.00000000000000000e+00,

@@ -6,7 +6,7 @@ Scheme source -> sandbox-s7 -> owned s7::Ast
                     interpreter destroyed
                                   |
                     native-level-authoring
-                      parse_level / parse_campaign
+                      parse_level / parse_campaign / parse_settings
                                   |
                           native-levels
                       semantic / catalog validation
@@ -72,4 +72,13 @@ the small `ioj::lookup_enum` helper. See
 because it emits evaluable constructors, while the AST represents their evaluated data.
 Literal vectors and ID lists are quoted; collections containing constructors use `list`.
 The writer preserves deterministic ordering and three-decimal rounding. Editor serialization
-continues to reject par-time, unlock criteria, and mission events.
+continues to reject par-time, unlock criteria, mission events, and settings layers.
+
+Settings constructors return records, and `settings-layers` groups records in application order.
+`parse_settings` flattens nested records into owned `ioj::settings::Setting` assignments with
+dotted paths and scalar/numeric-vector values. It preserves order and field presence; there
+is no default-filled patch mirror or interpreter state in runtime configuration. Level definitions
+retain their optional settings assignments. The native simulation resolver applies them directly
+to existing simulation structs; presentation consumers apply their own sections. Unknown fields
+and type mismatches are configuration errors at the owning consumer. Asset-derived geometry
+and Unreal resource references remain at the Unreal boundary.

@@ -28,6 +28,7 @@ enum class Property : PropertyUnderlying {
     Mission,
     MissionEvents,
     Entities,
+    Settings,
     Levels,
     Campaigns,
     Path,
@@ -53,6 +54,11 @@ enum class Property : PropertyUnderlying {
     Position,
     Rotation,
     SpawnAt,
+    Health,
+    LaserDamage,
+    InitialSpawnDelay,
+    SpawnCooldown,
+    Target,
 };
 
 [[nodiscard]] constexpr auto to_serialized_string(Property const value) noexcept
@@ -90,6 +96,9 @@ enum class Property : PropertyUnderlying {
         }
         case Property::Entities: {
             return "entities";
+        }
+        case Property::Settings: {
+            return "settings";
         }
         case Property::Levels: {
             return "levels";
@@ -166,6 +175,21 @@ enum class Property : PropertyUnderlying {
         case Property::SpawnAt: {
             return "spawn-at";
         }
+        case Property::Health: {
+            return "health";
+        }
+        case Property::LaserDamage: {
+            return "laser-damage";
+        }
+        case Property::InitialSpawnDelay: {
+            return "initial-spawn-delay";
+        }
+        case Property::SpawnCooldown: {
+            return "spawn-cooldown";
+        }
+        case Property::Target: {
+            return "target";
+        }
         default: {
             return "<invalid Property>";
         }
@@ -186,6 +210,7 @@ enum class Property : PropertyUnderlying {
         {"mission", Property::Mission},
         {"mission-events", Property::MissionEvents},
         {"entities", Property::Entities},
+        {"settings", Property::Settings},
         {"levels", Property::Levels},
         {"campaigns", Property::Campaigns},
         {"path", Property::Path},
@@ -211,6 +236,11 @@ enum class Property : PropertyUnderlying {
         {"position", Property::Position},
         {"rotation", Property::Rotation},
         {"spawn-at", Property::SpawnAt},
+        {"health", Property::Health},
+        {"laser-damage", Property::LaserDamage},
+        {"initial-spawn-delay", Property::InitialSpawnDelay},
+        {"spawn-cooldown", Property::SpawnCooldown},
+        {"target", Property::Target},
     };
     return ioj::lookup_enum(values, value);
 }
@@ -285,6 +315,7 @@ struct EnumTraits<::ioj::levels::authoring::Property> {
                                               ::ioj::levels::authoring::Property::Mission,
                                               ::ioj::levels::authoring::Property::MissionEvents,
                                               ::ioj::levels::authoring::Property::Entities,
+                                              ::ioj::levels::authoring::Property::Settings,
                                               ::ioj::levels::authoring::Property::Levels,
                                               ::ioj::levels::authoring::Property::Campaigns,
                                               ::ioj::levels::authoring::Property::Path,
@@ -309,7 +340,12 @@ struct EnumTraits<::ioj::levels::authoring::Property> {
                                               ::ioj::levels::authoring::Property::Team,
                                               ::ioj::levels::authoring::Property::Position,
                                               ::ioj::levels::authoring::Property::Rotation,
-                                              ::ioj::levels::authoring::Property::SpawnAt};
+                                              ::ioj::levels::authoring::Property::SpawnAt,
+                                              ::ioj::levels::authoring::Property::Health,
+                                              ::ioj::levels::authoring::Property::LaserDamage,
+                                              ::ioj::levels::authoring::Property::InitialSpawnDelay,
+                                              ::ioj::levels::authoring::Property::SpawnCooldown,
+                                              ::ioj::levels::authoring::Property::Target};
 };
 
 } // namespace ioj

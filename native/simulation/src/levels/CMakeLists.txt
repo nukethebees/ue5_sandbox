@@ -18,4 +18,5 @@ target_sources(native-simulation PRIVATE
   level_event_manager.cpp
   level_event_schedule.cpp
   level_spawn_manager.cpp
+  simulation_settings.cpp
 )

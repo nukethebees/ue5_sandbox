@@ -15,6 +15,7 @@
     (value Mission :serialized-name "mission")
     (value MissionEvents :serialized-name "mission-events")
     (value Entities :serialized-name "entities")
+    (value Settings :serialized-name "settings")
     (value Levels :serialized-name "levels")
     (value Campaigns :serialized-name "campaigns")
     (value Path :serialized-name "path")
@@ -39,7 +40,12 @@
     (value Team :serialized-name "team")
     (value Position :serialized-name "position")
     (value Rotation :serialized-name "rotation")
-    (value SpawnAt :serialized-name "spawn-at"))
+    (value SpawnAt :serialized-name "spawn-at")
+    (value Health :serialized-name "health")
+    (value LaserDamage :serialized-name "laser-damage")
+    (value InitialSpawnDelay :serialized-name "initial-spawn-delay")
+    (value SpawnCooldown :serialized-name "spawn-cooldown")
+    (value Target :serialized-name "target"))
   (enum RecordKind @native_uint8
     :native-api true
     :helpers (to-serialized-string)

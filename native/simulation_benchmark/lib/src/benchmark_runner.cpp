@@ -6,11 +6,13 @@
 #include <ioj/sim/fighters/fighter_task_format.h>
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/reference_level_simulation_data.h>
+#include <ioj/sim/levels/simulation_settings.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/telemetry/run_end_reason.h>
 
 #include <algorithm>
+#include <cassert>
 #include <chrono>
 #include <cmath>
 #include <iomanip>
@@ -123,22 +125,52 @@ auto json_string(std::string_view const value) -> std::string {
 }
 } // namespace
 
-auto calculate_tick_count(double const seconds) -> std::expected<sim::SimTick, std::string> {
+auto calculate_tick_count(double const seconds, double const tick_rate_hz)
+    -> std::expected<sim::SimTick, std::string> {
+    assert(std::isfinite(tick_rate_hz) && tick_rate_hz > 0.0);
+
     if (!std::isfinite(seconds) || seconds <= 0.0) {
         return std::unexpected{"seconds must be positive and finite"};
     }
 
-    auto const ticks{std::ceil(seconds * simulation_tick_rate_hz)};
+    auto const ticks{std::ceil(seconds * tick_rate_hz)};
     auto const maximum{static_cast<double>(std::numeric_limits<sim::SimTick>::max())};
     if (!std::isfinite(ticks) || ticks >= maximum) {
         return std::unexpected{"seconds produces a tick count that is too large"};
     }
-    return sim::duration_to_tick_period(simulation_tick_rate_hz, seconds);
+    return sim::duration_to_tick_period(tick_rate_hz, seconds);
 }
 
 auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const profiler_ready)
     -> std::expected<BenchmarkResult, std::string> {
-    auto const requested_ticks{calculate_tick_count(options.simulated_seconds)};
+    auto const script_root{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts"};
+    levels::authoring::DefinitionReader reader{script_root};
+    auto const base_settings{reader.read_settings_file(script_root / "Settings" / "base.scm")};
+    if (!base_settings) {
+        return std::unexpected{levels::format_diagnostics(base_settings.error())};
+    }
+    auto level_result{reader.read_level_file(options.level_path)};
+    if (!level_result) {
+        return std::unexpected{read_error(level_result)};
+    }
+    auto const& level{*level_result};
+    auto const& level_components{level};
+
+    sim::SimulationSettings settings{};
+    auto applied{sim::apply_settings(*base_settings, settings)};
+    if (applied) {
+        applied = sim::apply_settings(level, settings);
+    }
+    if (!applied) {
+        return std::unexpected{levels::format_diagnostics(applied.error())};
+    }
+
+    auto const valid{sim::validate_settings(settings)};
+    if (!valid) {
+        return std::unexpected{levels::format_diagnostics(valid.error())};
+    }
+    auto const tick_rate_hz{settings.clock.tick_rate};
+    auto const requested_ticks{calculate_tick_count(options.simulated_seconds, tick_rate_hz)};
     if (!requested_ticks) {
         return std::unexpected{requested_ticks.error()};
     }
@@ -153,13 +185,14 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
             return std::unexpected{"warm-up seconds must be finite and non-negative"};
         }
         if (options.warmup_seconds > 0.0) {
-            auto const ticks{calculate_tick_count(options.warmup_seconds)};
+            auto const ticks{calculate_tick_count(options.warmup_seconds, tick_rate_hz)};
             if (!ticks) {
                 return std::unexpected{"invalid warm-up duration: " + ticks.error()};
             }
             warmup_ticks = *ticks;
         }
-        auto const timeout_ticks{calculate_tick_count(options.saturation_timeout_seconds)};
+        auto const timeout_ticks{
+            calculate_tick_count(options.saturation_timeout_seconds, tick_rate_hz)};
         if (!timeout_ticks) {
             return std::unexpected{"invalid saturation timeout: " + timeout_ticks.error()};
         }
@@ -193,20 +226,12 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     }
 #endif
 
-    levels::authoring::DefinitionReader reader;
-    auto level_result{reader.read_level_file(options.level_path)};
-    if (!level_result) {
-        return std::unexpected{read_error(level_result)};
-    }
-    auto const& level{*level_result};
-    auto const& level_components{level};
-
     auto reference{sim::make_reference_level_simulation_data()};
     auto& data{reference.data};
-    data.clock_settings.tick_rate = simulation_tick_rate_hz;
+    sim::apply_settings(settings, data);
+    reference.player.config = settings.player;
     data.clock_settings.time_scale = static_cast<double>(options.game_speed);
     data.clock_settings.accumulator = 0.0;
-    data.grid_geometry.dimensions.z() = std::max(data.grid_geometry.dimensions.z(), 25);
     if (options.fighter_stress_cap.has_value()) {
         data.fighters.max_live_fighters = *options.fighter_stress_cap;
         data.fighters.laser.damage = 0;
@@ -259,8 +284,8 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         data.telemetry_metadata = sim::LevelTelemetryRunMetadata{
             .level_id = level_components.metadata().id.value,
             .level_display_name = level_components.metadata().title,
-            .tick_rate_hz = simulation_tick_rate_hz,
-            .tick_period_seconds = 1.0 / simulation_tick_rate_hz,
+            .tick_rate_hz = tick_rate_hz,
+            .tick_period_seconds = 1.0 / tick_rate_hz,
             .initial_requested_time_scale = static_cast<double>(options.game_speed),
             .requested_duration_seconds = options.simulated_seconds,
         };
@@ -391,7 +416,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         .requested_ticks = *requested_ticks,
         .completed_ticks = *requested_ticks,
         .advance_calls = advance_calls,
-        .completed_seconds = static_cast<double>(*requested_ticks) / simulation_tick_rate_hz,
+        .completed_seconds = static_cast<double>(*requested_ticks) / tick_rate_hz,
         .elapsed_seconds = elapsed,
         .total_elapsed_seconds = total_elapsed,
         .saturation_ticks = saturation_ticks,

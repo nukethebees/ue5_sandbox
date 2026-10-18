@@ -181,7 +181,10 @@ auto compile_level(LevelDefinition const& level,
             capital_storage.add_uninitialised(1);
             auto const capital_events{capital_storage.get_view()};
             capital_events.entity_indices()[row] = entity_index_value;
-            capital_events.target_entity_indices()[row] = sim::invalid_level_entity_index;
+            capital_events.target_entity_indices()[row] =
+                entity.overrides.target_entity_id.empty()
+                    ? sim::invalid_level_entity_index
+                    : entity_index(definition, entity.overrides.target_entity_id);
             set_vector(capital_events.view_locations(),
                        row,
                        Vector3f{static_cast<float>(entity.position.x()),
@@ -193,9 +196,12 @@ auto compile_level(LevelDefinition const& level,
                                    static_cast<float>(entity.rotation.yaw),
                                    static_cast<float>(entity.rotation.roll)});
             capital_events.teams()[row] = entity.team;
-            capital_events.healths()[row] = capital_config.max_health;
-            capital_events.initial_fighter_spawn_delays()[row] = 0.0f;
-            capital_events.fighter_spawn_cooldowns()[row] = capital_config.spawn_delay;
+            capital_events.healths()[row] =
+                entity.overrides.health.value_or(capital_config.max_health);
+            capital_events.initial_fighter_spawn_delays()[row] =
+                entity.overrides.initial_spawn_delay.value_or(0.0f);
+            capital_events.fighter_spawn_cooldowns()[row] =
+                entity.overrides.spawn_cooldown.value_or(capital_config.spawn_delay);
         } else if (entity.archetype == EntityArchetype::StaticTurret) {
             auto const row{turret_storage.num()};
             turret_storage.add_uninitialised(1);
@@ -212,8 +218,10 @@ auto compile_level(LevelDefinition const& level,
                                    static_cast<float>(entity.rotation.yaw),
                                    static_cast<float>(entity.rotation.roll)});
             turret_events.teams()[row] = entity.team;
-            turret_events.healths()[row] = turret_config.max_health;
-            turret_events.laser_damages()[row] = turret_config.laser.damage;
+            turret_events.healths()[row] =
+                entity.overrides.health.value_or(turret_config.max_health);
+            turret_events.laser_damages()[row] =
+                entity.overrides.laser_damage.value_or(turret_config.laser.damage);
         }
     };
 

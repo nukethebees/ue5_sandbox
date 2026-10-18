@@ -46,6 +46,38 @@ auto dsl_source() -> std::string {
     auto const criterion{to_serialized_string(RecordKind::LevelCompleted)};
     std::format_to(
         std::back_inserter(source), "(define ({} id) (list :{} id))\n", criterion, criterion);
+    for (auto const name : {"settings",
+                            "settings-layers",
+                            "player-ship",
+                            "laser-projectiles",
+                            "capital-ships",
+                            "fighters",
+                            "turrets",
+                            "tube-spinners",
+                            "tick",
+                            "hud",
+                            "laser",
+                            "attack-distance-band",
+                            "presentation",
+                            "ui",
+                            "starfield",
+                            "generation",
+                            "star",
+                            "galactic-band",
+                            "stellar-cluster",
+                            "dust-lane",
+                            "bright-star",
+                            "twinkle",
+                            "galactic-haze",
+                            "galactic-core",
+                            "nebular-knot"}) {
+        std::format_to(std::back_inserter(source),
+                       "(define ({} . properties) (cons :{} properties))\n",
+                       name,
+                       name);
+    }
+    source.append(
+        "(define (settings-section name . properties) (cons (symbol->keyword name) properties))\n");
     source.append(R"(
       (define catalog
         (let ((include-load load-script) (include-format format))
@@ -121,6 +153,10 @@ auto decode_campaign(s7::Ast const& ast) -> CampaignDefinitionReadResult {
     return definition;
 }
 
+auto decode_settings(s7::Ast const& ast) -> SettingsReadResult {
+    return parse_settings(ast, ast.root);
+}
+
 auto read_source(std::filesystem::path const& path) -> std::expected<std::string, Diagnostics> {
     auto source{ioj::read_file(path)};
     if (!source) {
@@ -179,6 +215,22 @@ auto DefinitionReader::read_level_source(std::string_view const source) const
 auto DefinitionReader::read_campaign_source(std::string_view const source) const
     -> CampaignDefinitionReadResult {
     return evaluate(source, script_library_root_).and_then(decode_campaign);
+}
+
+auto DefinitionReader::read_settings_source(std::string_view const source) const
+    -> SettingsReadResult {
+    return evaluate(source, script_library_root_).and_then(decode_settings);
+}
+
+auto DefinitionReader::read_settings_file(std::filesystem::path const& path) const
+    -> SettingsReadResult {
+    auto source{read_source(path)};
+    if (!source) {
+        return std::unexpected{std::move(source.error())};
+    }
+    auto const root{script_library_root_.empty() ? std::filesystem::absolute(path).parent_path()
+                                                 : script_library_root_};
+    return with_source_path(evaluate(*source, root).and_then(decode_settings), path);
 }
 auto DefinitionReader::read_level_file(std::filesystem::path const& path) const
     -> LevelDefinitionReadResult {

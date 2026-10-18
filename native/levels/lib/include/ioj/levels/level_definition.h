@@ -35,6 +35,7 @@ class LevelDefinition {
     [[nodiscard]] auto entities() const -> std::vector<EntitySpawnDefinition> const& {
         return entities_;
     }
+    [[nodiscard]] auto settings() const -> settings::Settings const& { return settings_; }
     // Require an entity ID belonging to this definition.
     [[nodiscard]] auto entity(EntityId const& id) const -> EntitySpawnDefinition const&;
   private:
@@ -46,7 +47,8 @@ class LevelDefinition {
         , collision_grid_{std::move(components.collision_grid)}
         , mission_{std::move(components.mission)}
         , mission_events_{std::move(components.mission_events)}
-        , entities_{std::move(components.entities)} {}
+        , entities_{std::move(components.entities)}
+        , settings_{std::move(components.settings)} {}
 
     LevelMetadata metadata_;
     std::vector<LevelId> unlock_level_ids_;
@@ -56,6 +58,7 @@ class LevelDefinition {
     std::optional<LevelMissionDefinition> mission_;
     std::vector<LevelMissionObjectiveEvent> mission_events_;
     std::vector<EntitySpawnDefinition> entities_;
+    settings::Settings settings_;
 };
 
 // Return distinct teams from initial and scheduled entities, in enum order.

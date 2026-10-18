@@ -16,6 +16,7 @@ target_link_libraries(native-simulation-benchmark-lib
 )
 ioj_enable_warnings(native-simulation-benchmark-lib)
 target_compile_definitions(native-simulation-benchmark-lib PRIVATE
+  IOJ_PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
   IOJ_BENCHMARK_COMPILER_ID="${CMAKE_CXX_COMPILER_ID}"
   IOJ_BENCHMARK_BUILD_TYPE="${CMAKE_BUILD_TYPE}"
 )

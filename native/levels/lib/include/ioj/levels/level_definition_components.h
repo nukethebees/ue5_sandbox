@@ -6,6 +6,7 @@
 #include <ioj/levels/level_metadata.h>
 #include <ioj/levels/level_mission_definition.h>
 #include <ioj/levels/level_mission_objective_event.h>
+#include <ioj/settings/settings.h>
 
 #include <optional>
 #include <vector>
@@ -21,5 +22,6 @@ struct LevelDefinitionComponents {
     std::optional<LevelMissionDefinition> mission{};
     std::vector<LevelMissionObjectiveEvent> mission_events{};
     std::vector<EntitySpawnDefinition> entities{};
+    settings::Settings settings{};
 };
 }

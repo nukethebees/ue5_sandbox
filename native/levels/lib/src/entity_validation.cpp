@@ -71,6 +71,55 @@ auto validate_entities(LevelDefinitionComponents const& definition, Diagnostics&
                                 "level.entities.spawn-at",
                                 "The player entity must spawn at time zero");
         }
+
+        auto const& overrides{entity.overrides};
+        if (overrides.health && *overrides.health <= 0) {
+            result.emplace_back(DiagnosticCode::InvalidNumber,
+                                "level.entities.health",
+                                "Initial health must be positive");
+        }
+        if (overrides.laser_damage && *overrides.laser_damage < 0) {
+            result.emplace_back(DiagnosticCode::InvalidNumber,
+                                "level.entities.laser-damage",
+                                "Laser damage must be nonnegative");
+        }
+        if (overrides.laser_damage && entity.archetype != EntityArchetype::StaticTurret) {
+            result.emplace_back(DiagnosticCode::UnknownProperty,
+                                "level.entities.laser-damage",
+                                "Laser damage overrides require a static turret");
+        }
+        if (overrides.initial_spawn_delay && (!std::isfinite(*overrides.initial_spawn_delay) ||
+                                              *overrides.initial_spawn_delay < 0.0f)) {
+            result.emplace_back(DiagnosticCode::InvalidNumber,
+                                "level.entities.initial-spawn-delay",
+                                "Initial spawn delay must be finite and nonnegative");
+        }
+        if (overrides.spawn_cooldown &&
+            (!std::isfinite(*overrides.spawn_cooldown) || *overrides.spawn_cooldown < 0.0f)) {
+            result.emplace_back(DiagnosticCode::InvalidNumber,
+                                "level.entities.spawn-cooldown",
+                                "Spawn cooldown must be finite and nonnegative");
+        }
+        if (entity.archetype != EntityArchetype::CapitalShip &&
+            (overrides.initial_spawn_delay || overrides.spawn_cooldown ||
+             !overrides.target_entity_id.empty())) {
+            result.emplace_back(DiagnosticCode::UnknownProperty,
+                                "level.entities",
+                                "Fighter spawn and target overrides require a capital ship");
+        }
+        if (!overrides.target_entity_id.empty()) {
+            auto const target{std::ranges::find(
+                definition.entities, overrides.target_entity_id, &EntitySpawnDefinition::id)};
+            if (target == definition.entities.end() ||
+                target->archetype != EntityArchetype::CapitalShip || target->team == entity.team ||
+                target->spawn_time_seconds > entity.spawn_time_seconds) {
+                result.emplace_back(
+                    DiagnosticCode::InvalidSymbol,
+                    "level.entities.target",
+                    "Target must name an enemy capital spawning at or before this ship");
+            }
+        }
+
         auto const error_end{result.size()};
         for (auto error_index{error_begin}; error_index < error_end; ++error_index) {
             auto& path{result[error_index].node_path};

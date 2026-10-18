@@ -1,6 +1,7 @@
 #include <ioj/levels/authoring/level_parser.h>
 
 #include "ast_parser.h"
+#include <ioj/levels/authoring/settings_parser.h>
 
 #include <array>
 #include <format>
@@ -174,6 +175,28 @@ auto entity(AstParser& parser, s7::NodeIndex const node, std::string const& node
             case Property::SpawnAt:
                 result.spawn_time_seconds = parser.number(field.value, field.node_path);
                 break;
+            case Property::Health:
+                result.overrides.health = parser.integer(field.value, field.node_path);
+                break;
+            case Property::LaserDamage:
+                result.overrides.laser_damage = parser.integer(field.value, field.node_path);
+                break;
+            case Property::InitialSpawnDelay:
+                result.overrides.initial_spawn_delay =
+                    parser.float_number(field.value, field.node_path);
+                break;
+            case Property::SpawnCooldown:
+                result.overrides.spawn_cooldown = parser.float_number(field.value, field.node_path);
+                break;
+            case Property::Target:
+                result.overrides.target_entity_id =
+                    EntityId{parser.symbol(field.value, field.node_path)};
+                if (result.overrides.target_entity_id.empty()) {
+                    parser.error(DiagnosticCode::InvalidSymbol,
+                                 field.node_path,
+                                 "Target entity id must not be empty");
+                }
+                break;
             default:
                 parser.unknown(field);
                 break;
@@ -272,6 +295,17 @@ auto parse_level(s7::Ast const& ast, s7::NodeIndex const root) -> LevelDefinitio
             case Property::CollisionGrid:
                 result.collision_grid = grid(parser, field.value, field.node_path);
                 break;
+            case Property::Settings: {
+                auto settings{parse_settings(ast, field.value)};
+                if (settings) {
+                    result.settings = std::move(*settings);
+                } else {
+                    for (auto& error : settings.error()) {
+                        parser.error(error.code, error.node_path, std::move(error.message));
+                    }
+                }
+                break;
+            }
             case Property::Mission:
                 result.mission = mission(parser, field.value, field.node_path);
                 break;

@@ -10,7 +10,6 @@
 #include <string>
 
 namespace ioj::simulation_benchmark {
-inline constexpr double simulation_tick_rate_hz{60.0};
 inline constexpr char profiler_ready_message[]{"native-simulation-benchmark: profiler-ready"};
 
 using ProfilerReadyCallback = void (*)();
@@ -73,7 +72,9 @@ struct BenchmarkResult {
     bool tracy_enabled{};
 };
 
-[[nodiscard]] auto calculate_tick_count(double seconds) -> std::expected<sim::SimTick, std::string>;
+// The configured tick rate must be positive and finite.
+[[nodiscard]] auto calculate_tick_count(double seconds, double tick_rate_hz = 60.0)
+    -> std::expected<sim::SimTick, std::string>;
 [[nodiscard]] auto run_benchmark(BenchmarkOptions const& options,
                                  ProfilerReadyCallback profiler_ready = nullptr)
     -> std::expected<BenchmarkResult, std::string>;
