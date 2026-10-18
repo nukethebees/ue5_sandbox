@@ -8,6 +8,7 @@
 #include <codegen/ast/return_syntax.h>
 #include <lispb/strings.h>
 
+#include <format>
 #include <map>
 #include <vector>
 
@@ -15,6 +16,18 @@ namespace lispb::codegen::detail {
 namespace string_enum_parser {
 using Entries = std::vector<StringEnumEntry const*>;
 inline constexpr std::size_t linear_limit{4};
+
+auto character_literal(CppIR& ir, unsigned char const character) -> Expr {
+    if (character == '\'' || character == '\\') {
+        return ir.literal(std::format("'\\{}'", static_cast<char>(character)));
+    }
+    if (character >= ' ' && character <= '~') {
+        return ir.literal(std::format("'{}'", static_cast<char>(character)));
+    }
+
+    // Keep the byte value positive regardless of whether plain char is signed.
+    return ir.literal(std::format("U'\\x{:02x}'", character));
+}
 
 auto comparisons(CppIR& ir, Expr const input, Entries const& entries) -> Nodes {
     NodeListBuilder body{ir};
@@ -46,7 +59,7 @@ auto length_bucket(CppIR& ir, Expr const input, std::size_t const length, Entrie
 
     std::vector<SwitchCaseId> cases;
     for (auto const& [character, group] : leading_characters) {
-        cases.push_back(ir.switch_case(ir.literal(std::to_string(character)),
+        cases.push_back(ir.switch_case(character_literal(ir, character),
                                        ir.block(comparisons(ir, input, group))));
     }
     cases.push_back(ir.switch_case({}, ir.block({ir.return_statement(ir.named("std::nullopt"))})));

@@ -156,7 +156,7 @@ enum class FieldsField : std::uint32_t {
         }
         case 25: {
             switch (static_cast<unsigned char>(path.front())) {
-                case 99: {
+                case 'c': {
                     if (path == "capital-ships.spawn-delay") {
                         return FieldsField::CapitalShipsSpawnDelay;
                     }
@@ -165,7 +165,7 @@ enum class FieldsField : std::uint32_t {
                     }
                     return std::nullopt;
                 }
-                case 102: {
+                case 'f': {
                     if (path == "fighters.arrival-distance") {
                         return FieldsField::FightersArrivalDistance;
                     }
@@ -177,7 +177,7 @@ enum class FieldsField : std::uint32_t {
                     }
                     return std::nullopt;
                 }
-                case 112: {
+                case 'p': {
                     if (path == "player-ship.yaw-angle-max") {
                         return FieldsField::PlayerShipYawAngleMax;
                     }
@@ -205,13 +205,13 @@ enum class FieldsField : std::uint32_t {
         }
         case 27: {
             switch (static_cast<unsigned char>(path.front())) {
-                case 102: {
+                case 'f': {
                     if (path == "fighters.laser.max-distance") {
                         return FieldsField::FightersLaserMaxDistance;
                     }
                     return std::nullopt;
                 }
-                case 112: {
+                case 'p': {
                     if (path == "player-ship.pitch-angle-max") {
                         return FieldsField::PlayerShipPitchAngleMax;
                     }
@@ -223,7 +223,7 @@ enum class FieldsField : std::uint32_t {
                     }
                     return std::nullopt;
                 }
-                case 116: {
+                case 't': {
                     if (path == "turrets.laser.fire-cooldown") {
                         return FieldsField::TurretsLaserFireCooldown;
                     }

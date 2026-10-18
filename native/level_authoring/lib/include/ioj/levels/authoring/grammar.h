@@ -232,13 +232,13 @@ enum class Property : PropertyUnderlying {
         }
         case 6: {
             switch (static_cast<unsigned char>(value.front())) {
-                case 99: {
+                case 'c': {
                     if (value == "camera") {
                         return Property::Camera;
                     }
                     return std::nullopt;
                 }
-                case 104: {
+                case 'h': {
                     if (value == "heroes") {
                         return Property::Heroes;
                     }
@@ -247,25 +247,25 @@ enum class Property : PropertyUnderlying {
                     }
                     return std::nullopt;
                 }
-                case 108: {
+                case 'l': {
                     if (value == "levels") {
                         return Property::Levels;
                     }
                     return std::nullopt;
                 }
-                case 112: {
+                case 'p': {
                     if (value == "player") {
                         return Property::Player;
                     }
                     return std::nullopt;
                 }
-                case 116: {
+                case 't': {
                     if (value == "target") {
                         return Property::Target;
                     }
                     return std::nullopt;
                 }
-                case 117: {
+                case 'u': {
                     if (value == "unlock") {
                         return Property::Unlock;
                     }
@@ -287,19 +287,19 @@ enum class Property : PropertyUnderlying {
         }
         case 8: {
             switch (static_cast<unsigned char>(value.front())) {
-                case 100: {
+                case 'd': {
                     if (value == "distance") {
                         return Property::Distance;
                     }
                     return std::nullopt;
                 }
-                case 101: {
+                case 'e': {
                     if (value == "entities") {
                         return Property::Entities;
                     }
                     return std::nullopt;
                 }
-                case 112: {
+                case 'p': {
                     if (value == "par-time") {
                         return Property::ParTime;
                     }
@@ -308,13 +308,13 @@ enum class Property : PropertyUnderlying {
                     }
                     return std::nullopt;
                 }
-                case 114: {
+                case 'r': {
                     if (value == "rotation") {
                         return Property::Rotation;
                     }
                     return std::nullopt;
                 }
-                case 115: {
+                case 's': {
                     if (value == "settings") {
                         return Property::Settings;
                     }
