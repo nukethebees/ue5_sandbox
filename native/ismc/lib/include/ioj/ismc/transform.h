@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <type_traits>
 
@@ -15,10 +16,13 @@ namespace ioj::ismc {
 
 inline constexpr float position_quantum{16.0f};
 inline constexpr float inverse_position_quantum{1.0f / position_quantum};
+inline constexpr float position_quantization_half_step{0.5f};
+inline constexpr float position_quantization_bound{
+    static_cast<float>(std::numeric_limits<std::int16_t>::max()) + position_quantization_half_step};
 
 [[nodiscard]] inline auto can_quantize_position(float position, float root) noexcept -> bool {
     auto const offset{(position - root) * inverse_position_quantum};
-    return offset >= -32767.5f && offset < 32767.5f;
+    return offset >= -position_quantization_bound && offset < position_quantization_bound;
 }
 
 // Precondition: can_quantize_position(position, root).
@@ -29,7 +33,8 @@ inline constexpr float inverse_position_quantum{1.0f / position_quantum};
     auto const offset{(position - root) * inverse_position_quantum};
     auto const integral{static_cast<std::int32_t>(offset)};
     auto const fraction{offset - static_cast<float>(integral)};
-    return static_cast<std::int16_t>(integral + (fraction >= 0.5f) - (fraction < -0.5f));
+    return static_cast<std::int16_t>(integral + (fraction >= position_quantization_half_step) -
+                                     (fraction < -position_quantization_half_step));
 }
 
 // Checked entry point for domain setup and tests, not the render hot path.
@@ -43,7 +48,7 @@ inline constexpr float inverse_position_quantum{1.0f / position_quantum};
 
 // Radius is measured about the mesh origin, including an off-centre mesh AABB.
 [[nodiscard]] constexpr auto geometry_error(float mesh_radius) noexcept -> float {
-    return position_quantum * 0.5f + mesh_radius * rotation_error_chord;
+    return position_quantum * position_quantization_half_step + mesh_radius * rotation_error_chord;
 }
 
 [[nodiscard]] inline auto position_root(Vector3f minimum, Vector3f maximum) noexcept
@@ -55,8 +60,9 @@ inline constexpr float inverse_position_quantum{1.0f / position_quantum};
             return std::nullopt;
         }
         auto const center{(static_cast<double>(minimum[axis]) + maximum[axis]) * 0.5};
-        root[axis] =
-            static_cast<float>(std::floor(center / position_quantum + 0.5) * position_quantum);
+        root[axis] = static_cast<float>(
+            std::floor(center / position_quantum + position_quantization_half_step) *
+            position_quantum);
         if (!quantize_position(minimum[axis], root[axis]) ||
             !quantize_position(maximum[axis], root[axis])) {
             return std::nullopt;
