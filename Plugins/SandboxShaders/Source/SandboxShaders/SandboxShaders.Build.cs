@@ -6,7 +6,7 @@ public class SandboxShaders : ModuleRules
     public SandboxShaders(ReadOnlyTargetRules Target) : base(Target)
     {
         string repositoryRoot = Path.GetFullPath(Path.Combine(ModuleDirectory, "..", "..", "..", ".."));
-        PrivateIncludePaths.Add(Path.Combine(repositoryRoot, "native", "gfx", "lib", "include"));
+        PublicSystemIncludePaths.Add(Path.Combine(repositoryRoot, "native", "gfx", "lib", "include"));
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         CppStandard = CppStandardVersion.Latest;
         MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;
@@ -22,6 +22,7 @@ public class SandboxShaders : ModuleRules
         PrivateDependencyModuleNames.AddRange(new string[]
         {
             "Projects",
+            "NativeSettings",
             "RenderCore",
             "RHI",
         });

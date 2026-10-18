@@ -22,7 +22,6 @@
 DEFINE_LOG_CATEGORY_STATIC(LogGpuStarfield, Log, All);
 
 namespace {
-constexpr int32 maximum_star_count{1000000};
 constexpr float base_starfield_radius{100000000.0f};
 constexpr float base_star_size{50000.0f};
 
@@ -112,8 +111,8 @@ struct FGpuStarfieldRenderParameters {
     float render_haze{0.0f};
 };
 
-auto make_render_parameters(FGpuStarfieldSettings const& settings)
-    -> FGpuStarfieldRenderParameters {
+auto make_render_parameters(ioj::gfx::StarfieldSettings const& settings,
+                            FGpuStarfieldColours const& colours) -> FGpuStarfieldRenderParameters {
     auto const& star{settings.star};
     auto const& bright_star{settings.bright_star};
     auto const& twinkle{settings.twinkle};
@@ -137,19 +136,19 @@ auto make_render_parameters(FGpuStarfieldSettings const& settings)
         .dust_lane_irregularity = dust_lane.irregularity,
         .galactic_haze_strength = galactic_haze.strength,
         .galactic_haze_width_degrees = galactic_haze.width_degrees,
-        .galactic_haze_colour = {galactic_haze.colour.R,
-                                 galactic_haze.colour.G,
-                                 galactic_haze.colour.B},
+        .galactic_haze_colour = {colours.galactic_haze.R,
+                                 colours.galactic_haze.G,
+                                 colours.galactic_haze.B},
         .galactic_core_strength = galactic_core.strength,
         .galactic_core_width_degrees = galactic_core.width_degrees,
-        .galactic_core_colour = {galactic_core.colour.R,
-                                 galactic_core.colour.G,
-                                 galactic_core.colour.B},
+        .galactic_core_colour = {colours.galactic_core.R,
+                                 colours.galactic_core.G,
+                                 colours.galactic_core.B},
         .nebular_knot_strength = nebular_knot.strength,
         .nebular_knot_size_degrees = nebular_knot.size_degrees,
-        .nebular_knot_colour = {nebular_knot.colour.R,
-                                nebular_knot.colour.G,
-                                nebular_knot.colour.B},
+        .nebular_knot_colour = {colours.nebular_knot.R,
+                                colours.nebular_knot.G,
+                                colours.nebular_knot.B},
     };
 }
 
@@ -523,53 +522,18 @@ UGpuStarfieldComponent::UGpuStarfieldComponent() {
     }
 }
 
-void UGpuStarfieldComponent::apply_settings(FGpuStarfieldSettings const& settings) {
-    auto normalised{settings};
-    auto& generation{normalised.generation};
-    auto& star{normalised.star};
-    auto& galactic_band{normalised.galactic_band};
-    auto& stellar_cluster{normalised.stellar_cluster};
-    auto& dust_lane{normalised.dust_lane};
-    auto& bright_star{normalised.bright_star};
-    auto& twinkle{normalised.twinkle};
-    auto& galactic_haze{normalised.galactic_haze};
-    auto& galactic_core{normalised.galactic_core};
-    auto& nebular_knot{normalised.nebular_knot};
-
-    generation.star_count = FMath::Clamp(generation.star_count, 1, maximum_star_count);
-    star.scale = FMath::Max(star.scale, 0.001f);
-    star.size_multiplier = FMath::Max(star.size_multiplier, 0.0f);
-    star.global_brightness = FMath::Max(star.global_brightness, 0.0f);
-    star.colour_variation_strength = FMath::Clamp(star.colour_variation_strength, 0.0f, 1.0f);
-    star.parallax_strength = FMath::Clamp(star.parallax_strength, 0.0f, 1.0f);
-    galactic_band.strength = FMath::Clamp(galactic_band.strength, 0.0f, 1.0f);
-    galactic_band.width_degrees = FMath::Clamp(galactic_band.width_degrees, 1.0f, 45.0f);
-    stellar_cluster.strength = FMath::Clamp(stellar_cluster.strength, 0.0f, 1.0f);
-    stellar_cluster.width_degrees = FMath::Clamp(stellar_cluster.width_degrees, 1.0f, 20.0f);
-    dust_lane.strength = FMath::Clamp(dust_lane.strength, 0.0f, 1.0f);
-    dust_lane.width_degrees = FMath::Clamp(dust_lane.width_degrees, 0.5f, 20.0f);
-    dust_lane.irregularity = FMath::Clamp(dust_lane.irregularity, 0.0f, 1.0f);
-    bright_star.fraction = FMath::Clamp(bright_star.fraction, 0.0f, 0.1f);
-    bright_star.size_multiplier = FMath::Max(bright_star.size_multiplier, 1.0f);
-    bright_star.brightness_multiplier = FMath::Max(bright_star.brightness_multiplier, 1.0f);
-    bright_star.shape_strength = FMath::Clamp(bright_star.shape_strength, 0.0f, 1.0f);
-    twinkle.strength = FMath::Clamp(twinkle.strength, 0.0f, 0.5f);
-    twinkle.speed = FMath::Clamp(twinkle.speed, 0.0f, 2.0f);
-    galactic_haze.strength = FMath::Clamp(galactic_haze.strength, 0.0f, 10.0f);
-    galactic_haze.width_degrees = FMath::Clamp(galactic_haze.width_degrees, 1.0f, 60.0f);
-    galactic_haze.colour.R = FMath::Max(galactic_haze.colour.R, 0.0f);
-    galactic_haze.colour.G = FMath::Max(galactic_haze.colour.G, 0.0f);
-    galactic_haze.colour.B = FMath::Max(galactic_haze.colour.B, 0.0f);
-    galactic_core.strength = FMath::Clamp(galactic_core.strength, 0.0f, 10.0f);
-    galactic_core.width_degrees = FMath::Clamp(galactic_core.width_degrees, 1.0f, 90.0f);
-    galactic_core.colour.R = FMath::Max(galactic_core.colour.R, 0.0f);
-    galactic_core.colour.G = FMath::Max(galactic_core.colour.G, 0.0f);
-    galactic_core.colour.B = FMath::Max(galactic_core.colour.B, 0.0f);
-    nebular_knot.strength = FMath::Clamp(nebular_knot.strength, 0.0f, 10.0f);
-    nebular_knot.size_degrees = FMath::Clamp(nebular_knot.size_degrees, 2.0f, 30.0f);
-    nebular_knot.colour.R = FMath::Max(nebular_knot.colour.R, 0.0f);
-    nebular_knot.colour.G = FMath::Max(nebular_knot.colour.G, 0.0f);
-    nebular_knot.colour.B = FMath::Max(nebular_knot.colour.B, 0.0f);
+void UGpuStarfieldComponent::apply_settings(ioj::gfx::StarfieldSettings const& settings,
+                                            FGpuStarfieldColours const& colours) {
+    auto const& generation{settings.generation};
+    auto const& star{settings.star};
+    auto const& galactic_band{settings.galactic_band};
+    auto const& stellar_cluster{settings.stellar_cluster};
+    auto const& dust_lane{settings.dust_lane};
+    auto const& bright_star{settings.bright_star};
+    auto const& twinkle{settings.twinkle};
+    auto const& galactic_haze{settings.galactic_haze};
+    auto const& galactic_core{settings.galactic_core};
+    auto const& nebular_knot{settings.nebular_knot};
 
     auto const structural_change{
         !has_generated_stars_ || settings_.generation.star_count != generation.star_count ||
@@ -595,15 +559,16 @@ void UGpuStarfieldComponent::apply_settings(FGpuStarfieldSettings const& setting
         settings_.twinkle.speed != twinkle.speed ||
         settings_.galactic_haze.strength != galactic_haze.strength ||
         settings_.galactic_haze.width_degrees != galactic_haze.width_degrees ||
-        settings_.galactic_haze.colour != galactic_haze.colour ||
+        colours_.galactic_haze != colours.galactic_haze ||
         settings_.galactic_core.strength != galactic_core.strength ||
         settings_.galactic_core.width_degrees != galactic_core.width_degrees ||
-        settings_.galactic_core.colour != galactic_core.colour ||
+        colours_.galactic_core != colours.galactic_core ||
         settings_.nebular_knot.strength != nebular_knot.strength ||
         settings_.nebular_knot.size_degrees != nebular_knot.size_degrees ||
-        settings_.nebular_knot.colour != nebular_knot.colour};
+        colours_.nebular_knot != colours.nebular_knot};
 
-    settings_ = normalised;
+    settings_ = settings;
+    colours_ = colours;
     if (structural_change) {
         generate_stars();
         UpdateBounds();
@@ -626,7 +591,7 @@ FPrimitiveSceneProxy* UGpuStarfieldComponent::CreateSceneProxy() {
     }
 
     return new FGpuStarfieldSceneProxy{
-        this, star_data_, material_, make_render_parameters(settings_)};
+        this, star_data_, material_, make_render_parameters(settings_, colours_)};
 }
 
 FBoxSphereBounds UGpuStarfieldComponent::CalcBounds(FTransform const& local_to_world) const {
@@ -646,7 +611,7 @@ void UGpuStarfieldComponent::SendRenderDynamicData_Concurrent() {
     }
 
     auto* const scene_proxy{static_cast<FGpuStarfieldSceneProxy*>(SceneProxy)};
-    auto const parameters{make_render_parameters(settings_)};
+    auto const parameters{make_render_parameters(settings_, colours_)};
     ENQUEUE_RENDER_COMMAND(UpdateGpuStarfieldParameters)
     ([scene_proxy, parameters](FRHICommandListImmediate& rhi_command_list) {
         scene_proxy->set_parameters_render_thread(parameters);
