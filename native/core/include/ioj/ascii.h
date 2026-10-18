@@ -14,6 +14,12 @@ namespace ioj {
 [[nodiscard]] constexpr auto isdigit(char const value) noexcept -> bool {
     return value >= '0' && value <= '9';
 }
+[[nodiscard]] constexpr auto isprint(char const value) noexcept -> bool {
+    return value >= ' ' && value <= '~';
+}
+[[nodiscard]] constexpr auto needs_char_literal_escape(char const value) noexcept -> bool {
+    return value == '\'' || value == '\\';
+}
 [[nodiscard]] constexpr auto tolower(char const value) noexcept -> char {
     return isupper(value) ? static_cast<char>(value + ('a' - 'A')) : value;
 }

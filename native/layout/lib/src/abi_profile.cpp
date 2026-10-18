@@ -1,5 +1,6 @@
 #include <ioj/layout/abi_profile.hpp>
 
+#include <ioj/format_writer.h>
 #include <ioj/layout/string_set.hpp>
 
 #include <charconv>
@@ -538,7 +539,7 @@ auto load_abi_profile(std::filesystem::path const& path)
 
 auto serialize_abi_profile(AbiProfile const& profile) -> std::string {
     std::string output{"ioj-layout-profile 2\nname "};
-    auto const out{std::back_inserter(output)};
+    auto write{ioj::FormatWriter{std::back_inserter(output)}};
     append_quoted(output, profile.name());
     output += '\n';
     auto const& identity{profile.identity()};
@@ -553,15 +554,15 @@ auto serialize_abi_profile(AbiProfile const& profile) -> std::string {
                             : (*facts.integer_signed ? "signed" : "unsigned")};
         output += "type ";
         append_quoted(output, spelling);
-        std::format_to(out, " {} {} {} ", facts.size_bytes, facts.alignment_bytes, kind);
+        write(" {} {} {} ", facts.size_bytes, facts.alignment_bytes, kind);
         if (facts.unsigned_value_bits.has_value()) {
-            std::format_to(out, "{}", *facts.unsigned_value_bits);
+            write("{}", *facts.unsigned_value_bits);
         } else {
             output += "unknown";
         }
         output += ' ';
         append_quoted(output, facts.provenance);
-        std::format_to(out, " {}\n", fact_origin_name(facts.origin));
+        write(" {}\n", fact_origin_name(facts.origin));
     }
     for (auto const& [spelling, represented_by] : profile.representations()) {
         output += "representation ";

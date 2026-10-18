@@ -1,5 +1,6 @@
 #include <ioj/layout/profile_probe.hpp>
 
+#include <ioj/format_writer.h>
 #include <ioj/layout/abi_profile.hpp>
 #include <ioj/layout/external_dependency.hpp>
 
@@ -15,7 +16,6 @@
 #include <algorithm>
 #include <cstdint>
 #include <expected>
-#include <format>
 #include <iterator>
 #include <limits>
 #include <optional>
@@ -122,7 +122,7 @@ auto external_probe_request(lispb::schema::TypeGraph const& types, lispb::schema
 auto profile_probe_source(std::span<std::string const> types, std::span<std::string const> headers)
     -> std::expected<std::string, std::string> {
     std::string source;
-    auto const out{std::back_inserter(source)};
+    auto write{ioj::FormatWriter{std::back_inserter(source)}};
     source += "// Compile with the target SDK, flags and defines. Run: probe platform architecture "
               "configuration > target.profile\n"
               "#include <cstdint>\n#include <iomanip>\n#include <iostream>\n#include "
@@ -197,7 +197,7 @@ int main(int argc, char** argv) {
                 probe_error(storage.cpp_types, spelling, use.form, use.object_spelling)}) {
             return std::unexpected{*error};
         }
-        std::format_to(out, "    emit_type<{}>(", spelling);
+        write("    emit_type<{}>(", spelling);
         append_quoted(source, spelling);
         source += ");\n";
     }

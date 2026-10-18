@@ -1,10 +1,11 @@
 #pragma once
 
+#include <ioj/format_writer.h>
+
 #include <codegen/ast/access.h>
 #include <codegen/schema/declarations.h>
 #include <lispb/strings.h>
 
-#include <format>
 #include <iterator>
 #include <optional>
 #include <ranges>
@@ -41,10 +42,11 @@ class CanonicalRenderer {
     auto soa_member_kind_name(codegen::SoaMemberKind const kind) -> std::string_view;
     auto storage_operation_name(codegen::StorageOperation const operation) -> std::string_view;
     void render_quoted_list(std::string& output, auto const& values) {
-        auto output_it{std::back_inserter(output)};
+        auto write{ioj::FormatWriter{std::back_inserter(output)}};
         output += '(';
-        for (std::size_t index{}; index < values.size(); ++index) {
-            std::format_to(output_it, "{}{}", (index == 0 ? "" : " "), quote(values[index]));
+        auto const count{values.size()};
+        for (std::size_t index{}; index < count; ++index) {
+            write("{}{}", (index == 0 ? "" : " "), quote(values[index]));
         }
         output += ')';
     }
@@ -68,27 +70,22 @@ class CanonicalRenderer {
     template <typename Child>
     auto render_aggregate_child(auto const& columns, std::string_view const head, Child const child)
         -> std::string {
+        auto const child_index{columns.index(child)};
         std::string output;
-        auto output_it{std::back_inserter(output)};
-        std::format_to(output_it,
-                       "({} {} {}",
-                       head,
-                       text(columns.name[columns.index(child)]),
-                       render_type_ref(columns.type[columns.index(child)]));
-        if (columns.count[columns.index(child)].has_value()) {
-            std::format_to(output_it, " :count {}", *columns.count[columns.index(child)]);
+        auto write{ioj::FormatWriter{std::back_inserter(output)}};
+        write("({} {} {}",
+              head,
+              text(columns.name[child_index]),
+              render_type_ref(columns.type[child_index]));
+        if (columns.count[child_index].has_value()) {
+            write(" :count {}", *columns.count[child_index]);
         }
         if constexpr (std::is_same_v<Child, lispb::codegen::RecordMemberId>) {
-            if (columns.initializer[columns.index(child)]) {
-                std::format_to(output_it,
-                               " :initializer {}",
-                               quote(*columns.initializer[columns.index(child)]));
+            if (columns.initializer[child_index]) {
+                write(" :initializer {}", quote(*columns.initializer[child_index]));
             }
-            if (columns.relationship[columns.index(child)].has_value()) {
-                std::format_to(
-                    output_it,
-                    "\n      {}",
-                    render_semantic_relation(*columns.relationship[columns.index(child)]));
+            if (columns.relationship[child_index].has_value()) {
+                write("\n      {}", render_semantic_relation(*columns.relationship[child_index]));
             }
         }
         output += ')';
