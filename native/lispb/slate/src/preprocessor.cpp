@@ -3,11 +3,11 @@
 #include <codegen/cpp_string.h>
 #include <codegen/sexpr/indices.h>
 #include <codegen/sexpr/reader.h>
-#include <codegen/sexpr/source_error.h>
 #include <codegen/sexpr/source_span.h>
 #include <codegen/sexpr/sources.h>
 #include <codegen/sexpr/syntax.h>
 #include <codegen/sexpr/token_kind.h>
+#include <lispb/diagnostics.h>
 #include <lispb/indices.h>
 #include <lispb/project_loader.h>
 #include <lispb/strings.h>
@@ -33,7 +33,6 @@ namespace {
 using lispb::IdentifierId;
 using lispb::codegen::sexpr::FormId;
 using lispb::codegen::sexpr::HandleRange;
-using lispb::codegen::sexpr::SourceError;
 using lispb::codegen::sexpr::SourceSpan;
 using lispb::codegen::sexpr::Syntax;
 using lispb::codegen::sexpr::TokenKind;
@@ -114,7 +113,7 @@ class Preprocessor {
     };
 
     [[noreturn]] void fail(SourceSpan const span, std::string const& message) const {
-        throw SourceError{syntax_.sources(), span, message};
+        syntax_.sources().diagnostics().fail(syntax_.sources(), span, message);
     }
     auto location(SourceSpan const span) const -> std::string {
         auto const location{syntax_.sources().location(span)};

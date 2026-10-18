@@ -14,6 +14,15 @@ text is retained once, tokens use slices and exact source offsets, and macro pro
 stored separately. Syntax forms retain token IDs and flat child ranges, not owning trees.
 Slate parses expanded forms directly without a token flatten/reparse step.
 
+Source loading, lexing and parsing are separate stages: `Sources::load` reads retained documents,
+`lex` creates tokens, and `SyntaxParser` builds forms. `read_forms` coordinates these stages and
+caches the resulting form range. Schema and project parsers interpret forms through the shared
+`sexpr::Parser` value readers; file loaders coordinate includes without owning grammar helpers.
+All frontend parsers report source spans and message handles into compiler-owned `Diagnostics`.
+Schema and project parsers recover between independent declarations, collect errors, and stop
+before semantic processing. `SourceError` identifies a recorded diagnostic and carries formatted
+text for exception consumers; material diagnostics are exported at its standalone API boundary.
+
 Declarations, semantic definitions, C++ nodes and expressions use typed tagged handles with
 kind-specific columns. Ordered lists use flat ranges of handles. Callers access fields through
 handles and columns; edits clone a payload row and publish its new handle. C++ functions

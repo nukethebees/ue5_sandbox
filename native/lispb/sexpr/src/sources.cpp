@@ -1,10 +1,10 @@
 #include <codegen/sexpr/sources.h>
 
 #include <codegen/sexpr/indices.h>
-#include <codegen/sexpr/source_error.h>
 #include <codegen/sexpr/source_location.h>
 #include <codegen/sexpr/source_span.h>
 #include <codegen/sexpr/syntax.h>
+#include <lispb/diagnostics.h>
 #include <lispb/indices.h>
 #include <lispb/strings.h>
 
@@ -26,8 +26,9 @@
 
 namespace lispb::codegen::sexpr {
 
-Sources::Sources(lispb::Strings& strings)
-    : strings_{&strings} {}
+Sources::Sources(lispb::Strings& strings, lispb::Diagnostics& diagnostics)
+    : strings_{&strings}
+    , diagnostics_{&diagnostics} {}
 
 auto Sources::add(std::string_view const path, std::string_view const text) -> SourceFileId {
     assert(text.size() <= std::numeric_limits<std::uint32_t>::max());
@@ -97,7 +98,8 @@ auto Sources::load(std::filesystem::path const& path, std::string_view const dis
 
     std::ifstream input{absolute, std::ios::binary};
     if (!input) {
-        throw std::runtime_error{"Cannot open LispB source: " + path_text};
+        auto const file{add(displayed, {})};
+        diagnostics_->fail(*this, {.file = file}, "Cannot open LispB source: " + path_text);
     }
     std::string const text{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
     if (found != loaded_files_.end() && this->text(found->second) == text) {

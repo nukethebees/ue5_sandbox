@@ -1,5 +1,6 @@
 #include <codegen/sexpr/sources.h>
 #include <codegen/sexpr/syntax.h>
+#include <lispb/diagnostics.h>
 #include <lispb/project_loader.h>
 #include <lispb/strings.h>
 #include <material_gen/BlendMode.h>
@@ -49,7 +50,8 @@ struct AnalyzedMaterial {
 auto analyze(std::string_view path, std::string_view source, TextureResolver resolver)
     -> AnalyzedMaterial {
     auto strings{std::make_unique<lispb::Strings>()};
-    lispb::codegen::sexpr::Sources sources{*strings};
+    lispb::Diagnostics parser_diagnostics{*strings};
+    lispb::codegen::sexpr::Sources sources{*strings, parser_diagnostics};
     lispb::codegen::sexpr::Syntax syntax{*strings, sources};
     auto const file{sources.add(path, source)};
     MaterialIR material{*strings};

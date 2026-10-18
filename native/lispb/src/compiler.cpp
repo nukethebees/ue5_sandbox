@@ -34,6 +34,7 @@ Compiler::Compiler()
     , material_{storage_.strings} {}
 
 void Compiler::reset_compilation() {
+    storage_.diagnostics.clear();
     output_ = {};
     material_ = material_synth::MaterialIR{storage_.strings};
     slate_ = {};

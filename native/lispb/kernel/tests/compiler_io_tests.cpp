@@ -6,6 +6,7 @@
 #include <kernel_codegen/compiler.h>
 #include <kernel_codegen/document.h>
 #include <lispb/compilation.h>
+#include <lispb/diagnostics.h>
 #include <lispb/kernel_profile.h>
 #include <lispb/output.h>
 #include <lispb/publication_options.h>
@@ -92,7 +93,8 @@ auto compile(TemporaryProject const& project,
              bool const check = false) -> int {
     auto const root{project.path({})};
     lispb::Strings strings;
-    lispb::codegen::sexpr::Sources sources{strings};
+    lispb::Diagnostics diagnostics{strings};
+    lispb::codegen::sexpr::Sources sources{strings, diagnostics};
     lispb::codegen::sexpr::Syntax syntax{strings, sources};
     detail::Document document{strings};
     lispb::codegen::CppTypes types{strings};
@@ -124,7 +126,8 @@ TEST(KernelCompiler, WritesChecksAndDetectsStaleOutputs) {
 
 TEST(KernelCompiler, ValidationDoesNotProduceArtifacts) {
     lispb::Strings strings;
-    lispb::codegen::sexpr::Sources sources{strings};
+    lispb::Diagnostics diagnostics{strings};
+    lispb::codegen::sexpr::Sources sources{strings, diagnostics};
     lispb::codegen::sexpr::Syntax syntax{strings, sources};
     detail::Document document{strings};
     lispb::codegen::CppTypes types{strings};

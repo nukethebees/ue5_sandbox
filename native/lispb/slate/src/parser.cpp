@@ -1,10 +1,10 @@
 #include "parser.h"
 
-#include <codegen/sexpr/source_error.h>
 #include <codegen/sexpr/source_span.h>
 #include <codegen/sexpr/sources.h>
 #include <codegen/sexpr/syntax.h>
 #include <codegen/sexpr/token_kind.h>
+#include <lispb/diagnostics.h>
 #include <lispb/indices.h>
 #include <lispb/strings.h>
 #include <slate_codegen/alignment.h>
@@ -36,7 +36,6 @@ using lispb::IdentifierId;
 using lispb::StringId;
 using lispb::codegen::sexpr::FormId;
 using lispb::codegen::sexpr::HandleRange;
-using lispb::codegen::sexpr::SourceError;
 using lispb::codegen::sexpr::SourceSpan;
 using lispb::codegen::sexpr::Syntax;
 using lispb::codegen::sexpr::TokenKind;
@@ -197,7 +196,7 @@ class Parser {
     };
 
     [[noreturn]] void fail(SourceSpan const span, std::string_view const message) const {
-        throw SourceError{syntax_.sources(), span, std::string{message}};
+        syntax_.sources().diagnostics().fail(syntax_.sources(), span, std::string{message});
     }
     void require_count(FormId const form,
                        std::size_t const count,

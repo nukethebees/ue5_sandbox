@@ -1,12 +1,12 @@
 #include <codegen/sexpr/lexer.h>
 
 #include <codegen/sexpr/indices.h>
-#include <codegen/sexpr/source_error.h>
 #include <codegen/sexpr/source_span.h>
 #include <codegen/sexpr/sources.h>
 #include <codegen/sexpr/syntax.h>
 #include <codegen/sexpr/token_kind.h>
 #include <codegen/sexpr/token_range.h>
+#include <lispb/diagnostics.h>
 #include <lispb/indices.h>
 #include <lispb/strings.h>
 
@@ -82,7 +82,7 @@ class Lexer {
     }
 
     [[noreturn]] void fail(std::uint32_t const begin, std::string const& message) const {
-        throw SourceError{syntax_.sources(), span(begin), message};
+        syntax_.sources().diagnostics().fail(syntax_.sources(), span(begin), message);
     }
 
     static auto is_delimiter(char const value) -> bool {

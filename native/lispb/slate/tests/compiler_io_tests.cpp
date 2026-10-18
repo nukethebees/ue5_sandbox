@@ -6,6 +6,7 @@
 #include <codegen/sexpr/sources.h>
 #include <codegen/sexpr/syntax.h>
 #include <lispb/compilation.h>
+#include <lispb/diagnostics.h>
 #include <lispb/output.h>
 #include <lispb/publication_options.h>
 #include <lispb/strings.h>
@@ -78,7 +79,8 @@ auto compile(TemporaryProject const& project,
              bool const check = false) -> int {
     auto const root{project.path({})};
     lispb::Strings strings;
-    lispb::codegen::sexpr::Sources sources{strings};
+    lispb::Diagnostics diagnostics{strings};
+    lispb::codegen::sexpr::Sources sources{strings, diagnostics};
     lispb::codegen::sexpr::Syntax syntax{strings, sources};
     detail::Document document;
     lispb::codegen::CppTypes types{strings};
@@ -101,7 +103,8 @@ auto expand(TemporaryProject const& project,
             std::vector<std::filesystem::path> inputs,
             std::vector<std::filesystem::path> include_directories = {}) -> std::string {
     lispb::Strings strings;
-    lispb::codegen::sexpr::Sources sources{strings};
+    lispb::Diagnostics diagnostics{strings};
+    lispb::codegen::sexpr::Sources sources{strings, diagnostics};
     lispb::codegen::sexpr::Syntax syntax{strings, sources};
     return expand_sources(syntax,
                           {.source_root = project.path({}),
@@ -385,7 +388,8 @@ TEST(SlateCompiler, ExpansionPreservesStringsKeywordsAndSourceOrder) {
     project.write("second.lispb", second);
     auto const expanded{expand(project, {"first.lispb", "second.lispb"})};
     lispb::Strings strings;
-    lispb::codegen::sexpr::Sources sources{strings};
+    lispb::Diagnostics diagnostics{strings};
+    lispb::codegen::sexpr::Sources sources{strings, diagnostics};
     lispb::codegen::sexpr::Syntax syntax{strings, sources};
     auto const expected_file{sources.add("expected", first + second)};
     auto const actual_file{sources.add("expanded", expanded)};

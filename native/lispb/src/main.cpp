@@ -1,11 +1,13 @@
-#include <exception>
 #include "lispb/compile_mode.h"
+#include <codegen/sexpr/source_error.h>
 #include <lispb/compiler.h>
+#include <lispb/diagnostics.h>
 #include <lispb/output.h>
 #include <lispb/project.h>
 #include <lispb/project_loader.h>
 
 #include <cstdint>
+#include <exception>
 #include <filesystem>
 #include <iostream>
 #include <optional>
@@ -91,13 +93,13 @@ auto parse_arguments(int const argc, char const* const* const argv) -> Arguments
 } // namespace
 
 auto main(int const argc, char const* const* const argv) -> int {
+    lispb::Compiler compiler;
     try {
         if (argc == 2 && std::string_view{argv[1]} == "--help") {
             print_usage(std::cout);
             return 0;
         }
         auto const arguments{parse_arguments(argc, argv)};
-        lispb::Compiler compiler;
         auto const project{lispb::load_project(compiler.storage().syntax, arguments.project)};
         auto const targets{project.expand(arguments.target)};
         if ((arguments.action == Action::expand || arguments.action == Action::dump_ir) &&
@@ -148,6 +150,15 @@ auto main(int const argc, char const* const* const argv) -> int {
             }
         }
         return 0;
+    } catch (lispb::codegen::sexpr::SourceError const&) {
+        auto const& diagnostics{compiler.storage().diagnostics};
+        auto const count{diagnostics.size()};
+        for (std::uint32_t index{}; index < count; ++index) {
+            std::cerr << "lispb: "
+                      << diagnostics.format(lispb::DiagnosticId{index}, compiler.storage().sources)
+                      << '\n';
+        }
+        return 2;
     } catch (std::exception const& error) {
         std::cerr << "lispb: " << error.what() << '\n';
         print_usage(std::cerr);

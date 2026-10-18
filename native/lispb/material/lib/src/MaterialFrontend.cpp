@@ -9,6 +9,8 @@
 #include <codegen/sexpr/sources.h>
 #include <codegen/sexpr/syntax.h>
 #include <codegen/sexpr/token_kind.h>
+#include <lispb/diagnostic_severity.h>
+#include <lispb/diagnostics.h>
 #include <lispb/indices.h>
 #include <lispb/project_loader.h>
 #include <lispb/strings.h>
@@ -99,7 +101,8 @@ class Analyzer {
         : syntax_{syntax}
         , source_{source}
         , resolver_{resolver}
-        , material_{material} {
+        , material_{material}
+        , diagnostic_begin_{syntax.sources().diagnostics().size()} {
         assert(material.strings == &syntax.strings());
     }
 
@@ -107,36 +110,40 @@ class Analyzer {
         lispb::codegen::sexpr::HandleRange forms;
         try {
             forms = lispb::codegen::sexpr::read_forms(syntax_, source_);
-        } catch (lispb::codegen::sexpr::SourceError const& error) {
-            diagnostics_.push_back({std::string{error.path()},
-                                    error.location().line,
-                                    error.location().column,
-                                    std::string{error.message()}});
-            return std::move(diagnostics_);
+        } catch (lispb::codegen::sexpr::SourceError const&) {
+            return collect_diagnostics();
         } catch (std::exception const& error) {
-            diagnostics_.push_back(
-                {std::string{syntax_.sources().path(source_)}, 1, 1, error.what()});
-            return std::move(diagnostics_);
+            fail({.file = source_}, error.what());
+            return collect_diagnostics();
         }
 
         if (forms.count != 1 || syntax_.head(syntax_.forms(forms).front()) != "material") {
             fail((forms.count == 0) ? ParserSourceSpan{.file = source_}
                                     : syntax_.token_span(syntax_.forms(forms).front()),
                  "source must contain exactly one material definition");
-            return std::move(diagnostics_);
+            return collect_diagnostics();
         }
         parse_material(syntax_.forms(forms).front());
-
-        if (diagnostics_.empty()) {
-            auto validation{validate(material_)};
-            diagnostics_.insert(diagnostics_.end(), validation.begin(), validation.end());
-        }
-        if (!diagnostics_.empty()) {
-            return std::move(diagnostics_);
-        }
-        return {};
+        auto diagnostics{collect_diagnostics()};
+        return diagnostics.empty() ? validate(material_) : diagnostics;
     }
   private:
+    // Export diagnostics only at the standalone material API boundary.
+    auto collect_diagnostics() const -> std::vector<Diagnostic> {
+        auto const& diagnostics{syntax_.sources().diagnostics()};
+        std::vector<Diagnostic> result;
+        auto const count{diagnostics.size()};
+        for (auto index{diagnostic_begin_}; index < count; ++index) {
+            auto const id{lispb::DiagnosticId{static_cast<std::uint32_t>(index)}};
+            auto const location{syntax_.sources().location(diagnostics.span(id))};
+            result.push_back({std::string{location.path},
+                              location.line,
+                              location.column,
+                              std::string{diagnostics.message(id)}});
+        }
+        return result;
+    }
+
     auto material_span(ParserSourceSpan const& span) -> SourceSpan {
         auto const location{syntax_.sources().location(span)};
         return {location.line,
@@ -145,10 +152,8 @@ class Analyzer {
                 material_.intern(syntax_.sources().expansion_text(span))};
     }
 
-    void fail(ParserSourceSpan const& span, std::string message) {
-        auto const location{syntax_.sources().location(span)};
-        diagnostics_.push_back(
-            {std::string{location.path}, location.line, location.column, std::move(message)});
+    void fail(ParserSourceSpan const& span, std::string_view message) {
+        syntax_.sources().diagnostics().add(lispb::DiagnosticSeverity::error, span, message);
     }
 
     auto atom(FormId const form, std::string_view const purpose)
@@ -1162,7 +1167,7 @@ class Analyzer {
     TextureResolver resolver_;
     MaterialIR& material_;
     std::unordered_map<lispb::IdentifierId, NodeHandle> symbols_;
-    std::vector<Diagnostic> diagnostics_;
+    std::size_t diagnostic_begin_;
 };
 
 }

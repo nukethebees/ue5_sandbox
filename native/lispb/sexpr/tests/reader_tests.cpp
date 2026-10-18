@@ -6,6 +6,7 @@
 #include <codegen/sexpr/syntax.h>
 #include <codegen/sexpr/token_kind.h>
 #include <codegen/sexpr/token_range.h>
+#include <lispb/diagnostics.h>
 #include <lispb/strings.h>
 
 #include <gtest/gtest.h>
@@ -18,7 +19,8 @@ namespace {
 
 struct Fixture {
     lispb::Strings strings;
-    Sources sources{strings};
+    lispb::Diagnostics diagnostics{strings};
+    Sources sources{strings, diagnostics};
     Syntax syntax{strings, sources};
 
     auto read(std::string_view path, std::string_view source) -> std::span<FormId const> {
@@ -123,8 +125,8 @@ TEST(SexprReader, RejectsUnterminatedRawLiteralAtOpeningSpan) {
         static_cast<void>(fixture.read("fixture.lispb", "\n  #cpp{unterminated"));
         FAIL() << "Expected source error";
     } catch (SourceError const& error) {
-        EXPECT_EQ(error.location().line, 2);
-        EXPECT_EQ(error.location().column, 3);
+        EXPECT_EQ(fixture.sources.location(fixture.diagnostics.span(error.diagnostic())).line, 2);
+        EXPECT_EQ(fixture.sources.location(fixture.diagnostics.span(error.diagnostic())).column, 3);
         EXPECT_TRUE(std::string{error.what()}.contains("expected '}cpp#'"));
     }
 }

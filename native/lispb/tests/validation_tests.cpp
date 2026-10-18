@@ -6,7 +6,6 @@
 #include <codegen/ast/modules.h>
 #include <codegen/ast/type_operation.h>
 #include <codegen/generator.h>
-#include <codegen/manifest_error.h>
 #include <codegen/schema/declaration_handle.h>
 #include <codegen/schema/enum_conversion.h>
 #include <codegen/schema/enum_reflection.h>
@@ -62,6 +61,7 @@
 #include <codegen/schema/type_refs.h>
 #include <codegen/schema/umbrella_module_schemas.h>
 #include <codegen/schema/vector_soa_schemas.h>
+#include <codegen/sexpr/source_error.h>
 #include <lispb/indices.h>
 #include <lispb/project.h>
 #include <lispb/schema/enum_signedness.h>
@@ -8408,7 +8408,7 @@ TEST(Validation, RejectsUnknownFacadeAccess) {
     CompilerTestContext context;
     EXPECT_THROW(parse_test_manifest(context, R"((module facade :header "Facade.h"
       (facade FFacade :target FTarget :method-access protected (method reset void))))"),
-                 ManifestError);
+                 lispb::codegen::sexpr::SourceError);
 }
 
 TEST(Validation, RejectsMalformedFacadeMethodIdentifiers) {
@@ -8801,7 +8801,7 @@ TEST(Validation, RejectsInvalidFacadeFriendAndMemberCollisions) {
     auto module{valid_facade_module(context)};
     EXPECT_THROW(parse_test_manifest(context, R"((module facade :header "Facade.h"
       (facade FFacade :target FTarget :friend-kind union (method reset void))))"),
-                 ManifestError);
+                 lispb::codegen::sexpr::SourceError);
 
     module = valid_facade_module(context);
     context.storage.declarations.normal_modules

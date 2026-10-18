@@ -7,6 +7,7 @@
 #include <codegen/sexpr/source_error.h>
 #include <codegen/sexpr/sources.h>
 #include <codegen/sexpr/syntax.h>
+#include <lispb/diagnostics.h>
 #include <lispb/strings.h>
 #include <slate_codegen/document.h>
 #include <slate_codegen/indices.h>
@@ -23,7 +24,8 @@ namespace {
 
 struct TestDocument {
     lispb::Strings strings;
-    lispb::codegen::sexpr::Sources sources{strings};
+    lispb::Diagnostics diagnostics{strings};
+    lispb::codegen::sexpr::Sources sources{strings, diagnostics};
     lispb::codegen::sexpr::Syntax syntax{strings, sources};
     Document document;
     lispb::codegen::CppTypes types{strings};

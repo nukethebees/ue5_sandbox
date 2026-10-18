@@ -1,8 +1,6 @@
 #include "parser.h"
 
 #include <codegen/sexpr/indices.h>
-#include <codegen/sexpr/reader.h>
-#include <codegen/sexpr/source_error.h>
 #include <codegen/sexpr/source_span.h>
 #include <codegen/sexpr/sources.h>
 #include <codegen/sexpr/syntax.h>
@@ -18,6 +16,7 @@
 #include <kernel_codegen/scalar_type.h>
 #include <kernel_codegen/storage_kind.h>
 #include <kernel_codegen/variant_kind.h>
+#include <lispb/diagnostics.h>
 #include <lispb/indices.h>
 #include <lispb/kernel_profile.h>
 #include <lispb/strings.h>
@@ -44,7 +43,6 @@ namespace kernel_codegen::detail {
 namespace {
 
 using lispb::codegen::sexpr::FormId;
-using lispb::codegen::sexpr::SourceError;
 using lispb::codegen::sexpr::SourceSpan;
 using lispb::codegen::sexpr::TokenKind;
 
@@ -193,7 +191,7 @@ class Parser {
     }
   private:
     [[noreturn]] void fail(SourceSpan const& span, std::string const& message) const {
-        throw SourceError{syntax_.sources(), span, message};
+        syntax_.sources().diagnostics().fail(syntax_.sources(), span, message);
     }
 
     auto text(lispb::IdentifierId const id) const -> std::string {
@@ -913,8 +911,9 @@ class Parser {
 
 void parse(lispb::codegen::sexpr::Syntax& syntax,
            Document& document,
-           lispb::codegen::sexpr::SourceFileId const file) {
-    Parser{syntax, document, file, lispb::codegen::sexpr::read_forms(syntax, file)}.parse();
+           lispb::codegen::sexpr::SourceFileId const file,
+           lispb::codegen::sexpr::HandleRange forms) {
+    Parser{syntax, document, file, forms}.parse();
 }
 
 }

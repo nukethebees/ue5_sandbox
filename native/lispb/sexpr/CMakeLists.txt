@@ -2,8 +2,11 @@ add_library(lispb-syntax)
 target_sources(lispb-syntax
   PRIVATE
     src/fields.cpp
+    src/parser.cpp
+    ../src/diagnostics.cpp
     src/lexer.cpp
     src/reader.cpp
+    src/syntax_parser.cpp
     src/syntax.cpp
     src/sources.cpp
     src/source_location.cpp

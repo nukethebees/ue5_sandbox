@@ -17,13 +17,15 @@
 #include <vector>
 namespace lispb {
 class Strings;
+class Diagnostics;
 }
 
 namespace lispb::codegen::sexpr {
 
 class Sources {
   public:
-    explicit Sources(Strings& strings);
+    Sources(Strings& strings, Diagnostics& diagnostics);
+    [[nodiscard]] auto diagnostics() const -> Diagnostics& { return *diagnostics_; }
 
     [[nodiscard]] auto add(std::string_view path, std::string_view text) -> SourceFileId;
     [[nodiscard]] auto load(std::filesystem::path const& path, std::string_view display_path = {})
@@ -58,6 +60,7 @@ class Sources {
     void rebind(Strings& strings) { strings_ = &strings; }
   private:
     Strings* strings_;
+    Diagnostics* diagnostics_;
     std::vector<StringId> paths_{{}};
     std::vector<StringId> texts_{{}};
     std::vector<HandleRange> lines_{{}};

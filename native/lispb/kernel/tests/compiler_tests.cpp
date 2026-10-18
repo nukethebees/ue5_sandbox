@@ -8,6 +8,7 @@
 #include <codegen/sexpr/sources.h>
 #include <codegen/sexpr/syntax.h>
 #include <kernel_codegen/document.h>
+#include <lispb/diagnostics.h>
 #include <lispb/kernel_profile.h>
 #include <lispb/strings.h>
 #include <lispb/text_artifact.h>
@@ -105,7 +106,8 @@ auto occurrence_count(std::string_view text, std::string_view const value) -> st
 
 struct ParsedDocument {
     lispb::Strings strings;
-    lispb::codegen::sexpr::Sources sources{strings};
+    lispb::Diagnostics diagnostics{strings};
+    lispb::codegen::sexpr::Sources sources{strings, diagnostics};
     lispb::codegen::sexpr::Syntax syntax{strings, sources};
     Document data{strings};
     lispb::codegen::CppTypes types{strings};
@@ -113,7 +115,7 @@ struct ParsedDocument {
 
     ParsedDocument(std::string_view const path, std::string_view const source) {
         auto const file{sources.add(path, source)};
-        parse(syntax, data, file);
+        parse(syntax, data, file, lispb::codegen::sexpr::read_forms(syntax, file));
     }
 };
 

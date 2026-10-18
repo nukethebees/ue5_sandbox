@@ -5,6 +5,7 @@
 
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/sexpr/indices.h>
+#include <codegen/sexpr/reader.h>
 #include <codegen/sexpr/syntax.h>
 #include <kernel_codegen/document.h>
 #include <lispb/compilation.h>
@@ -25,7 +26,8 @@ void compile(lispb::codegen::sexpr::Syntax& syntax,
              bool const generate) {
     auto const first_module{document.modules.size()};
     for (auto const input : inputs) {
-        detail::parse(syntax, document, input);
+        auto const forms{lispb::codegen::sexpr::read_forms(syntax, input)};
+        detail::parse(syntax, document, input, forms);
     }
 
     auto const module_count{document.modules.size()};

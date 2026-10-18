@@ -4,7 +4,6 @@
 #include <codegen/ast/type_operation.h>
 #include <codegen/generated_file.h>
 #include <codegen/generator.h>
-#include <codegen/manifest_error.h>
 #include <codegen/schema.h>
 #include <codegen/schema/declaration_schema.h>
 #include <codegen/schema/declarations.h>
@@ -64,6 +63,7 @@
 #include <codegen/schema/type_refs.h>
 #include <codegen/schema/union_alternative_schemas.h>
 #include <codegen/schema/union_schemas.h>
+#include <codegen/sexpr/source_error.h>
 #include <codegen/source_loader.h>
 #include <lispb/compilation.h>
 #include <lispb/indices.h>
@@ -1168,7 +1168,7 @@ TEST(SourceLoader, RejectsRetiredDeclarationModuleHeads) {
         try {
             static_cast<void>(files.load());
             FAIL() << "Retired module head was accepted";
-        } catch (ManifestError const& error) {
+        } catch (lispb::codegen::sexpr::SourceError const& error) {
             EXPECT_NE(std::string{error.what()}.find("unknown module declaration"),
                       std::string::npos);
         }
@@ -1313,7 +1313,7 @@ TEST(SourceLoader, RejectsUnknownSoaBackend) {
     (member values array int32)))
 )");
 
-    EXPECT_THROW(files.load(), ManifestError);
+    EXPECT_THROW(files.load(), lispb::codegen::sexpr::SourceError);
 }
 
 TEST(SourceLoader, ReadsSoaFieldMaskMetadata) {
@@ -1664,7 +1664,7 @@ TEST(SourceLoader, RejectsUnknownPackedPhysicalOrdering) {
     :byte-order middle
     (field value std::uint32_t :bits 32)))
 )");
-    EXPECT_THROW(static_cast<void>(files.load()), ManifestError);
+    EXPECT_THROW(static_cast<void>(files.load()), lispb::codegen::sexpr::SourceError);
 
     files.write_root(R"(
 (module packed
@@ -1674,7 +1674,7 @@ TEST(SourceLoader, RejectsUnknownPackedPhysicalOrdering) {
     :bit-order byte-first
     (field value std::uint32_t :bits 32)))
 )");
-    EXPECT_THROW(static_cast<void>(files.load()), ManifestError);
+    EXPECT_THROW(static_cast<void>(files.load()), lispb::codegen::sexpr::SourceError);
 }
 
 TEST(SourceLoader, ReadsStandaloneIntegerScalarDomain) {
@@ -1935,15 +1935,15 @@ TEST(SourceLoader, RejectsInvalidMiniFloatWidthsAndBias) {
     };
 
     EXPECT_THROW(load_mini_float(":sign-bits 2 :exponent-bits 5 :significand-bits 10 :bias 15"),
-                 ManifestError);
+                 lispb::codegen::sexpr::SourceError);
     EXPECT_THROW(load_mini_float(":sign-bits 1 :exponent-bits 1 :significand-bits 10 :bias 15"),
-                 ManifestError);
+                 lispb::codegen::sexpr::SourceError);
     EXPECT_THROW(load_mini_float(":sign-bits 1 :exponent-bits 5 :significand-bits 63 :bias 15"),
-                 ManifestError);
+                 lispb::codegen::sexpr::SourceError);
     EXPECT_THROW(load_mini_float(":sign-bits 1 :exponent-bits 15 :significand-bits 49 :bias 15"),
-                 ManifestError);
+                 lispb::codegen::sexpr::SourceError);
     EXPECT_THROW(load_mini_float(":sign-bits 1 :exponent-bits 5 :significand-bits 10 :bias 32768"),
-                 ManifestError);
+                 lispb::codegen::sexpr::SourceError);
 }
 
 TEST(SourceLoader, ReadsExplicitEnumBitWidth) {
@@ -1974,7 +1974,7 @@ TEST(SourceLoader, ReadsExplicitEnumBitWidth) {
         files.write_root(
             std::string{"(module states :header \"States.h\" (enum State std::uint8_t "} + options +
             " (value Idle :value \"0\")))");
-        EXPECT_THROW(files.load(), ManifestError);
+        EXPECT_THROW(files.load(), lispb::codegen::sexpr::SourceError);
     }
 }
 
@@ -2053,7 +2053,7 @@ TEST(SourceLoader, RejectsEnumBitWidthOutsideNativeAnalysisRange) {
     (value Idle)))
 )");
 
-    EXPECT_THROW(static_cast<void>(files.load()), ManifestError);
+    EXPECT_THROW(static_cast<void>(files.load()), lispb::codegen::sexpr::SourceError);
 }
 
 TEST(SourceLoader, PreservesNumericAndOpaqueEnumInitializers) {
@@ -2342,7 +2342,7 @@ TEST(SourceLoader, RejectsNonIntegerPackedFieldWidthWithSourceLocation) {
     try {
         static_cast<void>(files.load());
         FAIL() << "Expected manifest error";
-    } catch (ManifestError const& error) {
+    } catch (lispb::codegen::sexpr::SourceError const& error) {
         auto const message{std::string{error.what()}};
         EXPECT_NE(message.find("modules.lispb:6:30"), std::string::npos);
         EXPECT_NE(message.find("packed field bits must be an integer"), std::string::npos);
@@ -2360,7 +2360,7 @@ TEST(SourceLoader, RejectsNegativePackedInvalidValue) {
     (field value uint8 :bits 8)))
 )");
 
-    EXPECT_THROW(static_cast<void>(files.load()), ManifestError);
+    EXPECT_THROW(static_cast<void>(files.load()), lispb::codegen::sexpr::SourceError);
 }
 
 TEST(SourceLoader, ReportsSourceLocationForUnknownProperties) {
@@ -2370,7 +2370,7 @@ TEST(SourceLoader, ReportsSourceLocationForUnknownProperties) {
     try {
         static_cast<void>(files.load());
         FAIL() << "Expected manifest error";
-    } catch (ManifestError const& error) {
+    } catch (lispb::codegen::sexpr::SourceError const& error) {
         auto const message{std::string{error.what()}};
         EXPECT_NE(message.find("modules.lispb:4:3"), std::string::npos);
         EXPECT_NE(message.find("unknown property ':typo'"), std::string::npos);
@@ -2380,7 +2380,7 @@ TEST(SourceLoader, ReportsSourceLocationForUnknownProperties) {
 TEST(SourceLoader, RejectsUnknownModuleDeclarations) {
     TemporaryManifest files;
     files.write_root("(mystery-module bad :header \"Bad.h\")");
-    EXPECT_THROW(files.load(), ManifestError);
+    EXPECT_THROW(files.load(), lispb::codegen::sexpr::SourceError);
 }
 
 TEST(SourceLoader, RejectsAllCombinedWithSpecificOperations) {
@@ -2392,7 +2392,7 @@ TEST(SourceLoader, RejectsAllCombinedWithSpecificOperations) {
     :operations (all reset)
     (member values array int32)))
 )");
-    EXPECT_THROW(files.load(), ManifestError);
+    EXPECT_THROW(files.load(), lispb::codegen::sexpr::SourceError);
 }
 
 TEST(SourceLoader, LoadsStructuredTypeReferencesAndFacadeStorage) {
@@ -2537,7 +2537,7 @@ TEST(SourceLoader, AcceptsEmptyCppBodyAndRejectsWrongRawTag) {
     try {
         static_cast<void>(files.load());
         FAIL() << "Expected manifest error";
-    } catch (ManifestError const& error) {
+    } catch (lispb::codegen::sexpr::SourceError const& error) {
         auto const message{std::string{error.what()}};
         EXPECT_TRUE(message.contains("body requires a #cpp raw literal; got #hlsl"));
         EXPECT_TRUE(message.contains("modules.lispb:5:32"));
@@ -2548,7 +2548,7 @@ TEST(SourceLoader, RejectsRawLiteralForOrdinaryTextField) {
     TemporaryManifest files;
     files.write_root("(umbrella-module all :header #cpp{Generated.h}cpp# :headers ())");
 
-    EXPECT_THROW(files.load(), ManifestError);
+    EXPECT_THROW(files.load(), lispb::codegen::sexpr::SourceError);
 }
 
 TEST(SourceLoader, LoadsSettingsControls) {
@@ -2660,7 +2660,7 @@ TEST(SourceLoader, RejectsRemovedSingleAllocationAllocatorSyntax) {
                                    "(struct Rows (member ids array int) (single-allocation Owner "
                                    "(variant Pool Allocator)))"}) {
         files.write_root(std::string{"(module api :header \"Api.h\" "} + declaration + ")");
-        EXPECT_THROW(files.load(), ManifestError);
+        EXPECT_THROW(files.load(), lispb::codegen::sexpr::SourceError);
     }
 }
 
@@ -2676,7 +2676,7 @@ TEST(SourceLoader, ReadOnlyViewFunctionRejectsMutableReceiver) {
     try {
         static_cast<void>(files.load());
         FAIL() << "Expected a const receiver diagnostic";
-    } catch (ManifestError const& error) {
+    } catch (lispb::codegen::sexpr::SourceError const& error) {
         EXPECT_TRUE(std::string{error.what()}.contains("view-function must be const"));
     }
 }

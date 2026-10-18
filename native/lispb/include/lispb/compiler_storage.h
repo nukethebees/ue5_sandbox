@@ -5,6 +5,7 @@
 #include <codegen/schema/registered_types.h>
 #include <codegen/sexpr/sources.h>
 #include <codegen/sexpr/syntax.h>
+#include <lispb/diagnostics.h>
 #include <lispb/strings.h>
 
 namespace lispb {
@@ -18,8 +19,9 @@ struct CompilerStorage {
     auto operator=(CompilerStorage&&) -> CompilerStorage& = delete;
 
     Strings strings;
+    Diagnostics diagnostics{strings};
     codegen::Declarations declarations{strings};
-    codegen::sexpr::Sources sources{strings};
+    codegen::sexpr::Sources sources{strings, diagnostics};
     codegen::sexpr::Syntax syntax{strings, sources};
     codegen::CppTypes cpp_types{strings};
     codegen::RegisteredTypes registered_types{cpp_types, declarations};

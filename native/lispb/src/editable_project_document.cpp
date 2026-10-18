@@ -1,8 +1,6 @@
 #include <lispb/editable_project_document.h>
 
 #include <codegen/path_utils.h>
-#include <codegen/sexpr/fields.h>
-#include <codegen/sexpr/source_error.h>
 #include <codegen/sexpr/source_span.h>
 #include <codegen/sexpr/syntax.h>
 #include <codegen/source_loader.h>
@@ -51,8 +49,6 @@
 namespace lispb {
 namespace {
 
-using lispb::codegen::sexpr::Fields;
-using lispb::codegen::sexpr::SourceError;
 using lispb::codegen::sexpr::SourceSpan;
 
 auto read_file(std::filesystem::path const& path) -> std::string {

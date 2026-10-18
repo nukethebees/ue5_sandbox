@@ -44,6 +44,7 @@ target_sources(lispb-project
   PRIVATE
     src/project.cpp
     src/project_loader.cpp
+    src/project_parser.cpp
     src/rooted_path.cpp
     src/editable_project_document.cpp
 )
@@ -129,6 +130,7 @@ target_sources(lispb-schema PRIVATE
   src/soa_allocators.cpp
   src/soa_body.cpp
   src/source_loader.cpp
+  src/schema_parser.cpp
   src/integer_domain.cpp
   src/external_types.cpp
   src/enum_types.cpp
