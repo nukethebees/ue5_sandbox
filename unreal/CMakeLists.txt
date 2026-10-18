@@ -95,7 +95,6 @@ set(IOJ_UNIT_AUTOMATION_FILTERS
   Sandbox.UnitTests
   SandboxShaders.UnitTests
   SandboxCoreEngine.UnitTests
-  SandboxGpuTutorials.UnitTests
   SandboxISMC.UnitTests
   SandboxMesh.UnitTests
 )
@@ -259,19 +258,3 @@ add_unreal_editor_test(SandboxEditor.MaterialSynth
   TIMEOUT 900
 )
 sandbox_set_automation_test_properties(SandboxEditor.MaterialSynth)
-
-sandbox_make_automation_exec_commands(gpu_tutorial_shader_test_commands
-  "StartsWith:SandboxGpuTutorials.UnitTests")
-add_custom_target(gpu-tutorial-shader-tests
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${IOJ_UPROJECT}"
-    "${gpu_tutorial_shader_test_commands}"
-    -unattended
-    -nop4
-    -nosplash
-    -nosound
-    -DDC-ForceMemoryCache
-    -stdout
-  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-  COMMENT "Compiling and validating SandboxGpuTutorials materials with the graphics RHI"
-  VERBATIM
-)

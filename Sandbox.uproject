@@ -465,10 +465,6 @@
 			"Enabled": true
 		},
 		{
-			"Name": "SandboxGpuTutorials",
-			"Enabled": true
-		},
-		{
 			"Name": "SandboxMesh",
 			"Enabled": true
 		},
