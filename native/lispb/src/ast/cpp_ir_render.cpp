@@ -258,6 +258,13 @@ void CppIR::append_node(std::string& output, NodeId node, RenderContext const& c
         case NodeKind::line_comment:
             write("// " + std::string{strings.view(line_comment_nodes_.text[i])});
             break;
+        case NodeKind::line_directive:
+            output += "#line ";
+            output += std::to_string(line_directive_nodes_.line[i]);
+            output += " \"";
+            append_escaped_cpp_string(output, strings.view(line_directive_nodes_.path[i]));
+            output += '"';
+            break;
         case NodeKind::block_comment:
             write("/* " + std::string{strings.view(block_comment_nodes_.text[i])} + " */");
             break;
@@ -280,6 +287,19 @@ void CppIR::append_node(std::string& output, NodeId node, RenderContext const& c
                 close("}");
             }
             break;
+        case NodeKind::for_stmt: {
+            indent();
+            output += "for (";
+            append_node(output, for_stmt_nodes_.initializer[i], {});
+            output += ' ';
+            expr(for_stmt_nodes_.condition[i]);
+            output += "; ";
+            expr(for_stmt_nodes_.increment[i]);
+            output += ") {\n";
+            append_nodes(output, nodes(for_stmt_nodes_.children[i]), context.indent(), 1);
+            close("}");
+            break;
+        }
         case NodeKind::switch_stmt: {
             indent();
             output += "switch (";
@@ -671,6 +691,10 @@ void CppIR::for_each_child(NodeId node, std::function<void(NodeId)> const& visit
                 visit_range(*otherwise);
             }
             break;
+        case NodeKind::for_stmt:
+            visit(for_stmt_nodes_.initializer[i]);
+            visit_range(for_stmt_nodes_.children[i]);
+            break;
         case NodeKind::switch_stmt: {
             auto const range{switch_stmt_nodes_.cases[i]};
             auto const end{range.begin + range.count};
@@ -719,6 +743,10 @@ void CppIR::collect_dependencies(NodeId node, std::vector<TypeDependencyId>& res
             break;
         case NodeKind::if_stmt:
             collect_dependencies(if_stmt_nodes_.condition[i], result);
+            break;
+        case NodeKind::for_stmt:
+            collect_dependencies(for_stmt_nodes_.condition[i], result);
+            collect_dependencies(for_stmt_nodes_.increment[i], result);
             break;
         case NodeKind::switch_stmt: {
             collect_dependencies(switch_stmt_nodes_.condition[i], result);

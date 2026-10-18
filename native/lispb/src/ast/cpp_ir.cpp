@@ -90,6 +90,13 @@ auto CppIR::block_comment(std::string_view value) -> NodeId {
     return block_comment(strings.add(value));
 }
 
+auto CppIR::line_directive(std::uint32_t line, std::string_view path) -> NodeId {
+    auto const index{line_directive_nodes_.line.size()};
+    line_directive_nodes_.line.push_back(line);
+    line_directive_nodes_.path.push_back(strings.add(path));
+    return ir_detail::node(NodeKind::line_directive, index);
+}
+
 auto CppIR::block(std::span<NodeId const> children) -> BlockId {
     auto const index{block_nodes_.children.size()};
     block_nodes_.children.push_back(save_nodes(children));
@@ -111,6 +118,19 @@ auto CppIR::switch_case(std::optional<Expr> label, BlockId body) -> SwitchCaseId
     cases_.label.push_back(label);
     cases_.body.push_back(block_nodes_.children[body.index()]);
     return result;
+}
+
+auto CppIR::for_statement(NodeId initializer, Expr condition, Expr increment, BlockId body)
+    -> NodeId {
+    assert(initializer.kind() == NodeKind::variable_declaration_stmt ||
+           initializer.kind() == NodeKind::assignment_stmt ||
+           initializer.kind() == NodeKind::expression_stmt);
+    auto const index{for_stmt_nodes_.initializer.size()};
+    for_stmt_nodes_.initializer.push_back(initializer);
+    for_stmt_nodes_.condition.push_back(condition);
+    for_stmt_nodes_.increment.push_back(increment);
+    for_stmt_nodes_.children.push_back(block_nodes_.children[body.index()]);
+    return ir_detail::node(NodeKind::for_stmt, index);
 }
 
 auto CppIR::switch_statement(Expr condition, std::span<SwitchCaseId const> cases) -> NodeId {
@@ -552,6 +572,12 @@ auto CppIR::definition(FunctionId function,
     return function_node(function, owner, false, header, syntax);
 }
 void CppIR::clear() {
+    line_directive_nodes_.line.clear();
+    line_directive_nodes_.path.clear();
+    for_stmt_nodes_.initializer.clear();
+    for_stmt_nodes_.condition.clear();
+    for_stmt_nodes_.increment.clear();
+    for_stmt_nodes_.children.clear();
     files.clear();
     modules.clear();
     lowering.clear();

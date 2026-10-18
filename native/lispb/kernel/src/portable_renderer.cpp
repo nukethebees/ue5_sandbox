@@ -12,6 +12,7 @@
 #include <codegen/ast/modules.h>
 #include <codegen/ast/node_list_builder.h>
 #include <codegen/ast/nodes.h>
+#include <codegen/ast/unary_operator.h>
 #include <kernel_codegen/aliasing.h>
 #include <kernel_codegen/binary_operator.h>
 #include <kernel_codegen/constant_kind.h>
@@ -206,93 +207,129 @@ auto raw_body(lispb::codegen::CppIR& cpp,
         assignments.push_back(
             cpp.assignment(cpp.subscript(cpp.named(destinations[index]), cpp.named("i")), value));
     }
-    return {cpp.raw(standard ? "for (std::size_t i{}; i < count; ++i)"
-                             : "for (int32 i{0}; i < count; ++i)"),
-            cpp.block(std::move(assignments))};
+    auto const index{cpp.named("i")};
+    auto const initializer{
+        cpp.variable(cpp.types.intern(standard ? "std::size_t" : "int32"),
+                     cpp.strings.intern("i"),
+                     standard ? std::optional<lispb::codegen::Expr>{} : cpp.literal("0"))};
+    auto const condition{
+        cpp.binary(lispb::codegen::BinaryOperator::less, index, cpp.named("count"))};
+    auto const increment{cpp.unary(lispb::codegen::UnaryOperator::preincrement, index)};
+    return {
+        cpp.for_statement(initializer, condition, increment, cpp.block(std::move(assignments)))};
 }
 
-auto raw_arguments(Document const& document, ExpandedVariantId const id, bool const standard)
-    -> std::string {
+auto member_call(lispb::codegen::CppIR& cpp,
+                 std::string_view const object,
+                 std::string_view const member) -> lispb::codegen::Expr {
+    return cpp.call(cpp.member_access(cpp.named(object), member));
+}
+
+auto raw_arguments(lispb::codegen::CppIR& cpp,
+                   Document const& document,
+                   ExpandedVariantId const id,
+                   bool const standard) -> std::vector<lispb::codegen::Expr> {
     auto const& expanded{document.expanded_variants};
-    std::string result;
+    std::vector<lispb::codegen::Expr> result;
     auto const count{document.operations.operands(expanded.operation(id)).size()};
     for (std::size_t index{}; index < count; ++index) {
         for (auto const& name : operand_names(document, id, index)) {
-            if (!result.empty()) {
-                result += ", ";
-            }
-            result += name;
-            if (expanded.storage(id)[index] == StorageKind::array) {
-                result += standard ? ".data()" : ".GetData()";
-            }
+            result.push_back(expanded.storage(id)[index] == StorageKind::array
+                                 ? member_call(cpp, name, standard ? "data" : "GetData")
+                                 : cpp.named(name));
         }
     }
     if (document.variants.kind(expanded.variant(id)) == VariantKind::out_of_place) {
         for (auto const& name : output_names(document, id)) {
-            result += ", " + name + (standard ? ".data()" : ".GetData()");
+            result.push_back(member_call(cpp, name, standard ? "data" : "GetData"));
         }
     }
-    return result + ", count";
+    result.push_back(cpp.named("count"));
+    return result;
 }
 
-void append_overlap_check(std::string& output,
-                          Document const& document,
-                          ExpandedVariantId const id,
-                          std::string const& detail_namespace,
-                          bool const standard,
-                          std::string const& lhs,
-                          std::string const& rhs) {
-    auto const& expanded{document.expanded_variants};
+auto checked_condition(lispb::codegen::CppIR& cpp,
+                       lispb::codegen::Expr const condition,
+                       std::string const& detail_namespace,
+                       bool const standard,
+                       std::string_view const message) -> lispb::codegen::NodeId {
     if (standard) {
-        output += detail_namespace + "::require(!" + detail_namespace + "::ranges_overlap(" + lhs +
-                  ".data(), " + lhs + ".size_bytes(), " + rhs + ".data(), " + rhs +
-                  ".size_bytes()));\n";
-        return;
+        return cpp.expression_statement(
+            cpp.call(cpp.named(detail_namespace + "::require"), {condition}));
     }
-    auto const type{type_spelling(expanded.type(id))};
-    output += "checkf(!ranges_overlap(" + lhs + ".GetData(), static_cast<std::size_t>(" + lhs +
-              ".Num()) * sizeof(" + type + "), " + rhs + ".GetData(), static_cast<std::size_t>(" +
-              rhs + ".Num()) * sizeof(" + type + ")),\n";
-    output += "       TEXT(\"" + document.text(document.variants.name(expanded.variant(id))) +
-              ": " + lhs + " and " + rhs + " must not overlap\"));\n";
+    auto const text{cpp.call(cpp.named("TEXT"), {cpp.string_literal(message)})};
+    return cpp.expression_statement(cpp.call(cpp.named("checkf"), {condition, text}));
 }
 
-auto public_body(Document const& document,
+auto overlap_check(lispb::codegen::CppIR& cpp,
+                   Document const& document,
+                   ExpandedVariantId const id,
+                   std::string const& detail_namespace,
+                   bool const standard,
+                   std::string const& lhs,
+                   std::string const& rhs) -> lispb::codegen::NodeId {
+    auto const& expanded{document.expanded_variants};
+    auto const size = [&](std::string_view const name) {
+        if (standard) {
+            return member_call(cpp, name, "size_bytes");
+        }
+        auto const count{
+            cpp.static_cast_expr(cpp.types.intern("std::size_t"), member_call(cpp, name, "Num"))};
+        auto const element_size{
+            cpp.sizeof_type(cpp.types.intern(type_spelling(expanded.type(id))))};
+        return cpp.binary(lispb::codegen::BinaryOperator::multiply, count, element_size);
+    };
+    auto const name{standard ? detail_namespace + "::ranges_overlap" : "ranges_overlap"};
+    auto const overlaps{cpp.call(cpp.named(name),
+                                 {member_call(cpp, lhs, standard ? "data" : "GetData"),
+                                  size(lhs),
+                                  member_call(cpp, rhs, standard ? "data" : "GetData"),
+                                  size(rhs)})};
+    auto const condition{cpp.unary(lispb::codegen::UnaryOperator::logical_not, overlaps)};
+    auto const message{document.text(document.variants.name(expanded.variant(id))) + ": " + lhs +
+                       " and " + rhs + " must not overlap"};
+    return checked_condition(cpp, condition, detail_namespace, standard, message);
+}
+
+auto public_body(lispb::codegen::CppIR& cpp,
+                 Document const& document,
                  ExpandedVariantId const id,
                  std::string const& detail_namespace,
                  bool const standard,
-                 bool const owning) -> std::string {
+                 bool const owning) -> lispb::codegen::Nodes {
     auto const& expanded{document.expanded_variants};
-    std::string output;
+    lispb::codegen::Nodes output;
     if (owning) {
-        output = document.text(document.variants.name(expanded.variant(id))) + "(";
+        std::vector<lispb::codegen::Expr> arguments;
+        auto const view_type{
+            cpp.types.intern("TArrayView<" + type_spelling(expanded.type(id)) + ">")};
         auto const count{document.operations.operands(expanded.operation(id)).size()};
         for (std::size_t index{}; index < count; ++index) {
-            if (index != 0) {
-                output += ", ";
-            }
             auto const name{document.text(document.operands.name(
                 document.operations.operands(expanded.operation(id))[index]))};
-            output += is_target(document, id, index)
-                        ? "TArrayView<" + type_spelling(expanded.type(id)) + ">{" + name + "}"
-                        : name;
+            arguments.push_back(is_target(document, id, index)
+                                    ? cpp.init_list({cpp.named(name)}, view_type)
+                                    : cpp.named(name));
         }
-        return output + ");";
+        auto const function{cpp.named(document.variants.name(expanded.variant(id)))};
+        return {cpp.expression_statement(cpp.call(function, arguments))};
     }
 
     auto const source{count_source(document, id)};
-    output += standard ? "auto const count{" + source + ".size()};\n"
-                       : "int32 const count{" + source + ".Num()};\n";
+    output.push_back(cpp.variable(cpp.types.intern(standard ? "auto const" : "int32 const"),
+                                  cpp.strings.intern("count"),
+                                  member_call(cpp, source, standard ? "size" : "Num")));
     auto const arrays{array_names(document, id)};
     for (auto const& array : arrays) {
         if (array == source) {
             continue;
         }
-        output += standard
-                    ? detail_namespace + "::require(" + array + ".size() == count);\n"
-                    : "checkf(" + array + ".Num() == count, TEXT(\"" +
-                          document.text(document.variants.name(expanded.variant(id))) + ": " +
-                          array + " and " + source + " must have equal lengths\"));\n";
+        auto const condition{cpp.binary(lispb::codegen::BinaryOperator::equal,
+                                        member_call(cpp, array, standard ? "size" : "Num"),
+                                        cpp.named("count"))};
+        auto const message{document.text(document.variants.name(expanded.variant(id))) + ": " +
+                           array + " and " + source + " must have equal lengths"};
+        output.push_back(checked_condition(cpp, condition, detail_namespace, standard, message));
     }
     auto const operation{expanded.operation(id)};
     if (operation.kind() == OperationKind::component_map ||
@@ -300,8 +337,8 @@ auto public_body(Document const& document,
         auto const count{arrays.size()};
         for (std::size_t lhs{}; lhs < count; ++lhs) {
             for (auto rhs{lhs + 1}; rhs < count; ++rhs) {
-                append_overlap_check(
-                    output, document, id, detail_namespace, standard, arrays[lhs], arrays[rhs]);
+                output.push_back(overlap_check(
+                    cpp, document, id, detail_namespace, standard, arrays[lhs], arrays[rhs]));
             }
         }
     } else {
@@ -315,16 +352,16 @@ auto public_body(Document const& document,
         for (auto const& target : targets) {
             for (auto const& array : arrays) {
                 if (array != target) {
-                    append_overlap_check(
-                        output, document, id, detail_namespace, standard, target, array);
+                    output.push_back(overlap_check(
+                        cpp, document, id, detail_namespace, standard, target, array));
                 }
             }
         }
     }
-    if (standard) {
-        output += detail_namespace + "::";
-    }
-    return output + raw_name(document, id) + "(" + raw_arguments(document, id, standard) + ");";
+    auto const name{(standard ? detail_namespace + "::" : "") + raw_name(document, id)};
+    output.push_back(cpp.expression_statement(
+        cpp.call(cpp.named(name), raw_arguments(cpp, document, id, standard))));
+    return output;
 }
 
 auto overlap_helper() -> std::string_view {
@@ -385,7 +422,7 @@ auto lower_portable(lispb::codegen::CppIR& cpp,
             cpp.set_function_parameters(function, std::move(function_parameters));
             cpp.set_function_body(
                 function,
-                {cpp.raw(public_body(document, id, detail_namespace, standard, overload != 0))});
+                public_body(cpp, document, id, detail_namespace, standard, overload != 0));
             cpp.set_function_noexcept(function);
             cpp.set_function_export_specifier(
                 function,

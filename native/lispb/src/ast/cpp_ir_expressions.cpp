@@ -38,6 +38,7 @@ auto binary_precedence(BinaryOperator operation) -> int {
             return 3;
         case BinaryOperator::greater_equal:
         case BinaryOperator::greater:
+        case BinaryOperator::less:
             return 4;
         case BinaryOperator::subtract:
         case BinaryOperator::add:
@@ -62,6 +63,8 @@ auto binary_spelling(BinaryOperator operation) -> std::string_view {
             return " >= ";
         case BinaryOperator::greater:
             return " > ";
+        case BinaryOperator::less:
+            return " < ";
         case BinaryOperator::subtract:
             return " - ";
         case BinaryOperator::add:
@@ -296,6 +299,9 @@ void CppIR::append_expression(std::string& output, Expr expression, int minimum,
                     break;
                 case UnaryOperator::address_of:
                     output += '&';
+                    break;
+                case UnaryOperator::preincrement:
+                    output += "++";
                     break;
             }
             append_expression(output, unary_expressions_.operand[index], 7, true);

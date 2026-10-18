@@ -30,7 +30,9 @@
     (value function)
     (value enum_)
     (value struct_)
-    (value namespace_)))
+    (value namespace_)
+    (value line_directive)
+    (value for_stmt)))
 
 (module compiler_function_flags
   :header "function_flags.h"

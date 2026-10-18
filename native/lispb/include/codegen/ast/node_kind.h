@@ -38,6 +38,8 @@ enum class NodeKind : NodeKindUnderlying {
     enum_,
     struct_,
     namespace_,
+    line_directive,
+    for_stmt,
 };
 
 } // namespace lispb::codegen

@@ -23,6 +23,7 @@
 #include <codegen/ast/ir/enumerators.h>
 #include <codegen/ast/ir/enums.h>
 #include <codegen/ast/ir/expression_statements.h>
+#include <codegen/ast/ir/for_statements.h>
 #include <codegen/ast/ir/forward_declarations.h>
 #include <codegen/ast/ir/friend_declarations.h>
 #include <codegen/ast/ir/function_bodies.h>
@@ -34,6 +35,7 @@
 #include <codegen/ast/ir/instance_members.h>
 #include <codegen/ast/ir/line_breaks.h>
 #include <codegen/ast/ir/line_comments.h>
+#include <codegen/ast/ir/line_directives.h>
 #include <codegen/ast/ir/literals.h>
 #include <codegen/ast/ir/member_expressions.h>
 #include <codegen/ast/ir/member_initializers.h>
@@ -109,12 +111,15 @@ class CppIR {
     auto line_comment(std::string_view text) -> NodeId;
     auto block_comment(StringId text) -> NodeId;
     auto block_comment(std::string_view text) -> NodeId;
+    auto line_directive(std::uint32_t line, std::string_view path) -> NodeId;
     auto block(std::span<NodeId const> children) -> BlockId;
     auto block(std::initializer_list<NodeId> children) -> BlockId {
         return block(std::span<NodeId const>{children});
     }
     auto if_statement(Expr condition, BlockId then_block, std::optional<BlockId> else_block = {})
         -> NodeId;
+    // Require a variable declaration, assignment or expression statement as the initializer.
+    auto for_statement(NodeId initializer, Expr condition, Expr increment, BlockId body) -> NodeId;
     auto switch_case(std::optional<Expr> label, BlockId body) -> SwitchCaseId;
     auto switch_statement(Expr condition, std::span<SwitchCaseId const> cases) -> NodeId;
     auto switch_statement(Expr condition, std::initializer_list<SwitchCaseId> cases) -> NodeId {
@@ -409,9 +414,11 @@ class CppIR {
     ir::RawLines raw_lines_nodes_;
     std::vector<StringId> raw_lines_;
     ir::LineComments line_comment_nodes_;
+    ir::LineDirectives line_directive_nodes_;
     ir::BlockComments block_comment_nodes_;
     ir::Blocks block_nodes_;
     ir::IfStatements if_stmt_nodes_;
+    ir::ForStatements for_stmt_nodes_;
     ir::Switches switch_stmt_nodes_;
     ir::ExpressionStatements expression_stmt_nodes_;
     ir::Returns return_stmt_nodes_;
