@@ -17,15 +17,15 @@ struct SSettingsRowBuilder {
                auto&& control_width,
                auto&& label,
                auto&& control) {
-        return
 #line 104 "CoreWidgets.lispb"
-            SNew(SBox).MinDesiredHeight(row_minimum_height)
-                [SNew(SHorizontalBox) +
-                 SandboxUI::Slate::hbox_auto_slot().VAlign(VAlign_Center)[SNew(SBox).WidthOverride(
-                     label_width)[std::forward<decltype(label)>(label)]] +
-                 SandboxUI::Slate::hbox_auto_slot(FMargin{control_padding})
-                     .VAlign(VAlign_Center)[SNew(SBox).WidthOverride(
-                         control_width)[std::forward<decltype(control)>(control)]]];
+        return SNew(SBox).MinDesiredHeight(
+            row_minimum_height)[SNew(SHorizontalBox) +
+                                SandboxUI::Slate::hbox_auto_slot().VAlign(
+                                    VAlign_Center)[SNew(SBox).WidthOverride(
+                                    label_width)[std::forward<decltype(label)>(label)]] +
+                                SandboxUI::Slate::hbox_auto_slot(FMargin{control_padding})
+                                    .VAlign(VAlign_Center)[SNew(SBox).WidthOverride(
+                                        control_width)[std::forward<decltype(control)>(control)]]];
     }
   private:
     ThisClass& self_;

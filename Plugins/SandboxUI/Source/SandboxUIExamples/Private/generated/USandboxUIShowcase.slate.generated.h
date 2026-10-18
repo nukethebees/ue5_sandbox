@@ -12,51 +12,43 @@ struct USandboxUIShowcaseBuilder {
         : self_{self} {}
 
     auto BuildRadar(auto&& range, auto&& presentation) {
-        return
 #line 6 "SandboxUIShowcase.lispb"
-            SNew(SRadar2D).Range(range).Presentation(presentation);
+        return SNew(SRadar2D).Range(range).Presentation(presentation);
     }
 
     auto BuildRadarWithRange(auto&& range) {
-        return
 #line 11 "SandboxUIShowcase.lispb"
-            SNew(SRadar2D).Range(range);
+        return SNew(SRadar2D).Range(range);
     }
 
     auto BuildGraph() {
-        return
 #line 14 "SandboxUIShowcase.lispb"
-            SNew(SGraphPlot);
+        return SNew(SGraphPlot);
     }
 
     auto BuildGraphWithAxes(auto&& x_axis, auto&& y_axis) {
-        return
 #line 19 "SandboxUIShowcase.lispb"
-            SNew(SGraphPlot).XAxis(x_axis).YAxis(y_axis);
+        return SNew(SGraphPlot).XAxis(x_axis).YAxis(y_axis);
     }
 
     auto BuildHistogram() {
-        return
 #line 24 "SandboxUIShowcase.lispb"
-            SNew(SHistogram).DomainMinimum(-4.0f).DomainMaximum(4.0f).BinCount(24);
+        return SNew(SHistogram).DomainMinimum(-4.0f).DomainMaximum(4.0f).BinCount(24);
     }
 
     auto BuildScatter(auto&& domain) {
-        return
 #line 30 "SandboxUIShowcase.lispb"
-            SNew(SScatterPlot).Domain(domain);
+        return SNew(SScatterPlot).Domain(domain);
     }
 
     auto BuildStackedBarChart() {
-        return
 #line 33 "SandboxUIShowcase.lispb"
-            SNew(SStackedBarChart);
+        return SNew(SStackedBarChart);
     }
 
     auto BuildHeatmap(auto&& value_range, auto&& domain) {
-        return
 #line 38 "SandboxUIShowcase.lispb"
-            SNew(SHeatmap2D).ValueRange(value_range).Domain(domain);
+        return SNew(SHeatmap2D).ValueRange(value_range).Domain(domain);
     }
   private:
     ThisClass& self_;

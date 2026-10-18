@@ -16,14 +16,15 @@ struct SExperimentBenchmarkBuilder {
                auto&& on_clicked,
                auto&& output_height,
                auto&& output) {
-        return
 #line 29 "ExperimentPanels.lispb"
-            SNew(SVerticalBox) +
-            SandboxUI::Slate::vbox_auto_slot()
-                [SNew(SButton).Text(button_text).ToolTipText(tool_tip_text).OnClicked(on_clicked)] +
-            SandboxUI::Slate::vbox_auto_slot(
-                FMargin{0.0f, 4.0f, 0.0f, 0.0f})[SNew(SBox).HeightOverride(
-                output_height)[std::forward<decltype(output)>(output)]];
+        return SNew(SVerticalBox) +
+               SandboxUI::Slate::vbox_auto_slot()[SNew(SButton)
+                                                      .Text(button_text)
+                                                      .ToolTipText(tool_tip_text)
+                                                      .OnClicked(on_clicked)] +
+               SandboxUI::Slate::vbox_auto_slot(
+                   FMargin{0.0f, 4.0f, 0.0f, 0.0f})[SNew(SBox).HeightOverride(
+                   output_height)[std::forward<decltype(output)>(output)]];
     }
   private:
     ThisClass& self_;

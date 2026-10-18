@@ -7,8 +7,7 @@
 #include <utility>
 namespace SlateGenerated::HeatmapBenchmark {
 inline auto BuildHeatmap(auto&& style) {
-    return
 #line 4 "HeatmapBenchmarkSlate.lispb"
-        SNew(SHeatmap2D).Style(style);
+    return SNew(SHeatmap2D).Style(style);
 }
 } // namespace SlateGenerated::HeatmapBenchmark

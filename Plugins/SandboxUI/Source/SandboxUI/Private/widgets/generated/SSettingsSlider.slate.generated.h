@@ -19,19 +19,18 @@ struct SSettingsSliderBuilder {
                auto&& value_width,
                auto&& slider,
                auto&& value_text) {
-        return
 #line 147 "CoreWidgets.lispb"
-            SNew(SSettingsRow)
-                .Style(style)
-                .Label(label)
-                .ToolTipText(tool_tip_text)
-                .ControlEnabled(control_enabled)
-                    [SNew(SHorizontalBox) +
-                     SandboxUI::Slate::hbox_fill_slot().VAlign(
-                         VAlign_Center)[std::forward<decltype(slider)>(slider)] +
-                     SandboxUI::Slate::hbox_auto_slot(FMargin{value_padding})
-                         .VAlign(VAlign_Center)[SNew(SBox).WidthOverride(
-                             value_width)[std::forward<decltype(value_text)>(value_text)]]];
+        return SNew(SSettingsRow)
+            .Style(style)
+            .Label(label)
+            .ToolTipText(tool_tip_text)
+            .ControlEnabled(control_enabled)
+                [SNew(SHorizontalBox) +
+                 SandboxUI::Slate::hbox_fill_slot().VAlign(
+                     VAlign_Center)[std::forward<decltype(slider)>(slider)] +
+                 SandboxUI::Slate::hbox_auto_slot(FMargin{value_padding})
+                     .VAlign(VAlign_Center)[SNew(SBox).WidthOverride(
+                         value_width)[std::forward<decltype(value_text)>(value_text)]]];
     }
   private:
     ThisClass& self_;

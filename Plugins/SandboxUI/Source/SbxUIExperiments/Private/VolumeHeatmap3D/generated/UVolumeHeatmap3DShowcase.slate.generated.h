@@ -13,16 +13,14 @@ struct UVolumeHeatmap3DShowcaseBuilder {
         : self_{self} {}
 
     auto BuildVolumeWidget() {
-        return
 #line 6 "VolumeHeatmap3DShowcase.lispb"
-            SNew(SVolumeHeatmap3DWidget);
+        return SNew(SVolumeHeatmap3DWidget);
     }
 
     auto BuildGridButton(auto&& label, auto&& on_clicked) {
-        return
 #line 11 "VolumeHeatmap3DShowcase.lispb"
-            SNew(SButton).Text(label).OnClicked_Lambda(
-                std::forward<decltype(on_clicked)>(on_clicked));
+        return SNew(SButton).Text(label).OnClicked_Lambda(
+            std::forward<decltype(on_clicked)>(on_clicked));
     }
 
     auto RebuildWidget(auto&& show_clouds,
@@ -52,124 +50,121 @@ struct UVolumeHeatmap3DShowcaseBuilder {
 #line 32 "VolumeHeatmap3DShowcase.lispb"
         auto const preview_size{512.0f};
 
-        return
 #line 33 "VolumeHeatmap3DShowcase.lispb"
-            SNew(SExperimentPanel)
-                .Title(NSLOCTEXT("VolumeHeatmap3D", "Title", "RDG 3D Volume Heatmap"))
-                .Description(NSLOCTEXT("VolumeHeatmap3D",
-                                       "Description",
-                                       "A dense CPU volume is uploaded on change and composited as "
-                                       "one instanced, view-aligned slice draw."))
-                .Controls()
-                    [SNew(SVerticalBox) +
-                     SandboxUI::Slate::vbox_auto_slot(FMargin{control_padding})
-                         [SNew(SHorizontalBox) +
-                          SandboxUI::Slate::hbox_auto_slot(FMargin{pattern_button_padding})
-                              [SNew(SButton)
-                                   .Text(NSLOCTEXT("VolumeHeatmap3D", "Clouds", "Gaussian clouds"))
-                                   .OnClicked_Lambda(
-                                       std::forward<decltype(show_clouds)>(show_clouds))] +
-                          SandboxUI::Slate::hbox_auto_slot()
-                              [SNew(SButton)
-                                   .Text(NSLOCTEXT("VolumeHeatmap3D", "Shell", "Hollow shell"))
-                                   .OnClicked_Lambda(
-                                       std::forward<decltype(show_shell)>(show_shell))]] +
-                     SandboxUI::Slate::vbox_auto_slot(FMargin{control_padding})
-                         [SNew(SLabeledRow)
-                              .Label(NSLOCTEXT("VolumeHeatmap3D", "Grid", "Grid"))
-                              .LabelMinWidth(label_min_width)
-                                  [SNew(SHorizontalBox) +
-                                   SandboxUI::Slate::hbox_auto_slot(
-                                       FMargin{grid_button_padding})[grid_button(16)] +
-                                   SandboxUI::Slate::hbox_auto_slot(
-                                       FMargin{grid_button_padding})[grid_button(32)] +
-                                   SandboxUI::Slate::hbox_auto_slot(
-                                       FMargin{grid_button_padding})[grid_button(64)] +
-                                   SandboxUI::Slate::hbox_auto_slot()[grid_button(128)]]] +
-                     SandboxUI::Slate::vbox_auto_slot(FMargin{control_padding})
-                         [SNew(SHorizontalBox) +
-                          SandboxUI::Slate::hbox_auto_slot()
-                              [SNew(SLabeledRow)
-                                   .Label(NSLOCTEXT("VolumeHeatmap3D", "Slices", "Slices"))
-                                   .LabelMinWidth(label_min_width)
-                                   .ContentHAlign(
-                                       HAlign_Left)[SNew(SSpinBox<int32>)
-                                                        .MinValue(8)
-                                                        .MaxValue(256)
-                                                        .MinSliderValue(8)
-                                                        .MaxSliderValue(256)
-                                                        .Delta(8)
-                                                        .MinDesiredWidth(control_width)
-                                                        .Value(96)
-                                                        .OnValueCommitted_Lambda(
-                                                            std::forward<decltype(set_slice_count)>(
-                                                                set_slice_count))]] +
-                          SandboxUI::Slate::hbox_auto_slot(FMargin{paired_control_padding})
-                              [SNew(SLabeledRow)
-                                   .Label(NSLOCTEXT("VolumeHeatmap3D", "Density", "Density"))
-                                   .LabelMinWidth(label_min_width)
-                                   .ContentHAlign(HAlign_Left)
-                                       [SNew(SSpinBox<float>)
-                                            .MinValue(0.25f)
-                                            .MaxValue(8.0f)
-                                            .MinSliderValue(0.25f)
-                                            .MaxSliderValue(8.0f)
-                                            .Delta(0.25f)
-                                            .MinDesiredWidth(control_width)
-                                            .Value(3.0f)
-                                            .OnValueCommitted_Lambda(
-                                                std::forward<decltype(set_density_scale)>(
-                                                    set_density_scale))]]] +
-                     SandboxUI::Slate::vbox_auto_slot(FMargin{rotation_padding})
-                         [SNew(SHorizontalBox) +
-                          SandboxUI::Slate::hbox_auto_slot()
-                              [SNew(SLabeledRow)
-                                   .Label(NSLOCTEXT("VolumeHeatmap3D", "Yaw", "Yaw"))
-                                   .LabelMinWidth(label_min_width)
-                                   .ContentHAlign(HAlign_Left)
-                                       [SNew(SSpinBox<float>)
-                                            .MinValue(-180)
-                                            .MaxValue(180)
-                                            .MinSliderValue(-180)
-                                            .MaxSliderValue(180)
-                                            .Delta(1)
-                                            .MinDesiredWidth(rotation_control_width)
-                                            .Value(-51)
-                                            .OnValueCommitted_Lambda(
-                                                std::forward<decltype(set_yaw)>(set_yaw))]] +
-                          SandboxUI::Slate::hbox_auto_slot(FMargin{paired_control_padding})
-                              [SNew(SLabeledRow)
-                                   .Label(NSLOCTEXT("VolumeHeatmap3D", "Pitch", "Pitch"))
-                                   .LabelMinWidth(label_min_width)
-                                   .ContentHAlign(HAlign_Left)
-                                       [SNew(SSpinBox<float>)
-                                            .MinValue(-85)
-                                            .MaxValue(85)
-                                            .MinSliderValue(-85)
-                                            .MaxSliderValue(85)
-                                            .Delta(1)
-                                            .MinDesiredWidth(rotation_control_width)
-                                            .Value(29)
-                                            .OnValueCommitted_Lambda(
-                                                std::forward<decltype(set_pitch)>(set_pitch))]]] +
-                     SandboxUI::Slate::vbox_auto_slot()
-                         [SNew(SExperimentBenchmark)
-                              .ButtonText(NSLOCTEXT("VolumeHeatmap3D",
-                                                    "RunBenchmark",
-                                                    "Benchmark grid and slice scaling"))
-                              .OnClicked_UObject(&self_, &ThisClass::run_benchmark)
-                              .OutputHeight(105.0f)
-                              .Output()[SAssignNew(self_.benchmark_output_,
-                                                   SMultiLineEditableTextBox)
-                                            .IsReadOnly(true)
-                                            .Text(NSLOCTEXT("VolumeHeatmap3D",
-                                                            "BenchmarkInstructions",
-                                                            "Results appear here. The CLI writes "
-                                                            "the same stages to CSV."))]]]
-                .Preview()[SNew(SBox)
-                               .WidthOverride(preview_size)
-                               .HeightOverride(preview_size)[std::forward<decltype(volume_widget)>(
-                                   volume_widget)]];
+        return SNew(SExperimentPanel)
+            .Title(NSLOCTEXT("VolumeHeatmap3D", "Title", "RDG 3D Volume Heatmap"))
+            .Description(NSLOCTEXT("VolumeHeatmap3D",
+                                   "Description",
+                                   "A dense CPU volume is uploaded on change and composited as one "
+                                   "instanced, view-aligned slice draw."))
+            .Controls()
+                [SNew(SVerticalBox) +
+                 SandboxUI::Slate::vbox_auto_slot(FMargin{control_padding})
+                     [SNew(SHorizontalBox) +
+                      SandboxUI::Slate::hbox_auto_slot(FMargin{pattern_button_padding})
+                          [SNew(SButton)
+                               .Text(NSLOCTEXT("VolumeHeatmap3D", "Clouds", "Gaussian clouds"))
+                               .OnClicked_Lambda(
+                                   std::forward<decltype(show_clouds)>(show_clouds))] +
+                      SandboxUI::Slate::hbox_auto_slot()
+                          [SNew(SButton)
+                               .Text(NSLOCTEXT("VolumeHeatmap3D", "Shell", "Hollow shell"))
+                               .OnClicked_Lambda(std::forward<decltype(show_shell)>(show_shell))]] +
+                 SandboxUI::Slate::vbox_auto_slot(FMargin{control_padding})
+                     [SNew(SLabeledRow)
+                          .Label(NSLOCTEXT("VolumeHeatmap3D", "Grid", "Grid"))
+                          .LabelMinWidth(label_min_width)
+                              [SNew(SHorizontalBox) +
+                               SandboxUI::Slate::hbox_auto_slot(
+                                   FMargin{grid_button_padding})[grid_button(16)] +
+                               SandboxUI::Slate::hbox_auto_slot(
+                                   FMargin{grid_button_padding})[grid_button(32)] +
+                               SandboxUI::Slate::hbox_auto_slot(
+                                   FMargin{grid_button_padding})[grid_button(64)] +
+                               SandboxUI::Slate::hbox_auto_slot()[grid_button(128)]]] +
+                 SandboxUI::Slate::vbox_auto_slot(FMargin{control_padding})
+                     [SNew(SHorizontalBox) +
+                      SandboxUI::Slate::hbox_auto_slot()
+                          [SNew(SLabeledRow)
+                               .Label(NSLOCTEXT("VolumeHeatmap3D", "Slices", "Slices"))
+                               .LabelMinWidth(label_min_width)
+                               .ContentHAlign(
+                                   HAlign_Left)[SNew(SSpinBox<int32>)
+                                                    .MinValue(8)
+                                                    .MaxValue(256)
+                                                    .MinSliderValue(8)
+                                                    .MaxSliderValue(256)
+                                                    .Delta(8)
+                                                    .MinDesiredWidth(control_width)
+                                                    .Value(96)
+                                                    .OnValueCommitted_Lambda(
+                                                        std::forward<decltype(set_slice_count)>(
+                                                            set_slice_count))]] +
+                      SandboxUI::Slate::hbox_auto_slot(FMargin{paired_control_padding})
+                          [SNew(SLabeledRow)
+                               .Label(NSLOCTEXT("VolumeHeatmap3D", "Density", "Density"))
+                               .LabelMinWidth(label_min_width)
+                               .ContentHAlign(
+                                   HAlign_Left)[SNew(SSpinBox<float>)
+                                                    .MinValue(0.25f)
+                                                    .MaxValue(8.0f)
+                                                    .MinSliderValue(0.25f)
+                                                    .MaxSliderValue(8.0f)
+                                                    .Delta(0.25f)
+                                                    .MinDesiredWidth(control_width)
+                                                    .Value(3.0f)
+                                                    .OnValueCommitted_Lambda(
+                                                        std::forward<decltype(set_density_scale)>(
+                                                            set_density_scale))]]] +
+                 SandboxUI::Slate::vbox_auto_slot(FMargin{rotation_padding})
+                     [SNew(SHorizontalBox) +
+                      SandboxUI::Slate::hbox_auto_slot()
+                          [SNew(SLabeledRow)
+                               .Label(NSLOCTEXT("VolumeHeatmap3D", "Yaw", "Yaw"))
+                               .LabelMinWidth(label_min_width)
+                               .ContentHAlign(HAlign_Left)
+                                   [SNew(SSpinBox<float>)
+                                        .MinValue(-180)
+                                        .MaxValue(180)
+                                        .MinSliderValue(-180)
+                                        .MaxSliderValue(180)
+                                        .Delta(1)
+                                        .MinDesiredWidth(rotation_control_width)
+                                        .Value(-51)
+                                        .OnValueCommitted_Lambda(
+                                            std::forward<decltype(set_yaw)>(set_yaw))]] +
+                      SandboxUI::Slate::hbox_auto_slot(FMargin{paired_control_padding})
+                          [SNew(SLabeledRow)
+                               .Label(NSLOCTEXT("VolumeHeatmap3D", "Pitch", "Pitch"))
+                               .LabelMinWidth(label_min_width)
+                               .ContentHAlign(HAlign_Left)
+                                   [SNew(SSpinBox<float>)
+                                        .MinValue(-85)
+                                        .MaxValue(85)
+                                        .MinSliderValue(-85)
+                                        .MaxSliderValue(85)
+                                        .Delta(1)
+                                        .MinDesiredWidth(rotation_control_width)
+                                        .Value(29)
+                                        .OnValueCommitted_Lambda(
+                                            std::forward<decltype(set_pitch)>(set_pitch))]]] +
+                 SandboxUI::Slate::vbox_auto_slot()
+                     [SNew(SExperimentBenchmark)
+                          .ButtonText(NSLOCTEXT("VolumeHeatmap3D",
+                                                "RunBenchmark",
+                                                "Benchmark grid and slice scaling"))
+                          .OnClicked_UObject(&self_, &ThisClass::run_benchmark)
+                          .OutputHeight(105.0f)
+                          .Output()[SAssignNew(self_.benchmark_output_, SMultiLineEditableTextBox)
+                                        .IsReadOnly(true)
+                                        .Text(NSLOCTEXT("VolumeHeatmap3D",
+                                                        "BenchmarkInstructions",
+                                                        "Results appear here. The CLI writes the "
+                                                        "same stages to CSV."))]]]
+            .Preview()[SNew(SBox)
+                           .WidthOverride(preview_size)
+                           .HeightOverride(
+                               preview_size)[std::forward<decltype(volume_widget)>(volume_widget)]];
     }
   private:
     ThisClass& self_;

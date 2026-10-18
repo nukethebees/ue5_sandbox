@@ -12,20 +12,18 @@ struct SSectionPanelBuilder {
         : self_{self} {}
 
     auto BuildTitle(auto&& title, auto&& justification, auto&& visibility) {
-        return
 #line 40 "CoreWidgets.lispb"
-            SNew(STextBlock)
-                .Text(title)
-                .Justification(justification)
-                .Visibility_Lambda(std::forward<decltype(visibility)>(visibility));
+        return SNew(STextBlock)
+            .Text(title)
+            .Justification(justification)
+            .Visibility_Lambda(std::forward<decltype(visibility)>(visibility));
     }
 
     auto BuildDescription(auto&& description, auto&& visibility) {
-        return
 #line 48 "CoreWidgets.lispb"
-            SNew(STextBlock)
-                .Text(description)
-                .Visibility_Lambda(std::forward<decltype(visibility)>(visibility));
+        return SNew(STextBlock)
+            .Text(description)
+            .Visibility_Lambda(std::forward<decltype(visibility)>(visibility));
     }
 
     auto BuildPanel(auto&& padding,
@@ -35,15 +33,14 @@ struct SSectionPanelBuilder {
                     auto&& title,
                     auto&& description,
                     auto&& content) {
-        return
 #line 60 "CoreWidgets.lispb"
-            SNew(SBorder).Padding(padding).BorderBackgroundColor(background_color)
-                [SNew(SVerticalBox) +
-                 SandboxUI::Slate::vbox_auto_slot(
-                     FMargin{title_padding})[std::forward<decltype(title)>(title)] +
-                 SandboxUI::Slate::vbox_auto_slot(FMargin{
-                     description_padding})[std::forward<decltype(description)>(description)] +
-                 SandboxUI::Slate::vbox_fill_slot()[std::forward<decltype(content)>(content)]];
+        return SNew(SBorder).Padding(padding).BorderBackgroundColor(background_color)
+            [SNew(SVerticalBox) +
+             SandboxUI::Slate::vbox_auto_slot(
+                 FMargin{title_padding})[std::forward<decltype(title)>(title)] +
+             SandboxUI::Slate::vbox_auto_slot(
+                 FMargin{description_padding})[std::forward<decltype(description)>(description)] +
+             SandboxUI::Slate::vbox_fill_slot()[std::forward<decltype(content)>(content)]];
     }
   private:
     ThisClass& self_;

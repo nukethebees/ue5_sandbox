@@ -18,16 +18,15 @@ struct SSettingsSectionBuilder {
                auto&& title_padding,
                auto&& title,
                auto&& content) {
-        return
 #line 126 "CoreWidgets.lispb"
-            SNew(SBorder)
-                .Padding(border_thickness)
-                .BorderImage(border)[SNew(SBorder).Padding(padding).BorderImage(
-                    background)[SNew(SVerticalBox) +
-                                SandboxUI::Slate::vbox_auto_slot(
-                                    FMargin{title_padding})[std::forward<decltype(title)>(title)] +
-                                SandboxUI::Slate::vbox_auto_slot()[std::forward<decltype(content)>(
-                                    content)]]];
+        return SNew(SBorder)
+            .Padding(border_thickness)
+            .BorderImage(border)[SNew(SBorder).Padding(padding).BorderImage(
+                background)[SNew(SVerticalBox) +
+                            SandboxUI::Slate::vbox_auto_slot(
+                                FMargin{title_padding})[std::forward<decltype(title)>(title)] +
+                            SandboxUI::Slate::vbox_auto_slot()[std::forward<decltype(content)>(
+                                content)]]];
     }
   private:
     ThisClass& self_;

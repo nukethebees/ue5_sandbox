@@ -19,24 +19,22 @@ struct SGameOptionsViewBuilder {
                     auto&& header,
                     auto&& body,
                     auto&& footer) {
-        return
 #line 12 "SGameOptionsView.lispb"
-            SNew(SBorder)
-                .BorderImage(background)
-                .Padding(page_margin)
-                .HAlign(HAlign_Center)
-                .VAlign(VAlign_Center)
-                    [SNew(ioj::SHiveFrame)
-                         .Style(chrome_style)
-                         .WidthOverride(window_width)
-                         .HeightOverride(window_height)
-                             [SNew(SVerticalBox) +
-                              SandboxUI::Slate::vbox_auto_slot()[std::forward<decltype(header)>(
-                                  header)] +
-                              SandboxUI::Slate::vbox_fill_slot()[std::forward<decltype(body)>(
-                                  body)] +
-                              SandboxUI::Slate::vbox_auto_slot()[std::forward<decltype(footer)>(
-                                  footer)]]];
+        return SNew(SBorder)
+            .BorderImage(background)
+            .Padding(page_margin)
+            .HAlign(HAlign_Center)
+            .VAlign(VAlign_Center)
+                [SNew(ioj::SHiveFrame)
+                     .Style(chrome_style)
+                     .WidthOverride(window_width)
+                     .HeightOverride(window_height)
+                         [SNew(SVerticalBox) +
+                          SandboxUI::Slate::vbox_auto_slot()[std::forward<decltype(header)>(
+                              header)] +
+                          SandboxUI::Slate::vbox_fill_slot()[std::forward<decltype(body)>(body)] +
+                          SandboxUI::Slate::vbox_auto_slot()[std::forward<decltype(footer)>(
+                              footer)]]];
     }
   private:
     ThisClass& self_;

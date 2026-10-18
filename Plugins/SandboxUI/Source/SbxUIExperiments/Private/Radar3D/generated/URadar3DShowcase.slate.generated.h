@@ -12,55 +12,51 @@ struct URadar3DShowcaseBuilder {
         : self_{self} {}
 
     auto BuildRadarWidget() {
-        return
 #line 6 "Radar3DShowcase.lispb"
-            SNew(SRadarWidget);
+        return SNew(SRadarWidget);
     }
 
     auto RebuildWidget(auto&& on_value_changed, auto&& radar_widget) {
-        return
 #line 11 "Radar3DShowcase.lispb"
-            SNew(SExperimentPanel)
-                .Title(NSLOCTEXT("Radar3D", "Title", "RDG 3D Radar Experiment"))
-                .Description(NSLOCTEXT("Radar3D",
-                                       "Description",
-                                       "Synthetic CPU contacts are rendered by RDG into one "
-                                       "offscreen texture and displayed by Slate."))
-                .Controls()
-                    [SNew(SVerticalBox) +
-                     SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 0.0f, 0.0f, 10.0f})
-                         [SNew(SLabeledRow)
-                              .Label(NSLOCTEXT("Radar3D", "ContactCount", "Contacts"))
-                              .ContentHAlign(
-                                  HAlign_Left)[SNew(SSpinBox<int32>)
-                                                   .MinValue(1)
-                                                   .MaxValue(512)
-                                                   .MinSliderValue(1)
-                                                   .MaxSliderValue(512)
-                                                   .Delta(1)
-                                                   .MinDesiredWidth(120.0f)
-                                                   .Value(5)
-                                                   .OnValueChanged_Lambda(
-                                                       std::forward<decltype(on_value_changed)>(
-                                                           on_value_changed))]] +
-                     SandboxUI::Slate::vbox_auto_slot()
-                         [SNew(SExperimentBenchmark)
-                              .ButtonText(NSLOCTEXT(
-                                  "Radar3D", "RunBenchmark", "Benchmark RDG contact scaling"))
-                              .ToolTipText(NSLOCTEXT("Radar3D",
-                                                     "RunBenchmarkTooltip",
-                                                     "Runs a short 512x512 benchmark at 32, 128, "
-                                                     "256, and 512 contacts."))
-                              .OnClicked_UObject(&self_, &ThisClass::run_benchmark)
-                              .Output()[SAssignNew(self_.benchmark_output_,
-                                                   SMultiLineEditableTextBox)
-                                            .IsReadOnly(true)
-                                            .Text(NSLOCTEXT("Radar3D",
-                                                            "BenchmarkInstructions",
-                                                            "Results appear here. The CLI writes "
-                                                            "the same stages to CSV."))]]]
-                .Preview()[SNew(SBox).WidthOverride(512.0f).HeightOverride(
-                    512.0f)[std::forward<decltype(radar_widget)>(radar_widget)]];
+        return SNew(SExperimentPanel)
+            .Title(NSLOCTEXT("Radar3D", "Title", "RDG 3D Radar Experiment"))
+            .Description(NSLOCTEXT("Radar3D",
+                                   "Description",
+                                   "Synthetic CPU contacts are rendered by RDG into one offscreen "
+                                   "texture and displayed by Slate."))
+            .Controls()
+                [SNew(SVerticalBox) +
+                 SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 0.0f, 0.0f, 10.0f})
+                     [SNew(SLabeledRow)
+                          .Label(NSLOCTEXT("Radar3D", "ContactCount", "Contacts"))
+                          .ContentHAlign(HAlign_Left)
+                              [SNew(SSpinBox<int32>)
+                                   .MinValue(1)
+                                   .MaxValue(512)
+                                   .MinSliderValue(1)
+                                   .MaxSliderValue(512)
+                                   .Delta(1)
+                                   .MinDesiredWidth(120.0f)
+                                   .Value(5)
+                                   .OnValueChanged_Lambda(std::forward<decltype(on_value_changed)>(
+                                       on_value_changed))]] +
+                 SandboxUI::Slate::vbox_auto_slot()
+                     [SNew(SExperimentBenchmark)
+                          .ButtonText(
+                              NSLOCTEXT("Radar3D", "RunBenchmark", "Benchmark RDG contact scaling"))
+                          .ToolTipText(NSLOCTEXT(
+                              "Radar3D",
+                              "RunBenchmarkTooltip",
+                              "Runs a short 512x512 benchmark at 32, 128, 256, and 512 contacts."))
+                          .OnClicked_UObject(&self_, &ThisClass::run_benchmark)
+                          .Output()[SAssignNew(self_.benchmark_output_, SMultiLineEditableTextBox)
+                                        .IsReadOnly(true)
+                                        .Text(NSLOCTEXT("Radar3D",
+                                                        "BenchmarkInstructions",
+                                                        "Results appear here. The CLI writes the "
+                                                        "same stages to CSV."))]]]
+            .Preview()[SNew(SBox).WidthOverride(512.0f).HeightOverride(
+                512.0f)[std::forward<decltype(radar_widget)>(radar_widget)]];
     }
   private:
     ThisClass& self_;

@@ -12,9 +12,8 @@ struct SScatter3DWidgetBuilder {
         : self_{self} {}
 
     auto BuildImage(auto&& brush) {
-        return
 #line 4 "../Widgets/Experiments/Patterns.lispb"
-            SAssignNew(self_.image_, SImage).Image(brush);
+        return SAssignNew(self_.image_, SImage).Image(brush);
     }
   private:
     ThisClass& self_;

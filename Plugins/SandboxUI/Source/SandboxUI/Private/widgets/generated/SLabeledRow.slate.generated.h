@@ -17,15 +17,14 @@ struct SLabeledRowBuilder {
                         auto&& content_fill_width,
                         auto&& content_halign,
                         auto&& content) {
-        return
 #line 10 "CoreWidgets.lispb"
-            SNew(SHorizontalBox) +
-            SandboxUI::Slate::hbox_auto_slot(FMargin{label_padding})
-                .VAlign(VAlign_Center)[SNew(SBox).MinDesiredWidth(
-                    label_min_width)[SNew(STextBlock).Text(label)]] +
-            SandboxUI::Slate::hbox_fill_slot(content_fill_width)
-                .HAlign(content_halign)
-                .VAlign(VAlign_Center)[std::forward<decltype(content)>(content)];
+        return SNew(SHorizontalBox) +
+               SandboxUI::Slate::hbox_auto_slot(FMargin{label_padding})
+                   .VAlign(VAlign_Center)[SNew(SBox).MinDesiredWidth(
+                       label_min_width)[SNew(STextBlock).Text(label)]] +
+               SandboxUI::Slate::hbox_fill_slot(content_fill_width)
+                   .HAlign(content_halign)
+                   .VAlign(VAlign_Center)[std::forward<decltype(content)>(content)];
     }
 
     auto BuildFillLabel(auto&& label,
@@ -35,15 +34,14 @@ struct SLabeledRowBuilder {
                         auto&& content_fill_width,
                         auto&& content_halign,
                         auto&& content) {
-        return
 #line 26 "CoreWidgets.lispb"
-            SNew(SHorizontalBox) +
-            SandboxUI::Slate::hbox_fill_slot(label_fill_width, FMargin{label_padding})
-                .VAlign(VAlign_Center)[SNew(SBox).MinDesiredWidth(
-                    label_min_width)[SNew(STextBlock).Text(label)]] +
-            SandboxUI::Slate::hbox_fill_slot(content_fill_width)
-                .HAlign(content_halign)
-                .VAlign(VAlign_Center)[std::forward<decltype(content)>(content)];
+        return SNew(SHorizontalBox) +
+               SandboxUI::Slate::hbox_fill_slot(label_fill_width, FMargin{label_padding})
+                   .VAlign(VAlign_Center)[SNew(SBox).MinDesiredWidth(
+                       label_min_width)[SNew(STextBlock).Text(label)]] +
+               SandboxUI::Slate::hbox_fill_slot(content_fill_width)
+                   .HAlign(content_halign)
+                   .VAlign(VAlign_Center)[std::forward<decltype(content)>(content)];
     }
   private:
     ThisClass& self_;

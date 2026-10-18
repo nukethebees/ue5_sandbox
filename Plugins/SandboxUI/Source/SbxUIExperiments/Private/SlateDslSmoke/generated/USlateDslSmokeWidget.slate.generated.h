@@ -12,27 +12,26 @@ struct USlateDslSmokeWidgetBuilder {
         : self_{self} {}
 
     auto RebuildWidget(auto&& on_value_changed) {
-        return
 #line 5 "SlateDslSmokeWidget.lispb"
-            SNew(SVerticalBox) +
-            SandboxUI::Slate::vbox_auto_slot(FMargin{
-                8.0f, 8.0f, 8.0f, 4.0f})[SNew(STextBlock)
-                                             .Text(FText::FromString(TEXT(
-                                                 "This widget was generated from Slate DSL")))] +
-            SandboxUI::Slate::vbox_auto_slot(FMargin{
-                8.0f, 4.0f})[SNew(SSpinBox<int32>)
-                                 .MinValue(0)
-                                 .MaxValue(100)
-                                 .Value(5)
-                                 .OnValueChanged_Lambda(
-                                     std::forward<decltype(on_value_changed)>(on_value_changed))] +
-            SandboxUI::Slate::vbox_auto_slot(
-                FMargin{8.0f,
-                        4.0f,
-                        8.0f,
-                        8.0f})[SNew(SButton)
-                                   .Text(FText::FromString(TEXT("Invoke private UObject callback")))
-                                   .OnClicked_UObject(&self_, &ThisClass::handle_clicked)];
+        return SNew(SVerticalBox) +
+               SandboxUI::Slate::vbox_auto_slot(FMargin{
+                   8.0f, 8.0f, 8.0f, 4.0f})[SNew(STextBlock)
+                                                .Text(FText::FromString(TEXT(
+                                                    "This widget was generated from Slate DSL")))] +
+               SandboxUI::Slate::vbox_auto_slot(FMargin{
+                   8.0f, 4.0f})[SNew(SSpinBox<int32>)
+                                    .MinValue(0)
+                                    .MaxValue(100)
+                                    .Value(5)
+                                    .OnValueChanged_Lambda(std::forward<decltype(on_value_changed)>(
+                                        on_value_changed))] +
+               SandboxUI::Slate::vbox_auto_slot(FMargin{
+                   8.0f,
+                   4.0f,
+                   8.0f,
+                   8.0f})[SNew(SButton)
+                              .Text(FText::FromString(TEXT("Invoke private UObject callback")))
+                              .OnClicked_UObject(&self_, &ThisClass::handle_clicked)];
     }
   private:
     ThisClass& self_;

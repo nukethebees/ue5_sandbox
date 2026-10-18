@@ -11,67 +11,68 @@ struct SS7LevelScriptEditorBuilder {
         : self_{self} {}
 
     auto BuildRoot() {
-        return
 #line 16 "S7LevelScriptEditor.lispb"
-            SNew(SVerticalBox) +
-            SandboxUI::Slate::vbox_auto_slot(FMargin{4.0f})
-                [SNew(SVerticalBox) +
-                 SandboxUI::Slate::vbox_auto_slot()
-                     [SNew(SHorizontalBox) +
-                      SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
-                          [SNew(SButton)
-                               .Text(NSLOCTEXT("SS7LevelScriptEditor", "Load", "Load Source"))
-                               .IsEnabled(&self_, &ThisClass::can_load_source)
-                               .OnClicked(&self_, &ThisClass::load_source)] +
-                      SandboxUI::Slate::hbox_fill_slot(
-                          1.0f, FMargin{2.0f})[SNew(SButton)
-                                                   .Text(&self_, &ThisClass::reload_text)
-                                                   .IsEnabled(&self_, &ThisClass::can_reload_source)
-                                                   .OnClicked(&self_, &ThisClass::reload_source)]] +
-                 SandboxUI::Slate::vbox_auto_slot()
-                     [SNew(SHorizontalBox) +
-                      SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
-                          [SNew(SButton)
-                               .Text(NSLOCTEXT("SS7LevelScriptEditor", "Preview", "Preview Buffer"))
-                               .IsEnabled(&self_, &ThisClass::can_preview_buffer)
-                               .OnClicked(&self_, &ThisClass::preview_buffer)] +
-                      SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
-                          [SNew(SButton)
-                               .Text(NSLOCTEXT("SS7LevelScriptEditor", "Apply", "Apply Preview"))
-                               .IsEnabled(&self_, &ThisClass::can_apply_preview)
-                               .OnClicked(&self_, &ThisClass::apply_preview)]] +
-                 SandboxUI::Slate::vbox_auto_slot()
-                     [SNew(SHorizontalBox) +
-                      SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
-                          [SNew(SButton)
-                               .Text(NSLOCTEXT("SS7LevelScriptEditor", "Save", "Save Buffer"))
-                               .IsEnabled(&self_, &ThisClass::can_save_buffer)
-                               .OnClicked(&self_, &ThisClass::save_buffer)] +
-                      SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
-                          [SNew(SButton)
-                               .Text(NSLOCTEXT("SS7LevelScriptEditor", "SaveAs", "Save Buffer As"))
-                               .IsEnabled(&self_, &ThisClass::can_save_buffer_as)
-                               .OnClicked(&self_, &ThisClass::save_buffer_as)]] +
-                 SandboxUI::Slate::vbox_auto_slot()
-                     [SNew(SHorizontalBox) +
-                      SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
-                          [SNew(SButton)
-                               .Text(NSLOCTEXT("SS7LevelScriptEditor",
-                                               "SaveCanonical",
-                                               "Save Canonical from Scene"))
-                               .IsEnabled(&self_, &ThisClass::can_save_canonical)
-                               .OnClicked(&self_, &ThisClass::save_canonical)] +
-                      SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})[SNew(SSpacer)]]] +
-            SandboxUI::Slate::vbox_auto_slot(
-                FMargin{4.0f, 0.0f})[SAssignNew(self_.state_, STextBlock).AutoWrapText(true)] +
-            SandboxUI::Slate::vbox_fill_slot(
-                1.0f, FMargin{4.0f})[SAssignNew(self_.source_, SMultiLineEditableTextBox)
-                                         .AutoWrapText(false)
-                                         .OnTextChanged(&self_, &ThisClass::on_source_changed)] +
-            SandboxUI::Slate::vbox_auto_slot(
-                FMargin{4.0f})[SNew(SBorder)[SAssignNew(self_.status_, SMultiLineEditableTextBox)
-                                                 .IsReadOnly(true)
-                                                 .AutoWrapText(true)]];
+        return SNew(SVerticalBox) +
+               SandboxUI::Slate::vbox_auto_slot(FMargin{4.0f})
+                   [SNew(SVerticalBox) +
+                    SandboxUI::Slate::vbox_auto_slot()
+                        [SNew(SHorizontalBox) +
+                         SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
+                             [SNew(SButton)
+                                  .Text(NSLOCTEXT("SS7LevelScriptEditor", "Load", "Load Source"))
+                                  .IsEnabled(&self_, &ThisClass::can_load_source)
+                                  .OnClicked(&self_, &ThisClass::load_source)] +
+                         SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
+                             [SNew(SButton)
+                                  .Text(&self_, &ThisClass::reload_text)
+                                  .IsEnabled(&self_, &ThisClass::can_reload_source)
+                                  .OnClicked(&self_, &ThisClass::reload_source)]] +
+                    SandboxUI::Slate::vbox_auto_slot()
+                        [SNew(SHorizontalBox) +
+                         SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
+                             [SNew(SButton)
+                                  .Text(NSLOCTEXT(
+                                      "SS7LevelScriptEditor", "Preview", "Preview Buffer"))
+                                  .IsEnabled(&self_, &ThisClass::can_preview_buffer)
+                                  .OnClicked(&self_, &ThisClass::preview_buffer)] +
+                         SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
+                             [SNew(SButton)
+                                  .Text(NSLOCTEXT("SS7LevelScriptEditor", "Apply", "Apply Preview"))
+                                  .IsEnabled(&self_, &ThisClass::can_apply_preview)
+                                  .OnClicked(&self_, &ThisClass::apply_preview)]] +
+                    SandboxUI::Slate::vbox_auto_slot()
+                        [SNew(SHorizontalBox) +
+                         SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
+                             [SNew(SButton)
+                                  .Text(NSLOCTEXT("SS7LevelScriptEditor", "Save", "Save Buffer"))
+                                  .IsEnabled(&self_, &ThisClass::can_save_buffer)
+                                  .OnClicked(&self_, &ThisClass::save_buffer)] +
+                         SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
+                             [SNew(SButton)
+                                  .Text(
+                                      NSLOCTEXT("SS7LevelScriptEditor", "SaveAs", "Save Buffer As"))
+                                  .IsEnabled(&self_, &ThisClass::can_save_buffer_as)
+                                  .OnClicked(&self_, &ThisClass::save_buffer_as)]] +
+                    SandboxUI::Slate::vbox_auto_slot()
+                        [SNew(SHorizontalBox) +
+                         SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
+                             [SNew(SButton)
+                                  .Text(NSLOCTEXT("SS7LevelScriptEditor",
+                                                  "SaveCanonical",
+                                                  "Save Canonical from Scene"))
+                                  .IsEnabled(&self_, &ThisClass::can_save_canonical)
+                                  .OnClicked(&self_, &ThisClass::save_canonical)] +
+                         SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})[SNew(SSpacer)]]] +
+               SandboxUI::Slate::vbox_auto_slot(
+                   FMargin{4.0f, 0.0f})[SAssignNew(self_.state_, STextBlock).AutoWrapText(true)] +
+               SandboxUI::Slate::vbox_fill_slot(
+                   1.0f, FMargin{4.0f})[SAssignNew(self_.source_, SMultiLineEditableTextBox)
+                                            .AutoWrapText(false)
+                                            .OnTextChanged(&self_, &ThisClass::on_source_changed)] +
+               SandboxUI::Slate::vbox_auto_slot(
+                   FMargin{4.0f})[SNew(SBorder)[SAssignNew(self_.status_, SMultiLineEditableTextBox)
+                                                    .IsReadOnly(true)
+                                                    .AutoWrapText(true)]];
     }
   private:
     ThisClass& self_;

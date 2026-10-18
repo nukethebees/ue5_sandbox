@@ -20,19 +20,18 @@ struct SValueSliderBuilder {
                auto&& value_text_padding,
                auto&& value_text_min_width,
                auto&& value_text) {
-        return
 #line 80 "CoreWidgets.lispb"
-            SNew(SLabeledRow)
-                .Label(label)
-                .LabelFillWidth(label_fill_width)
-                .ContentFillWidth(control_fill_width)
-                .Spacing(label_spacing)
-                    [SNew(SHorizontalBox) +
-                     SandboxUI::Slate::hbox_fill_slot()[SNew(SSlider).Value(value).OnValueChanged(
-                         on_value_changed)] +
-                     SandboxUI::Slate::hbox_auto_slot(
-                         FMargin{value_text_padding})[SNew(SBox).MinDesiredWidth(
-                         value_text_min_width)[SNew(STextBlock).Text(value_text)]]];
+        return SNew(SLabeledRow)
+            .Label(label)
+            .LabelFillWidth(label_fill_width)
+            .ContentFillWidth(control_fill_width)
+            .Spacing(
+                label_spacing)[SNew(SHorizontalBox) +
+                               SandboxUI::Slate::hbox_fill_slot()
+                                   [SNew(SSlider).Value(value).OnValueChanged(on_value_changed)] +
+                               SandboxUI::Slate::hbox_auto_slot(
+                                   FMargin{value_text_padding})[SNew(SBox).MinDesiredWidth(
+                                   value_text_min_width)[SNew(STextBlock).Text(value_text)]]];
     }
   private:
     ThisClass& self_;
