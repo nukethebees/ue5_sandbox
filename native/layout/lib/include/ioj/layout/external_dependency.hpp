@@ -1,8 +1,5 @@
 #pragma once
 
-#include <ioj/layout/abi_profile.hpp>
-#include <ioj/layout/type_facts.hpp>
-
 #include <lispb/schema/type_graph.h>
 #include <lispb/schema/type_identity.h>
 
@@ -19,9 +16,8 @@ struct ExternalDependency {
     std::vector<lispb::schema::TypeIdentity> declarations;
     std::vector<std::string> modules;
     bool semantics_known{};
-    std::optional<TypeFacts> physical_facts{};
 };
 
-auto external_dependencies(lispb::schema::TypeGraph const& types, AbiProfile const* abi = nullptr)
+auto external_dependencies(lispb::schema::TypeGraph const& types)
     -> std::vector<ExternalDependency>;
 }

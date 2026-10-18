@@ -3,8 +3,9 @@
 #include "analysis_limits.hpp"
 #include "checked_arithmetic.hpp"
 #include "integer_code_domain.hpp"
-#include "relationship_extent_analysis.hpp"
 #include "relationship_extent_requirement.hpp"
+#include <ioj/layout/analysis/analysis_context.hpp>
+#include <ioj/layout/analysis/relationship_metrics.hpp>
 
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/packed_named_code_schemas.h>
@@ -129,6 +130,7 @@ auto relationship_sentinel_extent_limit(
 }
 
 auto analyze_unsigned_relationship_extent(
+    AnalysisContext& analysis,
     lispb::codegen::Declarations const& declarations,
     std::string_view const context,
     lispb::codegen::SemanticRelationKind const kind,
@@ -136,8 +138,7 @@ auto analyze_unsigned_relationship_extent(
     lispb::codegen::SchemaRange<lispb::codegen::PackedNamedCodeId> const named_codes,
     std::uint32_t const width,
     std::optional<lispb::codegen::PackedIntegerValue> const minimum_value,
-    std::optional<lispb::codegen::PackedIntegerValue> const maximum_value)
-    -> RelationshipExtentAnalysis {
+    std::optional<lispb::codegen::PackedIntegerValue> const maximum_value) -> RelationshipMetrics {
     auto const includes_terminal_count{kind == lispb::codegen::SemanticRelationKind::count_of};
     auto const sentinel_count{static_cast<std::uint64_t>(
         std::ranges::count_if(declarations.items(named_codes), [&](auto id) {
@@ -155,7 +156,7 @@ auto analyze_unsigned_relationship_extent(
     if (capacity_limit.has_value() && semantic_limit.has_value() && sentinel_limit.has_value()) {
         effective_limit = std::min({*capacity_limit, *semantic_limit, *sentinel_limit});
     }
-    RelationshipExtentAnalysis result{};
+    RelationshipMetrics result{};
     result.target_extent = target_extent;
     result.live_values = requirement.live_values;
     result.required_codes = requirement.required_codes;
@@ -190,15 +191,14 @@ auto analyze_unsigned_relationship_extent(
                                                .value[declarations.packed_named_codes.index(code)]
                                                .magnitude < target_extent)};
         if (collides) {
-            result.diagnostics.push_back(
-                {DiagnosticSeverity::error,
-                 std::string{context} + " sentinel code '" +
-                     std::string{declarations.strings().view(
-                         declarations.packed_named_codes
-                             .name[declarations.packed_named_codes.index(code)])} +
-                     "' collides with the live values required by its '" +
-                     std::string{lispb::codegen::semantic_relation_kind_name(kind)} +
-                     "' target extent."});
+            analysis.report({DiagnosticSeverity::error,
+                             std::string{context} + " sentinel code '" +
+                                 std::string{declarations.strings().view(
+                                     declarations.packed_named_codes
+                                         .name[declarations.packed_named_codes.index(code)])} +
+                                 "' collides with the live values required by its '" +
+                                 std::string{lispb::codegen::semantic_relation_kind_name(kind)} +
+                                 "' target extent."});
         }
     }
 
@@ -222,45 +222,23 @@ auto analyze_unsigned_relationship_extent(
         result.effective_capacity_headroom = *result.effective_capacity_limit - target_extent;
     }
     if (!result.width_sufficient) {
-        result.diagnostics.push_back(
-            {DiagnosticSeverity::error,
-             std::string{context} + " uses " + std::to_string(width) + " bits but its '" +
-                 std::string{lispb::codegen::semantic_relation_kind_name(kind)} +
-                 "' target extent requires at least " +
-                 std::to_string(result.minimum_required_bits) + " bits."});
+        analysis.report({DiagnosticSeverity::error,
+                         std::string{context} + " uses " + std::to_string(width) +
+                             " bits but its '" +
+                             std::string{lispb::codegen::semantic_relation_kind_name(kind)} +
+                             "' target extent requires at least " +
+                             std::to_string(result.minimum_required_bits) + " bits."});
     }
     if (has_live_value && minimum_value.has_value() && maximum_value.has_value() &&
         (minimum_value->negative || minimum_value->magnitude != 0 || maximum_value->negative ||
          maximum_value->magnitude < maximum_live_value)) {
-        result.diagnostics.push_back(
-            {DiagnosticSeverity::error,
-             std::string{context} +
-                 " semantic range does not cover the live values required by its '" +
-                 std::string{lispb::codegen::semantic_relation_kind_name(kind)} +
-                 "' target extent."});
+        analysis.report({DiagnosticSeverity::error,
+                         std::string{context} +
+                             " semantic range does not cover the live values required by its '" +
+                             std::string{lispb::codegen::semantic_relation_kind_name(kind)} +
+                             "' target extent."});
     }
     return result;
-}
-
-auto relationship_target_extent(lispb::schema::TypeGraph const& types,
-                                lispb::schema::RelationshipId const relationship,
-                                RelationshipTargetFacts const& target_facts)
-    -> std::optional<std::uint64_t> {
-    if (types.relationships().kind[types.relationships().index(relationship)] ==
-            lispb::codegen::SemanticRelationKind::index_into ||
-        types.relationships().kind[types.relationships().index(relationship)] ==
-            lispb::codegen::SemanticRelationKind::count_of) {
-        return target_facts.element_capacity;
-    }
-    if (types.relationships().kind[types.relationships().index(relationship)] !=
-            lispb::codegen::SemanticRelationKind::offset_into ||
-        !types.relationships().unit[types.relationships().index(relationship)].has_value()) {
-        return std::nullopt;
-    }
-    return *types.relationships().unit[types.relationships().index(relationship)] ==
-                   lispb::codegen::SemanticRelationUnit::elements
-             ? target_facts.element_capacity
-             : target_facts.byte_extent;
 }
 
 }

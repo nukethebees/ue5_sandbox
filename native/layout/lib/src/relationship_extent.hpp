@@ -1,8 +1,8 @@
 #pragma once
 
-#include "relationship_extent_analysis.hpp"
 #include "relationship_extent_requirement.hpp"
-#include <ioj/layout/analyzer/relationship_target_facts.hpp>
+#include <ioj/layout/analysis/analysis_context.hpp>
+#include <ioj/layout/analysis/relationship_metrics.hpp>
 
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/semantic_relation_kind.h>
@@ -37,6 +37,7 @@ auto relationship_sentinel_extent_limit(
     -> std::optional<std::uint64_t>;
 
 auto analyze_unsigned_relationship_extent(
+    AnalysisContext& analysis,
     lispb::codegen::Declarations const& declarations,
     std::string_view const context,
     lispb::codegen::SemanticRelationKind const kind,
@@ -44,12 +45,6 @@ auto analyze_unsigned_relationship_extent(
     lispb::codegen::SchemaRange<lispb::codegen::PackedNamedCodeId> const named_codes,
     std::uint32_t const width,
     std::optional<lispb::codegen::PackedIntegerValue> const minimum_value,
-    std::optional<lispb::codegen::PackedIntegerValue> const maximum_value)
-    -> RelationshipExtentAnalysis;
-
-auto relationship_target_extent(lispb::schema::TypeGraph const& types,
-                                lispb::schema::RelationshipId const relationship,
-                                RelationshipTargetFacts const& target_facts)
-    -> std::optional<std::uint64_t>;
+    std::optional<lispb::codegen::PackedIntegerValue> const maximum_value) -> RelationshipMetrics;
 
 }

@@ -1,8 +1,5 @@
 #include <ioj/layout/external_dependency.hpp>
 
-#include <ioj/layout/abi_profile.hpp>
-#include <ioj/layout/physical_facts.hpp>
-
 #include <codegen/schema.h>
 #include <codegen/schema/declaration_schema.h>
 #include <codegen/schema/declarations.h>
@@ -15,7 +12,7 @@
 #include <utility>
 
 namespace ioj::layout {
-auto external_dependencies(lispb::schema::TypeGraph const& types, AbiProfile const* const abi)
+auto external_dependencies(lispb::schema::TypeGraph const& types)
     -> std::vector<ExternalDependency> {
     std::map<std::string, ExternalDependency> grouped;
     auto append_unique = [](auto& values, auto const& value) {
@@ -42,10 +39,6 @@ auto external_dependencies(lispb::schema::TypeGraph const& types, AbiProfile con
         entry.cpp_spelling = lispb::codegen::native_spelling(
             std::string{types.strings().view(types.cpp_spelling(node))});
         entry.types.push_back(lispb::schema::TypeId{static_cast<std::uint32_t>(index)});
-        if (abi != nullptr) {
-            entry.physical_facts =
-                PhysicalFactsResolver{types, *abi}.resolve(entry.types.back()).facts;
-        }
         entry.semantics_known =
             entry.semantics_known ||
             (types.definitions()
