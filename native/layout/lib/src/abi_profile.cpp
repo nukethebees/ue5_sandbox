@@ -4,8 +4,10 @@
 
 #include <charconv>
 #include <cstdint>
+#include <format>
 #include <fstream>
 #include <iomanip>
+#include <iterator>
 #include <limits>
 #include <sstream>
 #include <stdexcept>
@@ -95,19 +97,32 @@ auto profile_has_representation_cycle(
     return false;
 }
 
-void write_identity(std::ostringstream& output,
+void append_quoted(std::string& output, std::string_view const value) {
+    output += '"';
+    for (auto const character : value) {
+        if (character == '"' || character == '\\') {
+            output += '\\';
+        }
+        output += character;
+    }
+    output += '"';
+}
+
+void write_identity(std::string& output,
                     char const* const name,
                     std::optional<std::string> const& value) {
     if (value.has_value()) {
-        output << "identity " << name << ' ' << std::quoted(*value) << '\n';
+        std::format_to(std::back_inserter(output), "identity {} ", name);
+        append_quoted(output, *value);
+        output += '\n';
     }
 }
 
-void write_memory_fact(std::ostringstream& output,
+void write_memory_fact(std::string& output,
                        char const* const name,
                        std::optional<std::uint64_t> const value) {
     if (value.has_value()) {
-        output << "memory " << name << ' ' << *value << '\n';
+        std::format_to(std::back_inserter(output), "memory {} {}\n", name, *value);
     }
 }
 
@@ -522,9 +537,10 @@ auto load_abi_profile(std::filesystem::path const& path)
 }
 
 auto serialize_abi_profile(AbiProfile const& profile) -> std::string {
-    std::ostringstream output;
-    output << "ioj-layout-profile 2\n";
-    output << "name " << std::quoted(profile.name()) << '\n';
+    std::string output{"ioj-layout-profile 2\nname "};
+    auto const out{std::back_inserter(output)};
+    append_quoted(output, profile.name());
+    output += '\n';
     auto const& identity{profile.identity()};
     write_identity(output, "platform", identity.platform);
     write_identity(output, "architecture", identity.architecture);
@@ -535,23 +551,29 @@ auto serialize_abi_profile(AbiProfile const& profile) -> std::string {
         auto const kind{!facts.integer_signed.has_value()
                             ? "non-integer"
                             : (*facts.integer_signed ? "signed" : "unsigned")};
-        output << "type " << std::quoted(spelling) << ' ' << facts.size_bytes << ' '
-               << facts.alignment_bytes << ' ' << kind << ' ';
+        output += "type ";
+        append_quoted(output, spelling);
+        std::format_to(out, " {} {} {} ", facts.size_bytes, facts.alignment_bytes, kind);
         if (facts.unsigned_value_bits.has_value()) {
-            output << *facts.unsigned_value_bits;
+            std::format_to(out, "{}", *facts.unsigned_value_bits);
         } else {
-            output << "unknown";
+            output += "unknown";
         }
-        output << ' ' << std::quoted(facts.provenance) << ' ' << fact_origin_name(facts.origin)
-               << '\n';
+        output += ' ';
+        append_quoted(output, facts.provenance);
+        std::format_to(out, " {}\n", fact_origin_name(facts.origin));
     }
     for (auto const& [spelling, represented_by] : profile.representations()) {
-        output << "representation " << std::quoted(spelling) << ' ' << std::quoted(represented_by)
-               << '\n';
+        output += "representation ";
+        append_quoted(output, spelling);
+        output += ' ';
+        append_quoted(output, represented_by);
+        output += '\n';
     }
     if (profile.object_pointer_representation().has_value()) {
-        output << "object-pointers " << std::quoted(*profile.object_pointer_representation())
-               << '\n';
+        output += "object-pointers ";
+        append_quoted(output, *profile.object_pointer_representation());
+        output += '\n';
     }
     auto const& memory{profile.memory_facts()};
     write_memory_fact(output, "cache-line", memory.cache_line_bytes);
@@ -559,8 +581,10 @@ auto serialize_abi_profile(AbiProfile const& profile) -> std::string {
     write_memory_fact(output, "l1-data", memory.l1_data_cache_bytes);
     write_memory_fact(output, "l2", memory.l2_cache_bytes);
     write_memory_fact(output, "l3", memory.l3_cache_bytes);
-    output << "memory-provenance " << std::quoted(memory.provenance) << '\n';
-    return output.str();
+    output += "memory-provenance ";
+    append_quoted(output, memory.provenance);
+    output += '\n';
+    return output;
 }
 
 auto save_abi_profile(std::filesystem::path const& path, AbiProfile const& profile)

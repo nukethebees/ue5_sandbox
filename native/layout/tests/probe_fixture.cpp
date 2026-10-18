@@ -6,9 +6,10 @@
 #include <lispb/strings.h>
 
 #include <array>
+#include <format>
 #include <fstream>
 #include <iostream>
-#include <sstream>
+#include <iterator>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -45,13 +46,14 @@ auto main(int argc, char** argv) -> int {
         return output ? 0 : 1;
     }
     std::ifstream input{argv[2]};
-    std::ostringstream measured;
+    std::string measured;
+    auto const output{std::back_inserter(measured)};
     for (std::string line; std::getline(input, line);) {
         if (!line.starts_with("object-pointers ")) {
-            measured << line << '\n';
+            std::format_to(output, "{}\n", line);
         }
     }
-    auto const profile{ioj::layout::parse_abi_profile(measured.str())};
+    auto const profile{ioj::layout::parse_abi_profile(measured)};
     if (!profile) {
         std::cerr << profile.error().message;
         return 1;

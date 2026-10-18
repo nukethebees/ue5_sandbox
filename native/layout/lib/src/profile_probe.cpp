@@ -15,14 +15,15 @@
 #include <algorithm>
 #include <cstdint>
 #include <expected>
-#include <iomanip>
+#include <format>
+#include <iterator>
 #include <limits>
 #include <optional>
 #include <ranges>
 #include <set>
 #include <span>
-#include <sstream>
 #include <string>
+#include <string_view>
 
 namespace ioj::layout {
 namespace {
@@ -40,6 +41,17 @@ auto probe_error(lispb::codegen::CppTypes const& types,
         return "Cannot probe unsupported complete-object spelling: " + spelling;
     }
     return std::nullopt;
+}
+
+void append_quoted(std::string& output, std::string_view const value) {
+    output += '"';
+    for (auto const character : value) {
+        if (character == '"' || character == '\\') {
+            output += '\\';
+        }
+        output += character;
+    }
+    output += '"';
 }
 
 } // namespace
@@ -109,8 +121,9 @@ auto external_probe_request(lispb::schema::TypeGraph const& types, lispb::schema
 
 auto profile_probe_source(std::span<std::string const> types, std::span<std::string const> headers)
     -> std::expected<std::string, std::string> {
-    std::ostringstream source;
-    source << "// Compile with the target SDK, flags and defines. Run: probe platform architecture "
+    std::string source;
+    auto const out{std::back_inserter(source)};
+    source += "// Compile with the target SDK, flags and defines. Run: probe platform architecture "
               "configuration > target.profile\n"
               "#include <cstdint>\n#include <iomanip>\n#include <iostream>\n#include "
               "<limits>\n#include <type_traits>\n";
@@ -121,10 +134,12 @@ auto profile_probe_source(std::span<std::string const> types, std::span<std::str
                 "Probe headers must be plain include paths without quotes or line breaks."};
         }
         if (included.insert(header).second) {
-            source << "#include " << std::quoted(header) << '\n';
+            source += "#include ";
+            append_quoted(source, header);
+            source += '\n';
         }
     }
-    source << R"cpp(
+    source += R"cpp(
 template <typename T> void emit_type(char const* spelling) {
     std::cout << "type " << std::quoted(spelling) << ' ' << sizeof(T) << ' ' << alignof(T) << ' ';
     if constexpr (std::is_integral_v<T>) {
@@ -182,16 +197,18 @@ int main(int argc, char** argv) {
                 probe_error(storage.cpp_types, spelling, use.form, use.object_spelling)}) {
             return std::unexpected{*error};
         }
-        source << "    emit_type<" << spelling << ">(" << std::quoted(spelling) << ");\n";
+        std::format_to(out, "    emit_type<{}>(", spelling);
+        append_quoted(source, spelling);
+        source += ");\n";
     }
-    source << R"cpp(
+    source += R"cpp(
 #if defined(_M_X64) || defined(_M_IX86) || defined(__x86_64__) || defined(__i386__)
     std::cout << "object-pointers \"void*\"\n";
 #endif
     return std::cout ? 0 : 1;
 }
 )cpp";
-    return source.str();
+    return source;
 }
 
 } // namespace ioj::layout
