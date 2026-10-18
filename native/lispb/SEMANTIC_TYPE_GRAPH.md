@@ -61,18 +61,13 @@ experiments may project the graph, but must not duplicate or discard LispB seman
 kinds such as structs, unions, arrays, and containers should extend the semantic stores and resolution
 rather than introduce another schema hierarchy.
 
-`EditableSchemaDocument` is the authoring boundary above the resolved graph. It owns a mutable
-validated manifest draft, source-file ownership and declaration ranges, document-local declaration IDs,
-and typed undoable commands. A successful command resolves a replacement `TypeGraph`; a command
-which fails validation leaves both the draft and its last valid graph unchanged. The document is
-the foundation for source-preserving LispB serialization and must remain in `lispb-schema` rather
-than becoming planner-owned state.
-Renames and cross-module moves repair explicit declaration references through the shared schema
-reference visitor, including moves within one C++ namespace and outgoing module-local bindings.
-Before publication, these operations verify that declared references and registered aliases retain
-their semantic targets. Ambiguous repairs are rejected transactionally. Replacement checks new
-references against the previous graph as well as existing users before removing owned types.
-Deletion checks include declaration-only users and generated storage types.
-Registry-bound types retain the existing restriction on renaming/moving across namespaces until
-source-aware registry editing is available; references from module configuration also prevent
-those operations rather than silently becoming external types.
+`ioj::layout::Document` is the authoring boundary above the resolved graph. Named transaction
+operations edit the shared declaration stores; `DocumentQuery` exposes readable typed views.
+Instructions may leave an intermediate draft invalid. Commit resolves and validates the completed
+transaction once, then publishes a replacement `TypeGraph`. A rejected transaction leaves the
+published document and history unchanged and records diagnostics in the document's central log.
+
+LispB retains schema validation, the reference visitor, queries, and canonical serialization.
+Renames and cross-module moves repair explicit schema references; embedded C++ remains authored
+text. The layout document coordinates project/schema/variant history through forward changes and
+a cursor. Graph-local `TypeId` values and query views must be reacquired after publication.

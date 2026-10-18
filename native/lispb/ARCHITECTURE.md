@@ -44,12 +44,11 @@ the same C++ IR owner, with file/module handles, shared text and flat ordered no
 Final standalone artifacts acquire their own path/content only at publication.
 
 Compiler reset discards semantic/generated IR, lexical storage and temporary strings while
-retaining loaded source documents. Editable documents instead own durable compiler storage,
-stable declaration IDs and immutable payload versions referenced by compact undo/redo
-commands. Durable editor declaration metadata uses separate columns keyed by four-byte IDs;
-history retains payload versions and ID ranges. Their current semantic graph is replaceable.
-Handles belong to their storage owner:
-UI state that survives replacement retains spellings and resolves them in the new document.
+retaining loaded source documents. The layout `Document` owns durable compiler storage,
+document-local declaration IDs, immutable payload versions and a replaceable semantic graph.
+Its transaction history stores forward changes and an applied cursor; undo/redo replay the
+selected prefix. Handles belong to their storage owner. UI state that survives graph replacement
+retains declaration identities and resolves them in the current document.
 
 Material compilation uses the compiler's strings. A deserialized `CompiledMaterial` owns its
 own strings so runtime consumers need no frontend. Its serialized source locations and node
@@ -114,7 +113,7 @@ A normal `(module name ...)` is one source and C++ output context, not a declara
 Its row in `NormalModuleSchemas` has one ordered range of `DeclarationHandle` values. Enums, integer
 scalars, the six physical-representation declarations, packed values, records, ordinary and
 tagged unions, SoAs, vector SoAs, homogeneous layouts, static tables, and facades can coexist.
-The sequence is the source of truth for declaration indices and source-preserving editing.
+The sequence is the source of truth for declaration indices and canonical source order.
 Backend and allocator selection, enum helper namespace, header/source paths, C++ namespace,
 includes, and prelude remain module-wide policies. Settings modules remain special because they
 describe generated settings integration rather than independent semantic types; umbrella modules
@@ -128,8 +127,7 @@ graph resolution, and generation consume it without a conversion pass.
 The `TypeGraph` resolves normal declarations directly in sequence. Its `TypeIdentity` remains
 origin, module name, C++ namespace, and declaration name; its `TypeId` values are per-resolution
 handles, not persistent editor IDs. Registered external types still come from the separate
-`types.lispb` input. The special `:types` project path is retained until registry declarations
-and source-preserving project edits can be migrated together.
+`types.lispb` input through the project's `:types` path.
 
 C++ lowering is declaration-oriented. Each declaration contributes header/source nodes and
 include requirements in a `DeclarationEmission`; a common assembler applies the module's
@@ -148,12 +146,17 @@ SoA array-allocator variants use one validation and expansion policy; they are l
 dynamic Unreal SoAs and their prefixed generated
 types are checked before lowering.
 
-`EditableSchemaDocument` owns the manifest draft, source-file and declaration ranges, stable
-`DeclarationId` values, tombstones, undo/redo, and the last valid resolved graph. Normal-module
-declarations move as one handle, including across declaration families. Successful
-edits replace the graph and adjust locations; rejected edits restore the previous manifest,
-graph, source ownership, and revision. Source-backed module deletion and restoration retain
-their original ranges, including comments and unrelated text.
+`ioj::layout::Document` is the authoring boundary. Callers queue named edits in a `Transaction`
+and inspect declarations through `DocumentQuery`. Instructions may temporarily break semantic
+rules; commit validates the completed candidate once and publishes it atomically. Rejection
+records diagnostics and leaves the published document and history unchanged. Project sources,
+schema edits and layout variants share one history.
+
+LispB owns canonical source rendering and comment attachment. The lexer records comments once;
+`SourceComments` follows declaration versions and child renames. Saving renders complete affected
+files, preserves comments and authored literal contents, and retains each file's line endings.
+Whitespace and unchanged token spelling are not persistence contracts. No inverse-edit or
+token-patching implementation remains in the schema library.
 
 ## Packed C++ values
 
@@ -228,10 +231,9 @@ fields (including `@` aliases) retain their field-local range, so existing narro
 as a 24-bit `uint32` do not change when primitive metadata is included.
 
 Registry `(include "relative/path.lispb")` forms load each canonical file once, reject cycles,
-and contribute the entire closure to generator dependencies. `EditableSchemaDocument` tracks
-registry and module source roles explicitly, including registration locations. Source navigation,
-save/reload and clone use this closure; clone rewrites include paths to its copied sources.
-Registry definitions remain source-authored, with no parallel planner schema or structured editor.
+and contribute the entire closure to generator dependencies. The source store retains registry
+and module roles and registration locations. Registry definitions remain source-authored,
+with no parallel planner schema or structured editor.
 
 ## Single-allocation SoA
 
