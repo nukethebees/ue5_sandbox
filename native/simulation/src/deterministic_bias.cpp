@@ -19,7 +19,7 @@ auto make_deterministic_biases(std::span<std::int32_t const> const first,
     return true;
 }
 
-auto make_deterministic_biases(std::span<EntityUniqueId const> const ids,
+auto make_deterministic_biases(std::span<EntityId const> const ids,
                                std::span<std::uint32_t> const integral_out) noexcept -> bool {
     auto const count{ids.size()};
     if (integral_out.size() != count) {
@@ -33,7 +33,7 @@ auto make_deterministic_biases(std::span<EntityUniqueId const> const ids,
 
     return true;
 }
-auto make_deterministic_biases(std::span<EntityUniqueId const> const ids,
+auto make_deterministic_biases(std::span<EntityId const> const ids,
                                std::span<std::uint32_t> const integral_out,
                                std::span<float> const floating_out) noexcept -> bool {
     auto const count{ids.size()};

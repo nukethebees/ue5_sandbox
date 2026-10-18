@@ -29,9 +29,9 @@ struct TraceRequest {
     ioj::Vectors3fConstView end_locations{};
     ioj::Vector3f scalar_start{};
     ioj::Vector3f scalar_end{};
-    std::span<ioj::sim::EntityUniqueId const> targets{};
-    std::span<ioj::sim::EntityUniqueId const> ignored_entities{};
-    std::span<ioj::sim::EntityUniqueId> out_entity_ids{};
+    std::span<ioj::sim::EntityId const> targets{};
+    std::span<ioj::sim::EntityId const> ignored_entities{};
+    std::span<ioj::sim::EntityId> out_entity_ids{};
     std::span<ioj::sim::LineQueryResult> out_flags{};
 };
 
@@ -49,7 +49,7 @@ auto trace_impl(ioj::sim::collision::CollisionUniformGrid const& uniform_grid,
 
     if constexpr (Mode == QueryMode::HitEntity) {
         assert(static_cast<std::size_t>(count) == request.out_entity_ids.size());
-        std::ranges::fill(request.out_entity_ids, ioj::sim::EntityUniqueId{});
+        std::ranges::fill(request.out_entity_ids, ioj::sim::EntityId{});
     } else if constexpr (Mode == QueryMode::ClearLine) {
         assert(static_cast<std::size_t>(count) == request.out_flags.size());
         std::ranges::fill(request.out_flags, ioj::sim::LineQueryResult{});
@@ -147,7 +147,7 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
                                ioj::FrameMemoryResource* const scratch_resource,
                                Vector3f const origin,
                                float const radius,
-                               std::span<EntityUniqueId> const out_entities,
+                               std::span<EntityId> const out_entities,
                                IncludeEntity&& include_entity) -> std::uint32_t {
     if (out_entities.empty()) {
         return 0;
@@ -247,7 +247,7 @@ void SpatialQueryManager::initialise(collision::GridGeometry const grid_geometry
 void SpatialQueryManager::trace_line_of_sight(
     Vectors3fConstView const start_locations,
     Vectors3fConstView const end_locations,
-    std::span<EntityUniqueId> const out_entity_ids,
+    std::span<EntityId> const out_entity_ids,
     ioj::FrameMemoryResource* const scratch_resource) const {
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::trace_line_of_sight");
 
@@ -261,7 +261,7 @@ void SpatialQueryManager::trace_line_of_sight(
 void SpatialQueryManager::has_line_of_sight_to_targets(
     Vector3f const& start_location,
     Vectors3fConstView const end_locations,
-    std::span<EntityUniqueId const> const targets,
+    std::span<EntityId const> const targets,
     std::span<LineQueryResult> const has_los,
     ioj::FrameMemoryResource* const scratch_resource) const {
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::has_line_of_sight_to_targets");
@@ -279,7 +279,7 @@ void SpatialQueryManager::have_clear_lines(
     Vectors3fConstView const end_locations,
     std::span<LineQueryResult> const clear_lines,
     ioj::FrameMemoryResource* const scratch_resource,
-    std::span<EntityUniqueId const> const ignored_entities) const {
+    std::span<EntityId const> const ignored_entities) const {
     trace_impl<QueryMode::ClearLine>(collision_system_.uniform_grid_,
                                      scratch_resource,
                                      {.start_locations = start_locations,
@@ -292,7 +292,7 @@ void SpatialQueryManager::trace_closest_lines(
     Vectors3fConstView const start_locations,
     Vectors3fConstView const end_locations,
     TraceHits::View const out_hits,
-    std::span<EntityUniqueId const> const ignored_entities) const {
+    std::span<EntityId const> const ignored_entities) const {
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::trace_closest_lines");
 
     auto const traces{LineTraceBatch{start_locations, end_locations}};
@@ -309,7 +309,7 @@ void SpatialQueryManager::sweep_closest_aabbs(
     Vectors3fConstView const end_locations,
     Vector3f const moving_half_extent,
     TraceHits::View const out_hits,
-    std::span<EntityUniqueId const> const ignored_entities,
+    std::span<EntityId const> const ignored_entities,
     collision::TraceEntityFilter const entity_filter) const {
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::sweep_closest_aabbs");
 
@@ -325,22 +325,22 @@ void SpatialQueryManager::sweep_closest_aabbs(
 /* **************************************** */
 void SpatialQueryManager::collect_unique_entities_in_cells(
     std::span<collision::CellCoord const> const cells,
-    ioj::FrameArray<EntityUniqueId>& out_entities) const {
+    ioj::FrameArray<EntityId>& out_entities) const {
     collision_system_.uniform_grid_.collect_unique_entities_in_cells(cells, out_entities);
 }
 auto SpatialQueryManager::has_clear_line(Vector3f const start_location,
                                          Vector3f const end_location,
                                          ioj::FrameMemoryResource* const scratch_resource,
-                                         EntityUniqueId const ignored_entity) const -> bool {
+                                         EntityId const ignored_entity) const -> bool {
     return !trace_closest(start_location, end_location, scratch_resource, ignored_entity).hit;
 }
 
 auto SpatialQueryManager::trace_closest(Vector3f const start_location,
                                         Vector3f const end_location,
                                         ioj::FrameMemoryResource* const scratch_resource,
-                                        EntityUniqueId const ignored_entity) const
+                                        EntityId const ignored_entity) const
     -> LineTraceResult {
-    std::array<EntityUniqueId, 1> ignored_entities{ignored_entity};
+    std::array<EntityId, 1> ignored_entities{ignored_entity};
     return trace_impl<QueryMode::ClosestHit>(collision_system_.uniform_grid_,
                                              scratch_resource,
                                              {.scalar_start = start_location,
@@ -352,7 +352,7 @@ auto SpatialQueryManager::collect_non_team_entities_in_range(
     Vector3f const& origin,
     Team const team,
     float const radius,
-    std::span<EntityUniqueId> const out_entities,
+    std::span<EntityId> const out_entities,
     ioj::FrameMemoryResource* const scratch_resource) const -> std::uint32_t {
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::collect_non_team_entities_in_range");
 
@@ -373,7 +373,7 @@ auto SpatialQueryManager::collect_non_team_entities_in_range(
             origin,
             radius,
             out_entities,
-            [team](EntityUniqueId, Team const candidate_team) { return candidate_team != team; });
+            [team](EntityId, Team const candidate_team) { return candidate_team != team; });
     }
 }
 
@@ -381,8 +381,8 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
     Vector3f const& origin,
     EntityType const entity_type,
     float const radius,
-    EntityUniqueId const ignored_entity,
-    std::span<EntityUniqueId> const out_entities,
+    EntityId const ignored_entity,
+    std::span<EntityId> const out_entities,
     ioj::FrameMemoryResource* const scratch_resource) const -> std::uint32_t {
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::collect_entities_of_type_in_range");
 
@@ -399,7 +399,7 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
                                      origin,
                                      radius,
                                      out_entities,
-                                     [entity_type, ignored_entity](EntityUniqueId const id, Team) {
+                                     [entity_type, ignored_entity](EntityId const id, Team) {
                                          return id != ignored_entity &&
                                                 id.entity_type() == entity_type;
                                      });
@@ -407,13 +407,13 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
 
 auto SpatialQueryManager::get_any_non_team_entity(Team const team,
                                                   EntityType const entity_type) const
-    -> EntityUniqueId {
+    -> EntityId {
     assert(entity_tables_.lookups.permits_lookup());
     auto const handles{entity_tables_.lookups.for_type(entity_type).entries()};
     auto const count{static_cast<std::uint32_t>(handles.size())};
     for (std::uint32_t index{}; index < count; ++index) {
         if (handles[index].is_valid() && handles[index].team() != team) {
-            return EntityUniqueId{index, entity_type};
+            return EntityId{index, entity_type};
         }
     }
     return {};
@@ -436,7 +436,7 @@ auto SpatialQueryManager::get_entity_type_radii() const noexcept -> EntityTypeRa
 }
 
 void SpatialQueryManager::copy_entity_locations(
-    std::span<EntityUniqueId const> const ids,
+    std::span<EntityId const> const ids,
     Vectors3fView const output,
     ioj::FrameMemoryResource* const scratch_resource) const {
     auto const count{output.num()};
@@ -463,7 +463,7 @@ void SpatialQueryManager::copy_entity_locations(
     }
 }
 void
-    SpatialQueryManager::copy_entity_motion(std::span<EntityUniqueId const> const ids,
+    SpatialQueryManager::copy_entity_motion(std::span<EntityId const> const ids,
                                             Vectors3fView const output_locations,
                                             Vectors3fView const output_velocities,
                                             std::span<EntityInstanceHandle> const handles,
@@ -530,7 +530,7 @@ void SpatialQueryManager::refresh_spatial_index(LevelReadAccess const& level) {
     }
     collision_system_.refresh_spatial_index(level);
 }
-auto SpatialQueryManager::detect_overlaps(std::span<EntityUniqueId const> const overlap_candidates,
+auto SpatialQueryManager::detect_overlaps(std::span<EntityId const> const overlap_candidates,
                                           ioj::FrameMemoryResource* const scratch_resource)
     -> collision::DetectedOverlapsView {
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::detect_overlaps");

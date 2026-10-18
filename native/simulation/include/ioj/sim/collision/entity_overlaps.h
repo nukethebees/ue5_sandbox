@@ -5,7 +5,7 @@
 
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/collision/collision_types.h"
-#include "ioj/sim/entities/entity_unique_id.h"
+#include "ioj/sim/entities/entity_id.h"
 
 #include <cassert>
 #include <memory_resource>
@@ -21,8 +21,8 @@ struct EntityEntityOverlapsSingleLayoutColumns {
 
     ioj::native_soa::ColumnLayoutStart LayoutStart{};
 
-    ColLayout<EntityUniqueId> FirstEntitiesColumn;
-    ColLayout<EntityUniqueId> SecondEntitiesColumn;
+    ColLayout<EntityId> FirstEntitiesColumn;
+    ColLayout<EntityId> SecondEntitiesColumn;
 
     constexpr EntityEntityOverlapsSingleLayoutColumns() noexcept
         : FirstEntitiesColumn{LayoutStart}
@@ -109,8 +109,8 @@ struct EntityEntityOverlapsSingleView : EntityEntityOverlapsSingleViewImpl<false
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<EntityEntityOverlapsSingleView>());
 // Columns:
-// first_entities: EntityUniqueId
-// second_entities: EntityUniqueId
+// first_entities: EntityId
+// second_entities: EntityId
 struct EntityEntityOverlaps
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -157,8 +157,8 @@ struct EntityEntityOverlaps
     struct DataPointers {
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<EntityUniqueId>* first_entities{};
-        Element<EntityUniqueId>* second_entities{};
+        Element<EntityId>* first_entities{};
+        Element<EntityId>* second_entities{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (first_entities == nullptr) {
                 return {};
@@ -278,7 +278,7 @@ struct EntityStaticOverlapsSingleLayoutColumns {
 
     ioj::native_soa::ColumnLayoutStart LayoutStart{};
 
-    ColLayout<EntityUniqueId> EntitiesColumn;
+    ColLayout<EntityId> EntitiesColumn;
     ColLayout<StaticGeometryIndex> StaticGeometryIndicesColumn;
 
     constexpr EntityStaticOverlapsSingleLayoutColumns() noexcept
@@ -368,7 +368,7 @@ struct EntityStaticOverlapsSingleView : EntityStaticOverlapsSingleViewImpl<false
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<EntityStaticOverlapsSingleView>());
 // Columns:
-// entities: EntityUniqueId
+// entities: EntityId
 // static_geometry_indices: StaticGeometryIndex
 struct EntityStaticOverlaps
     : protected ioj::native_soa::StorageState
@@ -416,7 +416,7 @@ struct EntityStaticOverlaps
     struct DataPointers {
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<EntityUniqueId>* entities{};
+        Element<EntityId>* entities{};
         Element<StaticGeometryIndex>* static_geometry_indices{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (entities == nullptr) {

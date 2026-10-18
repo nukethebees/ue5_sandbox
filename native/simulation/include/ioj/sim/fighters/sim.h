@@ -76,7 +76,7 @@ struct Sim {
     // Accessors
     /* **************************************** */
     auto get_num_instances() const noexcept -> std::uint32_t;
-    auto get_overlap_candidates() const noexcept -> std::span<EntityUniqueId const> {
+    auto get_overlap_candidates() const noexcept -> std::span<EntityId const> {
         return overlap_candidates_;
     }
     auto get_laser_simulation() const noexcept -> lasers::Sim const& { return laser_simulation; }
@@ -84,27 +84,27 @@ struct Sim {
         -> EntityStorage::ConstView;
     auto get_membership_revision() const noexcept -> std::uint64_t { return membership_revision_; }
     auto get_layout_revision() const noexcept -> std::uint64_t { return layout_revision_; }
-    auto get_entity_ids() const -> std::span<EntityUniqueId const> {
+    auto get_entity_ids() const -> std::span<EntityId const> {
         return entity_buffers.current().get_const_view().entity_ids();
     }
-    auto get_parent_ids() const -> std::span<EntityUniqueId const> {
+    auto get_parent_ids() const -> std::span<EntityId const> {
         return entity_buffers.current().get_const_view().parent_ids();
     }
     auto get_healths() const -> HealthConstView {
         return entity_tables_.health.get_const_view<EntityType::Fighter>(
             entity_buffers.current().num());
     }
-    void set_parent_id(EntityUniqueId fighter, EntityUniqueId parent);
+    void set_parent_id(EntityId fighter, EntityId parent);
     auto get_locations() const {
         return entity_buffers.current().get_const_view().view_locations();
     }
-    auto has_id(EntityUniqueId fighter) const -> bool;
-    auto get_target_ids() const noexcept -> std::span<EntityUniqueId const>;
-    auto get_target_id(EntityUniqueId fighter) const noexcept -> EntityUniqueId;
+    auto has_id(EntityId fighter) const -> bool;
+    auto get_target_ids() const noexcept -> std::span<EntityId const>;
+    auto get_target_id(EntityId fighter) const noexcept -> EntityId;
     auto get_target_locations() const {
         return entity_buffers.current().get_const_view().view_target_locations();
     }
-    auto get_target_location(EntityUniqueId fighter) const -> Vector3f;
+    auto get_target_location(EntityId fighter) const -> Vector3f;
     auto get_tasks() const -> std::span<Task const>;
     auto get_teams() const -> std::span<Team const>;
     auto get_navigation_telemetry() const noexcept -> NavigationTelemetrySnapshot const& {
@@ -157,7 +157,7 @@ struct Sim {
     auto get_view(std::uint32_t offset, std::uint32_t width) -> EntityStorage::View;
     auto get_task_view(Task task) noexcept -> TaskView;
     auto get_const_task_view(Task task) const noexcept -> ConstTaskView;
-    auto find_index(EntityUniqueId fighter) const noexcept -> std::uint32_t;
+    auto find_index(EntityId fighter) const noexcept -> std::uint32_t;
     auto get_task_spans() const -> TaskSpans;
     auto get_task_span(Task task) const -> IndexSpan;
     auto get_task_counts() const -> TaskCounts;
@@ -195,7 +195,7 @@ struct Sim {
     auto queue_spawns(FighterSpawnQueue::ConstView new_spawns) -> std::uint32_t;
     auto queue_spawns(FrameSpawnQueue const& new_spawns) -> std::uint32_t;
     auto accept_spawn_count(std::span<Team const> teams) -> std::uint32_t;
-    void reassign_pending_spawns(EntityUniqueId parent, EntityUniqueId replacement);
+    void reassign_pending_spawns(EntityId parent, EntityId replacement);
     void commit_spawns();
 
     /* **************************************** */
@@ -212,14 +212,14 @@ struct Sim {
     /* **************************************** */
     // Targets
     /* **************************************** */
-    void set_target_id_unchecked(std::uint32_t fighter_index, EntityUniqueId new_target) noexcept;
-    void set_target_id(EntityUniqueId fighter, EntityUniqueId new_target) noexcept;
+    void set_target_id_unchecked(std::uint32_t fighter_index, EntityId new_target) noexcept;
+    void set_target_id(EntityId fighter, EntityId new_target) noexcept;
     void refresh_target_data(ioj::FrameMemoryResource* const scratch_resource);
 
     /* **************************************** */
     // Tasks
     /* **************************************** */
-    void set_task(EntityUniqueId fighter, Task task) noexcept;
+    void set_task(EntityId fighter, Task task) noexcept;
 
     /* **************************************** */
     // Orders
@@ -277,7 +277,7 @@ struct Sim {
 
     lasers::Sim& laser_simulation;
     std::vector<std::uint32_t> pending_fire_indices_;
-    std::vector<EntityUniqueId> overlap_candidates_;
+    std::vector<EntityId> overlap_candidates_;
 
     NavigationTelemetrySnapshot navigation_telemetry;
     std::int32_t diagnostic_stop_reports{};

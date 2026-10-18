@@ -117,7 +117,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     EXPECT_EQ(active_count_data.num(), 1);
     EXPECT_EQ(active_count_data.last_time(), 0);
 
-    std::array<EntityUniqueId, 1> ids;
+    std::array<EntityId, 1> ids;
     entity_ledger.record_spawns(EntityType::PlayerShip, Team::Green, Health{1}, ids);
     entity_ledger.record_spawns(EntityType::CapitalShip, Team::Red, Health{1}, ids);
     entity_ledger.record_spawns(EntityType::Fighter, Team::Red, Health{1}, ids);

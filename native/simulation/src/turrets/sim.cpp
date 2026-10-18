@@ -53,7 +53,7 @@ Sim::Sim(SimClock const& clock,
 // Spawning
 /* **************************************** */
 auto Sim::register_turrets(LevelTurretSpawnEvents::ConstView const spawn_data)
-    -> std::vector<EntityUniqueId> {
+    -> std::vector<EntityId> {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::register_turrets");
     entity_tables_.lookups.assert_preparation_mutation_allowed();
     spawn_data.validate();
@@ -113,9 +113,9 @@ auto Sim::register_turrets(LevelTurretSpawnEvents::ConstView const spawn_data)
     }
     auto const new_entity_ids{entities_entity_ids.subspan(first_new_index, n_to_add)};
     ledger_.record_spawns(EntityType::Turret, spawn_data_teams, spawn_data_healths, new_entity_ids);
-    std::vector<EntityUniqueId> new_ids{new_entity_ids.begin(), new_entity_ids.end()};
+    std::vector<EntityId> new_ids{new_entity_ids.begin(), new_entity_ids.end()};
     entity_tables_.health.initialise_rows<EntityType::Turret>(first_new_index, spawn_data_healths);
-    make_deterministic_biases(std::span<EntityUniqueId const>{entities_entity_ids}.subspan(
+    make_deterministic_biases(std::span<EntityId const>{entities_entity_ids}.subspan(
                                   static_cast<std::size_t>(first_new_index), spawn_count),
                               std::span<std::uint32_t>{entities.integral_biases()}.subspan(
                                   static_cast<std::size_t>(first_new_index), spawn_count));
@@ -262,7 +262,7 @@ void Sim::finish_action() {
 auto Sim::get_num_instances() const noexcept -> std::uint32_t {
     return entities.num();
 }
-auto Sim::get_target_ids() const -> std::span<EntityUniqueId const> {
+auto Sim::get_target_ids() const -> std::span<EntityId const> {
     return entities.get_const_view().target_ids();
 }
 
@@ -303,7 +303,7 @@ void Sim::perform_search_on_slice(std::uint32_t const begin,
     auto const turret_teams{entities.teams()};
     auto const fire_point_locations{entities.view_fire_point_locations()};
     auto const integral_biases{entities.integral_biases()};
-    ioj::FixedArray<EntityUniqueId, 128> target_ids;
+    ioj::FixedArray<EntityId, 128> target_ids;
     auto const target_capacity{target_ids.capacity_view()};
 
     for (std::uint32_t i{begin}; i < end; ++i) {
@@ -319,7 +319,7 @@ void Sim::perform_search_on_slice(std::uint32_t const begin,
                 spatial_query_manager.collect_non_team_entities_in_range(
                     turret_location, this_team, radius, target_capacity, scratch_resource));
 
-            current_targets[i] = EntityUniqueId{};
+            current_targets[i] = EntityId{};
 
             auto const target_count{target_ids.num()};
             auto const count{static_cast<std::size_t>(target_count)};
@@ -374,7 +374,7 @@ void Sim::fire_at_enemies(ioj::FrameMemoryResource* const scratch_resource) {
 
     auto const count{get_num_instances()};
     ioj::FrameArray<std::uint32_t> candidate_indices{scratch_resource};
-    ioj::FrameArray<EntityUniqueId> hit_ids{scratch_resource};
+    ioj::FrameArray<EntityId> hit_ids{scratch_resource};
     FrameVectors3f starts{scratch_resource};
     FrameVectors3f ends{scratch_resource};
     candidate_indices.reserve(count);

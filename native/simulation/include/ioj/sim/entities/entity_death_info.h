@@ -5,7 +5,7 @@
 
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/entities/entity_life_state.h"
-#include "ioj/sim/entities/entity_unique_id.h"
+#include "ioj/sim/entities/entity_id.h"
 #include "ioj/vector_types.h"
 
 #include <cassert>
@@ -23,8 +23,8 @@ struct EntityDeathInfoSingleLayoutColumns {
     ioj::native_soa::ColumnLayoutStart LayoutStart{};
 
     ColLayout<DeathReason> ReasonsColumn;
-    ColLayout<EntityUniqueId> VictimsColumn;
-    ColLayout<EntityUniqueId> KillersColumn;
+    ColLayout<EntityId> VictimsColumn;
+    ColLayout<EntityId> KillersColumn;
     ColLayout<Vector3f> LocationsColumn;
 
     constexpr EntityDeathInfoSingleLayoutColumns() noexcept
@@ -118,8 +118,8 @@ struct EntityDeathInfoSingleView : EntityDeathInfoSingleViewImpl<false> {
 static_assert(ioj::soa_storage_detail::validate_compact_view<EntityDeathInfoSingleView>());
 // Columns:
 // reasons: DeathReason
-// victims: EntityUniqueId
-// killers: EntityUniqueId
+// victims: EntityId
+// killers: EntityId
 // locations: Vector3f
 struct EntityDeathInfo
     : protected ioj::native_soa::StorageState
@@ -168,8 +168,8 @@ struct EntityDeathInfo
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
         Element<DeathReason>* reasons{};
-        Element<EntityUniqueId>* victims{};
-        Element<EntityUniqueId>* killers{};
+        Element<EntityId>* victims{};
+        Element<EntityId>* killers{};
         Element<Vector3f>* locations{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (reasons == nullptr) {

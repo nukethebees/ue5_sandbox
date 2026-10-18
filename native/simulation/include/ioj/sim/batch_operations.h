@@ -20,7 +20,7 @@ void sort_and_deduplicate_removal_indices(std::vector<std::uint32_t>& local_indi
 // Earlier events in this batch may already have killed a recipient.
 void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
                            EntityLookupTable const& lookup,
-                           [[maybe_unused]] std::span<EntityUniqueId const> entity_ids,
+                           [[maybe_unused]] std::span<EntityId const> entity_ids,
                            Vectors3fConstView locations,
                            HealthView healths,
                            std::vector<std::uint32_t>& local_indices_to_remove,

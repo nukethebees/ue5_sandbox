@@ -69,7 +69,7 @@ struct CollisionUniformGrid {
     auto entity_row_to_aabb_row(EntityType const type) const -> std::span<std::uint32_t const> {
         return entity_storage_.entity_row_to_aabb_row[type];
     }
-    auto get_cell_entities(CellCoord const cell_coord) const -> std::span<EntityUniqueId const> {
+    auto get_cell_entities(CellCoord const cell_coord) const -> std::span<EntityId const> {
         auto const dimensions{geometry_.dimensions};
         assert(cell_coord.x() >= 0 && cell_coord.x() < dimensions.x() && cell_coord.y() >= 0 &&
                cell_coord.y() < dimensions.y() && cell_coord.z() >= 0 &&
@@ -95,7 +95,7 @@ struct CollisionUniformGrid {
     // Replace output with unique grid members in ascending ID order. Cells must be in bounds;
     // repeated cells are allowed. Membership reflects the last grid rebuild, not current health.
     void collect_unique_entities_in_cells(std::span<CellCoord const> cells,
-                                          ioj::FrameArray<EntityUniqueId>& out_entities) const;
+                                          ioj::FrameArray<EntityId>& out_entities) const;
 
     struct OverlapCounts {
         std::uint32_t entities{};
@@ -103,26 +103,26 @@ struct CollisionUniformGrid {
     };
 
     // Count multi-cell duplicates so the caller can allocate exact output spans before writing.
-    auto count_overlaps(WorldAABB const& query_bounds, EntityUniqueId ignored_entity) const
+    auto count_overlaps(WorldAABB const& query_bounds, EntityId ignored_entity) const
         -> OverlapCounts;
     // Keep the grid and entity state unchanged between counting and writing.
     void write_overlaps(WorldAABB const& query_bounds,
-                        EntityUniqueId ignored_entity,
-                        std::span<EntityUniqueId> out_entities,
+                        EntityId ignored_entity,
+                        std::span<EntityId> out_entities,
                         std::span<StaticGeometryIndex> out_static_geometry_indices) const;
     void trace_aabbs(LineTraceBatch const& traces, TraceHits::View const& hits) const;
     void trace_aabbs(LineTraceBatch const& traces,
                      TraceHits::View const& hits,
-                     std::span<EntityUniqueId const> ignored_entities) const;
+                     std::span<EntityId const> ignored_entities) const;
     void sweep_aabbs(LineTraceBatch const& centre_paths,
                      Vector3f moving_half_extent,
                      TraceHits::View const& hits,
-                     std::span<EntityUniqueId const> ignored_entities = {},
+                     std::span<EntityId const> ignored_entities = {},
                      TraceEntityFilter entity_filter = TraceEntityFilter::None) const;
   private:
     friend struct ::ioj::sim::CollisionGridTestAccess;
     void begin_entity_grid();
-    void append_entity_bounds(EntityUniqueId id, WorldAABB bounds);
+    void append_entity_bounds(EntityId id, WorldAABB bounds);
     void finish_entity_grid();
 
     /* **************************************** */
@@ -135,8 +135,8 @@ struct CollisionUniformGrid {
     /* **************************************** */
     template <bool Write>
     auto overlaps_impl(WorldAABB const& query_bounds,
-                       EntityUniqueId ignored_entity,
-                       std::span<EntityUniqueId> out_entities,
+                       EntityId ignored_entity,
+                       std::span<EntityId> out_entities,
                        std::span<StaticGeometryIndex> out_static_geometry_indices) const
         -> OverlapCounts;
 
@@ -153,7 +153,7 @@ struct CollisionUniformGrid {
     template <TraceKind Kind, IgnoredEntityMode IgnoredMode, TraceEntityFilter EntityFilter>
     void trace_aabbs_impl(LineTraceBatch traces,
                           TraceHits::View hits,
-                          std::span<EntityUniqueId const> ignored_entities,
+                          std::span<EntityId const> ignored_entities,
                           Vector3f moving_half_extent) const;
 
     /* **************************************** */

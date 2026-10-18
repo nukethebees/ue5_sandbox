@@ -29,7 +29,7 @@ using MatchIndex = std::uint32_t;
 using MatchCount = std::uint32_t;
 
 struct Match {
-    EntityUniqueId entity;
+    EntityId entity;
     float distance{};
     Vector3f direction;
 };

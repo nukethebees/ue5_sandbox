@@ -29,7 +29,7 @@ class UniqueCellMembership : public ::testing::Test {
     alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024> backing{};
     ioj::FrameMemoryResource memory{backing};
     ioj::FrameScratchScope scope{memory};
-    ioj::FrameArray<EntityUniqueId> output{&memory};
+    ioj::FrameArray<EntityId> output{&memory};
 };
 
 TEST_F(UniqueCellMembership, EmptyInputAndEmptyCellsReplacePreviousOutput) {

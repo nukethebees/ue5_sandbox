@@ -19,7 +19,7 @@ struct CollisionGridTestAccess {
             count, EntityInstanceHandle::invalid_value);
     }
     static void append(collision::CollisionUniformGrid& grid,
-                       EntityUniqueId id,
+                       EntityId id,
                        std::uint32_t row,
                        collision::WorldAABB bounds) {
         grid.entity_storage_.entity_row_to_aabb_row[id.entity_type()][row] =
@@ -37,9 +37,9 @@ struct CollisionAgentStorage {
                Vector3f location = {},
                Rotator3f rotation = {},
                Health health = 100,
-               Team team = Team::Blue) -> EntityUniqueId {
+               Team team = Team::Blue) -> EntityId {
         SimClockTestAccess::set_phase(clock, SimulationPhase::Preparation);
-        EntityUniqueId id;
+        EntityId id;
         ledger.record_spawns(type, team, health, {&id, 1});
         switch (type) {
             case EntityType::CapitalShip: {
@@ -100,7 +100,7 @@ struct CollisionAgentStorage {
         return id;
     }
 
-    void set(EntityUniqueId id, Vector3f location, Rotator3f rotation, Health health) {
+    void set(EntityId id, Vector3f location, Rotator3f rotation, Health health) {
         auto const row{find_row(id)};
         assert(row != EntityInstanceHandle::invalid_value);
         switch (id.entity_type()) {
@@ -144,7 +144,7 @@ struct CollisionAgentStorage {
         }
     }
 
-    void remove(EntityUniqueId id) {
+    void remove(EntityId id) {
         SimClockTestAccess::set_phase(clock, SimulationPhase::Preparation);
         auto const row{find_row(id)};
         assert(row != EntityInstanceHandle::invalid_value);
@@ -195,8 +195,8 @@ struct CollisionAgentStorage {
         SimClockTestAccess::set_phase(clock, SimulationPhase::Thinking);
     }
 
-    auto find_row(EntityUniqueId id) const -> std::uint32_t {
-        auto find = [id](std::span<EntityUniqueId const> ids) {
+    auto find_row(EntityId id) const -> std::uint32_t {
+        auto find = [id](std::span<EntityId const> ids) {
             auto const found{std::ranges::find(ids, id)};
             return found == ids.end() ? EntityInstanceHandle::invalid_value
                                       : static_cast<std::uint32_t>(found - ids.begin());
@@ -247,7 +247,7 @@ struct CollisionAgentStorage {
                  collision::EntityAABBs const& bounds) const {
         CollisionGridTestAccess::begin(grid);
         auto const append{
-            [&](EntityUniqueId id, std::uint32_t row, Vector3f location, Quaternion4f orientation) {
+            [&](EntityId id, std::uint32_t row, Vector3f location, Quaternion4f orientation) {
                 CollisionGridTestAccess::append(
                     grid,
                     id,
@@ -308,13 +308,13 @@ struct CollisionAgentStorage {
     FighterEntityData fighters;
     TurretEntityData turrets;
     SpinnerEntityData spinners;
-    std::vector<EntityUniqueId> player_ids;
+    std::vector<EntityId> player_ids;
     Transform3d player_transform;
     ioj::Vector3d player_velocity{};
     Team player_team{};
 };
 
-inline auto observe_entity(CollisionAgentStorage const& owners, EntityUniqueId const id)
+inline auto observe_entity(CollisionAgentStorage const& owners, EntityId const id)
     -> std::optional<EntityObservation> {
     if (id.entity_type() == EntityType::PlayerShip) {
         auto const player{owners.player_spatial()};
@@ -365,7 +365,7 @@ inline auto observe_entity(CollisionAgentStorage const& owners, EntityUniqueId c
     }
 }
 
-inline auto observe_live_entity(CollisionAgentStorage const& source, EntityUniqueId const id)
+inline auto observe_live_entity(CollisionAgentStorage const& source, EntityId const id)
     -> std::optional<EntityObservation> {
     auto result{observe_entity(source, id)};
     if (result && is_dead(result->health)) {
@@ -374,11 +374,11 @@ inline auto observe_live_entity(CollisionAgentStorage const& source, EntityUniqu
     return result;
 }
 
-inline auto entity_is_alive(CollisionAgentStorage const& source, EntityUniqueId const id) -> bool {
+inline auto entity_is_alive(CollisionAgentStorage const& source, EntityId const id) -> bool {
     return observe_live_entity(source, id).has_value();
 }
 
-inline auto observe_entity_row(CollisionAgentStorage const& source, EntityUniqueId const id)
+inline auto observe_entity_row(CollisionAgentStorage const& source, EntityId const id)
     -> EntityFrameIndex {
     auto const entity{observe_entity(source, id)};
     return entity ? entity->row : EntityInstanceHandle::invalid_value;

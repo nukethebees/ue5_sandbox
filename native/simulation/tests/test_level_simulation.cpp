@@ -377,7 +377,7 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
     ASSERT_NE(player, nullptr);
     auto const surviving_capital{simulation.get_capital_ships().get_id(1)};
     std::int32_t fighter_count_before{};
-    std::array<EntityUniqueId, 6> victims{};
+    std::array<EntityId, 6> victims{};
     {
         auto const before{simulation.get_read_access()};
         ASSERT_GE(before.get_fighters().get_entities().num(), 4);

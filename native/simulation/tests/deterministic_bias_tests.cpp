@@ -70,8 +70,8 @@ TEST(DeterministicBias, AcceptsEmptyBatches) {
 }
 
 TEST(DeterministicBias, GeneratesIntegralBiasesFromEntityIds) {
-    std::array const ids{EntityUniqueId(42, EntityType::Fighter),
-                         EntityUniqueId(43, EntityType::Fighter)};
+    std::array const ids{EntityId(42, EntityType::Fighter),
+                         EntityId(43, EntityType::Fighter)};
     std::array<std::uint32_t, 2> integral_out{};
 
     ASSERT_TRUE(make_deterministic_biases(ids, integral_out));

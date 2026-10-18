@@ -12,7 +12,7 @@ inline void add_laser_spawn(lasers::LaserSpawnRequests& requests,
                             std::int32_t const damage,
                             float const speed,
                             float const distance,
-                            EntityUniqueId const instigator,
+                            EntityId const instigator,
                             LaserSource const source) {
     auto const row{requests.num()};
     requests.add_uninitialised(1);

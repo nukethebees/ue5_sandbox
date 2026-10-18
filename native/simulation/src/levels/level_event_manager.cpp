@@ -18,7 +18,7 @@ LevelEventManager::LevelEventManager(capital_ships::Sim& capital_ships,
     : spawn_manager_{capital_ships, turrets, spinners}
     , mission_manager_{mission_manager} {}
 
-void LevelEventManager::initialise(CompiledLevelEvents data, EntityUniqueId const player_id) {
+void LevelEventManager::initialise(CompiledLevelEvents data, EntityId const player_id) {
     initialisation_ = std::move(data.initialisation);
     schedule_ = std::move(data.schedule);
     auto const event_tick_count{schedule_.execution_ticks.size()};
@@ -89,7 +89,7 @@ void LevelEventManager::execute_tick(SimTick const tick) {
     ++next_event_index_;
 }
 
-auto LevelEventManager::get_spawned_ids() const -> std::span<EntityUniqueId const> {
+auto LevelEventManager::get_spawned_ids() const -> std::span<EntityId const> {
     return spawn_manager_.get_spawned_ids();
 }
 
@@ -100,7 +100,7 @@ void LevelEventManager::configure_mission() {
     }
 }
 
-auto LevelEventManager::get_entity_id(LevelEntityIndex const entity_index) const -> EntityUniqueId {
+auto LevelEventManager::get_entity_id(LevelEntityIndex const entity_index) const -> EntityId {
     return spawn_manager_.get_id(entity_index);
 }
 

@@ -15,8 +15,8 @@
 
 namespace ioj::sim::tests {
 namespace {
-auto make_id(EntityType const type, std::uint32_t const ordinal) -> EntityUniqueId {
-    return EntityUniqueId(ordinal, type);
+auto make_id(EntityType const type, std::uint32_t const ordinal) -> EntityId {
+    return EntityId(ordinal, type);
 }
 }
 
@@ -74,11 +74,11 @@ TEST(DamageQueue, GroupsMixedOwnerEventsAndFiltersRetiredRecipients) {
 
 TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
     EntityLedger ledger;
-    EntityUniqueId attacker;
+    EntityId attacker;
     ledger.record_spawns(EntityType::Turret, Team::Red, Health{1}, {&attacker, 1});
-    EntityUniqueId victim;
+    EntityId victim;
     ledger.record_spawns(EntityType::Fighter, Team::Blue, Health{1}, {&victim, 1});
-    EntityUniqueId retired;
+    EntityId retired;
     ledger.record_spawns(EntityType::CapitalShip, Team::Blue, Health{1}, {&retired, 1});
 
     SimClock clock;
@@ -144,16 +144,16 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
 
 TEST(EntityLedger, PreservesHistoricalAccountingAndResetsLevelIdentity) {
     EntityLedger ledger;
-    EntityUniqueId killer;
+    EntityId killer;
     ledger.record_spawns(EntityType::Turret, Team::Red, Health{1}, {&killer, 1});
-    EntityUniqueId first_victim;
+    EntityId first_victim;
     ledger.record_spawns(EntityType::CapitalShip, Team::Blue, Health{1}, {&first_victim, 1});
 
     ledger.record_shots(std::array{killer});
     ledger.record_status(std::array{killer, first_victim},
                          std::array{Team::Green, Team::Yellow},
                          std::array<Health, 2>{1, 1});
-    ledger.record_shots(std::array{killer, EntityUniqueId{}});
+    ledger.record_shots(std::array{killer, EntityId{}});
 
     DirectDamageEvents damage;
     damage.add(first_victim, 17, killer);
@@ -169,7 +169,7 @@ TEST(EntityLedger, PreservesHistoricalAccountingAndResetsLevelIdentity) {
     rows.reasons()[1] = DeathReason::Unknown;
     ledger.record_deaths(deaths.get_const_view(), 4);
 
-    EntityUniqueId second_victim;
+    EntityId second_victim;
     ledger.record_spawns(EntityType::Fighter, Team::Blue, Health{1}, {&second_victim, 1});
     deaths.set_num(1);
     rows = deaths.get_view();
@@ -204,7 +204,7 @@ TEST(EntityLedger, PreservesHistoricalAccountingAndResetsLevelIdentity) {
     EXPECT_EQ(ledger.count_kills(), 0);
     EXPECT_FALSE(ledger.is_valid_unique_id(killer));
 
-    EntityUniqueId restarted;
+    EntityId restarted;
     ledger.record_spawns(EntityType::Turret, Team::Red, Health{1}, {&restarted, 1});
     EXPECT_EQ(restarted, killer);
     EXPECT_EQ(ledger.get_history_index(restarted), 0);

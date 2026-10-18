@@ -72,7 +72,7 @@ void FTestPlayerShipDeathScenario::queue_player_ship_death() {
 
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
-    std::vector<::ioj::sim::EntityUniqueId> const targets{player_ship_id};
+    std::vector<::ioj::sim::EntityId> const targets{player_ship_id};
     test_driver->timeline.then_after(kill_time,
                                      [this, targets] { test_driver->queue_kills(targets); });
 

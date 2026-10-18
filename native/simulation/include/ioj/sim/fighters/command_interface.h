@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "ioj/sim/entities/entity_unique_id.h"
+#include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/entities/health_table.h"
 #include "ioj/sim/fighters/fighter_frame_spawn_queue.h"
 #include "ioj/sim/fighters/fighter_order_queue.h"
@@ -28,9 +28,9 @@ class CommandInterface {
 
     std::int32_t get_num_instances() const noexcept { return fighters.get_num_instances(); }
 
-    std::span<EntityUniqueId const> get_parent_ids() const { return fighters.get_parent_ids(); }
+    std::span<EntityId const> get_parent_ids() const { return fighters.get_parent_ids(); }
 
-    std::span<EntityUniqueId const> get_entity_ids() const { return fighters.get_entity_ids(); }
+    std::span<EntityId const> get_entity_ids() const { return fighters.get_entity_ids(); }
 
     std::uint64_t get_membership_revision() const noexcept {
         return fighters.get_membership_revision();
@@ -40,15 +40,15 @@ class CommandInterface {
 
     HealthConstView get_healths() const { return fighters.get_healths(); }
 
-    void set_parent_id(EntityUniqueId fighter, EntityUniqueId parent) {
+    void set_parent_id(EntityId fighter, EntityId parent) {
         fighters.set_parent_id(fighter, parent);
     }
 
-    void reassign_pending_spawns(EntityUniqueId parent, EntityUniqueId replacement) {
+    void reassign_pending_spawns(EntityId parent, EntityId replacement) {
         fighters.reassign_pending_spawns(parent, replacement);
     }
 
-    std::span<EntityUniqueId const> get_target_ids() const noexcept {
+    std::span<EntityId const> get_target_ids() const noexcept {
         return fighters.get_target_ids();
     }
   private:

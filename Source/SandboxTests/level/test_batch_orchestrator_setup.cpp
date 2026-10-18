@@ -240,7 +240,7 @@ void FTestBatchOrchestratorSetupScenario::kill_telemetry_test_entity() {
     telemetry_samples_before_change = telemetry_manager.get_active_entity_count_data().num();
     kill_samples_before_change = telemetry_manager.get_cumulative_kill_count_data().num();
 
-    TStaticArray<::ioj::sim::EntityUniqueId, 1> const targets{
+    TStaticArray<::ioj::sim::EntityId, 1> const targets{
         test_driver->get_player_ship().get_unique_id()};
     test_driver->queue_kills(targets, targets[0]);
 }

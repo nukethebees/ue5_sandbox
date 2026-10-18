@@ -9,7 +9,7 @@
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/entities/entity_type.h>
-#include <ioj/sim/entities/entity_unique_id.h>
+#include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/spinners/sim.h>
 #include <ioj/sim/turrets/sim.h>
@@ -553,7 +553,7 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
     }
 
     // Gather active, fading and newly selected positions from fresh owner rows.
-    ::ioj::sim::EntityUniqueId const target_ids[]{
+    ::ioj::sim::EntityId const target_ids[]{
         registration.soft_target, registration.fading_soft_target, soft_target.id};
     TOptional<FVector> positions[3];
     for (auto const& batch : batches) {
@@ -941,7 +941,7 @@ void FHUDManager::collect_kill_data() {
     }
     Algo::Sort(
         top_killer_ids_buffer,
-        [this, kills](::ioj::sim::EntityUniqueId const lhs, ::ioj::sim::EntityUniqueId const rhs) {
+        [this, kills](::ioj::sim::EntityId const lhs, ::ioj::sim::EntityId const rhs) {
             auto const lhs_kills{kills[entity_ledger->get_history_index(lhs)]};
             auto const rhs_kills{kills[entity_ledger->get_history_index(rhs)]};
             return lhs_kills != rhs_kills ? lhs_kills > rhs_kills

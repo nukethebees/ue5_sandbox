@@ -5,7 +5,7 @@
 
 #include "ioj/levels/team.h"
 #include "ioj/native_soa/storage.h"
-#include "ioj/sim/entities/entity_unique_id.h"
+#include "ioj/sim/entities/entity_id.h"
 #include "ioj/vector_soa_view.h"
 
 #include <cassert>
@@ -33,8 +33,8 @@ struct FighterSpawnQueueSingleLayoutColumns {
     ColLayout<float> RotationsYawsColumn;
     ColLayout<float> RotationsRollsColumn;
     ColLayout<::ioj::Team> TeamsColumn;
-    ColLayout<EntityUniqueId> ParentsColumn;
-    ColLayout<EntityUniqueId> TargetsColumn;
+    ColLayout<EntityId> ParentsColumn;
+    ColLayout<EntityId> TargetsColumn;
 
     constexpr FighterSpawnQueueSingleLayoutColumns() noexcept
         : LocationsXsColumn{LayoutStart}
@@ -166,8 +166,8 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<FighterSpawnQueueSi
 // rotations_yaws: float
 // rotations_rolls: float
 // teams: ::ioj::Team
-// parents: EntityUniqueId
-// targets: EntityUniqueId
+// parents: EntityId
+// targets: EntityId
 struct FighterSpawnQueue
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -221,8 +221,8 @@ struct FighterSpawnQueue
         Element<float>* rotations_yaws{};
         Element<float>* rotations_rolls{};
         Element<::ioj::Team>* teams{};
-        Element<EntityUniqueId>* parents{};
-        Element<EntityUniqueId>* targets{};
+        Element<EntityId>* parents{};
+        Element<EntityId>* targets{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (locations_xs == nullptr) {
                 return {};

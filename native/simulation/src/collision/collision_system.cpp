@@ -47,7 +47,7 @@ void CollisionSystem::refresh_spatial_index(LevelReadAccess const& level) {
 /* **************************************** */
 // Overlap detection
 /* **************************************** */
-auto CollisionSystem::detect_overlaps(std::span<EntityUniqueId const> const overlap_candidates,
+auto CollisionSystem::detect_overlaps(std::span<EntityId const> const overlap_candidates,
                                       ioj::FrameMemoryResource* const scratch_resource)
     -> DetectedOverlapsView {
     SANDBOX_PROFILE_SCOPE("CollisionSystem::detect_overlaps");
@@ -64,7 +64,7 @@ auto CollisionSystem::detect_overlaps(std::span<EntityUniqueId const> const over
     return events.get_batch(static_cast<AABBOverlapEventBatchIndex>(events.batches.size() - 1));
 }
 void CollisionSystem::collect_overlaps_for_candidates(
-    std::span<EntityUniqueId const> const overlap_candidates,
+    std::span<EntityId const> const overlap_candidates,
     EntityEntityOverlaps& entity_overlaps,
     EntityStaticOverlaps& static_overlaps,
     ioj::FrameMemoryResource* const scratch_resource) {

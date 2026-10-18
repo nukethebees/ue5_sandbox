@@ -4,7 +4,7 @@
 #pragma once
 
 #include "ioj/native_soa/storage.h"
-#include "ioj/sim/entities/entity_unique_id.h"
+#include "ioj/sim/entities/entity_id.h"
 #include "ioj/vector_soa_view.h"
 
 #include <cassert>
@@ -25,7 +25,7 @@ struct SpinnerEntityDataSingleLayoutColumns {
 
     ioj::native_soa::ColumnLayoutStart LayoutStart{};
 
-    ColLayout<EntityUniqueId> EntityIdsColumn;
+    ColLayout<EntityId> EntityIdsColumn;
     ColLayout<float> LocationsXsColumn;
     ColLayout<float> LocationsYsColumn;
     ColLayout<float> LocationsZsColumn;
@@ -142,7 +142,7 @@ struct SpinnerEntityDataSingleView : SpinnerEntityDataSingleViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SpinnerEntityDataSingleView>());
 // Columns:
-// entity_ids: EntityUniqueId
+// entity_ids: EntityId
 // locations_xs: float
 // locations_ys: float
 // locations_zs: float
@@ -195,7 +195,7 @@ struct SpinnerEntityData
     struct DataPointers {
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<EntityUniqueId>* entity_ids{};
+        Element<EntityId>* entity_ids{};
         Element<float>* locations_xs{};
         Element<float>* locations_ys{};
         Element<float>* locations_zs{};

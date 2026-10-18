@@ -13,7 +13,7 @@
 #include <type_traits>
 
 namespace ioj::sim {
-struct EntityUniqueId {
+struct EntityId {
     using storage_type = std::uint32_t;
     static_assert(ioj::valid_packed_storage<storage_type, 32>());
 
@@ -32,17 +32,17 @@ struct EntityUniqueId {
 
     inline static constexpr storage_type invalid_value{storage_type{0xffffffff}};
 
-    constexpr EntityUniqueId() noexcept = default;
+    constexpr EntityId() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
-        -> EntityUniqueId {
-        EntityUniqueId result;
+        -> EntityId {
+        EntityId result;
         result.value_ = raw;
         return result;
     }
 
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
-    explicit constexpr EntityUniqueId(index_type const index_value,
+    explicit constexpr EntityId(index_type const index_value,
                                       entity_type_type const entity_type_value) noexcept {
         assert(index_value <= index_maximum);
         assert(static_cast<std::size_t>(entity_type_value) < ioj::enum_count<entity_type_type>());
@@ -55,7 +55,7 @@ struct EntityUniqueId {
                static_cast<std::size_t>(entity_type()) < ioj::enum_count<entity_type_type>();
     }
 
-    [[nodiscard]] constexpr auto operator<=>(EntityUniqueId const&) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(EntityId const&) const noexcept = default;
 
     [[nodiscard]] constexpr auto index() const noexcept -> index_type {
         return ioj::packed_extract<index_field>(value_);
@@ -67,5 +67,5 @@ struct EntityUniqueId {
   private:
     storage_type value_{invalid_value};
 };
-static_assert(ioj::valid_packed_value_layout<EntityUniqueId>());
+static_assert(ioj::valid_packed_value_layout<EntityId>());
 } // namespace ioj::sim

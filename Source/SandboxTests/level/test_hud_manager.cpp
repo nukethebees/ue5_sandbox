@@ -101,10 +101,10 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
     auto& mission{simulation.get_mission_manager()};
     auto const& capitals{simulation.get_capital_ships()};
     auto const first_capital{first_capital_index == ::ioj::sim::invalid_level_entity_index
-                                 ? ::ioj::sim::EntityUniqueId{}
+                                 ? ::ioj::sim::EntityId{}
                                  : capitals.get_id(first_capital_index)};
     auto const second_capital{second_capital_index == ::ioj::sim::invalid_level_entity_index
-                                  ? ::ioj::sim::EntityUniqueId{}
+                                  ? ::ioj::sim::EntityId{}
                                   : capitals.get_id(second_capital_index)};
     harness.finish_initialisation();
 
@@ -453,7 +453,7 @@ void FTestHUDManagerScenario::player_kill_begin() {
     auto const& capitals{test_driver->get_capital_ships()};
     check(capitals.get_num_instances() == 1);
 
-    std::array<::ioj::sim::EntityUniqueId, 1> const targets{
+    std::array<::ioj::sim::EntityId, 1> const targets{
         capitals.get_entities().entity_ids()[0]};
     auto const instigator{player_ship->get_unique_id()};
     test_driver->timeline.then_after(damage_queue_time, [this, targets, instigator] {
@@ -609,7 +609,7 @@ void FTestHUDManagerScenario::entity_count_begin() {
 
     auto const& capitals{test_driver->get_capital_ships()};
     check(capitals.get_num_instances() == 1);
-    std::array<::ioj::sim::EntityUniqueId, 1> const targets{capitals.get_id(0)};
+    std::array<::ioj::sim::EntityId, 1> const targets{capitals.get_id(0)};
     test_driver->timeline.then_after(damage_queue_time,
                                      [this, targets] { test_driver->queue_kills(targets); });
     begin_timed_sampling(test_duration,

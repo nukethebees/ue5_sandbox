@@ -27,7 +27,7 @@ Each update rebuilds complete handles for all active rows. Health changes are no
 
 ## Distinguish the validity guarantees
 
-- **Stable identity:** `EntityUniqueId` lasts for the game, including after death. An identity does
+- **Stable identity:** `EntityId` lasts for the game, including after death. An identity does
   not imply a currently live entity.
 - **Row correspondence:** an active handle's row identifies the same entity from publication through
   pre-compaction Resolution. Changing position or health does not itself invalidate that row.

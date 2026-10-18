@@ -1,5 +1,5 @@
 #pragma once
-#include <ioj/sim/entities/entity_unique_id.h>
+#include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/player/command_interface.h>
 #include <ioj/sim/player/fire_rate.h>
@@ -56,7 +56,7 @@ class SPACEGAME_API ATestSpaceShip
     /* **************************************** */
     // Entity identity and configuration
     /* **************************************** */
-    auto get_unique_id() const noexcept -> ::ioj::sim::EntityUniqueId override;
+    auto get_unique_id() const noexcept -> ::ioj::sim::EntityId override;
     auto get_test_name() const noexcept -> FName { return TEXT("PlayerShip"); }
     auto get_team() const noexcept -> ETestTeam;
     void set_team(ETestTeam new_team) noexcept;

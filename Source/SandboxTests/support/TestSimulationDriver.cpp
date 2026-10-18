@@ -57,9 +57,9 @@ auto TestSimulationDriver::get_fighters() const -> ::ioj::sim::fighters::Sim con
     return *simulation;
 }
 
-void TestSimulationDriver::queue_damage(std::span<::ioj::sim::EntityUniqueId const> const targets,
+void TestSimulationDriver::queue_damage(std::span<::ioj::sim::EntityId const> const targets,
                                         int32 const damage,
-                                        ::ioj::sim::EntityUniqueId const instigator) {
+                                        ::ioj::sim::EntityId const instigator) {
     auto const n{static_cast<int32>(targets.size())};
 
     ::ioj::sim::DirectDamageEvents damage_events;
@@ -71,8 +71,8 @@ void TestSimulationDriver::queue_damage(std::span<::ioj::sim::EntityUniqueId con
     FTestBatchOrchestratorTestAccess::queue_direct_damage_events(orchestrator,
                                                                  damage_events.get_const_view());
 }
-void TestSimulationDriver::queue_kills(std::span<::ioj::sim::EntityUniqueId const> const targets,
-                                       ::ioj::sim::EntityUniqueId const instigator) {
+void TestSimulationDriver::queue_kills(std::span<::ioj::sim::EntityId const> const targets,
+                                       ::ioj::sim::EntityId const instigator) {
     ::ioj::sim::DirectDamageEvents events;
     events.reserve(static_cast<int32>(targets.size()));
     for (auto const id : targets) {

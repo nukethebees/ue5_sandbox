@@ -29,7 +29,7 @@ struct OverlapFixture {
         query_manager.initialise({{40, 40, 40}, {{50.f, 50.f, 50.f}}}, entity_bounds);
     }
 
-    void refresh_and_detect_overlaps(std::span<EntityUniqueId const> const overlap_candidates) {
+    void refresh_and_detect_overlaps(std::span<EntityId const> const overlap_candidates) {
         owners.refresh(query_manager);
         {
             ioj::FrameScratchScope scratch_scope{frame_memory};
@@ -51,12 +51,12 @@ struct OverlapFixture {
 
     auto spawn(Vector3f const location,
                EntityType const type = EntityType::CapitalShip,
-               Rotator3f const rotation = Rotator3f{}) -> EntityUniqueId {
+               Rotator3f const rotation = Rotator3f{}) -> EntityId {
         return owners.spawn(type, location, rotation);
     }
 
-    auto ids(std::span<EntityUniqueId const> const entity_ids) const
-        -> std::vector<EntityUniqueId> {
+    auto ids(std::span<EntityId const> const entity_ids) const
+        -> std::vector<EntityId> {
         return {entity_ids.begin(), entity_ids.end()};
     }
 
@@ -71,7 +71,7 @@ struct OverlapFixture {
         return query_manager.add_static_collision_aabb(min_point, max_point);
     }
 
-    void run_tick(std::span<EntityUniqueId const> const entity_ids,
+    void run_tick(std::span<EntityId const> const entity_ids,
                   std::span<Vector3f const> const locations,
                   std::span<Rotator3f const> const rotations,
                   std::span<std::uint8_t const> const alive = {}) {
@@ -124,8 +124,8 @@ struct OverlapFixture {
 };
 
 void check_single_pair(collision::EntityEntityOverlaps::ConstView const overlaps,
-                       EntityUniqueId const lhs,
-                       EntityUniqueId const rhs) {
+                       EntityId const lhs,
+                       EntityId const rhs) {
     EXPECT_EQ(overlaps.num(), 1) << "Exactly one overlap pair is reported";
     if (overlaps.num() == 1) {
         auto const first{lhs < rhs ? lhs : rhs};
@@ -139,7 +139,7 @@ void check_single_pair(collision::EntityEntityOverlaps::ConstView const overlaps
 }
 
 void check_single_static_overlap(collision::EntityStaticOverlaps::ConstView const overlaps,
-                                 EntityUniqueId const entity,
+                                 EntityId const entity,
                                  collision::StaticGeometryIndex const static_geometry_index) {
     EXPECT_EQ(overlaps.num(), 1) << "Exactly one static overlap is reported";
     if (overlaps.num() == 1) {
@@ -178,14 +178,14 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
     fixture.refresh_and_detect_overlaps(fixture.ids(handles));
     check_single_pair(fixture.get_entity_overlaps(), moved, stationary);
     auto const& queries{fixture.query_manager};
-    std::array<EntityUniqueId, 2> nearby{};
+    std::array<EntityId, 2> nearby{};
     EXPECT_EQ(queries.collect_non_team_entities_in_range(
                   {{300.f, 0.f, 0.f}}, Team::Blue, 10.f, nearby, &query_memory),
               1);
     EXPECT_EQ(nearby[0], stationary);
     EXPECT_EQ(queries.get_any_non_team_entity(Team::Blue, EntityType::CapitalShip), stationary);
     EXPECT_TRUE(!queries.get_any_non_team_entity(Team::Blue, EntityType::Turret).is_valid());
-    std::array<EntityUniqueId, 2> nearby_ids{};
+    std::array<EntityId, 2> nearby_ids{};
     EXPECT_EQ(queries.collect_entities_of_type_in_range({{300.f, 0.f, 0.f}},
                                                         EntityType::CapitalShip,
                                                         20.f,
@@ -530,7 +530,7 @@ TEST(EntityAABBOverlaps, ManyMovedEntitiesProduceSortedUniqueResults) {
         fixture.add_static({{x - 80.f, y - 80.f, -80.f}}, {{x + 80.f, y + 80.f, 80.f}});
     }
 
-    std::vector<EntityUniqueId> moved_entities{};
+    std::vector<EntityId> moved_entities{};
     std::vector<Vector3f> moved_locations{};
     std::vector<Rotator3f> moved_rotations{};
     constexpr std::int32_t entity_count{32};
@@ -608,7 +608,7 @@ TEST(EntityAABBOverlaps, ManyMovedEntitiesProduceSortedUniqueResults) {
     std::vector<collision::StaticGeometryIndex> const expected_static_indices{
         static_overlaps.static_geometry_indices().begin(),
         static_overlaps.static_geometry_indices().end()};
-    std::vector<EntityUniqueId> repeated_candidates;
+    std::vector<EntityId> repeated_candidates;
     for (std::uint32_t repeat{}; repeat < 4; ++repeat) {
         repeated_candidates.insert(
             repeated_candidates.end(), moved_entities.rbegin(), moved_entities.rend());
@@ -763,8 +763,8 @@ TEST(EntityAABBOverlaps, NullDeadAndRetiredCandidatesAreIgnored) {
     EXPECT_FALSE(observe_entity(fixture.owners, removed).has_value())
         << "Removed ID no longer resolves after publication";
 
-    std::array const overlap_candidates{EntityUniqueId{}, removed_id, live};
-    fixture.refresh_and_detect_overlaps(std::span<EntityUniqueId const>{
+    std::array const overlap_candidates{EntityId{}, removed_id, live};
+    fixture.refresh_and_detect_overlaps(std::span<EntityId const>{
         overlap_candidates.data(),
         static_cast<std::size_t>(static_cast<std::int32_t>(overlap_candidates.size()))});
 

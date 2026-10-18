@@ -2,7 +2,7 @@
 #pragma once
 #include <ioj/frame_memory_resource.h>
 #include <ioj/levels/team.h>
-#include <ioj/sim/entities/entity_unique_id.h>
+#include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/entities/health_table.h>
 #include <ioj/sim/entities/ship_health.h>
 #include <ioj/sim/player/fire_rate.h>
@@ -155,7 +155,7 @@ struct Sim {
     /* **************************************** */
     // Sim state
     /* **************************************** */
-    EntityUniqueId unique_entity_id;
+    EntityId unique_entity_id;
     Team team{Team::White};
 
     Transform3d left_socket{Transform3d{}};
@@ -219,8 +219,8 @@ struct Sim {
     /* **************************************** */
     // Health
     /* **************************************** */
-    void set_health(Health new_health, EntityUniqueId killer = {});
-    void die(EntityUniqueId killer);
+    void set_health(Health new_health, EntityId killer = {});
+    void die(EntityId killer);
 
     /* **************************************** */
     // Diagnostics

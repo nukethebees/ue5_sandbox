@@ -5,7 +5,7 @@
 
 #include "ioj/levels/team.h"
 #include "ioj/native_soa/storage.h"
-#include "ioj/sim/entities/entity_unique_id.h"
+#include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/fighters/fighter_navigation_types.h"
 #include "ioj/sim/fighters/fighter_task_format.h"
 #include "ioj/vector_soa_view.h"
@@ -28,7 +28,7 @@ struct FighterEntityDataSingleLayoutColumns {
 
     ioj::native_soa::ColumnLayoutStart LayoutStart{};
 
-    ColLayout<EntityUniqueId> EntityIdsColumn;
+    ColLayout<EntityId> EntityIdsColumn;
     ColLayout<std::uint32_t> IntegralBiasesColumn;
     ColLayout<float> FloatBiasesColumn;
     ColLayout<FighterTask> TasksColumn;
@@ -56,7 +56,7 @@ struct FighterEntityDataSingleLayoutColumns {
     ColLayout<float> MoveDistancesColumn;
     ColLayout<float> SpeedsColumn;
     ColLayout<::ioj::Team> TeamsColumn;
-    ColLayout<EntityUniqueId> ParentIdsColumn;
+    ColLayout<EntityId> ParentIdsColumn;
     ColLayout<std::int8_t> AwarenessScanCountdownsColumn;
     ColLayout<std::int16_t> NavigationUpdateCountdownsRemainingTicksColumn;
     ColLayout<std::int16_t> NavigationUpdateCountdownsPeriodsColumn;
@@ -69,7 +69,7 @@ struct FighterEntityDataSingleLayoutColumns {
     ColLayout<fighters::NavigationScanCount> AvoidanceClearScanCountsColumn;
     ColLayout<std::int16_t> AttackRepositionCountdownsColumn;
     ColLayout<std::int16_t> AttackCooldownsColumn;
-    ColLayout<EntityUniqueId> TargetIdsColumn;
+    ColLayout<EntityId> TargetIdsColumn;
     ColLayout<float> TargetLocationsXsColumn;
     ColLayout<float> TargetLocationsYsColumn;
     ColLayout<float> TargetLocationsZsColumn;
@@ -437,7 +437,7 @@ struct FighterEntityDataSingleView : FighterEntityDataSingleViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<FighterEntityDataSingleView>());
 // Columns:
-// entity_ids: EntityUniqueId
+// entity_ids: EntityId
 // integral_biases: std::uint32_t
 // float_biases: float
 // tasks: FighterTask
@@ -465,7 +465,7 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<FighterEntityDataSi
 // move_distances: float
 // speeds: float
 // teams: ::ioj::Team
-// parent_ids: EntityUniqueId
+// parent_ids: EntityId
 // awareness_scan_countdowns: std::int8_t
 // navigation_update_countdowns_remaining_ticks: std::int16_t
 // navigation_update_countdowns_periods: std::int16_t
@@ -478,7 +478,7 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<FighterEntityDataSi
 // avoidance_clear_scan_counts: fighters::NavigationScanCount
 // attack_reposition_countdowns: std::int16_t
 // attack_cooldowns: std::int16_t
-// target_ids: EntityUniqueId
+// target_ids: EntityId
 // target_locations_xs: float
 // target_locations_ys: float
 // target_locations_zs: float
@@ -538,7 +538,7 @@ struct FighterEntityData
     struct DataPointers {
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<EntityUniqueId>* entity_ids{};
+        Element<EntityId>* entity_ids{};
         Element<std::uint32_t>* integral_biases{};
         Element<float>* float_biases{};
         Element<FighterTask>* tasks{};
@@ -566,7 +566,7 @@ struct FighterEntityData
         Element<float>* move_distances{};
         Element<float>* speeds{};
         Element<::ioj::Team>* teams{};
-        Element<EntityUniqueId>* parent_ids{};
+        Element<EntityId>* parent_ids{};
         Element<std::int8_t>* awareness_scan_countdowns{};
         Element<std::int16_t>* navigation_update_countdowns_remaining_ticks{};
         Element<std::int16_t>* navigation_update_countdowns_periods{};
@@ -579,7 +579,7 @@ struct FighterEntityData
         Element<fighters::NavigationScanCount>* avoidance_clear_scan_counts{};
         Element<std::int16_t>* attack_reposition_countdowns{};
         Element<std::int16_t>* attack_cooldowns{};
-        Element<EntityUniqueId>* target_ids{};
+        Element<EntityId>* target_ids{};
         Element<float>* target_locations_xs{};
         Element<float>* target_locations_ys{};
         Element<float>* target_locations_zs{};

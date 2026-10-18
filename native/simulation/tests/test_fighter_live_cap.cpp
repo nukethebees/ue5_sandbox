@@ -89,7 +89,7 @@ auto count_team(LevelSim const& simulation, Team const team) -> std::int32_t {
     return count;
 }
 
-void queue_damage(LevelSim& simulation, EntityUniqueId const target, std::int32_t const damage) {
+void queue_damage(LevelSim& simulation, EntityId const target, std::int32_t const damage) {
     DirectDamageEvents events;
     events.add(target, damage, {});
     LevelSimTestAccess::queue_direct_damage_events(simulation, events.get_const_view());
@@ -239,7 +239,7 @@ TEST(FighterLiveCap, FinalCapitalDeathOrphansFighters) {
     auto const& fighter_simulation{simulation.get_fighters()};
     auto const white_capital{capital_simulation.get_id(0)};
     auto const red_capital{capital_simulation.get_id(1)};
-    std::vector<EntityUniqueId> white_fighters;
+    std::vector<EntityId> white_fighters;
     auto const fighter_teams{fighter_simulation.get_teams()};
     for (auto const fighter : fighter_simulation.get_entity_ids()) {
         auto const index{observe_entity_row(simulation, fighter)};
@@ -372,7 +372,7 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
         simulation.get_read_access().get_fighters().get_entities().entity_ids()[0]};
     EXPECT_NE(replacement_id, original_id);
     stale_orders.add(
-        EntityUniqueId(100000, EntityType::Fighter), FighterOrder{1, 0}, FighterTask::Standby, {});
+        EntityId(100000, EntityType::Fighter), FighterOrder{1, 0}, FighterTask::Standby, {});
     LevelSimTestAccess::queue_fighter_orders(simulation, stale_orders);
     simulation.advance(simulation.get_clock().get_tick_period());
     EXPECT_EQ(simulation.get_fighters().get_tasks()[0], FighterTask::Attack);

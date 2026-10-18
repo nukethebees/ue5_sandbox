@@ -9,9 +9,9 @@
 namespace ioj::sim::tests {
 TEST(HealthTable, SeparatesFixedTypeRangesAndCopiesBulkValues) {
     HealthTable health;
-    std::array const fighters{EntityUniqueId{0, EntityType::Fighter},
-                              EntityUniqueId{1, EntityType::Fighter}};
-    std::array const capitals{EntityUniqueId{0, EntityType::CapitalShip}};
+    std::array const fighters{EntityId{0, EntityType::Fighter},
+                              EntityId{1, EntityType::Fighter}};
+    std::array const capitals{EntityId{0, EntityType::CapitalShip}};
     health.initialise_rows<EntityType::Fighter>(0, std::array<Health, 2>{10, 20});
     health.initialise_rows<EntityType::CapitalShip>(0, capitals.size(), 900);
     auto const fighter_health{health.get_view<EntityType::Fighter>(fighters.size())};
@@ -25,7 +25,7 @@ TEST(HealthTable, SeparatesFixedTypeRangesAndCopiesBulkValues) {
 TEST(HealthTable, MirrorsOwnerSwapRemovalForBoundaryAndBatchShapes) {
     auto run_case = [](std::span<std::uint32_t const> removals) {
         HealthTable health;
-        std::vector<EntityUniqueId> owners;
+        std::vector<EntityId> owners;
         std::array<Health, 6> values{10, 20, 30, 40, 50, 60};
         auto const value_count{values.size()};
         for (std::uint32_t row{}; row < value_count; ++row) {
@@ -71,8 +71,8 @@ TEST(HealthTable, WritesHealthDirectlyThroughBorrowedViews) {
 TEST(EntityTables, RebuildsHandlesAfterOwnerReorderingAndMaximumHealthChanges) {
     SimClock clock;
     EntityTables tables{clock};
-    std::array const ids{EntityUniqueId{2, EntityType::Fighter},
-                         EntityUniqueId{6, EntityType::Fighter}};
+    std::array const ids{EntityId{2, EntityType::Fighter},
+                         EntityId{6, EntityType::Fighter}};
     std::array const teams{Team::Blue, Team::Red};
     tables.health.initialise_rows<EntityType::Fighter>(0, std::array<Health, 2>{50, 100});
     tables.publish<EntityType::Fighter>(ids, teams, 100);
@@ -108,9 +108,9 @@ TEST(EntityTables, RebuildsHandlesAfterOwnerReorderingAndMaximumHealthChanges) {
 TEST(EntityTables, KeepsRetiredIdsInvalidAndOtherTypeHealthUnchanged) {
     SimClock clock;
     EntityTables tables{clock};
-    std::array const ids{EntityUniqueId{0, EntityType::Fighter},
-                         EntityUniqueId{1, EntityType::Fighter}};
-    std::array const player{EntityUniqueId{0, EntityType::PlayerShip}};
+    std::array const ids{EntityId{0, EntityType::Fighter},
+                         EntityId{1, EntityType::Fighter}};
+    std::array const player{EntityId{0, EntityType::PlayerShip}};
     tables.health.initialise_rows<EntityType::Fighter>(0, ids.size(), 100);
     tables.health.initialise_rows<EntityType::PlayerShip>(0, player.size(), 75);
     tables.publish<EntityType::Fighter>(ids, {}, 100);

@@ -15,7 +15,7 @@ struct OverlapHandler {
 
     void handle(collision::DetectedOverlapsView overlaps, CombatEvents& events);
   private:
-    void append_damage(EntityUniqueId id);
+    void append_damage(EntityId id);
 
     Health damage_per_overlap_detection_{};
     DirectDamageEvents damage_events_;

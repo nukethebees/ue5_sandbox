@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ioj/fixed_array.h>
-#include <ioj/sim/entities/entity_unique_id.h>
+#include <ioj/sim/entities/entity_id.h>
 
 #include <algorithm>
 #include <cassert>
@@ -27,7 +27,7 @@ inline auto scan(EntityTypeRuns::Count const count, auto id_at) -> EntityTypeRun
     EntityTypeRuns::Offset first{};
     while (first < count) {
         auto const id{id_at(first)};
-        if (id == EntityUniqueId{}) {
+        if (id == EntityId{}) {
             break;
         }
         auto const type{id.entity_type()};
@@ -48,14 +48,14 @@ inline auto scan(EntityTypeRuns::Count const count, auto id_at) -> EntityTypeRun
 }
 
 // IDs must be sorted by type, with empty IDs last.
-inline auto entity_type_runs(std::span<EntityUniqueId const> const ids) -> EntityTypeRuns {
+inline auto entity_type_runs(std::span<EntityId const> const ids) -> EntityTypeRuns {
     assert(std::in_range<EntityTypeRuns::Count>(ids.size()));
     return entity_type_run_detail::scan(static_cast<EntityTypeRuns::Count>(ids.size()),
                                         [ids](EntityTypeRuns::Offset row) { return ids[row]; });
 }
 
 // The permutation must sort IDs by type, with empty IDs last.
-inline auto entity_type_runs(std::span<EntityUniqueId const> const ids,
+inline auto entity_type_runs(std::span<EntityId const> const ids,
                              std::span<EntityTypeRuns::Offset const> const order)
     -> EntityTypeRuns {
     assert(order.size() == ids.size());
@@ -65,7 +65,7 @@ inline auto entity_type_runs(std::span<EntityUniqueId const> const ids,
         [ids, order](EntityTypeRuns::Offset row) { return ids[order[row]]; });
 }
 
-inline auto group_entity_ids(std::span<EntityUniqueId const> const ids,
+inline auto group_entity_ids(std::span<EntityId const> const ids,
                              std::span<EntityTypeRuns::Offset> const order) -> EntityTypeRuns {
     assert(order.size() == ids.size());
     std::iota(order.begin(), order.end(), EntityTypeRuns::Offset{});

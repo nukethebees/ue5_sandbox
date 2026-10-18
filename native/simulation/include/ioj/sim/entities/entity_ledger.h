@@ -22,20 +22,20 @@ class EntityLedger {
     void record_spawns(EntityType type,
                        std::span<Team const> teams,
                        std::span<Health const> healths,
-                       std::span<EntityUniqueId> ids);
+                       std::span<EntityId> ids);
     void record_spawns(EntityType type,
                        std::span<Team const> teams,
                        Health health,
-                       std::span<EntityUniqueId> ids);
-    void record_spawns(EntityType type, Team team, Health health, std::span<EntityUniqueId> ids);
-    void record_status(std::span<EntityUniqueId const> ids,
+                       std::span<EntityId> ids);
+    void record_spawns(EntityType type, Team team, Health health, std::span<EntityId> ids);
+    void record_status(std::span<EntityId const> ids,
                        std::span<Team const> teams,
                        std::span<Health const> healths);
     void record_deaths(EntityDeathInfo::ConstView deaths, SimTick tick);
     // Match applied damage to the event rows; use zero for unapplied events.
     void record_damage(DirectDamageEvents::ConstView events,
                        std::span<Health const> applied_damage);
-    void record_shots(std::span<EntityUniqueId const> instigators);
+    void record_shots(std::span<EntityId const> instigators);
 
     // Read death metadata after record_deaths; it describes the latest death of that identity.
     auto get_unique_entities() const noexcept -> EntityHistory::ConstView {
@@ -45,17 +45,17 @@ class EntityLedger {
     auto get_frame_deaths(EntityType type) const -> std::span<HistoryIndex const> {
         return frame_deaths_[std::to_underlying(type)];
     }
-    auto get_history_index(EntityUniqueId id) const noexcept -> std::uint32_t {
+    auto get_history_index(EntityId id) const noexcept -> std::uint32_t {
         return ids_.history_index(id);
     }
-    auto is_valid_unique_id(EntityUniqueId id) const noexcept -> bool {
+    auto is_valid_unique_id(EntityId id) const noexcept -> bool {
         return get_history_index(id) != EntityIdAllocator::invalid_index;
     }
     auto get_issued_counts() const noexcept -> EntityTypeSizes const& {
         return ids_.issued_counts();
     }
     auto get_num_unique_ids_issued() const noexcept -> std::uint32_t { return history_.num(); }
-    auto get_kills(EntityUniqueId id) const -> std::uint32_t;
+    auto get_kills(EntityId id) const -> std::uint32_t;
     auto count_alive() const noexcept -> std::int32_t { return statistics_.alive_count(); }
     auto count_alive(EntityType type) const noexcept -> std::int32_t {
         return statistics_.count_alive(type);
@@ -80,8 +80,8 @@ class EntityLedger {
     void record_spawns_impl(EntityType type,
                             Teams const& teams,
                             Healths const& healths,
-                            std::span<EntityUniqueId> ids);
-    auto require_history_index(EntityUniqueId id) const -> std::uint32_t;
+                            std::span<EntityId> ids);
+    auto require_history_index(EntityId id) const -> std::uint32_t;
     EntityHistory history_;
     EntityIdAllocator ids_;
     CombatStatistics statistics_;

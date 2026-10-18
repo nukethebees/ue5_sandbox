@@ -3,7 +3,7 @@
 #include "ioj/sim/entities/entity_type.h"
 #include "ioj/sim/entities/health.h"
 #include <ioj/column_math.h>
-#include <ioj/sim/entities/entity_unique_id.h>
+#include <ioj/sim/entities/entity_id.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGamePresentation/integration/VectorConversion.h>
 
@@ -151,7 +151,7 @@ auto collect_radar_instances(std::span<::ioj::presentation::AgentDisplayBatch co
                              TConstArrayView<EEntityOverlayObjectiveRole> const objective_roles,
                              FRadarContactColours const& contact_colours,
                              FTransform const& player_transform,
-                             ::ioj::sim::EntityUniqueId const player_id,
+                             ::ioj::sim::EntityId const player_id,
                              ETestTeam const player_team,
                              FRadarSettings const& settings,
                              FRadarFrame& output_frame) -> FRadarCollectionResult {

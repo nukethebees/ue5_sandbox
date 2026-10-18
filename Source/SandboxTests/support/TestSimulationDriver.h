@@ -1,5 +1,5 @@
 #pragma once
-#include <ioj/sim/entities/entity_unique_id.h>
+#include <ioj/sim/entities/entity_id.h>
 #include <ioj/test_timeline.h>
 
 #include <HAL/Platform.h>
@@ -38,11 +38,11 @@ struct TestSimulationDriver {
     auto get_capital_ships() const -> ::ioj::sim::capital_ships::Sim const&;
     auto get_fighters() const -> ::ioj::sim::fighters::Sim const&;
 
-    void queue_damage(std::span<::ioj::sim::EntityUniqueId const> targets,
+    void queue_damage(std::span<::ioj::sim::EntityId const> targets,
                       int32 damage,
-                      ::ioj::sim::EntityUniqueId instigator = {});
-    void queue_kills(std::span<::ioj::sim::EntityUniqueId const> targets,
-                     ::ioj::sim::EntityUniqueId instigator = {});
+                      ::ioj::sim::EntityId instigator = {});
+    void queue_kills(std::span<::ioj::sim::EntityId const> targets,
+                     ::ioj::sim::EntityId instigator = {});
     bool should_export_results() const;
 
     void set_time_scale(time_type scale);

@@ -2,7 +2,7 @@
 
 #include "ioj/sim/collision/collision_grid.h"
 #include "ioj/sim/collision/trace_hits.h"
-#include "ioj/sim/entities/entity_unique_id.h"
+#include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/fighters/fighter_navigation_types.h"
 #include "ioj/vector_types.h"
 #include "ioj/vectors3f.h"
@@ -32,8 +32,8 @@ void make_avoidance_choice_order(
     std::uint32_t integral_bias,
     std::int8_t previous_choice,
     std::array<std::int8_t, avoidance_direction_count>& choice_order) noexcept;
-[[nodiscard]] auto make_coincident_separation_direction(EntityUniqueId self,
-                                                        EntityUniqueId other) noexcept -> Vector3f;
+[[nodiscard]] auto make_coincident_separation_direction(EntityId self,
+                                                        EntityId other) noexcept -> Vector3f;
 [[nodiscard]] auto classify_navigation_risk(float closest_distance_squared,
                                             float immediate_distance_squared,
                                             float close_distance_squared,
@@ -49,7 +49,7 @@ void make_avoidance_choice_order(
                                                       float separation_strength) noexcept
     -> std::optional<Vector3f>;
 [[nodiscard]] auto observe_separation(Vector3f fighter_location,
-                                      EntityUniqueId fighter_id,
+                                      EntityId fighter_id,
                                       Vector3f goal_direction,
                                       Vector3f previous_memory,
                                       std::span<SeparationNeighbour const> neighbours,

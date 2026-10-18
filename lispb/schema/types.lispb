@@ -129,8 +129,8 @@
   :pass-by value)
 
 (type native_unique_id
-  :spelling "EntityUniqueId"
-  :header "ioj/sim/entities/entity_unique_id.h"
+  :spelling "EntityId"
+  :header "ioj/sim/entities/entity_id.h"
   :pass-by value)
 
 (type native_fighter_order

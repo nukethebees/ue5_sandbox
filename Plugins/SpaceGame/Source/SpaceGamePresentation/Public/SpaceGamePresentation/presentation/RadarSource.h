@@ -1,5 +1,5 @@
 #pragma once
-#include "ioj/sim/entities/entity_unique_id.h"
+#include "ioj/sim/entities/entity_id.h"
 #include "SpaceGamePresentation/presentation/AgentDisplayBatch.h"
 #include "SpaceGamePresentation/presentation/LevelPresentationSettings.h"
 #include <SpaceGamePresentation/entities/TestTeam.h>
@@ -35,7 +35,7 @@ namespace ioj::radar_source {
                             TConstArrayView<EEntityOverlayObjectiveRole> objective_roles,
                             FRadarContactColours const& contact_colours,
                             FTransform const& player_transform,
-                            ::ioj::sim::EntityUniqueId player_id,
+                            ::ioj::sim::EntityId player_id,
                             ETestTeam player_team,
                             FRadarSettings const& settings,
                             FRadarFrame& output_frame) -> FRadarCollectionResult;

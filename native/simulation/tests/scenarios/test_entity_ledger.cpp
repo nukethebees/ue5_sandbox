@@ -69,7 +69,7 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
     assert(player);
     auto const player_id{player->unique_entity_id};
     auto const initial_alive_count{harness.get_ledger().count_alive()};
-    std::vector<EntityUniqueId> available_targets;
+    std::vector<EntityId> available_targets;
     auto const capitals{harness.get_simulation().get_capital_ships().get_entities()};
     auto const capital_count{capitals.num()};
     auto const teams{capitals.teams()};
@@ -81,7 +81,7 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
     }
     EXPECT_GT(static_cast<std::int32_t>(available_targets.size()), expected_kills - 1)
         << "Enough non-player-team targets are available";
-    auto const targets{std::span<EntityUniqueId const>{available_targets}.first(
+    auto const targets{std::span<EntityId const>{available_targets}.first(
         static_cast<std::size_t>(expected_kills))};
     struct Sample {
         std::int32_t player_kills{};

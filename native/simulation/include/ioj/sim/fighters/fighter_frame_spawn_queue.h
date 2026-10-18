@@ -18,8 +18,8 @@ struct FrameSpawnQueue {
     void add(Vector3f location,
              Rotator3f rotation,
              Team team,
-             EntityUniqueId parent,
-             EntityUniqueId target);
+             EntityId parent,
+             EntityId target);
 
     auto view_locations() -> FrameVectors3f& { return locations_; }
     auto view_locations() const -> FrameVectors3f const& { return locations_; }
@@ -27,10 +27,10 @@ struct FrameSpawnQueue {
     auto view_rotations() const -> FrameRotators3f const& { return rotations_; }
     auto teams() -> std::span<Team> { return teams_.view(); }
     auto teams() const -> std::span<Team const> { return teams_.view(); }
-    auto parents() -> std::span<EntityUniqueId> { return parents_.view(); }
-    auto parents() const -> std::span<EntityUniqueId const> { return parents_.view(); }
-    auto targets() -> std::span<EntityUniqueId> { return targets_.view(); }
-    auto targets() const -> std::span<EntityUniqueId const> { return targets_.view(); }
+    auto parents() -> std::span<EntityId> { return parents_.view(); }
+    auto parents() const -> std::span<EntityId const> { return parents_.view(); }
+    auto targets() -> std::span<EntityId> { return targets_.view(); }
+    auto targets() const -> std::span<EntityId const> { return targets_.view(); }
     auto num() const -> std::uint32_t { return locations_.num(); }
     void validate() const {
         locations_.validate();
@@ -45,7 +45,7 @@ struct FrameSpawnQueue {
     FrameVectors3f locations_;
     FrameRotators3f rotations_;
     ioj::FrameArray<Team> teams_;
-    ioj::FrameArray<EntityUniqueId> parents_;
-    ioj::FrameArray<EntityUniqueId> targets_;
+    ioj::FrameArray<EntityId> parents_;
+    ioj::FrameArray<EntityId> targets_;
 };
 }

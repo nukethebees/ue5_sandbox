@@ -10,7 +10,7 @@ inline void add(EntityCellData& data,
                 Vector3f const max_point,
                 CellCoord const min_cell,
                 CellCoord const max_cell,
-                EntityUniqueId const id) {
+                EntityId const id) {
     auto const index{data.num()};
     data.add_uninitialised(1);
     auto const view{data.get_view()};

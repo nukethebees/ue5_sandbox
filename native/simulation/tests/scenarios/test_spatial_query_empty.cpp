@@ -20,14 +20,14 @@ void run_worldless_spatial_query_empty(tests::SimulationFixture const& config) {
     queries.initialise(data.grid_geometry, data.entity_bounds);
     owners.publish();
     owners.refresh(queries);
-    std::vector<EntityUniqueId> ids{};
+    std::vector<EntityId> ids{};
     Vectors3f starts;
     Vectors3f ends;
     queries.trace_line_of_sight(starts.get_const_view(), ends.get_const_view(), ids, &query_memory);
     std::vector<LineQueryResult> line_of_sight{};
     queries.has_line_of_sight_to_targets(
         ioj::make_vector3f(0.f, 0.f, 0.f), ends.get_const_view(), {}, line_of_sight, &query_memory);
-    std::vector<EntityUniqueId> results{};
+    std::vector<EntityId> results{};
     auto const count{queries.collect_non_team_entities_in_range(
         ioj::make_vector3f(0.f, 0.f, 0.f), Team::Blue, 1000.f, results, &query_memory)};
     EXPECT_EQ(count, 0) << "Empty range query has no results";
@@ -53,7 +53,7 @@ void run_worldless_spatial_query_range(tests::SimulationFixture const& config) {
     queries.initialise(data.grid_geometry, data.entity_bounds);
     owners.publish();
     owners.refresh(queries);
-    std::array<EntityUniqueId, 4> results;
+    std::array<EntityId, 4> results;
     auto const count{queries.collect_non_team_entities_in_range(
         ioj::make_vector3f(0.f, 0.f, 0.f), Team::Blue, 1000.f, results, &query_memory)};
     EXPECT_EQ(count, 1) << "Only one enemy is within the inclusive radius";
@@ -61,7 +61,7 @@ void run_worldless_spatial_query_range(tests::SimulationFixture const& config) {
         EXPECT_EQ(boundary_enemy, results[0]) << "Boundary enemy is included";
     }
 
-    std::array<EntityUniqueId, 4> ids;
+    std::array<EntityId, 4> ids;
     auto const type_count{
         queries.collect_entities_of_type_in_range(ioj::make_vector3f(0.f, 0.f, 0.f),
                                                   EntityType::CapitalShip,

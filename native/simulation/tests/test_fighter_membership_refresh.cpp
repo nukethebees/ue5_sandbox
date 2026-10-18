@@ -72,7 +72,7 @@ class FighterMembershipRefresh : public ::testing::Test {
         auto const& capitals{simulation.get_capital_ships()};
         auto const& fighter_view{simulation.get_fighters()};
         auto const& entities{fighter_view.get_entities()};
-        std::vector<EntityUniqueId> flat;
+        std::vector<EntityId> flat;
         std::uint32_t offset{};
         auto const capital_count{capitals.get_entities().num()};
         auto const fighter_count{entities.num()};
@@ -81,7 +81,7 @@ class FighterMembershipRefresh : public ::testing::Test {
         auto const fighter_ids{entities.entity_ids()};
         auto const healths{fighter_view.get_healths()};
         for (std::uint32_t capital_index{}; capital_index < capital_count; ++capital_index) {
-            std::vector<EntityUniqueId> expected;
+            std::vector<EntityId> expected;
             for (std::uint32_t fighter_index{}; fighter_index < fighter_count; ++fighter_index) {
                 if (is_alive(healths.health(fighter_index)) &&
                     parent_ids[fighter_index] == capital_ids[capital_index]) {
@@ -101,7 +101,7 @@ class FighterMembershipRefresh : public ::testing::Test {
         EXPECT_TRUE(std::ranges::equal(simulation.get_capital_ships().get_fighter_ids(), flat));
     }
 
-    void damage(EntityUniqueId const victim, Health const amount) {
+    void damage(EntityId const victim, Health const amount) {
         DirectDamageEvents events;
         events.add(victim, amount, {});
         LevelSimTestAccess::queue_direct_damage_events(simulation, events.get_const_view());
@@ -112,7 +112,7 @@ class FighterMembershipRefresh : public ::testing::Test {
         LevelSimTestAccess::resolve_ship_damage(simulation, &memory);
     }
 
-    void order_task(EntityUniqueId const fighter, FighterTask const task) {
+    void order_task(EntityId const fighter, FighterTask const task) {
         FighterOrderQueue orders;
         orders.add(fighter, FighterOrder{1, 0}, task, {});
         LevelSimTestAccess::queue_fighter_orders(simulation, orders);
@@ -120,10 +120,10 @@ class FighterMembershipRefresh : public ::testing::Test {
 
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, make_world()};
-    EntityUniqueId first_parent;
-    EntityUniqueId second_parent;
-    EntityUniqueId enemy;
-    std::vector<EntityUniqueId> fighters;
+    EntityId first_parent;
+    EntityId second_parent;
+    EntityId enemy;
+    std::vector<EntityId> fighters;
     alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024> backing{};
     ioj::FrameMemoryResource memory{backing};
 };

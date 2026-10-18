@@ -156,7 +156,7 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
     auto const spinners{level.get_spinners().get_entities()};
     auto const* player{level.get_player()};
     auto const append_batch{[&](EntityType const type,
-                                std::span<EntityUniqueId const> const ids,
+                                std::span<EntityId const> const ids,
                                 Vectors3fConstView const locations,
                                 HealthConstView const healths,
                                 auto orientation_at) {
@@ -257,7 +257,7 @@ void CollisionUniformGrid::begin_entity_grid() {
         storage.rebuild_entity_data.reset();
     }
 }
-void CollisionUniformGrid::append_entity_bounds(EntityUniqueId const id, WorldAABB const bounds) {
+void CollisionUniformGrid::append_entity_bounds(EntityId const id, WorldAABB const bounds) {
     auto const& geometry{geometry_};
     auto& storage{entity_storage_};
     auto const row_stride{geometry.dimensions.x()};
@@ -395,7 +395,7 @@ auto CollisionUniformGrid::get_entity_world_bounds() const -> EntityCellData::Co
 // Spatial queries
 /* **************************************** */
 void CollisionUniformGrid::collect_unique_entities_in_cells(
-    std::span<CellCoord const> const cells, ioj::FrameArray<EntityUniqueId>& out_entities) const {
+    std::span<CellCoord const> const cells, ioj::FrameArray<EntityId>& out_entities) const {
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::collect_unique_entities_in_cells");
     out_entities.clear();
 
@@ -424,15 +424,15 @@ void CollisionUniformGrid::collect_unique_entities_in_cells(
     out_entities.set_num(out_entities.num() - static_cast<std::uint32_t>(duplicates.size()));
 }
 auto CollisionUniformGrid::count_overlaps(WorldAABB const& query_bounds,
-                                          EntityUniqueId const ignored_entity) const
+                                          EntityId const ignored_entity) const
     -> OverlapCounts {
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::count_overlaps");
     return overlaps_impl<false>(query_bounds, ignored_entity, {}, {});
 }
 void CollisionUniformGrid::write_overlaps(
     WorldAABB const& query_bounds,
-    EntityUniqueId const ignored_entity,
-    std::span<EntityUniqueId> const out_entities,
+    EntityId const ignored_entity,
+    std::span<EntityId> const out_entities,
     std::span<StaticGeometryIndex> const out_static_geometry_indices) const {
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::write_overlaps");
     [[maybe_unused]] auto const counts{overlaps_impl<true>(
@@ -443,8 +443,8 @@ void CollisionUniformGrid::write_overlaps(
 template <bool Write>
 auto CollisionUniformGrid::overlaps_impl(
     collision::WorldAABB const& query_bounds,
-    EntityUniqueId const ignored_entity,
-    std::span<EntityUniqueId> const out_entities,
+    EntityId const ignored_entity,
+    std::span<EntityId> const out_entities,
     std::span<StaticGeometryIndex> const out_static_geometry_indices) const -> OverlapCounts {
     OverlapCounts result{};
     auto const [min_coord, max_coord]{to_cell_coord_bounds(query_bounds.min, query_bounds.max)};
@@ -550,14 +550,14 @@ void CollisionUniformGrid::trace_aabbs(LineTraceBatch const& traces,
 void CollisionUniformGrid::trace_aabbs(
     LineTraceBatch const& traces,
     TraceHits::View const& hits,
-    std::span<EntityUniqueId const> const ignored_entities) const {
+    std::span<EntityId const> const ignored_entities) const {
     trace_aabbs_impl<TraceKind::Line, IgnoredEntityMode::PerTrace, TraceEntityFilter::None>(
         traces, hits, ignored_entities, {});
 }
 void CollisionUniformGrid::sweep_aabbs(LineTraceBatch const& centre_paths,
                                        Vector3f const moving_half_extent,
                                        TraceHits::View const& hits,
-                                       std::span<EntityUniqueId const> const ignored_entities,
+                                       std::span<EntityId const> const ignored_entities,
                                        TraceEntityFilter const entity_filter) const {
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::sweep_aabbs");
 
@@ -595,7 +595,7 @@ template <CollisionUniformGrid::TraceKind Kind,
           TraceEntityFilter EntityFilter>
 void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
                                             TraceHits::View const hits,
-                                            std::span<EntityUniqueId const> const ignored_entities,
+                                            std::span<EntityId const> const ignored_entities,
                                             Vector3f const moving_half_extent) const {
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::trace_aabbs_impl");
 
@@ -644,7 +644,7 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
     for (std::uint32_t trace_index{}; trace_index < trace_count; ++trace_index) {
         auto const output_index{static_cast<std::size_t>(trace_index)};
         hit_flags[output_index] = TraceHit{};
-        hit_entities[output_index] = EntityUniqueId{};
+        hit_entities[output_index] = EntityId{};
         hit_static_indices[output_index] = invalid_static_geometry_index;
 
         auto const start{traces.starts[trace_index]};
@@ -673,9 +673,9 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
         }};
 
         auto nearest_t{no_trace_hit};
-        EntityUniqueId nearest_entity;
+        EntityId nearest_entity;
         StaticGeometryIndex nearest_static_index{invalid_static_geometry_index};
-        EntityUniqueId ignored_entity{};
+        EntityId ignored_entity{};
         if constexpr (IgnoredMode == IgnoredEntityMode::PerTrace) {
             ignored_entity = ignored_entities[output_index];
         }
@@ -729,7 +729,7 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
                                                               static_max_zs[static_aabb_index]))};
                 if (hit_t < nearest_t) {
                     nearest_t = hit_t;
-                    nearest_entity = EntityUniqueId{};
+                    nearest_entity = EntityId{};
                     nearest_static_index = static_aabb_index;
                 }
             }

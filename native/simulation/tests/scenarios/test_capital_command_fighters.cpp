@@ -16,7 +16,7 @@ void run_worldless_capital_command_fighters(tests::SimulationFixture const& conf
     auto const& capitals{harness.get_simulation().get_capital_ships()};
     auto const& fighters{harness.get_simulation().get_fighters()};
     auto const first_target{capitals.get_id(1)};
-    EntityUniqueId second_target;
+    EntityId second_target;
     SimTick final_kill_tick{};
     harness.on_end_tick = [&](LevelSim& simulation) {
         if (final_kill_tick != 0 &&
@@ -48,7 +48,7 @@ void run_worldless_capital_command_fighters(tests::SimulationFixture const& conf
                     EXPECT_EQ(second_target, fighters.get_target_ids()[index])
                         << "Fighter follows the replacement capital target";
                 }
-                std::vector<EntityUniqueId> enemies;
+                std::vector<EntityId> enemies;
                 auto const entities{capitals.get_entities()};
                 auto const entity_count{entities.num()};
                 auto const teams{entities.teams()};

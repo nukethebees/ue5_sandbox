@@ -24,11 +24,11 @@ TEST(Analyzer, ReportsFactualNumericDeltas) {
 
 TEST(AbiProfile, ResolvesSchemaRepresentationsWithoutGuessingCycles) {
     auto abi{AbiProfile::host_common()};
-    abi.set_representation("EntityUniqueId", "std::uint32_t");
+    abi.set_representation("EntityId", "std::uint32_t");
     abi.set_representation("CycleA", "CycleB");
     abi.set_representation("CycleB", "CycleA");
 
-    EXPECT_EQ(abi.find("EntityUniqueId")->size_bytes, 4);
+    EXPECT_EQ(abi.find("EntityId")->size_bytes, 4);
     EXPECT_FALSE(abi.find("CycleA").has_value());
     EXPECT_FALSE(abi.find("Unknown").has_value());
 }

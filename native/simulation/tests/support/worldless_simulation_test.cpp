@@ -21,9 +21,9 @@ void WorldlessSimulationTest::advance(time_type const dt) {
     }
 }
 
-void WorldlessSimulationTest::queue_damage(std::span<EntityUniqueId const> const targets,
+void WorldlessSimulationTest::queue_damage(std::span<EntityId const> const targets,
                                            std::int32_t const damage,
-                                           EntityUniqueId const instigator) {
+                                           EntityId const instigator) {
     DirectDamageEvents events;
     events.reserve(static_cast<std::int32_t>(targets.size()));
     for (auto const target : targets) {
@@ -31,8 +31,8 @@ void WorldlessSimulationTest::queue_damage(std::span<EntityUniqueId const> const
     }
     LevelSimTestAccess::queue_direct_damage_events(simulation_, events.get_const_view());
 }
-void WorldlessSimulationTest::queue_kills(std::span<EntityUniqueId const> const targets,
-                                          EntityUniqueId const instigator) {
+void WorldlessSimulationTest::queue_kills(std::span<EntityId const> const targets,
+                                          EntityId const instigator) {
     DirectDamageEvents events;
     events.reserve(static_cast<std::int32_t>(targets.size()));
     for (auto const target : targets) {

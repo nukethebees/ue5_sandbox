@@ -148,7 +148,7 @@ struct LevelSim {
     EntityTables entity_tables_{clock_};
     SpatialQueryManager query_manager_;
     OverlapHandler overlap_handler_;
-    std::vector<EntityUniqueId> overlap_candidates_;
+    std::vector<EntityId> overlap_candidates_;
 
     lasers::Sim lasers_simulation_;
 

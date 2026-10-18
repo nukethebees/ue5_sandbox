@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/sim/entities/entity_unique_id.h>
+#include <ioj/sim/entities/entity_id.h>
 #include <ioj/time_series_data.h>
 #include <SandboxTests/support/SimulationTestScenario.h>
 class ATestSpaceShip;
@@ -31,7 +31,7 @@ class FTestPlayerShipDeathScenario final : public FSimulationTestScenario {
     void check_player_ship_death();
 
     TWeakObjectPtr<ATestSpaceShip> player_ship{nullptr};
-    ::ioj::sim::EntityUniqueId player_ship_id{};
+    ::ioj::sim::EntityId player_ship_id{};
     TimeSeriesData<FSimulationSample> samples;
 };
 }

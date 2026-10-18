@@ -211,7 +211,7 @@ void LevelSim::begin_subsystems() {
 void LevelSim::initialise_events(CompiledLevelEvents events) {
     auto const player_id{player_ship_simulation_.has_value()
                              ? player_ship_simulation_->unique_entity_id
-                             : EntityUniqueId{}};
+                             : EntityId{}};
     event_manager_.initialise(std::move(events), player_id);
 }
 /* **************************************** */

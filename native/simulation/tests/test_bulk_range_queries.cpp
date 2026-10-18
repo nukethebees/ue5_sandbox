@@ -43,7 +43,7 @@ class BulkRangeQueries : public ::testing::Test {
         ASSERT_EQ(output.entities.num(), output.directions.num());
         auto const locations{origins.get_const_view()};
         auto const directions{output.directions.get_const_view()};
-        std::array<EntityUniqueId, 512> reference;
+        std::array<EntityId, 512> reference;
         alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
             reference_backing{};
         ioj::FrameMemoryResource reference_memory{reference_backing};
@@ -61,7 +61,7 @@ class BulkRangeQueries : public ::testing::Test {
                 locations[index], teams[index], radius, reference, &reference_memory)};
             // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- result count depends on this request.
             auto const expected{reference_view.first(count)};
-            std::vector<EntityUniqueId> actual;
+            std::vector<EntityId> actual;
             auto const end{range.end()};
             for (auto match{range.offset}; match < end; ++match) {
                 auto const id{output.entities[match]};

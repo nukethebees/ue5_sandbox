@@ -62,7 +62,7 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
     harness.finish_initialisation();
     auto& simulation{harness.get_simulation()};
 
-    std::map<EntityUniqueId, FighterTransformSnapshot> previous_transforms;
+    std::map<EntityId, FighterTransformSnapshot> previous_transforms;
     auto capture_current_transforms = [&](fighters::Sim const& fighters) {
         previous_transforms.clear();
         auto const entities{fighters.get_entities()};
@@ -85,7 +85,7 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
     bool observed_empty_tick{};
     harness.on_end_tick = [&](LevelSim& level) {
         auto const entities{level.get_fighters().get_entities()};
-        std::set<EntityUniqueId> expected_moved;
+        std::set<EntityId> expected_moved;
         auto const entity_count{entities.num()};
         auto const entity_ids{entities.entity_ids()};
         auto const locations{entities.view_locations()};
@@ -102,7 +102,7 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
         }
 
         auto const moved{level.get_fighters().get_overlap_candidates()};
-        std::set<EntityUniqueId> const unique_moved{moved.begin(), moved.end()};
+        std::set<EntityId> const unique_moved{moved.begin(), moved.end()};
         for (auto const id : unique_moved) {
             if (!previous_transforms.contains(id)) {
                 expected_moved.insert(id);

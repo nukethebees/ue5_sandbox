@@ -5,7 +5,7 @@
 
 #include "ioj/native_soa/storage.h"
 #include "ioj/rotator_types.h"
-#include "ioj/sim/entities/entity_unique_id.h"
+#include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/lasers/laser_source.h"
 #include "ioj/vector_soa_view.h"
 
@@ -39,7 +39,7 @@ struct SpawnRequestsSingleLayoutColumns {
     ColLayout<std::int32_t> DamagesColumn;
     ColLayout<float> SpeedsColumn;
     ColLayout<float> MaxDistancesColumn;
-    ColLayout<EntityUniqueId> InstigatorIdsColumn;
+    ColLayout<EntityId> InstigatorIdsColumn;
     ColLayout<ioj::sim::LaserSource> SourcesColumn;
 
     constexpr SpawnRequestsSingleLayoutColumns() noexcept
@@ -201,7 +201,7 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<SpawnRequestsSingle
 // damages: std::int32_t
 // speeds: float
 // max_distances: float
-// instigator_ids: EntityUniqueId
+// instigator_ids: EntityId
 // sources: ioj::sim::LaserSource
 struct LaserSpawnRequests
     : protected ioj::native_soa::StorageState
@@ -261,7 +261,7 @@ struct LaserSpawnRequests
         Element<std::int32_t>* damages{};
         Element<float>* speeds{};
         Element<float>* max_distances{};
-        Element<EntityUniqueId>* instigator_ids{};
+        Element<EntityId>* instigator_ids{};
         Element<ioj::sim::LaserSource>* sources{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (locations_xs == nullptr) {

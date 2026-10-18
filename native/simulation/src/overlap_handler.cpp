@@ -37,7 +37,7 @@ void OverlapHandler::handle(collision::DetectedOverlapsView const overlaps, Comb
     }
 }
 
-void OverlapHandler::append_damage(EntityUniqueId const id) {
+void OverlapHandler::append_damage(EntityId const id) {
     switch (id.entity_type()) {
         case EntityType::PlayerShip:
         case EntityType::Turret:

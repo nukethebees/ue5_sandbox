@@ -3,7 +3,7 @@
 #include "ioj/sim/collision/collision_grid.h"
 #include "ioj/sim/collision/entity_cell_data.h"
 #include "ioj/sim/collision/world_aabbs.h"
-#include "ioj/sim/entities/entity_unique_id.h"
+#include "ioj/sim/entities/entity_id.h"
 #include <ioj/enum_array.h>
 
 #include <cstdint>
@@ -20,7 +20,7 @@ struct CollisionGridEntityStorage {
     std::vector<CellEntryOffset> cell_offsets;
     std::vector<CellEntryCount> cell_counts;
     std::vector<CellIndex> non_empty_cell_indices;
-    std::vector<EntityUniqueId> entities;
+    std::vector<EntityId> entities;
     WorldAABBs aabbs;
 
     /* **************************************** */

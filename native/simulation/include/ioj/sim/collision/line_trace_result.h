@@ -4,14 +4,14 @@
 #pragma once
 
 #include "ioj/sim/collision/collision_types.h"
-#include "ioj/sim/entities/entity_unique_id.h"
+#include "ioj/sim/entities/entity_id.h"
 #include "ioj/vector_types.h"
 
 namespace ioj::sim {
 struct LineTraceResult {
     Vector3f location{};
 
-    EntityUniqueId entity;
+    EntityId entity;
 
     ioj::sim::collision::StaticGeometryIndex static_geometry_index{
         collision::invalid_static_geometry_index};

@@ -133,8 +133,8 @@ void ATestSpaceShip::configure_ship_mesh() {
 /* **************************************** */
 // Entity identity and configuration
 /* **************************************** */
-auto ATestSpaceShip::get_unique_id() const noexcept -> ::ioj::sim::EntityUniqueId {
-    return bound_simulation ? bound_simulation->unique_entity_id : ::ioj::sim::EntityUniqueId{};
+auto ATestSpaceShip::get_unique_id() const noexcept -> ::ioj::sim::EntityId {
+    return bound_simulation ? bound_simulation->unique_entity_id : ::ioj::sim::EntityId{};
 }
 
 auto ATestSpaceShip::get_team() const noexcept -> ETestTeam {

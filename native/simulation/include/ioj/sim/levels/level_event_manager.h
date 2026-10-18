@@ -23,11 +23,11 @@ class LevelEventManager {
     auto operator=(LevelEventManager const&) -> LevelEventManager& = delete;
     auto operator=(LevelEventManager&&) -> LevelEventManager& = delete;
 
-    void initialise(CompiledLevelEvents data, EntityUniqueId player_id = {});
+    void initialise(CompiledLevelEvents data, EntityId player_id = {});
     void execute_tick(SimTick tick);
-    auto get_spawned_ids() const -> std::span<EntityUniqueId const>;
+    auto get_spawned_ids() const -> std::span<EntityId const>;
     void configure_mission();
-    auto get_entity_id(LevelEntityIndex entity_index) const -> EntityUniqueId;
+    auto get_entity_id(LevelEntityIndex entity_index) const -> EntityId;
     auto has_future_spawns() const noexcept -> bool;
   private:
     LevelInitialisationData initialisation_{};

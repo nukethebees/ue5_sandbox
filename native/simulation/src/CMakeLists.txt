@@ -66,8 +66,8 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/telemetry/navigation_telemetry.h
   ../include/ioj/sim/overlap_handler.h
         ../include/ioj/sim/entities/entity_type.h
-        ../include/ioj/sim/entities/entity_unique_id.h
-  ../include/ioj/sim/entities/entity_unique_id_checks.h
+        ../include/ioj/sim/entities/entity_id.h
+  ../include/ioj/sim/entities/entity_id_checks.h
   ../include/ioj/sim/entities/team_checks.h
   ../include/ioj/sim/profiling.h
   ../include/ioj/sim/levels/reference_level_simulation_data.h

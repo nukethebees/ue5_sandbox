@@ -9,7 +9,7 @@ struct EntityTables {
         : lookups{clock} {}
 
     template <EntityType Type>
-    void publish(std::span<EntityUniqueId const> const ids,
+    void publish(std::span<EntityId const> const ids,
                  std::span<Team const> const teams,
                  Health const maximum) {
         auto& table{lookups.for_type(Type)};

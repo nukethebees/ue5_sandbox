@@ -18,7 +18,7 @@ void EntityLedger::reset_frame_output() {
         deaths.clear();
     }
 }
-auto EntityLedger::require_history_index(EntityUniqueId const id) const -> std::uint32_t {
+auto EntityLedger::require_history_index(EntityId const id) const -> std::uint32_t {
     auto const index{ids_.history_index(id)};
     if (index == EntityIdAllocator::invalid_index) {
         ioj::fatal_error(
@@ -30,7 +30,7 @@ template <typename Teams, typename Healths>
 void EntityLedger::record_spawns_impl(EntityType const type,
                                       Teams const& teams,
                                       Healths const& healths,
-                                      std::span<EntityUniqueId> const ids) {
+                                      std::span<EntityId> const ids) {
     auto const count{ids.size()};
     assert(std::ranges::size(teams) == count && std::ranges::size(healths) == count);
     assert(std::in_range<EntityHistory::size_type>(count));
@@ -56,23 +56,23 @@ void EntityLedger::record_spawns_impl(EntityType const type,
 void EntityLedger::record_spawns(EntityType const type,
                                  std::span<Team const> const teams,
                                  std::span<Health const> const healths,
-                                 std::span<EntityUniqueId> const ids) {
+                                 std::span<EntityId> const ids) {
     record_spawns_impl(type, teams, healths, ids);
 }
 void EntityLedger::record_spawns(EntityType const type,
                                  std::span<Team const> const teams,
                                  Health const health,
-                                 std::span<EntityUniqueId> const ids) {
+                                 std::span<EntityId> const ids) {
     record_spawns_impl(type, teams, std::views::repeat(health, ids.size()), ids);
 }
 void EntityLedger::record_spawns(EntityType const type,
                                  Team const team,
                                  Health const health,
-                                 std::span<EntityUniqueId> const ids) {
+                                 std::span<EntityId> const ids) {
     record_spawns_impl(
         type, std::views::repeat(team, ids.size()), std::views::repeat(health, ids.size()), ids);
 }
-void EntityLedger::record_status(std::span<EntityUniqueId const> const ids,
+void EntityLedger::record_status(std::span<EntityId const> const ids,
                                  std::span<Team const> const teams,
                                  std::span<Health const> const healths) {
     auto const count{ids.size()};
@@ -161,7 +161,7 @@ void EntityLedger::record_damage(DirectDamageEvents::ConstView const events,
         }
     }
 }
-void EntityLedger::record_shots(std::span<EntityUniqueId const> const instigators) {
+void EntityLedger::record_shots(std::span<EntityId const> const instigators) {
     auto const teams{get_unique_entities().teams()};
     for (auto const id : instigators) {
         if (id.is_valid()) {
@@ -169,7 +169,7 @@ void EntityLedger::record_shots(std::span<EntityUniqueId const> const instigator
         }
     }
 }
-auto EntityLedger::get_kills(EntityUniqueId const id) const -> std::uint32_t {
+auto EntityLedger::get_kills(EntityId const id) const -> std::uint32_t {
     return get_unique_entities().kills()[require_history_index(id)];
 }
 }

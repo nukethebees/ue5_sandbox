@@ -3,7 +3,7 @@
 #include "ioj/sim/entities/entity_type.h"
 #include "ioj/sim/entities/health.h"
 #include <ioj/column_math.h>
-#include <ioj/sim/entities/entity_unique_id.h>
+#include <ioj/sim/entities/entity_id.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGamePresentation/integration/VectorConversion.h>
 
@@ -19,7 +19,7 @@ struct FProjectedPosition {
 struct FSoftTargetCandidate {
     inline static constexpr float no_candidate_distance{std::numeric_limits<float>::infinity()};
 
-    ::ioj::sim::EntityUniqueId id{};
+    ::ioj::sim::EntityId id{};
     float centre_distance_pixels{no_candidate_distance};
     float centre_score_pixels{no_candidate_distance};
     float surface_distance{no_candidate_distance};
@@ -119,7 +119,7 @@ auto select_soft_target(std::span<::ioj::presentation::AgentDisplayBatch const> 
                         TConstArrayView<EEntityOverlayObjectiveRole> const objective_roles,
                         FSoftTargetSelectionContext const& context,
                         FSoftTargetSelectionSettings const& settings,
-                        ::ioj::sim::EntityUniqueId const current_target)
+                        ::ioj::sim::EntityId const current_target)
     -> FSoftTargetSelectionResult {
     check(objective_roles.Num() == ::ioj::presentation::display_entity_count(batches));
     if (!context.view.is_valid()) {

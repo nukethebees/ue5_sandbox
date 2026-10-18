@@ -27,8 +27,8 @@ struct LevelSimTestAccess {
         fighters::CommandInterface{simulation.fighters_simulation_}.queue_spawns(spawns);
     }
     static void reassign_pending_fighter_spawns(LevelSim& simulation,
-                                                EntityUniqueId parent,
-                                                EntityUniqueId replacement) {
+                                                EntityId parent,
+                                                EntityId replacement) {
         fighters::CommandInterface{simulation.fighters_simulation_}.reassign_pending_spawns(
             parent, replacement);
     }
@@ -37,7 +37,7 @@ struct LevelSimTestAccess {
         simulation.capital_ships_simulation_.refresh_fighter_ids(scratch_resource);
     }
     static void
-        set_fighter_parent(LevelSim& simulation, EntityUniqueId fighter, EntityUniqueId parent) {
+        set_fighter_parent(LevelSim& simulation, EntityId fighter, EntityId parent) {
         simulation.fighters_simulation_.set_parent_id(fighter, parent);
     }
     static void prepare_fighters(LevelSim& simulation) {
@@ -87,8 +87,8 @@ struct LevelSimTestAccess {
         SimClockTestAccess::set_phase(simulation.clock_, previous_phase);
     }
     static void set_fighter_target(LevelSim& simulation,
-                                   EntityUniqueId fighter,
-                                   EntityUniqueId target,
+                                   EntityId fighter,
+                                   EntityId target,
                                    std::int8_t awareness_countdown = 0) {
         auto& fighters{simulation.fighters_simulation_};
         auto const index{simulation.fighters_simulation_.find_index(fighter)};
@@ -107,7 +107,7 @@ struct LevelSimTestAccess {
         SimClockTestAccess::set_phase(simulation.clock_, previous_phase);
     }
     static void set_fighter_kinematics(LevelSim& simulation,
-                                       EntityUniqueId fighter,
+                                       EntityId fighter,
                                        Vector3f location,
                                        Vector3f velocity) {
         auto const index{simulation.fighters_simulation_.find_index(fighter)};

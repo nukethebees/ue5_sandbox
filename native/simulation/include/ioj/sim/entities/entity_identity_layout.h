@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ioj/enum_array.h>
-#include <ioj/sim/entities/entity_unique_id.h>
+#include <ioj/sim/entities/entity_id.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -27,9 +27,9 @@ inline constexpr std::uint32_t entity_identity_capacity{[] {
     }
     return count;
 }()};
-static_assert(entity_identity_capacity <= EntityUniqueId::index_field::value_mask);
+static_assert(entity_identity_capacity <= EntityId::index_field::value_mask);
 
-[[nodiscard]] inline constexpr auto is_entity_identity_offset(EntityUniqueId const id) noexcept
+[[nodiscard]] inline constexpr auto is_entity_identity_offset(EntityId const id) noexcept
     -> bool {
     if (!id.is_valid()) {
         return false;

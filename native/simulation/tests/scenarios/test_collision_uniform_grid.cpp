@@ -70,7 +70,7 @@ struct TraceFixture {
         owners.rebuild(grid, aabbs);
     }
 
-    auto add_entity(Vector3f const location) -> EntityUniqueId {
+    auto add_entity(Vector3f const location) -> EntityId {
         auto const id{owners.spawn(EntityType::CapitalShip, location, {}, 1, Team::Blue)};
         handles.push_back(id);
         owners.publish();
@@ -80,7 +80,7 @@ struct TraceFixture {
 
     tests::CollisionAgentStorage owners;
     collision::CollisionUniformGrid grid;
-    std::vector<EntityUniqueId> handles{};
+    std::vector<EntityId> handles{};
     collision::EntityAABBs aabbs;
 };
 
@@ -138,7 +138,7 @@ auto make_line_traces(std::span<Vector3f const> const starts, std::span<Vector3f
 auto run_traces(TraceFixture const& fixture,
                 std::span<Vector3f const> const starts,
                 std::span<Vector3f const> const ends,
-                std::span<EntityUniqueId const> const ignored_entities = {}) -> TraceHits {
+                std::span<EntityId const> const ignored_entities = {}) -> TraceHits {
     auto const traces{make_line_traces(starts, ends)};
 
     TraceHits hits;
@@ -159,7 +159,7 @@ auto run_sweeps(TraceFixture const& fixture,
                 std::span<Vector3f const> const starts,
                 std::span<Vector3f const> const ends,
                 Vector3f const moving_half_extent,
-                std::span<EntityUniqueId const> const ignored_entities = {},
+                std::span<EntityId const> const ignored_entities = {},
                 collision::TraceEntityFilter const entity_filter =
                     collision::TraceEntityFilter::None) -> TraceHits {
     auto const traces{make_line_traces(starts, ends)};
@@ -223,7 +223,7 @@ void check_traces(TraceFixture const& fixture, std::span<ExpectedTrace const> co
     }
 }
 
-auto count_id(std::span<EntityUniqueId const> const handles, EntityUniqueId const expected)
+auto count_id(std::span<EntityId const> const handles, EntityId const expected)
     -> std::int32_t {
     std::int32_t count{};
     for (auto const handle : handles) {
@@ -265,7 +265,7 @@ void run_worldless_collision_uniform_grid_membership(tests::SimulationFixture co
         return;
     }
 
-    ioj::EnumArray<EntityType, EntityUniqueId> expected_ids{};
+    ioj::EnumArray<EntityType, EntityId> expected_ids{};
     expected_ids[EntityType::PlayerShip] = player->unique_entity_id;
     expected_ids[EntityType::Turret] = simulation.get_turrets().get_entities().entity_ids()[0];
     expected_ids[EntityType::CapitalShip] = simulation.get_capital_ships().get_id(0);
@@ -1852,7 +1852,7 @@ void CollisionUniformGridTraceRunner::test_static_geometry() {
               dynamic_hits.get_const_view().static_geometry_indices()[0])
         << "Dynamic hit clears static identity";
 
-    std::vector<EntityUniqueId> const ignored_entities{fixture.handles[0]};
+    std::vector<EntityId> const ignored_entities{fixture.handles[0]};
     auto const ignored_dynamic_hits{run_traces(fixture, starts, ends, ignored_entities)};
     EXPECT_TRUE(!ignored_dynamic_hits.get_const_view().entities()[0].is_valid())
         << "Ignored dynamic entity is not returned";

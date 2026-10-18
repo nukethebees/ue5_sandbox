@@ -4,7 +4,7 @@
 #include "SpaceGamePresentation/presentation/EntityOverlaySource.h"
 #include <ioj/column_math.h>
 #include <ioj/sim/entities/entity_identity_layout.h>
-#include <ioj/sim/entities/entity_unique_id.h>
+#include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <SandboxTests/support/DisplayEntityTestData.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
@@ -26,7 +26,7 @@ auto make_entity_type_radii() -> EntityTypeRadii {
 }
 
 auto make_view(ioj::tests::FDisplayEntityTestData const& entities,
-               std::span<::ioj::sim::EntityUniqueId const> ids = {})
+               std::span<::ioj::sim::EntityId const> ids = {})
     -> std::vector<::ioj::presentation::AgentDisplayBatch> {
     std::vector<::ioj::presentation::AgentDisplayBatch> batches;
     auto const count{entities.num()};
@@ -56,7 +56,7 @@ void add_entity(ioj::tests::FDisplayEntityTestData& entities,
     entity_type_radii[type] = radius;
     entities.teams[index] = ioj::to_native(team);
     entities.entity_types[index] = type;
-    auto const owner{::ioj::sim::EntityUniqueId(static_cast<std::uint32_t>(index),
+    auto const owner{::ioj::sim::EntityId(static_cast<std::uint32_t>(index),
                                                 entities.entity_types[index])};
     entities.add_health(index, owner, alive ? health : 0);
 }
@@ -75,16 +75,16 @@ auto make_forward_x_view() -> FEntityOverlayView {
 }
 
 auto entity_id(ioj::tests::FDisplayEntityTestData const& entities, int32 const index)
-    -> ::ioj::sim::EntityUniqueId {
+    -> ::ioj::sim::EntityId {
     auto const type{entities.entity_types[index]};
-    return ::ioj::sim::EntityUniqueId(index, type);
+    return ::ioj::sim::EntityId(index, type);
 }
 
 auto select_target(ioj::tests::FDisplayEntityTestData const& entities,
                    EntityTypeRadii const& entity_type_radii,
-                   ::ioj::sim::EntityUniqueId const current_target = {},
+                   ::ioj::sim::EntityId const current_target = {},
                    float const weapon_range = 1000.0f) -> FSoftTargetSelectionResult {
-    std::vector<::ioj::sim::EntityUniqueId> ids;
+    std::vector<::ioj::sim::EntityId> ids;
     auto const count{entities.num()};
     for (int32 i{}; i < count; ++i) {
         ids.push_back(entity_id(entities, i));

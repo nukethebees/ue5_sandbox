@@ -71,7 +71,7 @@ class FighterTargetRefresh : public ::testing::Test {
         return memory.get_stats().current_root_claim_count - before;
     }
 
-    void expect_target_state(EntityUniqueId const expected) {
+    void expect_target_state(EntityId const expected) {
         auto const entities{simulation.get_fighters().get_entities()};
         auto const index{observe_entity_row(simulation, fighter)};
         auto const state{observe_live_entity(simulation, expected)};
@@ -127,8 +127,8 @@ class FighterTargetRefresh : public ::testing::Test {
 
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, make_world()};
-    EntityUniqueId fighter;
-    EntityUniqueId target;
+    EntityId fighter;
+    EntityId target;
     alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 256 * 1024> backing{};
     ioj::FrameMemoryResource memory{backing};
 };
@@ -208,7 +208,7 @@ TEST_F(FighterTargetRefresh, MissingTargetIsClearedByInitialRefresh) {
 }
 
 TEST_F(FighterTargetRefresh, MissingTargetCanBeReacquiredInSameThinkingPhase) {
-    auto const missing{EntityUniqueId{999, EntityType::Fighter}};
+    auto const missing{EntityId{999, EntityType::Fighter}};
     LevelSimTestAccess::set_fighter_target(simulation, fighter, missing);
     auto const claims{think()};
     expect_target_state(target);

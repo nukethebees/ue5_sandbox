@@ -6,7 +6,7 @@
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/collision/collision_types.h"
 #include "ioj/sim/collision/query_result_types.h"
-#include "ioj/sim/entities/entity_unique_id.h"
+#include "ioj/sim/entities/entity_id.h"
 #include "ioj/vector_soa_view.h"
 #include <ioj/sim/collision/line_trace_result.h>
 
@@ -29,7 +29,7 @@ struct TraceHitsSingleLayoutColumns {
     ColLayout<float> LocationsXsColumn;
     ColLayout<float> LocationsYsColumn;
     ColLayout<float> LocationsZsColumn;
-    ColLayout<EntityUniqueId> EntitiesColumn;
+    ColLayout<EntityId> EntitiesColumn;
     ColLayout<collision::StaticGeometryIndex> StaticGeometryIndicesColumn;
     ColLayout<TraceHit> HitsColumn;
 
@@ -140,7 +140,7 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<TraceHitsSingleView
 // locations_xs: float
 // locations_ys: float
 // locations_zs: float
-// entities: EntityUniqueId
+// entities: EntityId
 // static_geometry_indices: collision::StaticGeometryIndex
 // hits: TraceHit
 struct TraceHits
@@ -192,7 +192,7 @@ struct TraceHits
         Element<float>* locations_xs{};
         Element<float>* locations_ys{};
         Element<float>* locations_zs{};
-        Element<EntityUniqueId>* entities{};
+        Element<EntityId>* entities{};
         Element<collision::StaticGeometryIndex>* static_geometry_indices{};
         Element<TraceHit>* hits{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {

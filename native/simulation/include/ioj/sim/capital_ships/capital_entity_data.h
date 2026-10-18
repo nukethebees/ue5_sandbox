@@ -5,7 +5,7 @@
 
 #include "ioj/levels/team.h"
 #include "ioj/native_soa/storage.h"
-#include "ioj/sim/entities/entity_unique_id.h"
+#include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/index_span.h"
 #include "ioj/vector_soa_view.h"
 
@@ -27,7 +27,7 @@ struct CapitalEntityDataSingleLayoutColumns {
 
     ioj::native_soa::ColumnLayoutStart LayoutStart{};
 
-    ColLayout<EntityUniqueId> EntityIdsColumn;
+    ColLayout<EntityId> EntityIdsColumn;
     ColLayout<float> LocationsXsColumn;
     ColLayout<float> LocationsYsColumn;
     ColLayout<float> LocationsZsColumn;
@@ -38,7 +38,7 @@ struct CapitalEntityDataSingleLayoutColumns {
     ColLayout<float> FighterSpawnCooldownsColumn;
     ColLayout<::ioj::Team> TeamsColumn;
     ColLayout<IndexSpan> FighterIdSpansColumn;
-    ColLayout<EntityUniqueId> TargetIdsColumn;
+    ColLayout<EntityId> TargetIdsColumn;
 
     constexpr CapitalEntityDataSingleLayoutColumns() noexcept
         : EntityIdsColumn{LayoutStart}
@@ -176,7 +176,7 @@ struct CapitalEntityDataSingleView : CapitalEntityDataSingleViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<CapitalEntityDataSingleView>());
 // Columns:
-// entity_ids: EntityUniqueId
+// entity_ids: EntityId
 // locations_xs: float
 // locations_ys: float
 // locations_zs: float
@@ -187,7 +187,7 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<CapitalEntityDataSi
 // fighter_spawn_cooldowns: float
 // teams: ::ioj::Team
 // fighter_id_spans: IndexSpan
-// target_ids: EntityUniqueId
+// target_ids: EntityId
 struct CapitalEntityData
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -234,7 +234,7 @@ struct CapitalEntityData
     struct DataPointers {
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<EntityUniqueId>* entity_ids{};
+        Element<EntityId>* entity_ids{};
         Element<float>* locations_xs{};
         Element<float>* locations_ys{};
         Element<float>* locations_zs{};
@@ -245,7 +245,7 @@ struct CapitalEntityData
         Element<float>* fighter_spawn_cooldowns{};
         Element<::ioj::Team>* teams{};
         Element<IndexSpan>* fighter_id_spans{};
-        Element<EntityUniqueId>* target_ids{};
+        Element<EntityId>* target_ids{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (entity_ids == nullptr) {
                 return {};

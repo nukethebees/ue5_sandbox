@@ -4,7 +4,7 @@
 #pragma once
 
 #include "ioj/native_soa/storage.h"
-#include "ioj/sim/entities/entity_unique_id.h"
+#include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/fighters/fighter_task_format.h"
 
 #include <cassert>
@@ -21,10 +21,10 @@ struct FighterOrderQueueSingleLayoutColumns {
 
     ioj::native_soa::ColumnLayoutStart LayoutStart{};
 
-    ColLayout<EntityUniqueId> EntityIdsColumn;
+    ColLayout<EntityId> EntityIdsColumn;
     ColLayout<FighterOrder> OrdersColumn;
     ColLayout<FighterTask> TasksColumn;
-    ColLayout<EntityUniqueId> TargetsColumn;
+    ColLayout<EntityId> TargetsColumn;
 
     constexpr FighterOrderQueueSingleLayoutColumns() noexcept
         : EntityIdsColumn{LayoutStart}
@@ -116,10 +116,10 @@ struct FighterOrderQueueSingleView : FighterOrderQueueSingleViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<FighterOrderQueueSingleView>());
 // Columns:
-// entity_ids: EntityUniqueId
+// entity_ids: EntityId
 // orders: FighterOrder
 // tasks: FighterTask
-// targets: EntityUniqueId
+// targets: EntityId
 struct FighterOrderQueue
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -166,10 +166,10 @@ struct FighterOrderQueue
     struct DataPointers {
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<EntityUniqueId>* entity_ids{};
+        Element<EntityId>* entity_ids{};
         Element<FighterOrder>* orders{};
         Element<FighterTask>* tasks{};
-        Element<EntityUniqueId>* targets{};
+        Element<EntityId>* targets{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (entity_ids == nullptr) {
                 return {};
@@ -286,10 +286,10 @@ struct FighterOrderQueue
         transfer_columns<false>(destination, source, num_);
     }
   public:
-    void add(EntityUniqueId const entity_id,
+    void add(EntityId const entity_id,
              FighterOrder const order,
              FighterTask const task,
-             EntityUniqueId const target) {
+             EntityId const target) {
         auto const index{num()};
         add_uninitialised(1);
         auto const queue{get_view()};

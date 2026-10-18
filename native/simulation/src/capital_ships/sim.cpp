@@ -153,27 +153,27 @@ void Sim::finish_action() {
 auto Sim::get_num_instances() const noexcept -> std::uint32_t {
     return entities.num();
 }
-auto Sim::is_valid(EntityUniqueId const id) const noexcept -> bool {
+auto Sim::is_valid(EntityId const id) const noexcept -> bool {
     return std::ranges::find(entities.get_const_view().entity_ids(), id) !=
            entities.get_const_view().entity_ids().end();
 }
 auto Sim::get_fighter_ids(std::uint32_t const index) const noexcept
-    -> std::span<EntityUniqueId const> {
+    -> std::span<EntityId const> {
     auto const entities{this->entities.get_const_view()};
     return get_fighter_ids(entities.fighter_id_spans()[index]);
 }
-auto Sim::get_fighter_ids(IndexSpan const span) const noexcept -> std::span<EntityUniqueId const> {
+auto Sim::get_fighter_ids(IndexSpan const span) const noexcept -> std::span<EntityId const> {
     return get_fighter_ids().subspan(static_cast<std::size_t>(span.offset),
                                      static_cast<std::size_t>(span.count));
 }
-auto Sim::get_team(EntityUniqueId const id) const noexcept -> Team {
+auto Sim::get_team(EntityId const id) const noexcept -> Team {
     auto const ids{entities.get_const_view().entity_ids()};
     auto const found{std::ranges::find(ids, id)};
     assert(found != ids.end());
     auto const index{static_cast<EntityFrameIndex>(found - ids.begin())};
     return entities.get_const_view().teams()[index];
 }
-auto Sim::get_health(EntityUniqueId const id) const noexcept -> Health {
+auto Sim::get_health(EntityId const id) const noexcept -> Health {
     auto const ids{entities.get_const_view().entity_ids()};
     auto const found{std::ranges::find(ids, id)};
     assert(found != ids.end());
@@ -189,9 +189,9 @@ auto Sim::find_first_index_on_team(Team const team) const noexcept -> std::optio
     }
     return static_cast<std::uint32_t>(found - entities.teams().begin());
 }
-auto Sim::find_first_id_on_team(Team const team) const noexcept -> std::optional<EntityUniqueId> {
+auto Sim::find_first_id_on_team(Team const team) const noexcept -> std::optional<EntityId> {
     auto const result{find_first_index_on_team(team)};
-    return result ? std::optional<EntityUniqueId>{entities.get_const_view().entity_ids()[*result]}
+    return result ? std::optional<EntityId>{entities.get_const_view().entity_ids()[*result]}
                   : std::nullopt;
 }
 
@@ -199,7 +199,7 @@ auto Sim::find_first_id_on_team(Team const team) const noexcept -> std::optional
 // Ship spawning
 /* **************************************** */
 auto Sim::register_ships(LevelCapitalSpawnEvents::ConstView const spawn_data)
-    -> std::vector<EntityUniqueId> {
+    -> std::vector<EntityId> {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::register_ships");
     auto const n_to_add{spawn_data.num()};
     if (n_to_add == 0) {
@@ -214,7 +214,7 @@ auto Sim::register_ships(LevelCapitalSpawnEvents::ConstView const spawn_data)
     auto const spawn_healths{spawn_data.healths()};
     auto const new_entity_ids{entities.right(n_to_add).entity_ids()};
     ledger_.record_spawns(EntityType::CapitalShip, spawn_teams, spawn_healths, new_entity_ids);
-    std::vector<EntityUniqueId> new_ids{new_entity_ids.begin(), new_entity_ids.end()};
+    std::vector<EntityId> new_ids{new_entity_ids.begin(), new_entity_ids.end()};
     entity_tables_.health.initialise_rows<EntityType::CapitalShip>(first_new_index, spawn_healths);
     auto const entities{this->entities.get_const_view()};
     auto const locations{entities.view_locations()};
@@ -259,7 +259,7 @@ void Sim::spawn_ships(LevelCapitalSpawnEvents::ConstView const spawn_data) {
         appended_fighter_spawn_timers[index] = spawn_data_initial_fighter_spawn_delays[index];
         appended_fighter_spawn_cooldowns[index] = spawn_data_fighter_spawn_cooldowns[index];
         appended_teams[index] = spawn_data_teams[index];
-        appended_target_ids[index] = EntityUniqueId{};
+        appended_target_ids[index] = EntityId{};
     }
 }
 
@@ -444,7 +444,7 @@ void Sim::queue_fighter_orders(ioj::FrameMemoryResource* const scratch_resource)
 /* **************************************** */
 // Targets
 /* **************************************** */
-void Sim::set_target_id(EntityUniqueId const ship_id, EntityUniqueId const target_id) {
+void Sim::set_target_id(EntityId const ship_id, EntityId const target_id) {
     assert(ledger_.is_valid_unique_id(target_id));
     auto const ids{entities.get_const_view().entity_ids()};
     auto const found{std::ranges::find(ids, ship_id)};
@@ -480,7 +480,7 @@ void Sim::reassign_fighters_of_dying_capital() {
     auto const entities{this->entities.get_const_view()};
     auto const capital_healths{
         entity_tables_.health.get_const_view<EntityType::CapitalShip>(entities.num())};
-    ioj::EnumArray<Team, EntityUniqueId> replacements{};
+    ioj::EnumArray<Team, EntityId> replacements{};
     auto const count{entities.num()};
     auto const teams{entities.teams()};
     auto const entity_ids{entities.entity_ids()};

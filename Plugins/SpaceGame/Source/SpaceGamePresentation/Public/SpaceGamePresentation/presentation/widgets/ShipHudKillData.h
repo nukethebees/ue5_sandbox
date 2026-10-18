@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ioj/sim/entities/entity_type.h>
-#include <ioj/sim/entities/entity_unique_id.h>
+#include <ioj/sim/entities/entity_id.h>
 #include <SpaceGamePresentation/entities/TestTeam.h>
 
 #include <SandboxCore/soa_array_mixin.h>
@@ -22,7 +22,7 @@ struct FTopKillerEntries : public ioj::FSoAArrayMixin {
                teams == other.teams && kills == other.kills;
     }
 
-    void add(::ioj::sim::EntityUniqueId const entity_id,
+    void add(::ioj::sim::EntityId const entity_id,
              ::ioj::sim::EntityType const entity_type,
              ETestTeam const team,
              int32 const kill_count) {
@@ -38,7 +38,7 @@ struct FTopKillerEntries : public ioj::FSoAArrayMixin {
             self.entity_ids, self.entity_types, self.teams, self.kills);
     }
 
-    TArray<::ioj::sim::EntityUniqueId, TInlineAllocator<minimum_size>> entity_ids;
+    TArray<::ioj::sim::EntityId, TInlineAllocator<minimum_size>> entity_ids;
     TArray<::ioj::sim::EntityType, TInlineAllocator<minimum_size>> entity_types;
     TArray<ETestTeam, TInlineAllocator<minimum_size>> teams;
     TArray<int32, TInlineAllocator<minimum_size>> kills;

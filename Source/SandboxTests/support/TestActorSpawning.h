@@ -15,7 +15,7 @@ struct FSoftTestAssertions;
 
 struct FProxyEntityBinding {
     FName test_name{NAME_None};
-    ::ioj::sim::EntityUniqueId* id{nullptr};
+    ::ioj::sim::EntityId* id{nullptr};
 };
 
 void resolve_proxy_entity_bindings(FProxyEntityMap const& proxy_entities,

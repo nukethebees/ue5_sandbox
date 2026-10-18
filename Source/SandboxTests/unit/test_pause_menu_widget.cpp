@@ -64,7 +64,7 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
         snapshot.cumulative_kill_count_data.add(4, 6);
         data.alive_per_team_and_type[std::to_underlying(ETestTeam::Red)]
                                     [std::to_underlying(ioj::sim::EntityType::Fighter)] = 12;
-        data.top_killers.add(ioj::sim::EntityUniqueId(7, ioj::sim::EntityType::CapitalShip),
+        data.top_killers.add(ioj::sim::EntityId(7, ioj::sim::EntityType::CapitalShip),
                              ioj::sim::EntityType::CapitalShip,
                              ETestTeam::Blue,
                              5);

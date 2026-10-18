@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ioj/sim/entities/entity_type_radii.h"
-#include "ioj/sim/entities/entity_unique_id.h"
+#include "ioj/sim/entities/entity_id.h"
 #include "SpaceGamePresentation/entities/TeamColours.h"
 #include "SpaceGamePresentation/presentation/AgentDisplayBatch.h"
 
@@ -32,7 +32,7 @@ struct SPACEGAMEPRESENTATION_API FSoftTargetSelectionContext {
 };
 
 struct SPACEGAMEPRESENTATION_API FSoftTargetSelectionResult {
-    ::ioj::sim::EntityUniqueId id{};
+    ::ioj::sim::EntityId id{};
     float range_alpha{0.0f};
     float indicator_radius_pixels{0.0f};
     float world_units_per_pixel{0.0f};
@@ -62,7 +62,7 @@ struct SPACEGAMEPRESENTATION_API FEntityOverlayCollectionResult {
                        TConstArrayView<EEntityOverlayObjectiveRole> objective_roles,
                        FSoftTargetSelectionContext const& context,
                        FSoftTargetSelectionSettings const& settings,
-                       ::ioj::sim::EntityUniqueId current_target) -> FSoftTargetSelectionResult;
+                       ::ioj::sim::EntityId current_target) -> FSoftTargetSelectionResult;
 
 [[nodiscard]] SPACEGAMEPRESENTATION_API auto
     collect_entity_overlay_instances(std::span<::ioj::presentation::AgentDisplayBatch const> batches,

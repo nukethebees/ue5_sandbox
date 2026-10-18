@@ -5,7 +5,7 @@
 
 #include "ioj/native_soa/storage.h"
 #include "ioj/rotator_types.h"
-#include "ioj/sim/entities/entity_unique_id.h"
+#include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/lasers/laser_source.h"
 #include "ioj/vector_soa_view.h"
 
@@ -40,7 +40,7 @@ struct EntitiesSingleLayoutColumns {
     ColLayout<float> VelocitiesZsColumn;
     ColLayout<std::int32_t> DamagesColumn;
     ColLayout<float> LifetimesRemainingColumn;
-    ColLayout<EntityUniqueId> InstigatorIdsColumn;
+    ColLayout<EntityId> InstigatorIdsColumn;
     ColLayout<float> InitialLifetimesColumn;
     ColLayout<float> SpawnTimesColumn;
 
@@ -213,7 +213,7 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<EntitiesSingleView>
 // velocities_zs: float
 // damages: std::int32_t
 // lifetimes_remaining: float
-// instigator_ids: EntityUniqueId
+// instigator_ids: EntityId
 // initial_lifetimes: float
 // spawn_times: float
 struct LaserEntities
@@ -275,7 +275,7 @@ struct LaserEntities
         Element<float>* velocities_zs{};
         Element<std::int32_t>* damages{};
         Element<float>* lifetimes_remaining{};
-        Element<EntityUniqueId>* instigator_ids{};
+        Element<EntityId>* instigator_ids{};
         Element<float>* initial_lifetimes{};
         Element<float>* spawn_times{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {

@@ -17,8 +17,8 @@ struct EntityObservation {
 };
 
 // Inspect current storage without extending a published frame handle's lifetime.
-inline auto observe_entity_columns(EntityUniqueId const id,
-                                   std::span<EntityUniqueId const> ids,
+inline auto observe_entity_columns(EntityId const id,
+                                   std::span<EntityId const> ids,
                                    Vectors3fConstView locations,
                                    Vectors3fConstView velocities,
                                    HealthConstView healths,
@@ -36,7 +36,7 @@ inline auto observe_entity_columns(EntityUniqueId const id,
                              row};
 }
 
-inline auto observe_entity(LevelSim const& simulation, EntityUniqueId const id)
+inline auto observe_entity(LevelSim const& simulation, EntityId const id)
     -> std::optional<EntityObservation> {
     if (!id.is_valid()) {
         return {};
@@ -96,7 +96,7 @@ inline auto observe_entity(LevelSim const& simulation, EntityUniqueId const id)
     }
 }
 
-inline auto observe_live_entity(LevelSim const& source, EntityUniqueId const id)
+inline auto observe_live_entity(LevelSim const& source, EntityId const id)
     -> std::optional<EntityObservation> {
     auto result{observe_entity(source, id)};
     if (result && is_dead(result->health)) {
@@ -105,11 +105,11 @@ inline auto observe_live_entity(LevelSim const& source, EntityUniqueId const id)
     return result;
 }
 
-inline auto entity_is_alive(LevelSim const& source, EntityUniqueId const id) -> bool {
+inline auto entity_is_alive(LevelSim const& source, EntityId const id) -> bool {
     return observe_live_entity(source, id).has_value();
 }
 
-inline auto observe_entity_row(LevelSim const& source, EntityUniqueId const id)
+inline auto observe_entity_row(LevelSim const& source, EntityId const id)
     -> EntityFrameIndex {
     auto const entity{observe_entity(source, id)};
     return entity ? entity->row : EntityInstanceHandle::invalid_value;

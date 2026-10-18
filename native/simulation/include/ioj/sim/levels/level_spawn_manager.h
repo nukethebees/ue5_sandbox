@@ -1,5 +1,5 @@
 #pragma once
-#include <ioj/sim/entities/entity_unique_id.h>
+#include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/levels/level_capital_spawn_events.h>
 #include <ioj/sim/levels/level_entity_index.h>
 #include <ioj/sim/levels/level_mission_event_groups.h>
@@ -39,14 +39,14 @@ class LevelSpawnManager {
                     LevelCapitalSpawnEvents::ConstView capital_payloads,
                     LevelTurretSpawnEvents::ConstView turret_payloads,
                     LevelSpinnerSpawnEvents::ConstView spinner_payloads);
-    void set_entity_id(LevelEntityIndex entity_index, EntityUniqueId id);
+    void set_entity_id(LevelEntityIndex entity_index, EntityId id);
     void spawn(LevelSpawnGroups::ConstView groups);
     void reset_tick_output() { spawned_ids_this_tick_.clear(); }
-    auto get_spawned_ids() const -> std::span<EntityUniqueId const> {
+    auto get_spawned_ids() const -> std::span<EntityId const> {
         return spawned_ids_this_tick_;
     }
-    auto get_id(LevelEntityIndex entity_index) const -> EntityUniqueId;
-    auto get_entity_ids() const noexcept -> std::span<EntityUniqueId const> { return entity_ids_; }
+    auto get_id(LevelEntityIndex entity_index) const -> EntityId;
+    auto get_entity_ids() const noexcept -> std::span<EntityId const> { return entity_ids_; }
   private:
     void spawn_capitals(LevelCapitalSpawnEvents::ConstView events);
     void resolve_capital_targets(LevelCapitalSpawnEvents::ConstView events);
@@ -59,8 +59,8 @@ class LevelSpawnManager {
     capital_ships::Sim& capital_ships_;
     turrets::Sim& turrets_;
     spinners::Sim& spinners_;
-    std::vector<EntityUniqueId> entity_ids_{};
-    std::vector<EntityUniqueId> target_ids_scratch_{};
-    std::vector<EntityUniqueId> spawned_ids_this_tick_{};
+    std::vector<EntityId> entity_ids_{};
+    std::vector<EntityId> target_ids_scratch_{};
+    std::vector<EntityId> spawned_ids_this_tick_{};
 };
 }

@@ -49,11 +49,11 @@ class FWorldlessSimulationTest {
     auto get_time() const -> time_type { return simulation_.get_clock().get_simulation_time(); }
 
     void finish_initialisation();
-    void queue_damage(std::span<::ioj::sim::EntityUniqueId const> targets,
+    void queue_damage(std::span<::ioj::sim::EntityId const> targets,
                       int32 damage,
-                      ::ioj::sim::EntityUniqueId instigator = {});
-    void queue_kills(std::span<::ioj::sim::EntityUniqueId const> targets,
-                     ::ioj::sim::EntityUniqueId instigator = {});
+                      ::ioj::sim::EntityId instigator = {});
+    void queue_kills(std::span<::ioj::sim::EntityId const> targets,
+                     ::ioj::sim::EntityId instigator = {});
     void advance(time_type dt);
     auto run_until_timeline_finished(time_type maximum_time) -> bool;
 

@@ -23,7 +23,7 @@ class EntityLookupTable {
         : type_{type}
         , handles_(entity_lifetime_capacities[type], EntityInstanceHandle{}, resource) {}
 
-    void publish_rows(std::span<EntityUniqueId const> const ids,
+    void publish_rows(std::span<EntityId const> const ids,
                       std::span<Team const> const teams,
                       std::span<Health const> const healths = {},
                       Health const maximum = 1) {
@@ -51,7 +51,7 @@ class EntityLookupTable {
         }
     }
 
-    void retire(std::span<EntityUniqueId const> const ids) {
+    void retire(std::span<EntityId const> const ids) {
         [[maybe_unused]] auto const handle_count{handles_.size()};
         for (auto const id : ids) {
             assert(id.entity_type() == type_ && id.index() < handle_count);
@@ -59,7 +59,7 @@ class EntityLookupTable {
         }
     }
 
-    void retire_rows(std::span<EntityUniqueId const> const ids,
+    void retire_rows(std::span<EntityId const> const ids,
                      std::span<EntityFrameIndex const> const rows) {
         [[maybe_unused]] auto const handle_count{handles_.size()};
         for (auto const row : rows) {
@@ -72,7 +72,7 @@ class EntityLookupTable {
     // Require non-null IDs of this type within its lifetime capacity. Retired IDs return
     // invalid handles; malformed inputs are contract violations, not missing entities.
     // Write one handle per input position, including duplicates.
-    void lookup_handles(std::span<EntityUniqueId const> const ids,
+    void lookup_handles(std::span<EntityId const> const ids,
                         std::span<EntityInstanceHandle> const output) const {
         assert(output.size() == ids.size());
         auto const count{ids.size()};
@@ -80,7 +80,7 @@ class EntityLookupTable {
         [[maybe_unused]] auto const handle_count{handles.size()};
         for (std::size_t index{}; index < count; ++index) {
             auto const id{ids[index]};
-            assert(id != EntityUniqueId{} && id.entity_type() == type_ &&
+            assert(id != EntityId{} && id.entity_type() == type_ &&
                    id.index() < handle_count);
             output[index] = handles[id.index()];
         }
@@ -130,7 +130,7 @@ class EntityLookupTables {
 
     // Require ascending type runs, with optional null IDs only at the end.
     // Exclude the null tail from lookup and leave its output handles invalid.
-    void lookup_handles(std::span<EntityUniqueId const> const ids,
+    void lookup_handles(std::span<EntityId const> const ids,
                         std::span<EntityInstanceHandle> const output) const {
         assert(permits_lookup());
         assert(output.size() == ids.size());
@@ -148,7 +148,7 @@ class EntityLookupTables {
     // Group unordered IDs using caller-owned scratch; preserve input/output correspondence.
     // Null IDs are allowed here and excluded from runs. Non-null IDs must satisfy the
     // per-type lookup contract above. Retired IDs remain ordinary missing results.
-    auto lookup_handles(std::span<EntityUniqueId const> const ids,
+    auto lookup_handles(std::span<EntityId const> const ids,
                         std::span<EntityTypeRuns::Offset> const order,
                         std::span<EntityInstanceHandle> const output) const -> EntityTypeRuns {
         assert(permits_lookup());

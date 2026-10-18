@@ -95,7 +95,7 @@ TEST(OverlapHandler, FiltersUnsupportedRecipientsAndDefersRetirementChecksToDama
         first_pairs.add_defaulted(1);
         auto const columns{first_pairs.get_view()};
         columns.first_entities()[index] = fighter;
-        columns.second_entities()[index] = EntityUniqueId{};
+        columns.second_entities()[index] = EntityId{};
     }
     alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
     ioj::FrameMemoryResource memory{backing};

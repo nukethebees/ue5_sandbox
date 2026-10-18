@@ -1,7 +1,7 @@
 #pragma once
 #include <ioj/levels/team.h>
 #include <ioj/rotator_types.h>
-#include <ioj/sim/entities/entity_unique_id.h>
+#include <ioj/sim/entities/entity_id.h>
 #include <ioj/vector_types.h>
 
 namespace ioj::sim {
@@ -13,7 +13,7 @@ struct EntityFrameChange {
     Vector3f location{};
     Rotator3f rotation{};
     Team team{};
-    EntityUniqueId id{};
+    EntityId id{};
 };
 
 } // namespace ioj::sim

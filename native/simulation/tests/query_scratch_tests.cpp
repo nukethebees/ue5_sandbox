@@ -84,7 +84,7 @@ TEST(QueryScratch, ConcurrentQueriesAllocateFromSharedFrameAndReleaseBeforeRecla
                 auto const hit{manager.trace_closest(
                     {{-10.f, 0.f, 0.f}}, {{10.f, 0.f, 0.f}}, &frame.resource)};
                 EXPECT_EQ(hit.entity, id);
-                std::array<EntityUniqueId, 4> nearby;
+                std::array<EntityId, 4> nearby;
                 EXPECT_EQ(manager.collect_non_team_entities_in_range(
                               {}, Team::Green, 20.f, nearby, &frame.resource),
                           1u);
@@ -116,7 +116,7 @@ TEST(QueryScratch, ManagerUsesExplicitScratchAndReleasesQueriesWithinEachEpoch) 
             auto const hit{
                 manager.trace_closest({{-10.f, 0.f, 0.f}}, {{10.f, 0.f, 0.f}}, &frame.resource)};
             EXPECT_EQ(hit.entity, id);
-            std::array<EntityUniqueId, 4> nearby;
+            std::array<EntityId, 4> nearby;
             ASSERT_EQ(manager.collect_non_team_entities_in_range(
                           {}, Team::Green, 20.f, nearby, &frame.resource),
                       1u);

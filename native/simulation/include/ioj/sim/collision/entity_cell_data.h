@@ -4,7 +4,7 @@
 #pragma once
 
 #include "ioj/native_soa/storage.h"
-#include "ioj/sim/entities/entity_unique_id.h"
+#include "ioj/sim/entities/entity_id.h"
 
 #include <cassert>
 #include <memory_resource>
@@ -32,7 +32,7 @@ struct EntityCellDataColumnsSingleLayoutColumns {
     ColLayout<std::int32_t> MaxCellXsColumn;
     ColLayout<std::int32_t> MaxCellYsColumn;
     ColLayout<std::int32_t> MaxCellZsColumn;
-    ColLayout<EntityUniqueId> EntityIdsColumn;
+    ColLayout<EntityId> EntityIdsColumn;
 
     constexpr EntityCellDataColumnsSingleLayoutColumns() noexcept
         : MinPointXsColumn{LayoutStart}
@@ -165,7 +165,7 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<EntityCellDataColum
 // max_cell_xs: std::int32_t
 // max_cell_ys: std::int32_t
 // max_cell_zs: std::int32_t
-// entity_ids: EntityUniqueId
+// entity_ids: EntityId
 struct EntityCellData
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -224,7 +224,7 @@ struct EntityCellData
         Element<std::int32_t>* max_cell_xs{};
         Element<std::int32_t>* max_cell_ys{};
         Element<std::int32_t>* max_cell_zs{};
-        Element<EntityUniqueId>* entity_ids{};
+        Element<EntityId>* entity_ids{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (min_point_xs == nullptr) {
                 return {};

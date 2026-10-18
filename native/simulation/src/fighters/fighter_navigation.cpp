@@ -138,8 +138,8 @@ void make_avoidance_choice_order(
     }
 }
 
-auto make_coincident_separation_direction(EntityUniqueId const self,
-                                          EntityUniqueId const other) noexcept -> Vector3f {
+auto make_coincident_separation_direction(EntityId const self,
+                                          EntityId const other) noexcept -> Vector3f {
     assert(self.is_valid() && other.is_valid() && self != other);
     auto const first{self < other ? self : other};
     auto const second{self < other ? other : self};
@@ -204,7 +204,7 @@ auto make_separation_steering_direction(Vector3f const goal_direction,
 }
 
 auto observe_separation(Vector3f const fighter_location,
-                        EntityUniqueId const fighter_id,
+                        EntityId const fighter_id,
                         Vector3f const goal_direction,
                         Vector3f const previous_memory,
                         std::span<SeparationNeighbour const> const neighbours,

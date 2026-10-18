@@ -47,8 +47,8 @@ void run_worldless_fighters_intercept_capital(tests::SimulationFixture const& co
     auto const intercept_target{capitals.get_id(2)};
 
     struct Sample {
-        EntityUniqueId parent_target;
-        std::vector<EntityUniqueId> fighter_targets{};
+        EntityId parent_target;
+        std::vector<EntityId> fighter_targets{};
     };
     ioj::TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim&) {

@@ -1124,7 +1124,7 @@ TEST(SemanticTypeGraph, ResolvesPackedFieldsAndDependencies) {
     auto const entity_type{
         lispb::codegen::find_test_type(graph, "native_entity_type", "EntityType")};
     auto const unique_id{
-        lispb::codegen::find_test_type(graph, "native_entity_unique_id", "EntityUniqueId")};
+        lispb::codegen::find_test_type(graph, "native_entity_id", "EntityId")};
     ASSERT_TRUE(entity_type.has_value());
     ASSERT_TRUE(unique_id.has_value());
 

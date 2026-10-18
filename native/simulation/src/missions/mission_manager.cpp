@@ -24,8 +24,8 @@
 namespace ioj::sim {
 
 namespace {
-auto get_level_entity_id(std::span<EntityUniqueId const> const level_entity_ids,
-                         std::int32_t const entity_index) -> EntityUniqueId {
+auto get_level_entity_id(std::span<EntityId const> const level_entity_ids,
+                         std::int32_t const entity_index) -> EntityId {
     assert(entity_index >= 0 && static_cast<std::size_t>(entity_index) < level_entity_ids.size());
     auto const id{level_entity_ids[entity_index]};
     assert(id.is_valid());
@@ -92,7 +92,7 @@ MissionManager::MissionManager(SimClock const& clock,
 /* **************************************** */
 void MissionManager::initialise_level_mission(
     LevelMissionInitialisationData const& data,
-    std::span<EntityUniqueId const> const level_entity_ids) {
+    std::span<EntityId const> const level_entity_ids) {
     assert(!level_initialisation_applied_);
     set_level_identity(data.level_id, data.level_title);
     set_save_mission_results(data.save_results);
@@ -140,7 +140,7 @@ void MissionManager::initialise_level_mission(
 }
 
 void MissionManager::bind_level_event_data(std::span<std::int32_t const> const values,
-                                           std::span<EntityUniqueId const> const level_entity_ids) {
+                                           std::span<EntityId const> const level_entity_ids) {
     assert(mission_state == MissionState::NotStarted);
     level_event_values_ = values;
     level_entity_ids_ = level_entity_ids;
@@ -237,7 +237,7 @@ void MissionManager::set_level_identity(std::string const& new_level_id, std::st
     level_display_name = std::move(display_name);
 }
 
-void MissionManager::add_hero_entity(EntityUniqueId id) {
+void MissionManager::add_hero_entity(EntityId id) {
     assert(mission_state == MissionState::NotStarted);
     assert(entity_ledger.is_valid_unique_id(id));
     if (std::ranges::contains(hero_entity_ids, id)) {
@@ -246,7 +246,7 @@ void MissionManager::add_hero_entity(EntityUniqueId id) {
     hero_entity_ids.push_back(id);
 }
 
-void MissionManager::add_entity_that_must_survive(EntityUniqueId id) {
+void MissionManager::add_entity_that_must_survive(EntityId id) {
     if (!has_health(id.entity_type())) {
         ioj::fatal_error("Survival objectives require an entity with health");
     }
@@ -258,7 +258,7 @@ void MissionManager::add_entity_that_must_survive(EntityUniqueId id) {
     entity_ids_that_must_survive.push_back(id);
 }
 
-void MissionManager::add_entity_required_to_kill(EntityUniqueId id) {
+void MissionManager::add_entity_required_to_kill(EntityId id) {
     if (!has_health(id.entity_type())) {
         ioj::fatal_error("Required-kill objectives require an entity with health");
     }
@@ -430,7 +430,7 @@ void MissionManager::update_mission_kills() {
 /* **************************************** */
 // Objective health tracking
 /* **************************************** */
-void MissionManager::update_objective_health(std::span<EntityUniqueId const> const ids,
+void MissionManager::update_objective_health(std::span<EntityId const> const ids,
                                              std::span<ShipHealth> const output,
                                              ioj::FrameMemoryResource* const scratch_resource) {
     auto const count{static_cast<EntityTypeRuns::Count>(ids.size())};
@@ -464,7 +464,7 @@ void MissionManager::prepare_objectives(ioj::FrameMemoryResource* const scratch_
         healths.resize(ids.size());
         auto const pending{std::span<ShipHealth>{healths}.subspan(first)};
         update_objective_health(
-            std::span<EntityUniqueId const>{ids}.subspan(first), pending, scratch_resource);
+            std::span<EntityId const>{ids}.subspan(first), pending, scratch_resource);
         for (auto& health : pending) {
             health.max_health = health.health;
         }

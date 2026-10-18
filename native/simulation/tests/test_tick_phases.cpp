@@ -494,7 +494,7 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
         if (kill_tick == 2) {
             auto const fighter_ids{fighter_sim.get_entity_ids()};
             auto const fighter_parents{fighter_sim.get_parent_ids()};
-            auto const orphaned{std::ranges::find(fighter_parents, EntityUniqueId{})};
+            auto const orphaned{std::ranges::find(fighter_parents, EntityId{})};
             ASSERT_NE(orphaned, fighter_parents.end());
             auto const orphaned_index{static_cast<std::size_t>(orphaned - fighter_parents.begin())};
             EXPECT_NE(observe_entity_row(simulation, fighter_ids[orphaned_index]),
@@ -512,7 +512,7 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
     LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
     auto const initial{simulation.get_read_access().get_capitals().get_entities()};
-    std::vector<EntityUniqueId> visual_ids{initial.entity_ids().begin(),
+    std::vector<EntityId> visual_ids{initial.entity_ids().begin(),
                                            initial.entity_ids().end()};
     auto const survivor_id{initial.entity_ids()[2]};
     DirectDamageEvents damage;

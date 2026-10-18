@@ -30,8 +30,8 @@ class ATestTubeSpinnerProxy
     }
 
     // ITestEntity
-    auto get_unique_id() const noexcept -> ::ioj::sim::EntityUniqueId override { return unique_id; }
-    void set_unique_id(::ioj::sim::EntityUniqueId const id) noexcept { unique_id = id; }
+    auto get_unique_id() const noexcept -> ::ioj::sim::EntityId override { return unique_id; }
+    void set_unique_id(::ioj::sim::EntityId const id) noexcept { unique_id = id; }
 #if WITH_EDITOR
     void set_test_name(FName const new_test_name) noexcept { test_name = new_test_name; }
     auto get_test_name() const noexcept -> FName override { return test_name; }
@@ -77,5 +77,5 @@ class ATestTubeSpinnerProxy
     FName test_name{NAME_None};
 #endif
 
-    ::ioj::sim::EntityUniqueId unique_id;
+    ::ioj::sim::EntityId unique_id;
 };

@@ -5,7 +5,7 @@
 
 #include "ioj/levels/team.h"
 #include "ioj/native_soa/storage.h"
-#include "ioj/sim/entities/entity_unique_id.h"
+#include "ioj/sim/entities/entity_id.h"
 #include "ioj/vector_soa_view.h"
 
 #include <cassert>
@@ -26,7 +26,7 @@ struct TurretEntityDataSingleLayoutColumns {
 
     ioj::native_soa::ColumnLayoutStart LayoutStart{};
 
-    ColLayout<EntityUniqueId> EntityIdsColumn;
+    ColLayout<EntityId> EntityIdsColumn;
     ColLayout<std::uint32_t> IntegralBiasesColumn;
     ColLayout<float> LocationsXsColumn;
     ColLayout<float> LocationsYsColumn;
@@ -42,7 +42,7 @@ struct TurretEntityDataSingleLayoutColumns {
     ColLayout<std::int32_t> LaserDamagesColumn;
     ColLayout<std::int16_t> TargetRefreshCountdownsPeriodsColumn;
     ColLayout<std::int16_t> TargetRefreshCountdownsRemainingTicksColumn;
-    ColLayout<EntityUniqueId> TargetIdsColumn;
+    ColLayout<EntityId> TargetIdsColumn;
     ColLayout<float> TargetLocationsXsColumn;
     ColLayout<float> TargetLocationsYsColumn;
     ColLayout<float> TargetLocationsZsColumn;
@@ -243,7 +243,7 @@ struct TurretEntityDataSingleView : TurretEntityDataSingleViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<TurretEntityDataSingleView>());
 // Columns:
-// entity_ids: EntityUniqueId
+// entity_ids: EntityId
 // integral_biases: std::uint32_t
 // locations_xs: float
 // locations_ys: float
@@ -259,7 +259,7 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<TurretEntityDataSin
 // laser_damages: std::int32_t
 // target_refresh_countdowns_periods: std::int16_t
 // target_refresh_countdowns_remaining_ticks: std::int16_t
-// target_ids: EntityUniqueId
+// target_ids: EntityId
 // target_locations_xs: float
 // target_locations_ys: float
 // target_locations_zs: float
@@ -312,7 +312,7 @@ struct TurretEntityData
     struct DataPointers {
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<EntityUniqueId>* entity_ids{};
+        Element<EntityId>* entity_ids{};
         Element<std::uint32_t>* integral_biases{};
         Element<float>* locations_xs{};
         Element<float>* locations_ys{};
@@ -328,7 +328,7 @@ struct TurretEntityData
         Element<std::int32_t>* laser_damages{};
         Element<std::int16_t>* target_refresh_countdowns_periods{};
         Element<std::int16_t>* target_refresh_countdowns_remaining_ticks{};
-        Element<EntityUniqueId>* target_ids{};
+        Element<EntityId>* target_ids{};
         Element<float>* target_locations_xs{};
         Element<float>* target_locations_ys{};
         Element<float>* target_locations_zs{};

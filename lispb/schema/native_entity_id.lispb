@@ -1,7 +1,7 @@
-(module native_entity_unique_id
-  :header "native/simulation/include/ioj/sim/entities/entity_unique_id.h"
+(module native_entity_id
+  :header "native/simulation/include/ioj/sim/entities/entity_id.h"
   :namespace ioj::sim
-  (packed-value EntityUniqueId
+  (packed-value EntityId
     :storage std::uint32_t
     :invalid-value 0xffffffff
     (field index std::uint32_t :bits 24)

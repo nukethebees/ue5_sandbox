@@ -22,14 +22,14 @@ inline constexpr std::int32_t collision_resilient_health{1'000'000};
 /* **************************************** */
 void run_worldless_simultaneous_capital_reassignment(tests::SimulationFixture const& config) {
     struct Sample {
-        std::vector<EntityUniqueId> capitals{};
-        std::vector<std::vector<EntityUniqueId>> owned_fighters{};
+        std::vector<EntityId> capitals{};
+        std::vector<std::vector<EntityId>> owned_fighters{};
         std::vector<Team> capital_teams{};
         std::vector<Team> fighter_teams{};
-        std::vector<EntityUniqueId> fighter_parents{};
+        std::vector<EntityId> fighter_parents{};
         std::vector<std::int32_t> span_starts{};
-        std::vector<EntityUniqueId> all_owned_fighters{};
-        std::vector<EntityUniqueId> fighters{};
+        std::vector<EntityId> all_owned_fighters{};
+        std::vector<EntityId> fighters{};
     };
 
     auto data{tests::make_simulation_data(config)};
@@ -52,7 +52,7 @@ void run_worldless_simultaneous_capital_reassignment(tests::SimulationFixture co
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
     ioj::TimeSeriesData<Sample> samples;
-    std::vector<EntityUniqueId> killed_capitals{};
+    std::vector<EntityId> killed_capitals{};
     harness.on_end_tick = [&](LevelSim& simulation) {
         auto const& capitals{simulation.get_capital_ships()};
         Sample sample;
@@ -83,7 +83,7 @@ void run_worldless_simultaneous_capital_reassignment(tests::SimulationFixture co
     harness.timeline.at(1.0, [&] {
         auto const& capitals{harness.get_simulation().get_capital_ships()};
         for (auto const team : {Team::Green, Team::Red}) {
-            EntityUniqueId victim;
+            EntityId victim;
             auto const count{capitals.get_num_instances()};
             for (std::uint32_t i{}; i < count; ++i) {
                 auto const id{capitals.get_id(i)};
@@ -99,7 +99,7 @@ void run_worldless_simultaneous_capital_reassignment(tests::SimulationFixture co
                 killed_capitals.push_back(victim);
             }
         }
-        harness.queue_kills(std::span<EntityUniqueId const>{
+        harness.queue_kills(std::span<EntityId const>{
             killed_capitals.data(),
             static_cast<std::size_t>(static_cast<std::int32_t>(killed_capitals.size()))});
     });
@@ -121,7 +121,7 @@ void run_worldless_simultaneous_capital_reassignment(tests::SimulationFixture co
     EXPECT_EQ(static_cast<std::int32_t>(before.fighters.size()),
               static_cast<std::int32_t>(after.fighters.size()))
         << "All fighters survive";
-    std::set<EntityUniqueId> seen;
+    std::set<EntityId> seen;
     std::int32_t offset{};
     auto const count{static_cast<std::int32_t>(after.capitals.size())};
     for (std::int32_t i{}; i < count; ++i) {
@@ -188,9 +188,9 @@ void run_worldless_fighter_ownership(tests::SimulationFixture const& config,
     harness.finish_initialisation();
     auto const& capitals{harness.get_simulation().get_capital_ships()};
     auto const& fighters{harness.get_simulation().get_fighters()};
-    std::vector<EntityUniqueId> destroyed{};
-    std::vector<EntityUniqueId> kept{};
-    std::vector<EntityUniqueId> green_fighters_before_capital_kill{};
+    std::vector<EntityId> destroyed{};
+    std::vector<EntityId> kept{};
+    std::vector<EntityId> green_fighters_before_capital_kill{};
     auto initial_checked{false};
     auto fighter_kill_checked{scenario == FighterOwnershipScenario::KillCapital};
     auto capital_kill_checked{scenario == FighterOwnershipScenario::KillFightersOnly};
@@ -223,7 +223,7 @@ void run_worldless_fighter_ownership(tests::SimulationFixture const& config,
                 auto const row{observe_entity_row(harness.get_simulation(), ids[i])};
                 (i % 2 == 0 ? destroyed : kept).push_back(entity_ids[row]);
             }
-            harness.queue_kills(std::span<EntityUniqueId const>{
+            harness.queue_kills(std::span<EntityId const>{
                 destroyed.data(),
                 static_cast<std::size_t>(static_cast<std::int32_t>(destroyed.size()))});
         });
@@ -249,7 +249,7 @@ void run_worldless_fighter_ownership(tests::SimulationFixture const& config,
             assert(main_index.has_value());
             auto const owned{capitals.get_fighter_ids(*main_index)};
             green_fighters_before_capital_kill =
-                std::vector<EntityUniqueId>{owned.begin(), owned.end()};
+                std::vector<EntityId>{owned.begin(), owned.end()};
             auto const id{capitals.get_target_id(*main_index)};
             auto const row{observe_entity_row(harness.get_simulation(), id)};
             harness.queue_kills(std::array{capitals.get_entities().entity_ids()[row]});

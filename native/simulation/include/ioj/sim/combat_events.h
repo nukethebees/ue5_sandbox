@@ -13,7 +13,7 @@ class CombatEvents {
     void reset() { damage_.reset(); }
     void queue_damage(DirectDamageEvents::ConstView events) { damage_.append(events); }
     void queue_damage(DirectDamageEvents const& events) { queue_damage(events.get_const_view()); }
-    void record_shots(std::span<EntityUniqueId const> instigators) {
+    void record_shots(std::span<EntityId const> instigators) {
         ledger_.record_shots(instigators);
     }
     void prepare(EntityLookupTables const& indexes,

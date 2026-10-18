@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/sim/entities/entity_unique_id.h>
+#include <ioj/sim/entities/entity_id.h>
 #include <SandboxTests/support/SimulationTestScenario.h>
 #include <SpaceGame/entities/ProxyEntityMap.h>
 
@@ -17,8 +17,8 @@ class FTestCapitalShipProxyScenario final : public FSimulationTestScenario {
     void resolve_proxy_ids(FProxyEntityMap const& proxy_entities);
     void check_proxy_healths();
 
-    ::ioj::sim::EntityUniqueId default_health_id{};
-    ::ioj::sim::EntityUniqueId overridden_health_id{};
+    ::ioj::sim::EntityId default_health_id{};
+    ::ioj::sim::EntityId overridden_health_id{};
     int32 default_health{0};
     int32 overridden_health{0};
     bool proxy_ids_bound{false};

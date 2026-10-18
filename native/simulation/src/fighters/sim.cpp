@@ -16,7 +16,7 @@
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/deterministic_bias.h>
 #include <ioj/sim/entities/entity_ledger.h>
-#include <ioj/sim/entities/entity_unique_id_checks.h>
+#include <ioj/sim/entities/entity_id_checks.h>
 #include <ioj/sim/fighters/fighter_diagnostics.h>
 #include <ioj/sim/fighters/fighter_frame_spawn_queue.h>
 #include <ioj/sim/lasers/laser_source.h>
@@ -736,7 +736,7 @@ void Sim::update_separation_observations(NavigationScratch& scratch,
 
     auto const data{entity_buffers.current().get_view()};
     // Fixed capacity bounds scoring work and keeps neighbour storage off the heap.
-    std::array<EntityUniqueId, max_separation_neighbours> nearby_fighters;
+    std::array<EntityId, max_separation_neighbours> nearby_fighters;
     std::array<SeparationNeighbour, max_separation_neighbours> neighbours;
     std::array<EntityInstanceHandle, max_separation_neighbours> nearby_handles;
     auto const& fighter_lookup{entity_tables_.lookups.for_type(EntityType::Fighter)};
@@ -1165,7 +1165,7 @@ void Sim::publish_navigation_telemetry() const {
 auto Sim::get_num_instances() const noexcept -> std::uint32_t {
     return entity_buffers.current().num();
 }
-void Sim::set_parent_id(EntityUniqueId const fighter, EntityUniqueId const parent) {
+void Sim::set_parent_id(EntityId const fighter, EntityId const parent) {
     assert(fighter.is_valid() && fighter.entity_type() == EntityType::Fighter);
     auto const index{find_index(fighter)};
     assert(index != get_num_instances());
@@ -1188,16 +1188,16 @@ auto Sim::get_const_view(std::uint32_t const offset, std::uint32_t const width) 
     -> EntityStorage::ConstView {
     return entity_buffers.current().get_const_view(offset, width);
 }
-auto Sim::has_id(EntityUniqueId const fighter) const -> bool {
+auto Sim::has_id(EntityId const fighter) const -> bool {
     return find_index(fighter) != get_num_instances();
 }
-auto Sim::get_target_ids() const noexcept -> std::span<EntityUniqueId const> {
+auto Sim::get_target_ids() const noexcept -> std::span<EntityId const> {
     return entity_buffers.current().get_const_view().target_ids();
 }
-auto Sim::get_target_id(EntityUniqueId const fighter) const noexcept -> EntityUniqueId {
+auto Sim::get_target_id(EntityId const fighter) const noexcept -> EntityId {
     return entity_buffers.current().get_const_view().target_ids()[find_index(fighter)];
 }
-auto Sim::get_target_location(EntityUniqueId const fighter) const -> Vector3f {
+auto Sim::get_target_location(EntityId const fighter) const -> Vector3f {
     return vector_at(entity_buffers.current().get_const_view().view_target_locations(),
                      find_index(fighter));
 }
@@ -1228,7 +1228,7 @@ auto Sim::get_const_task_view(Task const task) const noexcept -> ConstTaskView {
     auto const span{get_task_span(task)};
     return entity_buffers.current().get_const_view(span.offset, span.count);
 }
-auto Sim::find_index(EntityUniqueId const fighter) const noexcept -> std::uint32_t {
+auto Sim::find_index(EntityId const fighter) const noexcept -> std::uint32_t {
     auto const ids{entity_buffers.current().get_const_view().entity_ids()};
     auto const found{std::ranges::find(ids, fighter)};
     return found == ids.end() ? get_num_instances()
@@ -1242,10 +1242,10 @@ auto Sim::get_task_span(Task const task) const -> IndexSpan {
 // Targets
 /* **************************************** */
 void Sim::set_target_id_unchecked(std::uint32_t const fighter_index,
-                                  EntityUniqueId const new_target) noexcept {
+                                  EntityId const new_target) noexcept {
     entity_buffers.current().get_view().target_ids()[fighter_index] = new_target;
 }
-void Sim::set_target_id(EntityUniqueId const fighter, EntityUniqueId const new_target) noexcept {
+void Sim::set_target_id(EntityId const fighter, EntityId const new_target) noexcept {
     set_target_id_unchecked(find_index(fighter), new_target);
 }
 void Sim::refresh_target_data(ioj::FrameMemoryResource* const scratch_resource) {
@@ -1277,7 +1277,7 @@ void Sim::refresh_target_data(ioj::FrameMemoryResource* const scratch_resource) 
 /* **************************************** */
 // Tasks
 /* **************************************** */
-void Sim::set_task(EntityUniqueId const fighter, Task const task) noexcept {
+void Sim::set_task(EntityId const fighter, Task const task) noexcept {
     order_queue.add(fighter, FighterOrder{1, 0}, task, {});
 }
 bool Sim::tasks_are_contiguous() const noexcept {
@@ -1387,7 +1387,7 @@ auto Sim::queue_spawns(FrameSpawnQueue const& new_spawns) -> std::uint32_t {
     spawn_queue.append_from(new_spawns, 0, count);
     return count;
 }
-void Sim::reassign_pending_spawns(EntityUniqueId const parent, EntityUniqueId const replacement) {
+void Sim::reassign_pending_spawns(EntityId const parent, EntityId const replacement) {
     assert(parent.is_valid() && parent.entity_type() == EntityType::CapitalShip);
     assert(!replacement.is_valid() || replacement.entity_type() == EntityType::CapitalShip);
 
@@ -1469,7 +1469,7 @@ void Sim::commit_spawns() {
         }
     }
     make_deterministic_biases(
-        std::span<EntityUniqueId const>{data.entity_ids()}.subspan(n_cur, n_new),
+        std::span<EntityId const>{data.entity_ids()}.subspan(n_cur, n_new),
         std::span<std::uint32_t>{data.integral_biases()}.subspan(n_cur, n_new),
         std::span<float>{data.float_biases()}.subspan(n_cur, n_new));
 }
@@ -1520,7 +1520,7 @@ void Sim::handle_firing(TaskView data, ioj::FrameMemoryResource* const scratch_r
     FrameVectors3f line_of_sight_starts{scratch_resource};
     FrameVectors3f line_of_sight_ends{scratch_resource};
     ioj::FrameArray<LineQueryResult> line_of_sight_results{scratch_resource};
-    ioj::FrameArray<EntityUniqueId> firing_ignored_entities{scratch_resource};
+    ioj::FrameArray<EntityId> firing_ignored_entities{scratch_resource};
     ioj::FrameArray<std::uint32_t> firing_position_fighter_indices{scratch_resource};
     FrameVectors3f firing_position_candidates{scratch_resource};
 

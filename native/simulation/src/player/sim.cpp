@@ -159,7 +159,7 @@ void Sim::resolve_damage_events(ioj::FrameMemoryResource* const scratch_resource
     auto const damage_events{combat_events_.events_for(EntityType::PlayerShip)};
     auto const original_health{health_table_.get_const_view<EntityType::PlayerShip>(1).health(0)};
     auto health{health_table_.get_const_view<EntityType::PlayerShip>(1).health(0)};
-    EntityUniqueId killer{};
+    EntityId killer{};
     auto const damage_count{damage_events.num()};
     ioj::FrameArray<Health> applied_damages{scratch_resource};
     applied_damages.set_num(damage_count);
@@ -570,7 +570,7 @@ void Sim::add_health(Health const added_health) {
     set_health(health_table_.get_const_view<EntityType::PlayerShip>(1).health(0) + added_health);
 }
 
-void Sim::set_health(Health const new_health, EntityUniqueId const killer) {
+void Sim::set_health(Health const new_health, EntityId const killer) {
     auto health{health_table_.get_const_view<EntityType::PlayerShip>(1).health(0)};
     if (new_health == health || !sim::is_alive(health)) {
         return;
@@ -594,7 +594,7 @@ auto Sim::is_alive() const -> bool {
            sim::is_alive(health_table_.get_const_view<EntityType::PlayerShip>(1).health(0));
 }
 
-void Sim::die(EntityUniqueId const killer) {
+void Sim::die(EntityId const killer) {
     auto const reason{killer.is_valid() ? DeathReason::Combat : DeathReason::Unknown};
     EntityDeathInfo deaths;
     deaths.add_uninitialised(1);

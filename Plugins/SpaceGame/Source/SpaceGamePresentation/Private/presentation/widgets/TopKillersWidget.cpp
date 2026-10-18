@@ -2,7 +2,7 @@
 
 #include <ioj/levels/team.h>
 #include <ioj/sim/entities/entity_type.h>
-#include <ioj/sim/entities/entity_unique_id.h>
+#include <ioj/sim/entities/entity_id.h>
 #include <SpaceGamePresentation/entities/EntityTypeDisplayNames.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 
@@ -27,15 +27,15 @@ void UTopKillersWidget::NativePreConstruct() {
         team_colours[ETestTeam::Yellow] = FLinearColor::Yellow;
 
         top_killers.reset();
-        top_killers.add(ioj::sim::EntityUniqueId(14, ioj::sim::EntityType::Fighter),
+        top_killers.add(ioj::sim::EntityId(14, ioj::sim::EntityType::Fighter),
                         ioj::sim::EntityType::Fighter,
                         ETestTeam::Green,
                         18);
-        top_killers.add(ioj::sim::EntityUniqueId(7, ioj::sim::EntityType::Turret),
+        top_killers.add(ioj::sim::EntityId(7, ioj::sim::EntityType::Turret),
                         ioj::sim::EntityType::Turret,
                         ETestTeam::Red,
                         13);
-        top_killers.add(ioj::sim::EntityUniqueId(2, ioj::sim::EntityType::CapitalShip),
+        top_killers.add(ioj::sim::EntityId(2, ioj::sim::EntityType::CapitalShip),
                         ioj::sim::EntityType::CapitalShip,
                         ETestTeam::Blue,
                         9);

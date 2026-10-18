@@ -85,9 +85,9 @@ struct FMissionStaticDataCache {
     bool operator==(FMissionStaticDataCache const& other) const noexcept = default;
 
     ::ioj::sim::MissionMode mission_mode{::ioj::sim::MissionMode::None};
-    TArray<::ioj::sim::EntityUniqueId> surviving_entity_ids;
+    TArray<::ioj::sim::EntityId> surviving_entity_ids;
     TArray<::ioj::sim::EntityType> surviving_entity_types;
-    TArray<::ioj::sim::EntityUniqueId> required_kill_entity_ids;
+    TArray<::ioj::sim::EntityId> required_kill_entity_ids;
     TArray<::ioj::sim::EntityType> required_kill_entity_types;
 };
 
@@ -226,12 +226,12 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
         FEntityOverlayFrameStorePtr entity_overlay_frame_store;
         FEntityOverlayCollector entity_overlay_collector;
         FRadarFrameStorePtr radar_frame_store;
-        ::ioj::sim::EntityUniqueId soft_target{};
+        ::ioj::sim::EntityId soft_target{};
         float soft_target_range_alpha{0.0f};
         float soft_target_radius_pixels{0.0f};
         float soft_target_world_units_per_pixel{0.0f};
         float soft_target_pulse_remaining{0.0f};
-        ::ioj::sim::EntityUniqueId fading_soft_target{};
+        ::ioj::sim::EntityId fading_soft_target{};
         float fading_soft_target_range_alpha{0.0f};
         float fading_soft_target_radius_pixels{0.0f};
         float fading_soft_target_world_units_per_pixel{0.0f};
@@ -301,7 +301,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     ioj::MultiBuffer<ioj::hud_manager::FKillDataCache, 2> kill_data_buffers;
     ioj::MultiBuffer<ioj::hud_manager::FPlayerStatusDataCache, 2> player_status_data_buffers;
     ioj::MultiBuffer<ioj::hud_manager::FPlayerFlightDataCache, 2> player_flight_data_buffers;
-    TArray<::ioj::sim::EntityUniqueId,
+    TArray<::ioj::sim::EntityId,
            TInlineAllocator<ioj::ship_hud::FTopKillerEntries::minimum_size>>
         top_killer_ids_buffer;
 

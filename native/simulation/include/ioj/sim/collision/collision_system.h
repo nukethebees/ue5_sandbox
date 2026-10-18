@@ -4,7 +4,7 @@
 #include <ioj/sim/collision/collision_uniform_grid.h>
 #include <ioj/sim/collision/entity_overlaps.h>
 #include <ioj/sim/collision/line_traces.h>
-#include <ioj/sim/entities/entity_unique_id.h>
+#include <ioj/sim/entities/entity_id.h>
 
 #include <cstdint>
 #include <span>
@@ -49,9 +49,9 @@ class CollisionSystem {
     /* **************************************** */
     // Overlap detection
     /* **************************************** */
-    auto detect_overlaps(std::span<EntityUniqueId const> overlap_candidates,
+    auto detect_overlaps(std::span<EntityId const> overlap_candidates,
                          ioj::FrameMemoryResource* const scratch_resource) -> DetectedOverlapsView;
-    void collect_overlaps_for_candidates(std::span<EntityUniqueId const> overlap_candidates,
+    void collect_overlaps_for_candidates(std::span<EntityId const> overlap_candidates,
                                          EntityEntityOverlaps& entity_overlaps,
                                          EntityStaticOverlaps& static_overlaps,
                                          ioj::FrameMemoryResource* const scratch_resource);

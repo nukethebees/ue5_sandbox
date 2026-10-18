@@ -7,7 +7,7 @@
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/entities/entity_life_state.h"
 #include "ioj/sim/entities/entity_type.h"
-#include "ioj/sim/entities/entity_unique_id.h"
+#include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/sim_tick.h"
 #include "ioj/vector_types.h"
 
@@ -25,11 +25,11 @@ struct EntityHistoryColumnsSingleLayoutColumns {
 
     ioj::native_soa::ColumnLayoutStart LayoutStart{};
 
-    ColLayout<EntityUniqueId> EntityIdsColumn;
+    ColLayout<EntityId> EntityIdsColumn;
     ColLayout<EntityType> EntityTypesColumn;
     ColLayout<::ioj::Team> TeamsColumn;
     ColLayout<std::uint32_t> KillsColumn;
-    ColLayout<EntityUniqueId> KilledByColumn;
+    ColLayout<EntityId> KilledByColumn;
     ColLayout<LifeState> LifeStateColumn;
     ColLayout<SimTick> DeathTicksColumn;
     ColLayout<Vector3f> DeathLocationsColumn;
@@ -137,11 +137,11 @@ struct EntityHistoryColumnsSingleView : EntityHistoryColumnsSingleViewImpl<false
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<EntityHistoryColumnsSingleView>());
 // Columns:
-// entity_ids: EntityUniqueId
+// entity_ids: EntityId
 // entity_types: EntityType
 // teams: ::ioj::Team
 // kills: std::uint32_t
-// killed_by: EntityUniqueId
+// killed_by: EntityId
 // life_state: LifeState
 // death_ticks: SimTick
 // death_locations: Vector3f
@@ -191,11 +191,11 @@ struct EntityHistory
     struct DataPointers {
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<EntityUniqueId>* entity_ids{};
+        Element<EntityId>* entity_ids{};
         Element<EntityType>* entity_types{};
         Element<::ioj::Team>* teams{};
         Element<std::uint32_t>* kills{};
-        Element<EntityUniqueId>* killed_by{};
+        Element<EntityId>* killed_by{};
         Element<LifeState>* life_state{};
         Element<SimTick>* death_ticks{};
         Element<Vector3f>* death_locations{};

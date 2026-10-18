@@ -4,7 +4,7 @@
 #pragma once
 
 #include "ioj/native_soa/storage.h"
-#include "ioj/sim/entities/entity_unique_id.h"
+#include "ioj/sim/entities/entity_id.h"
 
 #include <cassert>
 #include <cstdint>
@@ -21,9 +21,9 @@ struct DirectDamageEventsSingleLayoutColumns {
 
     ioj::native_soa::ColumnLayoutStart LayoutStart{};
 
-    ColLayout<EntityUniqueId> DamagedEntitiesColumn;
+    ColLayout<EntityId> DamagedEntitiesColumn;
     ColLayout<std::int32_t> DamageAmountsColumn;
-    ColLayout<EntityUniqueId> InstigatorsColumn;
+    ColLayout<EntityId> InstigatorsColumn;
 
     constexpr DirectDamageEventsSingleLayoutColumns() noexcept
         : DamagedEntitiesColumn{LayoutStart}
@@ -114,9 +114,9 @@ struct DirectDamageEventsSingleView : DirectDamageEventsSingleViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<DirectDamageEventsSingleView>());
 // Columns:
-// damaged_entities: EntityUniqueId
+// damaged_entities: EntityId
 // damage_amounts: std::int32_t
-// instigators: EntityUniqueId
+// instigators: EntityId
 struct DirectDamageEvents
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -163,9 +163,9 @@ struct DirectDamageEvents
     struct DataPointers {
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<EntityUniqueId>* damaged_entities{};
+        Element<EntityId>* damaged_entities{};
         Element<std::int32_t>* damage_amounts{};
-        Element<EntityUniqueId>* instigators{};
+        Element<EntityId>* instigators{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (damaged_entities == nullptr) {
                 return {};
@@ -278,9 +278,9 @@ struct DirectDamageEvents
         transfer_columns<false>(destination, source, num_);
     }
   public:
-    void add(EntityUniqueId const damaged_entity,
+    void add(EntityId const damaged_entity,
              std::int32_t const damage_amount,
-             EntityUniqueId const instigator) {
+             EntityId const instigator) {
         auto const index{num()};
         add_uninitialised(1);
         auto const events{get_view()};

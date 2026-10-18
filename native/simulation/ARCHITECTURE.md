@@ -8,7 +8,7 @@ contract.
 
 ## Entity lookup
 
-`EntityUniqueId` is the persistent external identity: entity type and type-local lifetime offset.
+`EntityId` is the persistent external identity: entity type and type-local lifetime offset.
 Death does not erase its history or make the identity available for reuse. Each entity type owns
 a lookup table from that offset to a generated 32-bit `EntityInstanceHandle`:
 
@@ -39,7 +39,7 @@ component storage policies are intentional:
   one-pass batched/SIMD processing across entity types.
 - Cold mandatory components can use direct fixed ranges based on entity capacities.
 - Components requiring independent dense lifetime or ordering may use generated component-index
-  maps plus a reverse stable `EntityUniqueId` owner to repair mappings after swap-remove.
+  maps plus a reverse stable `EntityId` owner to repair mappings after swap-remove.
 - Small qualitative/query data can live in per-instance handles, refreshed at phase boundaries
   to avoid unnecessary component reads during Thinking.
 

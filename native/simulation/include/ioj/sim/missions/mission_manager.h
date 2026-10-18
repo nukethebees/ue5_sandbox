@@ -1,6 +1,6 @@
 #pragma once
 #include <ioj/frame_memory_resource.h>
-#include <ioj/sim/entities/entity_unique_id.h>
+#include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/entities/ship_health.h>
 #include <ioj/sim/levels/level_capital_spawn_events.h>
 #include <ioj/sim/levels/level_mission_event_groups.h>
@@ -60,9 +60,9 @@ struct MissionManager {
     // Level mission setup
     /* **************************************** */
     void initialise_level_mission(LevelMissionInitialisationData const& data,
-                                  std::span<EntityUniqueId const> level_entity_ids);
+                                  std::span<EntityId const> level_entity_ids);
     void bind_level_event_data(std::span<std::int32_t const> values,
-                               std::span<EntityUniqueId const> level_entity_ids);
+                               std::span<EntityId const> level_entity_ids);
     void consume_level_events(LevelMissionEventGroups::ConstView groups);
 
     /* **************************************** */
@@ -73,9 +73,9 @@ struct MissionManager {
     void set_kill_target(std::int32_t new_kill_target);
     void set_save_mission_results(bool should_save) noexcept;
     void set_level_identity(std::string const& level_id, std::string display_name);
-    void add_hero_entity(EntityUniqueId id);
-    void add_entity_that_must_survive(EntityUniqueId id);
-    void add_entity_required_to_kill(EntityUniqueId id);
+    void add_hero_entity(EntityId id);
+    void add_entity_that_must_survive(EntityId id);
+    void add_entity_required_to_kill(EntityId id);
     void increase_kill_target(std::int32_t increase);
     void set_pending_objective_events(std::int32_t count);
     void objective_event_dispatched();
@@ -109,19 +109,19 @@ struct MissionManager {
         return level_display_name;
     }
     auto should_save_mission_results() const noexcept -> bool { return save_mission_results; }
-    auto get_hero_entity_ids() const noexcept -> std::span<EntityUniqueId const> {
+    auto get_hero_entity_ids() const noexcept -> std::span<EntityId const> {
         return hero_entity_ids;
     }
     auto get_entity_health_that_must_survive() const noexcept -> std::span<ShipHealth const> {
         return entity_health_that_must_survive;
     }
-    auto get_entity_ids_that_must_survive() const noexcept -> std::span<EntityUniqueId const> {
+    auto get_entity_ids_that_must_survive() const noexcept -> std::span<EntityId const> {
         return entity_ids_that_must_survive;
     }
     auto get_entity_health_required_to_kill() const noexcept -> std::span<ShipHealth const> {
         return entity_health_required_to_kill;
     }
-    auto get_entity_ids_required_to_kill() const noexcept -> std::span<EntityUniqueId const> {
+    auto get_entity_ids_required_to_kill() const noexcept -> std::span<EntityId const> {
         return entity_ids_required_to_kill;
     }
 
@@ -146,7 +146,7 @@ struct MissionManager {
     /* **************************************** */
     // Objective health tracking
     /* **************************************** */
-    void update_objective_health(std::span<EntityUniqueId const> ids,
+    void update_objective_health(std::span<EntityId const> ids,
                                  std::span<ShipHealth> output,
                                  ioj::FrameMemoryResource* scratch_resource);
     auto entities_that_must_survive_are_alive() const -> bool;
@@ -167,10 +167,10 @@ struct MissionManager {
     EntityLedger const& entity_ledger;
     EntityTables const& entity_tables_;
 
-    std::vector<EntityUniqueId> hero_entity_ids{};
-    std::vector<EntityUniqueId> entity_ids_that_must_survive{};
+    std::vector<EntityId> hero_entity_ids{};
+    std::vector<EntityId> entity_ids_that_must_survive{};
     std::vector<ShipHealth> entity_health_that_must_survive{};
-    std::vector<EntityUniqueId> entity_ids_required_to_kill{};
+    std::vector<EntityId> entity_ids_required_to_kill{};
     std::vector<ShipHealth> entity_health_required_to_kill{};
 
     MissionState mission_state{MissionState::NotStarted};
@@ -194,7 +194,7 @@ struct MissionManager {
 
     std::int32_t pending_objective_events_{};
     std::span<std::int32_t const> level_event_values_{};
-    std::span<EntityUniqueId const> level_entity_ids_{};
+    std::span<EntityId const> level_entity_ids_{};
     std::int32_t kill_target_increase_before_level_initialisation_{};
     bool level_initialisation_applied_{};
 

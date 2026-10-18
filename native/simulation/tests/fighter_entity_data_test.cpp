@@ -10,18 +10,18 @@ TEST(NativeSimulation, FighterEntityBiasPackedDataTest) {
     EntityData source;
     source.add_defaulted(3);
     auto source_columns{source.get_view()};
-    source_columns.entity_ids()[0] = EntityUniqueId::from_raw(10);
-    source_columns.entity_ids()[1] = EntityUniqueId::from_raw(20);
-    source_columns.entity_ids()[2] = EntityUniqueId::from_raw(30);
+    source_columns.entity_ids()[0] = EntityId::from_raw(10);
+    source_columns.entity_ids()[1] = EntityId::from_raw(20);
+    source_columns.entity_ids()[2] = EntityId::from_raw(30);
     source_columns.integral_biases()[0] = 100u;
     source_columns.integral_biases()[1] = 200u;
     source_columns.integral_biases()[2] = 300u;
     source_columns.float_biases()[0] = 0.1f;
     source_columns.float_biases()[1] = 0.2f;
     source_columns.float_biases()[2] = 0.3f;
-    source_columns.parent_ids()[0] = EntityUniqueId::from_raw(10);
-    source_columns.parent_ids()[1] = EntityUniqueId::from_raw(20);
-    source_columns.parent_ids()[2] = EntityUniqueId::from_raw(30);
+    source_columns.parent_ids()[0] = EntityId::from_raw(10);
+    source_columns.parent_ids()[1] = EntityId::from_raw(20);
+    source_columns.parent_ids()[2] = EntityId::from_raw(30);
     source_columns.validate();
 
     auto view{source.get_view(1, 2)};
@@ -47,21 +47,21 @@ TEST(NativeSimulation, FighterEntityBiasPackedDataTest) {
     auto& reordered{buffers.current()};
     auto reordered_columns{reordered.get_view()};
     reordered_columns.validate();
-    EXPECT_TRUE(reordered_columns.entity_ids()[0] == EntityUniqueId::from_raw(30))
+    EXPECT_TRUE(reordered_columns.entity_ids()[0] == EntityId::from_raw(30))
         << "Buffered copy keeps ID paired with integral bias";
     EXPECT_EQ(reordered_columns.integral_biases()[0], 300u) << "Buffered copy integral bias";
     EXPECT_EQ(reordered_columns.float_biases()[0], 0.3f) << "Buffered copy float bias";
-    EXPECT_TRUE(reordered_columns.parent_ids()[0] == EntityUniqueId::from_raw(30))
+    EXPECT_TRUE(reordered_columns.parent_ids()[0] == EntityId::from_raw(30))
         << "Buffered copy keeps parent ID paired with ID";
 
     reordered.remove_at_swap(0, 1);
     reordered_columns = reordered.get_view();
     reordered_columns.validate();
-    EXPECT_TRUE(reordered_columns.entity_ids()[0] == EntityUniqueId::from_raw(20))
+    EXPECT_TRUE(reordered_columns.entity_ids()[0] == EntityId::from_raw(20))
         << "Swap removal keeps ID paired with integral bias";
     EXPECT_EQ(reordered_columns.integral_biases()[0], 200u) << "Swap removal integral bias";
     EXPECT_EQ(reordered_columns.float_biases()[0], 0.2f) << "Swap removal float bias";
-    EXPECT_TRUE(reordered_columns.parent_ids()[0] == EntityUniqueId::from_raw(20))
+    EXPECT_TRUE(reordered_columns.parent_ids()[0] == EntityId::from_raw(20))
         << "Swap removal keeps parent ID paired with ID";
 }
 

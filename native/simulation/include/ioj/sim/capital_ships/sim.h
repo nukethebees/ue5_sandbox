@@ -7,7 +7,7 @@
 #include <ioj/sim/entities/entity_frame_change.h>
 #include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/entities/entity_type.h>
-#include <ioj/sim/entities/entity_unique_id.h>
+#include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/fighters/command_interface.h>
 #include <ioj/sim/fighters/fighter_order_queue.h>
 #include <ioj/sim/index_span.h>
@@ -69,13 +69,13 @@ struct Sim {
     // Accessors
     /* **************************************** */
     auto get_num_instances() const noexcept -> std::uint32_t;
-    auto is_valid(EntityUniqueId id) const noexcept -> bool;
-    auto get_id(std::uint32_t index) const -> EntityUniqueId {
+    auto is_valid(EntityId id) const noexcept -> bool;
+    auto get_id(std::uint32_t index) const -> EntityId {
         return entities.get_const_view().entity_ids()[index];
     }
     auto get_fighter_spawn_slots() const noexcept -> std::uint32_t;
     auto get_fighters_spawned() const noexcept -> std::uint32_t { return fighters_spawned; }
-    auto get_fighter_ids() const noexcept -> std::span<EntityUniqueId const> {
+    auto get_fighter_ids() const noexcept -> std::span<EntityId const> {
         return {fighter_ids.data(), fighter_ids.size()};
     }
     auto get_fighter_id_spans() const noexcept -> std::span<IndexSpan const> {
@@ -84,26 +84,26 @@ struct Sim {
     auto get_fighter_id_span(std::uint32_t index) const noexcept -> IndexSpan {
         return entities.get_const_view().fighter_id_spans()[index];
     }
-    auto get_fighter_ids(std::uint32_t index) const noexcept -> std::span<EntityUniqueId const>;
-    auto get_fighter_ids(IndexSpan span) const noexcept -> std::span<EntityUniqueId const>;
-    auto get_target_id(std::uint32_t index) const noexcept -> EntityUniqueId {
+    auto get_fighter_ids(std::uint32_t index) const noexcept -> std::span<EntityId const>;
+    auto get_fighter_ids(IndexSpan span) const noexcept -> std::span<EntityId const>;
+    auto get_target_id(std::uint32_t index) const noexcept -> EntityId {
         return entities.get_const_view().target_ids()[index];
     }
-    auto get_target_ids() const noexcept -> std::span<EntityUniqueId const> {
+    auto get_target_ids() const noexcept -> std::span<EntityId const> {
         return entities.get_const_view().target_ids();
     }
     auto get_team(std::uint32_t index) const noexcept -> Team {
         return entities.get_const_view().teams()[index];
     }
-    auto get_team(EntityUniqueId id) const noexcept -> Team;
-    auto get_health(EntityUniqueId id) const noexcept -> Health;
+    auto get_team(EntityId id) const noexcept -> Team;
+    auto get_health(EntityId id) const noexcept -> Health;
     auto find_first_index_on_team(Team team) const noexcept -> std::optional<std::uint32_t>;
-    auto find_first_id_on_team(Team team) const noexcept -> std::optional<EntityUniqueId>;
+    auto find_first_id_on_team(Team team) const noexcept -> std::optional<EntityId>;
 
     /* **************************************** */
     // Checks
     /* **************************************** */
-    void set_target_id(EntityUniqueId ship_id, EntityUniqueId target_id);
+    void set_target_id(EntityId ship_id, EntityId target_id);
   private:
     /* **************************************** */
     // Sim phases
@@ -123,7 +123,7 @@ struct Sim {
     // Ship spawning
     /* **************************************** */
     auto register_ships(LevelCapitalSpawnEvents::ConstView spawn_data)
-        -> std::vector<EntityUniqueId>;
+        -> std::vector<EntityId>;
     void spawn_ships(LevelCapitalSpawnEvents::ConstView spawn_data);
 
     /* **************************************** */
@@ -176,7 +176,7 @@ struct Sim {
     std::vector<EntityFrameChange> frame_changes_;
 
     fighters::CommandInterface fighters_interface;
-    std::vector<EntityUniqueId> fighter_ids;
+    std::vector<EntityId> fighter_ids;
     std::uint64_t fighter_membership_revision_{};
     std::uint64_t fighter_layout_revision_{};
     bool fighter_ids_current_{};

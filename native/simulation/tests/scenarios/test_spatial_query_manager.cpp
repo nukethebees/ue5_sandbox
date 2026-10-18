@@ -28,7 +28,7 @@ void run_worldless_spatial_query_line_of_sight(tests::SimulationFixture const& c
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
     auto const& capitals{harness.get_simulation().get_capital_ships()};
-    std::vector<EntityUniqueId> expected{};
+    std::vector<EntityId> expected{};
     auto const location_count{static_cast<std::int32_t>(locations.size())};
     for (std::int32_t i{}; i < location_count; ++i) {
         expected.push_back(capitals.get_id(i));
@@ -36,7 +36,7 @@ void run_worldless_spatial_query_line_of_sight(tests::SimulationFixture const& c
 
     Vectors3f starts;
     Vectors3f ends;
-    std::vector<EntityUniqueId> targets{};
+    std::vector<EntityId> targets{};
     std::array<float, 3> const scales{0.5f, 1.f, 2.f};
     for (auto const scale : scales) {
         for (std::int32_t i{}; i < location_count; ++i) {
@@ -45,7 +45,7 @@ void run_worldless_spatial_query_line_of_sight(tests::SimulationFixture const& c
             targets.push_back(expected[i]);
         }
     }
-    std::vector<EntityUniqueId> results{};
+    std::vector<EntityId> results{};
     results.resize(static_cast<std::size_t>(ends.num()));
     harness.get_simulation().get_spatial_query_manager().trace_line_of_sight(
         starts.get_const_view(), ends.get_const_view(), results, &query_memory);

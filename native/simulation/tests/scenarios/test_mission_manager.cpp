@@ -106,10 +106,10 @@ void run_worldless_mission_manager_scenario(tests::SimulationFixture const& conf
     auto const& capitals{simulation.get_capital_ships()};
     auto const hero{capitals.get_id(hero_index)};
     auto const ordinary_enemy{ordinary_enemy_index == invalid_level_entity_index
-                                  ? EntityUniqueId{}
+                                  ? EntityId{}
                                   : capitals.get_id(ordinary_enemy_index)};
     auto const required_enemy{required_enemy_index == invalid_level_entity_index
-                                  ? EntityUniqueId{}
+                                  ? EntityId{}
                                   : capitals.get_id(required_enemy_index)};
 
     harness.finish_initialisation();

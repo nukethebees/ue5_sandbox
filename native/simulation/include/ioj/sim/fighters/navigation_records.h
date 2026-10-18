@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "ioj/sim/entities/entity_unique_id.h"
+#include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/fighters/fighter_navigation_types.h"
 #include "ioj/vector_types.h"
 
@@ -55,7 +55,7 @@ struct SeparationObservation {
 };
 
 struct SeparationNeighbour {
-    EntityUniqueId id;
+    EntityId id;
 
     Vector3f location;
 };

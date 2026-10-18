@@ -62,7 +62,7 @@ struct Sim {
     // Accessors
     /* **************************************** */
     auto get_num_instances() const noexcept -> std::uint32_t;
-    auto get_target_ids() const -> std::span<EntityUniqueId const>;
+    auto get_target_ids() const -> std::span<EntityId const>;
     auto get_laser_simulation() const -> lasers::Sim const& { return laser_simulation; }
 
     /* **************************************** */
@@ -87,7 +87,7 @@ struct Sim {
     // Spawning
     /* **************************************** */
     auto register_turrets(LevelTurretSpawnEvents::ConstView const spawn_data)
-        -> std::vector<EntityUniqueId>;
+        -> std::vector<EntityId>;
 
     /* **************************************** */
     // Entity data

@@ -10,10 +10,10 @@
 
 namespace ioj::sim::tests {
 TEST(EntityTypeRuns, GroupsWithoutChangingIdsAndOmitsEmptyIds) {
-    std::array const ids{EntityUniqueId{3, EntityType::Fighter},
-                         EntityUniqueId{},
-                         EntityUniqueId{0, EntityType::PlayerShip},
-                         EntityUniqueId{3, EntityType::Fighter}};
+    std::array const ids{EntityId{3, EntityType::Fighter},
+                         EntityId{},
+                         EntityId{0, EntityType::PlayerShip},
+                         EntityId{3, EntityType::Fighter}};
     auto const original{ids};
     std::array<std::uint32_t, ids.size()> order;
     auto const runs{group_entity_ids(ids, order)};
@@ -23,7 +23,7 @@ TEST(EntityTypeRuns, GroupsWithoutChangingIdsAndOmitsEmptyIds) {
     EXPECT_EQ(runs.types[1], EntityType::Fighter);
     EXPECT_EQ(runs.offsets[1], 1u);
     EXPECT_EQ(runs.counts[1], 2u);
-    std::array<EntityUniqueId, ids.size()> sorted;
+    std::array<EntityId, ids.size()> sorted;
     auto const count{ids.size()};
     for (std::size_t row{}; row < count; ++row) {
         sorted[row] = ids[order[row]];
@@ -37,15 +37,15 @@ TEST(EntityTypeRuns, GroupsWithoutChangingIdsAndOmitsEmptyIds) {
     }
     EXPECT_EQ(group_entity_ids({}, {}).num, 0u);
 #ifndef NDEBUG
-    std::array const malformed{EntityUniqueId::from_raw(0x06000000)};
+    std::array const malformed{EntityId::from_raw(0x06000000)};
     EXPECT_DEATH(entity_type_runs(malformed), "EntityTypeRuns::capacity");
 #endif
 }
 
 TEST(EntityLookupTables, PublishedCountIncludesDeadRowsUntilRepublished) {
     EntityLookupTable lookup{EntityType::Fighter};
-    std::array const ids{EntityUniqueId{0, EntityType::Fighter},
-                         EntityUniqueId{1, EntityType::Fighter}};
+    std::array const ids{EntityId{0, EntityType::Fighter},
+                         EntityId{1, EntityType::Fighter}};
     lookup.publish_rows(ids, {}, std::array<Health, 2>{0, 100}, 100);
     EXPECT_EQ(lookup.row_count(), 2u);
     EXPECT_FALSE(lookup.entries()[0].is_valid());
@@ -61,15 +61,15 @@ TEST(EntityLookupTables, PublishedCountIncludesDeadRowsUntilRepublished) {
 TEST(EntityLookupTables, ResolvesArbitraryIdsInCallerOrder) {
     SimClock clock;
     EntityLookupTables lookups{clock};
-    std::array const fighters{EntityUniqueId{2, EntityType::Fighter},
-                              EntityUniqueId{3, EntityType::Fighter}};
-    std::array const capitals{EntityUniqueId{0, EntityType::CapitalShip}};
+    std::array const fighters{EntityId{2, EntityType::Fighter},
+                              EntityId{3, EntityType::Fighter}};
+    std::array const capitals{EntityId{0, EntityType::CapitalShip}};
     lookups.for_type(EntityType::Fighter)
         .publish_rows(fighters, std::array{Team::Blue, Team::Blue});
     lookups.for_type(EntityType::CapitalShip).publish_rows(capitals, std::array{Team::Red});
     lookups.for_type(EntityType::Fighter).retire(std::span{fighters}.last(1));
     SimClockTestAccess::set_phase(clock, SimulationPhase::Thinking);
-    std::array const ids{fighters[0], EntityUniqueId{}, capitals[0], fighters[0], fighters[1]};
+    std::array const ids{fighters[0], EntityId{}, capitals[0], fighters[0], fighters[1]};
     std::array<std::uint32_t, ids.size()> order;
     std::array<EntityInstanceHandle, ids.size()> handles;
     lookups.lookup_handles(ids, order, handles);
@@ -83,9 +83,9 @@ TEST(EntityLookupTables, ResolvesArbitraryIdsInCallerOrder) {
 TEST(EntityLookupTables, ResolvesTypeRunsAndPreservesDuplicateAndMissingSlots) {
     SimClock clock;
     EntityLookupTables lookups{clock};
-    std::array const fighters{EntityUniqueId{2, EntityType::Fighter},
-                              EntityUniqueId{5, EntityType::Fighter}};
-    std::array const capitals{EntityUniqueId{0, EntityType::CapitalShip}};
+    std::array const fighters{EntityId{2, EntityType::Fighter},
+                              EntityId{5, EntityType::Fighter}};
+    std::array const capitals{EntityId{0, EntityType::CapitalShip}};
     lookups.for_type(EntityType::Fighter).publish_rows(fighters, std::array{Team::Blue, Team::Red});
     lookups.for_type(EntityType::CapitalShip).publish_rows(capitals, std::array{Team::Green});
     SimClockTestAccess::set_phase(clock, SimulationPhase::Thinking);
@@ -94,8 +94,8 @@ TEST(EntityLookupTables, ResolvesTypeRunsAndPreservesDuplicateAndMissingSlots) {
                          fighters[1],
                          fighters[0],
                          fighters[1],
-                         EntityUniqueId{100, EntityType::Fighter},
-                         EntityUniqueId{}};
+                         EntityId{100, EntityType::Fighter},
+                         EntityId{}};
     std::array<EntityInstanceHandle, ids.size()> handles;
     lookups.lookup_handles(ids, handles);
     EXPECT_EQ(handles[0].index(), 0u);
@@ -110,9 +110,9 @@ TEST(EntityLookupTables, ResolvesTypeRunsAndPreservesDuplicateAndMissingSlots) {
 
 TEST(EntityLookupTables, RetirementAndReorderingCannotAliasStableIdentity) {
     EntityLookupTable lookup{EntityType::Fighter};
-    std::array const ids{EntityUniqueId{0, EntityType::Fighter},
-                         EntityUniqueId{1, EntityType::Fighter},
-                         EntityUniqueId{2, EntityType::Fighter}};
+    std::array const ids{EntityId{0, EntityType::Fighter},
+                         EntityId{1, EntityType::Fighter},
+                         EntityId{2, EntityType::Fighter}};
     lookup.publish_rows(ids, {});
     lookup.retire(std::span{ids}.first(1));
     std::array const reordered{ids[2], ids[1]};
@@ -134,10 +134,10 @@ TEST(EntityMotion, CopiesMixedTypesAndReportsMissingEntitiesWithoutChangingIds) 
     owners.player_velocity = {4, 5, 6};
     owners.publish();
     std::array ids{fighter,
-                   EntityUniqueId{},
+                   EntityId{},
                    capital,
                    fighter,
-                   EntityUniqueId{99, EntityType::Fighter},
+                   EntityId{99, EntityType::Fighter},
                    player,
                    dead};
     auto const original{ids};

@@ -18,7 +18,7 @@ struct FDisplayEntityTestData {
     auto num() const noexcept -> std::int32_t { return static_cast<std::int32_t>(healths.size()); }
 
     void add_health(std::int32_t const row,
-                    ::ioj::sim::EntityUniqueId const owner,
+                    ::ioj::sim::EntityId const owner,
                     ::ioj::sim::Health const health) {
         entity_ids[row] = owner;
         healths[row] = health;
@@ -30,7 +30,7 @@ struct FDisplayEntityTestData {
 
     ::ioj::sim::FighterEntityData motion;
     std::vector<::ioj::sim::Health> healths;
-    std::vector<::ioj::sim::EntityUniqueId> entity_ids;
+    std::vector<::ioj::sim::EntityId> entity_ids;
     std::vector<::ioj::Team> teams;
     std::vector<::ioj::sim::EntityType> entity_types;
 };

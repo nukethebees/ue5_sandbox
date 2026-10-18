@@ -3,7 +3,7 @@
 #include <ioj/column_math.h>
 #include <ioj/levels/team.h>
 #include <ioj/sim/entities/entity_type.h>
-#include <ioj/sim/entities/entity_unique_id.h>
+#include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/entities/health_table.h>
 #include <ioj/vectors3f.h>
 
@@ -14,14 +14,14 @@ using ::ioj::Team;
 using ::ioj::Vector3f;
 using ::ioj::Vectors3fConstView;
 using ::ioj::sim::EntityType;
-using ::ioj::sim::EntityUniqueId;
+using ::ioj::sim::EntityId;
 using ::ioj::sim::Health;
 using ::ioj::sim::HealthConstView;
 // Borrowed owner columns, valid only until the next structural mutation.
 // Static/indestructible owners omit columns whose values are constant.
 struct AgentDisplayBatch {
     EntityType type{};
-    std::span<EntityUniqueId const> ids;
+    std::span<EntityId const> ids;
     Vectors3fConstView locations;
     Vectors3fConstView velocities;
     HealthConstView healths;

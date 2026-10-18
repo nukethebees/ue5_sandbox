@@ -235,7 +235,7 @@ void Sim::handle_collisions(float const dt, ioj::FrameMemoryResource* const scra
 
         auto const hits{trace_results.slice(begin, trace_count)};
         auto const ignored_entities{
-            std::span<EntityUniqueId const>{instigator_ids}.subspan(begin, trace_count)};
+            std::span<EntityId const>{instigator_ids}.subspan(begin, trace_count)};
         query_manager.trace_closest_lines(
             trace_locations, ends.get_const_view(), hits, ignored_entities);
     });

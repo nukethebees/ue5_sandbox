@@ -71,7 +71,7 @@ struct Sim {
     auto spawn_instances(Vectors3fConstView const new_locations,
                          std::span<float const> const new_yaws,
                          std::span<std::int32_t const> const new_fire_point_indices)
-        -> std::span<EntityUniqueId const>;
+        -> std::span<EntityId const>;
 
     /* **************************************** */
     // Movement
