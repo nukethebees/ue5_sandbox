@@ -20,20 +20,12 @@ namespace {
 
 using namespace layout;
 
-auto unloaded_schema(std::filesystem::path project_path, std::string target_name)
-    -> SchemaLoadResult {
-    SchemaLoadResult result;
-    result.project_path = std::move(project_path);
-    result.target_name = std::move(target_name);
-    return result;
-}
-
 class Application {
   public:
     Application(std::filesystem::path project_path,
                 std::string target_name,
                 bool const reopen_recent_project)
-        : ui_{unloaded_schema(std::move(project_path), std::move(target_name))}
+        : ui_{std::move(project_path), std::move(target_name)}
         , reopen_recent_project_{reopen_recent_project} {}
     ~Application();
 
