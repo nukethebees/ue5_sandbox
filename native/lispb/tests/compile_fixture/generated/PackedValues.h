@@ -274,8 +274,9 @@ struct FighterState {
         assert(entity_index_value <= entity_index_maximum);
         assert(static_cast<state_underlying_type>(state_value) <=
                static_cast<state_underlying_type>(state_field::value_mask));
-        value_ = static_cast<storage_type>(ioj::packed_pack<entity_index_field>(entity_index_value) |
-                                           ioj::packed_pack<state_field>(state_value));
+        value_ =
+            static_cast<storage_type>(ioj::packed_pack<entity_index_field>(entity_index_value) |
+                                      ioj::packed_pack<state_field>(state_value));
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
