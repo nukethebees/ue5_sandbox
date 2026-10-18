@@ -4,30 +4,64 @@
 #include "ioj/sim/collision/collision_grid.h"
 #include "ioj/sim/collision/entity_cell_data.h"
 
+#include <cassert>
+#include <span>
+
 namespace ioj::sim::collision {
-inline void add(EntityCellData& data,
-                Vector3f const min_point,
-                Vector3f const max_point,
-                CellCoord const min_cell,
-                CellCoord const max_cell,
-                EntityId const id) {
-    auto const index{data.num()};
-    data.add_uninitialised(1);
-    auto const view{data.get_view()};
-    view.min_point_xs()[index] = min_point.x();
-    view.min_point_ys()[index] = min_point.y();
-    view.min_point_zs()[index] = min_point.z();
-    view.max_point_xs()[index] = max_point.x();
-    view.max_point_ys()[index] = max_point.y();
-    view.max_point_zs()[index] = max_point.z();
-    view.min_cell_xs()[index] = min_cell.x();
-    view.min_cell_ys()[index] = min_cell.y();
-    view.min_cell_zs()[index] = min_cell.z();
-    view.max_cell_xs()[index] = max_cell.x();
-    view.max_cell_ys()[index] = max_cell.y();
-    view.max_cell_zs()[index] = max_cell.z();
-    view.entity_ids()[index] = id;
-}
+// Keep storage fixed while this writer is in use; index must name an allocated row.
+struct EntityCellDataWriter {
+    explicit EntityCellDataWriter(EntityCellData::View const view)
+        : min_point_xs_{view.min_point_xs()}
+        , min_point_ys_{view.min_point_ys()}
+        , min_point_zs_{view.min_point_zs()}
+        , max_point_xs_{view.max_point_xs()}
+        , max_point_ys_{view.max_point_ys()}
+        , max_point_zs_{view.max_point_zs()}
+        , min_cell_xs_{view.min_cell_xs()}
+        , min_cell_ys_{view.min_cell_ys()}
+        , min_cell_zs_{view.min_cell_zs()}
+        , max_cell_xs_{view.max_cell_xs()}
+        , max_cell_ys_{view.max_cell_ys()}
+        , max_cell_zs_{view.max_cell_zs()}
+        , entity_ids_{view.entity_ids()} {}
+
+    void set(std::uint32_t const index,
+             Vector3f const min_point,
+             Vector3f const max_point,
+             CellCoord const min_cell,
+             CellCoord const max_cell,
+             EntityId const id) const {
+        assert(index < entity_ids_.size());
+
+        min_point_xs_[index] = min_point.x();
+        min_point_ys_[index] = min_point.y();
+        min_point_zs_[index] = min_point.z();
+        max_point_xs_[index] = max_point.x();
+        max_point_ys_[index] = max_point.y();
+        max_point_zs_[index] = max_point.z();
+        min_cell_xs_[index] = min_cell.x();
+        min_cell_ys_[index] = min_cell.y();
+        min_cell_zs_[index] = min_cell.z();
+        max_cell_xs_[index] = max_cell.x();
+        max_cell_ys_[index] = max_cell.y();
+        max_cell_zs_[index] = max_cell.z();
+        entity_ids_[index] = id;
+    }
+  private:
+    std::span<float> min_point_xs_;
+    std::span<float> min_point_ys_;
+    std::span<float> min_point_zs_;
+    std::span<float> max_point_xs_;
+    std::span<float> max_point_ys_;
+    std::span<float> max_point_zs_;
+    std::span<std::int32_t> min_cell_xs_;
+    std::span<std::int32_t> min_cell_ys_;
+    std::span<std::int32_t> min_cell_zs_;
+    std::span<std::int32_t> max_cell_xs_;
+    std::span<std::int32_t> max_cell_ys_;
+    std::span<std::int32_t> max_cell_zs_;
+    std::span<EntityId> entity_ids_;
+};
 
 [[nodiscard]] inline auto min_point_at(EntityCellData::ConstView const data,
                                        std::int32_t const index) -> Vector3f {

@@ -23,6 +23,7 @@ struct CollisionGridTestAccess;
 }
 
 namespace ioj::sim::collision {
+struct EntityCellDataWriter;
 
 struct CollisionUniformGrid {
     /* **************************************** */
@@ -122,7 +123,11 @@ struct CollisionUniformGrid {
   private:
     friend struct ::ioj::sim::CollisionGridTestAccess;
     void begin_entity_grid();
-    void append_entity_bounds(EntityId id, WorldAABB bounds);
+    // Allocate output rows before binding the writer; keep storage fixed until writing finishes.
+    void write_entity_bounds(EntityCellDataWriter const& output,
+                             std::uint32_t output_row,
+                             EntityId id,
+                             WorldAABB bounds);
     void finish_entity_grid();
 
     /* **************************************** */

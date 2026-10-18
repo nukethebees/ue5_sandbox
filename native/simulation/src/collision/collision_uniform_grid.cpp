@@ -8,7 +8,6 @@
 #include <ioj/sim/collision/grid_traversal.h>
 #include <ioj/sim/collision/line_trace_batch.h>
 #include <ioj/sim/collision/trace_hits.h>
-#include <ioj/sim/collision/world_aabb_operations.h>
 #include <ioj/sim/entities/health.h>
 #include <ioj/sim/levels/level_read_access.h>
 #include <ioj/sim/profiling.h>
@@ -155,6 +154,13 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
     auto const turrets{level.get_turrets().get_entities()};
     auto const spinners{level.get_spinners().get_entities()};
     auto const* player{level.get_player()};
+    auto const max_entity_count{static_cast<std::uint64_t>(capitals.num()) + fighters.num() +
+                                turrets.num() + spinners.num() + (player ? 1u : 0u)};
+    assert(max_entity_count <= EntityCellData::max_capacity);
+    storage.rebuild_entity_data.add_uninitialised(static_cast<std::uint32_t>(max_entity_count));
+    EntityCellDataWriter const output{storage.rebuild_entity_data.get_view()};
+    std::uint32_t output_row{};
+
     auto const append_batch{[&](EntityType const type,
                                 std::span<EntityId const> const ids,
                                 Vectors3fConstView const locations,
@@ -164,8 +170,10 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
         rows.assign(ids.size(), EntityInstanceHandle::invalid_value);
         auto const count{static_cast<std::uint32_t>(ids.size())};
         auto const append_row{[&](std::uint32_t const row) {
-            rows[row] = storage.rebuild_entity_data.num();
-            append_entity_bounds(
+            rows[row] = output_row;
+            write_entity_bounds(
+                output,
+                output_row++,
                 ids[row],
                 make_entity_world_bounds(entity_aabbs, type, locations[row], orientation_at(row)));
         }};
@@ -185,8 +193,10 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
     auto& player_rows{storage.entity_row_to_aabb_row[EntityType::PlayerShip]};
     player_rows.assign(player ? 1u : 0u, EntityInstanceHandle::invalid_value);
     if (player && player->is_alive()) {
-        player_rows[0] = storage.rebuild_entity_data.num();
-        append_entity_bounds(
+        player_rows[0] = output_row;
+        write_entity_bounds(
+            output,
+            output_row++,
             player->unique_entity_id,
             make_entity_world_bounds(
                 entity_aabbs,
@@ -226,6 +236,8 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
                  [spinner_yaws](std::uint32_t row) {
                      return to_quaternion(Rotator3f{.yaw = spinner_yaws[row]});
                  });
+
+    storage.rebuild_entity_data.set_num(output_row);
     finish_entity_grid();
 }
 void CollisionUniformGrid::begin_entity_grid() {
@@ -257,7 +269,10 @@ void CollisionUniformGrid::begin_entity_grid() {
         storage.rebuild_entity_data.reset();
     }
 }
-void CollisionUniformGrid::append_entity_bounds(EntityId const id, WorldAABB const bounds) {
+void CollisionUniformGrid::write_entity_bounds(EntityCellDataWriter const& output,
+                                               std::uint32_t const output_row,
+                                               EntityId const id,
+                                               WorldAABB const bounds) {
     auto const& geometry{geometry_};
     auto& storage{entity_storage_};
     auto const row_stride{geometry.dimensions.x()};
@@ -282,7 +297,7 @@ void CollisionUniformGrid::append_entity_bounds(EntityId const id, WorldAABB con
                         to_string(geometry.dimensions)));
     }
 
-    collision::add(storage.rebuild_entity_data, bounds.min, bounds.max, min_coord, max_coord, id);
+    output.set(output_row, bounds.min, bounds.max, min_coord, max_coord, id);
 
     auto plane_index{min_coord.x() + min_coord.y() * row_stride + min_coord.z() * plane_stride};
     for (auto z{min_coord.z()}; z <= max_coord.z(); ++z) {
