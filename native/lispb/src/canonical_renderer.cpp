@@ -86,7 +86,8 @@
 namespace lispb::schema::detail {
 
 CanonicalRenderer::CanonicalRenderer(codegen::Declarations const& declarations)
-    : store_{declarations} {}
+    : store_{declarations}
+    , ir_{declarations.strings()} {}
 auto CanonicalRenderer::text(StringId value) const -> std::string_view {
     return store_.strings().view(value);
 }
@@ -121,38 +122,39 @@ auto CanonicalRenderer::build_type_ref(codegen::TypeRefId const id) -> Expr {
                                 return std::isspace(character) != 0 || character == '(' ||
                                        character == ')' || character == '"' || character == ';';
                             })};
-    auto const rendered_name{needs_quotes ? ir_.string(name) : ir_.atom(name)};
+    auto const rendered_name{needs_quotes ? ir_.string(types.name[index])
+                                          : ir_.atom(types.name[index])};
     if (text(types.suffix[index]).empty() && !types.nested[index].has_value()) {
         return rendered_name;
     }
 
     auto result{ir_.form("type-ref", {rendered_name})};
     if (!text(types.suffix[index]).empty()) {
-        result.field("suffix", ir_.string(text(types.suffix[index])));
+        result.field("suffix", ir_.string(types.suffix[index]));
     }
     if (types.nested[index].has_value()) {
-        result.field("nested", ir_.string(text(*types.nested[index])));
+        result.field("nested", ir_.string(*types.nested[index]));
     }
     return result.build();
 }
 auto CanonicalRenderer::build_enum_value(codegen::EnumeratorId const value) -> Expr {
     auto const& enumerators{store_.enumerators};
     auto const index{enumerators.index(value)};
-    auto result{ir_.form("value", {ir_.atom(text(enumerators.name[index]))})};
+    auto result{ir_.form("value", {ir_.atom(enumerators.name[index])})};
     if (enumerators.initializer[index].has_value()) {
-        result.field("value", ir_.string(text(*enumerators.initializer[index])));
+        result.field("value", ir_.string(*enumerators.initializer[index]));
     }
     if (enumerators.display_name[index].has_value()) {
-        result.field("display-name", ir_.string(text(*enumerators.display_name[index])));
+        result.field("display-name", ir_.string(*enumerators.display_name[index]));
     }
     if (enumerators.hidden[index]) {
-        result.field("hidden", ir_.atom("true"));
+        result.field("hidden", ir_.atoms.true_value);
     }
     if (enumerators.serialized_name[index].has_value()) {
-        result.field("serialized-name", ir_.string(text(*enumerators.serialized_name[index])));
+        result.field("serialized-name", ir_.string(*enumerators.serialized_name[index]));
     }
     if (enumerators.sentinel[index]) {
-        result.field("sentinel", ir_.atom("true"));
+        result.field("sentinel", ir_.atoms.true_value);
     }
     return result.build();
 }
@@ -160,13 +162,13 @@ auto CanonicalRenderer::build_enum_unreal_projection(
     codegen::EnumUnrealProjectionId const projection) -> Expr {
     auto const& projections{store_.enum_unreal_projections};
     auto const index{projections.index(projection)};
-    auto result{ir_.form("unreal-projection", {ir_.atom(text(projections.name[index]))})};
-    result.field("header", ir_.string(text(projections.header[index])))
-        .field("header-include", ir_.string(text(projections.header_include[index])))
-        .field("conversion-header", ir_.string(text(projections.conversion_header[index])))
-        .field("native-header-include", ir_.string(text(projections.native_header_include[index])));
+    auto result{ir_.form("unreal-projection", {ir_.atom(projections.name[index])})};
+    result.field("header", ir_.string(projections.header[index]))
+        .field("header-include", ir_.string(projections.header_include[index]))
+        .field("conversion-header", ir_.string(projections.conversion_header[index]))
+        .field("native-header-include", ir_.string(projections.native_header_include[index]));
     if (projections.enum_array[index]) {
-        result.field("enum-array", ir_.atom("true"));
+        result.field("enum-array", ir_.atoms.true_value);
     }
     if (projections.reflection[index] != codegen::EnumReflection::uenum) {
         result.field("reflection",
@@ -177,27 +179,27 @@ auto CanonicalRenderer::build_enum_unreal_projection(
 auto CanonicalRenderer::build_enum(codegen::DeclarationHandle const schema) -> Expr {
     auto const& enums{store_.enums};
     auto const index{enums.index(schema)};
-    auto const name{ir_.atom(text(enums.name[index]))};
+    auto const name{ir_.atom(enums.name[index])};
     auto result{enums.underlying_type[index].has_value()
                     ? ir_.form("enum", {name, build_type_ref(*enums.underlying_type[index])})
                     : ir_.form("enum", {name})};
     if (enums.bit_width[index].has_value()) {
-        result.field("bit-width", number(static_cast<unsigned>(*enums.bit_width[index])));
+        result.field("bit-width", *enums.bit_width[index]);
     }
     if (enums.signedness[index] != EnumSignedness::unspecified) {
-        result.field(
-            "signed",
-            ir_.atom(enums.signedness[index] == EnumSignedness::signed_ ? "true" : "false"));
+        result.field("signed",
+                     enums.signedness[index] == EnumSignedness::signed_ ? ir_.atoms.true_value
+                                                                        : ir_.atoms.false_value);
     }
     if (enums.reflection[index] != codegen::EnumReflection::none) {
         result.field("reflection",
                      ir_.atom(codegen::enum_reflection_name(enums.reflection[index])));
     }
     if (enums.enum_array[index]) {
-        result.field("enum-array", ir_.atom("true"));
+        result.field("enum-array", ir_.atoms.true_value);
     }
     if (enums.count[index].has_value()) {
-        result.field("count", ir_.atom(text(*enums.count[index])));
+        result.field("count", ir_.atom(*enums.count[index]));
     }
     auto const conversions{items(enums.conversions[index])};
     if (!conversions.empty()) {
@@ -208,10 +210,10 @@ auto CanonicalRenderer::build_enum(codegen::DeclarationHandle const schema) -> E
         result.field("conversions", ir_.list(values));
     }
     if (enums.export_specifier[index].value != 0) {
-        result.field("export-specifier", ir_.atom(text(enums.export_specifier[index])));
+        result.field("export-specifier", ir_.atom(enums.export_specifier[index]));
     }
     if (enums.native_api[index]) {
-        result.field("native-api", ir_.atom("true"));
+        result.field("native-api", ir_.atoms.true_value);
     }
     auto const helpers{items(enums.helpers[index])};
     if (!helpers.empty()) {
@@ -282,11 +284,10 @@ auto CanonicalRenderer::storage_operation_name(codegen::StorageOperation const o
 auto CanonicalRenderer::build_parameter(codegen::ParameterId const parameter) -> Expr {
     auto const& parameters{store_.parameters};
     auto const index{parameters.index(parameter)};
-    auto result{
-        ir_.form("parameter",
-                 {ir_.atom(text(parameters.name[index])), build_type_ref(parameters.type[index])})};
+    auto result{ir_.form(
+        "parameter", {ir_.atom(parameters.name[index]), build_type_ref(parameters.type[index])})};
     if (parameters.default_value[index].has_value()) {
-        result.field("default", ir_.string(text(*parameters.default_value[index])));
+        result.field("default", ir_.string(*parameters.default_value[index]));
     }
     return result.build();
 }
@@ -295,45 +296,43 @@ auto CanonicalRenderer::build_function(codegen::FunctionSchemaId const function,
     auto const& functions{store_.functions};
     auto const index{functions.index(function)};
     auto result{ir_.form(
-        kind,
-        {ir_.atom(text(functions.name[index])), build_type_ref(functions.return_type[index])})};
-    if (!texts(functions.body_lines[index]).empty()) {
-        result.field("body", string_list(texts(functions.body_lines[index])));
+        kind, {ir_.atom(functions.name[index]), build_type_ref(functions.return_type[index])})};
+    if (!items(functions.body_lines[index]).empty()) {
+        result.field("body", string_list(items(functions.body_lines[index])));
     }
-    if (!texts(functions.dependencies[index]).empty()) {
-        result.field("dependencies", string_list(texts(functions.dependencies[index])));
+    if (!items(functions.dependencies[index]).empty()) {
+        result.field("dependencies", string_list(items(functions.dependencies[index])));
     }
     if (functions.trailing_return_type[index].has_value()) {
         result.field("trailing-return-type",
                      build_type_ref(*functions.trailing_return_type[index]));
     }
     if (functions.is_const[index]) {
-        result.field("const", ir_.atom("true"));
+        result.field("const", ir_.atoms.true_value);
     }
     if (functions.is_noexcept[index]) {
-        result.field("noexcept", ir_.atom("true"));
+        result.field("noexcept", ir_.atoms.true_value);
     }
     if (functions.is_static[index]) {
-        result.field("static", ir_.atom("true"));
+        result.field("static", ir_.atoms.true_value);
     }
     if (functions.is_constexpr[index]) {
-        result.field("constexpr", ir_.atom("true"));
+        result.field("constexpr", ir_.atoms.true_value);
     }
     if (functions.is_nodiscard[index]) {
-        result.field("nodiscard", ir_.atom("true"));
+        result.field("nodiscard", ir_.atoms.true_value);
     }
     if (functions.is_inline[index]) {
-        result.field("inline", ir_.atom("true"));
+        result.field("inline", ir_.atoms.true_value);
     }
     if (functions.definition_in_source[index]) {
-        result.field("definition-in-source", ir_.atom("true"));
+        result.field("definition-in-source", ir_.atoms.true_value);
     }
     if (functions.template_parameters[index].has_value()) {
-        result.field("template-parameters",
-                     ir_.string(text(*functions.template_parameters[index])));
+        result.field("template-parameters", ir_.string(*functions.template_parameters[index]));
     }
     if (functions.requires_clause[index].has_value()) {
-        result.field("requires", ir_.string(text(*functions.requires_clause[index])));
+        result.field("requires", ir_.string(*functions.requires_clause[index]));
     }
     for (auto const parameter : items(functions.parameters[index])) {
         result.add(build_parameter(parameter));
@@ -358,15 +357,15 @@ auto CanonicalRenderer::build_packed_segment(codegen::PackedSegmentId const segm
             auto const& fields{store_.packed_fields};
             auto const index{fields.index(segment)};
             auto result{ir_.form(
-                "field", {ir_.atom(text(fields.name[index])), build_type_ref(fields.type[index])})};
+                "field", {ir_.atom(fields.name[index]), build_type_ref(fields.type[index])})};
             result.field("bits",
-                         fields.bits[index].has_value() ? number(*fields.bits[index])
-                                                        : ir_.atom("auto"));
+                         fields.bits[index].has_value() ? ir_.atom(*fields.bits[index])
+                                                        : ir_.atoms.automatic);
             if (fields.kind[index] != codegen::PackedFieldKind::unsigned_integer) {
                 result.field("kind", ir_.atom(packed_field_kind_name(fields.kind[index])));
             }
             if (fields.range_helper[index]) {
-                result.field("range-helper", ir_.atom("true"));
+                result.field("range-helper", ir_.atoms.true_value);
             }
             if (fields.default_value[index].has_value()) {
                 result.field("default",
@@ -391,8 +390,8 @@ auto CanonicalRenderer::build_packed_segment(codegen::PackedSegmentId const segm
         case codegen::PackedSegmentKind::reserved: {
             auto const& reserved_bits{store_.packed_reserved_bits};
             auto const index{reserved_bits.index(segment)};
-            return ir_.form("reserved", {ir_.atom(text(reserved_bits.name[index]))})
-                .field("bits", number(reserved_bits.bits[index]))
+            return ir_.form("reserved", {ir_.atom(reserved_bits.name[index])})
+                .field("bits", reserved_bits.bits[index])
                 .build();
         }
         default:
@@ -402,7 +401,7 @@ auto CanonicalRenderer::build_packed_segment(codegen::PackedSegmentId const segm
 auto CanonicalRenderer::build_packed_value(codegen::DeclarationHandle const schema) -> Expr {
     auto const& values{store_.packed_values};
     auto const index{values.index(schema)};
-    auto result{ir_.form("packed-value", {ir_.atom(text(values.name[index]))})};
+    auto result{ir_.form("packed-value", {ir_.atom(values.name[index])})};
     result.field("storage", build_type_ref(values.storage_type[index]));
     if (values.byte_order[index].has_value()) {
         result.field("byte-order", ir_.atom(packed_byte_order_name(*values.byte_order[index])));
@@ -411,13 +410,13 @@ auto CanonicalRenderer::build_packed_value(codegen::DeclarationHandle const sche
         result.field("bit-order", ir_.atom(packed_bit_order_name(*values.bit_order[index])));
     }
     if (values.invalid_value[index].has_value()) {
-        result.field("invalid-value", number(*values.invalid_value[index]));
+        result.field("invalid-value", *values.invalid_value[index]);
     }
     if (values.export_specifier[index].value != 0) {
-        result.field("export-specifier", ir_.atom(text(values.export_specifier[index])));
+        result.field("export-specifier", ir_.atom(values.export_specifier[index]));
     }
     if (values.mutable_value[index]) {
-        result.field("mutable", ir_.atom("true"));
+        result.field("mutable", ir_.atoms.true_value);
     }
     for (auto const segment : items(values.segments[index])) {
         result.add(build_packed_segment(segment));
@@ -427,23 +426,23 @@ auto CanonicalRenderer::build_packed_value(codegen::DeclarationHandle const sche
 auto CanonicalRenderer::build_named_code(codegen::PackedNamedCodeId const code) -> Expr {
     auto const& codes{store_.packed_named_codes};
     auto const index{codes.index(code)};
-    auto result{ir_.form("code", {ir_.atom(text(codes.name[index]))})};
+    auto result{ir_.form("code", {ir_.atom(codes.name[index])})};
     result.field("value", ir_.atom(format_packed_integer(codes.value[index])));
     if (codes.sentinel[index]) {
-        result.field("sentinel", ir_.atom("true"));
+        result.field("sentinel", ir_.atoms.true_value);
     }
     return result.build();
 }
 auto CanonicalRenderer::build_integer_scalar(codegen::DeclarationHandle const schema) -> Expr {
     auto const& scalars{store_.integer_scalars};
     auto const index{scalars.index(schema)};
-    auto result{ir_.form("integer-scalar", {ir_.atom(text(scalars.name[index]))})};
-    result.field("signed", ir_.atom(scalars.signedness[index] ? "true" : "false"))
+    auto result{ir_.form("integer-scalar", {ir_.atom(scalars.name[index])})};
+    result.field("signed", scalars.signedness[index] ? ir_.atoms.true_value : ir_.atoms.false_value)
         .field("minimum", ir_.atom(format_packed_integer(scalars.minimum_value[index])))
         .field("maximum", ir_.atom(format_packed_integer(scalars.maximum_value[index])))
         .field("bit-width",
-               scalars.bit_width[index].has_value() ? number(*scalars.bit_width[index])
-                                                    : ir_.atom("auto"));
+               scalars.bit_width[index].has_value() ? ir_.atom(*scalars.bit_width[index])
+                                                    : ir_.atoms.automatic);
     if (scalars.cpp_emission[index] != codegen::IntegerScalarCppEmission::none) {
         result.field("cpp-emission",
                      ir_.atom(integer_scalar_cpp_emission_name(scalars.cpp_emission[index])));
@@ -462,17 +461,17 @@ auto CanonicalRenderer::build_integer_scalar(codegen::DeclarationHandle const sc
 auto CanonicalRenderer::build_linear_quantized(codegen::DeclarationHandle const schema) -> Expr {
     auto const& values{store_.linear_quantizeds};
     auto const index{values.index(schema)};
-    return ir_.form("linear-quantized", {ir_.atom(text(values.name[index]))})
+    return ir_.form("linear-quantized", {ir_.atom(values.name[index])})
         .field("source", build_type_ref(values.source[index]))
-        .field("bits", number(values.bit_width[index]))
-        .field("reserved-codes", number(values.reserved_codes[index]))
+        .field("bits", values.bit_width[index])
+        .field("reserved-codes", values.reserved_codes[index])
         .field("clipping", ir_.atom(quantization_clipping_name(values.clipping[index])))
         .build();
 }
 auto CanonicalRenderer::build_integer_varint(codegen::DeclarationHandle const schema) -> Expr {
     auto const& values{store_.integer_varints};
     auto const index{values.index(schema)};
-    return ir_.form("integer-varint", {ir_.atom(text(values.name[index]))})
+    return ir_.form("integer-varint", {ir_.atom(values.name[index])})
         .field("source", build_type_ref(values.source[index]))
         .field("encoding", ir_.atom(integer_varint_encoding_name(values.encoding[index])))
         .build();
@@ -480,51 +479,51 @@ auto CanonicalRenderer::build_integer_varint(codegen::DeclarationHandle const sc
 auto CanonicalRenderer::build_fixed_point(codegen::DeclarationHandle const schema) -> Expr {
     auto const& values{store_.fixed_points};
     auto const index{values.index(schema)};
-    auto result{ir_.form("fixed-point", {ir_.atom(text(values.name[index]))})};
-    result.field("signed", ir_.atom(values.signedness[index] ? "true" : "false"))
-        .field("total-bits", number(values.total_bits[index]))
-        .field("fractional-bits", number(values.fractional_bits[index]))
+    auto result{ir_.form("fixed-point", {ir_.atom(values.name[index])})};
+    result.field("signed", values.signedness[index] ? ir_.atoms.true_value : ir_.atoms.false_value)
+        .field("total-bits", values.total_bits[index])
+        .field("fractional-bits", values.fractional_bits[index])
         .field("rounding", ir_.atom(fixed_point_rounding_name(values.rounding[index])));
     if (values.minimum_value[index].has_value()) {
-        result.field("minimum", ir_.atom(text(*values.minimum_value[index])));
+        result.field("minimum", ir_.atom(*values.minimum_value[index]));
     }
     if (values.maximum_value[index].has_value()) {
-        result.field("maximum", ir_.atom(text(*values.maximum_value[index])));
+        result.field("maximum", ir_.atom(*values.maximum_value[index]));
     }
     return result.build();
 }
 auto CanonicalRenderer::build_mini_float(codegen::DeclarationHandle const schema) -> Expr {
     auto const& values{store_.mini_floats};
     auto const index{values.index(schema)};
-    return ir_.form("mini-float", {ir_.atom(text(values.name[index]))})
-        .field("sign-bits", number(values.sign_bits[index]))
-        .field("exponent-bits", number(values.exponent_bits[index]))
-        .field("significand-bits", number(values.significand_bits[index]))
-        .field("bias", number(values.exponent_bias[index]))
+    return ir_.form("mini-float", {ir_.atom(values.name[index])})
+        .field("sign-bits", values.sign_bits[index])
+        .field("exponent-bits", values.exponent_bits[index])
+        .field("significand-bits", values.significand_bits[index])
+        .field("bias", values.exponent_bias[index])
         .build();
 }
 auto CanonicalRenderer::build_optional_sentinel(codegen::DeclarationHandle const schema) -> Expr {
     auto const& values{store_.optional_sentinels};
     auto const index{values.index(schema)};
-    return ir_.form("optional-sentinel", {ir_.atom(text(values.name[index]))})
+    return ir_.form("optional-sentinel", {ir_.atom(values.name[index])})
         .field("source", build_type_ref(values.source[index]))
-        .field("sentinel", ir_.atom(text(values.sentinel[index])))
+        .field("sentinel", ir_.atom(values.sentinel[index]))
         .build();
 }
 auto CanonicalRenderer::build_optional_presence_bit(codegen::DeclarationHandle const schema)
     -> Expr {
     auto const& values{store_.optional_presence_bits};
     auto const index{values.index(schema)};
-    return ir_.form("optional-presence-bit", {ir_.atom(text(values.name[index]))})
+    return ir_.form("optional-presence-bit", {ir_.atom(values.name[index])})
         .field("source", build_type_ref(values.source[index]))
         .build();
 }
 auto CanonicalRenderer::build_record(codegen::DeclarationHandle const schema) -> Expr {
     auto const& records{store_.records};
     auto const index{records.index(schema)};
-    auto result{ir_.form("record", {ir_.atom(text(records.name[index]))})};
+    auto result{ir_.form("record", {ir_.atom(records.name[index])})};
     if (records.export_specifier[index].value != 0) {
-        result.field("export-specifier", ir_.atom(text(records.export_specifier[index])));
+        result.field("export-specifier", ir_.atom(records.export_specifier[index]));
     }
     if (records.comparison[index] != codegen::RecordComparison::none) {
         result.field("comparison",
@@ -533,7 +532,7 @@ auto CanonicalRenderer::build_record(codegen::DeclarationHandle const schema) ->
                                   : "three-way"));
     }
     if (records.comparison_noexcept[index]) {
-        result.field("comparison-noexcept", ir_.atom("true"));
+        result.field("comparison-noexcept", ir_.atoms.true_value);
     }
     for (auto const member : items(records.members[index])) {
         result.add(build_aggregate_child(store_.record_members, "member", member));
@@ -546,9 +545,9 @@ auto CanonicalRenderer::build_record(codegen::DeclarationHandle const schema) ->
 auto CanonicalRenderer::build_union(codegen::DeclarationHandle const schema) -> Expr {
     auto const& unions{store_.unions};
     auto const index{unions.index(schema)};
-    auto result{ir_.form("union", {ir_.atom(text(unions.name[index]))})};
+    auto result{ir_.form("union", {ir_.atom(unions.name[index])})};
     if (unions.export_specifier[index].value != 0) {
-        result.field("export-specifier", ir_.atom(text(unions.export_specifier[index])));
+        result.field("export-specifier", ir_.atom(unions.export_specifier[index]));
     }
     for (auto const alternative : items(unions.alternatives[index])) {
         result.add(build_aggregate_child(store_.union_alternatives, "alternative", alternative));
@@ -559,22 +558,22 @@ auto CanonicalRenderer::build_tagged_union_alternative(
     codegen::TaggedUnionAlternativeId const alternative) -> Expr {
     auto const& alternatives{store_.tagged_union_alternatives};
     auto const index{alternatives.index(alternative)};
-    auto result{ir_.form(
-        "alternative",
-        {ir_.atom(text(alternatives.name[index])), build_type_ref(alternatives.type[index])})};
-    result.field("tag", ir_.atom(text(alternatives.tag[index])));
+    auto result{
+        ir_.form("alternative",
+                 {ir_.atom(alternatives.name[index]), build_type_ref(alternatives.type[index])})};
+    result.field("tag", ir_.atom(alternatives.tag[index]));
     if (alternatives.count[index].has_value()) {
-        result.field("count", number(*alternatives.count[index]));
+        result.field("count", *alternatives.count[index]);
     }
     return result.build();
 }
 auto CanonicalRenderer::build_tagged_union(codegen::DeclarationHandle const schema) -> Expr {
     auto const& unions{store_.tagged_unions};
     auto const index{unions.index(schema)};
-    auto result{ir_.form("tagged-union", {ir_.atom(text(unions.name[index]))})};
+    auto result{ir_.form("tagged-union", {ir_.atom(unions.name[index])})};
     result.field("discriminant", build_type_ref(unions.discriminant[index]));
     if (unions.export_specifier[index].value != 0) {
-        result.field("export-specifier", ir_.atom(text(unions.export_specifier[index])));
+        result.field("export-specifier", ir_.atom(unions.export_specifier[index]));
     }
     for (auto const alternative : items(unions.alternatives[index])) {
         result.add(build_tagged_union_alternative(alternative));
@@ -586,25 +585,25 @@ auto CanonicalRenderer::build_soa_member(codegen::SoaMemberId const member) -> E
     auto const& members{store_.soa_members};
     auto const index{members.index(member)};
     auto result{ir_.form("member",
-                         {ir_.atom(text(members.name[index])),
+                         {ir_.atom(members.name[index]),
                           ir_.atom(soa_member_kind_name(members.kind[index])),
                           build_type_ref(members.type[index])})};
     if (members.fixed_schema[index].has_value()) {
-        result.field("fixed-schema", ir_.atom(text(*members.fixed_schema[index])));
+        result.field("fixed-schema", ir_.atom(*members.fixed_schema[index]));
     }
     if (members.nested_schema[index].has_value()) {
-        result.field("nested-schema", ir_.atom(text(*members.nested_schema[index])));
+        result.field("nested-schema", ir_.atom(*members.nested_schema[index]));
     }
     if (members.mask_field[index]) {
-        result.field("mask-field", ir_.atom("true"));
+        result.field("mask-field", ir_.atoms.true_value);
     }
     auto const mask_dimensions{items(members.mask_dimensions[index])};
     if (!mask_dimensions.empty()) {
         std::vector<Expr> values;
         for (auto const dimension : mask_dimensions) {
             auto const dimension_index{dimensions.index(dimension)};
-            values.push_back(ir_.list({ir_.atom(text(dimensions.index_name[dimension_index])),
-                                       ir_.string(text(dimensions.extent[dimension_index]))}));
+            values.push_back(ir_.list({ir_.atom(dimensions.index_name[dimension_index]),
+                                       ir_.string(dimensions.extent[dimension_index])}));
         }
         result.field("mask-dimensions", ir_.list(values));
     }
@@ -616,12 +615,12 @@ auto CanonicalRenderer::build_soa_member(codegen::SoaMemberId const member) -> E
 auto CanonicalRenderer::build_soa(codegen::DeclarationHandle const schema) -> Expr {
     auto const& soas{store_.soas};
     auto const index{soas.index(schema)};
-    auto result{ir_.form("struct", {ir_.atom(text(soas.name[index]))})};
+    auto result{ir_.form("struct", {ir_.atom(soas.name[index])})};
     if (soas.view_name[index].has_value()) {
-        result.field("view-name", ir_.atom(text(*soas.view_name[index])));
+        result.field("view-name", ir_.atom(*soas.view_name[index]));
     }
     if (soas.const_view_name[index].has_value()) {
-        result.field("const-view-name", ir_.atom(text(*soas.const_view_name[index])));
+        result.field("const-view-name", ir_.atom(*soas.const_view_name[index]));
     }
     auto const operations{items(soas.operations[index])};
     if (!operations.empty()) {
@@ -632,32 +631,32 @@ auto CanonicalRenderer::build_soa(codegen::DeclarationHandle const schema) -> Ex
         result.field("operations", ir_.list(values));
     }
     if (soas.export_specifier[index].value != 0) {
-        result.field("export-specifier", ir_.atom(text(soas.export_specifier[index])));
+        result.field("export-specifier", ir_.atom(soas.export_specifier[index]));
     }
-    if (!texts(soas.using_declarations[index]).empty()) {
-        result.field("using-declarations", string_list(texts(soas.using_declarations[index])));
+    if (!items(soas.using_declarations[index]).empty()) {
+        result.field("using-declarations", string_list(items(soas.using_declarations[index])));
     }
     if (soas.equivalent_type[index].has_value()) {
         result.field("equivalent-type", build_type_ref(*soas.equivalent_type[index]));
     }
-    auto const components{texts(soas.vector_components[index])};
+    auto const components{items(soas.vector_components[index])};
     if (!components.empty()) {
         result.field("vector-components", atom_list(components));
     }
     if (soas.copy_element_memberwise[index]) {
-        result.field("copy-element-memberwise", ir_.atom("true"));
+        result.field("copy-element-memberwise", ir_.atoms.true_value);
     }
     if (soas.layout_only[index]) {
-        result.field("layout-only", ir_.atom("true"));
+        result.field("layout-only", ir_.atoms.true_value);
     }
     if (soas.storage[index]) {
         result.field("storage", ir_.atom(codegen::soa_storage_name(*soas.storage[index])));
     }
     if (soas.field_mask_name[index].has_value()) {
-        result.field("field-mask-name", ir_.atom(text(*soas.field_mask_name[index])));
+        result.field("field-mask-name", ir_.atom(*soas.field_mask_name[index]));
     }
     if (soas.field_enum_name[index].has_value()) {
-        result.field("field-enum-name", ir_.atom(text(*soas.field_enum_name[index])));
+        result.field("field-enum-name", ir_.atom(*soas.field_enum_name[index]));
     }
     for (auto const member : items(soas.members[index])) {
         result.add(build_soa_member(member));
@@ -677,43 +676,43 @@ auto CanonicalRenderer::build_soa(codegen::DeclarationHandle const schema) -> Ex
     if (soas.fixed[index].has_value()) {
         auto const& fixed_soas{store_.fixed_soas};
         auto const fixed_index{fixed_soas.index(*soas.fixed[index])};
-        auto fixed{ir_.form("fixed", {ir_.atom(text(fixed_soas.storage_name[fixed_index]))})};
-        auto const containers{texts(fixed_soas.containers[fixed_index])};
+        auto fixed{ir_.form("fixed", {ir_.atom(fixed_soas.storage_name[fixed_index])})};
+        auto const containers{items(fixed_soas.containers[fixed_index])};
         if (!containers.empty()) {
             fixed.field("containers", atom_list(containers));
         }
         result.add(fixed.build());
     }
     if (soas.single_allocation[index].has_value()) {
-        result.add(ir_.form("single-allocation", {ir_.atom(text(*soas.single_allocation[index]))})
-                       .build());
+        result.add(
+            ir_.form("single-allocation", {ir_.atom(*soas.single_allocation[index])}).build());
     }
     return result.build();
 }
 auto CanonicalRenderer::build_vector_soa(codegen::DeclarationHandle const schema) -> Expr {
     auto const& soas{store_.vector_soas};
     auto const index{soas.index(schema)};
-    auto result{ir_.form("vector-soa", {ir_.atom(text(soas.name[index]))})};
+    auto result{ir_.form("vector-soa", {ir_.atom(soas.name[index])})};
     result.field("value-type", build_type_ref(soas.value_type[index]))
-        .field("components", string_list(texts(soas.components[index])));
-    if (!texts(soas.equivalent_members[index]).empty()) {
-        result.field("equivalent-members", string_list(texts(soas.equivalent_members[index])));
+        .field("components", string_list(items(soas.components[index])));
+    if (!items(soas.equivalent_members[index]).empty()) {
+        result.field("equivalent-members", string_list(items(soas.equivalent_members[index])));
     }
     if (soas.equivalent_accessors[index]) {
-        result.field("equivalent-accessors", ir_.atom("true"));
+        result.field("equivalent-accessors", ir_.atoms.true_value);
     }
     if (soas.equivalent_constructor[index].has_value()) {
-        result.field("equivalent-constructor", ir_.atom(text(*soas.equivalent_constructor[index])));
+        result.field("equivalent-constructor", ir_.atom(*soas.equivalent_constructor[index]));
     }
     result.field("equivalent-type", build_type_ref(soas.equivalent_type[index]));
     if (soas.export_specifier[index].value != 0) {
-        result.field("export-specifier", ir_.atom(text(soas.export_specifier[index])));
+        result.field("export-specifier", ir_.atom(soas.export_specifier[index]));
     }
     if (soas.fixed[index].has_value()) {
         auto const& fixed_soas{store_.fixed_soas};
         auto const fixed_index{fixed_soas.index(*soas.fixed[index])};
-        auto fixed{ir_.form("fixed", {ir_.atom(text(fixed_soas.storage_name[fixed_index]))})};
-        auto const containers{texts(fixed_soas.containers[fixed_index])};
+        auto fixed{ir_.form("fixed", {ir_.atom(fixed_soas.storage_name[fixed_index])})};
+        auto const containers{items(fixed_soas.containers[fixed_index])};
         if (!containers.empty()) {
             fixed.field("containers", string_list(containers));
         }
@@ -725,19 +724,19 @@ auto CanonicalRenderer::build_homogeneous_layout(codegen::DeclarationHandle cons
     auto const& values{store_.homogeneous_values};
     auto const& layouts{store_.homogeneous_layouts};
     auto const index{layouts.index(schema)};
-    auto result{ir_.form("layout", {ir_.atom(text(layouts.name[index]))})};
-    result.field("components", string_list(texts(layouts.components[index])));
-    if (!texts(layouts.input_members[index]).empty()) {
-        result.field("input-members", string_list(texts(layouts.input_members[index])));
+    auto result{ir_.form("layout", {ir_.atom(layouts.name[index])})};
+    result.field("components", string_list(items(layouts.components[index])));
+    if (!items(layouts.input_members[index]).empty()) {
+        result.field("input-members", string_list(items(layouts.input_members[index])));
     }
     if (layouts.export_specifier[index].value != 0) {
-        result.field("export-specifier", ir_.atom(text(layouts.export_specifier[index])));
+        result.field("export-specifier", ir_.atom(layouts.export_specifier[index]));
     }
     for (auto const value : items(layouts.value_types[index])) {
         auto const value_index{values.index(value)};
-        auto child{ir_.form("value-type",
-                            {build_type_ref(values.type[value_index]),
-                             ir_.atom(text(values.suffix[value_index]))})};
+        auto child{ir_.form(
+            "value-type",
+            {build_type_ref(values.type[value_index]), ir_.atom(values.suffix[value_index])})};
         if (values.equivalent_type[value_index].has_value()) {
             child.field("equivalent-type", build_type_ref(*values.equivalent_type[value_index]));
         }
@@ -758,31 +757,30 @@ auto CanonicalRenderer::build_static_table(codegen::DeclarationHandle const sche
     auto const& columns{store_.static_table_columns};
     auto const& tables{store_.static_tables};
     auto const index{tables.index(schema)};
-    auto result{ir_.form("table", {ir_.atom(text(tables.name[index]))})};
+    auto result{ir_.form("table", {ir_.atom(tables.name[index])})};
     if (tables.export_specifier[index].value != 0) {
-        result.field("export-specifier", ir_.atom(text(tables.export_specifier[index])));
+        result.field("export-specifier", ir_.atom(tables.export_specifier[index]));
     }
     for (auto const row : items(tables.rows[index])) {
         result.add(
             ir_.form("row",
-                     {ir_.atom(
-                         text(store_.static_table_rows.name[store_.static_table_rows.index(row)]))})
+                     {ir_.atom(store_.static_table_rows.name[store_.static_table_rows.index(row)])})
                 .build());
     }
     for (auto const column : items(tables.columns[index])) {
         auto const column_index{columns.index(column)};
         result.add(ir_.form("column",
-                            {ir_.atom(text(columns.name[column_index])),
+                            {ir_.atom(columns.name[column_index]),
                              build_type_ref(columns.type[column_index])})
                        .build());
     }
     for (auto const group : items(tables.groups[index])) {
         auto const group_index{groups.index(group)};
-        result.add(ir_.form("group",
-                            {ir_.atom(text(groups.name[group_index])),
-                             build_type_ref(groups.type[group_index])})
-                       .field("columns", string_list(texts(groups.columns[group_index])))
-                       .build());
+        result.add(
+            ir_.form("group",
+                     {ir_.atom(groups.name[group_index]), build_type_ref(groups.type[group_index])})
+                .field("columns", string_list(items(groups.columns[group_index])))
+                .build());
     }
     return result.build();
 }
@@ -791,33 +789,33 @@ auto CanonicalRenderer::build_facade(codegen::DeclarationHandle const schema) ->
     auto const& facades{store_.facades};
     auto const index{facades.index(schema)};
     auto result{ir_.form("facade",
-                         {ir_.atom(text(facades.name[index])),
+                         {ir_.atom(facades.name[index]),
                           build_type_ref(facades.target_type[index]),
-                          ir_.atom(text(facades.target_member_name[index]))})};
-    if (!texts(facades.validation_lines[index]).empty()) {
-        result.field("validation", string_list(texts(facades.validation_lines[index])));
+                          ir_.atom(facades.target_member_name[index])})};
+    if (!items(facades.validation_lines[index]).empty()) {
+        result.field("validation", string_list(items(facades.validation_lines[index])));
     }
-    if (!texts(facades.validation_dependencies[index]).empty()) {
+    if (!items(facades.validation_dependencies[index]).empty()) {
         result.field("validation-dependencies",
-                     string_list(texts(facades.validation_dependencies[index])));
+                     string_list(items(facades.validation_dependencies[index])));
     }
     if (facades.export_specifier[index].value != 0) {
-        result.field("export-specifier", ir_.atom(text(facades.export_specifier[index])));
+        result.field("export-specifier", ir_.atom(facades.export_specifier[index]));
     }
-    if (access_keyword(facades.bind_access[index]) != "public") {
+    if (facades.bind_access[index] != codegen::Access::public_) {
         result.field("bind-access", ir_.atom(access_keyword(facades.bind_access[index])));
     }
-    if (access_keyword(facades.method_access[index]) != "public") {
+    if (facades.method_access[index] != codegen::Access::public_) {
         result.field("method-access", ir_.atom(access_keyword(facades.method_access[index])));
     }
-    if (!texts(facades.friends[index]).empty()) {
-        result.field("friends", string_list(texts(facades.friends[index])));
+    if (!items(facades.friends[index]).empty()) {
+        result.field("friends", string_list(items(facades.friends[index])));
     }
-    if (codegen::record_keyword(facades.friend_kind[index]) != "class") {
+    if (facades.friend_kind[index] != codegen::RecordKind::class_) {
         result.field("friend-kind", ir_.atom(codegen::record_keyword(facades.friend_kind[index])));
     }
     if (facades.definitions_in_source[index]) {
-        result.field("definitions-in-source", ir_.atom("true"));
+        result.field("definitions-in-source", ir_.atoms.true_value);
     }
     if (facades.reference_target[index]) {
         result.field("target-storage", ir_.atom("reference"));
@@ -825,16 +823,16 @@ auto CanonicalRenderer::build_facade(codegen::DeclarationHandle const schema) ->
     for (auto const method : items(facades.methods[index])) {
         auto const method_index{methods.index(method)};
         auto child{ir_.form("method",
-                            {ir_.atom(text(methods.name[method_index])),
+                            {ir_.atom(methods.name[method_index]),
                              build_type_ref(methods.return_type[method_index])})};
         if (methods.is_const[method_index]) {
-            child.field("const", ir_.atom("true"));
+            child.field("const", ir_.atoms.true_value);
         }
         if (methods.is_noexcept[method_index]) {
-            child.field("noexcept", ir_.atom("true"));
+            child.field("noexcept", ir_.atoms.true_value);
         }
         if (methods.target_name[method_index].has_value()) {
-            child.field("target-name", ir_.atom(text(*methods.target_name[method_index])));
+            child.field("target-name", ir_.atom(*methods.target_name[method_index]));
         }
         for (auto const parameter : items(methods.parameters[method_index])) {
             child.add(build_parameter(parameter));
@@ -846,16 +844,15 @@ auto CanonicalRenderer::build_facade(codegen::DeclarationHandle const schema) ->
 auto CanonicalRenderer::build_settings_schema(codegen::DeclarationHandle const schema) -> Expr {
     auto const& schemas{store_.settings_schemas};
     auto const index{schemas.index(schema)};
-    auto result{ir_.form("settings-schema", {ir_.atom(text(schemas.name[index]))})};
-    result.field("target", ir_.atom(text(schemas.target[index])))
-        .field("target-header", ir_.string(text(schemas.target_header[index])));
+    auto result{ir_.form("settings-schema", {ir_.atom(schemas.name[index])})};
+    result.field("target", ir_.atom(schemas.target[index]))
+        .field("target-header", ir_.string(schemas.target_header[index]));
     auto const paths{items(schemas.paths[index])};
     auto const members{items(schemas.members[index])};
     auto const count{paths.size()};
     for (std::size_t field_index{}; field_index < count; ++field_index) {
         result.add(
-            ir_.form("field",
-                     {ir_.string(text(paths[field_index])), ir_.string(text(members[field_index]))})
+            ir_.form("field", {ir_.string(paths[field_index]), ir_.string(members[field_index])})
                 .build());
     }
     return result.build();
@@ -911,27 +908,27 @@ auto CanonicalRenderer::build_module(codegen::ModuleHandle const module) -> Expr
     auto const head{module.kind() == codegen::ModuleKind::normal     ? "module"
                     : module.kind() == codegen::ModuleKind::settings ? "settings-module"
                                                                      : "umbrella-module"};
-    auto result{ir_.form(head, {ir_.atom(text(settings_store.name[index]))})};
-    result.field("header", ir_.string(text(settings_store.header[index])));
+    auto result{ir_.form(head, {ir_.atom(settings_store.name[index])})};
+    result.field("header", ir_.string(settings_store.header[index]));
     if (settings_store.source[index].has_value()) {
-        result.field("source", ir_.string(text(*settings_store.source[index])));
+        result.field("source", ir_.string(*settings_store.source[index]));
     }
     if (settings_store.header_include[index].has_value()) {
-        result.field("header-include", ir_.string(text(*settings_store.header_include[index])));
+        result.field("header-include", ir_.string(*settings_store.header_include[index]));
     }
     if (settings_store.namespace_name[index].has_value()) {
-        result.field("namespace", ir_.atom(text(*settings_store.namespace_name[index])));
+        result.field("namespace", ir_.atom(*settings_store.namespace_name[index]));
     }
     if (!settings_store.include_order[index].empty()) {
-        result.field("include-order", string_list(texts(settings_store.include_order[index])));
+        result.field("include-order", string_list(items(settings_store.include_order[index])));
     }
     if (!settings_store.prelude_lines[index].empty()) {
-        result.field("prelude", string_list(texts(settings_store.prelude_lines[index])));
+        result.field("prelude", string_list(items(settings_store.prelude_lines[index])));
     }
 
     if (module.kind() == codegen::ModuleKind::umbrella) {
         auto const& modules{store_.umbrella_modules};
-        result.field("headers", string_list(texts(modules.headers[modules.index(module)])));
+        result.field("headers", string_list(items(modules.headers[modules.index(module)])));
         return result.build();
     }
     if (module.kind() == codegen::ModuleKind::settings) {
@@ -942,8 +939,7 @@ auto CanonicalRenderer::build_module(codegen::ModuleHandle const module) -> Expr
     auto const& modules{store_.normal_modules};
     auto const module_index{modules.index(module)};
     if (modules.enum_helper_namespace[module_index].has_value()) {
-        result.field("helper-namespace",
-                     ir_.atom(text(*modules.enum_helper_namespace[module_index])));
+        result.field("helper-namespace", ir_.atom(*modules.enum_helper_namespace[module_index]));
     }
     if (modules.soa_backend[module_index] == codegen::SoaBackend::standard_library) {
         result.field("backend", ir_.atom("standard-library"));
@@ -951,7 +947,7 @@ auto CanonicalRenderer::build_module(codegen::ModuleHandle const module) -> Expr
     for (auto const allocator : items(modules.soa_array_allocators[module_index])) {
         auto const allocator_index{allocators.index(allocator)};
         result.add(ir_.form("array-allocator",
-                            {ir_.atom(text(allocators.prefix[allocator_index])),
+                            {ir_.atom(allocators.prefix[allocator_index]),
                              build_type_ref(allocators.allocator[allocator_index])})
                        .build());
     }
@@ -967,16 +963,16 @@ void CanonicalRenderer::build_settings_module(codegen::sexpr::FormBuilder& resul
     auto const& categories{store_.setting_categories};
     auto const& modules{store_.settings_modules};
     auto const index{modules.index(module)};
-    result.field("api-name", ir_.atom(text(modules.api_name[index])))
-        .field("state-name", ir_.atom(text(modules.state_name[index])));
+    result.field("api-name", ir_.atom(modules.api_name[index]))
+        .field("state-name", ir_.atom(modules.state_name[index]));
     if (modules.export_specifier[index].value != 0) {
-        result.field("export-specifier", ir_.atom(text(modules.export_specifier[index])));
+        result.field("export-specifier", ir_.atom(modules.export_specifier[index]));
     }
     for (auto const category : items(modules.categories[index])) {
         auto const category_index{categories.index(category)};
         result.add(ir_.form("category",
-                            {ir_.atom(text(categories.name[category_index])),
-                             ir_.string(text(categories.label[category_index]))})
+                            {ir_.atom(categories.name[category_index]),
+                             ir_.string(categories.label[category_index])})
                        .build());
     }
     for (auto const setting : items(modules.settings_list[index])) {
@@ -990,15 +986,14 @@ void CanonicalRenderer::build_settings_module(codegen::sexpr::FormBuilder& resul
                               ? "keyboard-mouse"
                               : "controller"};
         auto child{
-            ir_.form("setting",
-                     {ir_.atom(text(settings.name[row])), ir_.string(text(settings.label[row]))})};
-        child.field("category", ir_.atom(text(settings.category[row])))
+            ir_.form("setting", {ir_.atom(settings.name[row]), ir_.string(settings.label[row])})};
+        child.field("category", ir_.atom(settings.category[row]))
             .field("value-type", build_type_ref(settings.value_type[row]))
-            .field("backend", ir_.atom(text(settings.backend[row])))
+            .field("backend", ir_.atom(settings.backend[row]))
             .field("apply", ir_.atom(apply))
             .field("device", ir_.atom(device));
         if (settings.tooltip[row]) {
-            child.field("tooltip", ir_.string(text(*settings.tooltip[row])));
+            child.field("tooltip", ir_.string(*settings.tooltip[row]));
         }
 
         auto const control{controls.index(settings.control[row])};
@@ -1022,12 +1017,11 @@ void CanonicalRenderer::build_settings_module(codegen::sexpr::FormBuilder& resul
         }
         auto control_form{ir_.form("control", {ir_.atom(kind)})};
         if (controls.options_provider[control]) {
-            control_form.field("options-provider",
-                               ir_.string(text(*controls.options_provider[control])));
+            control_form.field("options-provider", ir_.string(*controls.options_provider[control]));
         }
         if (controls.availability_provider[control]) {
             control_form.field("availability-provider",
-                               ir_.string(text(*controls.availability_provider[control])));
+                               ir_.string(*controls.availability_provider[control]));
         }
         if (controls.minimum[control]) {
             control_form.field("min", ir_.atom(std::format("{:.17g}", *controls.minimum[control])));
@@ -1039,7 +1033,7 @@ void CanonicalRenderer::build_settings_module(codegen::sexpr::FormBuilder& resul
             control_form.field("step", ir_.atom(std::format("{:.17g}", *controls.step[control])));
         }
         if (controls.custom_row[control]) {
-            control_form.field("custom-row", ir_.string(text(*controls.custom_row[control])));
+            control_form.field("custom-row", ir_.string(*controls.custom_row[control]));
         }
         child.add(control_form.build());
         result.add(child.build());

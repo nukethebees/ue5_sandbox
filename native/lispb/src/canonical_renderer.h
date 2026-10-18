@@ -2,11 +2,9 @@
 
 #include <codegen/ast/access.h>
 #include <codegen/schema/declarations.h>
-#include <codegen/sexpr/output.h>
+#include <codegen/sexpr/form_builder.h>
 #include <lispb/strings.h>
 
-#include <format>
-#include <ranges>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -29,11 +27,6 @@ class CanonicalRenderer {
     auto items(codegen::SchemaRange<Id> range) const {
         return store_.items(range);
     }
-    template <typename Id>
-    auto texts(codegen::SchemaRange<Id> range) const {
-        return store_.items(range) | std::views::transform([this](Id id) { return text(id); });
-    }
-    auto number(auto const value) -> Expr { return ir_.atom(std::format("{}", value)); }
     auto string_list(auto const& values) -> Expr {
         std::vector<Expr> expressions;
         for (auto const value : values) {
@@ -73,14 +66,14 @@ class CanonicalRenderer {
     auto build_aggregate_child(auto const& columns, std::string_view head, Child const child)
         -> Expr {
         auto const index{columns.index(child)};
-        auto result{ir_.form(
-            head, {ir_.atom(text(columns.name[index])), build_type_ref(columns.type[index])})};
+        auto result{
+            ir_.form(head, {ir_.atom(columns.name[index]), build_type_ref(columns.type[index])})};
         if (columns.count[index].has_value()) {
-            result.field("count", number(*columns.count[index]));
+            result.field("count", *columns.count[index]);
         }
         if constexpr (std::is_same_v<Child, codegen::RecordMemberId>) {
             if (columns.initializer[index]) {
-                result.field("initializer", ir_.string(text(*columns.initializer[index])));
+                result.field("initializer", ir_.string(*columns.initializer[index]));
             }
             if (columns.relationship[index].has_value()) {
                 result.add(build_semantic_relation(*columns.relationship[index]));

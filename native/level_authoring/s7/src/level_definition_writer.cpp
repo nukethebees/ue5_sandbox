@@ -3,7 +3,8 @@
 #include <ioj/levels/authoring/editor_support.h>
 #include <ioj/levels/authoring/grammar.h>
 
-#include <codegen/sexpr/output.h>
+#include <codegen/sexpr/form_builder.h>
+#include <lispb/strings.h>
 
 #include <algorithm>
 #include <cmath>
@@ -28,10 +29,6 @@ auto editor_number(double const value) -> std::string {
         result.pop_back();
     }
     return result == "-0" ? "0" : result;
-}
-
-auto symbol(SExprIR& ir, std::string_view const value) -> Expr {
-    return ir.quote(ir.atom(value));
 }
 
 auto vector(SExprIR& ir, double const x, double const y, double const z) -> Expr {
@@ -59,72 +56,63 @@ auto emit_editor_level_source(LevelDefinition const& level)
     }
 
     auto const& definition{level};
-    SExprIR ir;
-    auto form{ir.form(to_serialized_string(RecordKind::Level))};
-    form.field(to_serialized_string(Property::Id), symbol(ir, definition.metadata().id.value));
-    form.field(to_serialized_string(Property::Title), ir.string(definition.metadata().title));
+    lispb::Strings strings;
+    SExprIR ir{strings};
+    auto form{ir.form(RecordKind::Level)};
+    form.field(Property::Id, ir.quote(definition.metadata().id.value));
+    form.field(Property::Title, ir.string(definition.metadata().title));
     if (!definition.metadata().description.empty()) {
-        form.field(to_serialized_string(Property::Description),
-                   ir.string(definition.metadata().description));
+        form.field(Property::Description, ir.string(definition.metadata().description));
     }
     if (definition.collision_grid() &&
         (definition.collision_grid()->level_size || definition.collision_grid()->cell_size)) {
-        auto collision{ir.form(to_serialized_string(RecordKind::CollisionGrid))};
+        auto collision{ir.form(RecordKind::CollisionGrid)};
         if (definition.collision_grid()->level_size) {
             auto const size{*definition.collision_grid()->level_size};
-            collision.field(to_serialized_string(Property::LevelSize),
-                            vector(ir, size.x(), size.y(), size.z()));
+            collision.field(Property::LevelSize, vector(ir, size.x(), size.y(), size.z()));
         }
         if (definition.collision_grid()->cell_size) {
             auto const size{*definition.collision_grid()->cell_size};
-            collision.field(to_serialized_string(Property::CellSize),
-                            vector(ir, size.x(), size.y(), size.z()));
+            collision.field(Property::CellSize, vector(ir, size.x(), size.y(), size.z()));
         }
-        form.field(to_serialized_string(Property::CollisionGrid), collision.build());
+        form.field(Property::CollisionGrid, collision.build());
     }
     if (!definition.player_entity_id().empty()) {
-        form.field(to_serialized_string(Property::Player),
-                   symbol(ir, definition.player_entity_id().value));
+        form.field(Property::Player, ir.quote(definition.player_entity_id().value));
     } else {
         auto const& camera{*definition.camera()};
-        auto camera_form{ir.form(to_serialized_string(RecordKind::Camera))};
-        camera_form.field(to_serialized_string(Property::LookAt),
-                          id_list(ir, camera.target_entity_ids));
-        camera_form.field(to_serialized_string(Property::Distance),
-                          ir.atom(editor_number(camera.distance)));
-        camera_form.field(to_serialized_string(Property::OffsetDirection),
+        auto camera_form{ir.form(RecordKind::Camera)};
+        camera_form.field(Property::LookAt, id_list(ir, camera.target_entity_ids));
+        camera_form.field(Property::Distance, ir.atom(editor_number(camera.distance)));
+        camera_form.field(Property::OffsetDirection,
                           vector(ir,
                                  camera.offset_direction.x(),
                                  camera.offset_direction.y(),
                                  camera.offset_direction.z()));
-        form.field(to_serialized_string(Property::Camera), camera_form.build());
+        form.field(Property::Camera, camera_form.build());
     }
     if (definition.mission()) {
         auto const& mission{*definition.mission()};
-        auto mission_form{ir.form(to_serialized_string(RecordKind::Mission))};
-        mission_form.field(to_serialized_string(Property::Mode),
-                           symbol(ir, to_serialized_string(mission.mode)));
+        auto mission_form{ir.form(RecordKind::Mission)};
+        mission_form.field(Property::Mode, ir.quote(mission.mode));
         if (mission.time_limit_seconds) {
-            mission_form.field(to_serialized_string(Property::TimeLimit),
+            mission_form.field(Property::TimeLimit,
                                ir.atom(editor_number(*mission.time_limit_seconds)));
         }
         if (mission.kill_count) {
-            mission_form.field(to_serialized_string(Property::KillCount),
-                               ir.atom(std::to_string(*mission.kill_count)));
+            mission_form.field(Property::KillCount, *mission.kill_count);
         }
         if (!mission.hero_entity_ids.empty()) {
-            mission_form.field(to_serialized_string(Property::Heroes),
-                               id_list(ir, mission.hero_entity_ids));
+            mission_form.field(Property::Heroes, id_list(ir, mission.hero_entity_ids));
         }
         if (!mission.must_survive_entity_ids.empty()) {
-            mission_form.field(to_serialized_string(Property::MustSurvive),
-                               id_list(ir, mission.must_survive_entity_ids));
+            mission_form.field(Property::MustSurvive, id_list(ir, mission.must_survive_entity_ids));
         }
         if (!mission.required_kill_entity_ids.empty()) {
-            mission_form.field(to_serialized_string(Property::RequiredKills),
+            mission_form.field(Property::RequiredKills,
                                id_list(ir, mission.required_kill_entity_ids));
         }
-        form.field(to_serialized_string(Property::Mission), mission_form.build());
+        form.field(Property::Mission, mission_form.build());
     }
 
     std::vector<std::size_t> indices(definition.entities().size());
@@ -160,28 +148,25 @@ auto emit_editor_level_source(LevelDefinition const& level)
                                                 to_serialized_string(entity.archetype),
                                                 group_end - position)));
         }
-        auto entity_form{ir.form(to_serialized_string(RecordKind::Entity))};
-        entity_form.field(to_serialized_string(Property::Id), symbol(ir, entity.id.value));
-        entity_form.field(to_serialized_string(Property::Archetype),
-                          symbol(ir, to_serialized_string(entity.archetype)));
-        entity_form.field(to_serialized_string(Property::Team),
-                          symbol(ir, to_serialized_string(entity.team)));
+        auto entity_form{ir.form(RecordKind::Entity)};
+        entity_form.field(Property::Id, ir.quote(entity.id.value));
+        entity_form.field(Property::Archetype, ir.quote(entity.archetype));
+        entity_form.field(Property::Team, ir.quote(entity.team));
         entity_form.field(
-            to_serialized_string(Property::Position),
+            Property::Position,
             vector(ir, entity.position.x(), entity.position.y(), entity.position.z()));
         if (entity.rotation.pitch != 0.0 || entity.rotation.yaw != 0.0 ||
             entity.rotation.roll != 0.0) {
             entity_form.field(
-                to_serialized_string(Property::Rotation),
+                Property::Rotation,
                 vector(ir, entity.rotation.pitch, entity.rotation.yaw, entity.rotation.roll));
         }
         if (entity.spawn_time_seconds != 0.0) {
-            entity_form.field(to_serialized_string(Property::SpawnAt),
-                              ir.atom(editor_number(entity.spawn_time_seconds)));
+            entity_form.field(Property::SpawnAt, ir.atom(editor_number(entity.spawn_time_seconds)));
         }
         entities.add(entity_form.build());
     }
-    form.field(to_serialized_string(Property::Entities), entities.build());
+    form.field(Property::Entities, entities.build());
 
     return ir.render_document(
         {ir.comment(

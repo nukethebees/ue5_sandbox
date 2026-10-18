@@ -24,6 +24,7 @@ target_link_libraries(native-level-authoring
   PRIVATE
     native-core
     lispb-sexpr-output
+    lispb-strings
 )
 ioj_enable_warnings(native-level-authoring)
 ioj_apply_native_abi(native-level-authoring)
