@@ -31,9 +31,13 @@ auto editor_number(double const value) -> std::string {
     return result == "-0" ? "0" : result;
 }
 
-auto vector(SExprIR& ir, double const x, double const y, double const z) -> Expr {
-    return ir.quote(
-        ir.list({ir.atom(editor_number(x)), ir.atom(editor_number(y)), ir.atom(editor_number(z))}));
+auto vector(SExprIR& ir, Vector3d const value) -> Expr {
+    return ir.quote(ir.list({ir.atom(editor_number(value.x())),
+                             ir.atom(editor_number(value.y())),
+                             ir.atom(editor_number(value.z()))}));
+}
+auto vector(SExprIR& ir, Rotator3d const value) -> Expr {
+    return vector(ir, Vector3d{value.pitch, value.yaw, value.roll});
 }
 
 template <typename Id>
@@ -68,12 +72,12 @@ auto emit_editor_level_source(LevelDefinition const& level)
         (definition.collision_grid()->level_size || definition.collision_grid()->cell_size)) {
         auto collision{ir.form(RecordKind::CollisionGrid)};
         if (definition.collision_grid()->level_size) {
-            auto const size{*definition.collision_grid()->level_size};
-            collision.field(Property::LevelSize, vector(ir, size.x(), size.y(), size.z()));
+            collision.field(Property::LevelSize,
+                            vector(ir, *definition.collision_grid()->level_size));
         }
         if (definition.collision_grid()->cell_size) {
-            auto const size{*definition.collision_grid()->cell_size};
-            collision.field(Property::CellSize, vector(ir, size.x(), size.y(), size.z()));
+            collision.field(Property::CellSize,
+                            vector(ir, *definition.collision_grid()->cell_size));
         }
         form.field(Property::CollisionGrid, collision.build());
     }
@@ -84,11 +88,7 @@ auto emit_editor_level_source(LevelDefinition const& level)
         auto camera_form{ir.form(RecordKind::Camera)};
         camera_form.field(Property::LookAt, id_list(ir, camera.target_entity_ids));
         camera_form.field(Property::Distance, ir.atom(editor_number(camera.distance)));
-        camera_form.field(Property::OffsetDirection,
-                          vector(ir,
-                                 camera.offset_direction.x(),
-                                 camera.offset_direction.y(),
-                                 camera.offset_direction.z()));
+        camera_form.field(Property::OffsetDirection, vector(ir, camera.offset_direction));
         form.field(Property::Camera, camera_form.build());
     }
     if (definition.mission()) {
@@ -152,14 +152,10 @@ auto emit_editor_level_source(LevelDefinition const& level)
         entity_form.field(Property::Id, ir.quote(entity.id.value));
         entity_form.field(Property::Archetype, ir.quote(entity.archetype));
         entity_form.field(Property::Team, ir.quote(entity.team));
-        entity_form.field(
-            Property::Position,
-            vector(ir, entity.position.x(), entity.position.y(), entity.position.z()));
+        entity_form.field(Property::Position, vector(ir, entity.position));
         if (entity.rotation.pitch != 0.0 || entity.rotation.yaw != 0.0 ||
             entity.rotation.roll != 0.0) {
-            entity_form.field(
-                Property::Rotation,
-                vector(ir, entity.rotation.pitch, entity.rotation.yaw, entity.rotation.roll));
+            entity_form.field(Property::Rotation, vector(ir, entity.rotation));
         }
         if (entity.spawn_time_seconds != 0.0) {
             entity_form.field(Property::SpawnAt, ir.atom(editor_number(entity.spawn_time_seconds)));
