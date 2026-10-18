@@ -16,6 +16,14 @@ auto validate_entities(LevelDefinitionComponents const& definition, Diagnostics&
     -> EntityValidationState {
     EntityValidationState state;
     state.by_id.reserve(definition.entities.size());
+    auto const require_number =
+        [&](bool const valid, std::string_view const property, std::string_view const message) {
+            if (!valid) {
+                result.emplace_back(DiagnosticCode::InvalidNumber,
+                                    std::format("level.entities.{}", property),
+                                    std::string{message});
+            }
+        };
 
     auto const entity_count{definition.entities.size()};
     for (std::size_t index{}; index < entity_count; ++index) {
@@ -73,33 +81,26 @@ auto validate_entities(LevelDefinitionComponents const& definition, Diagnostics&
         }
 
         auto const& overrides{entity.overrides};
-        if (overrides.health && *overrides.health <= 0) {
-            result.emplace_back(DiagnosticCode::InvalidNumber,
-                                "level.entities.health",
-                                "Initial health must be positive");
-        }
-        if (overrides.laser_damage && *overrides.laser_damage < 0) {
-            result.emplace_back(DiagnosticCode::InvalidNumber,
-                                "level.entities.laser-damage",
-                                "Laser damage must be nonnegative");
-        }
+        require_number(!overrides.health || *overrides.health > 0,
+                       "health",
+                       "Initial health must be positive");
+        require_number(!overrides.laser_damage || *overrides.laser_damage >= 0,
+                       "laser-damage",
+                       "Laser damage must be nonnegative");
         if (overrides.laser_damage && entity.archetype != EntityArchetype::StaticTurret) {
             result.emplace_back(DiagnosticCode::UnknownProperty,
                                 "level.entities.laser-damage",
                                 "Laser damage overrides require a static turret");
         }
-        if (overrides.initial_spawn_delay && (!std::isfinite(*overrides.initial_spawn_delay) ||
-                                              *overrides.initial_spawn_delay < 0.0f)) {
-            result.emplace_back(DiagnosticCode::InvalidNumber,
-                                "level.entities.initial-spawn-delay",
-                                "Initial spawn delay must be finite and nonnegative");
-        }
-        if (overrides.spawn_cooldown &&
-            (!std::isfinite(*overrides.spawn_cooldown) || *overrides.spawn_cooldown < 0.0f)) {
-            result.emplace_back(DiagnosticCode::InvalidNumber,
-                                "level.entities.spawn-cooldown",
-                                "Spawn cooldown must be finite and nonnegative");
-        }
+        require_number(!overrides.initial_spawn_delay ||
+                           (std::isfinite(*overrides.initial_spawn_delay) &&
+                            *overrides.initial_spawn_delay >= 0.0f),
+                       "initial-spawn-delay",
+                       "Initial spawn delay must be finite and nonnegative");
+        require_number(!overrides.spawn_cooldown || (std::isfinite(*overrides.spawn_cooldown) &&
+                                                     *overrides.spawn_cooldown >= 0.0f),
+                       "spawn-cooldown",
+                       "Spawn cooldown must be finite and nonnegative");
         if (entity.archetype != EntityArchetype::CapitalShip &&
             (overrides.initial_spawn_delay || overrides.spawn_cooldown ||
              !overrides.target_entity_id.empty())) {
