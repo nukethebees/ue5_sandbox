@@ -71,60 +71,63 @@ auto renamed(Declarations& store, DeclarationHandle original, std::string_view n
     -> DeclarationHandle {
     auto const result{store.clone(original)};
     auto const value{store.strings().intern(name)};
+    auto const assign{
+        [&value, &result](auto& schemas) { schemas.name[schemas.index(result)] = value; }};
+
     switch (result.kind()) {
         case DeclarationKind::enumeration:
-            store.enums.name[store.enums.index(result)] = value;
+            assign(store.enums);
             break;
         case DeclarationKind::integer_scalar:
-            store.integer_scalars.name[store.integer_scalars.index(result)] = value;
+            assign(store.integer_scalars);
             break;
         case DeclarationKind::linear_quantized:
-            store.linear_quantizeds.name[store.linear_quantizeds.index(result)] = value;
+            assign(store.linear_quantizeds);
             break;
         case DeclarationKind::integer_varint:
-            store.integer_varints.name[store.integer_varints.index(result)] = value;
+            assign(store.integer_varints);
             break;
         case DeclarationKind::fixed_point:
-            store.fixed_points.name[store.fixed_points.index(result)] = value;
+            assign(store.fixed_points);
             break;
         case DeclarationKind::mini_float:
-            store.mini_floats.name[store.mini_floats.index(result)] = value;
+            assign(store.mini_floats);
             break;
         case DeclarationKind::optional_sentinel:
-            store.optional_sentinels.name[store.optional_sentinels.index(result)] = value;
+            assign(store.optional_sentinels);
             break;
         case DeclarationKind::optional_presence_bit:
-            store.optional_presence_bits.name[store.optional_presence_bits.index(result)] = value;
+            assign(store.optional_presence_bits);
             break;
         case DeclarationKind::packed_value:
-            store.packed_values.name[store.packed_values.index(result)] = value;
+            assign(store.packed_values);
             break;
         case DeclarationKind::record:
-            store.records.name[store.records.index(result)] = value;
+            assign(store.records);
             break;
         case DeclarationKind::union_type:
-            store.unions.name[store.unions.index(result)] = value;
+            assign(store.unions);
             break;
         case DeclarationKind::tagged_union:
-            store.tagged_unions.name[store.tagged_unions.index(result)] = value;
+            assign(store.tagged_unions);
             break;
         case DeclarationKind::soa:
-            store.soas.name[store.soas.index(result)] = value;
+            assign(store.soas);
             break;
         case DeclarationKind::vector_soa:
-            store.vector_soas.name[store.vector_soas.index(result)] = value;
+            assign(store.vector_soas);
             break;
         case DeclarationKind::homogeneous_layout:
-            store.homogeneous_layouts.name[store.homogeneous_layouts.index(result)] = value;
+            assign(store.homogeneous_layouts);
             break;
         case DeclarationKind::static_table:
-            store.static_tables.name[store.static_tables.index(result)] = value;
+            assign(store.static_tables);
             break;
         case DeclarationKind::facade:
-            store.facades.name[store.facades.index(result)] = value;
+            assign(store.facades);
             break;
         case DeclarationKind::settings_schema:
-            store.settings_schemas.name[store.settings_schemas.index(result)] = value;
+            assign(store.settings_schemas);
             break;
     }
     return result;
