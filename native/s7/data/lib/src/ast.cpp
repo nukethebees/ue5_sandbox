@@ -6,12 +6,12 @@
 
 namespace ioj::s7 {
 namespace {
-void assert_range(Node const& node, std::size_t const size) {
+void assert_range([[maybe_unused]] Node const& node, [[maybe_unused]] std::size_t const size) {
     assert(node.offset <= size);
     assert(node.count <= size - node.offset);
 }
 template <typename T>
-auto scalar(Node const& node, NodeKind const kind, std::vector<T> const& storage) -> T {
+auto scalar(Node const& node, [[maybe_unused]] NodeKind const kind, std::vector<T> const& storage) -> T {
     assert(node.kind == kind);
     assert(node.count == 1);
     assert_range(node, storage.size());

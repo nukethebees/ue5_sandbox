@@ -25,9 +25,9 @@ auto RetainedBackingResource::do_allocate(std::size_t const bytes, std::size_t c
     active_alignment_ = alignment;
     return backing_.data();
 }
-void RetainedBackingResource::do_deallocate(void* const allocation,
-                                            std::size_t const bytes,
-                                            std::size_t const alignment) {
+void RetainedBackingResource::do_deallocate([[maybe_unused]] void* const allocation,
+                                            [[maybe_unused]] std::size_t const bytes,
+                                            [[maybe_unused]] std::size_t const alignment) {
     assert(is_in_use());
     assert(allocation == backing_.data());
     assert(bytes == active_bytes_ && alignment == active_alignment_);
