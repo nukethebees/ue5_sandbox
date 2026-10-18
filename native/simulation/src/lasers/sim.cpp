@@ -135,8 +135,8 @@ void Sim::process_pending_spawns() {
         auto const pitch{rotation.pitch * (std::numbers::pi_v<float> / 180.f)};
         auto const yaw{rotation.yaw * (std::numbers::pi_v<float> / 180.f)};
         auto const cos_pitch{std::cos(pitch)};
-        auto const direction{ioj::make_vector3f(
-            cos_pitch * std::cos(yaw), cos_pitch * std::sin(yaw), std::sin(pitch))};
+        auto const direction{
+            ioj::Vector3f{cos_pitch * std::cos(yaw), cos_pitch * std::sin(yaw), std::sin(pitch)}};
         auto const forward_velocity{direction * speed};
 
         set_vector(output_locations,
@@ -272,7 +272,7 @@ void Sim::handle_collisions(float const dt, ioj::FrameMemoryResource* const scra
         auto const velocity{vector_at(velocities, entity_index)};
         auto const length_squared{ioj::size_squared(velocity)};
         auto const emission_direction{length_squared < safe_normal_tolerance
-                                          ? ioj::make_vector3f(0.f, 0.f, -1.f)
+                                          ? ioj::Vector3f{0.f, 0.f, -1.f}
                                           : velocity * (-1.f / std::sqrt(length_squared))};
         hit_details.add(hit_locations[entity_index], emission_direction, sources[element]);
     }

@@ -1,8 +1,8 @@
 #pragma once
 
+#include "ioj/math_types.h"
 #include "ioj/sim/lasers/laser_hit_details.h"
 #include "ioj/sim/lasers/laser_source.h"
-#include "ioj/vector_types.h"
 
 #include <cassert>
 #include <cstdint>

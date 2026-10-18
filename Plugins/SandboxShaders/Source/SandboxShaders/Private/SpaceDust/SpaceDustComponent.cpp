@@ -305,12 +305,12 @@ auto to_native_settings(FSpaceDustSettings const& settings) -> ioj::space_dust::
         .enabled = settings.enabled,
         .particle_count = settings.particle_count,
         .random_seed = static_cast<uint32>(FMath::Max(settings.random_seed, 0)),
-        .volume_dimensions = ioj::make_vector3f(static_cast<float>(settings.volume_dimensions.X),
-                                               static_cast<float>(settings.volume_dimensions.Y),
-                                               static_cast<float>(settings.volume_dimensions.Z)),
+        .volume_dimensions = ioj::Vector3f{static_cast<float>(settings.volume_dimensions.X),
+                                           static_cast<float>(settings.volume_dimensions.Y),
+                                           static_cast<float>(settings.volume_dimensions.Z)},
         .particle_size = settings.particle_size,
         .brightness = settings.brightness,
-        .colour = ioj::make_vector3f(settings.colour.R, settings.colour.G, settings.colour.B),
+        .colour = ioj::Vector3f{settings.colour.R, settings.colour.G, settings.colour.B},
         .minimum_visible_speed = settings.minimum_visible_speed,
         .full_visible_speed = settings.full_visible_speed,
         .streak_seconds = settings.streak_seconds,
@@ -354,9 +354,9 @@ auto make_space_dust_translation_phase(FVector const world_location,
                                        FVector const volume_dimensions) -> FVector3f {
     auto const phase{ioj::space_dust::make_translation_phase(
         {world_location.X, world_location.Y, world_location.Z},
-        ioj::make_vector3f(static_cast<float>(volume_dimensions.X),
-                          static_cast<float>(volume_dimensions.Y),
-                          static_cast<float>(volume_dimensions.Z)))};
+        ioj::Vector3f{static_cast<float>(volume_dimensions.X),
+                      static_cast<float>(volume_dimensions.Y),
+                      static_cast<float>(volume_dimensions.Z)})};
     return FVector3f{phase.x(), phase.y(), phase.z()};
 }
 

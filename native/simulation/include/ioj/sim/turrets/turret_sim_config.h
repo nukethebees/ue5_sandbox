@@ -1,8 +1,8 @@
 #pragma once
 
+#include <ioj/math_types.h>
 #include <ioj/sim/entities/health_type.h>
 #include <ioj/sim/lasers/laser_weapon_sim_config.h>
-#include <ioj/vector_types.h>
 
 namespace ioj::sim {
 struct TurretSimConfig {

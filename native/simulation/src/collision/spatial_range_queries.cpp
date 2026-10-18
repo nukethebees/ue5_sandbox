@@ -207,8 +207,7 @@ void SpatialQueryManager::collect_non_team_entities_in_range(
         assert(grid.is_configured());
         auto const max_grid_coord{grid.get_max_grid_coord()};
         auto const absolute_radius{std::abs(radius)};
-        auto const radius_extent{
-            ioj::make_vector3f(absolute_radius, absolute_radius, absolute_radius)};
+        auto const radius_extent{ioj::Vector3f{absolute_radius, absolute_radius, absolute_radius}};
         auto const radius_squared{radius * radius};
 
         // Scan each request once and retain matches in its worker's buffer.

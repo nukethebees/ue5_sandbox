@@ -62,8 +62,8 @@ auto pack(TransformInput input,
     TransformBounds batch{};
     if constexpr (bounds_mode == BoundsMode::Calculate) {
         auto const limit{std::numeric_limits<float>::max()};
-        batch = {make_vector3f(limit, limit, limit),
-                 make_vector3f(-limit, -limit, -limit),
+        batch = {ioj::Vector3f{limit, limit, limit},
+                 ioj::Vector3f{-limit, -limit, -limit},
                  !output.empty()};
     }
     auto const count{output.size()};

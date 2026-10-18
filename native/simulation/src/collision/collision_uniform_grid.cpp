@@ -354,12 +354,12 @@ void CollisionUniformGrid::finish_entity_grid() {
                 min_cell_xs[entity_index], min_cell_ys[entity_index], min_cell_zs[entity_index]}};
             auto const max_cell{CellCoord{
                 max_cell_xs[entity_index], max_cell_ys[entity_index], max_cell_zs[entity_index]}};
-            auto const min_point{ioj::make_vector3f(min_point_xs[entity_index],
-                                                   min_point_ys[entity_index],
-                                                   min_point_zs[entity_index])};
-            auto const max_point{ioj::make_vector3f(max_point_xs[entity_index],
-                                                   max_point_ys[entity_index],
-                                                   max_point_zs[entity_index])};
+            auto const min_point{ioj::Vector3f{min_point_xs[entity_index],
+                                               min_point_ys[entity_index],
+                                               min_point_zs[entity_index]}};
+            auto const max_point{ioj::Vector3f{max_point_xs[entity_index],
+                                               max_point_ys[entity_index],
+                                               max_point_zs[entity_index]}};
 
             auto plane_index{min_cell.x() + min_cell.y() * row_stride +
                              min_cell.z() * plane_stride};
@@ -424,8 +424,7 @@ void CollisionUniformGrid::collect_unique_entities_in_cells(
     out_entities.set_num(out_entities.num() - static_cast<std::uint32_t>(duplicates.size()));
 }
 auto CollisionUniformGrid::count_overlaps(WorldAABB const& query_bounds,
-                                          EntityId const ignored_entity) const
-    -> OverlapCounts {
+                                          EntityId const ignored_entity) const -> OverlapCounts {
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::count_overlaps");
     return overlaps_impl<false>(query_bounds, ignored_entity, {}, {});
 }
@@ -503,12 +502,12 @@ auto CollisionUniformGrid::overlaps_impl(
                         }
 
                         auto const aabb_index{aabb_offset + entity_index};
-                        if (overlaps_query(ioj::make_vector3f(entity_min_xs[aabb_index],
-                                                             entity_min_ys[aabb_index],
-                                                             entity_min_zs[aabb_index]),
-                                           ioj::make_vector3f(entity_max_xs[aabb_index],
-                                                             entity_max_ys[aabb_index],
-                                                             entity_max_zs[aabb_index]))) {
+                        if (overlaps_query(ioj::Vector3f{entity_min_xs[aabb_index],
+                                                         entity_min_ys[aabb_index],
+                                                         entity_min_zs[aabb_index]},
+                                           ioj::Vector3f{entity_max_xs[aabb_index],
+                                                         entity_max_ys[aabb_index],
+                                                         entity_max_zs[aabb_index]})) {
                             if constexpr (Write) {
                                 assert(result.entities < out_entities.size());
                                 out_entities[result.entities] = id;
@@ -522,12 +521,12 @@ auto CollisionUniformGrid::overlaps_impl(
                 auto const static_indices{static_storage_.aabb_indices_for_cell(cell_index)};
                 for (auto const static_index : static_indices) {
                     auto const static_aabb_index{static_cast<StaticGeometryIndex>(static_index)};
-                    if (overlaps_query(ioj::make_vector3f(static_min_xs[static_aabb_index],
-                                                         static_min_ys[static_aabb_index],
-                                                         static_min_zs[static_aabb_index]),
-                                       ioj::make_vector3f(static_max_xs[static_aabb_index],
-                                                         static_max_ys[static_aabb_index],
-                                                         static_max_zs[static_aabb_index]))) {
+                    if (overlaps_query(ioj::Vector3f{static_min_xs[static_aabb_index],
+                                                     static_min_ys[static_aabb_index],
+                                                     static_min_zs[static_aabb_index]},
+                                       ioj::Vector3f{static_max_xs[static_aabb_index],
+                                                     static_max_ys[static_aabb_index],
+                                                     static_max_zs[static_aabb_index]})) {
                         if constexpr (Write) {
                             assert(result.static_geometry < out_static_geometry_indices.size());
                             out_static_geometry_indices[result.static_geometry] = static_aabb_index;
@@ -547,10 +546,9 @@ void CollisionUniformGrid::trace_aabbs(LineTraceBatch const& traces,
     trace_aabbs_impl<TraceKind::Line, IgnoredEntityMode::None, TraceEntityFilter::None>(
         traces, hits, {}, {});
 }
-void CollisionUniformGrid::trace_aabbs(
-    LineTraceBatch const& traces,
-    TraceHits::View const& hits,
-    std::span<EntityId const> const ignored_entities) const {
+void CollisionUniformGrid::trace_aabbs(LineTraceBatch const& traces,
+                                       TraceHits::View const& hits,
+                                       std::span<EntityId const> const ignored_entities) const {
     trace_aabbs_impl<TraceKind::Line, IgnoredEntityMode::PerTrace, TraceEntityFilter::None>(
         traces, hits, ignored_entities, {});
 }
@@ -703,12 +701,12 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
                     }
 
                     auto const aabb_index{aabb_offset + entity_index};
-                    auto const hit_t{query_aabb(ioj::make_vector3f(entity_min_xs[aabb_index],
-                                                                  entity_min_ys[aabb_index],
-                                                                  entity_min_zs[aabb_index]),
-                                                ioj::make_vector3f(entity_max_xs[aabb_index],
-                                                                  entity_max_ys[aabb_index],
-                                                                  entity_max_zs[aabb_index]))};
+                    auto const hit_t{query_aabb(ioj::Vector3f{entity_min_xs[aabb_index],
+                                                              entity_min_ys[aabb_index],
+                                                              entity_min_zs[aabb_index]},
+                                                ioj::Vector3f{entity_max_xs[aabb_index],
+                                                              entity_max_ys[aabb_index],
+                                                              entity_max_zs[aabb_index]})};
                     if (hit_t < nearest_t ||
                         (std::isfinite(hit_t) && hit_t == nearest_t && id < nearest_entity)) {
                         nearest_t = hit_t;
@@ -721,12 +719,12 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
             auto const static_indices{static_storage_.aabb_indices_for_cell(cell_index)};
             for (auto const static_index : static_indices) {
                 auto const static_aabb_index{static_cast<StaticGeometryIndex>(static_index)};
-                auto const hit_t{query_aabb(ioj::make_vector3f(static_min_xs[static_aabb_index],
-                                                              static_min_ys[static_aabb_index],
-                                                              static_min_zs[static_aabb_index]),
-                                            ioj::make_vector3f(static_max_xs[static_aabb_index],
-                                                              static_max_ys[static_aabb_index],
-                                                              static_max_zs[static_aabb_index]))};
+                auto const hit_t{query_aabb(ioj::Vector3f{static_min_xs[static_aabb_index],
+                                                          static_min_ys[static_aabb_index],
+                                                          static_min_zs[static_aabb_index]},
+                                            ioj::Vector3f{static_max_xs[static_aabb_index],
+                                                          static_max_ys[static_aabb_index],
+                                                          static_max_zs[static_aabb_index]})};
                 if (hit_t < nearest_t) {
                     nearest_t = hit_t;
                     nearest_entity = EntityId{};

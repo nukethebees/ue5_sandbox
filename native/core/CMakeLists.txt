@@ -23,7 +23,7 @@ target_sources(native-core
     include/ioj/rotators3f.h
     include/ioj/rotator_math.h
     src/rotator_math.cpp
-    include/ioj/vector_types.h
+    include/ioj/math_types.h
     include/ioj/transform3d.h
     src/transform3d.cpp
     include/ioj/container_ops.h

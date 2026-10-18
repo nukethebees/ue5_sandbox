@@ -1,8 +1,7 @@
 #pragma once
 
 #include <ioj/min_max.h>
-#include <ioj/point2f.h>
-#include <ioj/vector2d.h>
+#include <ioj/vector_value_math.h>
 
 #include <cstddef>
 #include <cstdint>

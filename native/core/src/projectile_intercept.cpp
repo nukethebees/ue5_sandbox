@@ -6,15 +6,12 @@
 namespace {
 constexpr float no_intercept_candidate_time{std::numeric_limits<float>::infinity()};
 
-auto size_squared(ioj::Vector3f const value) noexcept -> float {
-    return ioj::size_squared(value);
-}
-
 auto dot_product(ioj::Vector3f const lhs, ioj::Vector3f const rhs) noexcept -> float {
     return ioj::dot(lhs, rhs);
 }
 
-auto at(ioj::Vector3fSoAConstView const values, std::uint32_t const index) noexcept -> ioj::Vector3f {
+auto at(ioj::Vector3fSoAConstView const values, std::uint32_t const index) noexcept
+    -> ioj::Vector3f {
     return values[index];
 }
 
@@ -84,9 +81,9 @@ void solve_intercept_times(float* const out_intercept_times,
         out_intercept_times, shooter_positions, target_positions, target_velocities)};
     for (std::uint32_t i{}; i < count; ++i) {
         out_intercept_times[i] = ioj::solve_intercept_time(at(shooter_positions, i),
-                                                          at(target_positions, i),
-                                                          at(target_velocities, i),
-                                                          projectile_speed);
+                                                           at(target_positions, i),
+                                                           at(target_velocities, i),
+                                                           projectile_speed);
     }
 }
 }

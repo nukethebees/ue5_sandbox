@@ -21,8 +21,8 @@ struct Inputs {
         for (std::size_t index{}; index < count; ++index) {
             positions[index] = {
                 262144 + offsets(random), -262144 + offsets(random), 1000000 + offsets(random)};
-            auto const q{ioj::normalized(ioj::make_quaternion4f(
-                normal(random), normal(random), normal(random), normal(random)))};
+            auto const q{ioj::normalized(
+                ioj::Quaternion4f{normal(random), normal(random), normal(random), normal(random)})};
             rotations[index] = {q.x(), q.y(), q.z(), q.w()};
             if (index % 11 == 0) {
                 for (auto& component : rotations[index]) {
@@ -100,9 +100,9 @@ auto compare(Inputs const& inputs, PackingParameters const& parameters) -> void 
 }
 
 TEST(SandboxISMCBatchPacking, RandomBatchesAndEveryTailMatchExactly) {
-    PackingParameters const parameters{make_vector3f(262144, -262144, 1000000),
-                                       make_vector3f(31, -57, 123),
-                                       make_vector3f(100, 17, 300)};
+    PackingParameters const parameters{ioj::Vector3f{262144, -262144, 1000000},
+                                       ioj::Vector3f{31, -57, 123},
+                                       ioj::Vector3f{100, 17, 300}};
     for (std::size_t count{}; count <= 48; ++count) {
         SCOPED_TRACE(count);
         compare(Inputs{count}, parameters);
@@ -143,7 +143,7 @@ TEST(SandboxISMCBatchPacking, BoundaryPositionsAndQuaternionTiesAndSigns) {
                 }
             }
         }
-        compare(inputs, {make_vector3f(root, root, root), {}, make_vector3f(7, 3, 19)});
+        compare(inputs, {ioj::Vector3f{root, root, root}, {}, ioj::Vector3f{7, 3, 19}});
         inputs.positions.clear();
         inputs.rotations.clear();
     }
@@ -151,10 +151,10 @@ TEST(SandboxISMCBatchPacking, BoundaryPositionsAndQuaternionTiesAndSigns) {
 
 TEST(SandboxISMCBatchPacking, DirectBasisMatchesIndependentlyRotatedCorners) {
     Inputs inputs{1000};
-    for (auto const origin : {make_vector3f(0, 0, 0), make_vector3f(-71, 203, 19)}) {
-        for (auto const extent : {make_vector3f(0, 0, 0), make_vector3f(7, 23, 11)}) {
+    for (auto const origin : {ioj::Vector3f{0, 0, 0}, ioj::Vector3f{-71, 203, 19}}) {
+        for (auto const extent : {ioj::Vector3f{0, 0, 0}, ioj::Vector3f{7, 23, 11}}) {
             PackingParameters const parameters{
-                make_vector3f(262144, -262144, 1000000), origin, extent};
+                ioj::Vector3f{262144, -262144, 1000000}, origin, extent};
             auto const count{inputs.positions.size()};
             for (std::size_t index{}; index < count; ++index) {
                 auto rotation{inputs.rotations[index]};

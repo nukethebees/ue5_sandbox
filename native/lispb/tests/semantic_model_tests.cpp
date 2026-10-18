@@ -1123,8 +1123,7 @@ TEST(SemanticTypeGraph, ResolvesPackedFieldsAndDependencies) {
     auto const graph{production_graph(storage)};
     auto const entity_type{
         lispb::codegen::find_test_type(graph, "native_entity_type", "EntityType")};
-    auto const unique_id{
-        lispb::codegen::find_test_type(graph, "native_entity_id", "EntityId")};
+    auto const unique_id{lispb::codegen::find_test_type(graph, "native_entity_id", "EntityId")};
     ASSERT_TRUE(entity_type.has_value());
     ASSERT_TRUE(unique_id.has_value());
 
@@ -1520,12 +1519,8 @@ TEST(SemanticTypeGraph, ResolvesStandardLibrarySoaColumns) {
               SoaSourceKind::structure);
     EXPECT_TRUE(std::ranges::equal(graph.definitions().soas.vector_components_of(local),
                                    graph.definitions().soas.vector_components_of(vector_type)));
-    ASSERT_TRUE(graph.definitions()
-                    .soas.equivalent_constructor[graph.definitions().soas.index(vector_type)]);
-    EXPECT_EQ(storage.strings.view(
-                  *graph.definitions()
-                       .soas.equivalent_constructor[graph.definitions().soas.index(vector_type)]),
-              "ioj::make_vector3f");
+    EXPECT_FALSE(graph.definitions()
+                     .soas.equivalent_constructor[graph.definitions().soas.index(vector_type)]);
     EXPECT_EQ(
         graph.definitions().soas.equivalent_constructor[graph.definitions().soas.index(local)],
         graph.definitions()

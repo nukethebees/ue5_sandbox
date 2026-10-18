@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "ioj/vector_types.h"
+#include "ioj/math_types.h"
 
 namespace ioj::sim::collision {
 struct WorldAABB {

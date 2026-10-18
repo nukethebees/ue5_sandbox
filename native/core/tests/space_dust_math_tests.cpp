@@ -5,10 +5,10 @@
 TEST(NativeCoreSpaceDustMath, NormalisesTuningIdempotently) {
     ioj::space_dust::Tuning tuning;
     tuning.particle_count = -7;
-    tuning.volume_dimensions = ioj::make_vector3f(-2.0f, 0.0f, -30.0f);
+    tuning.volume_dimensions = ioj::Vector3f{-2.0f, 0.0f, -30.0f};
     tuning.particle_size = -1.0f;
     tuning.brightness = -2.0f;
-    tuning.colour = ioj::make_vector3f(-1.0f, -2.0f, -3.0f);
+    tuning.colour = ioj::Vector3f{-1.0f, -2.0f, -3.0f};
     tuning.minimum_visible_speed = -100.0f;
     tuning.full_visible_speed = -200.0f;
     tuning.streak_seconds = -0.1f;
@@ -67,7 +67,7 @@ TEST(NativeCoreSpaceDustMath, OrdersMotionVisibilityThresholds) {
 }
 
 TEST(NativeCoreSpaceDustMath, WrapsLargeNegativeAndPeriodicLocations) {
-    auto const dimensions{ioj::make_vector3f(16000.0f, 12000.0f, 8000.0f)};
+    auto const dimensions{ioj::Vector3f{16000.0f, 12000.0f, 8000.0f}};
     auto const phase{ioj::space_dust::make_translation_phase(
         {16'000'000'125.0, -12'000'000'250.0, 8'000'000'999.0}, dimensions)};
     auto const repeated_phase{ioj::space_dust::make_translation_phase(

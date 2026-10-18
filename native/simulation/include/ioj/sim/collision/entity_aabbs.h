@@ -1,8 +1,8 @@
 #pragma once
 
 #include "ioj/enum_array.h"
+#include "ioj/math_types.h"
 #include "ioj/sim/entities/entity_type.h"
-#include "ioj/vector_types.h"
 
 #include <cstddef>
 
@@ -21,12 +21,11 @@ struct EntityAABBs {
     }
 
     [[nodiscard]] constexpr auto get_centre(EntityType const type) const noexcept -> Vector3f {
-        return ioj::make_vector3f(centre_xs_[type], centre_ys_[type], centre_zs_[type]);
+        return ioj::Vector3f{centre_xs_[type], centre_ys_[type], centre_zs_[type]};
     }
     [[nodiscard]] constexpr auto get_half_extents(EntityType const type) const noexcept
         -> Vector3f {
-        return ioj::make_vector3f(
-            half_extent_xs_[type], half_extent_ys_[type], half_extent_zs_[type]);
+        return ioj::Vector3f{half_extent_xs_[type], half_extent_ys_[type], half_extent_zs_[type]};
     }
   private:
     using Values = ioj::EnumArray<EntityType, float>;

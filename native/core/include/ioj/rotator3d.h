@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/quaternion4d.h>
+#include <ioj/quaternion.h>
 
 namespace ioj {
 // Preserve authored Euler angles in degrees, using Unreal's pitch/yaw/roll convention.

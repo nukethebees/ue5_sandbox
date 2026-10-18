@@ -1,8 +1,8 @@
 #pragma once
 
+#include "ioj/math_types.h"
 #include "ioj/sim/collision/collision_grid.h"
 #include "ioj/sim/collision/entity_cell_data.h"
-#include "ioj/vector_types.h"
 
 namespace ioj::sim::collision {
 inline void add(EntityCellData& data,
@@ -32,15 +32,15 @@ inline void add(EntityCellData& data,
 [[nodiscard]] inline auto min_point_at(EntityCellData::ConstView const data,
                                        std::int32_t const index) -> Vector3f {
     auto const element{static_cast<std::size_t>(index)};
-    return ioj::make_vector3f(
-        data.min_point_xs()[element], data.min_point_ys()[element], data.min_point_zs()[element]);
+    return ioj::Vector3f{
+        data.min_point_xs()[element], data.min_point_ys()[element], data.min_point_zs()[element]};
 }
 
 [[nodiscard]] inline auto max_point_at(EntityCellData::ConstView const data,
                                        std::int32_t const index) -> Vector3f {
     auto const element{static_cast<std::size_t>(index)};
-    return ioj::make_vector3f(
-        data.max_point_xs()[element], data.max_point_ys()[element], data.max_point_zs()[element]);
+    return ioj::Vector3f{
+        data.max_point_xs()[element], data.max_point_ys()[element], data.max_point_zs()[element]};
 }
 
 [[nodiscard]] inline auto min_cell_at(EntityCellData::ConstView const data,

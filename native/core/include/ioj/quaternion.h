@@ -75,4 +75,7 @@ template <std::floating_point T>
         Quaternion<T>{-orientation.x(), -orientation.y(), -orientation.z(), orientation.w()},
         value);
 }
+
+using Quaternion4f = Quaternion<float>;
+using Quaternion4d = Quaternion<double>;
 }

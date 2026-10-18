@@ -5,7 +5,7 @@
 
 #include "ioj/sim/player/scalar_response.h"
 #include "ioj/sim/player/space_ship_common.h"
-#include "ioj/vector3d.h"
+#include "ioj/vector_value_math.h"
 
 namespace ioj::sim::player {
 struct FlightModelControllerState {

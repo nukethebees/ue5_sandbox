@@ -30,10 +30,10 @@ auto to_closed_max_cell(float const value,
     return to_cell(value, cell_dimension, half_grid_extent);
 }
 auto grid_half_size(GridGeometry const geometry) noexcept -> Vector3f {
-    return ioj::make_vector3f(
+    return ioj::Vector3f{
         static_cast<float>(geometry.dimensions.x()) * geometry.cell_dimensions.x() * 0.5f,
         static_cast<float>(geometry.dimensions.y()) * geometry.cell_dimensions.y() * 0.5f,
-        static_cast<float>(geometry.dimensions.z()) * geometry.cell_dimensions.z() * 0.5f);
+        static_cast<float>(geometry.dimensions.z()) * geometry.cell_dimensions.z() * 0.5f};
 }
 
 }
@@ -103,10 +103,10 @@ auto to_cell_min(int const coordinate,
 }
 auto to_cell_min(GridGeometry const geometry, CellCoord const coordinate) noexcept -> Vector3f {
     auto const half_size{grid_half_size(geometry)};
-    return ioj::make_vector3f(
+    return ioj::Vector3f{
         static_cast<float>(coordinate.x()) * geometry.cell_dimensions.x() - half_size.x(),
         static_cast<float>(coordinate.y()) * geometry.cell_dimensions.y() - half_size.y(),
-        static_cast<float>(coordinate.z()) * geometry.cell_dimensions.z() - half_size.z());
+        static_cast<float>(coordinate.z()) * geometry.cell_dimensions.z() - half_size.z()};
 }
 auto to_cell_centre(GridGeometry const geometry, CellCoord const coordinate) noexcept -> Vector3f {
     auto result{to_cell_min(geometry, coordinate)};

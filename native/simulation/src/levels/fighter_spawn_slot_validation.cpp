@@ -28,7 +28,7 @@ auto validate_fighter_spawn_slots(sim::CapitalShipSimConfig const& capital_confi
         sim::collision::make_entity_world_bounds(entity_bounds,
                                                  sim::EntityType::CapitalShip,
                                                  {},
-                                                 ioj::make_quaternion4f(0.0f, 0.0f, 0.0f, 1.0f))};
+                                                 ioj::Quaternion4f{0.0f, 0.0f, 0.0f, 1.0f})};
     auto const clearance{fighter_config.avoidance_clearance_buffer};
     auto const& slots{capital_config.fighter_spawn_slots_relative_transforms};
     std::vector<sim::collision::WorldAABB> fighter_bounds;

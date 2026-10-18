@@ -3,8 +3,8 @@
 
 #pragma once
 
+#include "ioj/math_types.h"
 #include "ioj/sim/collision/cell_coord.h"
-#include "ioj/vector_types.h"
 
 namespace ioj::sim::collision {
 struct GridGeometry {

@@ -4,12 +4,12 @@
 #pragma once
 
 #include "ioj/levels/team.h"
+#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
+#include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/entities/entity_life_state.h"
 #include "ioj/sim/entities/entity_type.h"
-#include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/sim_tick.h"
-#include "ioj/vector_types.h"
 
 #include <cassert>
 #include <memory_resource>
@@ -65,7 +65,8 @@ struct EntityHistoryColumnsSingleLayout {
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
         ioj::native_soa::capacity_block_bound(columns.DeathLocationsColumn)};
-    static constexpr size_type max_capacity{ioj::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr size_type max_capacity{
+        ioj::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return blocks == 0 ? 0 : columns.DeathLocationsColumn.data_end(blocks);
     }
@@ -130,7 +131,8 @@ struct EntityHistoryColumnsSingleConstView : EntityHistoryColumnsSingleViewImpl<
     using Base = EntityHistoryColumnsSingleViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<EntityHistoryColumnsSingleConstView>());
+static_assert(
+    ioj::soa_storage_detail::validate_compact_view<EntityHistoryColumnsSingleConstView>());
 struct EntityHistoryColumnsSingleView : EntityHistoryColumnsSingleViewImpl<false> {
     using Base = EntityHistoryColumnsSingleViewImpl<false>;
     using Base::Base;

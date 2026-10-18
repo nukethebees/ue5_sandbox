@@ -1,7 +1,7 @@
 #pragma once
 
+#include "ioj/math_types.h"
 #include "ioj/sim/collision/world_aabbs.h"
-#include "ioj/vector_types.h"
 
 namespace ioj::sim::collision {
 inline void
@@ -25,14 +25,12 @@ inline auto add(WorldAABBs& aabbs, Vector3f const min, Vector3f const max) -> st
 [[nodiscard]] inline auto min_at(WorldAABBs::ConstView const aabbs, std::uint32_t const index)
     -> Vector3f {
     auto const element{static_cast<std::size_t>(index)};
-    return ioj::make_vector3f(
-        aabbs.min_xs()[element], aabbs.min_ys()[element], aabbs.min_zs()[element]);
+    return ioj::Vector3f{aabbs.min_xs()[element], aabbs.min_ys()[element], aabbs.min_zs()[element]};
 }
 
 [[nodiscard]] inline auto max_at(WorldAABBs::ConstView const aabbs, std::uint32_t const index)
     -> Vector3f {
     auto const element{static_cast<std::size_t>(index)};
-    return ioj::make_vector3f(
-        aabbs.max_xs()[element], aabbs.max_ys()[element], aabbs.max_zs()[element]);
+    return ioj::Vector3f{aabbs.max_xs()[element], aabbs.max_ys()[element], aabbs.max_zs()[element]};
 }
 } // namespace ioj::sim::collision

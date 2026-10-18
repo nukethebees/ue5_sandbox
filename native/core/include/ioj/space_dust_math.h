@@ -14,10 +14,10 @@ struct Tuning {
     bool enabled{true};
     std::int32_t particle_count{96};
     std::uint32_t random_seed{1337};
-    Vector3f volume_dimensions{make_vector3f(16000.0f, 12000.0f, 8000.0f)};
+    Vector3f volume_dimensions{ioj::Vector3f{16000.0f, 12000.0f, 8000.0f}};
     float particle_size{8.0f};
     float brightness{0.35f};
-    Vector3f colour{make_vector3f(0.82f, 0.9f, 1.0f)};
+    Vector3f colour{ioj::Vector3f{0.82f, 0.9f, 1.0f}};
     float minimum_visible_speed{100.0f};
     float full_visible_speed{2000.0f};
     float streak_seconds{0.0125f};
@@ -70,9 +70,9 @@ struct ParticleVariation {
 [[nodiscard]] inline auto make_translation_phase(WorldLocation const world_location,
                                                  Vector3f const volume_dimensions) noexcept
     -> Vector3f {
-    return make_vector3f(positive_modulo(world_location.x(), volume_dimensions.x()),
+    return ioj::Vector3f{positive_modulo(world_location.x(), volume_dimensions.x()),
                          positive_modulo(world_location.y(), volume_dimensions.y()),
-                         positive_modulo(world_location.z(), volume_dimensions.z()));
+                         positive_modulo(world_location.z(), volume_dimensions.z())};
 }
 
 [[nodiscard]] constexpr auto hash(std::uint32_t value) noexcept -> std::uint32_t {
@@ -92,8 +92,8 @@ struct ParticleVariation {
                                                   std::uint32_t const random_seed) noexcept
     -> Vector3f {
     auto const seed{instance_id ^ random_seed};
-    return make_vector3f(
-        random_unit(seed), random_unit(seed ^ 0x68bc21ebu), random_unit(seed ^ 0x02e5be93u));
+    return ioj::Vector3f{
+        random_unit(seed), random_unit(seed ^ 0x68bc21ebu), random_unit(seed ^ 0x02e5be93u)};
 }
 
 [[nodiscard]] constexpr auto make_particle_variation(std::uint32_t const instance_id,

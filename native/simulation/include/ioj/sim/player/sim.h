@@ -18,7 +18,7 @@
 #include <ioj/sim/player/space_ship_common.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/transform3d.h>
-#include <ioj/vector2d.h>
+#include <ioj/vector_value_math.h>
 
 #include <cstdint>
 #include <span>

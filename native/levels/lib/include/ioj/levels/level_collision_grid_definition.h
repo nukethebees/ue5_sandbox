@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/vector3d.h>
+#include <ioj/vector_value_math.h>
 
 #include <optional>
 

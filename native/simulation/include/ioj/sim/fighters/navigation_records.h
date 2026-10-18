@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "ioj/math_types.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/fighters/fighter_navigation_types.h"
-#include "ioj/vector_types.h"
 
 #include <cstdint>
 

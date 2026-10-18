@@ -4,7 +4,7 @@
 #pragma once
 
 #include "ioj/transform3d.h"
-#include "ioj/vector3d.h"
+#include "ioj/vector_value_math.h"
 
 namespace ioj::sim::player {
 struct PhysicalMovementState {

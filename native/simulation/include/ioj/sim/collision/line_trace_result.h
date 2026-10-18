@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "ioj/math_types.h"
 #include "ioj/sim/collision/collision_types.h"
 #include "ioj/sim/entities/entity_id.h"
-#include "ioj/vector_types.h"
 
 namespace ioj::sim {
 struct LineTraceResult {

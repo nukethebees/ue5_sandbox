@@ -1,8 +1,8 @@
 #pragma once
 
+#include "ioj/math_types.h"
 #include "ioj/sim/collision/entity_aabbs.h"
 #include "ioj/sim/entities/entity_type.h"
-#include "ioj/vector_types.h"
 #include <ioj/sim/collision/world_aabb.h>
 
 namespace ioj::sim::collision {

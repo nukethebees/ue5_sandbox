@@ -212,13 +212,13 @@ auto FLevelSimSpawnQueriesTest::RunTest(FString const&) -> bool {
     data.frame_memory_capacity_bytes = 16 * 1024 * 1024;
     data.turrets.target_refresh_frequency = 10.f;
     // Keep the muzzle outside the turret's collision bounds so it cannot block its own query.
-    data.turrets.fire_point_offset = ioj::make_vector3f(20.f, 0.f, 0.f);
+    data.turrets.fire_point_offset = ioj::Vector3f{20.f, 0.f, 0.f};
     auto& initial_storage{data.level_events.schedule.turret_spawns};
     data.level_events.schedule.add_initial_spawn_group(::ioj::sim::EntityType::Turret, 0, 1);
     initial_storage.add_uninitialised(1);
     auto const initial{initial_storage.get_view()};
     initial.entity_indices()[0] = data.level_events.initialisation.entity_count++;
-    ::ioj::set_vector(initial.view_locations(), 0, ioj::make_vector3f(-1000.f, 1000.f, 0.f));
+    ::ioj::set_vector(initial.view_locations(), 0, ioj::Vector3f{-1000.f, 1000.f, 0.f});
     ioj::set_rotation(initial.view_rotations(), 0, {});
     initial.teams()[0] = ::ioj::Team::Blue;
     initial.healths()[0] = 100;
@@ -737,7 +737,8 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
             auto const source_y{lasers.get_entities().view_locations().ys()[source_index]};
             auto const decoded_y{packed[index].position[1] * ioj::sandbox_ismc::position_quantum};
             TestTrue(TEXT("Packed laser position matches its source within half a quantum"),
-                     FMath::Abs(decoded_y - source_y) <= ioj::sandbox_ismc::position_quantum * 0.5f);
+                     FMath::Abs(decoded_y - source_y) <=
+                         ioj::sandbox_ismc::position_quantum * 0.5f);
             auto const id{FMath::RoundToInt(source_y / 10.f)};
             auto const& expected{expected_material_data[id - 1]};
             auto const actual{writer.custom_data(index)};

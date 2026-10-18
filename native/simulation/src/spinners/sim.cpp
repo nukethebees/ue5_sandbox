@@ -144,7 +144,7 @@ void Sim::fire_lasers() {
     pending_fire_indices_.clear();
     pending_fire_indices_.reserve(count);
     auto cooldowns{ioj::TickCountdownView<std::int16_t>{entity_columns.laser_cooldowns(),
-                                                       cooldown_restart_ticks_}};
+                                                        cooldown_restart_ticks_}};
     for (std::uint32_t index{}; index < count; ++index) {
         if (cooldowns.try_consume(static_cast<std::size_t>(index))) {
             pending_fire_indices_.push_back(index);
@@ -180,9 +180,9 @@ void Sim::materialize_fire_commands() {
             config.fire_point_offsets[static_cast<std::size_t>(next_fire_point)]};
         auto const heading{forward_direction({0.f, yaws[element], 0.f})};
         auto const rotate_offset{[heading](Vector3f const local) {
-            return ioj::make_vector3f(heading.x() * local.x() - heading.y() * local.y(),
-                                     heading.y() * local.x() + heading.x() * local.y(),
-                                     local.z());
+            return ioj::Vector3f{heading.x() * local.x() - heading.y() * local.y(),
+                                 heading.y() * local.x() + heading.x() * local.y(),
+                                 local.z()};
         }};
         set_vector(laser_locations,
                    request_index,
@@ -190,7 +190,7 @@ void Sim::materialize_fire_commands() {
         set_rotation(laser_rotations,
                      request_index,
                      direction_to_rotation(rotate_offset(forward_direction(fire_point.rotation))));
-        set_vector(laser_base_velocities, request_index, ioj::make_vector3f(0.f, 0.f, 0.f));
+        set_vector(laser_base_velocities, request_index, ioj::Vector3f{0.f, 0.f, 0.f});
         laser_damages[request_index] = config.laser.damage;
         laser_speeds[request_index] = config.laser.projectile_speed;
         laser_max_distances[request_index] = config.laser.max_distance;

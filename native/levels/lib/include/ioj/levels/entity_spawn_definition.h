@@ -4,7 +4,7 @@
 #include <ioj/levels/identifiers.h>
 #include <ioj/levels/team.h>
 #include <ioj/rotator3d.h>
-#include <ioj/vector3d.h>
+#include <ioj/vector_value_math.h>
 
 #include <string>
 

@@ -34,9 +34,9 @@ auto FSandboxISMCInstanceChunkWriter::validate_transforms(TConstArrayView<FVecto
         if (!position_bounds_.IsValid ||
             !(position_bounds_.Min[axis] <= position_bounds_.Max[axis]) ||
             !ioj::sandbox_ismc::can_quantize_position(position_bounds_.Min[axis],
-                                                     position_root_[axis]) ||
+                                                      position_root_[axis]) ||
             !ioj::sandbox_ismc::can_quantize_position(position_bounds_.Max[axis],
-                                                     position_root_[axis])) {
+                                                      position_root_[axis])) {
             UE_LOG(LogTemp,
                    Fatal,
                    TEXT("SandboxISMC chunk at %d has invalid position domain on axis %d: "
@@ -68,7 +68,7 @@ auto FSandboxISMCInstanceChunkWriter::validate_transforms(TConstArrayView<FVecto
             return false;
         }
         if (!ioj::sandbox_ismc::is_normalized_quaternion(
-                ioj::make_quaternion4f(rotation.X, rotation.Y, rotation.Z, rotation.W))) {
+                ioj::Quaternion4f{rotation.X, rotation.Y, rotation.Z, rotation.W})) {
             UE_LOG(LogTemp,
                    Fatal,
                    TEXT("SandboxISMC instance %d requires finite normalized rotation (length "
@@ -91,13 +91,13 @@ auto FSandboxISMCInstanceChunkWriter::set_transforms(TConstArrayView<FVector3f> 
 
     auto const count{static_cast<std::size_t>(instances_.Num())};
     auto const native_vector{
-        [](FVector3f value) { return ioj::make_vector3f(value.X, value.Y, value.Z); }};
+        [](FVector3f value) { return ioj::Vector3f{value.X, value.Y, value.Z}; }};
     ioj::sandbox_ismc::TransformInput const input{
         std::as_bytes(std::span{positions.GetData(), count}),
         std::as_bytes(std::span{rotations.GetData(), count})};
     ioj::sandbox_ismc::PackingParameters const parameters{native_vector(position_root_),
-                                                         native_vector(mesh_bounds_origin_),
-                                                         native_vector(mesh_bounds_extent_)};
+                                                          native_vector(mesh_bounds_origin_),
+                                                          native_vector(mesh_bounds_extent_)};
     auto const output{std::span{instances_.GetData(), count}};
     if constexpr (BoundsMode == ESandboxISMCBoundsMode::Calculate) {
         ioj::sandbox_ismc::TransformBounds bounds{};

@@ -177,8 +177,8 @@ void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
         auto const native_bounds{ioj::sim::collision::make_entity_world_bounds(
             *local_bounds,
             type,
-            ioj::make_vector3f(position.X, position.Y, position.Z),
-            ioj::make_quaternion4f(orientation.X, orientation.Y, orientation.Z, orientation.W))};
+            ioj::Vector3f{position.X, position.Y, position.Z},
+            ioj::Quaternion4f{orientation.X, orientation.Y, orientation.Z, orientation.W})};
         return FBox3f{
             FVector3f{native_bounds.min.x(), native_bounds.min.y(), native_bounds.min.z()},
             FVector3f{native_bounds.max.x(), native_bounds.max.y(), native_bounds.max.z()}};
@@ -404,7 +404,7 @@ void ATestCapitalShipProxy::apply_asset_configuration_to_all_instances() {
     }
     FScopedTransaction const transaction{
         NSLOCTEXT("CapitalShipProxy", "ApplyAllSpawnSlots", "Apply spawn layout to all capitals")};
-    ioj::for_each_instance(*this,
-                          [config](ThisClass& proxy) { proxy.apply_spawn_configuration(*config); });
+    ioj::for_each_instance(
+        *this, [config](ThisClass& proxy) { proxy.apply_spawn_configuration(*config); });
 }
 #endif

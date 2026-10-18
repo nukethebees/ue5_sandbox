@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ioj/frame_array.h"
-#include "ioj/vector_types.h"
+#include "ioj/math_types.h"
 #include "ioj/vectors3f.h"
 
 #include <cassert>

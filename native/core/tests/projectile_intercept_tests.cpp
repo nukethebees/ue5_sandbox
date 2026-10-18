@@ -16,7 +16,7 @@ struct InterceptCase {
 };
 
 constexpr auto v3(float const x, float const y, float const z) noexcept -> ioj::Vector3f {
-    return ioj::make_vector3f(x, y, z);
+    return ioj::Vector3f{x, y, z};
 }
 
 void expect_intercept_geometry(InterceptCase const& test_case, float const intercept_time) {
@@ -51,9 +51,9 @@ TEST(NativeCoreProjectileIntercept, SolvesScalarCases) {
 
     for (auto const& test_case : cases) {
         auto const result{ioj::solve_intercept_time(test_case.shooter_position,
-                                                   test_case.target_position,
-                                                   test_case.target_velocity,
-                                                   test_case.projectile_speed)};
+                                                    test_case.target_position,
+                                                    test_case.target_velocity,
+                                                    test_case.projectile_speed)};
         EXPECT_NEAR(result, test_case.expected_time, 1e-5f);
         expect_intercept_geometry(test_case, result);
     }
@@ -68,9 +68,9 @@ TEST(NativeCoreProjectileIntercept, RejectsDegenerateAndEscapingTargets) {
 
     for (auto const& test_case : cases) {
         EXPECT_EQ(ioj::solve_intercept_time(test_case.shooter_position,
-                                           test_case.target_position,
-                                           test_case.target_velocity,
-                                           test_case.projectile_speed),
+                                            test_case.target_position,
+                                            test_case.target_velocity,
+                                            test_case.projectile_speed),
                   test_case.expected_time);
     }
 }

@@ -15,8 +15,8 @@
 #include <ioj/sim/collision/trace_hits.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/deterministic_bias.h>
-#include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_id_checks.h>
+#include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/fighters/fighter_diagnostics.h>
 #include <ioj/sim/fighters/fighter_frame_spawn_queue.h>
 #include <ioj/sim/lasers/laser_source.h>
@@ -228,7 +228,8 @@ void Sim::prepare_tick(float const dt) {
     ioj::tick_countdowns<std::int8_t>(data.awareness_scan_countdowns(), awareness_cleaner_, 64);
     ioj::tick_countdowns<std::int16_t>(
         data.attack_reposition_countdowns(), reposition_cleaner_, 16384);
-    ioj::tick_periodic_countdowns<std::int16_t>(data.navigation_update_countdowns_remaining_ticks());
+    ioj::tick_periodic_countdowns<std::int16_t>(
+        data.navigation_update_countdowns_remaining_ticks());
     clear_tick_buffers();
 
     for (auto& capacity : remaining_team_capacity) {
@@ -261,7 +262,7 @@ void Sim::think(float const dt, ioj::FrameMemoryResource* const scratch_resource
     bool targets_changed{};
 
     ioj::TickCountdownView<std::int8_t> const awareness_countdowns{data.awareness_scan_countdowns(),
-                                                                  awareness_restart_ticks_};
+                                                                   awareness_restart_ticks_};
     auto const locations{data.view_locations()};
     auto const target_ids{data.target_ids()};
     auto const target_distance_sq{data.target_distance_sq()};
@@ -405,16 +406,16 @@ void Sim::plan_movement(float const dt, ioj::FrameMemoryResource* const scratch_
     auto const destinations{data.view_desired_move_locations()};
     auto const directions{data.view_movement_directions()};
     ioj::native_math::direction_and_distance(directions.xs().data(),
-                                            directions.ys().data(),
-                                            directions.zs().data(),
-                                            data.move_distances().data(),
-                                            locations.xs().data(),
-                                            locations.ys().data(),
-                                            locations.zs().data(),
-                                            destinations.xs().data(),
-                                            destinations.ys().data(),
-                                            destinations.zs().data(),
-                                            data.num());
+                                             directions.ys().data(),
+                                             directions.zs().data(),
+                                             data.move_distances().data(),
+                                             locations.xs().data(),
+                                             locations.ys().data(),
+                                             locations.zs().data(),
+                                             destinations.xs().data(),
+                                             destinations.ys().data(),
+                                             destinations.zs().data(),
+                                             data.num());
     update_navigation_steering(scratch_resource);
     if (do_move) {
         auto const movement_directions{move_view.view_movement_directions()};
@@ -632,7 +633,8 @@ void Sim::finish_action() {
 /* **************************************** */
 // Movement
 /* **************************************** */
-void Sim::move(float const dt, TaskView fighters, ioj::FrameMemoryResource* const scratch_resource) {
+void
+    Sim::move(float const dt, TaskView fighters, ioj::FrameMemoryResource* const scratch_resource) {
     assert(dt > 0.f);
     auto const count{fighters.num()};
     auto const directions{fighters.view_movement_directions().get_const_view()};
@@ -658,14 +660,14 @@ void Sim::move(float const dt, TaskView fighters, ioj::FrameMemoryResource* cons
         velocity_zs[index] = direction_zs[index] * velocity_scale;
     }
     ioj::native_math::add_scaled_product_in_place(locations.xs().data(),
-                                                 locations.ys().data(),
-                                                 locations.zs().data(),
-                                                 directions.xs().data(),
-                                                 directions.ys().data(),
-                                                 directions.zs().data(),
-                                                 move_distances.data(),
-                                                 1.f,
-                                                 count);
+                                                  locations.ys().data(),
+                                                  locations.zs().data(),
+                                                  directions.xs().data(),
+                                                  directions.ys().data(),
+                                                  directions.zs().data(),
+                                                  move_distances.data(),
+                                                  1.f,
+                                                  count);
     auto const before_locations{previous_locations.get_const_view()};
     for (std::uint32_t index{}; index < count; ++index) {
         auto const before{before_locations[index]};
@@ -970,7 +972,7 @@ void Sim::execute_navigation_sweeps(NavigationScratch& scratch, float const clea
     if (trace_count == 0) {
         return;
     }
-    auto const moving_half_extent{ioj::make_vector3f(clearance, clearance, clearance)};
+    auto const moving_half_extent{ioj::Vector3f{clearance, clearance, clearance}};
     scratch.line_of_sight_results.set_num(trace_count);
     spatial_query_manager.are_spheres_in_bounds(
         scratch.line_of_sight_ends.get_const_view(),
@@ -1116,7 +1118,7 @@ void Sim::apply_navigation_choices(NavigationScratch const& scratch) {
                 set_vector(movement_directions, index, make_avoidance_direction(frame, choice));
                 ++navigation_telemetry.avoiding_fighter_count;
             } else if (choice == stop_movement_choice) {
-                set_vector(movement_directions, index, ioj::make_vector3f(0.f, 0.f, 0.f));
+                set_vector(movement_directions, index, ioj::Vector3f{0.f, 0.f, 0.f});
                 ++navigation_telemetry.avoiding_fighter_count;
             }
 
@@ -1534,13 +1536,13 @@ void Sim::handle_firing(TaskView data, ioj::FrameMemoryResource* const scratch_r
     auto const planned_aim_directions{data.view_planned_aim_directions()};
     auto const desired_aiming_directions{data.view_desired_aiming_directions()};
     ioj::native_math::dot_product_vector(aiming_dot_products.data(),
-                                        planned_aim_directions.xs().data(),
-                                        planned_aim_directions.ys().data(),
-                                        planned_aim_directions.zs().data(),
-                                        desired_aiming_directions.xs().data(),
-                                        desired_aiming_directions.ys().data(),
-                                        desired_aiming_directions.zs().data(),
-                                        n_ships);
+                                         planned_aim_directions.xs().data(),
+                                         planned_aim_directions.ys().data(),
+                                         planned_aim_directions.zs().data(),
+                                         desired_aiming_directions.xs().data(),
+                                         desired_aiming_directions.ys().data(),
+                                         desired_aiming_directions.zs().data(),
+                                         n_ships);
 
     auto const target_distance_sq{data.target_distance_sq()};
     auto const target_ids{data.target_ids()};

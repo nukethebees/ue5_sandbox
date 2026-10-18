@@ -385,8 +385,8 @@ record members or function parameter types. They remain valid logical relationsh
 nested schemas. Registered names, dependency edges and planner identity remain logical; ABI
 facts for an owner are keyed by its physical spelling, never a deleted vector class name.
 When a logical vector schema has a declared vector equivalent, the resolved model also retains
-that vector declaration's `equivalent_constructor`. Compact row conversion uses it (for example,
-`ioj::make_vector3f` for core vector values) instead of assuming aggregate construction.
+that vector declaration's `equivalent_constructor`. Compact row conversion uses it when set;
+native vector values use aggregate construction directly.
 
 Vector SoA declarations can set `:equivalent-accessors true` with named
 `:equivalent-members` to emit component calls such as `value.x()`. Field access

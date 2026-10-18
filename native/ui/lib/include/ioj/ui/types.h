@@ -1,7 +1,6 @@
 #pragma once
 
-#include <ioj/point2f.h>
-#include <ioj/point3f.h>
+#include <ioj/vector_value_math.h>
 
 namespace ioj::ui {
 using Vector2f = Point2f;

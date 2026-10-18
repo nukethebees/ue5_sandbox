@@ -223,8 +223,7 @@ void check_traces(TraceFixture const& fixture, std::span<ExpectedTrace const> co
     }
 }
 
-auto count_id(std::span<EntityId const> const handles, EntityId const expected)
-    -> std::int32_t {
+auto count_id(std::span<EntityId const> const handles, EntityId const expected) -> std::int32_t {
     std::int32_t count{};
     for (auto const handle : handles) {
         if (handle == expected) {
@@ -248,8 +247,8 @@ void run_worldless_collision_uniform_grid_membership(tests::SimulationFixture co
                              player_index,
                              0.f,
                              data.capital_ships.spawn_delay);
-    tests::add_turret_spawn(data, ioj::make_vector3f(500.f, 500.f, 0.f), {}, Team::Blue);
-    tests::add_spinner_spawn(data, ioj::make_vector3f(1500.f, 1500.f, 0.f), 0.f, 0);
+    tests::add_turret_spawn(data, ioj::Vector3f{500.f, 500.f, 0.f}, {}, Team::Blue);
+    tests::add_spinner_spawn(data, ioj::Vector3f{1500.f, 1500.f, 0.f}, 0.f, 0);
 
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();

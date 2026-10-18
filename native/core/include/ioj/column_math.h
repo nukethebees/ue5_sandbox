@@ -1,7 +1,7 @@
 #pragma once
 
+#include <ioj/math_types.h>
 #include <ioj/rotator_types.h>
-#include <ioj/vector_types.h>
 
 #include <concepts>
 #include <cstdint>
@@ -17,7 +17,7 @@ concept VectorColumns = requires(View const& view) {
 
 template <VectorColumns View>
 auto vector_at(View const& view, std::uint32_t const index) -> Vector3f {
-    return ioj::make_vector3f(view.xs()[index], view.ys()[index], view.zs()[index]);
+    return ioj::Vector3f{view.xs()[index], view.ys()[index], view.zs()[index]};
 }
 
 template <VectorColumns View>

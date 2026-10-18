@@ -1,7 +1,7 @@
 #pragma once
 
+#include "ioj/math_types.h"
 #include "ioj/rotator_types.h"
-#include "ioj/vector_types.h"
 #include <ioj/rotator3d.h>
 
 namespace ioj {

@@ -7,5 +7,5 @@
     :components (xs ys zs)
     :equivalent-members (x y z)
     :equivalent-accessors true
-    :equivalent-constructor "ioj::make_vector3f"
+
     :equivalent-type @native_vector_3f))

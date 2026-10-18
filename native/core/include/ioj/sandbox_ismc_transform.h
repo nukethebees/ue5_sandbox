@@ -66,7 +66,7 @@ inline constexpr float rotation_error_chord{0.006f};
 }
 
 [[nodiscard]] inline auto unpack_quat32(Quat32 packed) noexcept -> Quaternion4f {
-    auto quaternion{ioj::make_quaternion4f(0.0f, 0.0f, 0.0f, 0.0f)};
+    auto quaternion{ioj::Quaternion4f{0.0f, 0.0f, 0.0f, 0.0f}};
     auto const largest{packed.bits & 3U};
     auto shift{2U};
     auto squared{0.0f};

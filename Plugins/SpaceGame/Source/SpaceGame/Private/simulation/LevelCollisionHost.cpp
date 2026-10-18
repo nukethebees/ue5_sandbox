@@ -88,8 +88,8 @@ auto get_aabb(UStaticMesh const& mesh) -> FBox {
 }
 
 void clear_aabb(EntityAABBs& aabbs, sim::EntityType const type) {
-    aabbs.set_centre(type, ioj::make_vector3f(0.f, 0.f, 0.f));
-    aabbs.set_half_extents(type, ioj::make_vector3f(0.f, 0.f, 0.f));
+    aabbs.set_centre(type, ioj::Vector3f{0.f, 0.f, 0.f});
+    aabbs.set_half_extents(type, ioj::Vector3f{0.f, 0.f, 0.f});
 }
 
 void set_mesh_aabb(EntityAABBs& aabbs,
@@ -116,16 +116,16 @@ void set_mesh_aabb(EntityAABBs& aabbs,
     FVector3f const centre{aabb.GetCenter()};
     FVector3f const half_extents{aabb.GetExtent()};
 
-    aabbs.set_centre(type, ioj::make_vector3f(centre.X, centre.Y, centre.Z));
-    aabbs.set_half_extents(type, ioj::make_vector3f(half_extents.X, half_extents.Y, half_extents.Z));
+    aabbs.set_centre(type, ioj::Vector3f{centre.X, centre.Y, centre.Z});
+    aabbs.set_half_extents(type, ioj::Vector3f{half_extents.X, half_extents.Y, half_extents.Z});
 }
 
 auto has_unsupported_geometry(FKAggregateGeom const& geometry) -> bool {
     return ioj::any_non_empty(geometry.TaperedCapsuleElems,
-                             geometry.LevelSetElems,
-                             geometry.SkinnedLevelSetElems,
-                             geometry.MLLevelSetElems,
-                             geometry.SkinnedTriangleMeshElems);
+                              geometry.LevelSetElems,
+                              geometry.SkinnedLevelSetElems,
+                              geometry.MLLevelSetElems,
+                              geometry.SkinnedTriangleMeshElems);
 }
 
 struct FStaticCollisionComponentData {
@@ -184,10 +184,10 @@ auto extract_static_collision_component(UPrimitiveComponent& component,
 
     FVector3f const min_point{aabb.Min};
     FVector3f const max_point{aabb.Max};
-    auto const [min_coord, max_coord]{sim::collision::to_cell_coord_bounds(
-        grid_geometry,
-        ioj::make_vector3f(min_point.X, min_point.Y, min_point.Z),
-        ioj::make_vector3f(max_point.X, max_point.Y, max_point.Z))};
+    auto const [min_coord, max_coord]{
+        sim::collision::to_cell_coord_bounds(grid_geometry,
+                                             ioj::Vector3f{min_point.X, min_point.Y, min_point.Z},
+                                             ioj::Vector3f{max_point.X, max_point.Y, max_point.Z})};
     if (min_point.ContainsNaN() || max_point.ContainsNaN() ||
         !sim::collision::is_cell_coord_in_bounds(grid_geometry, min_coord) ||
         !sim::collision::is_cell_coord_in_bounds(grid_geometry, max_coord)) {

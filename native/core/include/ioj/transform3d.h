@@ -2,7 +2,6 @@
 
 #include <ioj/math_types.h>
 #include <ioj/rotator3d.h>
-#include <ioj/vector_types.h>
 
 namespace ioj {
 struct Transform3d {
@@ -22,8 +21,8 @@ struct Transform3d {
     auto operator*(Transform3d const& parent) const -> Transform3d;
 };
 inline auto to_float(ioj::Vector3d const value) -> Vector3f {
-    return ioj::make_vector3f(static_cast<float>(value.x()),
-                             static_cast<float>(value.y()),
-                             static_cast<float>(value.z()));
+    return ioj::Vector3f{static_cast<float>(value.x()),
+                         static_cast<float>(value.y()),
+                         static_cast<float>(value.z())};
 }
 }

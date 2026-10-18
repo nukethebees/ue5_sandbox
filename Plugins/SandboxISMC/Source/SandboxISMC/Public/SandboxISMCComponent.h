@@ -107,10 +107,9 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
         FVector3f root{FVector3f::ZeroVector};
         if (instance_count > 0) {
             auto const center{ioj::sandbox_ismc::position_root(
-                ioj::make_vector3f(
-                    position_bounds.Min.X, position_bounds.Min.Y, position_bounds.Min.Z),
-                ioj::make_vector3f(
-                    position_bounds.Max.X, position_bounds.Max.Y, position_bounds.Max.Z))};
+                ioj::Vector3f{position_bounds.Min.X, position_bounds.Min.Y, position_bounds.Min.Z},
+                ioj::Vector3f{
+                    position_bounds.Max.X, position_bounds.Max.Y, position_bounds.Max.Z})};
             if (!position_bounds.IsValid || !center) {
                 UE_LOG(
                     LogTemp,

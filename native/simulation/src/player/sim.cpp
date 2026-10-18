@@ -14,8 +14,7 @@
 #include <ioj/sim/player/flight_model_evaluator.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/transform3d.h>
-#include <ioj/vector2d.h>
-#include <ioj/vector3d.h>
+#include <ioj/vector_value_math.h>
 
 #include <algorithm>
 #include <array>

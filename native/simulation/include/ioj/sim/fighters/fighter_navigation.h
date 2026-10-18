@@ -1,10 +1,10 @@
 #pragma once
 
+#include "ioj/math_types.h"
 #include "ioj/sim/collision/collision_grid.h"
 #include "ioj/sim/collision/trace_hits.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/fighters/fighter_navigation_types.h"
-#include "ioj/vector_types.h"
 #include "ioj/vectors3f.h"
 #include <ioj/sim/fighters/navigation_records.h>
 
@@ -32,8 +32,8 @@ void make_avoidance_choice_order(
     std::uint32_t integral_bias,
     std::int8_t previous_choice,
     std::array<std::int8_t, avoidance_direction_count>& choice_order) noexcept;
-[[nodiscard]] auto make_coincident_separation_direction(EntityId self,
-                                                        EntityId other) noexcept -> Vector3f;
+[[nodiscard]] auto make_coincident_separation_direction(EntityId self, EntityId other) noexcept
+    -> Vector3f;
 [[nodiscard]] auto classify_navigation_risk(float closest_distance_squared,
                                             float immediate_distance_squared,
                                             float close_distance_squared,

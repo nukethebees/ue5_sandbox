@@ -7,8 +7,8 @@
 
 namespace ioj {
 template <typename T, std::size_t N>
+    requires (N > 0)
 struct Vector {
-    static_assert(N > 0);
     std::array<T, N> elements{};
 
     auto operator<=>(Vector const&) const = default;
@@ -63,4 +63,11 @@ struct Vector {
         return elements[3];
     }
 };
+
+using Vector2f = Vector<float, 2>;
+using Vector3f = Vector<float, 3>;
+using Vector2d = Vector<double, 2>;
+using Vector3d = Vector<double, 3>;
+using Point2f = Vector<float, 2>;
+using Point3f = Vector<float, 3>;
 }

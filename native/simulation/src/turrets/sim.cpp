@@ -460,15 +460,15 @@ void Sim::fire_at_enemies(ioj::FrameMemoryResource* const scratch_resource) {
             target_location + target_velocity * intercept_time - location, 1.e-8f)};
         Rotator3f rotation{};
         ioj::native_math::to_rotations(&rotation.pitch,
-                                      &rotation.yaw,
-                                      &rotation.roll,
-                                      &direction.x(),
-                                      &direction.y(),
-                                      &direction.z(),
-                                      1);
+                                       &rotation.yaw,
+                                       &rotation.roll,
+                                       &direction.x(),
+                                       &direction.y(),
+                                       &direction.z(),
+                                       1);
         set_vector(laser_locations, candidate, location);
         set_rotation(laser_rotations, candidate, rotation);
-        set_vector(laser_velocities, candidate, ioj::make_vector3f(0.f, 0.f, 0.f));
+        set_vector(laser_velocities, candidate, ioj::Vector3f{0.f, 0.f, 0.f});
         damages[candidate] = laser_damages[element];
         laser_ids[candidate] = entity_ids[element];
         laser_sources[candidate] = {teams[element], EntityType::Turret};
