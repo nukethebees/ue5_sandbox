@@ -4,9 +4,10 @@
 #include <codegen/schema/declarations.h>
 #include <lispb/strings.h>
 
+#include <format>
+#include <iterator>
 #include <optional>
 #include <ranges>
-#include <sstream>
 #include <string>
 #include <string_view>
 
@@ -39,14 +40,15 @@ class CanonicalRenderer {
     auto packed_field_kind_name(codegen::PackedFieldKind const kind) -> std::string_view;
     auto soa_member_kind_name(codegen::SoaMemberKind const kind) -> std::string_view;
     auto storage_operation_name(codegen::StorageOperation const operation) -> std::string_view;
-    void render_quoted_list(std::ostringstream& output, auto const& values) {
-        output << '(';
+    void render_quoted_list(std::string& output, auto const& values) {
+        auto output_it{std::back_inserter(output)};
+        output += '(';
         for (std::size_t index{}; index < values.size(); ++index) {
-            output << (index == 0 ? "" : " ") << quote(values[index]);
+            std::format_to(output_it, "{}{}", (index == 0 ? "" : " "), quote(values[index]));
         }
-        output << ')';
+        output += ')';
     }
-    void render_function(std::ostringstream& output,
+    void render_function(std::string& output,
                          lispb::codegen::FunctionSchemaId const& function,
                          std::string_view const indent,
                          std::string_view const kind = "function");
@@ -66,23 +68,31 @@ class CanonicalRenderer {
     template <typename Child>
     auto render_aggregate_child(auto const& columns, std::string_view const head, Child const child)
         -> std::string {
-        std::ostringstream output;
-        output << '(' << head << ' ' << text(columns.name[columns.index(child)]) << ' '
-               << render_type_ref(columns.type[columns.index(child)]);
+        std::string output;
+        auto output_it{std::back_inserter(output)};
+        std::format_to(output_it,
+                       "({} {} {}",
+                       head,
+                       text(columns.name[columns.index(child)]),
+                       render_type_ref(columns.type[columns.index(child)]));
         if (columns.count[columns.index(child)].has_value()) {
-            output << " :count " << *columns.count[columns.index(child)];
+            std::format_to(output_it, " :count {}", *columns.count[columns.index(child)]);
         }
         if constexpr (std::is_same_v<Child, lispb::codegen::RecordMemberId>) {
             if (columns.initializer[columns.index(child)]) {
-                output << " :initializer " << quote(*columns.initializer[columns.index(child)]);
+                std::format_to(output_it,
+                               " :initializer {}",
+                               quote(*columns.initializer[columns.index(child)]));
             }
             if (columns.relationship[columns.index(child)].has_value()) {
-                output << "\n      "
-                       << render_semantic_relation(*columns.relationship[columns.index(child)]);
+                std::format_to(
+                    output_it,
+                    "\n      {}",
+                    render_semantic_relation(*columns.relationship[columns.index(child)]));
             }
         }
-        output << ')';
-        return output.str();
+        output += ')';
+        return output;
     }
     auto render_record(lispb::codegen::DeclarationHandle const& schema) -> std::string;
     auto render_union(lispb::codegen::DeclarationHandle const& schema) -> std::string;
@@ -97,7 +107,7 @@ class CanonicalRenderer {
     auto render_static_table(lispb::codegen::DeclarationHandle const& schema) -> std::string;
     auto render_facade(lispb::codegen::DeclarationHandle const& schema) -> std::string;
     auto render_settings_schema(lispb::codegen::DeclarationHandle const& schema) -> std::string;
-    void render_settings_module(std::ostringstream& output, codegen::ModuleHandle const module);
+    void render_settings_module(std::string& output, codegen::ModuleHandle const module);
   private:
     codegen::Declarations const& store_;
 };
