@@ -231,7 +231,7 @@ enum class Property : PropertyUnderlying {
             return std::nullopt;
         }
         case 6: {
-            switch (static_cast<unsigned char>(value.front())) {
+            switch (static_cast<unsigned char>(value[0])) {
                 case 'c': {
                     if (value == "camera") {
                         return Property::Camera;
@@ -286,7 +286,7 @@ enum class Property : PropertyUnderlying {
             return std::nullopt;
         }
         case 8: {
-            switch (static_cast<unsigned char>(value.front())) {
+            switch (static_cast<unsigned char>(value[0])) {
                 case 'd': {
                     if (value == "distance") {
                         return Property::Distance;

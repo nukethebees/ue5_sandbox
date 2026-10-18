@@ -155,7 +155,7 @@ enum class FieldsField : std::uint32_t {
             return std::nullopt;
         }
         case 25: {
-            switch (static_cast<unsigned char>(path.front())) {
+            switch (static_cast<unsigned char>(path[0])) {
                 case 'c': {
                     if (path == "capital-ships.spawn-delay") {
                         return FieldsField::CapitalShipsSpawnDelay;
@@ -204,7 +204,7 @@ enum class FieldsField : std::uint32_t {
             return std::nullopt;
         }
         case 27: {
-            switch (static_cast<unsigned char>(path.front())) {
+            switch (static_cast<unsigned char>(path[0])) {
                 case 'f': {
                     if (path == "fighters.laser.max-distance") {
                         return FieldsField::FightersLaserMaxDistance;
