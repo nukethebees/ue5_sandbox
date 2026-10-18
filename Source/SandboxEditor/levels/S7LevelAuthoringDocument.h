@@ -102,10 +102,10 @@ class SANDBOXEDITOR_API AS7LevelAuthoringDocument final : public AInfo {
     UPROPERTY(EditAnywhere, Category = "Document")
     FString source_path{};
 
-    UPROPERTY(VisibleAnywhere, Category = "Document")
+    UPROPERTY()
     FString synchronized_source{};
 
-    UPROPERTY(VisibleAnywhere, Category = "Document")
+    UPROPERTY()
     FString synchronized_scene_source{};
 
     UPROPERTY(EditAnywhere, Category = "Level")
