@@ -3,12 +3,9 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
-#include <array>
 #include <cmath>
 #include <cstddef>
-#include <cstdint>
 #include <limits>
-#include <span>
 #include <vector>
 
 namespace mesh_gen::tests {
@@ -105,63 +102,54 @@ void expect_valid_geometry(MeshData const& mesh) {
 
 }
 
-TEST(PrimitiveGenerators, ProduceExpectedBufferShapes) {
-    auto const box{generate_box()};
-    EXPECT_EQ(box.positions.size(), 24);
-    EXPECT_EQ(box.indices.size(), 36);
+struct PrimitiveCase {
+    char const* name;
+    Shape shape;
+    MeshData (*generate)();
+    std::size_t positions;
+    std::size_t indices;
+};
 
-    CylinderParameters const cylinder_parameters{30.0f, 80.0f, 12};
-    auto const cylinder{generate_cylinder(cylinder_parameters)};
-    EXPECT_EQ(cylinder.positions.size(), 52);
-    EXPECT_EQ(cylinder.indices.size(), 144);
+class PrimitiveGenerators : public testing::TestWithParam<PrimitiveCase> {};
 
-    ConeParameters const cone_parameters{30.0f, 80.0f, 12};
-    auto const cone{generate_cone(cone_parameters)};
-    EXPECT_EQ(cone.positions.size(), 38);
-    EXPECT_EQ(cone.indices.size(), 72);
+TEST_P(PrimitiveGenerators, ProducesExpectedGeometryDeterministically) {
+    auto const& test{GetParam()};
+    auto const mesh{test.generate()};
+    EXPECT_EQ(mesh.positions.size(), test.positions);
+    EXPECT_EQ(mesh.indices.size(), test.indices);
+    expect_valid_geometry(mesh);
 
-    SphereParameters const sphere_parameters{30.0f, 12, 6};
-    auto const sphere{generate_sphere(sphere_parameters)};
-    EXPECT_EQ(sphere.positions.size(), 91);
-    EXPECT_EQ(sphere.indices.size(), 360);
-
-    auto const hex_tile{generate_hex_tile()};
-    EXPECT_EQ(hex_tile.positions.size(), 108);
-    EXPECT_EQ(hex_tile.indices.size(), 144);
-
-    auto const hex_frame{generate_hex_frame()};
-    EXPECT_EQ(hex_frame.positions.size(), 96);
-    EXPECT_EQ(hex_frame.indices.size(), 144);
-
-    auto const honeycomb{generate_honeycomb_panel({1, 1, 40.0f, 6.0f, 10.0f, false})};
-    EXPECT_EQ(honeycomb.positions.size(), 144);
-    EXPECT_EQ(honeycomb.indices.size(), 216);
-
-    auto const beveled_box{generate_beveled_box()};
-    EXPECT_EQ(beveled_box.positions.size(), 120);
-    EXPECT_EQ(beveled_box.indices.size(), 204);
-
-    auto const wedge{generate_wedge()};
-    EXPECT_EQ(wedge.positions.size(), 24);
-    EXPECT_EQ(wedge.indices.size(), 36);
+    auto const request{make_default_request(test.shape)};
+    EXPECT_TRUE(same_mesh(generate_mesh(request), generate_mesh(request)));
 }
 
-TEST(PrimitiveGenerators, ProduceValidConsistentlyWoundGeometry) {
-    std::array<MeshData, 9> const meshes{generate_box(),
-                                         generate_cylinder({30.0f, 80.0f, 12}),
-                                         generate_sphere({30.0f, 12, 6}),
-                                         generate_cone({30.0f, 80.0f, 12}),
-                                         generate_hex_tile(),
-                                         generate_hex_frame(),
-                                         generate_honeycomb_panel({2, 2, 40.0f, 6.0f, 10.0f}),
-                                         generate_beveled_box(),
-                                         generate_wedge()};
-    for (auto const& mesh : meshes) {
-        expect_valid_geometry(mesh);
-    }
-}
+PrimitiveCase const primitive_cases[]{
+    {"Box", Shape::box, [] { return generate_box(); }, 24, 36},
+    {"Cylinder", Shape::cylinder, [] { return generate_cylinder({30.0f, 80.0f, 12}); }, 52, 144},
+    {"Cone", Shape::cone, [] { return generate_cone({30.0f, 80.0f, 12}); }, 38, 72},
+    {"Sphere", Shape::sphere, [] { return generate_sphere({30.0f, 12, 6}); }, 91, 360},
+    {"HexTile", Shape::hex_tile, [] { return generate_hex_tile(); }, 108, 144},
+    {"HexFrame", Shape::hex_frame, [] { return generate_hex_frame(); }, 96, 144},
+    {"HoneycombCell",
+     Shape::honeycomb_panel,
+     [] { return generate_honeycomb_panel({1, 1, 40.0f, 6.0f, 10.0f, false}); },
+     144,
+     216},
+    {"HoneycombPanel",
+     Shape::honeycomb_panel,
+     [] { return generate_honeycomb_panel({2, 2, 40.0f, 6.0f, 10.0f}); },
+     19 * 24,
+     19 * 36},
+    {"BeveledBox", Shape::beveled_box, [] { return generate_beveled_box(); }, 120, 204},
+    {"Wedge", Shape::wedge, [] { return generate_wedge(); }, 24, 36},
+};
 
-TEST(PrimitiveGenerators, HonorRequestedBoundsAndOrientation) {
+INSTANTIATE_TEST_SUITE_P(Shapes,
+                         PrimitiveGenerators,
+                         testing::ValuesIn(primitive_cases),
+                         [](auto const& info) { return info.param.name; });
+
+TEST(PrimitiveBounds, HonorRequestedBoundsAndOrientation) {
     auto const box_bounds{bounds_of(generate_box({{120.0f, 80.0f, 40.0f}}))};
     EXPECT_TRUE(nearly_equal(box_bounds.minimum, {-60.0f, -40.0f, -20.0f}));
     EXPECT_TRUE(nearly_equal(box_bounds.maximum, {60.0f, 40.0f, 20.0f}));
@@ -261,23 +249,6 @@ TEST(AssemblyGeneration, ValidatesVisibilityAndDeterminism) {
     EXPECT_EQ(generate_assembly(parts).positions.size(), generate_box().positions.size());
     parts[0].transform.scale.x() = 0.0f;
     EXPECT_EQ(validate_assembly(parts), "Part 1: all scale values must be greater than zero.");
-}
-
-TEST(PrimitiveGenerators, AreDeterministic) {
-    std::array<GenerationRequest, 9> requests{
-        make_default_request(Shape::box),
-        make_default_request(Shape::cylinder),
-        make_default_request(Shape::sphere),
-        make_default_request(Shape::cone),
-        make_default_request(Shape::hex_tile),
-        make_default_request(Shape::hex_frame),
-        make_default_request(Shape::honeycomb_panel),
-        make_default_request(Shape::beveled_box),
-        make_default_request(Shape::wedge),
-    };
-    for (auto const& request : requests) {
-        EXPECT_TRUE(same_mesh(generate_mesh(request), generate_mesh(request)));
-    }
 }
 
 }
