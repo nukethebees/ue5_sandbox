@@ -605,5 +605,38 @@ TEST(DocumentEdit, WholeSourceReplacementSupportsAllModuleKindsAndRejectsInvalid
     ASSERT_TRUE(doc.undo());
     EXPECT_EQ(health_bits(doc), 8);
 }
+
+TEST(DocumentEdit, SourceReadsReuseStoredTextAcrossSharedSessionGrowth) {
+    EditorSession editor;
+    auto doc{editor.from_source(source)};
+    ASSERT_TRUE(doc.valid()) << diagnostic_messages(editor);
+    auto const original{std::string{doc.sources().front().text}};
+    auto tx{doc.transaction()};
+    tx.set_field_bits("game", "ShipState", "health", 4);
+    ASSERT_TRUE(doc.commit(tx));
+    auto const edited{std::string{doc.sources().front().text}};
+    EXPECT_NE(edited, original);
+    EXPECT_TRUE(edited.contains(":bits 4"));
+    auto const stored_bytes{editor.storage().strings.byte_size()};
+    for (int repeat{}; repeat < 8; ++repeat) {
+        EXPECT_EQ(doc.sources().front().text, edited);
+        EXPECT_TRUE(doc.dirty());
+    }
+    EXPECT_EQ(editor.storage().strings.byte_size(), stored_bytes);
+
+    auto other{editor.from_source(";" + std::string(32768, 'x') +
+                                  "\n(module other :header \"Other.h\" (record Other))")};
+    ASSERT_TRUE(other.valid()) << diagnostic_messages(editor);
+    EXPECT_GT(editor.storage().strings.byte_size(), stored_bytes);
+    auto const grown_bytes{editor.storage().strings.byte_size()};
+    EXPECT_EQ(doc.sources().front().path, "document.lispb");
+    EXPECT_EQ(doc.sources().front().text, edited);
+    EXPECT_TRUE(doc.dirty());
+    EXPECT_EQ(editor.storage().strings.byte_size(), grown_bytes);
+    ASSERT_TRUE(doc.undo());
+    EXPECT_FALSE(doc.dirty());
+    EXPECT_EQ(doc.sources().front().text, original);
+    EXPECT_EQ(health_bits(doc), 8);
+}
 }
 }

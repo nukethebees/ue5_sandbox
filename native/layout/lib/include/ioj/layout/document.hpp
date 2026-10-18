@@ -19,7 +19,8 @@ namespace ioj::layout {
 class EditorSession;
 
 // Borrow the creating session, which must outlive this document. Moves preserve handles;
-// reacquire queries and views after a move, edit, or source rendering.
+// reacquire queries after a move or edit. String views expire when any operation grows
+// the session's string store, including rendering sources from another document.
 class Document {
   public:
     ~Document();

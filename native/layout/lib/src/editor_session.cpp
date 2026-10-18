@@ -33,10 +33,10 @@ auto EditorSession::from_sources(std::span<DocumentSource const> sources, std::s
         for (std::size_t index{}; index < count; ++index) {
             inputs.push_back({paths[index], texts[index]});
         }
-        state.io.registry_text = registry;
-        if (!state.io.registry_text.empty()) {
-            auto const file{
-                state.storage().sources.add("document-types.lispb", state.io.registry_text)};
+        std::string const registry_text{registry};
+        if (!registry_text.empty()) {
+            auto const file{state.storage().sources.add("document-types.lispb", registry_text)};
+            state.io.registry_text = state.storage().sources.text_id(file);
             state.registered_types =
                 lispb::codegen::parse_type_registry(state.storage(), file).types.entries;
         }
@@ -48,8 +48,9 @@ auto EditorSession::from_sources(std::span<DocumentSource const> sources, std::s
                     "Source path must be relative and stay within the project"};
             }
             auto const name{path.generic_string()};
+            auto const key{state.storage().strings.intern_retained(name)};
             if (std::ranges::any_of(state.source_order, [&](auto file) {
-                    return state.storage().sources.path(file) == name;
+                    return state.storage().strings.find(state.storage().sources.path(file)) == key;
                 })) {
                 throw std::invalid_argument{"Duplicate source path"};
             }
@@ -79,7 +80,7 @@ auto EditorSession::load(std::filesystem::path const& project_path, std::string_
             throw std::invalid_argument{"Expected an existing C++ schema target"};
         }
         state.io.project_source = state.storage().sources.load(state.project_path);
-        state.io.saved_project_text = state.storage().sources.text(state.io.project_source);
+        state.io.saved_project_text = state.storage().sources.text_id(state.io.project_source);
         state.io.project_sources_span =
             document_io::sources_span(state, state.io.project_source, target_name);
         state.registered_types =

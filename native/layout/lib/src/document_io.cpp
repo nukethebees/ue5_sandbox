@@ -48,6 +48,31 @@ auto render(DocumentState const& state, SourceFileId file) -> std::string {
         modules,
         origin == state.io.render_origins.end() ? file : origin->second);
 }
+auto path_key(DocumentState const& state, SourceFileId file) -> lispb::IdentifierId {
+    return state.storage().strings.find(state.storage().sources.path(file));
+}
+void render_sources(DocumentState const& state) {
+    if (state.io.rendered_revision == state.revision) {
+        return;
+    }
+    auto& strings{state.storage().strings};
+    for (auto const file : state.source_order) {
+        auto const text{render(state, file)};
+        auto const saved{state.io.saved_sources.find(path_key(state, file))};
+        auto const previous{state.io.rendered_sources.find(file)};
+        if (saved != state.io.saved_sources.end() && strings.view(saved->second) == text) {
+            state.io.rendered_sources[file] = saved->second;
+        } else if (previous != state.io.rendered_sources.end() &&
+                   strings.view(previous->second) == text) {
+            continue;
+        } else if (state.storage().sources.text(file) == text) {
+            state.io.rendered_sources[file] = state.storage().sources.text_id(file);
+        } else {
+            state.io.rendered_sources[file] = strings.retain(text);
+        }
+    }
+    state.io.rendered_revision = state.revision;
+}
 void append_source(DocumentState& state, SourceFileId file) {
     auto const parsed{lispb::codegen::parse_module_source(state.storage(), file)};
     state.source_order.push_back(file);
@@ -69,10 +94,11 @@ void finish_load(DocumentState& state) {
     state.types = lispb::schema::resolve_type_graph(state.manifest());
     state.baseline = state.modules;
     state.baseline_sources = state.source_order;
+    render_sources(state);
     for (auto const file : state.source_order) {
-        auto const path{std::string{state.storage().sources.path(file)}};
-        state.io.saved_sources.emplace(path, render(state, file));
-        state.io.persisted_sources.emplace(path, state.storage().sources.text(file));
+        auto const path{path_key(state, file)};
+        state.io.saved_sources.emplace(path, state.io.rendered_sources.at(file));
+        state.io.persisted_sources.emplace(path, state.storage().sources.text_id(file));
         state.io.saved_source_paths.emplace(file, path);
         state.io.saved_source_order.push_back(path);
     }
@@ -107,12 +133,12 @@ auto sources_span(DocumentState& state, SourceFileId file, std::string_view targ
     return {};
 }
 auto project_text(DocumentState const& state) -> std::string {
-    std::vector<std::string> paths;
+    std::vector<lispb::IdentifierId> paths;
     for (auto const file : state.source_order) {
-        paths.emplace_back(state.storage().sources.path(file));
+        paths.push_back(path_key(state, file));
     }
     if (paths == state.io.saved_source_order) {
-        return state.io.saved_project_text;
+        return std::string{state.storage().strings.view(state.io.saved_project_text)};
     }
     auto const span{state.io.project_sources_span};
     auto const original{state.storage().sources.text(state.io.project_source)};
@@ -148,11 +174,11 @@ auto Document::target_name() const -> std::string_view {
 }
 auto Document::sources() const -> std::vector<DocumentSource> {
     auto& state{state_};
+    document_io::render_sources(state);
     std::vector<DocumentSource> result;
     for (auto const file : state.source_order) {
-        auto& text{state.io.rendered_sources[file]};
-        text = document_io::render(state, file);
-        result.push_back({state.storage().sources.path(file), text});
+        result.push_back({state.storage().sources.path(file),
+                          state.storage().strings.view(state.io.rendered_sources.at(file))});
     }
     return result;
 }
@@ -184,14 +210,16 @@ auto Document::dirty() const -> bool {
     }
     auto const count{state.source_order.size()};
     for (std::size_t index{}; index < count; ++index) {
-        if (state.storage().sources.path(state.source_order[index]) !=
+        if (document_io::path_key(state, state.source_order[index]) !=
             state.io.saved_source_order[index]) {
             return true;
         }
     }
-    for (auto const source : sources()) {
-        auto const saved{state.io.saved_sources.find(std::string{source.path})};
-        if (saved == state.io.saved_sources.end() || saved->second != source.text) {
+    document_io::render_sources(state);
+    for (auto const file : state.source_order) {
+        auto const saved{state.io.saved_sources.find(document_io::path_key(state, file))};
+        if (saved == state.io.saved_sources.end() ||
+            saved->second != state.io.rendered_sources.at(file)) {
             return true;
         }
     }
@@ -199,85 +227,88 @@ auto Document::dirty() const -> bool {
 }
 auto Document::save() -> bool {
     auto& state{state_};
+    auto& strings{state.storage().strings};
     state.session->begin_operation();
     if (!state.project) {
         state.session->record_error("Document has no project destination");
         return false;
     }
     try {
-        auto const rendered{sources()};
+        document_io::render_sources(state);
         auto const project_source{document_io::project_text(state)};
-        if (document_io::read(state.project_path) != state.io.saved_project_text) {
+        if (document_io::read(state.project_path) != strings.view(state.io.saved_project_text)) {
             throw std::invalid_argument{"Project changed on disk; reload before saving"};
         }
-        // Check every destination before publishing any files.
-        for (auto const& source : rendered) {
-            auto const path{state.project->root / source.path};
-            std::filesystem::create_directories(path.parent_path());
-            auto const saved{state.io.persisted_sources.find(std::string{source.path})};
+        std::set<lispb::IdentifierId> current_paths;
+        for (auto const file : state.source_order) {
+            auto const key{document_io::path_key(state, file)};
+            current_paths.insert(key);
+            auto const path{state.project->root / strings.view(key)};
+            auto const saved{state.io.persisted_sources.find(key)};
             if (saved != state.io.persisted_sources.end()) {
-                if (document_io::read(path) != saved->second) {
+                if (document_io::read(path) != strings.view(saved->second)) {
                     throw std::invalid_argument{"Source changed on disk: " + path.string()};
                 }
             } else if (std::filesystem::exists(path)) {
                 throw std::invalid_argument{"Source destination already exists: " + path.string()};
             }
         }
+        std::vector<lispb::IdentifierId> removed_paths;
         for (auto const file : state.source_order) {
             auto const saved{state.io.saved_source_paths.find(state.io.source_origins.at(file))};
-            if (saved != state.io.saved_source_paths.end() &&
-                saved->second != state.storage().sources.path(file)) {
-                auto const expected{state.io.persisted_sources.find(saved->second)};
-                if (expected != state.io.persisted_sources.end() &&
-                    document_io::read(state.project->root / saved->second) != expected->second) {
-                    throw std::invalid_argument{"Renamed source changed on disk: " + saved->second};
-                }
+            if (saved == state.io.saved_source_paths.end() ||
+                saved->second == document_io::path_key(state, file)) {
+                continue;
+            }
+            auto const expected{state.io.persisted_sources.find(saved->second)};
+            if (expected != state.io.persisted_sources.end() &&
+                document_io::read(state.project->root / strings.view(saved->second)) !=
+                    strings.view(expected->second)) {
+                throw std::invalid_argument{"Renamed source changed on disk: " +
+                                            std::string{strings.view(saved->second)}};
+            }
+            if (!current_paths.contains(saved->second)) {
+                removed_paths.push_back(saved->second);
             }
         }
         DocumentFileUpdates updates;
-        for (auto const& source : rendered) {
-            auto const saved{state.io.saved_sources.find(std::string{source.path})};
-            if (saved == state.io.saved_sources.end() || saved->second != source.text) {
-                updates.write(state.project->root / source.path, source.text);
+        for (auto const file : state.source_order) {
+            auto const path{document_io::path_key(state, file)};
+            auto const text{state.io.rendered_sources.at(file)};
+            auto const saved{state.io.saved_sources.find(path)};
+            if (saved == state.io.saved_sources.end() || saved->second != text) {
+                updates.write(state.project->root / strings.view(path), strings.view(text));
             }
         }
-        if (project_source != state.io.saved_project_text) {
+        if (project_source != strings.view(state.io.saved_project_text)) {
             updates.write(state.project_path, project_source);
         }
-        for (auto const file : state.source_order) {
-            auto const origin{state.io.source_origins.at(file)};
-            auto const path{std::string{state.storage().sources.path(file)}};
-            auto const saved{state.io.saved_source_paths.find(origin)};
-            if (saved != state.io.saved_source_paths.end() && saved->second != path &&
-                !std::ranges::any_of(
-                    rendered, [&](auto const& current) { return current.path == saved->second; })) {
-                updates.erase(state.project->root / saved->second);
-            }
+        for (auto const path : removed_paths) {
+            updates.erase(state.project->root / strings.view(path));
         }
         updates.publish();
-        state.io.saved_project_text = project_source;
-        for (auto const& source : rendered) {
-            auto const saved{state.io.saved_sources.find(std::string{source.path})};
-            if (saved == state.io.saved_sources.end() || saved->second != source.text) {
-                state.io.persisted_sources[std::string{source.path}] = source.text;
-            }
+
+        if (project_source != strings.view(state.io.saved_project_text)) {
+            state.io.saved_project_text = strings.retain(project_source);
+        }
+        for (auto const path : removed_paths) {
+            state.io.persisted_sources.erase(path);
         }
         for (auto const file : state.source_order) {
-            auto const origin{state.io.source_origins.at(file)};
-            auto const path{std::string{state.storage().sources.path(file)}};
-            auto const saved{state.io.saved_source_paths.find(origin)};
-            if (saved != state.io.saved_source_paths.end() && saved->second != path &&
-                !std::ranges::any_of(
-                    rendered, [&](auto const& current) { return current.path == saved->second; })) {
-                state.io.persisted_sources.erase(saved->second);
+            auto const path{document_io::path_key(state, file)};
+            auto const text{state.io.rendered_sources.at(file)};
+            auto const saved{state.io.saved_sources.find(path)};
+            if (saved == state.io.saved_sources.end() || saved->second != text) {
+                state.io.persisted_sources[path] = text;
             }
-            state.io.saved_source_paths[origin] = path;
+            state.io.saved_source_paths[state.io.source_origins.at(file)] = path;
         }
         state.io.saved_sources.clear();
         state.io.saved_source_order.clear();
-        for (auto const& source : rendered) {
-            state.io.saved_sources.emplace(source.path, source.text);
-            state.io.saved_source_order.emplace_back(source.path);
+        for (auto const file : state.source_order) {
+            auto const path{document_io::path_key(state, file)};
+            state.io.saved_sources.emplace(path, state.io.rendered_sources.at(file));
+            state.io.saved_source_order.push_back(path);
         }
         return true;
     } catch (std::invalid_argument const& error) {
@@ -290,6 +321,7 @@ auto Document::save() -> bool {
 auto Document::save_as(std::filesystem::path const& project_path, std::string_view target_value)
     -> bool {
     auto& state{state_};
+    auto& strings{state.storage().strings};
     std::string const target_name{target_value};
     state.session->begin_operation();
     try {
@@ -307,18 +339,7 @@ auto Document::save_as(std::filesystem::path const& project_path, std::string_vi
             throw std::invalid_argument{"Project destination already exists: " +
                                         destination.string()};
         }
-        std::vector<std::string> paths;
-        std::vector<std::string> texts;
-        for (auto const source : sources()) {
-            paths.emplace_back(source.path);
-            texts.emplace_back(source.text);
-        }
-        // Project parsing grows the compiler's string store; retain source views independently.
-        std::vector<DocumentSource> rendered;
-        auto const count{paths.size()};
-        for (std::size_t index{}; index < count; ++index) {
-            rendered.push_back({paths[index], texts[index]});
-        }
+        document_io::render_sources(state);
         auto const root{destination.parent_path()};
         auto const registry{state.project
                                 ? state.project->root / state.project->types(*state.target)
@@ -336,14 +357,15 @@ auto Document::save_as(std::filesystem::path const& project_path, std::string_vi
         project_text += target_name;
         project_text +=
             "\n    :types " + document_io::quote(registry.generic_string()) + "\n    :sources (";
-        for (auto const& source : rendered) {
-            auto const relative{std::filesystem::path{source.path}.lexically_normal()};
+        for (auto const file : state.source_order) {
+            auto const source_path{state.storage().sources.path(file)};
+            auto const relative{std::filesystem::path{source_path}.lexically_normal()};
             if (relative.has_root_path() ||
                 std::ranges::find(relative, std::filesystem::path{".."}) != relative.end()) {
                 throw std::invalid_argument{
                     "Save-as sources must stay within the destination project"};
             }
-            auto const path{root / source.path};
+            auto const path{root / source_path};
             if (!destinations.insert(lispb::codegen::output_path_key(path)).second) {
                 throw std::invalid_argument{
                     "Source destination collides with another project file: " + path.string()};
@@ -351,7 +373,7 @@ auto Document::save_as(std::filesystem::path const& project_path, std::string_vi
             if (std::filesystem::exists(path)) {
                 throw std::invalid_argument{"Source destination already exists: " + path.string()};
             }
-            project_text += document_io::quote(source.path) + ' ';
+            project_text += document_io::quote(source_path) + ' ';
         }
         project_text += ")\n    :output-root (project-path \"generated\")))\n";
         auto const file{state.storage().sources.add(destination.generic_string(), project_text)};
@@ -360,11 +382,12 @@ auto Document::save_as(std::filesystem::path const& project_path, std::string_vi
         auto const span{document_io::sources_span(state, file, target_name)};
 
         DocumentFileUpdates updates;
-        for (auto const& source : rendered) {
-            updates.write(root / source.path, source.text);
+        for (auto const source : state.source_order) {
+            updates.write(root / state.storage().sources.path(source),
+                          strings.view(state.io.rendered_sources.at(source)));
         }
         if (!state.project) {
-            updates.write(registry, state.io.registry_text);
+            updates.write(registry, strings.view(state.io.registry_text));
         }
         updates.write(destination, project_text);
         updates.publish();
@@ -373,19 +396,21 @@ auto Document::save_as(std::filesystem::path const& project_path, std::string_vi
         state.target = target;
         state.io.project_source = file;
         state.io.project_sources_span = span;
-        state.io.saved_project_text = project_text;
+        state.io.saved_project_text = state.storage().sources.text_id(file);
         state.io.saved_sources.clear();
         state.io.persisted_sources.clear();
         state.io.saved_source_paths.clear();
         state.io.saved_source_order.clear();
-        for (auto const& source : rendered) {
-            state.io.saved_sources.emplace(source.path, source.text);
-            state.io.persisted_sources.emplace(source.path, source.text);
-            state.io.saved_source_order.emplace_back(source.path);
+        for (auto const source : state.source_order) {
+            auto const path{document_io::path_key(state, source)};
+            auto const text{state.io.rendered_sources.at(source)};
+            state.io.saved_sources.emplace(path, text);
+            state.io.persisted_sources.emplace(path, text);
+            state.io.saved_source_order.push_back(path);
         }
         for (auto const source : state.source_order) {
             state.io.saved_source_paths.emplace(state.io.source_origins.at(source),
-                                                state.storage().sources.path(source));
+                                                document_io::path_key(state, source));
         }
         return true;
     } catch (lispb::codegen::sexpr::SourceError const&) {

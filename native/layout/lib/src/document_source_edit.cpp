@@ -25,8 +25,10 @@ void DocumentState::edit_source(std::string_view operation,
                                 std::string_view text,
                                 lispb::codegen::Manifest& candidate) {
     auto const name{source_edit::normalized(path)};
-    auto const found{std::ranges::find_if(
-        source_order, [&](auto file) { return storage().sources.path(file) == name; })};
+    auto const name_id{storage().strings.find(name)};
+    auto const found{std::ranges::find_if(source_order, [&](auto file) {
+        return storage().strings.find(storage().sources.path(file)) == name_id;
+    })};
     if (operation == "add") {
         if (found != source_order.end()) {
             throw std::invalid_argument{"Source is already registered: " + name};
@@ -56,7 +58,8 @@ void DocumentState::edit_source(std::string_view operation,
     auto const previous{*found};
     if (operation == "replace") {
         auto& store{storage().declarations};
-        std::map<std::pair<std::string, std::string>, lispb::schema::DeclarationId> old_ids;
+        std::map<std::pair<lispb::IdentifierId, lispb::IdentifierId>, lispb::schema::DeclarationId>
+            old_ids;
         auto first{candidate.modules.size()};
         auto const module_count{candidate.modules.size()};
         for (std::size_t index{}; index < module_count; ++index) {
@@ -69,14 +72,12 @@ void DocumentState::edit_source(std::string_view operation,
                 continue;
             }
             auto const settings{store.module_settings(module)};
-            auto const module_name{std::string{storage().strings.view(
-                store.module_settings_store.name[store.module_settings_store.index(settings)])}};
+            auto const module_name{
+                store.module_settings_store.name[store.module_settings_store.index(settings)]};
             for (auto const declaration : store.items(
                      store.normal_modules.declarations[store.normal_modules.index(module)])) {
                 old_ids.emplace(
-                    std::pair{module_name,
-                              std::string{storage().strings.view(
-                                  lispb::codegen::declaration_name(store, declaration))}},
+                    std::pair{module_name, lispb::codegen::declaration_name(store, declaration)},
                     declaration_ids.at(declaration));
             }
         }
@@ -88,14 +89,12 @@ void DocumentState::edit_source(std::string_view operation,
                 continue;
             }
             auto const settings{store.module_settings(module)};
-            auto const module_name{std::string{storage().strings.view(
-                store.module_settings_store.name[store.module_settings_store.index(settings)])}};
+            auto const module_name{
+                store.module_settings_store.name[store.module_settings_store.index(settings)]};
             for (auto const declaration : store.items(
                      store.normal_modules.declarations[store.normal_modules.index(module)])) {
                 auto const key{
-                    std::pair{module_name,
-                              std::string{storage().strings.view(
-                                  lispb::codegen::declaration_name(store, declaration))}}};
+                    std::pair{module_name, lispb::codegen::declaration_name(store, declaration)}};
                 auto const prior{old_ids.find(key)};
                 if (prior == old_ids.end()) {
                     register_declaration(declaration);
@@ -127,11 +126,13 @@ void DocumentState::edit_source(std::string_view operation,
 
     assert(operation == "rename");
     auto const destination{source_edit::normalized(text)};
+    auto const destination_id{storage().strings.find(destination)};
     if (name == destination) {
         return;
     }
-    if (std::ranges::any_of(
-            source_order, [&](auto file) { return storage().sources.path(file) == destination; })) {
+    if (std::ranges::any_of(source_order, [&](auto file) {
+            return storage().strings.find(storage().sources.path(file)) == destination_id;
+        })) {
         throw std::invalid_argument{"Source is already registered: " + destination};
     }
     auto const file{storage().sources.add(destination, storage().sources.text(previous))};
