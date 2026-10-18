@@ -57,7 +57,7 @@ auto record_node(LoweringContext& context, DeclarationHandle record) -> NodeId {
                 .name[context.declarations.record_members.index(member)],
             context.declarations.record_members
                     .initializer[context.declarations.record_members.index(member)]
-                ? std::optional<Expr>{ir.raw_expression(
+                ? std::optional<Expr>{ir.raw_expr(
                       *context.declarations.record_members
                            .initializer[context.declarations.record_members.index(member)],
                       {})}

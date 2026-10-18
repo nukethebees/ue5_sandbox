@@ -181,7 +181,7 @@ TEST(Expr, CollectsSizeofTypeDependenciesThroughArithmetic) {
                      ir.function(ir.strings.intern("bytes"), types.intern("auto"))};
                  ir.set_function_body(
                      created_function,
-                     {ir.return_statement(ir.binary(
+                     {ir.return_stmt(ir.binary(
                          BinaryOperator::multiply,
                          ir.literal("2"),
                          ir.sizeof_type(types.intern(
@@ -198,18 +198,18 @@ TEST(Expr, KeepsRawVerbatimAndProtectsNestedRawOperands) {
     CompilerTestContext context;
     [[maybe_unused]] auto& ir{context.ir};
     [[maybe_unused]] auto& types{context.storage.cpp_types};
-    Expr const raw_expression{ir.raw_expression("left, right")};
-    EXPECT_EQ(ir.render(raw_expression), "left, right");
-    EXPECT_EQ(ir.render(ir.return_statement(raw_expression)), "return left, right;");
-    EXPECT_EQ(ir.render(ir.call(ir.named("f"), {raw_expression})), "f((left, right))");
-    EXPECT_EQ(ir.render(ir.call(ir.raw_expression("*function_pointer"))), "(*function_pointer)()");
-    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::equal, raw_expression, ir.literal("0"))),
+    Expr const raw_expr{ir.raw_expr("left, right")};
+    EXPECT_EQ(ir.render(raw_expr), "left, right");
+    EXPECT_EQ(ir.render(ir.return_stmt(raw_expr)), "return left, right;");
+    EXPECT_EQ(ir.render(ir.call(ir.named("f"), {raw_expr})), "f((left, right))");
+    EXPECT_EQ(ir.render(ir.call(ir.raw_expr("*function_pointer"))), "(*function_pointer)()");
+    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::equal, raw_expr, ir.literal("0"))),
               "(left, right) == 0");
-    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::equal, ir.literal("0"), raw_expression)),
+    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::equal, ir.literal("0"), raw_expr)),
               "0 == (left, right)");
-    EXPECT_EQ(ir.render(ir.static_cast_expr(types.intern("int"), raw_expression)),
+    EXPECT_EQ(ir.render(ir.static_cast_expr(types.intern("int"), raw_expr)),
               "static_cast<int>((left, right))");
-    EXPECT_EQ(ir.render(ir.init_list({raw_expression})), "{(left, right)}");
+    EXPECT_EQ(ir.render(ir.init_list({raw_expr})), "{(left, right)}");
 }
 
 TEST(Expr, RendersMemberAccessAndSubscriptsWithPostfixBinding) {
@@ -229,11 +229,9 @@ TEST(Expr, RendersMemberAccessAndSubscriptsWithPostfixBinding) {
     EXPECT_EQ(ir.render(ir.subscript(other_values, difference)), "other.values[end - count]");
     EXPECT_EQ(ir.render(ir.subscript(difference, ir.named("index"))), "(end - count)[index]");
     EXPECT_EQ(ir.render(ir.member_access(difference, "value")), "(end - count).value");
-    EXPECT_EQ(ir.render(ir.member_access(ir.raw_expression("*pointer"), "value")),
-              "(*pointer).value");
-    EXPECT_EQ(
-        ir.render(ir.subscript(ir.raw_expression("*pointer"), ir.raw_expression("first, last"))),
-        "(*pointer)[(first, last)]");
+    EXPECT_EQ(ir.render(ir.member_access(ir.raw_expr("*pointer"), "value")), "(*pointer).value");
+    EXPECT_EQ(ir.render(ir.subscript(ir.raw_expr("*pointer"), ir.raw_expr("first, last"))),
+              "(*pointer)[(first, last)]");
 }
 
 TEST(Expr, PreservesSubtractionAndComparisonPrecedence) {
@@ -260,7 +258,7 @@ TEST(Expr, PreservesSubtractionAndComparisonPrecedence) {
     EXPECT_EQ(
         ir.render(ir.binary(BinaryOperator::greater, a, ir.binary(BinaryOperator::greater, b, c))),
         "a > (b > c)");
-    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::subtract, c, ir.raw_expression("a - b"))),
+    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::subtract, c, ir.raw_expr("a - b"))),
               "c - (a - b)");
 }
 
@@ -313,7 +311,7 @@ TEST(Expr, CollectsDependenciesFromEveryOperandAndType) {
             ir.named("make", {callee}),
             {ir.binary(BinaryOperator::equal, ir.named("left", {left}), ir.named("right", {right})),
              ir.static_cast_expr(types.intern("Count", {cast_type}),
-                                 ir.raw_expression("MACRO", {raw_dependency}))})},
+                                 ir.raw_expr("MACRO", {raw_dependency}))})},
         types.intern("Value", {list_type}))};
 
     EXPECT_EQ(
@@ -328,9 +326,9 @@ TEST(Expr, StmtsCollectInitializersAndAssignmentOperands) {
     auto const make{types.dependency("make", "Project/Make.h")};
     auto const target{types.dependency("target", "Project/Target.h")};
     auto const expression{ir.call(ir.named("make", {make}))};
-    EXPECT_EQ(collected_dependencies(ir, ir.expression_statement(expression)),
+    EXPECT_EQ(collected_dependencies(ir, ir.expr_stmt(expression)),
               std::vector<TypeDependencyId>{make});
-    EXPECT_EQ(collected_dependencies(ir, ir.return_statement(expression)),
+    EXPECT_EQ(collected_dependencies(ir, ir.return_stmt(expression)),
               std::vector<TypeDependencyId>{make});
     EXPECT_EQ(
         collected_dependencies(
@@ -350,18 +348,18 @@ TEST(Expr, PreservesAbsentEmptyAndStructuredInitializers) {
     EXPECT_EQ(ir.render(ir.instance_member(types.intern("int"), ir.strings.intern("value"))),
               "int value;");
     EXPECT_EQ(ir.render(ir.instance_member(
-                  types.intern("int"), ir.strings.intern("value"), ir.raw_expression(""))),
+                  types.intern("int"), ir.strings.intern("value"), ir.raw_expr(""))),
               "int value{};");
     EXPECT_EQ(ir.render(ir.instance_member(
                   types.intern("int"), ir.strings.intern("value"), ir.literal("42"))),
               "int value{42};");
-    EXPECT_EQ(ir.render(ir.variable(
-                  types.intern("int"), ir.strings.intern("value"), ir.raw_expression(""))),
-              "int value{};");
+    EXPECT_EQ(
+        ir.render(ir.variable(types.intern("int"), ir.strings.intern("value"), ir.raw_expr(""))),
+        "int value{};");
     EXPECT_EQ(ir.render(ir.variable(
                   types.intern("auto const"), ir.strings.intern("value"), ir.call(ir.named("f")))),
               "auto const value{f()};");
-    EXPECT_EQ(ir.render(ir.return_statement()), "return;");
+    EXPECT_EQ(ir.render(ir.return_stmt()), "return;");
 }
 
 TEST(Ast, RendersNestedControlFlowWithExplicitBreaksAndSpacing) {
@@ -369,15 +367,15 @@ TEST(Ast, RendersNestedControlFlowWithExplicitBreaksAndSpacing) {
     [[maybe_unused]] auto& ir{context.ir};
     [[maybe_unused]] auto& types{context.storage.cpp_types};
     NodeListBuilder body{ir};
-    body.add(ir.if_statement(ir.named("ready"),
-                             ir.block({ir.return_statement(ir.literal("true"))}),
-                             ir.block({ir.expression_statement(ir.call(ir.named("retry")))})),
+    body.add(ir.if_stmt(ir.named("ready"),
+                        ir.block({ir.return_stmt(ir.literal("true"))}),
+                        ir.block({ir.expr_stmt(ir.call(ir.named("retry")))})),
              2)
-        .add(ir.break_statement());
-    NodeId const statement{ir.switch_statement(
+        .add(ir.break_stmt());
+    NodeId const statement{ir.switch_stmt(
         ir.named("mode"),
         {ir.switch_case(ir.named("Mode::Ready"), ir.block(body.build())),
-         ir.switch_case(std::nullopt, ir.block({ir.return_statement(ir.literal("false"))}))})};
+         ir.switch_case(std::nullopt, ir.block({ir.return_stmt(ir.literal("false"))}))})};
 
     EXPECT_EQ(ir.render(statement, {.indent_level = 1}),
               "    switch (mode) {\n"
@@ -401,12 +399,12 @@ TEST(Ast, RendersEmptyControlFlowAndStandaloneBlocks) {
     [[maybe_unused]] auto& ir{context.ir};
     [[maybe_unused]] auto& types{context.storage.cpp_types};
     EXPECT_EQ(ir.render(ir.block({})), "{\n\n}");
-    EXPECT_EQ(ir.render(ir.block({ir.return_statement()})), "{\n    return;\n}");
-    EXPECT_EQ(ir.render(ir.if_statement(ir.named("ready"), ir.block({}))), "if (ready) {\n\n}");
-    EXPECT_EQ(ir.render(ir.switch_statement(ir.named("mode"), {})), "switch (mode) {\n}");
-    EXPECT_EQ(ir.render(ir.switch_statement(ir.named("mode"),
-                                            {ir.switch_case(std::nullopt, ir.block({}))})),
-              "switch (mode) {\ndefault: {\n\n}\n}");
+    EXPECT_EQ(ir.render(ir.block({ir.return_stmt()})), "{\n    return;\n}");
+    EXPECT_EQ(ir.render(ir.if_stmt(ir.named("ready"), ir.block({}))), "if (ready) {\n\n}");
+    EXPECT_EQ(ir.render(ir.switch_stmt(ir.named("mode"), {})), "switch (mode) {\n}");
+    EXPECT_EQ(
+        ir.render(ir.switch_stmt(ir.named("mode"), {ir.switch_case(std::nullopt, ir.block({}))})),
+        "switch (mode) {\ndefault: {\n\n}\n}");
 }
 
 TEST(Ast, VisitsBothBranchesAndAllSwitchBodiesInOrder) {
@@ -414,12 +412,12 @@ TEST(Ast, VisitsBothBranchesAndAllSwitchBodiesInOrder) {
     [[maybe_unused]] auto& ir{context.ir};
     [[maybe_unused]] auto& types{context.storage.cpp_types};
     NodeId const branches{
-        ir.if_statement(ir.named("ready"), ir.block({ir.raw("then")}), ir.block({ir.raw("else")}))};
+        ir.if_stmt(ir.named("ready"), ir.block({ir.raw("then")}), ir.block({ir.raw("else")}))};
     NodeId const cases{
-        ir.switch_statement(ir.named("mode"),
-                            {ir.switch_case(ir.literal("1"), ir.block({ir.raw("one")})),
-                             ir.switch_case(ir.literal("2"), ir.block({ir.raw("two")})),
-                             ir.switch_case(std::nullopt, ir.block({ir.raw("default")}))})};
+        ir.switch_stmt(ir.named("mode"),
+                       {ir.switch_case(ir.literal("1"), ir.block({ir.raw("one")})),
+                        ir.switch_case(ir.literal("2"), ir.block({ir.raw("two")})),
+                        ir.switch_case(std::nullopt, ir.block({ir.raw("default")}))})};
     std::vector<std::string> visited;
     auto visit = [&](NodeId const& node) { visited.push_back(ir.render(node)); };
     ir.for_each_child(branches, visit);
@@ -436,19 +434,18 @@ TEST(Ast, CollectsDeepControlFlowDependenciesOnlyForDefinitions) {
         return ir.named(name, {types.dependency(name, header)});
     };
     auto const body_call{ir.call(symbol("body_only"), {symbol("argument_only")})};
-    auto const selection{ir.switch_statement(
+    auto const selection{ir.switch_stmt(
         symbol("switch_only"),
-        {ir.switch_case(symbol("case_only"), ir.block({ir.expression_statement(body_call)})),
-         ir.switch_case(
-             std::nullopt,
-             ir.block({ir.block({ir.expression_statement(ir.call(symbol("default_only")))})}))})};
+        {ir.switch_case(symbol("case_only"), ir.block({ir.expr_stmt(body_call)})),
+         ir.switch_case(std::nullopt,
+                        ir.block({ir.block({ir.expr_stmt(ir.call(symbol("default_only")))})}))})};
     auto const spec{[&] {
         auto const created_function{ir.function(ir.strings.intern("f"), types.intern("void"))};
         ir.set_function_body(
             created_function,
-            {ir.if_statement(ir.call(symbol("condition_only")),
-                             ir.block({selection}),
-                             ir.block({ir.return_statement(ir.call(symbol("else_only")))}))});
+            {ir.if_stmt(ir.call(symbol("condition_only")),
+                        ir.block({selection}),
+                        ir.block({ir.return_stmt(ir.call(symbol("else_only")))}))});
         return created_function;
     }()};
     auto const file{ir.files.append(ir.strings.add("Example.h"),
@@ -485,7 +482,7 @@ TEST(Ast, DeduplicatesSharedSymbolDependenciesAndTheirNestedHeaders) {
              [&] {
                  auto const created_function{
                      ir.function(ir.strings.intern("f"), types.intern("auto"))};
-                 ir.set_function_body(created_function, {ir.return_statement(expression)});
+                 ir.set_function_body(created_function, {ir.return_stmt(expression)});
                  return created_function;
              }(),
              {})})};

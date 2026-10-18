@@ -59,7 +59,7 @@ auto visitor_function(LoweringContext& context,
     for (std::size_t index{}; index < count; ++index) {
         cases.push_back(ir.switch_case(
             ir.named(enum_name + "::" + settings_schema_field_name(context.text(paths[index]))),
-            ir.block({ir.return_statement(ir.call(
+            ir.block({ir.return_stmt(ir.call(
                 ir.named("callback"), {member_expression(ir, context.text(members[index]))}))})));
     }
 
@@ -79,11 +79,10 @@ auto visitor_function(LoweringContext& context,
     ir.function_flags(visitor).set_is_nodiscard(true);
     ir.set_function_body(
         visitor,
-        {ir.switch_statement(ir.named("field"), cases),
-         ir.expression_statement(
-             ir.call(ir.named("assert", {ir.types.dependency("assert", "cassert")}),
-                     {ir.literal("false")})),
-         ir.expression_statement(ir.call(
+        {ir.switch_stmt(ir.named("field"), cases),
+         ir.expr_stmt(ir.call(ir.named("assert", {ir.types.dependency("assert", "cassert")}),
+                              {ir.literal("false")})),
+         ir.expr_stmt(ir.call(
              ir.named("std::unreachable", {ir.types.dependency("std::unreachable", "utility")})))});
     return ir.header_function(visitor);
 }

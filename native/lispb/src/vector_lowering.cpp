@@ -114,7 +114,7 @@ auto lower_vector(LoweringContext& context, DeclarationHandle vector, SoaBackend
                                    {ir.parameter(index_type, "i"),
                                     ir.parameter(qualify(ir, equivalent_type, " const"), "value")});
         ir.set_function_body(created_function,
-                             {ir.expression_statement(ir.call(ir.named("set"), set_arguments))});
+                             {ir.expr_stmt(ir.call(ir.named("set"), set_arguments))});
         ir.set_function_receiver(
             created_function, is_const ? FunctionReceiver::const_ : FunctionReceiver::unqualified);
         ir.function_flags(created_function).set_is_inline(true);
@@ -135,9 +135,8 @@ auto lower_vector(LoweringContext& context, DeclarationHandle vector, SoaBackend
         prelude.add(ir.record(ir.strings.intern(name), fields.build(), RecordKind::struct_), 2);
         prelude.add(ir.header_function([&] {
             auto const created_function{ir.function("get_data", "auto")};
-            ir.set_function_body(
-                created_function,
-                {ir.return_statement(ir.init_list(pointers, ir.types.intern(name)))});
+            ir.set_function_body(created_function,
+                                 {ir.return_stmt(ir.init_list(pointers, ir.types.intern(name)))});
             ir.set_function_return_type(
                 created_function, ir.types.intern(name), ReturnSyntax::trailing);
             ir.set_function_receiver(created_function,
@@ -158,7 +157,7 @@ auto lower_vector(LoweringContext& context, DeclarationHandle vector, SoaBackend
             ir.set_function_parameters(
                 created_function, {ir.parameter(qualify(ir, equivalent_type, " const&"), "value")});
             ir.set_function_body(created_function,
-                                 {ir.return_statement(ir.call(ir.named("add"), arguments))});
+                                 {ir.return_stmt(ir.call(ir.named("add"), arguments))});
             ir.set_function_return_type(
                 created_function, ir.types.intern("size_type"), ReturnSyntax::trailing);
             ir.function_flags(created_function).set_is_inline(true);
@@ -181,7 +180,7 @@ auto lower_vector(LoweringContext& context, DeclarationHandle vector, SoaBackend
         }
         NodeListBuilder body{ir};
         for (auto const component : components) {
-            body.add(ir.expression_statement(
+            body.add(ir.expr_stmt(
                 ir.call(ir.member_access(ir.named(component), method), call_arguments)));
         }
         prelude.add(ir.header_function([&] {

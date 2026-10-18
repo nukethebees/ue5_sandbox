@@ -200,7 +200,7 @@ target_sources(codegen-lib PRIVATE
   src/ast/modules.cpp
   src/ast/cpp_ir_templates.cpp
   src/ast/cpp_ir_render.cpp
-  src/ast/cpp_ir_expressions.cpp
+  src/ast/cpp_ir_exprs.cpp
   src/ast/render_context.cpp
   src/ast/include.cpp
   src/ast/node_list_builder.cpp

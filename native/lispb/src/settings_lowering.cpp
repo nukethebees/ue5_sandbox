@@ -164,18 +164,18 @@ auto build_functions(LoweringContext& context,
 
     auto const categories{create("game_setting_category_descriptors",
                                  "TConstArrayView<FGameSettingCategoryDescriptor>")};
-    ir.set_function_body(categories, {ir.return_statement(ir.named("category_descriptors"))});
+    ir.set_function_body(categories, {ir.return_stmt(ir.named("category_descriptors"))});
 
     auto const descriptors{
         create("game_setting_descriptors", "TConstArrayView<FGameSettingDescriptor>")};
-    ir.set_function_body(descriptors, {ir.return_statement(ir.named("descriptors"))});
+    ir.set_function_body(descriptors, {ir.return_stmt(ir.named("descriptors"))});
 
     auto const descriptor{create("game_setting_descriptor", "FGameSettingDescriptor const&")};
     ir.set_function_parameters(descriptor, {id_parameter});
     ir.set_function_body(
         descriptor,
-        {ir.return_statement(ir.subscript(ir.named("descriptors"),
-                                          ir.static_cast_expr(ir.types.intern("int32"), id)))});
+        {ir.return_stmt(ir.subscript(ir.named("descriptors"),
+                                     ir.static_cast_expr(ir.types.intern("int32"), id)))});
 
     auto const getter{create("game_setting_value", "FGameSettingValue")};
     ir.set_function_parameters(getter,
@@ -185,16 +185,16 @@ auto build_functions(LoweringContext& context,
         auto const name{declarations.settings.name[declarations.settings.index(setting)]};
         getter_cases.push_back(ir.switch_case(
             ir.named("EGameSetting::" + title_case(context.text(name))),
-            ir.block({ir.return_statement(ir.init_list({ir.member_access(state, name)},
-                                                       ir.types.intern("FGameSettingValue")))})));
+            ir.block({ir.return_stmt(ir.init_list({ir.member_access(state, name)},
+                                                  ir.types.intern("FGameSettingValue")))})));
     }
     auto const first_name{
         declarations.settings.name[declarations.settings.index(settings.front())]};
     ir.set_function_body(getter,
-                         {ir.switch_statement(id, getter_cases),
-                          ir.expression_statement(ir.call(ir.named("checkNoEntry"))),
-                          ir.return_statement(ir.init_list({ir.member_access(state, first_name)},
-                                                           ir.types.intern("FGameSettingValue")))});
+                         {ir.switch_stmt(id, getter_cases),
+                          ir.expr_stmt(ir.call(ir.named("checkNoEntry"))),
+                          ir.return_stmt(ir.init_list({ir.member_access(state, first_name)},
+                                                      ir.types.intern("FGameSettingValue")))});
 
     auto const setter{create("set_game_setting_value", "bool")};
     ir.set_function_parameters(setter,
@@ -214,16 +214,15 @@ auto build_functions(LoweringContext& context,
                             ir.call(ir.template_id(ir.named("std::get_if"),
                                                    {ir.type_reference(setting_types[index])}),
                                     {ir.unary(UnaryOperator::address_of, value)})),
-                ir.if_statement(
-                    ir.binary(BinaryOperator::equal, typed_value, ir.literal("nullptr")),
-                    ir.block({ir.return_statement(ir.literal("false"))})),
+                ir.if_stmt(ir.binary(BinaryOperator::equal, typed_value, ir.literal("nullptr")),
+                           ir.block({ir.return_stmt(ir.literal("false"))})),
                 ir.assignment(ir.member_access(state, name),
                               ir.unary(UnaryOperator::dereference, typed_value)),
-                ir.return_statement(ir.literal("true")),
+                ir.return_stmt(ir.literal("true")),
             })));
     }
-    ir.set_function_body(
-        setter, {ir.switch_statement(id, setter_cases), ir.return_statement(ir.literal("false"))});
+    ir.set_function_body(setter,
+                         {ir.switch_stmt(id, setter_cases), ir.return_stmt(ir.literal("false"))});
 
     return {categories, descriptors, descriptor, getter, setter};
 }
@@ -247,7 +246,7 @@ auto settings_api(LoweringContext& context,
         ir.function_flags(getter).set_define_in_header(true);
         ir.set_function_body(
             getter,
-            {ir.return_statement(ir.member_access(
+            {ir.return_stmt(ir.member_access(
                 ir.call(ir.member_access(ir.call(ir.named("derived")), "settings_state")), name))});
         members.add(ir.header_function(getter), 2);
 
@@ -257,7 +256,7 @@ auto settings_api(LoweringContext& context,
             setter, {ir.parameter(qualify(ir, setting_types[index], " const"), "value")});
         ir.set_function_body(
             setter,
-            {ir.expression_statement(ir.call(
+            {ir.expr_stmt(ir.call(
                 ir.member_access(ir.call(ir.named("derived")), "set_setting"),
                 {ir.named("EGameSetting::" + title_case(context.text(name))),
                  ir.init_list({ir.named("value")}, ir.types.intern("FGameSettingValue"))}))});
@@ -274,7 +273,7 @@ auto settings_api(LoweringContext& context,
         ir.function_formatting(function).body_layout = FunctionBodyLayout::compact;
         ir.set_function_body(
             function,
-            {ir.return_statement(ir.static_cast_expr(
+            {ir.return_stmt(ir.static_cast_expr(
                 derived_type, ir.unary(UnaryOperator::dereference, ir.named("this"))))});
         members.add(ir.header_function(function), 1);
     }

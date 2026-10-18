@@ -8,7 +8,7 @@
 
 namespace lispb::codegen::ir {
 
-struct BinaryExpressions {
+struct BinaryExprs {
     std::vector<BinaryOperator> operation;
     std::vector<Expr> left;
     std::vector<Expr> right;

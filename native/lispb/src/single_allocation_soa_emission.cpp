@@ -126,13 +126,13 @@ auto storage_lifetime_nodes(LoweringContext& context, SingleAllocationModelId mo
         {ir.raw("assert(resource != nullptr);")},
         {ir.member_initializer(ir.strings.intern("resource_"), ir.store_text("resource"))});
     auto const resource_accessor{ir.function("get_memory_resource", "auto")};
-    ir.set_function_body(resource_accessor, {ir.return_statement(ir.named("resource_"))});
+    ir.set_function_body(resource_accessor, {ir.return_stmt(ir.named("resource_"))});
     ir.set_function_return_type(
         resource_accessor, ir.types.intern("std::pmr::memory_resource*"), ReturnSyntax::trailing);
     ir.set_function_receiver(resource_accessor, FunctionReceiver::const_);
     ir.set_function_noexcept(resource_accessor);
     auto const destructor{ir.destructor(model_store.owner_name[model_store_index])};
-    ir.set_function_body(destructor, {ir.expression_statement(free_data)});
+    ir.set_function_body(destructor, {ir.expr_stmt(free_data)});
     auto const copy_constructor{ir.constructor(model_store.owner_name[model_store_index])};
     ir.set_function_parameters(copy_constructor, {copy_parameter});
     ir.set_function_deleted(copy_constructor);
@@ -192,7 +192,7 @@ auto data_pointers_node(LoweringContext& context, SingleAllocationModelId model)
                     ">*",
                 ir.types.dependencies(column_store.type[column_store.index(column)])),
             column_store.flattened_identifier[column_store.index(column)],
-            ir.raw_expression("")));
+            ir.raw_expr("")));
     }
 
     std::vector<Expr> shifted_columns;
@@ -209,15 +209,15 @@ auto data_pointers_node(LoweringContext& context, SingleAllocationModelId model)
         ir.set_function_parameters(created_function, {ir.parameter("size_type const", "offset")});
         ir.set_function_body(
             created_function,
-            {ir.if_statement(
+            {ir.if_stmt(
                  ir.binary(
                      BinaryOperator::equal,
                      ir.named(context.text(column_store.flattened_identifier[column_store.index(
                          context.ir.lowering.items(model_store.columns[model_store_index])
                              .front())])),
                      ir.literal("nullptr")),
-                 ir.block({ir.return_statement(ir.init_list({}))})),
-             ir.return_statement(ir.init_list(std::move(shifted_columns)))});
+                 ir.block({ir.return_stmt(ir.init_list({}))})),
+             ir.return_stmt(ir.init_list(std::move(shifted_columns)))});
         ir.set_function_return_type(
             created_function, ir.types.intern("DataPointers"), ReturnSyntax::trailing);
         ir.set_function_receiver(created_function, FunctionReceiver::const_);
@@ -243,12 +243,12 @@ auto storage_access_nodes(LoweringContext& context, SingleAllocationModelId mode
              ir.strings.intern("Byte"),
              ir.types.intern(
                  "std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>")),
-         ir.if_statement(ir.binary(BinaryOperator::equal,
-                                   ir.member_access(ir.named("self"), "data_"),
-                                   ir.literal("nullptr")),
-                         ir.block({ir.return_statement(
-                             ir.init_list({}, ir.types.intern("DataPointers<Byte>")))})),
-         ir.return_statement(
+         ir.if_stmt(
+             ir.binary(BinaryOperator::equal,
+                       ir.member_access(ir.named("self"), "data_"),
+                       ir.literal("nullptr")),
+             ir.block({ir.return_stmt(ir.init_list({}, ir.types.intern("DataPointers<Byte>")))})),
+         ir.return_stmt(
              ir.call(ir.named("make_data_unchecked"),
                      {ir.static_cast_expr(ir.types.intern("Byte*"),
                                           ir.member_access(ir.named("self"), "data_")),
@@ -260,9 +260,9 @@ auto storage_access_nodes(LoweringContext& context, SingleAllocationModelId mode
     ir.set_function_parameters(get_data_offset, {self, ir.parameter("size_type const", "offset")});
     ir.set_function_body(
         get_data_offset,
-        {ir.return_statement(ir.binary(BinaryOperator::add,
-                                       ir.call(ir.member_access(ir.named("self"), "get_data")),
-                                       ir.named("offset")))});
+        {ir.return_stmt(ir.binary(BinaryOperator::add,
+                                  ir.call(ir.member_access(ir.named("self"), "get_data")),
+                                  ir.named("offset")))});
     ir.set_function_noexcept(get_data_offset);
     ir.set_function_template(
         get_data_offset,
@@ -290,7 +290,7 @@ auto column_pointer_nodes(LoweringContext& context, SingleAllocationModelId mode
              ir.named("Layout::columns." +
                       context.text(column_store.layout_identifier[column_store.index(column)]))}));
     }
-    make_data_body.add(ir.return_statement(ir.init_list(std::move(pointers))));
+    make_data_body.add(ir.return_stmt(ir.init_list(std::move(pointers))));
     auto const make_data{ir.function("make_data_unchecked", "auto")};
     ir.set_function_parameters(
         make_data,
@@ -306,10 +306,10 @@ auto column_pointer_nodes(LoweringContext& context, SingleAllocationModelId mode
     auto const capacity_blocks{ir.function("capacity_blocks", "auto")};
     ir.set_function_body(
         capacity_blocks,
-        {ir.return_statement(ir.static_cast_expr(ir.types.intern("byte_size_type"),
-                                                 ir.binary(BinaryOperator::divide,
-                                                           ir.named("capacity_"),
-                                                           ir.named("capacity_granularity"))))});
+        {ir.return_stmt(ir.static_cast_expr(ir.types.intern("byte_size_type"),
+                                            ir.binary(BinaryOperator::divide,
+                                                      ir.named("capacity_"),
+                                                      ir.named("capacity_granularity"))))});
     ir.set_function_return_type(
         capacity_blocks, ir.types.intern("byte_size_type"), ReturnSyntax::trailing);
     ir.set_function_receiver(capacity_blocks, FunctionReceiver::const_);
@@ -342,7 +342,7 @@ auto default_construction_node(LoweringContext& context, SingleAllocationModelId
                                       {ir.named("data_"), ir.call(ir.named("capacity_blocks"))}),
                               ir.named("first"))));
     for (auto const column : context.ir.lowering.items(model_store.columns[model_store_index])) {
-        body.add(ir.expression_statement(ir.call(
+        body.add(ir.expr_stmt(ir.call(
             ir.named("default_construct_n",
                      ir.types.dependencies(column_store.type[column_store.index(column)])),
             {ir.member_access(
@@ -372,11 +372,11 @@ auto column_copying_nodes(LoweringContext& context, SingleAllocationModelId mode
                                     ir.parameter("size_type const", "source"),
                                     ir.parameter("size_type const", "move_count")});
         ir.set_function_body(created_function,
-                             {ir.expression_statement(ir.call(ir.named("copy_columns"),
-                                                              {ir.call(ir.named("get_data")),
-                                                               ir.named("index"),
-                                                               ir.named("source"),
-                                                               ir.named("move_count")}))});
+                             {ir.expr_stmt(ir.call(ir.named("copy_columns"),
+                                                   {ir.call(ir.named("get_data")),
+                                                    ir.named("index"),
+                                                    ir.named("source"),
+                                                    ir.named("move_count")}))});
         return created_function;
     }())};
 
@@ -385,7 +385,7 @@ auto column_copying_nodes(LoweringContext& context, SingleAllocationModelId mode
                          context.text(model_store.runtime_namespace[model_store_index]) +
                          "transfer_n<Overlapping>(dst, src, count);\n};"));
     for (auto const column : context.ir.lowering.items(model_store.columns[model_store_index])) {
-        copy_body.add(ir.expression_statement(ir.call(
+        copy_body.add(ir.expr_stmt(ir.call(
             ir.named("transfer"),
             {ir.member_access(
                  ir.named("destination"),
@@ -429,7 +429,7 @@ auto column_copying_nodes(LoweringContext& context, SingleAllocationModelId mode
                                    {ir.parameter("std::span<size_type const>", "indices")});
         ir.set_function_body(created_function,
                              {ir.variable("auto const", "columns", ir.call(ir.named("get_data"))),
-                              ir.expression_statement(ir.raw_expression(
+                              ir.expr_stmt(ir.raw_expr(
                                   "ioj::soa_storage_detail::for_each_removal_run(num_, indices, "
                                   "[&](size_type index, size_type source, size_type count) { "
                                   "copy_columns(columns, index, source, count); })"))});
@@ -459,7 +459,7 @@ auto source_pointers_node(LoweringContext& context, SingleAllocationModelId mode
                                    groups,
                                    body)}));
     }
-    body.add(ir.return_statement(ir.init_list(std::move(pointers))));
+    body.add(ir.return_stmt(ir.init_list(std::move(pointers))));
     return inline_function(context, [&] {
         auto const created_function{ir.function("source_pointers", "auto")};
         ir.set_function_parameters(created_function, {ir.parameter("Columns const&", "source")});
@@ -680,7 +680,7 @@ auto compact_view_node(LoweringContext& context,
                         "auto")};
                     ir.set_function_body(
                         created_function,
-                        {ir.return_statement(ir.init_list(
+                        {ir.return_stmt(ir.init_list(
                             {ir.named("state_"), ir.named("offset_"), ir.named("count_")}))});
                     ir.set_function_return_type(
                         created_function,
@@ -748,7 +748,7 @@ auto compact_view_node(LoweringContext& context,
                     created_function,
                     {ir.raw(std::string{"using ioj::soa_storage_detail::"} +
                             (pointer_view ? "three_column_view;" : "strided_vector_view;")),
-                     ir.return_statement(
+                     ir.return_stmt(
                          ir.call(ir.named(std::string{pointer_view ? "three_column_view<"
                                                                    : "strided_vector_view<"} +
                                               std::string{ir.types.spelling(view_type)} + ">",
@@ -766,7 +766,7 @@ auto compact_view_node(LoweringContext& context,
                                 ir.types.intern("auto"))};
                 ir.set_function_body(
                     created_function,
-                    {ir.return_statement(ir.call(
+                    {ir.return_stmt(ir.call(
                         ir.named(
                             "make_column_view",
                             ir.types.dependencies(column_store.type[column_store.index(column)])),
@@ -802,11 +802,11 @@ auto compact_view_node(LoweringContext& context,
             body.add(ir.variable("auto", name, accessor));
             arguments.push_back(ir.named(name));
         } else {
-            body.add(ir.expression_statement(ir.call(ir.named("func"), {accessor})));
+            body.add(ir.expr_stmt(ir.call(ir.named("func"), {accessor})));
         }
     }
     if (model_store.column_iteration_returns_result[model_store.index(model)]) {
-        body.add(ir.return_statement(ir.call(
+        body.add(ir.return_stmt(ir.call(
             ir.named("std::forward<Func>(func)", {ir.types.dependency("std::forward", "utility")}),
             std::move(arguments))));
     }
@@ -843,7 +843,7 @@ auto compact_view_node(LoweringContext& context,
                         "layout")});
                 ir.set_function_body(
                     created_function,
-                    {ir.return_statement(ir.call(
+                    {ir.return_stmt(ir.call(
                         ir.named("ioj::soa_storage_detail::column_view<" +
                                  context.text(model_store.span_template[model_store.index(model)]) +
                                  "<Element<T>>>"),
@@ -868,12 +868,11 @@ auto compact_view_node(LoweringContext& context,
         .append(adjacent(
             context,
             {ir.instance_member(
-                 ir.types.intern("State*"), ir.strings.intern("state_"), ir.raw_expression("")),
+                 ir.types.intern("State*"), ir.strings.intern("state_"), ir.raw_expr("")),
              ir.instance_member(
-                 ir.types.intern("size_type"), ir.strings.intern("offset_"), ir.raw_expression("")),
-             ir.instance_member(ir.types.intern("size_type"),
-                                ir.strings.intern("count_"),
-                                ir.raw_expression(""))}));
+                 ir.types.intern("size_type"), ir.strings.intern("offset_"), ir.raw_expr("")),
+             ir.instance_member(
+                 ir.types.intern("size_type"), ir.strings.intern("count_"), ir.raw_expr(""))}));
     auto const created_record{
         ir.record(ir.strings.intern(name), children.build(), RecordKind::struct_)};
     ir.set_record_bases(created_record,
@@ -911,7 +910,7 @@ auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationMod
             ir.types.intern(context.text(model_store.runtime_namespace[model_store_index]) +
                             "ColumnLayoutStart"),
             ir.strings.intern("LayoutStart"),
-            ir.raw_expression("")))
+            ir.raw_expr("")))
         .new_lines(2);
     std::vector<MemberInitializerId> constructor_initializers;
     auto const constructor{ir.constructor(ir.strings.intern(columns_name))};
@@ -966,7 +965,7 @@ auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationMod
             }))
         .new_lines(2)
         .add(ir.constexpr_member(
-            ir.types.intern(columns_name), ir.strings.intern("columns"), ir.raw_expression("")))
+            ir.types.intern(columns_name), ir.strings.intern("columns"), ir.raw_expr("")))
         .new_lines(2);
     children
         .add(ir.constexpr_member(ir.types.intern("byte_size_type"),
@@ -1002,8 +1001,8 @@ auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationMod
                                                    {ir.parameter("byte_size_type", "blocks")});
                         ir.set_function_body(
                             created_function,
-                            {ir.return_statement(ir.raw_expression(
-                                "blocks == 0 ? 0 : " + last_column + ".data_end(blocks)"))});
+                            {ir.return_stmt(ir.raw_expr("blocks == 0 ? 0 : " + last_column +
+                                                        ".data_end(blocks)"))});
                         ir.set_function_return_type(created_function,
                                                     ir.types.intern("byte_size_type"),
                                                     ReturnSyntax::trailing);
@@ -1052,7 +1051,7 @@ auto storage_implementation_nodes(LoweringContext& context, SingleAllocationMode
         .new_lines(1)
         .add(ir.instance_member(ir.types.intern("std::pmr::memory_resource*"),
                                 ir.strings.intern("resource_"),
-                                ir.raw_expression("")))
+                                ir.raw_expr("")))
         .new_lines(1)
         .append(column_pointer_nodes(context, model))
         .new_lines(2)

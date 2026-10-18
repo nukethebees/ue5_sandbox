@@ -7,7 +7,7 @@
 
 namespace lispb::codegen::ir {
 
-struct RawExpressions {
+struct RawExprs {
     std::vector<StringId> text;
     std::vector<Range> dependencies;
 };

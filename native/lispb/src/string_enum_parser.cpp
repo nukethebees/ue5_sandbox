@@ -57,15 +57,15 @@ auto comparisons(CppIR& ir,
                  std::size_t const prefix_size = 0) -> Nodes {
     NodeListBuilder body{ir};
     if (entries.empty()) {
-        body.add(ir.expression_statement(ir.static_cast_expr(ir.types.intern("void"), input)));
+        body.add(ir.expr_stmt(ir.static_cast_expr(ir.types.intern("void"), input)));
     }
     for (auto const entry : entries) {
-        body.add(ir.if_statement(ir.binary(BinaryOperator::equal,
-                                           input,
-                                           ir.string_literal(entry.key.substr(prefix_size))),
-                                 ir.block({ir.return_statement(ir.named(entry.value))})));
+        body.add(ir.if_stmt(ir.binary(BinaryOperator::equal,
+                                      input,
+                                      ir.string_literal(entry.key.substr(prefix_size))),
+                            ir.block({ir.return_stmt(ir.named(entry.value))})));
     }
-    body.add(ir.return_statement(ir.named("std::nullopt")));
+    body.add(ir.return_stmt(ir.named("std::nullopt")));
     return body.build();
 }
 
@@ -102,11 +102,11 @@ auto length_bucket(CppIR& ir,
             character_literal(ir, character),
             ir.block(length_bucket(ir, input, length, group, prefix_size, position + 1))));
     }
-    cases.push_back(ir.switch_case({}, ir.block({ir.return_statement(ir.named("std::nullopt"))})));
+    cases.push_back(ir.switch_case({}, ir.block({ir.return_stmt(ir.named("std::nullopt"))})));
     auto const selected_character{
         ir.static_cast_expr(ir.types.intern("unsigned char"),
                             ir.subscript(input, ir.literal(std::to_string(position))))};
-    return {ir.switch_statement(selected_character, cases)};
+    return {ir.switch_stmt(selected_character, cases)};
 }
 
 auto parser_body(CppIR& ir, Expr const input, std::span<StringEnumEntry const> const entries)
@@ -124,10 +124,10 @@ auto parser_body(CppIR& ir, Expr const input, std::span<StringEnumEntry const> c
     auto const prefix{common_prefix(all)};
     auto suffix{input};
     if (!prefix.empty()) {
-        body.add(ir.if_statement(ir.unary(UnaryOperator::logical_not,
-                                          ir.call(ir.member_access(input, "starts_with"),
-                                                  {ir.string_literal(prefix)})),
-                                 ir.block({ir.return_statement(ir.named("std::nullopt"))})),
+        body.add(ir.if_stmt(ir.unary(UnaryOperator::logical_not,
+                                     ir.call(ir.member_access(input, "starts_with"),
+                                             {ir.string_literal(prefix)})),
+                            ir.block({ir.return_stmt(ir.named("std::nullopt"))})),
                  2);
         body.add(ir.variable("auto const",
                              "suffix",
@@ -147,8 +147,8 @@ auto parser_body(CppIR& ir, Expr const input, std::span<StringEnumEntry const> c
             ir.switch_case(ir.literal(std::to_string(length)),
                            ir.block(length_bucket(ir, suffix, length, group, prefix.size()))));
     }
-    cases.push_back(ir.switch_case({}, ir.block({ir.return_statement(ir.named("std::nullopt"))})));
-    body.add(ir.switch_statement(ir.call(ir.member_access(suffix, "size")), cases));
+    cases.push_back(ir.switch_case({}, ir.block({ir.return_stmt(ir.named("std::nullopt"))})));
+    body.add(ir.switch_stmt(ir.call(ir.member_access(suffix, "size")), cases));
     return body.build();
 }
 }

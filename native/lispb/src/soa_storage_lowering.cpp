@@ -75,7 +75,7 @@ auto storage_operation_body(LoweringContext& context,
     for (auto const& argument : arguments) {
         values.push_back(ir.named(argument));
     }
-    return {ir.expression_statement(
+    return {ir.expr_stmt(
         ir.call(ir.named("ioj::soa_ops::" + operation,
                          {ir.types.dependency("ioj::soa_ops", "SandboxCore/soa_storage_ops.h")}),
                 values))};
@@ -99,7 +99,7 @@ auto explicit_remove_at_swap_body(LoweringContext& context,
     auto& resolved_store{context.ir.lowering.resolved_members};
     auto& ir{context.ir};
     NodeListBuilder calls{ir};
-    calls.add(ir.expression_statement(ir.call(ir.named("validate_array_sizes"))));
+    calls.add(ir.expr_stmt(ir.call(ir.named("validate_array_sizes"))));
     for (auto const member : members) {
         std::optional<std::string> const operation{
             ir.types.operation(resolved_store.container_type[resolved_store.index(member)],
@@ -116,7 +116,7 @@ auto explicit_remove_at_swap_body(LoweringContext& context,
                        ir.named("index"),
                        ir.named("count"),
                        ir.named("allow_shrinking")})};
-        calls.add(ir.expression_statement(invocation));
+        calls.add(ir.expr_stmt(invocation));
     }
     return calls.build();
 }
@@ -175,7 +175,7 @@ auto soa_set_function(LoweringContext& context,
                                resolved_store.container_type[resolved_store.index(member)],
                                TypeOperation::set_element)),
             argument));
-        body.add(ir.expression_statement(
+        body.add(ir.expr_stmt(
             ir.call(ir.member_access(
                         ir.named(context.text(resolved_store.name[resolved_store.index(member)])),
                         *operation),
@@ -216,7 +216,7 @@ auto soa_add_function(LoweringContext& context,
                                ir.types.parameter_passing(
                                    resolved_store.element_type[resolved_store.index(member)])),
                 argument));
-            body.add(ir.expression_statement(ir.call(
+            body.add(ir.expr_stmt(ir.call(
                 ir.member_access(
                     ir.named(context.text(resolved_store.name[resolved_store.index(member)])),
                     "Add"),
@@ -239,13 +239,13 @@ auto soa_add_function(LoweringContext& context,
                                resolved_store.container_type[resolved_store.index(member)],
                                TypeOperation::add_element)),
             argument));
-        body.add(ir.expression_statement(
+        body.add(ir.expr_stmt(
             ir.call(ir.member_access(
                         ir.named(context.text(resolved_store.name[resolved_store.index(member)])),
                         *operation),
                     {ir.named(argument)})));
     }
-    body.add(ir.return_statement(ir.named("index")));
+    body.add(ir.return_stmt(ir.named("index")));
     auto const created_function{ir.function("add", "auto")};
     ir.set_function_parameters(created_function, std::move(parameters));
     ir.set_function_body(created_function, body.build());
@@ -348,11 +348,11 @@ auto soa_storage_functions(LoweringContext& context,
                 copy_one.add(ir.assignment(ir.subscript(destination, ir.named("dst_i")),
                                            ir.subscript(source, ir.named("src_i"))));
             } else {
-                copy_one.add(ir.expression_statement(
+                copy_one.add(ir.expr_stmt(
                     ir.call(container_function(context, "ioj::copy_element"),
                             {destination, ir.named("dst_i"), source, ir.named("src_i")})));
             }
-            copy_range.add(ir.expression_statement(ir.call(
+            copy_range.add(ir.expr_stmt(ir.call(
                 container_function(context, "ioj::copy_elements"),
                 {destination, ir.named("dst_i"), source, ir.named("src_i"), ir.named("count")})));
         }
@@ -387,18 +387,18 @@ auto soa_storage_functions(LoweringContext& context,
                 {
                     ir.variable(
                         "auto const", "count", ir.call(ir.member_access(ir.named("other"), "num"))),
-                    ir.expression_statement(
+                    ir.expr_stmt(
                         ir.call(ir.named("check", {ir.types.dependency("check", "CoreMinimal.h")}),
                                 {ir.binary(BinaryOperator::greater_equal,
                                            ir.call(ir.named("num")),
                                            ir.named("count"))})),
-                    ir.expression_statement(ir.call(ir.named("copy_elements"),
-                                                    {ir.binary(BinaryOperator::subtract,
-                                                               ir.call(ir.named("num")),
-                                                               ir.named("count")),
-                                                     ir.named("other"),
-                                                     ir.literal("0"),
-                                                     ir.named("count")})),
+                    ir.expr_stmt(ir.call(ir.named("copy_elements"),
+                                         {ir.binary(BinaryOperator::subtract,
+                                                    ir.call(ir.named("num")),
+                                                    ir.named("count")),
+                                          ir.named("other"),
+                                          ir.literal("0"),
+                                          ir.named("count")})),
                 });
             ir.function_flags(created_function).set_is_inline(true);
             ir.function_flags(created_function).set_define_in_header(true);
@@ -427,7 +427,7 @@ auto soa_storage_functions(LoweringContext& context,
                     ? ir.call(ir.member_access(destination, "append_from"), {source})
                     : ir.call(container_function(context, "ioj::append_from"),
                               {destination, source})};
-            calls.add(ir.expression_statement(invocation));
+            calls.add(ir.expr_stmt(invocation));
         }
         result.push_back([&] {
             auto const created_function{ir.function("append_from", "void")};
@@ -479,7 +479,7 @@ auto soa_permutation_functions(LoweringContext& context, std::span<ResolvedMembe
                                        {ir.parameter("Compare&&", "compare"), scratch_indices});
             ir.set_function_body(
                 created_function,
-                {ir.expression_statement(ir.call(
+                {ir.expr_stmt(ir.call(
                     ir.named(
                         "ioj::soa_ops::sort",
                         {ir.types.dependency("ioj::soa_ops", "SandboxCore/soa_storage_ops.h")}),
@@ -502,7 +502,7 @@ auto soa_permutation_functions(LoweringContext& context, std::span<ResolvedMembe
             ir.set_function_parameters(created_function, {scratch_indices});
             ir.set_function_body(
                 created_function,
-                {ir.expression_statement(ir.call(
+                {ir.expr_stmt(ir.call(
                     ir.template_id(ir.named("ioj::soa_ops::sort",
                                             {ir.types.dependency("ioj::soa_ops",
                                                                  "SandboxCore/soa_storage_ops.h")}),

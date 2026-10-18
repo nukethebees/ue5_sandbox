@@ -21,15 +21,15 @@ auto homogeneous_permutation_function(LoweringContext& context, DeclarationHandl
     -> FunctionId {
     auto& ir{context.ir};
     NodeListBuilder body{ir};
-    body.add(ir.expression_statement(ir.raw_expression("validate_array_sizes()")))
-        .add(ir.expression_statement(ir.raw_expression("check(indices.Num() == num())"),
-                                     {ir.types.dependency("check", "CoreMinimal.h")}));
+    body.add(ir.expr_stmt(ir.raw_expr("validate_array_sizes()")))
+        .add(ir.expr_stmt(ir.raw_expr("check(indices.Num() == num())"),
+                          {ir.types.dependency("check", "CoreMinimal.h")}));
     for (auto const component_id : context.declarations.items(
              context.declarations.homogeneous_layouts
                  .components[context.declarations.homogeneous_layouts.index(layout)])) {
         auto const component{context.text(component_id)};
-        body.add(ir.expression_statement(
-            ir.raw_expression("ioj::apply_permutation(" + component + ", indices)"),
+        body.add(ir.expr_stmt(
+            ir.raw_expr("ioj::apply_permutation(" + component + ", indices)"),
             {ir.types.dependency("ioj::apply_permutation", "SandboxCore/soa_permutation.h")}));
     }
     auto const created_function{ir.function("apply_permutation", "void")};

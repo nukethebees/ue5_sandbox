@@ -153,7 +153,7 @@ auto soa_equivalent_nodes(LoweringContext& context,
         .add(ir.header_function([&] {
             auto const created_function{ir.function("operator[]", "auto")};
             ir.set_function_parameters(created_function, {index});
-            ir.set_function_body(created_function, {ir.return_statement(ir.init_list(values))});
+            ir.set_function_body(created_function, {ir.return_stmt(ir.init_list(values))});
             ir.set_function_return_type(created_function, equivalent, ReturnSyntax::trailing);
             ir.set_function_receiver(created_function, FunctionReceiver::const_);
             ir.function_flags(created_function).set_is_inline(true);
@@ -167,16 +167,16 @@ auto soa_equivalent_nodes(LoweringContext& context,
             ir.set_function_body(
                 created_function,
                 {
-                    ir.expression_statement(ir.call(ir.named("validate_array_sizes"))),
-                    ir.expression_statement(ir.call(
+                    ir.expr_stmt(ir.call(ir.named("validate_array_sizes"))),
+                    ir.expr_stmt(ir.call(
                         ir.named("check", {ir.types.dependency("check", "CoreMinimal.h")}),
                         {ir.binary(
                             BinaryOperator::greater_equal, ir.named("index"), ir.literal("0"))})),
-                    ir.expression_statement(ir.call(ir.named("check"),
-                                                    {ir.binary(BinaryOperator::less,
-                                                               ir.named("index"),
-                                                               ir.call(ir.named("num")))})),
-                    ir.return_statement(ir.subscript(
+                    ir.expr_stmt(ir.call(ir.named("check"),
+                                         {ir.binary(BinaryOperator::less,
+                                                    ir.named("index"),
+                                                    ir.call(ir.named("num")))})),
+                    ir.return_stmt(ir.subscript(
                         ir.parenthesized(ir.unary(UnaryOperator::dereference, ir.named("this"))),
                         ir.named("index"))),
                 });
@@ -214,7 +214,7 @@ auto soa_view_functions(LoweringContext& context,
         result.push_back(created_function);
     };
     auto return_call = [&](std::string_view name, std::vector<Expr> arguments) -> Nodes {
-        return {ir.return_statement(ir.call(ir.named(name), arguments))};
+        return {ir.return_stmt(ir.call(ir.named(name), arguments))};
     };
 
     auto const offset{ir.named("offset")};
@@ -235,7 +235,7 @@ auto soa_view_functions(LoweringContext& context,
         add("get_view",
             ir.types.intern("View"),
             {offset_parameter, count_parameter},
-            {ir.return_statement(ir.init_list(values, ir.types.intern("View")))},
+            {ir.return_stmt(ir.init_list(values, ir.types.intern("View")))},
             ReturnSyntax::trailing);
     }
 
@@ -252,7 +252,7 @@ auto soa_view_functions(LoweringContext& context,
     add("get_view",
         ir.types.intern("ConstView"),
         {offset_parameter, count_parameter},
-        {ir.return_statement(ir.init_list(const_values, ir.types.intern("ConstView")))},
+        {ir.return_stmt(ir.init_list(const_values, ir.types.intern("ConstView")))},
         ReturnSyntax::trailing,
         true);
     add("get_const_view",
@@ -264,13 +264,13 @@ auto soa_view_functions(LoweringContext& context,
     add("get_const_view",
         ir.types.intern("ConstView"),
         {offset_parameter, count_parameter},
-        {ir.return_statement(ir.init_list(const_values, ir.types.intern("ConstView")))},
+        {ir.return_stmt(ir.init_list(const_values, ir.types.intern("ConstView")))},
         ReturnSyntax::trailing,
         true);
     add("num",
         ir.types.intern("int32"),
         {},
-        {ir.return_statement(ir.call(
+        {ir.return_stmt(ir.call(
             ir.named("ioj::num", {ir.types.dependency("ioj::num", "SandboxCore/container_ops.h")}),
             {ir.named(resolved_store.name[resolved_store.index(members.front())])}))},
         ReturnSyntax::trailing,
@@ -279,14 +279,14 @@ auto soa_view_functions(LoweringContext& context,
     add("is_empty",
         ir.types.intern("bool"),
         {},
-        {ir.return_statement(ir.binary(BinaryOperator::equal, num, ir.literal("0")))},
+        {ir.return_stmt(ir.binary(BinaryOperator::equal, num, ir.literal("0")))},
         ReturnSyntax::trailing,
         true,
         true);
     add("validate_array_sizes",
         ir.types.intern("void"),
         {},
-        {ir.expression_statement(ir.call(
+        {ir.expr_stmt(ir.call(
             ir.named("ioj::soa_ops::validate_array_sizes",
                      {ir.types.dependency("ioj::soa_ops", "SandboxCore/soa_storage_ops.h")}),
             {ir.unary(UnaryOperator::dereference, ir.named("this"))}))},

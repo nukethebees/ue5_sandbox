@@ -9,7 +9,7 @@
 namespace lispb::codegen::ir {
 
 struct Returns {
-    std::vector<std::optional<Expr>> expression;
+    std::vector<std::optional<Expr>> expr;
     std::vector<Range> dependencies;
 };
 

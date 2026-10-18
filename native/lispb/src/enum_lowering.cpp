@@ -108,7 +108,7 @@ auto enum_count_specialization(CppIR& ir, CppTypeId enum_type, std::size_t const
     flags.set_is_constexpr(true);
     ir.set_function_noexcept(function);
     flags.set_define_in_header(true);
-    ir.set_function_body(function, {ir.return_statement(ir.literal(std::to_string(count)))});
+    ir.set_function_body(function, {ir.return_stmt(ir.literal(std::to_string(count)))});
     return ir.header_function(function);
 }
 
@@ -125,12 +125,12 @@ auto exact_lookup(LoweringContext& context, ModuleSettingsId settings, Declarati
             ir.named(enum_name + "::" +
                      context.text(context.declarations.enumerators
                                       .name[context.declarations.enumerators.index(value)])),
-            ir.block({ir.return_statement(text_literal(
+            ir.block({ir.return_stmt(text_literal(
                 ir,
                 context.text(context.declarations.enumerators
                                  .name[context.declarations.enumerators.index(value)])))})));
     }
-    body.add(ir.switch_statement(ir.named("value"), std::move(cases)), 2)
+    body.add(ir.switch_stmt(ir.named("value"), std::move(cases)), 2)
         .add(ir.raw("ensureMsgf(false,\n"
                     "           TEXT(\"Unhandled " +
                     context.text(
@@ -138,7 +138,7 @@ auto exact_lookup(LoweringContext& context, ModuleSettingsId settings, Declarati
                     " value: %lld\"),\n"
                     "           static_cast<int64>(value));"),
              1)
-        .add(ir.return_statement(text_literal(
+        .add(ir.return_stmt(text_literal(
             ir,
             "<invalid " +
                 context.text(
@@ -171,7 +171,7 @@ auto display_lookup(LoweringContext& context, ModuleSettingsId settings, Declara
             ir.named(enum_name + "::" +
                      context.text(context.declarations.enumerators
                                       .name[context.declarations.enumerators.index(value)])),
-            ir.block({ir.return_statement(text_literal(
+            ir.block({ir.return_stmt(text_literal(
                 ir,
                 context.text(
                     *context.declarations.enumerators
@@ -179,10 +179,10 @@ auto display_lookup(LoweringContext& context, ModuleSettingsId settings, Declara
     }
     NodeListBuilder body{ir};
     if (!cases.empty()) {
-        cases.push_back(ir.switch_case(std::nullopt, ir.block({ir.break_statement()})));
-        body.add(ir.switch_statement(ir.named("value"), std::move(cases)), 2);
+        cases.push_back(ir.switch_case(std::nullopt, ir.block({ir.break_stmt()})));
+        body.add(ir.switch_stmt(ir.named("value"), std::move(cases)), 2);
     }
-    body.add(ir.return_statement(
+    body.add(ir.return_stmt(
         ir.call(ir.named(internal_name(context, schema, "name")), {ir.named("value")})));
     auto const created_function{
         ir.function(internal_name(context, schema, "display_name"), "auto")};
@@ -214,13 +214,13 @@ auto serialized_lookup(LoweringContext& context,
             ir.named(enum_name + "::" +
                      context.text(context.declarations.enumerators
                                       .name[context.declarations.enumerators.index(value)])),
-            ir.block({ir.return_statement(text_literal(
+            ir.block({ir.return_stmt(text_literal(
                 ir,
                 context.text(
                     *context.declarations.enumerators
                          .serialized_name[context.declarations.enumerators.index(value)])))})));
     }
-    body.add(ir.switch_statement(ir.named("value"), std::move(cases)), 2)
+    body.add(ir.switch_stmt(ir.named("value"), std::move(cases)), 2)
         .add(ir.raw("ensureMsgf(false,\n"
                     "           TEXT(\"Unhandled serialized " +
                     context.text(
@@ -228,7 +228,7 @@ auto serialized_lookup(LoweringContext& context,
                     " value: %lld\"),\n"
                     "           static_cast<int64>(value));"),
              1)
-        .add(ir.return_statement(text_literal(
+        .add(ir.return_stmt(text_literal(
             ir,
             "<invalid " +
                 context.text(
@@ -260,7 +260,7 @@ auto serialized_parser(LoweringContext& context,
             continue;
         }
         body.add(
-            ir.if_statement(
+            ir.if_stmt(
                 ir.binary(
                     BinaryOperator::equal,
                     ir.named("value"),
@@ -276,10 +276,10 @@ auto serialized_parser(LoweringContext& context,
                                   context.text(
                                       context.declarations.enumerators
                                           .name[context.declarations.enumerators.index(value)]))),
-                     ir.return_statement(ir.literal("true"))})),
+                     ir.return_stmt(ir.literal("true"))})),
             1);
     }
-    body.add(ir.return_statement(ir.literal("false")));
+    body.add(ir.return_stmt(ir.literal("false")));
     auto const created_function{ir.function("try_parse_serialized", "auto")};
     ir.set_function_parameters(
         created_function,
@@ -334,7 +334,7 @@ auto conversion_function(LoweringContext& context,
         {ir.named("value")})};
     auto const result{ir.function(IdentifierId{}, ir.types.intern("auto"))};
     ir.set_function_parameters(result, {ir.parameter(parameter_type + " const", "value")});
-    ir.set_function_body(result, {ir.return_statement(lookup)});
+    ir.set_function_body(result, {ir.return_stmt(lookup)});
     ir.set_function_export_specifier(
         result,
         context.declarations.enums.export_specifier[context.declarations.enums.index(schema)]);
@@ -356,7 +356,7 @@ auto conversion_function(LoweringContext& context,
                 ReturnSyntax::trailing);
             ir.set_function_body(
                 result,
-                {ir.return_statement(ir.init_list(
+                {ir.return_stmt(ir.init_list(
                     {lookup},
                     ir.types.intern("FStringView",
                                     {ir.types.dependency("FStringView", "CoreMinimal.h")})))});
@@ -369,7 +369,7 @@ auto conversion_function(LoweringContext& context,
                 ReturnSyntax::trailing);
             ir.set_function_body(
                 result,
-                {ir.return_statement(ir.init_list(
+                {ir.return_stmt(ir.init_list(
                     {lookup},
                     ir.types.intern("FString",
                                     {ir.types.dependency("FString", "CoreMinimal.h")})))});
@@ -391,7 +391,7 @@ auto conversion_function(LoweringContext& context,
                 ReturnSyntax::trailing);
             ir.set_function_body(
                 result,
-                {ir.return_statement(ir.init_list(
+                {ir.return_stmt(ir.init_list(
                     {lookup},
                     ir.types.intern("FStringView",
                                     {ir.types.dependency("FStringView", "CoreMinimal.h")})))});
@@ -404,7 +404,7 @@ auto conversion_function(LoweringContext& context,
                 ReturnSyntax::trailing);
             ir.set_function_body(
                 result,
-                {ir.return_statement(ir.init_list(
+                {ir.return_stmt(ir.init_list(
                     {lookup},
                     ir.types.intern("FString",
                                     {ir.types.dependency("FString", "CoreMinimal.h")})))});
@@ -533,15 +533,15 @@ auto native_enum_string_function(LoweringContext& context,
                 ? context.optional_text(enumerators.display_name[value_row]).value_or(value_name)
                 : value_name};
         cases.push_back(ir.switch_case(ir.named(name + "::" + value_name),
-                                       ir.block({ir.return_statement(ir.string_literal(text))})));
+                                       ir.block({ir.return_stmt(ir.string_literal(text))})));
     }
 
-    auto const invalid{ir.return_statement(ir.string_literal("<invalid " + name + ">"))};
+    auto const invalid{ir.return_stmt(ir.string_literal("<invalid " + name + ">"))};
     if (serialized) {
         cases.push_back(ir.switch_case({}, ir.block({invalid})));
     }
     NodeListBuilder body{ir};
-    body.add(ir.switch_statement(ir.named("value"), cases), serialized ? 1 : 2);
+    body.add(ir.switch_stmt(ir.named("value"), cases), serialized ? 1 : 2);
     if (!serialized) {
         body.add(invalid);
     }
@@ -749,9 +749,8 @@ auto native_conversion_function(LoweringContext& context,
     cases.reserve(values.size());
     for (auto const value : values) {
         auto const name{context.text(enumerators.name[enumerators.index(value)])};
-        cases.push_back(
-            ir.switch_case(ir.named(source + "::" + name),
-                           ir.block({ir.return_statement(ir.named(target + "::" + name))})));
+        cases.push_back(ir.switch_case(ir.named(source + "::" + name),
+                                       ir.block({ir.return_stmt(ir.named(target + "::" + name))})));
     }
 
     auto const target_type{ir.types.intern(target)};
@@ -764,8 +763,8 @@ auto native_conversion_function(LoweringContext& context,
     flags.set_is_nodiscard(true);
     ir.set_function_noexcept(function);
     NodeListBuilder body{ir};
-    body.add(ir.switch_statement(ir.named("value"), cases), 2);
-    body.add(ir.return_statement(ir.static_cast_expr(target_type, ir.named("value"))));
+    body.add(ir.switch_stmt(ir.named("value"), cases), 2);
+    body.add(ir.return_stmt(ir.static_cast_expr(target_type, ir.named("value"))));
     ir.set_function_body(function, body.build());
     return ir.header_function(function);
 }

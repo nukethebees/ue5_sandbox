@@ -60,7 +60,7 @@ auto lower_facade_impl(LoweringContext& context, DeclarationHandle facade) -> De
             {ir.assignment(
                 ir.named(
                     declarations.facades.target_member_name[declarations.facades.index(facade)]),
-                ir.raw_expression("&new_target"))});
+                ir.raw_expr("&new_target"))});
     }
     std::vector<FunctionId> methods;
     for (auto const method_id : declarations.items(
@@ -124,9 +124,9 @@ auto lower_facade_impl(LoweringContext& context, DeclarationHandle facade) -> De
         auto const return_type{context.resolve(
             declarations.facade_methods.return_type[declarations.facade_methods.index(method)])};
         if (ir.types.spelling(return_type) == "void") {
-            body.add(ir.expression_statement(call, std::move(validation_dependencies)));
+            body.add(ir.expr_stmt(call, std::move(validation_dependencies)));
         } else {
-            body.add(ir.return_statement(call, std::move(validation_dependencies)));
+            body.add(ir.return_stmt(call, std::move(validation_dependencies)));
         }
         methods.push_back([&] {
             auto const created_function{ir.function(
@@ -182,7 +182,7 @@ auto lower_facade_impl(LoweringContext& context, DeclarationHandle facade) -> De
                   qualify(ir, target_type, "*"),
                   context.declarations.facades
                       .target_member_name[context.declarations.facades.index(facade)],
-                  ir.raw_expression("nullptr")));
+                  ir.raw_expr("nullptr")));
 
     NodeListBuilder class_nodes{ir};
     if (has_public_nodes) {

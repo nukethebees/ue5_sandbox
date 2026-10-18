@@ -19,7 +19,7 @@ enum class NodeKind : NodeKindUnderlying {
     if_stmt,
     switch_stmt,
     break_stmt,
-    expression_stmt,
+    expr_stmt,
     return_stmt,
     assignment_stmt,
     variable_declaration_stmt,

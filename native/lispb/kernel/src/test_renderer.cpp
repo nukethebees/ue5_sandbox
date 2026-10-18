@@ -75,7 +75,7 @@ auto reference_expression(lispb::codegen::CppIR& cpp,
     auto const constant{std::get<ConstantKind>(value)};
     auto const prefix{"std::numeric_limits<" + std::string{cpp.types.spelling(type)} + ">::"};
     if (constant == ConstantKind::negative_infinity) {
-        return cpp.raw_expression("-" + prefix + "infinity()");
+        return cpp.raw_expr("-" + prefix + "infinity()");
     }
     return cpp.call(cpp.named(prefix + (constant == ConstantKind::nan ? "quiet_NaN" : "infinity")));
 }
@@ -134,18 +134,17 @@ void append_case(lispb::codegen::CppIR& cpp,
 
     auto const function{cpp.named(document.text(document.emissions.cpp_namespace(emission)) + "::" +
                                   document.text(document.variants.name(expanded.variant(id))))};
-    body.push_back(cpp.expression_statement(cpp.call(function, test_arguments(cpp, document, id))));
+    body.push_back(cpp.expr_stmt(cpp.call(function, test_arguments(cpp, document, id))));
 
     auto const index{cpp.named("i")};
     auto const actual{cpp.subscript(cpp.named(destination), index)};
     auto const expected{cpp.subscript(cpp.named("expected"), index)};
-    auto const check{
-        cpp.expression_statement(cpp.call(cpp.named("expect_value"), {actual, expected}))};
-    body.push_back(cpp.for_statement(
-        cpp.variable("std::size_t", "i"),
-        cpp.binary(lispb::codegen::BinaryOperator::less, index, cpp.named("Count")),
-        cpp.unary(lispb::codegen::UnaryOperator::preincrement, index),
-        cpp.block({check})));
+    auto const check{cpp.expr_stmt(cpp.call(cpp.named("expect_value"), {actual, expected}))};
+    body.push_back(
+        cpp.for_stmt(cpp.variable("std::size_t", "i"),
+                     cpp.binary(lispb::codegen::BinaryOperator::less, index, cpp.named("Count")),
+                     cpp.unary(lispb::codegen::UnaryOperator::preincrement, index),
+                     cpp.block({check})));
 
     output.push_back(cpp.raw("for (std::size_t const Count : {0, 1, 7, 8, 9, 31})"));
     output.push_back(cpp.block(body));
@@ -179,8 +178,8 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
             {cpp.type_template_parameter(cpp.strings.intern("T")),
              cpp.type_template_parameter(cpp.strings.intern("Values"), {}, true)}));
     cpp.set_function_parameters(make_array, {cpp.parameter("Values...", "values")});
-    cpp.set_function_body(
-        make_array, {cpp.return_statement(cpp.raw_expression("{static_cast<T>(values)...}"))});
+    cpp.set_function_body(make_array,
+                          {cpp.return_stmt(cpp.raw_expr("{static_cast<T>(values)...}"))});
     cpp.function_flags(make_array).set_is_constexpr(true);
     cpp.function_flags(make_array).set_define_in_header(true);
     auto const expect_value{cpp.function("expect_value", "void")};

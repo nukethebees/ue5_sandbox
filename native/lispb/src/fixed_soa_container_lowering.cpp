@@ -582,9 +582,8 @@ auto fixed_container_set_nodes(LoweringContext& context,
         for (auto const parameter : ir.function_parameters(setter)) {
             arguments.emplace_back(ir.strings.view(ir.parameter_name(parameter)));
         }
-        ir.set_function_body(setter,
-                             {ir.expression_statement(ir.raw_expression(
-                                 "get_view().set(" + join(arguments, ", ") + ")"))});
+        ir.set_function_body(
+            setter, {ir.expr_stmt(ir.raw_expr("get_view().set(" + join(arguments, ", ") + ")"))});
         switch (ir.function_receiver(setter)) {
             case FunctionReceiver::const_:
                 ir.set_function_receiver(setter, FunctionReceiver::unqualified);
@@ -608,10 +607,10 @@ auto fixed_container_set_nodes(LoweringContext& context,
                 created_function,
                 {ir.parameter("int32 const", "i"),
                  ir.parameter(qualify(ir, equivalent_set_type, " const"), "value")});
-            ir.set_function_body(created_function,
-                                 {ir.expression_statement(
-                                     ir.call(ir.member_access(ir.call(ir.named("get_view")), "set"),
-                                             {ir.named("i"), ir.named("value")}))});
+            ir.set_function_body(
+                created_function,
+                {ir.expr_stmt(ir.call(ir.member_access(ir.call(ir.named("get_view")), "set"),
+                                      {ir.named("i"), ir.named("value")}))});
             ir.function_flags(created_function).set_is_inline(true);
             ir.function_flags(created_function).set_define_in_header(true);
             ir.function_formatting(created_function) = compact_function_formatting();

@@ -139,7 +139,7 @@ auto lower_expression(lispb::codegen::CppIR& cpp,
             if (document.expressions.constant(expression) == ConstantKind::infinity) {
                 return infinity;
             }
-            return cpp.raw_expression("(-" + prefix + "infinity())");
+            return cpp.raw_expr("(-" + prefix + "infinity())");
         }
         case ExpressionKind::binary: {
             lispb::codegen::BinaryOperator operation{};
@@ -213,8 +213,7 @@ auto raw_body(lispb::codegen::CppIR& cpp,
     auto const condition{
         cpp.binary(lispb::codegen::BinaryOperator::less, index, cpp.named("count"))};
     auto const increment{cpp.unary(lispb::codegen::UnaryOperator::preincrement, index)};
-    return {
-        cpp.for_statement(initializer, condition, increment, cpp.block(std::move(assignments)))};
+    return {cpp.for_stmt(initializer, condition, increment, cpp.block(std::move(assignments)))};
 }
 
 auto member_call(lispb::codegen::CppIR& cpp,
@@ -252,11 +251,10 @@ auto checked_condition(lispb::codegen::CppIR& cpp,
                        bool const standard,
                        std::string_view const message) -> lispb::codegen::NodeId {
     if (standard) {
-        return cpp.expression_statement(
-            cpp.call(cpp.named(detail_namespace + "::require"), {condition}));
+        return cpp.expr_stmt(cpp.call(cpp.named(detail_namespace + "::require"), {condition}));
     }
     auto const text{cpp.call(cpp.named("TEXT"), {cpp.string_literal(message)})};
-    return cpp.expression_statement(cpp.call(cpp.named("checkf"), {condition, text}));
+    return cpp.expr_stmt(cpp.call(cpp.named("checkf"), {condition, text}));
 }
 
 auto overlap_check(lispb::codegen::CppIR& cpp,
@@ -310,7 +308,7 @@ auto public_body(lispb::codegen::CppIR& cpp,
                                     : cpp.named(name));
         }
         auto const function{cpp.named(document.variants.name(expanded.variant(id)))};
-        return {cpp.expression_statement(cpp.call(function, arguments))};
+        return {cpp.expr_stmt(cpp.call(function, arguments))};
     }
 
     auto const source{count_source(document, id)};
@@ -357,8 +355,8 @@ auto public_body(lispb::codegen::CppIR& cpp,
         }
     }
     auto const name{(standard ? detail_namespace + "::" : "") + raw_name(document, id)};
-    output.push_back(cpp.expression_statement(
-        cpp.call(cpp.named(name), raw_arguments(cpp, document, id, standard))));
+    output.push_back(
+        cpp.expr_stmt(cpp.call(cpp.named(name), raw_arguments(cpp, document, id, standard))));
     return output;
 }
 

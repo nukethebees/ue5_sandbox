@@ -158,8 +158,7 @@ auto column_apply_arrays_function(CppIR& ir, std::vector<std::string> const& col
     auto const created_function{ir.function("apply_arrays", "auto")};
     ir.set_function_parameters(
         created_function, {ir.parameter("this auto&&", "self"), ir.parameter("TFunc&&", "func")});
-    ir.set_function_body(created_function,
-                         {ir.return_statement(call_array_callback(ir, arguments))});
+    ir.set_function_body(created_function, {ir.return_stmt(call_array_callback(ir, arguments))});
     ir.set_function_return_type(
         created_function, ir.types.intern("decltype(auto)"), ReturnSyntax::trailing);
     ir.function_flags(created_function).set_is_inline(true);
@@ -183,8 +182,7 @@ auto column_apply_array_pairs_function(CppIR& ir, std::vector<std::string> const
                                {ir.parameter("this Self&&", "self"),
                                 ir.parameter("Other&&", "other"),
                                 ir.parameter("TFunc&&", "func")});
-    ir.set_function_body(created_function,
-                         {ir.return_statement(call_array_callback(ir, arguments))});
+    ir.set_function_body(created_function, {ir.return_stmt(call_array_callback(ir, arguments))});
     ir.set_function_return_type(
         created_function, ir.types.intern("decltype(auto)"), ReturnSyntax::trailing);
     ir.function_flags(created_function).set_is_inline(true);
@@ -269,7 +267,7 @@ auto lower_schema_function(LoweringContext& context,
         ir.set_function_template(created_function, ir.raw_template_declaration(*parameters));
     }
     if (auto const constraint{declarations.functions.requires_clause[row]}) {
-        ir.set_function_requires_clause(created_function, ir.raw_expression(*constraint));
+        ir.set_function_requires_clause(created_function, ir.raw_expr(*constraint));
     }
     return created_function;
 }

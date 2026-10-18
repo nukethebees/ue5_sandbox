@@ -51,8 +51,7 @@ auto group_getter(LoweringContext& context, StaticTableGroupId group) -> NodeId 
         {ir.parameter(
             ir.types.intern("int32 const", {ir.types.dependency("int32 const", "CoreMinimal.h")}),
             "index")});
-    ir.set_function_body(created_function,
-                         {ir.return_statement(ir.init_list(arguments, result_type))});
+    ir.set_function_body(created_function, {ir.return_stmt(ir.init_list(arguments, result_type))});
     ir.set_function_return_type(created_function, result_type, ReturnSyntax::trailing);
     ir.set_function_receiver(created_function, FunctionReceiver::const_);
     ir.function_flags(created_function).set_is_inline(true);
@@ -87,7 +86,7 @@ auto table_node(LoweringContext& context, DeclarationHandle table) -> NodeId {
 
     children.add(ir.header_function([&] {
         auto const created_function{ir.function("num", "auto")};
-        ir.set_function_body(created_function, {ir.return_statement(ir.named("num_rows"))});
+        ir.set_function_body(created_function, {ir.return_stmt(ir.named("num_rows"))});
         ir.set_function_return_type(created_function, int32_type, ReturnSyntax::trailing);
         ir.set_function_noexcept(created_function);
         ir.set_function_receiver(created_function, FunctionReceiver::static_);

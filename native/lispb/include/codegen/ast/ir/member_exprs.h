@@ -8,7 +8,7 @@
 
 namespace lispb::codegen::ir {
 
-struct MemberExpressions {
+struct MemberExprs {
     std::vector<Expr> object;
     std::vector<StringId> member;
     std::vector<std::uint8_t> through_pointer;

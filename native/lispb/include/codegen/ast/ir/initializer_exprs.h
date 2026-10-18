@@ -8,7 +8,7 @@
 
 namespace lispb::codegen::ir {
 
-struct InitializerExpressions {
+struct InitializerExprs {
     std::vector<std::optional<CppTypeId>> type;
     std::vector<Range> elements;
 };

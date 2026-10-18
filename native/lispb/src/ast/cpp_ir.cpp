@@ -45,13 +45,13 @@ auto CppIR::save_nodes(std::span<NodeId const> values) -> ir::Range {
 auto CppIR::nodes(ir::Range range) const -> std::span<NodeId const> {
     return std::span{children_}.subspan(range.begin, range.count);
 }
-auto CppIR::save_expressions(std::span<Expr const> values) -> ir::Range {
+auto CppIR::save_exprs(std::span<Expr const> values) -> ir::Range {
     ir::Range const range{static_cast<std::uint32_t>(arguments_.size()),
                           static_cast<std::uint32_t>(values.size())};
     arguments_.insert(arguments_.end(), values.begin(), values.end());
     return range;
 }
-auto CppIR::expressions(ir::Range range) const -> std::span<Expr const> {
+auto CppIR::exprs(ir::Range range) const -> std::span<Expr const> {
     return std::span{arguments_}.subspan(range.begin, range.count);
 }
 auto CppIR::save_types(std::span<CppTypeId const> values) -> ir::Range {
@@ -105,7 +105,7 @@ auto CppIR::block(std::span<NodeId const> children) -> BlockId {
     return BlockId{ir_detail::node(NodeKind::block, index).value};
 }
 
-auto CppIR::if_statement(Expr condition, BlockId then_block, std::optional<BlockId> else_block)
+auto CppIR::if_stmt(Expr condition, BlockId then_block, std::optional<BlockId> else_block)
     -> NodeId {
     auto const index{if_stmt_nodes_.condition.size()};
     if_stmt_nodes_.condition.push_back(condition);
@@ -122,12 +122,10 @@ auto CppIR::switch_case(std::optional<Expr> label, BlockId body) -> SwitchCaseId
     return result;
 }
 
-auto CppIR::for_statement(NodeId initializer, Expr condition, Expr increment, BlockId body)
-    -> NodeId {
-    assert(ioj::is_any(initializer.kind(),
-                       {NodeKind::variable_declaration_stmt,
-                        NodeKind::assignment_stmt,
-                        NodeKind::expression_stmt}));
+auto CppIR::for_stmt(NodeId initializer, Expr condition, Expr increment, BlockId body) -> NodeId {
+    assert(ioj::is_any(
+        initializer.kind(),
+        {NodeKind::variable_declaration_stmt, NodeKind::assignment_stmt, NodeKind::expr_stmt}));
     auto const index{for_stmt_nodes_.initializer.size()};
     for_stmt_nodes_.initializer.push_back(initializer);
     for_stmt_nodes_.condition.push_back(condition);
@@ -136,7 +134,7 @@ auto CppIR::for_statement(NodeId initializer, Expr condition, Expr increment, Bl
     return ir_detail::node(NodeKind::for_stmt, index);
 }
 
-auto CppIR::switch_statement(Expr condition, std::span<SwitchCaseId const> cases) -> NodeId {
+auto CppIR::switch_stmt(Expr condition, std::span<SwitchCaseId const> cases) -> NodeId {
     auto const index{switch_stmt_nodes_.condition.size()};
     switch_stmt_nodes_.condition.push_back(condition);
     switch_stmt_nodes_.cases.push_back(
@@ -146,22 +144,21 @@ auto CppIR::switch_statement(Expr condition, std::span<SwitchCaseId const> cases
     return ir_detail::node(NodeKind::switch_stmt, index);
 }
 
-auto CppIR::break_statement() -> NodeId {
+auto CppIR::break_stmt() -> NodeId {
     return ir_detail::node(NodeKind::break_stmt, 0);
 }
 
-auto CppIR::expression_statement(Expr expression, std::span<TypeDependencyId const> dependencies)
-    -> NodeId {
-    auto const index{expression_stmt_nodes_.expression.size()};
-    expression_stmt_nodes_.expression.push_back(expression);
-    expression_stmt_nodes_.dependencies.push_back(save_dependencies(dependencies));
-    return ir_detail::node(NodeKind::expression_stmt, index);
+auto CppIR::expr_stmt(Expr expr, std::span<TypeDependencyId const> dependencies) -> NodeId {
+    auto const index{expr_stmt_nodes_.expr.size()};
+    expr_stmt_nodes_.expr.push_back(expr);
+    expr_stmt_nodes_.dependencies.push_back(save_dependencies(dependencies));
+    return ir_detail::node(NodeKind::expr_stmt, index);
 }
 
-auto CppIR::return_statement(std::optional<Expr> expression,
-                             std::span<TypeDependencyId const> dependencies) -> NodeId {
-    auto const index{return_stmt_nodes_.expression.size()};
-    return_stmt_nodes_.expression.push_back(expression);
+auto CppIR::return_stmt(std::optional<Expr> expr, std::span<TypeDependencyId const> dependencies)
+    -> NodeId {
+    auto const index{return_stmt_nodes_.expr.size()};
+    return_stmt_nodes_.expr.push_back(expr);
     return_stmt_nodes_.dependencies.push_back(save_dependencies(dependencies));
     return ir_detail::node(NodeKind::return_stmt, index);
 }
@@ -623,10 +620,10 @@ void CppIR::clear() {
     value_template_parameters_.pack.clear();
     templates_.parameters.clear();
     templates_.authored_text.clear();
-    template_id_expressions_.callee.clear();
-    template_id_expressions_.arguments.clear();
-    type_reference_expressions_.type.clear();
-    parenthesized_expressions_.operand.clear();
+    template_id_exprs_.callee.clear();
+    template_id_exprs_.arguments.clear();
+    type_reference_exprs_.type.clear();
+    parenthesized_exprs_.operand.clear();
 
     parameter_references_.clear();
     initializer_references_.clear();
@@ -649,9 +646,9 @@ void CppIR::clear() {
     if_stmt_nodes_.else_children.clear();
     switch_stmt_nodes_.condition.clear();
     switch_stmt_nodes_.cases.clear();
-    expression_stmt_nodes_.expression.clear();
-    expression_stmt_nodes_.dependencies.clear();
-    return_stmt_nodes_.expression.clear();
+    expr_stmt_nodes_.expr.clear();
+    expr_stmt_nodes_.dependencies.clear();
+    return_stmt_nodes_.expr.clear();
     return_stmt_nodes_.dependencies.clear();
     assignment_stmt_nodes_.target.clear();
     assignment_stmt_nodes_.value.clear();
@@ -709,30 +706,30 @@ void CppIR::clear() {
     struct_nodes_.dependencies.clear();
     namespace_nodes_.name.clear();
     namespace_nodes_.children.clear();
-    named_expressions_.spelling.clear();
-    named_expressions_.dependencies.clear();
-    literal_expressions_.spelling.clear();
-    string_literal_expressions_.clear();
-    call_expressions_.callee.clear();
-    call_expressions_.arguments.clear();
-    member_expressions_.object.clear();
-    member_expressions_.member.clear();
-    member_expressions_.through_pointer.clear();
-    subscript_expressions_.object.clear();
-    subscript_expressions_.index.clear();
-    binary_expressions_.operation.clear();
-    binary_expressions_.left.clear();
-    binary_expressions_.right.clear();
-    binary_expressions_.line_break_after.clear();
-    unary_expressions_.operation.clear();
-    unary_expressions_.operand.clear();
-    cast_expressions_.type.clear();
-    cast_expressions_.operand.clear();
-    sizeof_expressions_.type.clear();
-    initializer_expressions_.type.clear();
-    initializer_expressions_.elements.clear();
-    raw_expressions_.text.clear();
-    raw_expressions_.dependencies.clear();
+    named_exprs_.spelling.clear();
+    named_exprs_.dependencies.clear();
+    literal_exprs_.spelling.clear();
+    string_literal_exprs_.clear();
+    call_exprs_.callee.clear();
+    call_exprs_.arguments.clear();
+    member_exprs_.object.clear();
+    member_exprs_.member.clear();
+    member_exprs_.through_pointer.clear();
+    subscript_exprs_.object.clear();
+    subscript_exprs_.index.clear();
+    binary_exprs_.operation.clear();
+    binary_exprs_.left.clear();
+    binary_exprs_.right.clear();
+    binary_exprs_.line_break_after.clear();
+    unary_exprs_.operation.clear();
+    unary_exprs_.operand.clear();
+    cast_exprs_.type.clear();
+    cast_exprs_.operand.clear();
+    sizeof_exprs_.type.clear();
+    initializer_exprs_.type.clear();
+    initializer_exprs_.elements.clear();
+    raw_exprs_.text.clear();
+    raw_exprs_.dependencies.clear();
     parameters_.type.clear();
     parameters_.name.clear();
     parameters_.default_value.clear();

@@ -12,7 +12,7 @@
     (value if_stmt)
     (value switch_stmt)
     (value break_stmt)
-    (value expression_stmt)
+    (value expr_stmt)
     (value return_stmt)
     (value assignment_stmt)
     (value variable_declaration_stmt)

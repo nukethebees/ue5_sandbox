@@ -92,7 +92,7 @@ auto CppIR::signature(std::uint32_t index, bool record_scope) const -> std::stri
         output += strings.view(*owner);
         output += "::";
     }
-    append_expression(output, functions_.name[id]);
+    append_expr(output, functions_.name[id]);
     output += '(';
     auto const parameters{functions_.parameters[id]};
     auto const parameter_end{parameters.begin + parameters.count};
@@ -142,7 +142,7 @@ auto CppIR::signature(std::uint32_t index, bool record_scope) const -> std::stri
             break;
         case FunctionExceptionKind::conditional:
             output += " noexcept(";
-            append_expression(output, conditional_noexcept_[exception.index()]);
+            append_expr(output, conditional_noexcept_[exception.index()]);
             output += ')';
             break;
     }
@@ -230,10 +230,10 @@ void CppIR::append_node(std::string& output, NodeId node, RenderContext const& c
     };
     auto type = [&](CppTypeId id) { output += types.spelling(id); };
     auto text = [&](StringId id) { output += strings.view(id); };
-    auto expr = [&](Expr id) { append_expression(output, id); };
+    auto expr = [&](Expr id) { append_expr(output, id); };
     auto initialize = [&](Expr value) {
         auto const direct_list{value.kind() == ExprKind::initializer_list &&
-                               !initializer_expressions_.type[value.index()]};
+                               !initializer_exprs_.type[value.index()]};
         if (!direct_list) {
             output += '{';
         }
@@ -329,15 +329,15 @@ void CppIR::append_node(std::string& output, NodeId node, RenderContext const& c
         case NodeKind::break_stmt:
             write("break;");
             break;
-        case NodeKind::expression_stmt:
+        case NodeKind::expr_stmt:
             indent();
-            expr(expression_stmt_nodes_.expression[i]);
+            expr(expr_stmt_nodes_.expr[i]);
             output += ';';
             break;
         case NodeKind::return_stmt:
             indent();
             output += "return";
-            if (auto const value{return_stmt_nodes_.expression[i]}) {
+            if (auto const value{return_stmt_nodes_.expr[i]}) {
                 output += ' ';
                 expr(*value);
             }
@@ -722,13 +722,13 @@ void CppIR::collect_dependencies(NodeId node, std::vector<TypeDependencyId>& res
         case NodeKind::raw_lines:
             append(dependency_list(raw_lines_nodes_.dependencies[i]));
             break;
-        case NodeKind::expression_stmt:
-            append(dependency_list(expression_stmt_nodes_.dependencies[i]));
-            collect_dependencies(expression_stmt_nodes_.expression[i], result);
+        case NodeKind::expr_stmt:
+            append(dependency_list(expr_stmt_nodes_.dependencies[i]));
+            collect_dependencies(expr_stmt_nodes_.expr[i], result);
             break;
         case NodeKind::return_stmt:
             append(dependency_list(return_stmt_nodes_.dependencies[i]));
-            if (auto const value{return_stmt_nodes_.expression[i]}) {
+            if (auto const value{return_stmt_nodes_.expr[i]}) {
                 collect_dependencies(*value, result);
             }
             break;

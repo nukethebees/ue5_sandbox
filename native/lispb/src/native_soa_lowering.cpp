@@ -111,7 +111,7 @@ auto lower_vector_storage_operations(LoweringContext& context, DeclarationHandle
         ir.set_function_parameters(function, parameters);
         ir.set_function_body(
             function,
-            {ir.expression_statement(
+            {ir.expr_stmt(
                 ir.call(ir.named("ioj::native_soa::vector_storage_ops::" + name), arguments))});
         ir.function_flags(function).set_define_in_header(true);
         ir.function_formatting(function).body_layout = FunctionBodyLayout::compact;
@@ -122,10 +122,10 @@ auto lower_vector_storage_operations(LoweringContext& context, DeclarationHandle
     auto const permutation{ir.function("apply_permutation", void_type)};
     ir.set_function_parameters(permutation,
                                {ir.parameter("std::span<std::int32_t> const", "indices")});
-    ir.set_function_body(permutation,
-                         {ir.expression_statement(ir.call(
-                             ir.named("ioj::native_soa::vector_storage_ops::apply_permutation"),
-                             {self, ir.named("indices")}))});
+    ir.set_function_body(
+        permutation,
+        {ir.expr_stmt(ir.call(ir.named("ioj::native_soa::vector_storage_ops::apply_permutation"),
+                              {self, ir.named("indices")}))});
     ir.function_flags(permutation).set_define_in_header(true);
     ir.function_formatting(permutation).body_layout = FunctionBodyLayout::compact;
     functions.push_back(ir.header_function(permutation));
@@ -449,8 +449,8 @@ auto is_empty() const noexcept -> bool {{ return num() == 0; }}
                   first_count);
             Nodes column_calls;
             for (auto const leaf : layout_leaves) {
-                column_calls.push_back(ir.expression_statement(
-                    ir.call(ir.named("fn"), {column_expression(leaf, true)})));
+                column_calls.push_back(
+                    ir.expr_stmt(ir.call(ir.named("fn"), {column_expression(leaf, true)})));
             }
             each_column(column_calls, true);
             write(
@@ -571,7 +571,7 @@ auto is_empty() const noexcept -> bool {{ return num() == 0; }}
     Nodes column_calls;
     for (auto const leaf : layout_leaves) {
         column_calls.push_back(
-            ir.expression_statement(ir.call(ir.named("fn"), {column_expression(leaf, false)})));
+            ir.expr_stmt(ir.call(ir.named("fn"), {column_expression(leaf, false)})));
     }
     each_column(column_calls, false);
     each_column(column_calls, true);
@@ -593,10 +593,10 @@ auto is_empty() const noexcept -> bool {{ return num() == 0; }}
                 {ir.named("compare")})};
     ir.set_function_body(
         sort,
-        {ir.expression_statement(ir.call(ir.named("ioj::native_soa::vector_storage_ops::sort"),
-                                         {ir.unary(UnaryOperator::dereference, ir.named("this")),
-                                          forward_compare,
-                                          ir.named("scratch_indices")}))});
+        {ir.expr_stmt(ir.call(ir.named("ioj::native_soa::vector_storage_ops::sort"),
+                              {ir.unary(UnaryOperator::dereference, ir.named("this")),
+                               forward_compare,
+                               ir.named("scratch_indices")}))});
     ir.function_flags(sort).set_define_in_header(true);
     ir.function_formatting(sort).template_placement = FunctionTemplatePlacement::same_line;
     ir.function_formatting(sort).body_layout = FunctionBodyLayout::compact;
@@ -745,7 +745,7 @@ auto right(size_type const count) const -> ConstView { assert(count <= num()); r
                     ir.assignment(ir.subscript(destination, ir.named("destination_index")),
                                   ir.subscript(source_column, ir.named("source_index"))));
             } else {
-                copy_body.push_back(ir.expression_statement(
+                copy_body.push_back(ir.expr_stmt(
                     ir.call(ir.member_access(destination, "copy_element"),
                             {ir.named("dst_index"), source_column, ir.named("src_index")})));
             }
@@ -763,17 +763,16 @@ auto right(size_type const count) const -> ConstView { assert(count <= num()); r
             copy_elements,
             {destination_index, other, source_index, ir.parameter(index_type, "count")});
         auto const index{ir.named("i")};
-        auto const copy_call{ir.expression_statement(
-            ir.call(ir.named("copy_element"),
-                    {ir.binary(BinaryOperator::add, ir.named("dst_index"), index),
-                     ir.named("other"),
-                     ir.binary(BinaryOperator::add, ir.named("src_index"), index)}))};
-        ir.set_function_body(
-            copy_elements,
-            {ir.for_statement(ir.variable("size_type", "i"),
-                              ir.binary(BinaryOperator::less, index, ir.named("count")),
-                              ir.unary(UnaryOperator::preincrement, index),
-                              ir.block({copy_call}))});
+        auto const copy_call{
+            ir.expr_stmt(ir.call(ir.named("copy_element"),
+                                 {ir.binary(BinaryOperator::add, ir.named("dst_index"), index),
+                                  ir.named("other"),
+                                  ir.binary(BinaryOperator::add, ir.named("src_index"), index)}))};
+        ir.set_function_body(copy_elements,
+                             {ir.for_stmt(ir.variable("size_type", "i"),
+                                          ir.binary(BinaryOperator::less, index, ir.named("count")),
+                                          ir.unary(UnaryOperator::preincrement, index),
+                                          ir.block({copy_call}))});
         ir.function_flags(copy_elements).set_define_in_header(true);
         ir.function_formatting(copy_elements).template_placement =
             FunctionTemplatePlacement::same_line;

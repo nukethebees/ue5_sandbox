@@ -3,7 +3,7 @@
 
 #include <vector>
 namespace lispb::codegen::ir {
-struct TypeReferenceExpressions {
+struct TypeReferenceExprs {
     std::vector<CppTypeId> type;
 };
 }

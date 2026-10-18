@@ -97,7 +97,7 @@ void CppIR::append_template(std::string& output, TemplateId declaration) const {
                     }
                     if (auto const value{value_template_parameters_.default_value[index]}) {
                         output += " = ";
-                        append_expression(output, value);
+                        append_expr(output, value);
                     }
                     break;
                 }

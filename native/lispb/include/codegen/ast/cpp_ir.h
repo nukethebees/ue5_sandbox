@@ -14,7 +14,7 @@
 #include <codegen/ast/indices.h>
 #include <codegen/ast/ir/access_specifiers.h>
 #include <codegen/ast/ir/assignments.h>
-#include <codegen/ast/ir/binary_expressions.h>
+#include <codegen/ast/ir/binary_exprs.h>
 #include <codegen/ast/ir/block_comments.h>
 #include <codegen/ast/ir/blocks.h>
 #include <codegen/ast/ir/calls.h>
@@ -22,44 +22,44 @@
 #include <codegen/ast/ir/constexpr_members.h>
 #include <codegen/ast/ir/enumerators.h>
 #include <codegen/ast/ir/enums.h>
-#include <codegen/ast/ir/expression_statements.h>
-#include <codegen/ast/ir/for_statements.h>
+#include <codegen/ast/ir/expr_stmts.h>
+#include <codegen/ast/ir/for_stmts.h>
 #include <codegen/ast/ir/forward_declarations.h>
 #include <codegen/ast/ir/friend_declarations.h>
 #include <codegen/ast/ir/function_bodies.h>
 #include <codegen/ast/ir/function_nodes.h>
 #include <codegen/ast/ir/functions.h>
-#include <codegen/ast/ir/if_statements.h>
+#include <codegen/ast/ir/if_stmts.h>
 #include <codegen/ast/ir/includes.h>
-#include <codegen/ast/ir/initializer_expressions.h>
+#include <codegen/ast/ir/initializer_exprs.h>
 #include <codegen/ast/ir/instance_members.h>
 #include <codegen/ast/ir/line_breaks.h>
 #include <codegen/ast/ir/line_comments.h>
 #include <codegen/ast/ir/line_directives.h>
 #include <codegen/ast/ir/literals.h>
-#include <codegen/ast/ir/member_expressions.h>
+#include <codegen/ast/ir/member_exprs.h>
 #include <codegen/ast/ir/member_initializers.h>
 #include <codegen/ast/ir/names.h>
 #include <codegen/ast/ir/namespaces.h>
 #include <codegen/ast/ir/parameters.h>
-#include <codegen/ast/ir/parenthesized_expressions.h>
+#include <codegen/ast/ir/parenthesized_exprs.h>
 #include <codegen/ast/ir/range.h>
-#include <codegen/ast/ir/raw_expressions.h>
+#include <codegen/ast/ir/raw_exprs.h>
 #include <codegen/ast/ir/raw_lines.h>
 #include <codegen/ast/ir/raw_nodes.h>
 #include <codegen/ast/ir/records.h>
 #include <codegen/ast/ir/returns.h>
-#include <codegen/ast/ir/sizeof_expressions.h>
+#include <codegen/ast/ir/sizeof_exprs.h>
 #include <codegen/ast/ir/static_assertions.h>
 #include <codegen/ast/ir/static_members.h>
 #include <codegen/ast/ir/subscripts.h>
 #include <codegen/ast/ir/switch_cases.h>
 #include <codegen/ast/ir/switches.h>
-#include <codegen/ast/ir/template_id_expressions.h>
+#include <codegen/ast/ir/template_id_exprs.h>
 #include <codegen/ast/ir/templates.h>
-#include <codegen/ast/ir/type_reference_expressions.h>
+#include <codegen/ast/ir/type_reference_exprs.h>
 #include <codegen/ast/ir/type_template_parameters.h>
-#include <codegen/ast/ir/unary_expressions.h>
+#include <codegen/ast/ir/unary_exprs.h>
 #include <codegen/ast/ir/using_declarations.h>
 #include <codegen/ast/ir/value_template_parameters.h>
 #include <codegen/ast/ir/variables.h>
@@ -116,27 +116,25 @@ class CppIR {
     auto block(std::initializer_list<NodeId> children) -> BlockId {
         return block(std::span<NodeId const>{children});
     }
-    auto if_statement(Expr condition, BlockId then_block, std::optional<BlockId> else_block = {})
+    auto if_stmt(Expr condition, BlockId then_block, std::optional<BlockId> else_block = {})
         -> NodeId;
     // Require a variable declaration, assignment or expression statement as the initializer.
-    auto for_statement(NodeId initializer, Expr condition, Expr increment, BlockId body) -> NodeId;
+    auto for_stmt(NodeId initializer, Expr condition, Expr increment, BlockId body) -> NodeId;
     auto switch_case(std::optional<Expr> label, BlockId body) -> SwitchCaseId;
-    auto switch_statement(Expr condition, std::span<SwitchCaseId const> cases) -> NodeId;
-    auto switch_statement(Expr condition, std::initializer_list<SwitchCaseId> cases) -> NodeId {
-        return switch_statement(condition, std::span<SwitchCaseId const>{cases});
+    auto switch_stmt(Expr condition, std::span<SwitchCaseId const> cases) -> NodeId;
+    auto switch_stmt(Expr condition, std::initializer_list<SwitchCaseId> cases) -> NodeId {
+        return switch_stmt(condition, std::span<SwitchCaseId const>{cases});
     }
-    auto break_statement() -> NodeId;
-    auto expression_statement(Expr expression, std::span<TypeDependencyId const> dependencies = {})
-        -> NodeId;
-    auto expression_statement(Expr expression, std::initializer_list<TypeDependencyId> dependencies)
+    auto break_stmt() -> NodeId;
+    auto expr_stmt(Expr expr, std::span<TypeDependencyId const> dependencies = {}) -> NodeId;
+    auto expr_stmt(Expr expr, std::initializer_list<TypeDependencyId> dependencies) -> NodeId {
+        return expr_stmt(expr, std::span<TypeDependencyId const>{dependencies});
+    }
+    auto return_stmt(std::optional<Expr> expr = {},
+                     std::span<TypeDependencyId const> dependencies = {}) -> NodeId;
+    auto return_stmt(std::optional<Expr> expr, std::initializer_list<TypeDependencyId> dependencies)
         -> NodeId {
-        return expression_statement(expression, std::span<TypeDependencyId const>{dependencies});
-    }
-    auto return_statement(std::optional<Expr> expression = {},
-                          std::span<TypeDependencyId const> dependencies = {}) -> NodeId;
-    auto return_statement(std::optional<Expr> expression,
-                          std::initializer_list<TypeDependencyId> dependencies) -> NodeId {
-        return return_statement(expression, std::span<TypeDependencyId const>{dependencies});
+        return return_stmt(expr, std::span<TypeDependencyId const>{dependencies});
     }
     auto assignment(Expr target, Expr value, std::span<TypeDependencyId const> dependencies = {})
         -> NodeId;
@@ -339,13 +337,12 @@ class CppIR {
     auto literal(StringId value) -> Expr;
     auto string_literal(std::string_view value) -> Expr;
     auto string_literal(StringId value) -> Expr;
-    auto raw_expression(StringId value, std::span<TypeDependencyId const> dependencies = {})
+    auto raw_expr(StringId value, std::span<TypeDependencyId const> dependencies = {}) -> Expr;
+    auto raw_expr(std::string_view value, std::span<TypeDependencyId const> dependencies = {})
         -> Expr;
-    auto raw_expression(std::string_view value, std::span<TypeDependencyId const> dependencies = {})
-        -> Expr;
-    auto raw_expression(std::string_view value,
-                        std::initializer_list<TypeDependencyId> dependencies) -> Expr {
-        return raw_expression(value, std::span<TypeDependencyId const>{dependencies});
+    auto raw_expr(std::string_view value, std::initializer_list<TypeDependencyId> dependencies)
+        -> Expr {
+        return raw_expr(value, std::span<TypeDependencyId const>{dependencies});
     }
     auto call(Expr callee, std::span<Expr const> arguments = {}) -> Expr;
     auto call(Expr callee, std::initializer_list<Expr> arguments) -> Expr {
@@ -360,7 +357,7 @@ class CppIR {
     auto binary(BinaryOperator operation, Expr left, Expr right, bool line_break_after = false)
         -> Expr;
     auto type_reference(CppTypeId type) -> Expr;
-    auto parenthesized(Expr expression) -> Expr;
+    auto parenthesized(Expr expr) -> Expr;
     auto template_id(Expr callee, std::span<Expr const> arguments) -> Expr;
     auto template_id(Expr callee, std::initializer_list<Expr> arguments) -> Expr {
         return template_id(callee, std::span<Expr const>{arguments});
@@ -372,13 +369,13 @@ class CppIR {
         -> Expr {
         return init_list(std::span<Expr const>{elements}, type);
     }
-    auto render(Expr expression) const -> std::string;
+    auto render(Expr expr) const -> std::string;
     auto render(NodeId node, RenderContext const& context = {}) const -> std::string;
     auto render(CppFileId file) const -> std::string;
     auto render_nodes(std::span<NodeId const> nodes,
                       RenderContext const& context,
                       int newlines) const -> std::string;
-    void collect_dependencies(Expr expression, std::vector<TypeDependencyId>& result) const;
+    void collect_dependencies(Expr expr, std::vector<TypeDependencyId>& result) const;
     void collect_dependencies(NodeId node, std::vector<TypeDependencyId>& result) const;
     void for_each_child(NodeId node, std::function<void(NodeId)> const& visit) const;
   private:
@@ -389,27 +386,24 @@ class CppIR {
     ir::ValueTemplateParameters value_template_parameters_;
     ir::Templates templates_;
     std::vector<TemplateParameterId> template_parameter_references_;
-    ir::TemplateIdExpressions template_id_expressions_;
-    ir::TypeReferenceExpressions type_reference_expressions_;
-    ir::ParenthesizedExpressions parenthesized_expressions_;
+    ir::TemplateIdExprs template_id_exprs_;
+    ir::TypeReferenceExprs type_reference_exprs_;
+    ir::ParenthesizedExprs parenthesized_exprs_;
     auto function_node(FunctionId function,
                        std::optional<StringId> owner,
                        bool declaration,
                        bool header,
                        std::optional<ReturnSyntax> return_syntax) -> NodeId;
     auto save_nodes(std::span<NodeId const> values) -> ir::Range;
-    auto save_expressions(std::span<Expr const> values) -> ir::Range;
+    auto save_exprs(std::span<Expr const> values) -> ir::Range;
     auto save_types(std::span<CppTypeId const> values) -> ir::Range;
     auto save_dependencies(std::span<TypeDependencyId const> values) -> ir::Range;
     auto nodes(ir::Range range) const -> std::span<NodeId const>;
-    auto expressions(ir::Range range) const -> std::span<Expr const>;
+    auto exprs(ir::Range range) const -> std::span<Expr const>;
     auto type_list(ir::Range range) const -> std::span<CppTypeId const>;
     auto dependency_list(ir::Range range) const -> std::span<TypeDependencyId const>;
-    auto expression_precedence(Expr expression) const -> int;
-    void append_expression(std::string& output,
-                           Expr expression,
-                           int minimum = 0,
-                           bool equal = false) const;
+    auto expr_precedence(Expr expr) const -> int;
+    void append_expr(std::string& output, Expr expr, int minimum = 0, bool equal = false) const;
     void append_node(std::string& output, NodeId node, RenderContext const& context) const;
     void append_nodes(std::string& output,
                       std::span<NodeId const> values,
@@ -431,10 +425,10 @@ class CppIR {
     ir::LineDirectives line_directive_nodes_;
     ir::BlockComments block_comment_nodes_;
     ir::Blocks block_nodes_;
-    ir::IfStatements if_stmt_nodes_;
-    ir::ForStatements for_stmt_nodes_;
+    ir::IfStmts if_stmt_nodes_;
+    ir::ForStmts for_stmt_nodes_;
     ir::Switches switch_stmt_nodes_;
-    ir::ExpressionStatements expression_stmt_nodes_;
+    ir::ExprStmts expr_stmt_nodes_;
     ir::Returns return_stmt_nodes_;
     ir::Assignments assignment_stmt_nodes_;
     ir::Variables variable_declaration_stmt_nodes_;
@@ -452,18 +446,18 @@ class CppIR {
     ir::Enums enum_nodes_;
     ir::Records struct_nodes_;
     ir::Namespaces namespace_nodes_;
-    ir::Names named_expressions_;
-    ir::Literals literal_expressions_;
-    std::vector<StringId> string_literal_expressions_;
-    ir::Calls call_expressions_;
-    ir::MemberExpressions member_expressions_;
-    ir::Subscripts subscript_expressions_;
-    ir::BinaryExpressions binary_expressions_;
-    ir::UnaryExpressions unary_expressions_;
-    ir::Casts cast_expressions_;
-    ir::SizeofExpressions sizeof_expressions_;
-    ir::InitializerExpressions initializer_expressions_;
-    ir::RawExpressions raw_expressions_;
+    ir::Names named_exprs_;
+    ir::Literals literal_exprs_;
+    std::vector<StringId> string_literal_exprs_;
+    ir::Calls call_exprs_;
+    ir::MemberExprs member_exprs_;
+    ir::Subscripts subscript_exprs_;
+    ir::BinaryExprs binary_exprs_;
+    ir::UnaryExprs unary_exprs_;
+    ir::Casts cast_exprs_;
+    ir::SizeofExprs sizeof_exprs_;
+    ir::InitializerExprs initializer_exprs_;
+    ir::RawExprs raw_exprs_;
     ir::Parameters parameters_;
     ir::MemberInitializers initializers_;
     ir::Enumerators enumerators_;

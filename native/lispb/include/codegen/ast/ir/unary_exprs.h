@@ -7,7 +7,7 @@
 
 namespace lispb::codegen::ir {
 
-struct UnaryExpressions {
+struct UnaryExprs {
     std::vector<UnaryOperator> operation;
     std::vector<Expr> operand;
 };

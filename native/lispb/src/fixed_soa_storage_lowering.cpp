@@ -127,7 +127,7 @@ auto fixed_construct_nodes(LoweringContext& context,
                 values.push_back(source_index);
             }
         }
-        result.add(ir.expression_statement(ir.call(ir.member_access(column, method), values)));
+        result.add(ir.expr_stmt(ir.call(ir.member_access(column, method), values)));
     }
     return result.build();
 }
@@ -187,12 +187,11 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
                                  {ir.types.dependency("MoveTemp", "Templates/UnrealTemplate.h")}),
                         {ir.subscript(other, source_index)})));
         } else {
-            copy_assign.push_back(ir.expression_statement(
-                ir.call(ir.member_access(column, "copy_assign_from_view_at"),
-                        {destination_index, source, source_index})));
-            move_assign.push_back(
-                ir.expression_statement(ir.call(ir.member_access(column, "move_assign_at"),
-                                                {destination_index, other, source_index})));
+            copy_assign.push_back(
+                ir.expr_stmt(ir.call(ir.member_access(column, "copy_assign_from_view_at"),
+                                     {destination_index, source, source_index})));
+            move_assign.push_back(ir.expr_stmt(ir.call(ir.member_access(column, "move_assign_at"),
+                                                       {destination_index, other, source_index})));
         }
     }
     Nodes destroy;
@@ -200,8 +199,8 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
         auto const row{
             resolved_store.index(fixed_member_store.member[fixed_member_store.index(*iterator)])};
         auto const column{ir.named(context.text(resolved_store.name[row]) + "_")};
-        destroy.push_back(ir.expression_statement(
-            ir.call(ir.member_access(column, "destroy_at"), {ir.named("index")})));
+        destroy.push_back(
+            ir.expr_stmt(ir.call(ir.member_access(column, "destroy_at"), {ir.named("index")})));
     }
     auto function = [&ir](std::string_view name,
                           CppTypeId return_type,
@@ -235,7 +234,7 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
             ir.types.intern("View"),
             {ir.parameter("int32 const","offset"),
                        ir.parameter("int32 const","count")},
-            Nodes{ir.return_statement(ir.init_list(mutable_views, ir.types.intern("View")))},
+            Nodes{ir.return_stmt(ir.init_list(mutable_views, ir.types.intern("View")))},
             FunctionReceiver::unqualified,
             ReturnSyntax::trailing,
             {ir.types.dependency("TArrayView", "Containers/ArrayView.h")})),
@@ -244,7 +243,7 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
             ir.types.intern("ConstView"),
             {ir.parameter("int32 const","offset"),
                        ir.parameter("int32 const","count")},
-            Nodes{ir.return_statement(ir.init_list(const_views, ir.types.intern("ConstView")))},
+            Nodes{ir.return_stmt(ir.init_list(const_views, ir.types.intern("ConstView")))},
             FunctionReceiver::const_,
             ReturnSyntax::trailing,
             {ir.types.dependency("TArrayView", "Containers/ArrayView.h")})),

@@ -314,12 +314,12 @@ auto lower_scalar(detail::LoweringContext& context, DeclarationHandle scalar)
                 auto const code_row{codes.index(code)};
                 auto const code_name{context.text(codes.name[code_row])};
                 cases.push_back(ir.switch_case(ir.named(scalar_name + '_' + code_name),
-                                               ir.block({ir.return_statement(ir.string_literal(
+                                               ir.block({ir.return_stmt(ir.string_literal(
                                                    string_id(codes.name[code_row])))})));
             }
             NodeListBuilder body{ir};
-            body.add(ir.switch_statement(ir.named("value"), cases), 2)
-                .add(ir.return_statement(ir.init_list({})));
+            body.add(ir.switch_stmt(ir.named("value"), cases), 2)
+                .add(ir.return_stmt(ir.init_list({})));
             ir.set_function_body(lookup, body.build());
             declarations.add(ir.header_function(lookup), 2);
         }

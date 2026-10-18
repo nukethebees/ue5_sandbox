@@ -101,15 +101,14 @@ TEST(Ast, RendersTypedStmts) {
     CompilerTestContext context;
     [[maybe_unused]] auto& ir{context.ir};
     [[maybe_unused]] auto& types{context.storage.cpp_types};
-    EXPECT_EQ(ir.render(ir.expression_statement(ir.raw_expression("apply(value)"))),
-              "apply(value);");
-    EXPECT_EQ(ir.render(ir.return_statement(ir.raw_expression("value"))), "return value;");
-    EXPECT_EQ(ir.render(ir.return_statement()), "return;");
-    EXPECT_EQ(ir.render(ir.assignment(ir.raw_expression("target"), ir.raw_expression("value"))),
+    EXPECT_EQ(ir.render(ir.expr_stmt(ir.raw_expr("apply(value)"))), "apply(value);");
+    EXPECT_EQ(ir.render(ir.return_stmt(ir.raw_expr("value"))), "return value;");
+    EXPECT_EQ(ir.render(ir.return_stmt()), "return;");
+    EXPECT_EQ(ir.render(ir.assignment(ir.raw_expr("target"), ir.raw_expr("value"))),
               "target = value;");
     EXPECT_EQ(ir.render(ir.variable(types.intern("auto const"),
                                     ir.strings.intern("count"),
-                                    ir.raw_expression("values.Num()"))),
+                                    ir.raw_expr("values.Num()"))),
               "auto const count{values.Num()};");
 }
 
@@ -119,21 +118,17 @@ TEST(Ast, TypedStmtsReportDependencies) {
     [[maybe_unused]] auto& types{context.storage.cpp_types};
     auto const dependency{types.dependency("FValue", "Project/Value.h")};
 
-    EXPECT_EQ(collected_dependencies(
-                  ir, ir.expression_statement(ir.raw_expression("use_value()"), {dependency})),
+    EXPECT_EQ(collected_dependencies(ir, ir.expr_stmt(ir.raw_expr("use_value()"), {dependency})),
+              std::vector<TypeDependencyId>{dependency});
+    EXPECT_EQ(collected_dependencies(ir, ir.return_stmt(ir.raw_expr("FValue{}"), {dependency})),
               std::vector<TypeDependencyId>{dependency});
     EXPECT_EQ(collected_dependencies(
-                  ir, ir.return_statement(ir.raw_expression("FValue{}"), {dependency})),
-              std::vector<TypeDependencyId>{dependency});
-    EXPECT_EQ(collected_dependencies(ir,
-                                     ir.assignment(ir.raw_expression("target"),
-                                                   ir.raw_expression("FValue{}"),
-                                                   {dependency})),
+                  ir, ir.assignment(ir.raw_expr("target"), ir.raw_expr("FValue{}"), {dependency})),
               std::vector<TypeDependencyId>{dependency});
     EXPECT_EQ(collected_dependencies(ir,
                                      ir.variable(types.intern("FValue", {dependency}),
                                                  ir.strings.intern("value"),
-                                                 ir.raw_expression("make_value()"))),
+                                                 ir.raw_expr("make_value()"))),
               std::vector<TypeDependencyId>{dependency});
 }
 
@@ -326,9 +321,9 @@ TEST(Ast, RendersClassInheritanceAndMemberInitializers) {
             ir.strings.intern("FDerived"),
             {
                 ir.instance_member(
-                    types.intern("int"), ir.strings.intern("value"), ir.raw_expression("42")),
+                    types.intern("int"), ir.strings.intern("value"), ir.raw_expr("42")),
                 ir.constexpr_member(
-                    types.intern("int"), ir.strings.intern("answer"), ir.raw_expression("42")),
+                    types.intern("int"), ir.strings.intern("answer"), ir.raw_expr("42")),
                 ir.constexpr_member(types.intern("bool"),
                                     ir.strings.intern("supports_value"),
                                     ir.template_id(ir.named("std::is_constructible_v"),
@@ -551,9 +546,9 @@ TEST(Ast, CollectsOpaqueDeclarationDependenciesWithoutIncludingTheBody) {
         auto const created_function{ir.function(ir.strings.intern("use"), types.intern("void"))};
         ir.set_function_parameters(
             created_function, {ir.parameter(types.intern("T const&"), ir.strings.intern("value"))});
-        ir.set_function_body(created_function,
-                             {ir.expression_statement(ir.call(ir.named("apply", {implementation}),
-                                                              {ir.named("value")}))});
+        ir.set_function_body(
+            created_function,
+            {ir.expr_stmt(ir.call(ir.named("apply", {implementation}), {ir.named("value")}))});
         ir.set_function_template(
             created_function,
             ir.template_declaration({ir.type_template_parameter(ir.strings.intern("T"))}));
@@ -647,7 +642,7 @@ TEST(Ast, AppliesStaticAndDefaultArgumentRulesToFunctionForms) {
                                    {ir.parameter(types.intern("int32 const"),
                                                  ir.strings.intern("value"),
                                                  ir.store_text("7"))});
-        ir.set_function_body(created_function, {ir.return_statement(ir.raw_expression("value"))});
+        ir.set_function_body(created_function, {ir.return_stmt(ir.raw_expr("value"))});
         ir.set_function_receiver(created_function, FunctionReceiver::static_);
         ir.function_flags(created_function).set_is_inline(true);
         ir.function_flags(created_function).set_define_in_header(true);

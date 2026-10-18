@@ -3,7 +3,7 @@
 
 #include <vector>
 namespace lispb::codegen::ir {
-struct ParenthesizedExpressions {
+struct ParenthesizedExprs {
     std::vector<Expr> operand;
 };
 }

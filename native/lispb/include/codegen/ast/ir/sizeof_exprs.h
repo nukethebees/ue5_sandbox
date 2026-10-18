@@ -6,7 +6,7 @@
 
 namespace lispb::codegen::ir {
 
-struct SizeofExpressions {
+struct SizeofExprs {
     std::vector<CppTypeId> type;
 };
 

@@ -159,7 +159,7 @@ class Renderer {
         }
         auto const root{document_.functions.roots[index]};
         body.push_back(source_line(document_.child_span(root)));
-        body.push_back(ir_.return_statement(render_child(root)));
+        body.push_back(ir_.return_stmt(render_child(root)));
         ir_.set_function_parameters(spec, cpp_parameters);
         ir_.set_function_body(spec, body);
         ir_.function_flags(spec).set_is_inline(library);
