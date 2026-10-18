@@ -5,8 +5,9 @@
 #include <cassert>
 #include <cmath>
 #include <cstdio>
+#include <format>
+#include <iterator>
 #include <numbers>
-#include <sstream>
 #include <string>
 
 namespace mesh_gen {
@@ -254,65 +255,78 @@ auto generate_mesh(GenerationRequest const& request) -> MeshData {
 }
 
 auto describe_request(GenerationRequest const& request) -> std::string {
-    std::ostringstream description;
-    description << "version=1;shape=";
+    std::string description{"version=1;shape="};
+    auto const out{std::back_inserter(description)};
     switch (request.shape) {
         case Shape::box:
-            description << "box;dimensions=" << format_vec(request.box.dimensions);
+            std::format_to(out, "box;dimensions={}", format_vec(request.box.dimensions));
             break;
         case Shape::cylinder:
-            description << "cylinder;radius=" << format_number(request.cylinder.radius)
-                        << ";height=" << format_number(request.cylinder.height)
-                        << ";segments=" << request.cylinder.radial_segments;
+            std::format_to(out,
+                           "cylinder;radius={};height={};segments={}",
+                           format_number(request.cylinder.radius),
+                           format_number(request.cylinder.height),
+                           request.cylinder.radial_segments);
             break;
         case Shape::sphere:
-            description << "sphere;radius=" << format_number(request.sphere.radius)
-                        << ";longitude_segments=" << request.sphere.longitude_segments
-                        << ";latitude_segments=" << request.sphere.latitude_segments;
+            std::format_to(out,
+                           "sphere;radius={};longitude_segments={};latitude_segments={}",
+                           format_number(request.sphere.radius),
+                           request.sphere.longitude_segments,
+                           request.sphere.latitude_segments);
             break;
         case Shape::cone:
-            description << "cone;radius=" << format_number(request.cone.radius)
-                        << ";height=" << format_number(request.cone.height)
-                        << ";segments=" << request.cone.radial_segments;
+            std::format_to(out,
+                           "cone;radius={};height={};segments={}",
+                           format_number(request.cone.radius),
+                           format_number(request.cone.height),
+                           request.cone.radial_segments);
             break;
         case Shape::hex_tile:
-            description << "hex_tile;outer_radius=" << format_number(request.hex_tile.outer_radius)
-                        << ";depth=" << format_number(request.hex_tile.depth)
-                        << ";bevel_width=" << format_number(request.hex_tile.bevel_width)
-                        << ";pointy_top=" << (request.hex_tile.pointy_top ? "true" : "false");
+            std::format_to(out,
+                           "hex_tile;outer_radius={};depth={};bevel_width={};pointy_top={}",
+                           format_number(request.hex_tile.outer_radius),
+                           format_number(request.hex_tile.depth),
+                           format_number(request.hex_tile.bevel_width),
+                           request.hex_tile.pointy_top);
             break;
         case Shape::hex_frame:
-            description << "hex_frame;outer_radius="
-                        << format_number(request.hex_frame.outer_radius)
-                        << ";wall_thickness=" << format_number(request.hex_frame.wall_thickness)
-                        << ";depth=" << format_number(request.hex_frame.depth)
-                        << ";pointy_top=" << (request.hex_frame.pointy_top ? "true" : "false")
-                        << ";uv_mode="
-                        << (request.hex_frame.uv_mode == HexFrameUvMode::perimeter ? "perimeter"
-                                                                                   : "per_face");
+            std::format_to(
+                out,
+                "hex_frame;outer_radius={};wall_thickness={};depth={};pointy_top={};uv_mode={}",
+                format_number(request.hex_frame.outer_radius),
+                format_number(request.hex_frame.wall_thickness),
+                format_number(request.hex_frame.depth),
+                request.hex_frame.pointy_top,
+                request.hex_frame.uv_mode == HexFrameUvMode::perimeter ? "perimeter" : "per_face");
             break;
         case Shape::honeycomb_panel:
-            description << "honeycomb_panel;rows=" << request.honeycomb_panel.rows
-                        << ";columns=" << request.honeycomb_panel.columns
-                        << ";cell_radius=" << format_number(request.honeycomb_panel.cell_radius)
-                        << ";wall_thickness="
-                        << format_number(request.honeycomb_panel.wall_thickness)
-                        << ";depth=" << format_number(request.honeycomb_panel.depth)
-                        << ";pointy_top="
-                        << (request.honeycomb_panel.pointy_top ? "true" : "false");
+            std::format_to(out,
+                           "honeycomb_panel;rows={};columns={};cell_radius={};wall_thickness={};"
+                           "depth={};pointy_top={}",
+                           request.honeycomb_panel.rows,
+                           request.honeycomb_panel.columns,
+                           format_number(request.honeycomb_panel.cell_radius),
+                           format_number(request.honeycomb_panel.wall_thickness),
+                           format_number(request.honeycomb_panel.depth),
+                           request.honeycomb_panel.pointy_top);
             break;
         case Shape::beveled_box:
-            description << "beveled_box;dimensions=" << format_vec(request.beveled_box.dimensions)
-                        << ";bevel_width=" << format_number(request.beveled_box.bevel_width);
+            std::format_to(out,
+                           "beveled_box;dimensions={};bevel_width={}",
+                           format_vec(request.beveled_box.dimensions),
+                           format_number(request.beveled_box.bevel_width));
             break;
         case Shape::wedge:
-            description << "wedge;dimensions=" << format_vec(request.wedge.dimensions)
-                        << ";top_length=" << format_number(request.wedge.top_length)
-                        << ";top_offset=" << format_number(request.wedge.top_offset);
+            std::format_to(out,
+                           "wedge;dimensions={};top_length={};top_offset={}",
+                           format_vec(request.wedge.dimensions),
+                           format_number(request.wedge.top_length),
+                           format_number(request.wedge.top_offset));
             break;
     }
-    description << ";material_role=" << role_name(request.material_role);
-    return description.str();
+    std::format_to(out, ";material_role={}", role_name(request.material_role));
+    return description;
 }
 
 auto is_valid_mesh_data(MeshData const& mesh_data) -> bool {
@@ -401,17 +415,20 @@ auto generate_assembly(std::span<AssemblyPart const> const parts) -> MeshData {
 }
 
 auto describe_assembly(std::span<AssemblyPart const> const parts) -> std::string {
-    std::ostringstream description;
-    description << "version=1;assembly";
+    std::string description{"version=1;assembly"};
+    auto const out{std::back_inserter(description)};
     for (std::size_t part_index{}; part_index < parts.size(); ++part_index) {
         auto const& part{parts[part_index]};
-        description << ";part" << part_index << "={" << describe_request(part.mesh)
-                    << ";translation=" << format_vec(part.transform.translation)
-                    << ";rotation=" << format_rotator(part.transform.rotation)
-                    << ";scale=" << format_vec(part.transform.scale)
-                    << ";visible=" << (part.visible ? "true" : "false") << '}';
+        std::format_to(out,
+                       ";part{}={{{};translation={};rotation={};scale={};visible={}}}",
+                       part_index,
+                       describe_request(part.mesh),
+                       format_vec(part.transform.translation),
+                       format_rotator(part.transform.rotation),
+                       format_vec(part.transform.scale),
+                       part.visible);
     }
-    return description.str();
+    return description;
 }
 
 }

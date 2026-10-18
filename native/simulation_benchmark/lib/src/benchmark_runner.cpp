@@ -16,9 +16,9 @@
 #include <cassert>
 #include <chrono>
 #include <cmath>
-#include <iomanip>
+#include <format>
+#include <iterator>
 #include <limits>
-#include <sstream>
 #include <thread>
 #include <vector>
 
@@ -86,43 +86,41 @@ auto mission_state_name(sim::MissionState const state) -> std::string {
 }
 
 auto json_string(std::string_view const value) -> std::string {
-    std::ostringstream output;
-    output << '"';
+    std::string output{"\""};
+    auto const out{std::back_inserter(output)};
     for (auto const character : value) {
         switch (character) {
             case '"':
-                output << "\\\"";
+                output += "\\\"";
                 break;
             case '\\':
-                output << "\\\\";
+                output += "\\\\";
                 break;
             case '\b':
-                output << "\\b";
+                output += "\\b";
                 break;
             case '\f':
-                output << "\\f";
+                output += "\\f";
                 break;
             case '\n':
-                output << "\\n";
+                output += "\\n";
                 break;
             case '\r':
-                output << "\\r";
+                output += "\\r";
                 break;
             case '\t':
-                output << "\\t";
+                output += "\\t";
                 break;
             default:
                 if (static_cast<unsigned char>(character) < 0x20) {
-                    output << "\\u" << std::hex << std::setw(4) << std::setfill('0')
-                           << static_cast<unsigned int>(static_cast<unsigned char>(character))
-                           << std::dec;
+                    std::format_to(out, "\\u{:04x}", static_cast<unsigned char>(character));
                 } else {
-                    output << character;
+                    output += character;
                 }
         }
     }
-    output << '"';
-    return output.str();
+    output += '"';
+    return output;
 }
 } // namespace
 
@@ -267,11 +265,12 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     auto compiled{
         levels::compile_level(level, compilation_clock, data.capital_ships, data.turrets)};
     if (!compiled) {
-        std::ostringstream output;
+        std::string output;
+        auto const out{std::back_inserter(output)};
         for (auto const& error : compiled.error()) {
-            output << (output.tellp() > 0 ? "\n" : "") << error;
+            std::format_to(out, "{}{}", output.empty() ? "" : "\n", error);
         }
-        return std::unexpected{output.str()};
+        return std::unexpected{std::move(output)};
     }
     data.level_events = std::move(*compiled);
 
@@ -477,65 +476,100 @@ auto to_json(BenchmarkResult const& result) -> std::string {
     auto const realtime_factor{result.tick_rate_hz > 0.0 ? ticks_per_second / result.tick_rate_hz
                                                          : 0.0};
 
-    std::ostringstream output;
-    output << std::setprecision(std::numeric_limits<double>::max_digits10)
-           << "{\"schema_version\":2"
-           << R"(,"level":{"path":)" << json_string(result.level_path)
-           << ",\"id\":" << json_string(result.level_id)
-           << ",\"title\":" << json_string(result.level_title) << "}"
-           << R"(,"workload":{"requested_seconds":)" << result.requested_seconds
-           << ",\"tick_rate_hz\":" << result.tick_rate_hz << ",\"game_speed\":" << result.game_speed
-           << ",\"requested_ticks\":" << result.requested_ticks
-           << ",\"completed_ticks\":" << result.completed_ticks
-           << ",\"completed_seconds\":" << result.completed_seconds
-           << ",\"advance_calls\":" << result.advance_calls
-           << ",\"saturation_ticks\":" << result.saturation_ticks
-           << ",\"warmup_ticks\":" << result.warmup_ticks
-           << ",\"measured_ticks\":" << result.measured_ticks
-           << ",\"total_simulation_ticks\":" << result.total_simulation_ticks << "}"
-           << R"(,"timing":{"elapsed_seconds":)" << result.elapsed_seconds
-           << ",\"total_elapsed_seconds\":" << result.total_elapsed_seconds
-           << ",\"ticks_per_second\":" << ticks_per_second
-           << ",\"realtime_factor\":" << realtime_factor
-           << ",\"mean_tick_microseconds\":" << mean_tick_microseconds
-           << ",\"median_tick_microseconds\":" << result.median_tick_microseconds
-           << ",\"p95_tick_microseconds\":" << result.p95_tick_microseconds
-           << ",\"p99_tick_microseconds\":" << result.p99_tick_microseconds << "}"
-           << R"(,"fighter_stress":{"enabled":)"
-           << (result.fighter_stress_enabled ? "true" : "false")
-           << ",\"configured_cap\":" << result.configured_fighter_cap
-           << ",\"steady_state_fighters\":" << result.steady_state_fighters
-           << ",\"minimum_measured_fighters\":" << result.minimum_measured_fighters
-           << ",\"maximum_measured_fighters\":" << result.maximum_measured_fighters
-           << ",\"fighter_spawns_during_measurement\":" << result.fighter_spawns_during_measurement
-           << ",\"lasers_spawned_during_measurement\":" << result.lasers_spawned_during_measurement
-           << R"(,"task_counts":{"standby":)" << result.standby_fighters
-           << ",\"move_to_destination\":" << result.moving_fighters
-           << ",\"attack\":" << result.attacking_fighters << "}}"
-           << R"(,"final_state":{"mission_state":)" << json_string(result.mission_state)
-           << ",\"initial_capital_ships\":" << result.initial_capital_ships
-           << ",\"initial_turrets\":" << result.initial_turrets
-           << ",\"alive_entities\":" << result.alive_entities
-           << ",\"capital_ships\":" << result.capital_ships << ",\"fighters\":" << result.fighters
-           << ",\"turrets\":" << result.turrets << ",\"spinners\":" << result.spinners
-           << ",\"active_lasers\":" << result.active_lasers
-           << ",\"lasers_spawned\":" << result.lasers_spawned
-           << ",\"peak_fighters\":" << result.peak_fighters << "}"
-           << R"(,"memory":{"frame_capacity_bytes":)" << result.frame_memory_capacity_bytes
-           << ",\"frame_peak_claimed_bytes\":" << result.frame_memory_peak_claimed_bytes
-           << ",\"frame_peak_payload_bytes\":" << result.frame_memory_peak_payload_bytes
-           << ",\"frame_total_padding_bytes\":" << result.frame_memory_total_padding_bytes
-           << ",\"frame_total_root_claims\":" << result.frame_memory_total_root_claims
-           << ",\"frame_overflow_count\":" << result.frame_memory_overflow_count << "}"
-           << R"(,"telemetry":{"enabled":)" << (result.telemetry_enabled ? "true" : "false")
-           << ",\"rows\":" << result.telemetry_rows
-           << ",\"acquired_blocks\":" << result.telemetry_acquired_blocks
-           << ",\"retained_blocks\":" << result.telemetry_retained_blocks
-           << ",\"allocated_bytes\":" << result.telemetry_allocated_bytes << "}"
-           << R"(,"environment":{"hardware_threads":)" << result.hardware_threads
-           << ",\"compiler\":" << json_string(result.compiler)
-           << ",\"build_type\":" << json_string(result.build_type)
-           << ",\"tracy_enabled\":" << (result.tracy_enabled ? "true" : "false") << "}}";
-    return output.str();
+    std::string output;
+    auto const out{std::back_inserter(output)};
+    std::format_to(out,
+                   R"({{"schema_version":2,"level":{{"path":{},"id":{},"title":{}}})",
+                   json_string(result.level_path),
+                   json_string(result.level_id),
+                   json_string(result.level_title));
+    std::format_to(
+        out,
+        R"(,"workload":{{"requested_seconds":{:.17g},"tick_rate_hz":{:.17g},"game_speed":{},)"
+        R"("requested_ticks":{},"completed_ticks":{},"completed_seconds":{:.17g},)"
+        R"("advance_calls":{},"saturation_ticks":{},"warmup_ticks":{},)"
+        R"("measured_ticks":{},"total_simulation_ticks":{}}})",
+        result.requested_seconds,
+        result.tick_rate_hz,
+        result.game_speed,
+        result.requested_ticks,
+        result.completed_ticks,
+        result.completed_seconds,
+        result.advance_calls,
+        result.saturation_ticks,
+        result.warmup_ticks,
+        result.measured_ticks,
+        result.total_simulation_ticks);
+    std::format_to(out,
+                   R"(,"timing":{{"elapsed_seconds":{:.17g},"total_elapsed_seconds":{:.17g},)"
+                   R"("ticks_per_second":{:.17g},"realtime_factor":{:.17g},)"
+                   R"("mean_tick_microseconds":{:.17g},"median_tick_microseconds":{:.17g},)"
+                   R"("p95_tick_microseconds":{:.17g},"p99_tick_microseconds":{:.17g}}})",
+                   result.elapsed_seconds,
+                   result.total_elapsed_seconds,
+                   ticks_per_second,
+                   realtime_factor,
+                   mean_tick_microseconds,
+                   result.median_tick_microseconds,
+                   result.p95_tick_microseconds,
+                   result.p99_tick_microseconds);
+    std::format_to(
+        out,
+        R"(,"fighter_stress":{{"enabled":{},"configured_cap":{},"steady_state_fighters":{},)"
+        R"("minimum_measured_fighters":{},"maximum_measured_fighters":{},)"
+        R"("fighter_spawns_during_measurement":{},"lasers_spawned_during_measurement":{},)"
+        R"("task_counts":{{"standby":{},"move_to_destination":{},"attack":{}}}}})",
+        result.fighter_stress_enabled,
+        result.configured_fighter_cap,
+        result.steady_state_fighters,
+        result.minimum_measured_fighters,
+        result.maximum_measured_fighters,
+        result.fighter_spawns_during_measurement,
+        result.lasers_spawned_during_measurement,
+        result.standby_fighters,
+        result.moving_fighters,
+        result.attacking_fighters);
+    std::format_to(
+        out,
+        R"(,"final_state":{{"mission_state":{},"initial_capital_ships":{},"initial_turrets":{},)"
+        R"("alive_entities":{},"capital_ships":{},"fighters":{},"turrets":{},"spinners":{},)"
+        R"("active_lasers":{},"lasers_spawned":{},"peak_fighters":{}}})",
+        json_string(result.mission_state),
+        result.initial_capital_ships,
+        result.initial_turrets,
+        result.alive_entities,
+        result.capital_ships,
+        result.fighters,
+        result.turrets,
+        result.spinners,
+        result.active_lasers,
+        result.lasers_spawned,
+        result.peak_fighters);
+    std::format_to(out,
+                   R"(,"memory":{{"frame_capacity_bytes":{},"frame_peak_claimed_bytes":{},)"
+                   R"("frame_peak_payload_bytes":{},"frame_total_padding_bytes":{},)"
+                   R"("frame_total_root_claims":{},"frame_overflow_count":{}}})",
+                   result.frame_memory_capacity_bytes,
+                   result.frame_memory_peak_claimed_bytes,
+                   result.frame_memory_peak_payload_bytes,
+                   result.frame_memory_total_padding_bytes,
+                   result.frame_memory_total_root_claims,
+                   result.frame_memory_overflow_count);
+    std::format_to(out,
+                   R"(,"telemetry":{{"enabled":{},"rows":{},"acquired_blocks":{},)"
+                   R"("retained_blocks":{},"allocated_bytes":{}}})",
+                   result.telemetry_enabled,
+                   result.telemetry_rows,
+                   result.telemetry_acquired_blocks,
+                   result.telemetry_retained_blocks,
+                   result.telemetry_allocated_bytes);
+    std::format_to(
+        out,
+        R"(,"environment":{{"hardware_threads":{},"compiler":{},"build_type":{},"tracy_enabled":{}}}}})",
+        result.hardware_threads,
+        json_string(result.compiler),
+        json_string(result.build_type),
+        result.tracy_enabled);
+    return output;
 }
 } // namespace ioj::simulation_benchmark
