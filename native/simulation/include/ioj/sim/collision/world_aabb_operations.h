@@ -22,15 +22,4 @@ inline auto add(WorldAABBs& aabbs, Vector3f const min, Vector3f const max) -> st
     return index;
 }
 
-[[nodiscard]] inline auto min_at(WorldAABBs::ConstView const aabbs, std::uint32_t const index)
-    -> Vector3f {
-    auto const element{static_cast<std::size_t>(index)};
-    return Vector3f{aabbs.min_xs()[element], aabbs.min_ys()[element], aabbs.min_zs()[element]};
-}
-
-[[nodiscard]] inline auto max_at(WorldAABBs::ConstView const aabbs, std::uint32_t const index)
-    -> Vector3f {
-    auto const element{static_cast<std::size_t>(index)};
-    return Vector3f{aabbs.max_xs()[element], aabbs.max_ys()[element], aabbs.max_zs()[element]};
-}
 } // namespace ioj::sim::collision

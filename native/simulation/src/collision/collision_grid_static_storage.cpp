@@ -45,11 +45,18 @@ auto CollisionGridStaticStorage::rebuild(GridGeometry const geometry)
     auto const aabbs{aabbs_.get_const_view()};
     assert(aabbs.num() <= invalid_aabb_index);
     auto const aabb_count{static_cast<StaticGeometryIndex>(aabbs.num())};
+    auto const min_xs{aabbs.min_xs()};
+    auto const min_ys{aabbs.min_ys()};
+    auto const min_zs{aabbs.min_zs()};
+    auto const max_xs{aabbs.max_xs()};
+    auto const max_ys{aabbs.max_ys()};
+    auto const max_zs{aabbs.max_zs()};
 
     // Count AABB/cell membership and validate covered bounds.
     for (StaticGeometryIndex aabb_index{}; aabb_index < aabb_count; ++aabb_index) {
-        auto const [min_cell, max_cell]{
-            to_cell_coord_bounds(geometry, min_at(aabbs, aabb_index), max_at(aabbs, aabb_index))};
+        auto const min_point{Vector3f{min_xs[aabb_index], min_ys[aabb_index], min_zs[aabb_index]}};
+        auto const max_point{Vector3f{max_xs[aabb_index], max_ys[aabb_index], max_zs[aabb_index]}};
+        auto const [min_cell, max_cell]{to_cell_coord_bounds(geometry, min_point, max_point)};
         if (!is_cell_coord_in_bounds(geometry, min_cell) ||
             !is_cell_coord_in_bounds(geometry, max_cell)) {
             return std::unexpected{StaticGridBuildError{
@@ -104,8 +111,9 @@ auto CollisionGridStaticStorage::rebuild(GridGeometry const geometry)
     aabb_indices_.resize(static_cast<std::size_t>(membership_count));
     auto write_indices{range_offsets_};
     for (StaticGeometryIndex aabb_index{}; aabb_index < aabb_count; ++aabb_index) {
-        auto const [min_cell, max_cell]{
-            to_cell_coord_bounds(geometry, min_at(aabbs, aabb_index), max_at(aabbs, aabb_index))};
+        auto const min_point{Vector3f{min_xs[aabb_index], min_ys[aabb_index], min_zs[aabb_index]}};
+        auto const max_point{Vector3f{max_xs[aabb_index], max_ys[aabb_index], max_zs[aabb_index]}};
+        auto const [min_cell, max_cell]{to_cell_coord_bounds(geometry, min_point, max_point)};
         auto plane_index{min_cell.x() + min_cell.y() * row_stride + min_cell.z() * plane_stride};
 
         for (auto z{min_cell.z()}; z <= max_cell.z(); ++z) {
