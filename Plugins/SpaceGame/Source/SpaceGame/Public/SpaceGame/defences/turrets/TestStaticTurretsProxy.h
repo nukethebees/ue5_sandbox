@@ -67,6 +67,7 @@ class ATestStaticTurretsProxy
     UPROPERTY(EditAnywhere, Category = "Proxy")
     TObjectPtr<UArrowComponent> fire_point{nullptr};
 
+    UPROPERTY(Transient)
     ETestTeam team{ETestTeam::White};
 
     TOptional<int32> health{NullOpt};

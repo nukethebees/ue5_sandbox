@@ -82,6 +82,7 @@ class ATestCapitalShipProxy
     UPROPERTY(EditAnywhere, Category = "Ship")
     TObjectPtr<AActor> target_ship{nullptr};
 
+    UPROPERTY(Transient)
     ETestTeam team{ETestTeam::White};
 
     TOptional<int32> health{NullOpt};

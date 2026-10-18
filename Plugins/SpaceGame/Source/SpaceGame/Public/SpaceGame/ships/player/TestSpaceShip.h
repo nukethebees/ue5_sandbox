@@ -150,6 +150,7 @@ class SPACEGAME_API ATestSpaceShip
     /* **************************************** */
     FPlayerShipConfig const* actor_config{nullptr};
 
+    UPROPERTY(Transient)
     ETestTeam team{ETestTeam::White};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
