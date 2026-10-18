@@ -821,9 +821,13 @@ auto deserialize_level_telemetry_run(FString const& json)
                                 TEXT("presentation_enabled"),
                                 TEXT("simulation.presentation_enabled")));
     if (*schema >= 2) {
-        READ_REQUIRED(result.metadata.source_sha256,
+        READ_REQUIRED(result.metadata.level_source,
                       required_native_string(
-                          **simulation, TEXT("source_sha256"), TEXT("simulation.source_sha256")));
+                          **simulation, TEXT("level_source"), TEXT("simulation.level_source")));
+        READ_REQUIRED(result.metadata.settings_source,
+                      required_native_string(**simulation,
+                                             TEXT("settings_source"),
+                                             TEXT("simulation.settings_source")));
         READ_REQUIRED(
             result.metadata.launch_state,
             required_string(**simulation, TEXT("launch_state"), TEXT("simulation.launch_state")));
@@ -1160,8 +1164,10 @@ auto serialize_level_telemetry_run(FLevelTelemetryReport const& record) -> FStri
     simulation->SetNumberField(TEXT("initial_requested_time_scale"),
                                record.metadata.initial_requested_time_scale);
     simulation->SetBoolField(TEXT("presentation_enabled"), record.metadata.presentation_enabled);
-    simulation->SetStringField(TEXT("source_sha256"),
-                               UTF8_TO_TCHAR(record.metadata.source_sha256.c_str()));
+    simulation->SetStringField(TEXT("level_source"),
+                               UTF8_TO_TCHAR(record.metadata.level_source.c_str()));
+    simulation->SetStringField(TEXT("settings_source"),
+                               UTF8_TO_TCHAR(record.metadata.settings_source.c_str()));
     simulation->SetStringField(TEXT("launch_state"), record.metadata.launch_state);
     simulation->SetStringField(TEXT("presentation_mode"), record.metadata.presentation_mode);
     simulation->SetBoolField(TEXT("stop_when_battle_resolved"),

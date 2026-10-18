@@ -1,13 +1,13 @@
 # GPU Starfield
 
 GPU Starfield is a deterministic, camera-relative background renderer. Numerical settings come from
-the actor's `settings_file`, defaulting to `LevelScripts/Settings/starfield.scm`. Colours remain actor
+the actor's `settings_file`, defaulting to `LevelScripts/Settings/base.scm`. Colours remain actor
 properties. Use **Apply Settings** to reload a script in the editor; actor construction also reloads
 it. Settings layers apply in order, so an override can change only the required fields:
 
 ```scheme
 (settings-layers
-  (load-script "Settings/starfield.scm")
+  (load-script "Settings/base.scm")
   (starfield :generation (generation :star-count 100000)))
 ```
 

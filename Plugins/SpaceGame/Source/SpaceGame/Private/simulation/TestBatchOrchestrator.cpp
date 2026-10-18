@@ -18,10 +18,10 @@
 #include <SpaceGame/missions/TestMissionStateConversion.h>
 #include <SpaceGame/persistence/SpaceSaveGame.h>
 #include <SpaceGame/persistence/SpaceSaveSubsystem.h>
+#include <SpaceGame/s7/GameSettingsReader.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SpaceGame/simulation/LevelPresentationConfig.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
 #include <SpaceGame/telemetry/LevelTelemetryMetadata.h>
@@ -55,7 +55,6 @@
 #include <HAL/IConsoleManager.h>
 #include <Kismet/GameplayStatics.h>
 #include <Misc/DateTime.h>
-#include <NativeSettings/settings_reader.h>
 #include <SandboxISMCComponent.h>
 
 namespace ioj::fighter_diagnostics {
@@ -238,7 +237,8 @@ void ATestBatchOrchestrator::reset_for_new_level() {
 
     launched_paused_ = false;
     launch_options_ = {};
-    level_source_sha256_.Reset();
+    level_source_.Reset();
+    settings_source_.Reset();
 
     world_collision_.restore_collision();
     collision_grid_visualization->clear_collision_bounds();
@@ -479,7 +479,8 @@ auto ATestBatchOrchestrator::initialise_simulation(USpaceGameLevelConfig const& 
         result->telemetry_metadata = make_level_telemetry_run_metadata(world, mission_definition);
         result->telemetry_metadata->level_id = level_definition_->metadata().id.value;
         result->telemetry_metadata->level_display_name = level_definition_->metadata().title;
-        result->telemetry_metadata->source_sha256 = TCHAR_TO_UTF8(*level_source_sha256_);
+        result->telemetry_metadata->level_source = TCHAR_TO_UTF8(*level_source_);
+        result->telemetry_metadata->settings_source = TCHAR_TO_UTF8(*settings_source_);
         if (launch_options_.simulated_duration_seconds.IsSet()) {
             result->telemetry_metadata->requested_duration_seconds =
                 launch_options_.simulated_duration_seconds.GetValue();
@@ -540,6 +541,8 @@ auto ATestBatchOrchestrator::initialise_simulation(USpaceGameLevelConfig const& 
     }
 
     data.telemetry_metadata = make_level_telemetry_run_metadata(world, mission_definition);
+    data.telemetry_metadata->level_source = TCHAR_TO_UTF8(*level_source_);
+    data.telemetry_metadata->settings_source = TCHAR_TO_UTF8(*settings_source_);
     auto* const game_subsystem{ioj::UGameSubsystem::get(GetGameInstance())};
     if (!IsValid(game_subsystem)) {
         errors.add(TEXT("Cannot create level simulation without game memory"));
@@ -741,7 +744,7 @@ void ATestBatchOrchestrator::load_authored_level() {
     }
 
     launch_options_ = options;
-    level_source_sha256_ = MoveTemp(pending->source_sha256);
+    level_source_ = MoveTemp(pending->level_source);
     launched_paused_ = options.launch_mode == ioj::ELevelLaunchMode::Paused;
     presentation_enabled = options.presentation_mode == ioj::ELevelPresentationMode::Visual;
     set_time_scale(options.requested_time_scale);
@@ -923,41 +926,21 @@ auto ATestBatchOrchestrator::prepare_level() -> bool {
         return true;
     }
 
-    auto source{ioj::settings::read_file(settings_file.FilePath)};
-    if (!source) {
-        handle_level_start_failure(source.error());
-        return false;
-    }
-
-    ioj::sim::SimulationSettings settings;
-    auto applied{ioj::sim::apply_settings(*source, settings)};
-    if (applied && level_definition_.IsSet()) {
-        applied = ioj::sim::apply_settings(*level_definition_, settings);
-    }
-    if (applied) {
-        applied = ioj::sim::validate_settings(settings);
-    }
-    if (!applied) {
-        handle_level_start_failure(
-            ioj::to_fstring(ioj::levels::format_diagnostics(applied.error())));
-        return false;
-    }
-
     auto* const world{GetWorld()};
     ioj::fatal_if_uobject_ptrs_invalid(
         {SANDBOX_NAMED_UOBJECT_PTR(world), SANDBOX_NAMED_UOBJECT_PTR(level_config)});
-    auto* const config{DuplicateObject<USpaceGameLevelConfig>(level_config, this)};
-    check(config);
-    config->apply_settings(settings);
-    applied = apply_presentation_settings(*source, *config);
-    if (applied && level_definition_.IsSet()) {
-        applied = apply_presentation_settings(level_definition_->settings(), *config);
-    }
-    if (!applied) {
-        handle_level_start_failure(
-            ioj::to_fstring(ioj::levels::format_diagnostics(applied.error())));
+    auto loaded{
+        read_game_settings(settings_file.FilePath,
+                           level_definition_.IsSet() ? &level_definition_.GetValue() : nullptr,
+                           *level_config,
+                           this)};
+    if (!loaded) {
+        handle_level_start_failure(loaded.error());
         return false;
     }
+    auto* const config{loaded->config};
+    auto const& settings{loaded->simulation};
+    settings_source_ = MoveTemp(loaded->source);
     config->collision_grid = apply_collision_grid_overrides(config->collision_grid);
     simulation_tick_loop = settings.clock;
     if (time_scale_override_.IsSet()) {
@@ -970,11 +953,6 @@ auto ATestBatchOrchestrator::prepare_level() -> bool {
     }
     if (!set_level_config(*config)) {
         return false;
-    }
-    level_source_sha256_ = ioj::settings::source_hash(level_source_sha256_, *source);
-    if (level_definition_.IsSet()) {
-        level_source_sha256_ =
-            ioj::settings::source_hash(level_source_sha256_, level_definition_->settings());
     }
     settings_prepared_ = true;
     return true;

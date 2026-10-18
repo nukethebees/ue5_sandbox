@@ -1,7 +1,8 @@
 #include "SandboxShaders/GpuStarfield/GpuStarfieldActor.h"
 
-#include "NativeSettings/settings_reader.h"
-#include <ioj/gfx/starfield_settings_reader.h>
+#include <ioj/levels/authoring/starfield_reader.h>
+
+#include <Misc/Paths.h>
 
 DEFINE_LOG_CATEGORY_STATIC(LogGpuStarfieldSettings, Log, All);
 
@@ -23,15 +24,14 @@ void AGpuStarfieldActor::PostRegisterAllComponents() {
 }
 
 void AGpuStarfieldActor::apply_settings() {
-    auto const assignments{ioj::settings::read_file(settings_file.FilePath)};
-    if (!assignments) {
-        UE_LOG(LogGpuStarfieldSettings, Error, TEXT("%s"), *assignments.error());
-        return;
-    }
-
-    auto const settings{ioj::gfx::read_starfield_settings(*assignments)};
+    auto const root{FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"))};
+    auto const path{
+        FPaths::ConvertRelativePathToFull(FPaths::ProjectDir(), settings_file.FilePath)};
+    auto const settings{ioj::levels::authoring::read_starfield_settings_file(
+        std::filesystem::path{*path}, std::filesystem::path{*root})};
     if (!settings) {
-        UE_LOG(LogGpuStarfieldSettings, Error, TEXT("%s"), UTF8_TO_TCHAR(settings.error().c_str()));
+        auto const error{ioj::levels::format_diagnostics(settings.error())};
+        UE_LOG(LogGpuStarfieldSettings, Error, TEXT("%s"), UTF8_TO_TCHAR(error.c_str()));
         return;
     }
 

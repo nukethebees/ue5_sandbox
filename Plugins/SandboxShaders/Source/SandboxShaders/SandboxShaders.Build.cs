@@ -22,7 +22,7 @@ public class SandboxShaders : ModuleRules
         PrivateDependencyModuleNames.AddRange(new string[]
         {
             "Projects",
-            "NativeSettings",
+            "NativeLevelAuthoring",
             "RenderCore",
             "RHI",
         });

@@ -111,7 +111,7 @@ struct FGpuStarfieldRenderParameters {
     float render_haze{0.0f};
 };
 
-auto make_render_parameters(ioj::gfx::StarfieldSettings const& settings,
+auto make_render_parameters(ioj::starfield::Settings const& settings,
                             FGpuStarfieldColours const& colours) -> FGpuStarfieldRenderParameters {
     auto const& star{settings.star};
     auto const& bright_star{settings.bright_star};
@@ -522,7 +522,7 @@ UGpuStarfieldComponent::UGpuStarfieldComponent() {
     }
 }
 
-void UGpuStarfieldComponent::apply_settings(ioj::gfx::StarfieldSettings const& settings,
+void UGpuStarfieldComponent::apply_settings(ioj::starfield::Settings const& settings,
                                             FGpuStarfieldColours const& colours) {
     auto const& generation{settings.generation};
     auto const& star{settings.star};

@@ -14,6 +14,8 @@ public class NativeLevelAuthoring : ModuleRules
             "NativeLevels",
         });
 
+        RuntimeDependencies.Add("$(ProjectDir)/LevelScripts/...*.scm", StagedFileType.NonUFS);
+
         if (Target.Platform != UnrealTargetPlatform.Win64 ||
             Target.Architecture != UnrealArch.X64)
         {

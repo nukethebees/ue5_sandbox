@@ -67,7 +67,7 @@ set_tests_properties(native-simulation-soak-tests PROPERTIES
 foreach(simulation_test_target IN ITEMS native-simulation-tests native-simulation-soak-tests)
   target_link_libraries(${simulation_test_target}
     PRIVATE
-      native-level-authoring-s7
+      native-simulation-s7
   )
   target_compile_definitions(${simulation_test_target}
     PRIVATE

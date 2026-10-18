@@ -2,13 +2,13 @@
 
 #include <SandboxTests/SandboxTestLogCategories.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
-#include <SpaceGame/simulation/LevelPresentationConfig.h>
+#include <SpaceGame/s7/GameSettingsReader.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
-#include <NativeSettings/settings_reader.h>
 #include <UObject/Package.h>
 #include <UObject/SoftObjectPath.h>
 #include <UObject/SoftObjectPtr.h>
+#include <UObject/StrongObjectPtr.h>
 #include <UObject/UObjectGlobals.h>
 
 namespace ioj {
@@ -18,19 +18,20 @@ auto load_default_level_config() -> USpaceGameLevelConfig* {
                              "DA_FT_soa_entities_LevelConfig."
                              "DA_FT_soa_entities_LevelConfig")}};
 
-    auto* const config{default_config.LoadSynchronous()};
-    static bool settings_loaded{};
-    if (IsValid(config) && !settings_loaded) {
-        auto const source{settings::read_file(TEXT("LevelScripts/Settings/base.scm"))};
-        check(source);
-        sim::SimulationSettings settings;
-        auto const applied{sim::apply_settings(*source, settings)};
-        check(applied);
-        config->apply_settings(settings);
-        auto const presentation_applied{apply_presentation_settings(*source, *config)};
-        check(presentation_applied);
-        settings_loaded = true;
+    static TStrongObjectPtr<USpaceGameLevelConfig> resolved;
+    if (!resolved.IsValid()) {
+        auto* const resources{default_config.LoadSynchronous()};
+        if (!IsValid(resources)) {
+            UE_LOG(
+                LogSandboxTest, Error, TEXT("Cannot load default simulation-test asset package"));
+            return nullptr;
+        }
+        auto const loaded{read_game_settings(
+            TEXT("LevelScripts/Settings/base.scm"), nullptr, *resources, GetTransientPackage())};
+        check(loaded);
+        resolved.Reset(loaded->config);
     }
+    auto* const config{resolved.Get()};
     if (IsValid(config)) {
         UE_LOG(LogSandboxTest,
                Log,

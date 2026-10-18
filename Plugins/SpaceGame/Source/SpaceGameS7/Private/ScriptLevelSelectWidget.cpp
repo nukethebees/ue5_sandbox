@@ -12,7 +12,6 @@
 #include <SandboxCoreEngine/strings.h>
 
 #include <Engine/GameInstance.h>
-#include <IPlatformCrypto.h>
 #include <Kismet/GameplayStatics.h>
 #include <Misc/FileHelper.h>
 
@@ -147,18 +146,6 @@ auto entry_matches_category(FLevelScriptEntry const& entry, ELevelCatalogCategor
              : content_category == ELevelCatalogCategory::BattleViewer;
 }
 
-auto source_sha256(FString const& path) -> FString {
-    TArray<uint8> bytes;
-    if (!FFileHelper::LoadFileToArray(bytes, *path)) {
-        return {};
-    }
-    auto context{IPlatformCrypto::Get().CreateContext()};
-    TArray<uint8> hash;
-    if (!context || !context->CalcSHA256(bytes, hash)) {
-        return {};
-    }
-    return BytesToHex(hash.GetData(), hash.Num()).ToLower();
-}
 } // namespace
 
 UScriptLevelSelectWidget::UScriptLevelSelectWidget() = default;
@@ -562,13 +549,22 @@ void UScriptLevelSelectWidget::launch_selected_level(FLevelLaunchOptions options
     }
 
     auto& entry{entries_[selected_entry_index_]};
+    FString level_source;
+    if (!FFileHelper::LoadFileToString(level_source, *entry.path)) {
+        UE_LOG(LogSandbox, Error, TEXT("Cannot read level source '%s'"), *entry.path);
+        view_state_.status =
+            NSLOCTEXT("LevelSelect", "SourceReadFailed", "COULD NOT READ LEVEL SOURCE");
+        publish_view();
+        return;
+    }
+
     auto definition{MoveTemp(entry.definition.GetValue())};
     entry.definition.Reset();
     options.control_context =
         active_category_ == ELevelCatalogCategory::Mission     ? EPlayerControlContext::Player
         : active_category_ == ELevelCatalogCategory::Benchmark ? EPlayerControlContext::Benchmark
                                                                : EPlayerControlContext::Observer;
-    game_->set_pending_level(MoveTemp(definition), entry.path, source_sha256(entry.path), options);
+    game_->set_pending_level(MoveTemp(definition), entry.path, MoveTemp(level_source), options);
     view_state_.can_launch = false;
     if (options.launch_mode == ELevelLaunchMode::Paused) {
         view_state_.status =

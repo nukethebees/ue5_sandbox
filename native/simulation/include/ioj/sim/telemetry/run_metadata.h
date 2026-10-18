@@ -14,7 +14,8 @@ struct LevelTelemetryRunMetadata {
     double tick_period_seconds{};
     double initial_requested_time_scale{1.0};
     bool stop_when_battle_resolved{};
-    std::string source_sha256{};
+    std::string level_source{};
+    std::string settings_source{};
     std::optional<double> requested_duration_seconds{};
     double battle_sample_interval_seconds{1.0};
 };

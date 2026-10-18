@@ -63,4 +63,5 @@ if(IOJ_WITH_UNREAL)
   )
 endif()
 
+add_subdirectory(s7)
 add_subdirectory(tests)

@@ -9,7 +9,7 @@
 
 namespace ioj::sim {
 struct LevelTelemetryRunRecord {
-    static constexpr std::int32_t schema_version{4};
+    static constexpr std::int32_t schema_version{5};
 
     std::int32_t loaded_schema_version{schema_version};
     LevelTelemetryRunMetadata metadata{};

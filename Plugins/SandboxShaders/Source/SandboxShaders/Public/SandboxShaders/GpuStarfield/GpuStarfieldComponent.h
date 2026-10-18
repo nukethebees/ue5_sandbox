@@ -41,7 +41,7 @@ class SANDBOXSHADERS_API UGpuStarfieldComponent final : public UPrimitiveCompone
     UGpuStarfieldComponent();
 
     // Settings must come from the validated native starfield resolver.
-    void apply_settings(ioj::gfx::StarfieldSettings const& settings,
+    void apply_settings(ioj::starfield::Settings const& settings,
                         FGpuStarfieldColours const& colours);
 
     FPrimitiveSceneProxy* CreateSceneProxy() override;
@@ -55,7 +55,7 @@ class SANDBOXSHADERS_API UGpuStarfieldComponent final : public UPrimitiveCompone
     UPROPERTY()
     TObjectPtr<UMaterialInterface> material_;
 
-    ioj::gfx::StarfieldSettings settings_;
+    ioj::starfield::Settings settings_;
     FGpuStarfieldColours colours_;
     TArray<FGpuStarfieldGpuData> star_data_;
     bool has_generated_stars_{false};

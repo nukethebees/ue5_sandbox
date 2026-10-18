@@ -1,14 +1,15 @@
-#pragma once
+#include <ioj/levels/authoring/starfield_reader.h>
 
-#include <ioj/gfx/starfield_settings.h>
+#include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/settings/settings.h>
 
 #include <expected>
 #include <string>
+#include <utility>
 
-namespace ioj::gfx {
-inline auto apply_starfield_setting(StarfieldSettings& settings,
-                                    ioj::settings::Setting const& setting) -> bool {
+namespace ioj::levels::authoring {
+namespace {
+auto apply_setting(starfield::Settings& settings, ioj::settings::Setting const& setting) -> bool {
     auto const& path{setting.path};
     if (path == "starfield.generation.star-count") {
         return setting.assign(settings.generation.star_count);
@@ -91,27 +92,69 @@ inline auto apply_starfield_setting(StarfieldSettings& settings,
     return false;
 }
 
-inline auto read_starfield_settings(settings::Settings const& assignments)
-    -> std::expected<StarfieldSettings, std::string> {
-    StarfieldSettings result;
+auto decode_settings(settings::Settings const& assignments)
+    -> std::expected<starfield::Settings, std::string> {
+    starfield::Settings result;
     for (auto const& setting : assignments) {
-        if (!apply_starfield_setting(result, setting)) {
+        if (!setting.path.starts_with("starfield.")) {
+            continue;
+        }
+        if (!apply_setting(result, setting)) {
             return std::unexpected{"Unknown starfield setting or invalid value: " + setting.path};
         }
     }
 
     // Reject values that make allocation or angular distributions invalid.
-    if (result.generation.star_count < 1 || result.generation.star_count > 1000000 ||
-        result.star.scale <= 0.0f || result.star.size_multiplier < 0.0f ||
-        result.bright_star.size_multiplier < 0.0f || result.galactic_band.width_degrees <= 0.0f ||
-        result.galactic_band.width_degrees > 90.0f ||
-        result.stellar_cluster.width_degrees <= 0.0f || result.dust_lane.width_degrees <= 0.0f ||
-        result.galactic_haze.width_degrees <= 0.0f || result.galactic_core.width_degrees <= 0.0f ||
-        result.nebular_knot.size_degrees <= 0.0f) {
-        return std::unexpected{"Starfield count must be 1..1000000, scale and angular widths must "
-                               "be positive, and star sizes must be nonnegative."};
+    if (result.generation.star_count < 1 || result.generation.star_count > 1000000) {
+        return std::unexpected{"starfield.generation.star-count must be between 1 and 1000000."};
+    }
+    if (result.star.scale <= 0.0f) {
+        return std::unexpected{"starfield.star.scale must be positive."};
+    }
+    if (result.star.size_multiplier < 0.0f) {
+        return std::unexpected{"starfield.star.size-multiplier must be nonnegative."};
+    }
+    if (result.bright_star.size_multiplier < 0.0f) {
+        return std::unexpected{"starfield.bright-star.size-multiplier must be nonnegative."};
+    }
+    if (result.galactic_band.width_degrees <= 0.0f || result.galactic_band.width_degrees > 90.0f) {
+        return std::unexpected{
+            "starfield.galactic-band.width-degrees must be positive and at most 90."};
+    }
+    if (result.stellar_cluster.width_degrees <= 0.0f) {
+        return std::unexpected{"starfield.stellar-cluster.width-degrees must be positive."};
+    }
+    if (result.dust_lane.width_degrees <= 0.0f) {
+        return std::unexpected{"starfield.dust-lane.width-degrees must be positive."};
+    }
+    if (result.galactic_haze.width_degrees <= 0.0f) {
+        return std::unexpected{"starfield.galactic-haze.width-degrees must be positive."};
+    }
+    if (result.galactic_core.width_degrees <= 0.0f) {
+        return std::unexpected{"starfield.galactic-core.width-degrees must be positive."};
+    }
+    if (result.nebular_knot.size_degrees <= 0.0f) {
+        return std::unexpected{"starfield.nebular-knot.size-degrees must be positive."};
     }
 
     return result;
+}
+}
+
+auto read_starfield_settings_file(std::filesystem::path const& path,
+                                  std::filesystem::path const& script_library_root)
+    -> std::expected<starfield::Settings, Diagnostics> {
+    auto assignments{DefinitionReader{script_library_root}.read_settings_file(path)};
+    if (!assignments) {
+        return std::unexpected{std::move(assignments.error())};
+    }
+
+    auto settings{decode_settings(*assignments)};
+    if (!settings) {
+        return std::unexpected{Diagnostics{
+            {DiagnosticCode::InvalidNumber, "starfield", std::move(settings.error()), path}}};
+    }
+
+    return *settings;
 }
 }

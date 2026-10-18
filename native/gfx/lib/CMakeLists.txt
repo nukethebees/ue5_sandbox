@@ -4,7 +4,6 @@ target_sources(native-gfx
   INTERFACE
     include/ioj/gfx/space_dust_math.h
     include/ioj/gfx/starfield_settings.h
-    include/ioj/gfx/starfield_settings_reader.h
 )
 target_include_directories(native-gfx
   INTERFACE
@@ -13,6 +12,5 @@ target_include_directories(native-gfx
 target_link_libraries(native-gfx
   INTERFACE
     native-core-headers
-    native-levels
     sandbox::native_defaults
 )

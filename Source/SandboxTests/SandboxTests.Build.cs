@@ -30,7 +30,7 @@ public class SandboxTests : ModuleRules
             "SandboxISMC",
             "SandboxShaders",
             "NativeSimulation",
-            "NativeSettings",
+            "NativeLevelAuthoring",
             "NativeMemory",
             "SandboxUI",
             "NativeUI",

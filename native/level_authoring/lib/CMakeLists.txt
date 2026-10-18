@@ -30,8 +30,11 @@ set_target_properties(native-level-authoring PROPERTIES OUTPUT_NAME SandboxNativ
 
 add_library(native-level-authoring-s7 STATIC)
 target_sources(native-level-authoring-s7
+  PUBLIC
+    include/ioj/levels/authoring/starfield_reader.h
   PRIVATE
     src/script_reader.cpp
+    src/starfield_reader.cpp
 )
 target_include_directories(native-level-authoring-s7
   PUBLIC
@@ -40,6 +43,7 @@ target_include_directories(native-level-authoring-s7
 target_link_libraries(native-level-authoring-s7
   PUBLIC
     native-level-authoring
+    native-gfx
   PRIVATE
     sandbox-s7
 )

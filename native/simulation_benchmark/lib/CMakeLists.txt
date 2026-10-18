@@ -11,6 +11,7 @@ target_link_libraries(native-simulation-benchmark-lib
     sandbox::native_defaults
     native-simulation
   PRIVATE
+    native-simulation-s7
     native-level-authoring-s7
     CLI11::CLI11
 )

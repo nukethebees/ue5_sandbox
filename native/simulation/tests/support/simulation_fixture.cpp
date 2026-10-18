@@ -1,6 +1,6 @@
 #include "simulation_fixture.h"
 
-#include <ioj/levels/authoring/definition_reader.h>
+#include <ioj/s7/simulation_settings_reader.h>
 #include <ioj/sim/levels/simulation_settings.h>
 
 #include <filesystem>
@@ -10,23 +10,12 @@ namespace ioj::sim::tests {
 auto make_fixture() -> SimulationFixture {
     static auto const settings{[] {
         auto const script_root{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts"};
-        levels::authoring::DefinitionReader reader{script_root};
-        auto const base{reader.read_settings_file(script_root / "Settings" / "base.scm")};
-        if (!base) {
-            throw std::runtime_error{levels::format_diagnostics(base.error())};
+        auto const loaded{
+            s7::read_simulation_settings(script_root / "Settings" / "base.scm", script_root)};
+        if (!loaded) {
+            throw std::runtime_error{levels::format_diagnostics(loaded.error())};
         }
-
-        SimulationSettings resolved{};
-        auto const applied{apply_settings(*base, resolved)};
-        if (!applied) {
-            throw std::runtime_error{levels::format_diagnostics(applied.error())};
-        }
-
-        auto const valid{validate_settings(resolved)};
-        if (!valid) {
-            throw std::runtime_error{levels::format_diagnostics(valid.error())};
-        }
-        return resolved;
+        return *loaded;
     }()};
 
     auto fixture{make_reference_level_simulation_data()};

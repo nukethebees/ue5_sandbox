@@ -141,7 +141,7 @@ void UTelemetryDashboardWidget::rebuild_state() {
     state_.header = FText::FromString(FString::Printf(
         TEXT("%s\nLAUNCHED // %s    END // %s\nREQUESTED // "
              "%.3gx    MODE // %s    DURATION // %s\nBUILD // %s    "
-             "PLATFORM // %s\nSOURCE SHA-256 // %s\nRUN // %s"),
+             "PLATFORM // %s\nRUN // %s"),
         *level,
         UTF8_TO_TCHAR(record->metadata.launched_utc.c_str()),
         *completion_reason,
@@ -152,9 +152,6 @@ void UTelemetryDashboardWidget::rebuild_state() {
             : TEXT("unlimited"),
         *record->metadata.environment.build_configuration,
         *record->metadata.environment.platform,
-        record->metadata.source_sha256.empty()
-            ? TEXT("unavailable")
-            : UTF8_TO_TCHAR(record->metadata.source_sha256.c_str()),
         UTF8_TO_TCHAR(record->metadata.run_id.c_str())));
     state_.analysis = analyze_level_telemetry_run(*record);
     auto const* const baseline{catalog_.get_baseline_record()};
@@ -165,8 +162,11 @@ void UTelemetryDashboardWidget::rebuild_state() {
             record->metadata.environment.build_version) {
             warnings.Add(TEXT("different builds"));
         }
-        if (baseline->metadata.source_sha256 != record->metadata.source_sha256) {
-            warnings.Add(TEXT("different S7 source"));
+        if (baseline->metadata.level_source != record->metadata.level_source) {
+            warnings.Add(TEXT("different level source"));
+        }
+        if (baseline->metadata.settings_source != record->metadata.settings_source) {
+            warnings.Add(TEXT("different settings source"));
         }
         if (baseline->metadata.initial_requested_time_scale !=
             record->metadata.initial_requested_time_scale) {

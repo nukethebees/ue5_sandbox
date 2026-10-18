@@ -23,12 +23,12 @@ class SANDBOXSHADERS_API AGpuStarfieldActor : public AActor {
     UPROPERTY(EditAnywhere,
               Category = "GPU Starfield",
               meta = (FilePathFilter = "scm", RelativeToGameDir))
-    FFilePath settings_file{TEXT("LevelScripts/Settings/starfield.scm")};
+    FFilePath settings_file{TEXT("LevelScripts/Settings/base.scm")};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GPU Starfield")
     FGpuStarfieldColours colours;
   protected:
-    ioj::gfx::StarfieldSettings settings_;
+    ioj::starfield::Settings settings_;
 
     UPROPERTY(VisibleAnywhere, Category = "GPU Starfield")
     TObjectPtr<UGpuStarfieldComponent> starfield_component_;

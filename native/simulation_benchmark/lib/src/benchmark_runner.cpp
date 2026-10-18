@@ -3,6 +3,7 @@
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/authoring/level_parser.h>
 #include <ioj/rotator3d.h>
+#include <ioj/s7/simulation_settings_reader.h>
 #include <ioj/sim/fighters/fighter_task_format.h>
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/reference_level_simulation_data.h>
@@ -145,10 +146,6 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     -> std::expected<BenchmarkResult, std::string> {
     auto const script_root{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts"};
     levels::authoring::DefinitionReader reader{script_root};
-    auto const base_settings{reader.read_settings_file(script_root / "Settings" / "base.scm")};
-    if (!base_settings) {
-        return std::unexpected{levels::format_diagnostics(base_settings.error())};
-    }
     auto level_result{reader.read_level_file(options.level_path)};
     if (!level_result) {
         return std::unexpected{read_error(level_result)};
@@ -156,19 +153,12 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     auto const& level{*level_result};
     auto const& level_components{level};
 
-    sim::SimulationSettings settings{};
-    auto applied{sim::apply_settings(*base_settings, settings)};
-    if (applied) {
-        applied = sim::apply_settings(level, settings);
+    auto const loaded_settings{
+        s7::read_simulation_settings(script_root / "Settings" / "base.scm", script_root, &level)};
+    if (!loaded_settings) {
+        return std::unexpected{levels::format_diagnostics(loaded_settings.error())};
     }
-    if (!applied) {
-        return std::unexpected{levels::format_diagnostics(applied.error())};
-    }
-
-    auto const valid{sim::validate_settings(settings)};
-    if (!valid) {
-        return std::unexpected{levels::format_diagnostics(valid.error())};
-    }
+    auto const& settings{*loaded_settings};
     auto const tick_rate_hz{settings.clock.tick_rate};
     auto const requested_ticks{calculate_tick_count(options.simulated_seconds, tick_rate_hz)};
     if (!requested_ticks) {

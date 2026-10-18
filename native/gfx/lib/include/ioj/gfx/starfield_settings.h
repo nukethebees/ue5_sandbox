@@ -2,13 +2,13 @@
 
 #include <cstdint>
 
-namespace ioj::gfx {
-struct StarfieldGenerationSettings {
+namespace ioj::starfield {
+struct GenerationSettings {
     std::int32_t star_count{10000};
     std::int32_t random_seed{1337};
 };
 
-struct StarfieldStarSettings {
+struct StarSettings {
     float scale{1.0f};
     float size_multiplier{1.0f};
     float global_brightness{8.0f};
@@ -16,59 +16,59 @@ struct StarfieldStarSettings {
     float parallax_strength{0.01f};
 };
 
-struct StarfieldGalacticBandSettings {
+struct GalacticBandSettings {
     float strength{0.65f};
     float width_degrees{15.0f};
 };
 
-struct StarfieldStellarClusterSettings {
+struct StellarClusterSettings {
     float strength{0.12f};
     float width_degrees{4.0f};
 };
 
-struct StarfieldDustLaneSettings {
+struct DustLaneSettings {
     float strength{0.9f};
     float width_degrees{5.0f};
     float irregularity{0.7f};
 };
 
-struct StarfieldBrightStarSettings {
+struct BrightStarSettings {
     float fraction{0.01f};
     float size_multiplier{1.75f};
     float brightness_multiplier{2.0f};
     float shape_strength{0.25f};
 };
 
-struct StarfieldTwinkleSettings {
+struct TwinkleSettings {
     float strength{0.1f};
     float speed{0.35f};
 };
 
-struct StarfieldGalacticHazeSettings {
+struct GalacticHazeSettings {
     float strength{0.15f};
     float width_degrees{18.0f};
 };
 
-struct StarfieldGalacticCoreSettings {
+struct GalacticCoreSettings {
     float strength{0.65f};
     float width_degrees{32.0f};
 };
 
-struct StarfieldNebularKnotSettings {
+struct NebularKnotSettings {
     float strength{0.18f};
     float size_degrees{9.0f};
 };
 
-struct StarfieldSettings {
-    StarfieldGenerationSettings generation;
-    StarfieldStarSettings star;
-    StarfieldGalacticBandSettings galactic_band;
-    StarfieldStellarClusterSettings stellar_cluster;
-    StarfieldDustLaneSettings dust_lane;
-    StarfieldBrightStarSettings bright_star;
-    StarfieldTwinkleSettings twinkle;
-    StarfieldGalacticHazeSettings galactic_haze;
-    StarfieldGalacticCoreSettings galactic_core;
-    StarfieldNebularKnotSettings nebular_knot;
+struct Settings {
+    GenerationSettings generation;
+    StarSettings star;
+    GalacticBandSettings galactic_band;
+    StellarClusterSettings stellar_cluster;
+    DustLaneSettings dust_lane;
+    BrightStarSettings bright_star;
+    TwinkleSettings twinkle;
+    GalacticHazeSettings galactic_haze;
+    GalacticCoreSettings galactic_core;
+    NebularKnotSettings nebular_knot;
 };
 }

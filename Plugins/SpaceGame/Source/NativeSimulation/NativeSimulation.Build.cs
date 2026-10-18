@@ -33,6 +33,8 @@ public class NativeSimulation : ModuleRules
         PublicSystemIncludePaths.Add(
             Path.Combine(repositoryRoot, "native", "simulation", "include"));
         PublicSystemIncludePaths.Add(
+            Path.Combine(repositoryRoot, "native", "simulation", "s7", "lib", "include"));
+        PublicSystemIncludePaths.Add(
             Path.Combine(repositoryRoot, "native", "lispb", "native_soa", "include"));
         PublicSystemIncludePaths.Add(
             Path.Combine(repositoryRoot, "native", "profiling", "include"));
@@ -50,6 +52,15 @@ public class NativeSimulation : ModuleRules
                     Target.Platform.ToString(),
                     Target.Configuration.ToString(),
                     "SandboxNativeSimulation.lib"),
+                Path.Combine(
+                    repositoryRoot,
+                    "Binaries",
+                    "Native",
+                    "Simulation",
+                    nativeToolchain,
+                    Target.Platform.ToString(),
+                    Target.Configuration.ToString(),
+                    "SandboxNativeSimulationS7.lib"),
                 Path.Combine(
                     repositoryRoot,
                     "Binaries",

@@ -258,7 +258,8 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     TOptional<ioj::levels::LevelDefinition> level_definition_;
     bool launched_paused_{};
     ioj::FLevelLaunchOptions launch_options_{};
-    FString level_source_sha256_{};
+    FString level_source_{};
+    FString settings_source_{};
     ioj::FLevelCollisionHost world_collision_;
 
     ioj::sim::HudSettings hud_update_frequencies{};
