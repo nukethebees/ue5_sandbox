@@ -6,6 +6,9 @@ target_sources(native-level-authoring
     src/campaign_parser.cpp
     src/catalog_parser.cpp
     src/level_definition_writer.cpp
+    src/identifiers.cpp
+    src/scene.cpp
+    src/source_session.cpp
 )
 target_include_directories(native-level-authoring
   PUBLIC

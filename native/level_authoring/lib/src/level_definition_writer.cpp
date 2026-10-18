@@ -2,6 +2,7 @@
 
 #include <ioj/ascii.h>
 #include <ioj/levels/authoring/grammar.h>
+#include <ioj/levels/authoring/identifiers.h>
 #include <ioj/s7/sexpression_emitter.h>
 
 #include <algorithm>
@@ -12,14 +13,8 @@
 namespace ioj::levels::authoring {
 namespace {
 using s7::SexpressionEmitter;
-auto canonical_symbol(std::string_view const value) -> bool {
-    return !value.empty() && ioj::is_ascii_lower(value.front()) &&
-           std::ranges::all_of(value, [](char const c) {
-               return ioj::is_ascii_lower(c) || ioj::is_ascii_digit(c) || c == '-';
-           });
-}
 void check_symbol(Diagnostics& errors, std::string_view const value, std::string path) {
-    if (!canonical_symbol(value)) {
+    if (!is_canonical_symbol(value)) {
         errors.emplace_back(DiagnosticCode::InvalidSymbol,
                             std::move(path),
                             std::format("'{}' is not a canonical lowercase Lisp symbol", value));
@@ -114,11 +109,19 @@ auto validate_output(LevelDefinition const& definition) -> Diagnostics {
 }
 }
 
-auto emit_editor_level_source(LevelDefinition const& definition)
-    -> std::expected<std::string, Diagnostics> {
+auto validate_editor_level(LevelDefinition const& definition) -> std::expected<void, Diagnostics> {
     auto errors{validate_output(definition)};
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
+    }
+    return {};
+}
+
+auto emit_editor_level_source(LevelDefinition const& definition)
+    -> std::expected<std::string, Diagnostics> {
+    auto validation{validate_editor_level(definition)};
+    if (!validation) {
+        return std::unexpected{std::move(validation.error())};
     }
 
     SexpressionEmitter out;

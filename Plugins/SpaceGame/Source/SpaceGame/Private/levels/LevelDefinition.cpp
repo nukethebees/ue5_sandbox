@@ -1,6 +1,6 @@
 #include "SpaceGame/levels/LevelDefinition.h"
 
-#include "LevelEntityTableOperations.h"
+#include <SpaceGame/levels/LevelEntityTableOperations.h>
 #include <SpaceGame/levels/native_level_definition_conversion.h>
 
 #include <SandboxCoreEngine/strings.h>

@@ -26,6 +26,7 @@ add_executable(native-level-parser-tests)
 target_sources(native-level-parser-tests
   PRIVATE
     parser_tests.cpp
+    editor_tests.cpp
 )
 target_link_libraries(native-level-parser-tests
   PRIVATE

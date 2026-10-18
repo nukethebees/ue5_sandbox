@@ -1,9 +1,9 @@
 #include "SpaceGame/levels/LevelLoader.h"
 
-#include "LevelEntityTableOperations.h"
 #include "SpaceGame/levels/ObserverCameraTransform.h"
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/levels/LevelEntityResolution.h>
+#include <SpaceGame/levels/LevelEntityTableOperations.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
