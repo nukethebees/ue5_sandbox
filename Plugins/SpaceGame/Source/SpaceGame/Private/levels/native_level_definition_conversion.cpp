@@ -161,20 +161,20 @@ auto to_native(ioj::FLevelDefinition const& definition)
 }
 
 auto to_unreal(LevelDefinition const& level) -> ioj::FLevelDefinition {
-    auto const& definition{level.components()};
+    auto const& definition{level};
     ioj::FLevelBuilder builder;
     ioj::FLevelMetadata metadata{
-        .id = ioj::FLevelId{to_fname(definition.metadata.id.value)},
-        .title = ioj::to_fstring(definition.metadata.title),
-        .description = ioj::to_fstring(definition.metadata.description),
+        .id = ioj::FLevelId{to_fname(definition.metadata().id.value)},
+        .title = ioj::to_fstring(definition.metadata().title),
+        .description = ioj::to_fstring(definition.metadata().description),
     };
-    if (definition.metadata.par_time_seconds) {
-        metadata.par_time_seconds = *definition.metadata.par_time_seconds;
+    if (definition.metadata().par_time_seconds) {
+        metadata.par_time_seconds = *definition.metadata().par_time_seconds;
     }
     builder.set_metadata(metadata);
 
-    if (definition.collision_grid) {
-        auto const& grid{*definition.collision_grid};
+    if (definition.collision_grid()) {
+        auto const& grid{*definition.collision_grid()};
         ioj::FLevelCollisionGridDefinition unreal_grid;
         if (grid.level_size) {
             unreal_grid.level_size = FVector3f{static_cast<float>(grid.level_size->x()),
@@ -189,18 +189,19 @@ auto to_unreal(LevelDefinition const& level) -> ioj::FLevelDefinition {
         builder.set_collision_grid(unreal_grid);
     }
 
-    for (auto const& level_id : definition.unlock_level_ids) {
+    for (auto const& level_id : definition.unlock_level_ids()) {
         builder.add_unlock_criterion(
             ioj::FLevelUnlockCriterion{TInPlaceType<ioj::FLevelCompletedUnlockCriterion>{},
                                        ioj::FLevelCompletedUnlockCriterion{
                                            .level_id = ioj::FLevelId{to_fname(level_id.value)}}});
     }
-    if (!definition.player_entity_id.empty()) {
-        builder.set_player_entity(ioj::FLevelEntityId{to_fname(definition.player_entity_id.value)});
+    if (!definition.player_entity_id().empty()) {
+        builder.set_player_entity(
+            ioj::FLevelEntityId{to_fname(definition.player_entity_id().value)});
     }
 
-    if (definition.camera) {
-        auto const& camera{*definition.camera};
+    if (definition.camera()) {
+        auto const& camera{*definition.camera()};
         builder.set_camera(ioj::FLevelCameraDefinition{
             .target_entity_ids = to_unreal_ids<ioj::FLevelEntityId>(camera.target_entity_ids),
             .offset_direction = FVector{camera.offset_direction.x(),
@@ -209,8 +210,8 @@ auto to_unreal(LevelDefinition const& level) -> ioj::FLevelDefinition {
             .distance = camera.distance,
         });
     }
-    if (definition.mission) {
-        auto const& source{*definition.mission};
+    if (definition.mission()) {
+        auto const& source{*definition.mission()};
         ioj::FLevelMissionDefinition mission{
             .mode = source.mode,
             .hero_entity_ids = to_unreal_ids<ioj::FLevelEntityId>(source.hero_entity_ids),
@@ -228,7 +229,7 @@ auto to_unreal(LevelDefinition const& level) -> ioj::FLevelDefinition {
         builder.set_mission(mission);
     }
 
-    for (auto const& source : definition.mission_events) {
+    for (auto const& source : definition.mission_events()) {
         builder.add_mission_event(ioj::FLevelMissionObjectiveEvent{
             .time_seconds = source.time_seconds,
             .must_survive_entity_ids =
@@ -238,7 +239,7 @@ auto to_unreal(LevelDefinition const& level) -> ioj::FLevelDefinition {
             .kill_target_increase = source.kill_target_increase,
         });
     }
-    for (auto const& source : definition.entities) {
+    for (auto const& source : definition.entities()) {
         builder.add_entity(ioj::FEntitySpawnDefinition{
             .id = ioj::FLevelEntityId{to_fname(source.id.value)},
             .archetype = ioj::FEntityArchetypeId{to_fname(to_serialized_string(source.archetype))},

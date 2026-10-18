@@ -20,7 +20,7 @@ auto make_changes(ULevel const& level,
                   AS7LevelAuthoringDocument const& document,
                   levels::LevelDefinition const& incoming)
     -> std::expected<levels::authoring::SyncPlan, FString> {
-    auto const& definition{incoming.components()};
+    auto const& definition{incoming};
     auto* const world{GEditor ? GEditor->GetEditorWorldContext().World() : nullptr};
     if (!IsValid(world) || world->IsGameWorld() || level.OwningWorld != world ||
         world->GetCurrentLevel() != &level || document.GetLevel() != &level) {
@@ -34,7 +34,7 @@ auto make_changes(ULevel const& level,
     }
 
     // Validate every configured class before any actor is spawned or modified.
-    for (auto const& entity : definition.entities) {
+    for (auto const& entity : definition.entities()) {
         auto* const type{s7_level_actor_class(entity.archetype, *document.level_config)};
         if (!IsValid(type) ||
             type->HasAnyClassFlags(CLASS_Abstract | CLASS_NotPlaceable | CLASS_Transient)) {
@@ -78,7 +78,7 @@ auto apply_s7_level_sync_plan(ULevel& level,
                               FS7LevelSyncPlan const& plan) -> std::expected<void, FString> {
     using namespace s7_level_reconciliation_detail;
     auto current{make_changes(level, document, plan.definition)};
-    auto const& definition{plan.definition.components()};
+    auto const& definition{plan.definition};
     if (!current) {
         return std::unexpected{current.error()};
     }
@@ -89,7 +89,7 @@ auto apply_s7_level_sync_plan(ULevel& level,
     for (auto const& binding : document.entities) {
         resolved.Add(binding.id, binding.actor);
     }
-    auto const& entities{definition.entities};
+    auto const& entities{definition.entities()};
     TArray<AActor*> staged;
     TArray<AActor*> removed;
 
@@ -152,7 +152,7 @@ auto apply_s7_level_sync_plan(ULevel& level,
     }
 
     document.Modify();
-    auto const grid{definition.collision_grid.value_or(levels::LevelCollisionGridDefinition{})};
+    auto const grid{definition.collision_grid().value_or(levels::LevelCollisionGridDefinition{})};
     auto vector{[](std::optional<ioj::Vector3d> const& value) -> FVector3f {
         return value ? FVector3f{static_cast<float>(value->x()),
                                  static_cast<float>(value->y()),
@@ -162,9 +162,9 @@ auto apply_s7_level_sync_plan(ULevel& level,
     document.level_size = vector(grid.level_size);
     document.grid_cell_size = vector(grid.cell_size);
     document.grid_override_schema_version = 1;
-    document.level_id = FName{ioj::to_fstring(definition.metadata.id.value)};
-    document.title = ioj::to_fstring(definition.metadata.title);
-    document.description = ioj::to_fstring(definition.metadata.description);
+    document.level_id = FName{ioj::to_fstring(definition.metadata().id.value)};
+    document.title = ioj::to_fstring(definition.metadata().title);
+    document.description = ioj::to_fstring(definition.metadata().description);
     document.entities.Reset(static_cast<int32>(entities.size()));
     for (auto const& entity : entities) {
         auto const id{name(entity.id)};
@@ -172,10 +172,10 @@ auto apply_s7_level_sync_plan(ULevel& level,
                                .actor = resolved.FindChecked(id),
                                .spawn_time_seconds = entity.spawn_time_seconds});
     }
-    document.use_observer_camera = definition.camera.has_value();
+    document.use_observer_camera = definition.camera().has_value();
     document.camera.targets.Reset();
-    if (definition.camera.has_value()) {
-        auto const& camera{*definition.camera};
+    if (definition.camera().has_value()) {
+        auto const& camera{*definition.camera()};
         document.camera.offset_direction = FVector{
             camera.offset_direction.x(), camera.offset_direction.y(), camera.offset_direction.z()};
         document.camera.distance = camera.distance;
@@ -184,8 +184,8 @@ auto apply_s7_level_sync_plan(ULevel& level,
         }
     }
     document.mission = {};
-    if (definition.mission.has_value()) {
-        auto const& mission{*definition.mission};
+    if (definition.mission().has_value()) {
+        auto const& mission{*definition.mission()};
         document.mission.mode = s7_mission_mode(mission.mode);
         if (mission.time_limit_seconds.has_value()) {
             document.mission.time_limit_seconds = *mission.time_limit_seconds;

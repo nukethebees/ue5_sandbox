@@ -75,8 +75,8 @@ static_assert(!std::is_convertible_v<LevelId, CampaignId>);
 static_assert(!std::is_convertible_v<EntityId, Team>);
 static_assert(!std::is_convertible_v<std::string, LevelId>);
 static_assert(!std::is_default_constructible_v<LevelDefinition>);
-static_assert(std::is_same_v<decltype(std::declval<LevelDefinition&>().components()),
-                             LevelDefinitionComponents const&>);
+static_assert(std::is_same_v<decltype(std::declval<LevelDefinition&>().entities()),
+                             std::vector<EntitySpawnDefinition> const&>);
 
 TEST(NativeLevelDefinition, VerifiesComponentsBeforeConstructionAndOwnsThem) {
     auto components{make_level("owned")};
@@ -89,8 +89,8 @@ TEST(NativeLevelDefinition, VerifiesComponentsBeforeConstructionAndOwnsThem) {
     ASSERT_FALSE(invalid);
     EXPECT_TRUE(has_code(invalid.error(), DiagnosticCode::MissingTitle));
     EXPECT_TRUE(has_code(invalid.error(), DiagnosticCode::PlayerEntityNotFound));
-    EXPECT_EQ(level->components().metadata.title, "Test Level");
-    EXPECT_EQ(level->components().entities.size(), 1u);
+    EXPECT_EQ(level->metadata().title, "Test Level");
+    EXPECT_EQ(level->entities().size(), 1u);
 }
 
 TEST(NativeSourceSession, PreservesTextAndSeparatesSavedFromAppliedState) {
@@ -199,7 +199,7 @@ TEST(NativeLevelAuthoringReader, ReadsFileWithRootRelativeLibrary) {
     std::ofstream{path} << "(load-script \"Libraries/metadata.scm\")\n" << source;
     auto const result{DefinitionReader{}.read_level_file(path)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
-    EXPECT_EQ(result->components().metadata.title, "Loaded From Library");
+    EXPECT_EQ(result->metadata().title, "Loaded From Library");
 }
 TEST(NativeLevelAuthoringReader, ReportsMissingFile) {
     auto const result{DefinitionReader{}.read_level_file("missing-level.scm")};
@@ -229,11 +229,11 @@ TEST(NativeLevelAuthoringReader, RootControlsImportsAndPreservesFailuresAndSourc
     ASSERT_EQ(catalog->levels.size(), 3u);
     ASSERT_EQ(catalog->campaigns.size(), 1u);
     ASSERT_TRUE(catalog->levels[0].definition);
-    EXPECT_EQ(catalog->levels[0].definition->components().metadata.title, "Shared");
+    EXPECT_EQ(catalog->levels[0].definition->metadata().title, "Shared");
     ASSERT_FALSE(catalog->levels[1].definition);
     EXPECT_EQ(catalog->levels[1].definition.error().front().source_path, root / "broken.scm");
     ASSERT_TRUE(catalog->levels[2].definition);
-    EXPECT_EQ(catalog->levels[2].definition->components().metadata.title, "Shared");
+    EXPECT_EQ(catalog->levels[2].definition->metadata().title, "Shared");
     ASSERT_TRUE(catalog->campaigns[0].definition);
     EXPECT_EQ(catalog->campaigns[0].definition->title, "Shared");
 
@@ -243,7 +243,7 @@ TEST(NativeLevelAuthoringReader, RootControlsImportsAndPreservesFailuresAndSourc
     ASSERT_FALSE(variation->levels[0].definition);
     EXPECT_EQ(variation->levels[0].definition.error().front().code,
               DiagnosticCode::ScriptEvaluationFailed);
-    EXPECT_EQ(catalog->levels[0].definition->components().metadata.title, "Shared");
+    EXPECT_EQ(catalog->levels[0].definition->metadata().title, "Shared");
 }
 TEST(NativeLevelAuthoringReader, RootLoadsSharedLibrariesOnce) {
     TemporaryLevelDirectory directory;
@@ -263,7 +263,7 @@ TEST(NativeLevelAuthoringReader, RootLoadsSharedLibrariesOnce) {
     ASSERT_EQ(catalog->levels.size(), 2u);
     for (auto const& entry : catalog->levels) {
         ASSERT_TRUE(entry.definition) << format_diagnostics(entry.definition.error());
-        EXPECT_EQ(entry.definition->components().metadata.title, "1");
+        EXPECT_EQ(entry.definition->metadata().title, "1");
     }
 }
 TEST(NativeLevelAuthoringReader, RootReportsEvaluationAndGrammarErrors) {
@@ -318,9 +318,9 @@ TEST(NativeLevelAuthoringReader, ParsesClosedVocabulariesWithoutTeamDeclarations
     auto const result{DefinitionReader{}.read_level_source(source)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
     EXPECT_EQ(participating_teams(*result), (std::vector{Team::Blue}));
-    ASSERT_EQ(result->components().entities.size(), 1u);
-    EXPECT_EQ(result->components().entities.front().team, Team::Blue);
-    EXPECT_EQ(result->components().entities.front().archetype, EntityArchetype::PlayerFighter);
+    ASSERT_EQ(result->entities().size(), 1u);
+    EXPECT_EQ(result->entities().front().team, Team::Blue);
+    EXPECT_EQ(result->entities().front().archetype, EntityArchetype::PlayerFighter);
 }
 TEST(NativeLevelAuthoringReader, GeneratesLevelLocalIdsAndDefaultsRotations) {
     auto const source{R"((level :id 'defaults :title "Defaults" :player 'player
@@ -340,10 +340,10 @@ TEST(NativeLevelAuthoringReader, GeneratesLevelLocalIdsAndDefaultsRotations) {
     for (int iteration{}; iteration < 2; ++iteration) {
         auto const result{DefinitionReader{}.read_level_source(source)};
         ASSERT_TRUE(result) << format_diagnostics(result.error());
-        ASSERT_EQ(result->components().entities.size(), expected.size());
+        ASSERT_EQ(result->entities().size(), expected.size());
         auto const count{expected.size()};
         for (std::size_t index{}; index < count; ++index) {
-            auto const& entity{result->components().entities[index]};
+            auto const& entity{result->entities()[index]};
             EXPECT_EQ(entity.id, expected[index]);
             EXPECT_DOUBLE_EQ(entity.rotation.pitch, 0.0);
             EXPECT_DOUBLE_EQ(entity.rotation.yaw, 0.0);
@@ -356,10 +356,10 @@ TEST(NativeLevelAuthoringReader, GeneratesLevelLocalIdsAndDefaultsRotations) {
         EXPECT_TRUE(emitted->contains(":id 'red-capital-ship-1"));
         auto const round_trip{DefinitionReader{}.read_level_source(*emitted)};
         ASSERT_TRUE(round_trip) << format_diagnostics(round_trip.error());
-        for (auto const& original : result->components().entities) {
-            auto const found{std::ranges::find(
-                round_trip->components().entities, original.id, &EntitySpawnDefinition::id)};
-            ASSERT_NE(found, round_trip->components().entities.end());
+        for (auto const& original : result->entities()) {
+            auto const found{
+                std::ranges::find(round_trip->entities(), original.id, &EntitySpawnDefinition::id)};
+            ASSERT_NE(found, round_trip->entities().end());
             EXPECT_DOUBLE_EQ(found->position.x(), original.position.x());
             EXPECT_DOUBLE_EQ(found->spawn_time_seconds, original.spawn_time_seconds);
         }
@@ -399,9 +399,8 @@ TEST(NativeLevelAuthoringReader, RestartsGeneratedIdsForEachDefinitionInOneRoot)
     ASSERT_EQ(catalog->levels.size(), 2u);
     for (auto const& entry : catalog->levels) {
         ASSERT_TRUE(entry.definition) << format_diagnostics(entry.definition.error());
-        ASSERT_EQ(entry.definition->components().entities.size(), 2u);
-        EXPECT_EQ(entry.definition->components().entities.back().id,
-                  EntityId{"red-static-turret-0"});
+        ASSERT_EQ(entry.definition->entities().size(), 2u);
+        EXPECT_EQ(entry.definition->entities().back().id, EntityId{"red-static-turret-0"});
     }
 }
 TEST(NativeLevelAuthoringReader, MapsPositionsAndConstructsExplicitIdsInScheme) {
@@ -417,14 +416,14 @@ TEST(NativeLevelAuthoringReader, MapsPositionsAndConstructsExplicitIdsInScheme) 
                (entity :archetype 'static-turret :team 'red :position position))
              '((200 0 0) (300 10 20))))))")};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
-    ASSERT_EQ(result->components().entities.size(), 4u);
-    EXPECT_EQ(result->components().entities[0].id, EntityId{"flagship-0"});
-    EXPECT_EQ(result->components().entities[1].id, EntityId{"flagship-1"});
-    EXPECT_DOUBLE_EQ(result->components().entities[1].position.x(), 100.0);
-    EXPECT_EQ(result->components().entities[2].id, EntityId{"red-static-turret-0"});
-    EXPECT_EQ(result->components().entities[3].id, EntityId{"red-static-turret-1"});
-    EXPECT_DOUBLE_EQ(result->components().entities[3].position.y(), 10.0);
-    EXPECT_DOUBLE_EQ(result->components().entities[3].position.z(), 20.0);
+    ASSERT_EQ(result->entities().size(), 4u);
+    EXPECT_EQ(result->entities()[0].id, EntityId{"flagship-0"});
+    EXPECT_EQ(result->entities()[1].id, EntityId{"flagship-1"});
+    EXPECT_DOUBLE_EQ(result->entities()[1].position.x(), 100.0);
+    EXPECT_EQ(result->entities()[2].id, EntityId{"red-static-turret-0"});
+    EXPECT_EQ(result->entities()[3].id, EntityId{"red-static-turret-1"});
+    EXPECT_DOUBLE_EQ(result->entities()[3].position.y(), 10.0);
+    EXPECT_DOUBLE_EQ(result->entities()[3].position.z(), 20.0);
 }
 TEST(NativeLevelAuthoringReader, DerivesDistinctTeamsIncludingScheduledSpawns) {
     auto definition{make_level("teams")};
@@ -523,9 +522,9 @@ TEST(NativeLevelAuthoringWriter, EmitsDeterministicReadableSource) {
     EXPECT_TRUE(a->contains(":spawn-at 2.5"));
     auto const loaded{DefinitionReader{}.read_level_source(*a)};
     ASSERT_TRUE(loaded) << format_diagnostics(loaded.error());
-    EXPECT_EQ(loaded->components().metadata.title, first.metadata.title);
-    EXPECT_EQ(loaded->components().metadata.description, first.metadata.description);
-    EXPECT_EQ(loaded->components().entities.size(), 2u);
+    EXPECT_EQ(loaded->metadata().title, first.metadata.title);
+    EXPECT_EQ(loaded->metadata().description, first.metadata.description);
+    EXPECT_EQ(loaded->entities().size(), 2u);
 }
 TEST(NativeLevelAuthoringWriter, HandlesEmptyCollectionsEscapesAndNumericBoundaries) {
     auto definition{make_level("numbers")};
@@ -536,8 +535,8 @@ TEST(NativeLevelAuthoringWriter, HandlesEmptyCollectionsEscapesAndNumericBoundar
     EXPECT_TRUE(source->contains(":position '(0 0.001 "));
     auto parsed{DefinitionReader{}.read_level_source(*source)};
     ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
-    EXPECT_EQ(parsed->components().metadata.description, definition.metadata.description);
-    EXPECT_DOUBLE_EQ(parsed->components().entities[0].position.x(), 0.0);
+    EXPECT_EQ(parsed->metadata().description, definition.metadata.description);
+    EXPECT_DOUBLE_EQ(parsed->entities()[0].position.x(), 0.0);
 }
 TEST(NativeLevelAuthoringCollisionGrid, PreservesIndependentOverridesAcrossSourceRoundTrip) {
     for (int mask{}; mask < 4; ++mask) {
@@ -555,10 +554,10 @@ TEST(NativeLevelAuthoringCollisionGrid, PreservesIndependentOverridesAcrossSourc
         ASSERT_TRUE(source) << format_diagnostics(source.error());
         auto const parsed{DefinitionReader{}.read_level_source(*source)};
         ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
-        ASSERT_EQ(parsed->components().collision_grid.has_value(), mask != 0);
+        ASSERT_EQ(parsed->collision_grid().has_value(), mask != 0);
         if (mask != 0) {
-            EXPECT_EQ(parsed->components().collision_grid->level_size.has_value(), (mask & 1) != 0);
-            EXPECT_EQ(parsed->components().collision_grid->cell_size.has_value(), (mask & 2) != 0);
+            EXPECT_EQ(parsed->collision_grid()->level_size.has_value(), (mask & 1) != 0);
+            EXPECT_EQ(parsed->collision_grid()->cell_size.has_value(), (mask & 2) != 0);
         }
     }
 }
@@ -588,9 +587,9 @@ TEST(NativeLevelAuthoringWriter, RoundTripsInitialMissionObjectives) {
     ASSERT_TRUE(source);
     auto const parsed{DefinitionReader{}.read_level_source(*source)};
     ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
-    ASSERT_TRUE(parsed->components().mission);
-    EXPECT_EQ(parsed->components().mission->mode, LevelMissionMode::KillEnemies);
-    EXPECT_EQ(parsed->components().mission->required_kill_entity_ids,
+    ASSERT_TRUE(parsed->mission());
+    EXPECT_EQ(parsed->mission()->mode, LevelMissionMode::KillEnemies);
+    EXPECT_EQ(parsed->mission()->required_kill_entity_ids,
               definition.mission->required_kill_entity_ids);
 }
 TEST(NativeLevelAuthoringWriter, ReportsUnsupportedEditorFeatures) {

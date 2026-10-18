@@ -8,7 +8,7 @@ namespace ioj::levels {
 
 auto participating_teams(LevelDefinition const& definition) -> std::vector<Team> {
     std::vector<Team> result;
-    for (auto const& entity : definition.components().entities) {
+    for (auto const& entity : definition.entities()) {
         if (!std::ranges::contains(result, entity.team)) {
             result.emplace_back(entity.team);
         }

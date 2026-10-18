@@ -977,7 +977,7 @@ void US7LevelAuthoringMode::save_canonical_from_scene() {
     document_->synchronized_scene_source = source;
     set_status(FText::FromString(
         FString::Printf(TEXT("Saved canonical scene state with %d entities to %s."),
-                        static_cast<int32>(definition->components().entities.size()),
+                        static_cast<int32>(definition->entities().size()),
                         *source_session_.path())));
     changed_.Broadcast();
 }

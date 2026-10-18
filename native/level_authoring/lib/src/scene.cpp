@@ -120,19 +120,32 @@ auto SyncPlan::has_changes() const -> bool {
 
 auto reconcile_scene(SceneSnapshot const& scene, LevelDefinition const& level) -> SyncPlan {
     using namespace scene_comparison;
-    auto const& incoming{level.components()};
+    auto const& incoming{level};
     assert(scene.definition.entities.size() == scene.properties.size());
 
-    auto result{document_changes(scene, incoming)};
+    auto const& current_document{scene.definition};
+    auto result{SyncPlan{
+        .collision_grid_changed =
+            !(current_document.collision_grid.value_or(LevelCollisionGridDefinition{}) ==
+              incoming.collision_grid().value_or(LevelCollisionGridDefinition{})),
+        .metadata_changed =
+            current_document.metadata.id != incoming.metadata().id ||
+            current_document.metadata.title != incoming.metadata().title ||
+            current_document.metadata.description != incoming.metadata().description,
+        .viewpoint_changed = !scene.viewpoint_valid ||
+                             current_document.player_entity_id != incoming.player_entity_id() ||
+                             !(current_document.camera == incoming.camera()),
+        .mission_changed =
+            !scene.mission_references_valid || !(current_document.mission == incoming.mission())}};
     std::unordered_map<EntityId, std::size_t> existing;
     auto const count{scene.definition.entities.size()};
     for (std::size_t i{}; i < count; ++i) {
         auto const inserted{existing.emplace(scene.definition.entities[i].id, i).second};
         assert(inserted);
     }
-    auto const incoming_count{incoming.entities.size()};
+    auto const incoming_count{incoming.entities().size()};
     for (std::size_t incoming_index{}; incoming_index < incoming_count; ++incoming_index) {
-        auto const& entity{incoming.entities[incoming_index]};
+        auto const& entity{incoming.entities()[incoming_index]};
         auto const found{existing.find(entity.id)};
         if (found == existing.end()) {
             result.changes.push_back({entity.id, SyncAction::Add, true, true, incoming_index});

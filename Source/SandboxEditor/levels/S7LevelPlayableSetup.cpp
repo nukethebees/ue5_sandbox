@@ -87,8 +87,8 @@ auto prepare_s7_level_for_pie(UWorld& world) -> std::expected<void, FString> {
     }
 
     ioj::FLevelLaunchOptions options;
-    options.control_context = definition->components().camera ? EPlayerControlContext::Observer
-                                                              : EPlayerControlContext::Player;
+    options.control_context =
+        definition->camera() ? EPlayerControlContext::Observer : EPlayerControlContext::Player;
     // Upgrade old authoring maps in the PIE copy without changing their saved actors.
     orchestrator->set_start_mode(EOrchestratorStartMode::AuthoredLevel);
     orchestrator->clear_player_ship();
@@ -120,8 +120,8 @@ auto validate_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& docume
     if (!definition) {
         return std::unexpected{definition.error()};
     }
-    auto* const player{s7_level_playable_setup_detail::find_player(
-        document, definition->components().player_entity_id)};
+    auto* const player{
+        s7_level_playable_setup_detail::find_player(document, definition->player_entity_id())};
 
     TOptional<::ioj::sim::player::PlayerSpawnData> player_spawn;
     UStaticMesh const* player_mesh{};

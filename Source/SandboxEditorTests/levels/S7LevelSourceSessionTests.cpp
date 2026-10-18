@@ -145,7 +145,7 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
             return;
         }
         TestRunner->TestEqual(TEXT("Sibling library supplies title"),
-                              ioj::to_fstring(read->components().metadata.title),
+                              ioj::to_fstring(read->metadata().title),
                               FString{TEXT("From Sibling Library")});
 
         session.set_buffer(source.Replace(TEXT("shared-title"), TEXT("\"From Buffer\"")));
@@ -157,7 +157,7 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
             return;
         }
         TestRunner->TestEqual(TEXT("Preview input comes from the buffer"),
-                              ioj::to_fstring(edited_read->components().metadata.title),
+                              ioj::to_fstring(edited_read->metadata().title),
                               FString{TEXT("From Buffer")});
         FString unchanged_disk_source;
         FFileHelper::LoadFileToString(unchanged_disk_source, *source_path);

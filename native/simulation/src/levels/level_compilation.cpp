@@ -25,15 +25,14 @@ struct MissionTickValues {
     std::vector<std::int32_t> kill_target_increases{};
 };
 
-auto entity_index(LevelDefinitionComponents const& definition, EntityId const& id)
-    -> sim::LevelEntityIndex {
-    auto const found{std::ranges::find(definition.entities, id, &EntitySpawnDefinition::id)};
-    assert(found != definition.entities.end());
-    return static_cast<sim::LevelEntityIndex>(found - definition.entities.begin());
+auto entity_index(LevelDefinition const& definition, EntityId const& id) -> sim::LevelEntityIndex {
+    auto const found{std::ranges::find(definition.entities(), id, &EntitySpawnDefinition::id)};
+    assert(found != definition.entities().end());
+    return static_cast<sim::LevelEntityIndex>(found - definition.entities().begin());
 }
 
 void append_indices(std::vector<std::int32_t>& output,
-                    LevelDefinitionComponents const& definition,
+                    LevelDefinition const& definition,
                     std::vector<EntityId> const& ids) {
     for (auto const& id : ids) {
         output.push_back(static_cast<std::int32_t>(entity_index(definition, id)));
@@ -109,21 +108,22 @@ auto compile_level(LevelDefinition const& level,
                    sim::SimClock const& clock,
                    sim::CapitalShipSimConfig const& capital_config,
                    sim::TurretSimConfig const& turret_config) -> LevelCompilationResult {
-    auto const& definition{level.components()};
+    auto const& definition{level};
 
     sim::CompiledLevelEvents compiled;
     auto& initialisation{compiled.initialisation};
     auto& schedule{compiled.schedule};
     auto& mission_initialisation{initialisation.mission.emplace()};
-    mission_initialisation.level_id = definition.metadata.id.value;
-    mission_initialisation.level_title = definition.metadata.title;
-    initialisation.entity_count = static_cast<std::uint32_t>(definition.entities.size());
-    if (!definition.player_entity_id.empty()) {
-        initialisation.player_entity_index = entity_index(definition, definition.player_entity_id);
+    mission_initialisation.level_id = definition.metadata().id.value;
+    mission_initialisation.level_title = definition.metadata().title;
+    initialisation.entity_count = static_cast<std::uint32_t>(definition.entities().size());
+    if (!definition.player_entity_id().empty()) {
+        initialisation.player_entity_index =
+            entity_index(definition, definition.player_entity_id());
     }
 
-    if (definition.mission) {
-        auto const& mission{*definition.mission};
+    if (definition.mission()) {
+        auto const& mission{*definition.mission()};
         mission_initialisation.mode = mission.mode;
         mission_initialisation.time_limit_seconds = mission.time_limit_seconds;
         mission_initialisation.kill_count = mission.kill_count;
@@ -139,10 +139,10 @@ auto compile_level(LevelDefinition const& level,
              mission.mode == LevelMissionMode::KillEnemiesWithinTime) &&
             !mission.kill_count && !mission.hero_entity_ids.empty()) {
             auto const hero_team{
-                definition.entities[entity_index(definition, mission.hero_entity_ids.front())]
+                definition.entities()[entity_index(definition, mission.hero_entity_ids.front())]
                     .team};
             std::int32_t enemy_count{};
-            for (auto const& entity : definition.entities) {
+            for (auto const& entity : definition.entities()) {
                 enemy_count += entity.team != hero_team ? 1 : 0;
             }
             mission_initialisation.kill_count = enemy_count;
@@ -150,17 +150,17 @@ auto compile_level(LevelDefinition const& level,
     }
 
     std::vector<EventSource> sources;
-    auto const entity_count{static_cast<std::uint32_t>(definition.entities.size())};
-    auto const mission_event_count{static_cast<std::uint32_t>(definition.mission_events.size())};
+    auto const entity_count{static_cast<std::uint32_t>(definition.entities().size())};
+    auto const mission_event_count{static_cast<std::uint32_t>(definition.mission_events().size())};
     sources.reserve(static_cast<std::size_t>(entity_count + mission_event_count));
     for (std::uint32_t index{}; index < entity_count; ++index) {
-        auto const& entity{definition.entities[static_cast<std::size_t>(index)]};
+        auto const& entity{definition.entities()[static_cast<std::size_t>(index)]};
         if (entity.archetype != EntityArchetype::PlayerFighter) {
             sources.push_back({clock.duration_to_tick_period(entity.spawn_time_seconds), index});
         }
     }
     for (std::uint32_t index{}; index < mission_event_count; ++index) {
-        auto const& event{definition.mission_events[static_cast<std::size_t>(index)]};
+        auto const& event{definition.mission_events()[static_cast<std::size_t>(index)]};
         if (!event.must_survive_entity_ids.empty() || !event.required_kill_entity_ids.empty() ||
             event.kill_target_increase > 0) {
             sources.push_back(
@@ -177,7 +177,7 @@ auto compile_level(LevelDefinition const& level,
     auto const append_entity = [&](sim::LevelEntityIndex const entity_index_value,
                                    sim::LevelCapitalSpawnEvents& capital_storage,
                                    sim::LevelTurretSpawnEvents& turret_storage) {
-        auto const& entity{definition.entities[static_cast<std::size_t>(entity_index_value)]};
+        auto const& entity{definition.entities()[static_cast<std::size_t>(entity_index_value)]};
         if (entity.archetype == EntityArchetype::CapitalShip) {
             auto const row{capital_storage.num()};
             capital_storage.add_uninitialised(1);
@@ -252,9 +252,8 @@ auto compile_level(LevelDefinition const& level,
         if (is_entity) {
             append_entity(source.source_index, schedule.capital_spawns, schedule.turret_spawns);
         } else {
-            auto const& event{
-                definition
-                    .mission_events[static_cast<std::size_t>(source.source_index - entity_count)]};
+            auto const& event{definition.mission_events()[static_cast<std::size_t>(
+                source.source_index - entity_count)]};
             append_indices(mission_values.must_survive, definition, event.must_survive_entity_ids);
             append_indices(
                 mission_values.required_kills, definition, event.required_kill_entity_ids);

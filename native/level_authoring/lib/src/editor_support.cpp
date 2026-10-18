@@ -17,28 +17,28 @@ void check_symbol(Diagnostics& errors, std::string_view const value, std::string
 }
 
 auto check_editor_support(LevelDefinition const& level) -> std::expected<void, Diagnostics> {
-    auto const& definition{level.components()};
+    auto const& definition{level};
     Diagnostics errors;
-    if (definition.metadata.par_time_seconds) {
+    if (definition.metadata().par_time_seconds) {
         errors.emplace_back(DiagnosticCode::UnsupportedEditorFeature,
                             "level.par-time",
                             "Editor level source does not support par-time");
     }
-    if (!definition.unlock_level_ids.empty()) {
+    if (!definition.unlock_level_ids().empty()) {
         errors.emplace_back(DiagnosticCode::UnsupportedEditorFeature,
                             "level.unlock",
                             "Editor level source does not support unlock criteria");
     }
-    if (!definition.mission_events.empty()) {
+    if (!definition.mission_events().empty()) {
         errors.emplace_back(DiagnosticCode::UnsupportedEditorFeature,
                             "level.mission-events",
                             "Editor level source does not support mission events");
     }
-    check_symbol(errors, definition.metadata.id.value, "level.id");
+    check_symbol(errors, definition.metadata().id.value, "level.id");
     // Semantic validation already requires every reference to name one of these entities.
-    auto const count{definition.entities.size()};
+    auto const count{definition.entities().size()};
     for (std::size_t index{}; index < count; ++index) {
-        auto const& entity{definition.entities[index]};
+        auto const& entity{definition.entities()[index]};
         auto const path{std::format("level.entities[{}]", index)};
         check_symbol(errors, entity.id.value, path + ".id");
     }

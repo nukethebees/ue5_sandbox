@@ -199,7 +199,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         return std::unexpected{read_error(level_result)};
     }
     auto const& level{*level_result};
-    auto const& level_components{level.components()};
+    auto const& level_components{level};
 
     auto reference{ioj::sim::make_reference_level_simulation_data()};
     auto& data{reference.data};
@@ -225,11 +225,11 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         }
     }
 
-    if (level_components.player_entity_id.empty()) {
+    if (level_components.player_entity_id().empty()) {
         data.player.reset();
     } else {
-        auto const player_definition{std::ranges::find(level_components.entities,
-                                                       level_components.player_entity_id,
+        auto const player_definition{std::ranges::find(level_components.entities(),
+                                                       level_components.player_entity_id(),
                                                        &ioj::levels::EntitySpawnDefinition::id)};
         auto player{reference.player};
         player.team = player_definition->team;
@@ -258,8 +258,8 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
 
     if (options.telemetry_enabled) {
         data.telemetry_metadata = ioj::sim::LevelTelemetryRunMetadata{
-            .level_id = level_components.metadata.id.value,
-            .level_display_name = level_components.metadata.title,
+            .level_id = level_components.metadata().id.value,
+            .level_display_name = level_components.metadata().title,
             .tick_rate_hz = simulation_tick_rate_hz,
             .tick_period_seconds = 1.0 / simulation_tick_rate_hz,
             .initial_requested_time_scale = static_cast<double>(options.game_speed),
@@ -384,8 +384,8 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     };
     return BenchmarkResult{
         .level_path = options.level_path.generic_string(),
-        .level_id = level_components.metadata.id.value,
-        .level_title = level_components.metadata.title,
+        .level_id = level_components.metadata().id.value,
+        .level_title = level_components.metadata().title,
         .requested_seconds = options.simulated_seconds,
         .tick_rate_hz = simulation.get_clock().get_tick_rate(),
         .game_speed = options.game_speed,
