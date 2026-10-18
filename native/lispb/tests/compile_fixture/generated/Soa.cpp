@@ -3,6 +3,8 @@
 
 #include "Soa.h"
 
+#include "Project/Tracked.h"
+
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_storage_ops.h"
 
@@ -38,10 +40,8 @@ auto FRowsConstView::get_view() const -> ConstView {
 }
 
 auto FRowsConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<int32>{ids}.Slice(offset, count),
-        TConstArrayView<float>{weights}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<int32>{ids}.Slice(offset, count),
+                     TConstArrayView<float>{weights}.Slice(offset, count)};
 }
 
 auto FRowsConstView::get_const_view() const -> ConstView {
@@ -49,10 +49,8 @@ auto FRowsConstView::get_const_view() const -> ConstView {
 }
 
 auto FRowsConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<int32>{ids}.Slice(offset, count),
-        TConstArrayView<float>{weights}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<int32>{ids}.Slice(offset, count),
+                     TConstArrayView<float>{weights}.Slice(offset, count)};
 }
 
 auto FRowsConstView::num() const noexcept -> int32 {
@@ -84,10 +82,8 @@ auto FRowsView::get_view() -> View {
 }
 
 auto FRowsView::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<int32>{ids}.Slice(offset, count),
-        TArrayView<float>{weights}.Slice(offset, count),
-    };
+    return View{TArrayView<int32>{ids}.Slice(offset, count),
+                TArrayView<float>{weights}.Slice(offset, count)};
 }
 
 auto FRowsView::get_view() const -> ConstView {
@@ -95,10 +91,8 @@ auto FRowsView::get_view() const -> ConstView {
 }
 
 auto FRowsView::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<int32>{ids}.Slice(offset, count),
-        TConstArrayView<float>{weights}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<int32>{ids}.Slice(offset, count),
+                     TConstArrayView<float>{weights}.Slice(offset, count)};
 }
 
 auto FRowsView::get_const_view() const -> ConstView {
@@ -106,10 +100,8 @@ auto FRowsView::get_const_view() const -> ConstView {
 }
 
 auto FRowsView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<int32>{ids}.Slice(offset, count),
-        TConstArrayView<float>{weights}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<int32>{ids}.Slice(offset, count),
+                     TConstArrayView<float>{weights}.Slice(offset, count)};
 }
 
 auto FRowsView::num() const noexcept -> int32 {
@@ -177,10 +169,8 @@ auto FRows::get_view() -> View {
 }
 
 auto FRows::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<int32>{ids}.Slice(offset, count),
-        TArrayView<float>{weights}.Slice(offset, count),
-    };
+    return View{TArrayView<int32>{ids}.Slice(offset, count),
+                TArrayView<float>{weights}.Slice(offset, count)};
 }
 
 auto FRows::get_view() const -> ConstView {
@@ -188,10 +178,8 @@ auto FRows::get_view() const -> ConstView {
 }
 
 auto FRows::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<int32>{ids}.Slice(offset, count),
-        TConstArrayView<float>{weights}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<int32>{ids}.Slice(offset, count),
+                     TConstArrayView<float>{weights}.Slice(offset, count)};
 }
 
 auto FRows::get_const_view() const -> ConstView {
@@ -199,10 +187,8 @@ auto FRows::get_const_view() const -> ConstView {
 }
 
 auto FRows::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<int32>{ids}.Slice(offset, count),
-        TConstArrayView<float>{weights}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<int32>{ids}.Slice(offset, count),
+                     TConstArrayView<float>{weights}.Slice(offset, count)};
 }
 
 auto FRows::num() const noexcept -> int32 {
@@ -246,9 +232,7 @@ auto FChildConstView::get_view() const -> ConstView {
 }
 
 auto FChildConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FChildConstView::get_const_view() const -> ConstView {
@@ -256,9 +240,7 @@ auto FChildConstView::get_const_view() const -> ConstView {
 }
 
 auto FChildConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FChildConstView::num() const noexcept -> int32 {
@@ -290,9 +272,7 @@ auto FChildView::get_view() -> View {
 }
 
 auto FChildView::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<int32>{values}.Slice(offset, count),
-    };
+    return View{TArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FChildView::get_view() const -> ConstView {
@@ -300,9 +280,7 @@ auto FChildView::get_view() const -> ConstView {
 }
 
 auto FChildView::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FChildView::get_const_view() const -> ConstView {
@@ -310,9 +288,7 @@ auto FChildView::get_const_view() const -> ConstView {
 }
 
 auto FChildView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FChildView::num() const noexcept -> int32 {
@@ -380,9 +356,7 @@ auto FChild::get_view() -> View {
 }
 
 auto FChild::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<int32>{values}.Slice(offset, count),
-    };
+    return View{TArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FChild::get_view() const -> ConstView {
@@ -390,9 +364,7 @@ auto FChild::get_view() const -> ConstView {
 }
 
 auto FChild::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FChild::get_const_view() const -> ConstView {
@@ -400,9 +372,7 @@ auto FChild::get_const_view() const -> ConstView {
 }
 
 auto FChild::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FChild::num() const noexcept -> int32 {
@@ -446,10 +416,8 @@ auto FParentsConstView::get_view() const -> ConstView {
 }
 
 auto FParentsConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<int32>{keys}.Slice(offset, count),
-        children.get_const_view(offset, count),
-    };
+    return ConstView{TConstArrayView<int32>{keys}.Slice(offset, count),
+                     children.get_const_view(offset, count)};
 }
 
 auto FParentsConstView::get_const_view() const -> ConstView {
@@ -457,10 +425,8 @@ auto FParentsConstView::get_const_view() const -> ConstView {
 }
 
 auto FParentsConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<int32>{keys}.Slice(offset, count),
-        children.get_const_view(offset, count),
-    };
+    return ConstView{TConstArrayView<int32>{keys}.Slice(offset, count),
+                     children.get_const_view(offset, count)};
 }
 
 auto FParentsConstView::num() const noexcept -> int32 {
@@ -492,10 +458,7 @@ auto FParentsView::get_view() -> View {
 }
 
 auto FParentsView::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<int32>{keys}.Slice(offset, count),
-        children.get_view(offset, count),
-    };
+    return View{TArrayView<int32>{keys}.Slice(offset, count), children.get_view(offset, count)};
 }
 
 auto FParentsView::get_view() const -> ConstView {
@@ -503,10 +466,8 @@ auto FParentsView::get_view() const -> ConstView {
 }
 
 auto FParentsView::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<int32>{keys}.Slice(offset, count),
-        children.get_const_view(offset, count),
-    };
+    return ConstView{TConstArrayView<int32>{keys}.Slice(offset, count),
+                     children.get_const_view(offset, count)};
 }
 
 auto FParentsView::get_const_view() const -> ConstView {
@@ -514,10 +475,8 @@ auto FParentsView::get_const_view() const -> ConstView {
 }
 
 auto FParentsView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<int32>{keys}.Slice(offset, count),
-        children.get_const_view(offset, count),
-    };
+    return ConstView{TConstArrayView<int32>{keys}.Slice(offset, count),
+                     children.get_const_view(offset, count)};
 }
 
 auto FParentsView::num() const noexcept -> int32 {
@@ -585,10 +544,7 @@ auto FParents::get_view() -> View {
 }
 
 auto FParents::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<int32>{keys}.Slice(offset, count),
-        children.get_view(offset, count),
-    };
+    return View{TArrayView<int32>{keys}.Slice(offset, count), children.get_view(offset, count)};
 }
 
 auto FParents::get_view() const -> ConstView {
@@ -596,10 +552,8 @@ auto FParents::get_view() const -> ConstView {
 }
 
 auto FParents::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<int32>{keys}.Slice(offset, count),
-        children.get_const_view(offset, count),
-    };
+    return ConstView{TConstArrayView<int32>{keys}.Slice(offset, count),
+                     children.get_const_view(offset, count)};
 }
 
 auto FParents::get_const_view() const -> ConstView {
@@ -607,10 +561,8 @@ auto FParents::get_const_view() const -> ConstView {
 }
 
 auto FParents::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<int32>{keys}.Slice(offset, count),
-        children.get_const_view(offset, count),
-    };
+    return ConstView{TConstArrayView<int32>{keys}.Slice(offset, count),
+                     children.get_const_view(offset, count)};
 }
 
 auto FParents::num() const noexcept -> int32 {
@@ -654,10 +606,8 @@ auto FMaskRows8ConstView::get_view() const -> ConstView {
 }
 
 auto FMaskRows8ConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask8>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask8>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows8ConstView::get_const_view() const -> ConstView {
@@ -665,10 +615,8 @@ auto FMaskRows8ConstView::get_const_view() const -> ConstView {
 }
 
 auto FMaskRows8ConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask8>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask8>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows8ConstView::num() const noexcept -> int32 {
@@ -700,10 +648,8 @@ auto FMaskRows8View::get_view() -> View {
 }
 
 auto FMaskRows8View::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<FFieldMask8>{masks}.Slice(offset, count),
-        TArrayView<int32>{values}.Slice(offset, count),
-    };
+    return View{TArrayView<FFieldMask8>{masks}.Slice(offset, count),
+                TArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows8View::get_view() const -> ConstView {
@@ -711,10 +657,8 @@ auto FMaskRows8View::get_view() const -> ConstView {
 }
 
 auto FMaskRows8View::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask8>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask8>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows8View::get_const_view() const -> ConstView {
@@ -722,10 +666,8 @@ auto FMaskRows8View::get_const_view() const -> ConstView {
 }
 
 auto FMaskRows8View::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask8>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask8>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows8View::num() const noexcept -> int32 {
@@ -773,10 +715,8 @@ auto FMaskRows8::get_view() -> View {
 }
 
 auto FMaskRows8::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<FFieldMask8>{masks}.Slice(offset, count),
-        TArrayView<int32>{values}.Slice(offset, count),
-    };
+    return View{TArrayView<FFieldMask8>{masks}.Slice(offset, count),
+                TArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows8::get_view() const -> ConstView {
@@ -784,10 +724,8 @@ auto FMaskRows8::get_view() const -> ConstView {
 }
 
 auto FMaskRows8::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask8>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask8>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows8::get_const_view() const -> ConstView {
@@ -795,10 +733,8 @@ auto FMaskRows8::get_const_view() const -> ConstView {
 }
 
 auto FMaskRows8::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask8>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask8>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows8::num() const noexcept -> int32 {
@@ -842,11 +778,9 @@ auto FMaskRows9ConstView::get_view() const -> ConstView {
 }
 
 auto FMaskRows9ConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask9>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-        TConstArrayView<int32>{tail}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask9>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count),
+                     TConstArrayView<int32>{tail}.Slice(offset, count)};
 }
 
 auto FMaskRows9ConstView::get_const_view() const -> ConstView {
@@ -854,11 +788,9 @@ auto FMaskRows9ConstView::get_const_view() const -> ConstView {
 }
 
 auto FMaskRows9ConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask9>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-        TConstArrayView<int32>{tail}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask9>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count),
+                     TConstArrayView<int32>{tail}.Slice(offset, count)};
 }
 
 auto FMaskRows9ConstView::num() const noexcept -> int32 {
@@ -890,11 +822,9 @@ auto FMaskRows9View::get_view() -> View {
 }
 
 auto FMaskRows9View::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<FFieldMask9>{masks}.Slice(offset, count),
-        TArrayView<int32>{values}.Slice(offset, count),
-        TArrayView<int32>{tail}.Slice(offset, count),
-    };
+    return View{TArrayView<FFieldMask9>{masks}.Slice(offset, count),
+                TArrayView<int32>{values}.Slice(offset, count),
+                TArrayView<int32>{tail}.Slice(offset, count)};
 }
 
 auto FMaskRows9View::get_view() const -> ConstView {
@@ -902,11 +832,9 @@ auto FMaskRows9View::get_view() const -> ConstView {
 }
 
 auto FMaskRows9View::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask9>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-        TConstArrayView<int32>{tail}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask9>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count),
+                     TConstArrayView<int32>{tail}.Slice(offset, count)};
 }
 
 auto FMaskRows9View::get_const_view() const -> ConstView {
@@ -914,11 +842,9 @@ auto FMaskRows9View::get_const_view() const -> ConstView {
 }
 
 auto FMaskRows9View::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask9>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-        TConstArrayView<int32>{tail}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask9>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count),
+                     TConstArrayView<int32>{tail}.Slice(offset, count)};
 }
 
 auto FMaskRows9View::num() const noexcept -> int32 {
@@ -966,11 +892,9 @@ auto FMaskRows9::get_view() -> View {
 }
 
 auto FMaskRows9::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<FFieldMask9>{masks}.Slice(offset, count),
-        TArrayView<int32>{values}.Slice(offset, count),
-        TArrayView<int32>{tail}.Slice(offset, count),
-    };
+    return View{TArrayView<FFieldMask9>{masks}.Slice(offset, count),
+                TArrayView<int32>{values}.Slice(offset, count),
+                TArrayView<int32>{tail}.Slice(offset, count)};
 }
 
 auto FMaskRows9::get_view() const -> ConstView {
@@ -978,11 +902,9 @@ auto FMaskRows9::get_view() const -> ConstView {
 }
 
 auto FMaskRows9::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask9>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-        TConstArrayView<int32>{tail}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask9>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count),
+                     TConstArrayView<int32>{tail}.Slice(offset, count)};
 }
 
 auto FMaskRows9::get_const_view() const -> ConstView {
@@ -990,11 +912,9 @@ auto FMaskRows9::get_const_view() const -> ConstView {
 }
 
 auto FMaskRows9::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask9>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-        TConstArrayView<int32>{tail}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask9>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count),
+                     TConstArrayView<int32>{tail}.Slice(offset, count)};
 }
 
 auto FMaskRows9::num() const noexcept -> int32 {
@@ -1038,10 +958,8 @@ auto FMaskRows16ConstView::get_view() const -> ConstView {
 }
 
 auto FMaskRows16ConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask16>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask16>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows16ConstView::get_const_view() const -> ConstView {
@@ -1050,10 +968,8 @@ auto FMaskRows16ConstView::get_const_view() const -> ConstView {
 
 auto FMaskRows16ConstView::get_const_view(int32 const offset, int32 const count) const
     -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask16>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask16>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows16ConstView::num() const noexcept -> int32 {
@@ -1085,10 +1001,8 @@ auto FMaskRows16View::get_view() -> View {
 }
 
 auto FMaskRows16View::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<FFieldMask16>{masks}.Slice(offset, count),
-        TArrayView<int32>{values}.Slice(offset, count),
-    };
+    return View{TArrayView<FFieldMask16>{masks}.Slice(offset, count),
+                TArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows16View::get_view() const -> ConstView {
@@ -1096,10 +1010,8 @@ auto FMaskRows16View::get_view() const -> ConstView {
 }
 
 auto FMaskRows16View::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask16>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask16>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows16View::get_const_view() const -> ConstView {
@@ -1107,10 +1019,8 @@ auto FMaskRows16View::get_const_view() const -> ConstView {
 }
 
 auto FMaskRows16View::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask16>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask16>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows16View::num() const noexcept -> int32 {
@@ -1158,10 +1068,8 @@ auto FMaskRows16::get_view() -> View {
 }
 
 auto FMaskRows16::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<FFieldMask16>{masks}.Slice(offset, count),
-        TArrayView<int32>{values}.Slice(offset, count),
-    };
+    return View{TArrayView<FFieldMask16>{masks}.Slice(offset, count),
+                TArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows16::get_view() const -> ConstView {
@@ -1169,10 +1077,8 @@ auto FMaskRows16::get_view() const -> ConstView {
 }
 
 auto FMaskRows16::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask16>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask16>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows16::get_const_view() const -> ConstView {
@@ -1180,10 +1086,8 @@ auto FMaskRows16::get_const_view() const -> ConstView {
 }
 
 auto FMaskRows16::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask16>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask16>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows16::num() const noexcept -> int32 {
@@ -1227,10 +1131,8 @@ auto FMaskRows17ConstView::get_view() const -> ConstView {
 }
 
 auto FMaskRows17ConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask17>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask17>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows17ConstView::get_const_view() const -> ConstView {
@@ -1239,10 +1141,8 @@ auto FMaskRows17ConstView::get_const_view() const -> ConstView {
 
 auto FMaskRows17ConstView::get_const_view(int32 const offset, int32 const count) const
     -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask17>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask17>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows17ConstView::num() const noexcept -> int32 {
@@ -1274,10 +1174,8 @@ auto FMaskRows17View::get_view() -> View {
 }
 
 auto FMaskRows17View::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<FFieldMask17>{masks}.Slice(offset, count),
-        TArrayView<int32>{values}.Slice(offset, count),
-    };
+    return View{TArrayView<FFieldMask17>{masks}.Slice(offset, count),
+                TArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows17View::get_view() const -> ConstView {
@@ -1285,10 +1183,8 @@ auto FMaskRows17View::get_view() const -> ConstView {
 }
 
 auto FMaskRows17View::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask17>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask17>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows17View::get_const_view() const -> ConstView {
@@ -1296,10 +1192,8 @@ auto FMaskRows17View::get_const_view() const -> ConstView {
 }
 
 auto FMaskRows17View::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask17>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask17>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows17View::num() const noexcept -> int32 {
@@ -1347,10 +1241,8 @@ auto FMaskRows17::get_view() -> View {
 }
 
 auto FMaskRows17::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<FFieldMask17>{masks}.Slice(offset, count),
-        TArrayView<int32>{values}.Slice(offset, count),
-    };
+    return View{TArrayView<FFieldMask17>{masks}.Slice(offset, count),
+                TArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows17::get_view() const -> ConstView {
@@ -1358,10 +1250,8 @@ auto FMaskRows17::get_view() const -> ConstView {
 }
 
 auto FMaskRows17::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask17>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask17>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows17::get_const_view() const -> ConstView {
@@ -1369,10 +1259,8 @@ auto FMaskRows17::get_const_view() const -> ConstView {
 }
 
 auto FMaskRows17::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask17>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask17>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows17::num() const noexcept -> int32 {
@@ -1416,10 +1304,8 @@ auto FMaskRows32ConstView::get_view() const -> ConstView {
 }
 
 auto FMaskRows32ConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask32>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask32>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows32ConstView::get_const_view() const -> ConstView {
@@ -1428,10 +1314,8 @@ auto FMaskRows32ConstView::get_const_view() const -> ConstView {
 
 auto FMaskRows32ConstView::get_const_view(int32 const offset, int32 const count) const
     -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask32>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask32>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows32ConstView::num() const noexcept -> int32 {
@@ -1463,10 +1347,8 @@ auto FMaskRows32View::get_view() -> View {
 }
 
 auto FMaskRows32View::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<FFieldMask32>{masks}.Slice(offset, count),
-        TArrayView<int32>{values}.Slice(offset, count),
-    };
+    return View{TArrayView<FFieldMask32>{masks}.Slice(offset, count),
+                TArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows32View::get_view() const -> ConstView {
@@ -1474,10 +1356,8 @@ auto FMaskRows32View::get_view() const -> ConstView {
 }
 
 auto FMaskRows32View::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask32>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask32>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows32View::get_const_view() const -> ConstView {
@@ -1485,10 +1365,8 @@ auto FMaskRows32View::get_const_view() const -> ConstView {
 }
 
 auto FMaskRows32View::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask32>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask32>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows32View::num() const noexcept -> int32 {
@@ -1536,10 +1414,8 @@ auto FMaskRows32::get_view() -> View {
 }
 
 auto FMaskRows32::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<FFieldMask32>{masks}.Slice(offset, count),
-        TArrayView<int32>{values}.Slice(offset, count),
-    };
+    return View{TArrayView<FFieldMask32>{masks}.Slice(offset, count),
+                TArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows32::get_view() const -> ConstView {
@@ -1547,10 +1423,8 @@ auto FMaskRows32::get_view() const -> ConstView {
 }
 
 auto FMaskRows32::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask32>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask32>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows32::get_const_view() const -> ConstView {
@@ -1558,10 +1432,8 @@ auto FMaskRows32::get_const_view() const -> ConstView {
 }
 
 auto FMaskRows32::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask32>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask32>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows32::num() const noexcept -> int32 {
@@ -1605,10 +1477,8 @@ auto FMaskRows33ConstView::get_view() const -> ConstView {
 }
 
 auto FMaskRows33ConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask33>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask33>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows33ConstView::get_const_view() const -> ConstView {
@@ -1617,10 +1487,8 @@ auto FMaskRows33ConstView::get_const_view() const -> ConstView {
 
 auto FMaskRows33ConstView::get_const_view(int32 const offset, int32 const count) const
     -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask33>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask33>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows33ConstView::num() const noexcept -> int32 {
@@ -1652,10 +1520,8 @@ auto FMaskRows33View::get_view() -> View {
 }
 
 auto FMaskRows33View::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<FFieldMask33>{masks}.Slice(offset, count),
-        TArrayView<int32>{values}.Slice(offset, count),
-    };
+    return View{TArrayView<FFieldMask33>{masks}.Slice(offset, count),
+                TArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows33View::get_view() const -> ConstView {
@@ -1663,10 +1529,8 @@ auto FMaskRows33View::get_view() const -> ConstView {
 }
 
 auto FMaskRows33View::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask33>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask33>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows33View::get_const_view() const -> ConstView {
@@ -1674,10 +1538,8 @@ auto FMaskRows33View::get_const_view() const -> ConstView {
 }
 
 auto FMaskRows33View::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask33>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask33>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows33View::num() const noexcept -> int32 {
@@ -1725,10 +1587,8 @@ auto FMaskRows33::get_view() -> View {
 }
 
 auto FMaskRows33::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<FFieldMask33>{masks}.Slice(offset, count),
-        TArrayView<int32>{values}.Slice(offset, count),
-    };
+    return View{TArrayView<FFieldMask33>{masks}.Slice(offset, count),
+                TArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows33::get_view() const -> ConstView {
@@ -1736,10 +1596,8 @@ auto FMaskRows33::get_view() const -> ConstView {
 }
 
 auto FMaskRows33::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask33>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask33>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows33::get_const_view() const -> ConstView {
@@ -1747,10 +1605,8 @@ auto FMaskRows33::get_const_view() const -> ConstView {
 }
 
 auto FMaskRows33::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FFieldMask33>{masks}.Slice(offset, count),
-        TConstArrayView<int32>{values}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FFieldMask33>{masks}.Slice(offset, count),
+                     TConstArrayView<int32>{values}.Slice(offset, count)};
 }
 
 auto FMaskRows33::num() const noexcept -> int32 {
@@ -1794,9 +1650,7 @@ auto FFixedChildConstView::get_view() const -> ConstView {
 }
 
 auto FFixedChildConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FTracked>{tracked}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FTracked>{tracked}.Slice(offset, count)};
 }
 
 auto FFixedChildConstView::get_const_view() const -> ConstView {
@@ -1805,9 +1659,7 @@ auto FFixedChildConstView::get_const_view() const -> ConstView {
 
 auto FFixedChildConstView::get_const_view(int32 const offset, int32 const count) const
     -> ConstView {
-    return ConstView{
-        TConstArrayView<FTracked>{tracked}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FTracked>{tracked}.Slice(offset, count)};
 }
 
 auto FFixedChildConstView::num() const noexcept -> int32 {
@@ -1839,9 +1691,7 @@ auto FFixedChildView::get_view() -> View {
 }
 
 auto FFixedChildView::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<FTracked>{tracked}.Slice(offset, count),
-    };
+    return View{TArrayView<FTracked>{tracked}.Slice(offset, count)};
 }
 
 auto FFixedChildView::get_view() const -> ConstView {
@@ -1849,9 +1699,7 @@ auto FFixedChildView::get_view() const -> ConstView {
 }
 
 auto FFixedChildView::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FTracked>{tracked}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FTracked>{tracked}.Slice(offset, count)};
 }
 
 auto FFixedChildView::get_const_view() const -> ConstView {
@@ -1859,9 +1707,7 @@ auto FFixedChildView::get_const_view() const -> ConstView {
 }
 
 auto FFixedChildView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FTracked>{tracked}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FTracked>{tracked}.Slice(offset, count)};
 }
 
 auto FFixedChildView::num() const noexcept -> int32 {
@@ -1909,9 +1755,7 @@ auto FFixedChild::get_view() -> View {
 }
 
 auto FFixedChild::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<FTracked>{tracked}.Slice(offset, count),
-    };
+    return View{TArrayView<FTracked>{tracked}.Slice(offset, count)};
 }
 
 auto FFixedChild::get_view() const -> ConstView {
@@ -1919,9 +1763,7 @@ auto FFixedChild::get_view() const -> ConstView {
 }
 
 auto FFixedChild::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FTracked>{tracked}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FTracked>{tracked}.Slice(offset, count)};
 }
 
 auto FFixedChild::get_const_view() const -> ConstView {
@@ -1929,9 +1771,7 @@ auto FFixedChild::get_const_view() const -> ConstView {
 }
 
 auto FFixedChild::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<FTracked>{tracked}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<FTracked>{tracked}.Slice(offset, count)};
 }
 
 auto FFixedChild::num() const noexcept -> int32 {
@@ -1975,10 +1815,8 @@ auto FFixedRowsConstView::get_view() const -> ConstView {
 }
 
 auto FFixedRowsConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<int32>{ids}.Slice(offset, count),
-        children.get_const_view(offset, count),
-    };
+    return ConstView{TConstArrayView<int32>{ids}.Slice(offset, count),
+                     children.get_const_view(offset, count)};
 }
 
 auto FFixedRowsConstView::get_const_view() const -> ConstView {
@@ -1986,10 +1824,8 @@ auto FFixedRowsConstView::get_const_view() const -> ConstView {
 }
 
 auto FFixedRowsConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<int32>{ids}.Slice(offset, count),
-        children.get_const_view(offset, count),
-    };
+    return ConstView{TConstArrayView<int32>{ids}.Slice(offset, count),
+                     children.get_const_view(offset, count)};
 }
 
 auto FFixedRowsConstView::num() const noexcept -> int32 {
@@ -2021,10 +1857,7 @@ auto FFixedRowsView::get_view() -> View {
 }
 
 auto FFixedRowsView::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<int32>{ids}.Slice(offset, count),
-        children.get_view(offset, count),
-    };
+    return View{TArrayView<int32>{ids}.Slice(offset, count), children.get_view(offset, count)};
 }
 
 auto FFixedRowsView::get_view() const -> ConstView {
@@ -2032,10 +1865,8 @@ auto FFixedRowsView::get_view() const -> ConstView {
 }
 
 auto FFixedRowsView::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<int32>{ids}.Slice(offset, count),
-        children.get_const_view(offset, count),
-    };
+    return ConstView{TConstArrayView<int32>{ids}.Slice(offset, count),
+                     children.get_const_view(offset, count)};
 }
 
 auto FFixedRowsView::get_const_view() const -> ConstView {
@@ -2043,10 +1874,8 @@ auto FFixedRowsView::get_const_view() const -> ConstView {
 }
 
 auto FFixedRowsView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<int32>{ids}.Slice(offset, count),
-        children.get_const_view(offset, count),
-    };
+    return ConstView{TConstArrayView<int32>{ids}.Slice(offset, count),
+                     children.get_const_view(offset, count)};
 }
 
 auto FFixedRowsView::num() const noexcept -> int32 {
@@ -2094,10 +1923,7 @@ auto FFixedRows::get_view() -> View {
 }
 
 auto FFixedRows::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<int32>{ids}.Slice(offset, count),
-        children.get_view(offset, count),
-    };
+    return View{TArrayView<int32>{ids}.Slice(offset, count), children.get_view(offset, count)};
 }
 
 auto FFixedRows::get_view() const -> ConstView {
@@ -2105,10 +1931,8 @@ auto FFixedRows::get_view() const -> ConstView {
 }
 
 auto FFixedRows::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<int32>{ids}.Slice(offset, count),
-        children.get_const_view(offset, count),
-    };
+    return ConstView{TConstArrayView<int32>{ids}.Slice(offset, count),
+                     children.get_const_view(offset, count)};
 }
 
 auto FFixedRows::get_const_view() const -> ConstView {
@@ -2116,10 +1940,8 @@ auto FFixedRows::get_const_view() const -> ConstView {
 }
 
 auto FFixedRows::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<int32>{ids}.Slice(offset, count),
-        children.get_const_view(offset, count),
-    };
+    return ConstView{TConstArrayView<int32>{ids}.Slice(offset, count),
+                     children.get_const_view(offset, count)};
 }
 
 auto FFixedRows::num() const noexcept -> int32 {

@@ -55,9 +55,26 @@ enum class EGameSettingCategory : uint8 {
     Accessibility,
 };
 
-enum class ESettingApplyMode : uint8 { Immediate, Deferred, Confirm };
-enum class ESettingControlKind : uint8 { Toggle, Choice, FloatRange, IntegerRange, Custom };
-enum class EGameSettingDevice : uint8 { Shared, KeyboardMouse, Controller };
+enum class ESettingApplyMode : uint8 {
+    Immediate,
+    Deferred,
+    Confirm,
+};
+
+enum class ESettingControlKind : uint8 {
+    Toggle,
+    Choice,
+    FloatRange,
+    IntegerRange,
+    Custom,
+};
+
+enum class EGameSettingDevice : uint8 {
+    Shared,
+    KeyboardMouse,
+    Controller,
+};
+
 enum class EGameSettingValueType : uint8 {
     IntPoint,
     GameWindowMode,
@@ -66,14 +83,16 @@ enum class EGameSettingValueType : uint8 {
     GameGraphicsPreset,
     GameQualityLevel,
     GameAntiAliasingMethod,
-    Int32
+    Int32,
 };
+
 enum class EGameSettingBackend : uint8 {
     Audio,
     Custom,
     EnhancedInputUserSettings,
-    GameUserSettings
+    GameUserSettings,
 };
+
 enum class EGameSettingOptionProvider : uint8 {
     None,
     AAMethods,
@@ -81,9 +100,13 @@ enum class EGameSettingOptionProvider : uint8 {
     GraphicsPresets,
     QualityLevels,
     SupportedResolutions,
-    WindowModes
+    WindowModes,
 };
-enum class EGameSettingAvailabilityProvider : uint8 { Always, AAQuality };
+
+enum class EGameSettingAvailabilityProvider : uint8 {
+    Always,
+    AAQuality,
+};
 
 struct SPACEGAME_API FGameSettingCategoryDescriptor {
     EGameSettingCategory id;
@@ -159,11 +182,11 @@ using FGameSettingValue = std::variant<FIntPoint,
 SPACEGAME_API auto game_setting_category_descriptors()
     -> TConstArrayView<FGameSettingCategoryDescriptor>;
 SPACEGAME_API auto game_setting_descriptors() -> TConstArrayView<FGameSettingDescriptor>;
-SPACEGAME_API auto game_setting_descriptor(EGameSetting id) -> FGameSettingDescriptor const&;
-SPACEGAME_API auto game_setting_value(FGameSettingsState const& state, EGameSetting id)
+SPACEGAME_API auto game_setting_descriptor(EGameSetting const id) -> FGameSettingDescriptor const&;
+SPACEGAME_API auto game_setting_value(FGameSettingsState const& state, EGameSetting const id)
     -> FGameSettingValue;
 SPACEGAME_API auto set_game_setting_value(FGameSettingsState& state,
-                                          EGameSetting id,
+                                          EGameSetting const id,
                                           FGameSettingValue const& value) -> bool;
 
 template <typename Derived>

@@ -7,6 +7,7 @@
 #include "soa_representation.h"
 #include <ioj/format_writer.h>
 
+#include <codegen/ast/binary_operator.h>
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>
 #include <codegen/ast/function_body_layout.h>
@@ -65,15 +66,15 @@ void render_arguments(LoweringContext& context,
     }
 }
 
-void render_vector_storage_operations(LoweringContext& context,
-                                      std::string& out,
-                                      DeclarationHandle schema) {
-    auto write{ioj::FormatWriter{std::back_inserter(out)}};
+auto lower_vector_storage_operations(LoweringContext& context, DeclarationHandle schema) -> Nodes {
+    auto& ir{context.ir};
+    auto const void_type{ir.types.intern("void")};
+    auto const size_type{ir.types.intern("size_type const")};
+    auto const self{ir.unary(UnaryOperator::dereference, ir.named("this"))};
+    Nodes functions;
     for (auto const operation : context.declarations.items(
              context.declarations.soas.operations[context.declarations.soas.index(schema)])) {
         std::string name;
-        std::string parameters;
-        std::string arguments;
         switch (operation) {
             case StorageOperation::reserve:
                 name = "reserve";
@@ -96,20 +97,41 @@ void render_vector_storage_operations(LoweringContext& context,
             default:
                 continue;
         }
+        std::vector<FunctionParameterId> parameters;
+        std::vector<Expr> arguments{self};
         if (operation == StorageOperation::remove_at_swap) {
-            parameters = "size_type const index, size_type const count";
-            arguments = ", index, count";
-        } else if (operation != StorageOperation::reset) {
-            parameters = "size_type const count";
-            arguments = ", count";
+            parameters.push_back(ir.parameter(size_type, ir.strings.intern("index")));
+            arguments.push_back(ir.named("index"));
         }
-        write("void {0}({1}) {{ ioj::native_soa::vector_storage_ops::{0}(*this{2}); }}\n",
-              name,
-              parameters,
-              arguments);
+        if (operation != StorageOperation::reset) {
+            parameters.push_back(ir.parameter(size_type, ir.strings.intern("count")));
+            arguments.push_back(ir.named("count"));
+        }
+        auto const function{ir.function(ir.strings.intern(name), void_type)};
+        ir.set_function_parameters(function, parameters);
+        ir.set_function_body(
+            function,
+            {ir.expression_statement(
+                ir.call(ir.named("ioj::native_soa::vector_storage_ops::" + name), arguments))});
+        ir.function_flags(function).set_define_in_header(true);
+        ir.function_formatting(function).body_layout = FunctionBodyLayout::compact;
+        functions.push_back(ir.header_function(function));
+        functions.push_back(ir.lines(1));
     }
-    out += "void apply_permutation(std::span<std::int32_t> const indices) { "
-           "ioj::native_soa::vector_storage_ops::apply_permutation(*this, indices); }\n";
+
+    auto const permutation{ir.function(ir.strings.intern("apply_permutation"), void_type)};
+    ir.set_function_parameters(permutation,
+                               {ir.parameter(ir.types.intern("std::span<std::int32_t> const"),
+                                             ir.strings.intern("indices"))});
+    ir.set_function_body(permutation,
+                         {ir.expression_statement(ir.call(
+                             ir.named("ioj::native_soa::vector_storage_ops::apply_permutation"),
+                             {self, ir.named("indices")}))});
+    ir.function_flags(permutation).set_define_in_header(true);
+    ir.function_formatting(permutation).body_layout = FunctionBodyLayout::compact;
+    functions.push_back(ir.header_function(permutation));
+    functions.push_back(ir.lines(1));
+    return functions;
 }
 
 }
@@ -557,8 +579,10 @@ auto is_empty() const noexcept -> bool {{ return num() == 0; }}
     each_column(column_calls, true);
     out += "void validate_array_sizes() const { get_const_view().validate_array_sizes(); }\n";
 
-    render_vector_storage_operations(context, out, schema);
     flush();
+    auto const storage_operations{lower_vector_storage_operations(context, schema)};
+    record_members.insert(
+        record_members.end(), storage_operations.begin(), storage_operations.end());
     auto const compare_type{ir.types.intern("Compare")};
     auto const sort{ir.function(ir.strings.intern("sort"), void_type)};
     ir.set_function_template(
@@ -695,40 +719,44 @@ auto right(size_type const count) const -> ConstView { assert(count <= num()); r
         auto const copy_element{ir.function(ir.strings.intern("copy_element"), void_type)};
         ir.set_function_template(copy_element, other_template);
         ir.set_function_parameters(copy_element, {destination_index, other, source_index});
-        if (context.declarations.soas
-                .copy_element_memberwise[context.declarations.soas.index(schema)] ||
-            std::ranges::any_of(layout_members, [&](auto const member) {
+        Nodes copy_body;
+        auto const memberwise{
+            context.declarations.soas
+                .copy_element_memberwise[context.declarations.soas.index(schema)]};
+        if (memberwise || std::ranges::any_of(layout_members, [&](auto const member) {
                 return context.declarations.soa_members.kind[context.declarations.soa_members.index(
                            fixed_members.source[fixed_members.index(member)])] ==
                        SoaMemberKind::array;
             })) {
-            out += R"(auto const destination_index{static_cast<std::size_t>(dst_index)};
-auto const source_index{static_cast<std::size_t>(src_index)};
-)";
+            auto const size_type{ir.types.intern("std::size_t")};
+            auto const auto_const{ir.types.intern("auto const")};
+            copy_body.push_back(ir.variable(auto_const,
+                                            ir.strings.intern("destination_index"),
+                                            ir.static_cast_expr(size_type, ir.named("dst_index"))));
+            copy_body.push_back(ir.variable(auto_const,
+                                            ir.strings.intern("source_index"),
+                                            ir.static_cast_expr(size_type, ir.named("src_index"))));
         }
         for (auto const member : layout_members) {
-            if (context.declarations.soas
-                    .copy_element_memberwise[context.declarations.soas.index(schema)] ||
+            auto const name{
+                context.declarations.soa_members.name[context.declarations.soa_members.index(
+                    fixed_members.source[fixed_members.index(member)])]};
+            auto const destination{ir.named(name)};
+            auto const source_column{ir.member_access(ir.named("other"), name)};
+            if (memberwise ||
                 context.declarations.soa_members.kind[context.declarations.soa_members.index(
                     fixed_members.source[fixed_members.index(member)])] == SoaMemberKind::array) {
-                write("{0}[destination_index] = other.{0}[source_index];\n",
-                      context.text(context.declarations.soa_members
-                                       .name[context.declarations.soa_members.index(
-                                           fixed_members.source[fixed_members.index(member)])]));
+                copy_body.push_back(
+                    ir.assignment(ir.subscript(destination, ir.named("destination_index")),
+                                  ir.subscript(source_column, ir.named("source_index"))));
             } else {
-                write("{0}.copy_element(dst_index, other.{0}, src_index);\n",
-                      context.text(context.declarations.soa_members
-                                       .name[context.declarations.soa_members.index(
-                                           fixed_members.source[fixed_members.index(member)])]));
+                copy_body.push_back(ir.expression_statement(
+                    ir.call(ir.member_access(destination, "copy_element"),
+                            {ir.named("dst_index"), source_column, ir.named("src_index")})));
             }
         }
-        auto copy_body{out};
-        if (!copy_body.empty()) {
-            copy_body.pop_back();
-        }
-        ir.set_function_body(copy_element, {ir.raw(copy_body)});
+        ir.set_function_body(copy_element, copy_body);
         ir.function_flags(copy_element).set_define_in_header(true);
-        out.clear();
         ir.function_formatting(copy_element).template_placement =
             FunctionTemplatePlacement::same_line;
         record_members.push_back(ir.header_function(copy_element));
@@ -741,9 +769,18 @@ auto const source_index{static_cast<std::size_t>(src_index)};
                                     other,
                                     source_index,
                                     ir.parameter(index_type, ir.strings.intern("count"))});
-        ir.set_function_body(copy_elements,
-                             {ir.raw("for (size_type i{}; i < count; ++i) { "
-                                     "copy_element(dst_index + i, other, src_index + i); }")});
+        auto const index{ir.named("i")};
+        auto const copy_call{ir.expression_statement(
+            ir.call(ir.named("copy_element"),
+                    {ir.binary(BinaryOperator::add, ir.named("dst_index"), index),
+                     ir.named("other"),
+                     ir.binary(BinaryOperator::add, ir.named("src_index"), index)}))};
+        ir.set_function_body(
+            copy_elements,
+            {ir.for_statement(ir.variable(ir.types.intern("size_type"), ir.strings.intern("i")),
+                              ir.binary(BinaryOperator::less, index, ir.named("count")),
+                              ir.unary(UnaryOperator::preincrement, index),
+                              ir.block({copy_call}))});
         ir.function_flags(copy_elements).set_define_in_header(true);
         ir.function_formatting(copy_elements).template_placement =
             FunctionTemplatePlacement::same_line;

@@ -4,12 +4,9 @@
 #include "Settings.h"
 
 namespace codegen_compile_fixture {
-
 namespace {
-
 static TArray<FGameSettingCategoryDescriptor> const category_descriptors{
-    {EGameSettingCategory::Video, FText::FromString(TEXT("Video"))},
-};
+    {EGameSettingCategory::Video, FText::FromString(TEXT("Video"))}};
 
 static TArray<FGameSettingDescriptor> const descriptors{
     {EGameSetting::VSync,
@@ -59,9 +56,7 @@ static TArray<FGameSettingDescriptor> const descriptors{
      50,
      100,
      0.5,
-     TEXT("")},
-};
-
+     TEXT("")}};
 } // namespace
 
 auto game_setting_category_descriptors() -> TConstArrayView<FGameSettingCategoryDescriptor> {
@@ -78,12 +73,15 @@ auto game_setting_descriptor(EGameSetting const id) -> FGameSettingDescriptor co
 
 auto game_setting_value(FSettingsState const& state, EGameSetting const id) -> FGameSettingValue {
     switch (id) {
-        case EGameSetting::VSync:
+        case EGameSetting::VSync: {
             return FGameSettingValue{state.vsync};
-        case EGameSetting::FrameLimit:
+        }
+        case EGameSetting::FrameLimit: {
             return FGameSettingValue{state.frame_limit};
-        case EGameSetting::ResolutionScale:
+        }
+        case EGameSetting::ResolutionScale: {
             return FGameSettingValue{state.resolution_scale};
+        }
     }
     checkNoEntry();
     return FGameSettingValue{state.vsync};

@@ -1,12 +1,13 @@
 #include "lowering.h"
 #include "lowering_context.h"
 #include "lowering_utils.h"
-#include <ioj/format_writer.h>
 
 #include <codegen/ast/access.h>
+#include <codegen/ast/binary_operator.h>
 #include <codegen/ast/cpp_files.h>
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>
+#include <codegen/ast/expr.h>
 #include <codegen/ast/function_body_layout.h>
 #include <codegen/ast/function_flags.h>
 #include <codegen/ast/function_receiver.h>
@@ -20,6 +21,7 @@
 #include <codegen/ast/return_syntax.h>
 #include <codegen/ast/unary_operator.h>
 #include <codegen/schema/declarations.h>
+#include <codegen/schema/indices.h>
 #include <codegen/schema/module_settings_store.h>
 #include <codegen/schema/setting_apply_mode.h>
 #include <codegen/schema/setting_category_schemas.h>
@@ -34,7 +36,8 @@
 
 #include <cctype>
 #include <cstddef>
-#include <iterator>
+#include <format>
+#include <initializer_list>
 #include <set>
 #include <span>
 #include <string>
@@ -81,22 +84,6 @@ auto title_case(std::string const& value) -> std::string {
     return result;
 }
 
-auto escaped(std::string const& value) -> std::string {
-    std::string result;
-    result.reserve(value.size());
-    for (auto const character : value) {
-        if (character == '\\' || character == '"') {
-            result += '\\';
-        }
-        if (character == '\n') {
-            result += "\\n";
-        } else {
-            result += character;
-        }
-    }
-    return result;
-}
-
 auto enum_name(SettingApplyMode const value) -> std::string_view {
     switch (value) {
         case SettingApplyMode::immediate:
@@ -137,33 +124,111 @@ auto enum_name(SettingDevice const value) -> std::string_view {
     return "Shared";
 }
 
-auto export_prefix(LoweringContext& context, ModuleHandle module) -> std::string {
-    auto const export_specifier{
-        context.declarations.settings_modules
-            .export_specifier[context.declarations.settings_modules.index(module)]};
-    return export_specifier.value != 0 ? context.text(export_specifier) + " " : std::string{};
+auto setting_type_name(LoweringContext& context, SettingId const setting) -> std::string {
+    auto const& declarations{context.declarations};
+    auto const type{declarations.settings.value_type[declarations.settings.index(setting)]};
+    auto const name{context.text(declarations.type_refs.name[declarations.type_refs.index(type)])};
+    return title_case(name.starts_with('@') ? name.substr(1) : name);
 }
 
-auto namespace_open(LoweringContext& context, ModuleSettingsId settings) -> std::string {
-    return context.declarations.module_settings_store
-                   .namespace_name[context.declarations.module_settings_store.index(settings)]
-                   .has_value()
-             ? "namespace " +
-                   context.text(*context.declarations.module_settings_store.namespace_name
-                                     [context.declarations.module_settings_store.index(settings)]) +
-                   " {\n\n"
-             : std::string{};
+auto text_literal(CppIR& ir, std::string_view const value) -> Expr {
+    return ir.call(ir.named("TEXT", {ir.types.dependency("TEXT", "CoreMinimal.h")}),
+                   {ir.string_literal(value)});
 }
 
-auto namespace_close(LoweringContext& context, ModuleSettingsId settings) -> std::string {
-    return context.declarations.module_settings_store
-                   .namespace_name[context.declarations.module_settings_store.index(settings)]
-                   .has_value()
-             ? "\n} // namespace " +
-                   context.text(*context.declarations.module_settings_store.namespace_name
-                                     [context.declarations.module_settings_store.index(settings)]) +
-                   "\n"
-             : std::string{};
+auto text_value(CppIR& ir, std::string_view const value) -> Expr {
+    return ir.call(ir.named("FText::FromString"), {text_literal(ir, value)});
+}
+
+auto build_functions(LoweringContext& context,
+                     ModuleHandle const module,
+                     std::span<CppTypeId const> const setting_types) -> std::vector<FunctionId> {
+    auto& ir{context.ir};
+    auto const& declarations{context.declarations};
+    auto const module_row{declarations.settings_modules.index(module)};
+    auto const state_name{context.text(declarations.settings_modules.state_name[module_row])};
+    auto const settings{
+        declarations.items(declarations.settings_modules.settings_list[module_row])};
+    auto const state{ir.named("state")};
+    auto const id{ir.named("id")};
+    auto const value{ir.named("value")};
+    auto const game_setting{ir.types.intern("EGameSetting const")};
+    auto create = [&](std::string_view const name, std::string_view const return_type) {
+        auto const type{ir.types.intern(return_type)};
+        auto const function{ir.function(ir.strings.intern(name), type)};
+        ir.set_function_return_type(function, type, ReturnSyntax::trailing);
+        ir.set_function_export_specifier(
+            function, declarations.settings_modules.export_specifier[module_row]);
+        return function;
+    };
+
+    auto const categories{create("game_setting_category_descriptors",
+                                 "TConstArrayView<FGameSettingCategoryDescriptor>")};
+    ir.set_function_body(categories, {ir.return_statement(ir.named("category_descriptors"))});
+
+    auto const descriptors{
+        create("game_setting_descriptors", "TConstArrayView<FGameSettingDescriptor>")};
+    ir.set_function_body(descriptors, {ir.return_statement(ir.named("descriptors"))});
+
+    auto const descriptor{create("game_setting_descriptor", "FGameSettingDescriptor const&")};
+    ir.set_function_parameters(descriptor, {ir.parameter(game_setting, ir.strings.intern("id"))});
+    ir.set_function_body(
+        descriptor,
+        {ir.return_statement(ir.subscript(ir.named("descriptors"),
+                                          ir.static_cast_expr(ir.types.intern("int32"), id)))});
+
+    auto const getter{create("game_setting_value", "FGameSettingValue")};
+    ir.set_function_parameters(
+        getter,
+        {ir.parameter(ir.types.intern(state_name + " const&"), ir.strings.intern("state")),
+         ir.parameter(game_setting, ir.strings.intern("id"))});
+    std::vector<SwitchCaseId> getter_cases;
+    for (auto const setting : settings) {
+        auto const name{declarations.settings.name[declarations.settings.index(setting)]};
+        getter_cases.push_back(ir.switch_case(
+            ir.named("EGameSetting::" + title_case(context.text(name))),
+            ir.block({ir.return_statement(ir.init_list({ir.member_access(state, name)},
+                                                       ir.types.intern("FGameSettingValue")))})));
+    }
+    auto const first_name{
+        declarations.settings.name[declarations.settings.index(settings.front())]};
+    ir.set_function_body(getter,
+                         {ir.switch_statement(id, getter_cases),
+                          ir.expression_statement(ir.call(ir.named("checkNoEntry"))),
+                          ir.return_statement(ir.init_list({ir.member_access(state, first_name)},
+                                                           ir.types.intern("FGameSettingValue")))});
+
+    auto const setter{create("set_game_setting_value", "bool")};
+    ir.set_function_parameters(
+        setter,
+        {ir.parameter(ir.types.intern(state_name + "&"), ir.strings.intern("state")),
+         ir.parameter(game_setting, ir.strings.intern("id")),
+         ir.parameter(ir.types.intern("FGameSettingValue const&"), ir.strings.intern("value"))});
+    std::vector<SwitchCaseId> setter_cases;
+    auto const setting_count{settings.size()};
+    for (std::size_t index{}; index < setting_count; ++index) {
+        auto const name{declarations.settings.name[declarations.settings.index(settings[index])]};
+        auto const typed_value{ir.named("typed_value")};
+        setter_cases.push_back(ir.switch_case(
+            ir.named("EGameSetting::" + title_case(context.text(name))),
+            ir.block({
+                ir.variable(ir.types.intern("auto const*"),
+                            ir.strings.intern("typed_value"),
+                            ir.call(ir.template_id(ir.named("std::get_if"),
+                                                   {ir.type_reference(setting_types[index])}),
+                                    {ir.unary(UnaryOperator::address_of, value)})),
+                ir.if_statement(
+                    ir.binary(BinaryOperator::equal, typed_value, ir.literal("nullptr")),
+                    ir.block({ir.return_statement(ir.literal("false"))})),
+                ir.assignment(ir.member_access(state, name),
+                              ir.unary(UnaryOperator::dereference, typed_value)),
+                ir.return_statement(ir.literal("true")),
+            })));
+    }
+    ir.set_function_body(
+        setter, {ir.switch_statement(id, setter_cases), ir.return_statement(ir.literal("false"))});
+
+    return {categories, descriptors, descriptor, getter, setter};
 }
 
 auto settings_api(LoweringContext& context,
@@ -229,381 +294,243 @@ auto settings_api(LoweringContext& context,
 }
 
 auto build_header(LoweringContext& context,
-                  ModuleHandle module,
+                  ModuleHandle const module,
                   std::span<CppTypeId const> const setting_types,
+                  std::span<FunctionId const> const functions,
                   std::vector<TypeDependencyId>& dependencies) -> Nodes {
     auto& ir{context.ir};
-    auto const settings{context.declarations.settings_modules
-                            .settings[context.declarations.settings_modules.index(module)]};
-    std::vector<CppTypeId> value_types;
-    std::set<StringId> unique_types;
+    auto const& declarations{context.declarations};
+    auto const module_row{declarations.settings_modules.index(module)};
+    auto const settings{declarations.settings_modules.settings[module_row]};
+    auto const setting_list{
+        declarations.items(declarations.settings_modules.settings_list[module_row])};
+    std::vector<std::string> setting_names;
+    std::vector<std::string> category_names;
+    std::vector<std::string> value_types;
     std::vector<std::string> type_names;
+    std::set<StringId> unique_types;
     std::set<std::string> unique_type_names;
     std::set<std::string> backends;
     std::set<std::string> option_providers;
     std::set<std::string> availability_providers;
-    auto const setting_count{context.declarations.settings_modules
-                                 .settings_list[context.declarations.settings_modules.index(module)]
-                                 .size()};
+    auto const setting_count{setting_list.size()};
     for (std::size_t index{}; index < setting_count; ++index) {
-        auto const setting{context.declarations.items(
-            context.declarations.settings_modules
-                .settings_list[context.declarations.settings_modules.index(module)])[index]};
-        auto const control{
-            context.declarations.settings.control[context.declarations.settings.index(setting)]};
+        auto const setting{setting_list[index]};
+        auto const row{declarations.settings.index(setting)};
+        auto const control_row{
+            declarations.setting_controls.index(declarations.settings.control[row])};
         auto const type{setting_types[index]};
         auto const type_dependencies{ir.types.dependencies(type)};
         dependencies.insert(dependencies.end(), type_dependencies.begin(), type_dependencies.end());
         if (unique_types.insert(ir.types.spelling_id(type)).second) {
-            value_types.push_back(type);
+            value_types.emplace_back(ir.types.spelling(type));
         }
-        auto const type_name{title_case(
-            context.text(context.declarations.type_refs.name[context.declarations.type_refs.index(
-                             context.declarations.settings
-                                 .value_type[context.declarations.settings.index(setting)])])
-                    .starts_with('@')
-                ? context
-                      .text(
-                          context.declarations.type_refs.name[context.declarations.type_refs.index(
-                              context.declarations.settings
-                                  .value_type[context.declarations.settings.index(setting)])])
-                      .substr(1)
-                : context.text(
-                      context.declarations.type_refs.name[context.declarations.type_refs.index(
-                          context.declarations.settings
-                              .value_type[context.declarations.settings.index(setting)])]))};
+        auto const type_name{setting_type_name(context, setting)};
         if (unique_type_names.insert(type_name).second) {
             type_names.push_back(type_name);
         }
-        backends.insert(context.text(
-            context.declarations.settings.backend[context.declarations.settings.index(setting)]));
-        if (context.declarations.setting_controls
-                .options_provider[context.declarations.setting_controls.index(control)]
-                .has_value()) {
-            option_providers.insert(context.text(
-                *context.declarations.setting_controls
-                     .options_provider[context.declarations.setting_controls.index(control)]));
+        setting_names.push_back(title_case(context.text(declarations.settings.name[row])));
+        backends.insert(context.text(declarations.settings.backend[row]));
+        if (auto const provider{declarations.setting_controls.options_provider[control_row]}) {
+            option_providers.insert(context.text(*provider));
         }
-        if (context.declarations.setting_controls
-                .availability_provider[context.declarations.setting_controls.index(control)]
-                .has_value()) {
-            availability_providers.insert(context.text(
-                *context.declarations.setting_controls
-                     .availability_provider[context.declarations.setting_controls.index(control)]));
+        if (auto const provider{declarations.setting_controls.availability_provider[control_row]}) {
+            availability_providers.insert(context.text(*provider));
         }
     }
-
-    std::string output{};
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    output += "enum class EGameSetting : uint8 {\n";
-    for (auto const setting_id : context.declarations.items(
-             context.declarations.settings_modules
-                 .settings_list[context.declarations.settings_modules.index(module)])) {
-        auto const setting{setting_id};
-
-        write(
-            "    {},\n",
-            title_case(context.text(
-                context.declarations.settings.name[context.declarations.settings.index(setting)])));
+    for (auto const category :
+         declarations.items(declarations.settings_modules.categories[module_row])) {
+        category_names.push_back(
+            title_case(context.text(declarations.setting_categories
+                                        .name[declarations.setting_categories.index(category)])));
     }
-    output += R"(};
 
-enum class EGameSettingCategory : uint8 {
-)";
-    for (auto const category_id : context.declarations.items(
-             context.declarations.settings_modules
-                 .categories[context.declarations.settings_modules.index(module)])) {
-        auto const category{category_id};
-        write("    {},\n",
-              title_case(context.text(
-                  context.declarations.setting_categories
-                      .name[context.declarations.setting_categories.index(category)])));
-    }
-    write(R"(}};
-
-enum class ESettingApplyMode : uint8 {{ Immediate, Deferred, Confirm }};
-enum class ESettingControlKind : uint8 {{ Toggle, Choice, FloatRange, IntegerRange, Custom }};
-enum class EGameSettingDevice : uint8 {{ Shared, KeyboardMouse, Controller }};
-enum class EGameSettingValueType : uint8 {{ {} }};
-enum class EGameSettingBackend : uint8 {{ )",
-          join(type_names, ", "));
-    {
-        std::vector<std::string> names;
-        for (auto const& backend : backends) {
-            names.push_back(title_case(backend));
+    NodeListBuilder header{ir};
+    auto add_enum = [&](std::string_view const name, std::vector<std::string> const& names) {
+        std::vector<EnumValueId> values;
+        for (auto const& value : names) {
+            values.push_back(ir.enumerator(ir.strings.intern(value)));
         }
-        output += join(names, ", ");
+        header.add(ir.enumeration(ir.strings.intern(name), ir.types.intern("uint8"), values), 2);
+    };
+    add_enum("EGameSetting", setting_names);
+    add_enum("EGameSettingCategory", category_names);
+    add_enum("ESettingApplyMode", {"Immediate", "Deferred", "Confirm"});
+    add_enum("ESettingControlKind", {"Toggle", "Choice", "FloatRange", "IntegerRange", "Custom"});
+    add_enum("EGameSettingDevice", {"Shared", "KeyboardMouse", "Controller"});
+    add_enum("EGameSettingValueType", type_names);
+    std::vector<std::string> backend_names;
+    for (auto const& backend : backends) {
+        backend_names.push_back(title_case(backend));
     }
-    output += " };\nenum class EGameSettingOptionProvider : uint8 { None";
+    add_enum("EGameSettingBackend", backend_names);
+    std::vector<std::string> option_names{"None"};
     for (auto const& provider : option_providers) {
-        write(", {}", title_case(provider));
+        option_names.push_back(title_case(provider));
     }
-    output += " };\nenum class EGameSettingAvailabilityProvider : uint8 { Always";
+    add_enum("EGameSettingOptionProvider", option_names);
+    std::vector<std::string> availability_names{"Always"};
     for (auto const& provider : availability_providers) {
-        write(", {}", title_case(provider));
+        availability_names.push_back(title_case(provider));
     }
-    write(R"( }};
+    add_enum("EGameSettingAvailabilityProvider", availability_names);
 
-struct {0}FGameSettingCategoryDescriptor {{
-    EGameSettingCategory id;
-    FText label;
-}};
+    auto add_record =
+        [&](std::string_view const name,
+            std::initializer_list<std::pair<std::string_view, std::string_view>> fields) {
+            NodeListBuilder members{ir};
+            for (auto const& [type, member] : fields) {
+                members.add(ir.instance_member(ir.types.intern(type), ir.strings.intern(member)),
+                            1);
+            }
+            auto const record{ir.record(ir.strings.intern(name), members.build())};
+            ir.set_record_export_specifier(
+                record, declarations.settings_modules.export_specifier[module_row]);
+            ir.set_record_dependencies(record, dependencies);
+            header.add(record, 2);
+        };
+    add_record("FGameSettingCategoryDescriptor",
+               {{"EGameSettingCategory", "id"}, {"FText", "label"}});
+    add_record("FGameSettingDescriptor",
+               {{"EGameSetting", "id"},
+                {"EGameSettingCategory", "category"},
+                {"EGameSettingValueType", "value_type"},
+                {"EGameSettingBackend", "backend"},
+                {"ESettingApplyMode", "apply_mode"},
+                {"EGameSettingDevice", "device"},
+                {"ESettingControlKind", "control_kind"},
+                {"EGameSettingOptionProvider", "options_provider"},
+                {"EGameSettingAvailabilityProvider", "availability_provider"},
+                {"TCHAR const*", "name"},
+                {"FText", "label"},
+                {"FText", "tooltip"},
+                {"double", "minimum"},
+                {"double", "maximum"},
+                {"double", "step"},
+                {"TCHAR const*", "custom_row"}});
 
-struct {0}FGameSettingDescriptor {{
-    EGameSetting id;
-    EGameSettingCategory category;
-    EGameSettingValueType value_type;
-    EGameSettingBackend backend;
-    ESettingApplyMode apply_mode;
-    EGameSettingDevice device;
-    ESettingControlKind control_kind;
-    EGameSettingOptionProvider options_provider;
-    EGameSettingAvailabilityProvider availability_provider;
-    TCHAR const* name;
-    FText label;
-    FText tooltip;
-    double minimum;
-    double maximum;
-    double step;
-    TCHAR const* custom_row;
-}};
-
-struct {0}{1} {{
-)",
-          export_prefix(context, module),
-          context.text(context.declarations.settings_modules
-                           .state_name[context.declarations.settings_modules.index(module)]));
+    NodeListBuilder state_members{ir};
     for (std::size_t index{}; index < setting_count; ++index) {
-        auto const setting{context.declarations.items(
-            context.declarations.settings_modules
-                .settings_list[context.declarations.settings_modules.index(module)])[index]};
-
-        write(
-            "    {} {}{{}};\n",
-            ir.types.spelling(setting_types[index]),
-            context.text(
-                context.declarations.settings.name[context.declarations.settings.index(setting)]));
+        state_members.add(
+            ir.instance_member(
+                setting_types[index],
+                declarations.settings.name[declarations.settings.index(setting_list[index])],
+                ir.init_list({})),
+            1);
     }
-    write(R"(
-    auto operator==({} const&) const -> bool = default;
-}};
-
-)",
-          context.text(context.declarations.settings_modules
-                           .state_name[context.declarations.settings_modules.index(module)]));
-
-    std::vector<std::string> variant_types;
-    for (auto const type : value_types) {
-        variant_types.emplace_back(ir.types.spelling(type));
+    auto const state_name{declarations.settings_modules.state_name[module_row]};
+    auto const equality{ir.function(ir.strings.intern("operator=="), ir.types.intern("bool"))};
+    ir.set_function_return_type(equality, ir.types.intern("bool"), ReturnSyntax::trailing);
+    ir.set_function_parameters(
+        equality, {ir.parameter(ir.types.intern(context.text(state_name) + " const&"))});
+    ir.set_function_receiver(equality, FunctionReceiver::const_);
+    ir.set_function_defaulted(equality);
+    state_members.new_lines(2).add(ir.header_function(equality), 1);
+    auto const state{ir.record(state_name, state_members.build())};
+    ir.set_record_export_specifier(state,
+                                   declarations.settings_modules.export_specifier[module_row]);
+    ir.set_record_dependencies(state, dependencies);
+    header.add(state, 2).add(
+        ir.using_declaration(
+            ir.strings.intern("FGameSettingValue"),
+            ir.types.intern("std::variant<" + join(value_types, ", ") + ">", dependencies)),
+        2);
+    for (auto const function : functions) {
+        header.add(ir.declaration(function), 1);
     }
-    write(R"(using FGameSettingValue = std::variant<{0}>;
+    header.new_lines(2).add(settings_api(context, module, setting_types));
 
-{1}auto game_setting_category_descriptors() -> TConstArrayView<FGameSettingCategoryDescriptor>;
-{1}auto game_setting_descriptors() -> TConstArrayView<FGameSettingDescriptor>;
-{1}auto game_setting_descriptor(EGameSetting id) -> FGameSettingDescriptor const&;
-{1}auto game_setting_value({2} const& state, EGameSetting id) -> FGameSettingValue;
-{1}auto set_game_setting_value({2}& state, EGameSetting id, FGameSettingValue const& value) -> bool;
-
-)",
-          join(variant_types, ", "),
-          export_prefix(context, module),
-          context.text(context.declarations.settings_modules
-                           .state_name[context.declarations.settings_modules.index(module)]));
-
-    NodeListBuilder result{ir};
-    result.add(ir.raw(output, dependencies), 2).add(settings_api(context, module, setting_types));
-    auto nodes{result.build()};
+    auto nodes{header.build()};
     if (auto const namespace_name{
-            context.declarations.module_settings_store
-                .namespace_name[context.declarations.module_settings_store.index(settings)]}) {
+            declarations.module_settings_store
+                .namespace_name[declarations.module_settings_store.index(settings)]}) {
         return {ir.namespace_node(*namespace_name, nodes)};
     }
     return nodes;
 }
 
 auto build_source(LoweringContext& context,
-                  ModuleHandle module,
-                  std::span<CppTypeId const> const setting_types) -> std::string {
+                  ModuleHandle const module,
+                  std::span<FunctionId const> const functions) -> Nodes {
     auto& ir{context.ir};
-    auto const settings{context.declarations.settings_modules
-                            .settings[context.declarations.settings_modules.index(module)]};
-    std::string output{};
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write(R"({}namespace {{
+    auto const& declarations{context.declarations};
+    auto const module_row{declarations.settings_modules.index(module)};
+    auto const settings{declarations.settings_modules.settings[module_row]};
+    auto enum_value = [&](std::string_view const type, std::string_view const name) {
+        return ir.named(std::format("{}::{}", type, name));
+    };
 
-static TArray<FGameSettingCategoryDescriptor> const category_descriptors{{
-)",
-          namespace_open(context, settings));
-    for (auto const category_id : context.declarations.items(
-             context.declarations.settings_modules
-                 .categories[context.declarations.settings_modules.index(module)])) {
-        auto const category{category_id};
-        write("    {{EGameSettingCategory::{}, FText::FromString(TEXT(\"{}\"))}},\n",
-              title_case(
-                  context.text(context.declarations.setting_categories
-                                   .name[context.declarations.setting_categories.index(category)])),
-              escaped(context.text(
-                  context.declarations.setting_categories
-                      .label[context.declarations.setting_categories.index(category)])));
+    std::vector<Expr> categories;
+    for (auto const category :
+         declarations.items(declarations.settings_modules.categories[module_row])) {
+        auto const row{declarations.setting_categories.index(category)};
+        categories.push_back(ir.init_list({
+            enum_value("EGameSettingCategory",
+                       title_case(context.text(declarations.setting_categories.name[row]))),
+            text_value(ir, context.text(declarations.setting_categories.label[row])),
+        }));
     }
-    output += R"(};
-
-static TArray<FGameSettingDescriptor> const descriptors{
-)";
-    for (auto const setting_id : context.declarations.items(
-             context.declarations.settings_modules
-                 .settings_list[context.declarations.settings_modules.index(module)])) {
-        auto const setting{setting_id};
-        auto const control{
-            context.declarations.settings.control[context.declarations.settings.index(setting)]};
-        auto const type_name{title_case(
-            context.text(context.declarations.type_refs.name[context.declarations.type_refs.index(
-                             context.declarations.settings
-                                 .value_type[context.declarations.settings.index(setting)])])
-                    .starts_with('@')
-                ? context
-                      .text(
-                          context.declarations.type_refs.name[context.declarations.type_refs.index(
-                              context.declarations.settings
-                                  .value_type[context.declarations.settings.index(setting)])])
-                      .substr(1)
-                : context.text(
-                      context.declarations.type_refs.name[context.declarations.type_refs.index(
-                          context.declarations.settings
-                              .value_type[context.declarations.settings.index(setting)])]))};
-        write(
-            "    {{EGameSetting::{}, EGameSettingCategory::{}, EGameSettingValueType::{}, "
-            "EGameSettingBackend::{}, ESettingApplyMode::{}, EGameSettingDevice::{}, "
-            "ESettingControlKind::{}, EGameSettingOptionProvider::{}, "
-            "EGameSettingAvailabilityProvider::{}, TEXT(\"{}\"), FText::FromString(TEXT(\"{}\")), "
-            "FText::FromString(TEXT(\"{}\")), {:.6g}, {:.6g}, {:.6g}, TEXT(\"{}\")}},\n",
-            title_case(context.text(
-                context.declarations.settings.name[context.declarations.settings.index(setting)])),
-            title_case(context.text(context.declarations.settings
-                                        .category[context.declarations.settings.index(setting)])),
-            type_name,
-            title_case(context.text(context.declarations.settings
-                                        .backend[context.declarations.settings.index(setting)])),
-            enum_name(context.declarations.settings
-                          .apply_mode[context.declarations.settings.index(setting)]),
-            enum_name(
-                context.declarations.settings.device[context.declarations.settings.index(setting)]),
-            enum_name(context.declarations.setting_controls
-                          .kind[context.declarations.setting_controls.index(control)]),
-            (context.declarations.setting_controls
-                     .options_provider[context.declarations.setting_controls.index(control)]
-                     .has_value()
-                 ? title_case(
-                       context.text(*context.declarations.setting_controls.options_provider
-                                         [context.declarations.setting_controls.index(control)]))
-                 : "None"),
-            (context.declarations.setting_controls
-                     .availability_provider[context.declarations.setting_controls.index(control)]
-                     .has_value()
-                 ? title_case(
-                       context.text(*context.declarations.setting_controls.availability_provider
-                                         [context.declarations.setting_controls.index(control)]))
-                 : "Always"),
-            escaped(context.text(
-                context.declarations.settings.name[context.declarations.settings.index(setting)])),
-            escaped(context.text(
-                context.declarations.settings.label[context.declarations.settings.index(setting)])),
-            escaped(context
-                        .optional_text(context.declarations.settings
-                                           .tooltip[context.declarations.settings.index(setting)])
-                        .value_or("")),
-            context.declarations.setting_controls
-                .minimum[context.declarations.setting_controls.index(control)]
-                .value_or(0.0),
-            context.declarations.setting_controls
-                .maximum[context.declarations.setting_controls.index(control)]
-                .value_or(0.0),
-            context.declarations.setting_controls
-                .step[context.declarations.setting_controls.index(control)]
-                .value_or(0.0),
-            escaped(context
-                        .optional_text(
-                            context.declarations.setting_controls
-                                .custom_row[context.declarations.setting_controls.index(control)])
-                        .value_or("")));
+    std::vector<Expr> descriptors;
+    for (auto const setting :
+         declarations.items(declarations.settings_modules.settings_list[module_row])) {
+        auto const row{declarations.settings.index(setting)};
+        auto const control_row{
+            declarations.setting_controls.index(declarations.settings.control[row])};
+        auto const options{declarations.setting_controls.options_provider[control_row]};
+        auto const availability{declarations.setting_controls.availability_provider[control_row]};
+        descriptors.push_back(ir.init_list({
+            enum_value("EGameSetting", title_case(context.text(declarations.settings.name[row]))),
+            enum_value("EGameSettingCategory",
+                       title_case(context.text(declarations.settings.category[row]))),
+            enum_value("EGameSettingValueType", setting_type_name(context, setting)),
+            enum_value("EGameSettingBackend",
+                       title_case(context.text(declarations.settings.backend[row]))),
+            enum_value("ESettingApplyMode", enum_name(declarations.settings.apply_mode[row])),
+            enum_value("EGameSettingDevice", enum_name(declarations.settings.device[row])),
+            enum_value("ESettingControlKind",
+                       enum_name(declarations.setting_controls.kind[control_row])),
+            enum_value("EGameSettingOptionProvider",
+                       options ? title_case(context.text(*options)) : "None"),
+            enum_value("EGameSettingAvailabilityProvider",
+                       availability ? title_case(context.text(*availability)) : "Always"),
+            text_literal(ir, context.text(declarations.settings.name[row])),
+            text_value(ir, context.text(declarations.settings.label[row])),
+            text_value(ir, context.optional_text(declarations.settings.tooltip[row]).value_or("")),
+            ir.literal(std::format(
+                "{:.6g}", declarations.setting_controls.minimum[control_row].value_or(0.0))),
+            ir.literal(std::format(
+                "{:.6g}", declarations.setting_controls.maximum[control_row].value_or(0.0))),
+            ir.literal(std::format("{:.6g}",
+                                   declarations.setting_controls.step[control_row].value_or(0.0))),
+            text_literal(
+                ir,
+                context.optional_text(declarations.setting_controls.custom_row[control_row])
+                    .value_or("")),
+        }));
     }
-    write(R"(}};
 
-}} // namespace
-
-auto game_setting_category_descriptors() -> TConstArrayView<FGameSettingCategoryDescriptor> {{
-    return category_descriptors;
-}}
-
-auto game_setting_descriptors() -> TConstArrayView<FGameSettingDescriptor> {{
-    return descriptors;
-}}
-
-auto game_setting_descriptor(EGameSetting const id) -> FGameSettingDescriptor const& {{
-    return descriptors[static_cast<int32>(id)];
-}}
-
-auto game_setting_value({} const& state, EGameSetting const id) -> FGameSettingValue {{
-    switch (id) {{
-)",
-          context.text(context.declarations.settings_modules
-                           .state_name[context.declarations.settings_modules.index(module)]));
-    for (auto const setting_id : context.declarations.items(
-             context.declarations.settings_modules
-                 .settings_list[context.declarations.settings_modules.index(module)])) {
-        auto const setting{setting_id};
-
-        write(
-            "    case EGameSetting::{}: return FGameSettingValue{{state.{}}};\n",
-            title_case(context.text(
-                context.declarations.settings.name[context.declarations.settings.index(setting)])),
-            context.text(
-                context.declarations.settings.name[context.declarations.settings.index(setting)]));
+    NodeListBuilder globals{ir};
+    globals
+        .add(ir.static_member(ir.types.intern("TArray<FGameSettingCategoryDescriptor> const"),
+                              ir.strings.intern("category_descriptors"),
+                              ir.init_list(categories)),
+             2)
+        .add(ir.static_member(ir.types.intern("TArray<FGameSettingDescriptor> const"),
+                              ir.strings.intern("descriptors"),
+                              ir.init_list(descriptors)));
+    NodeListBuilder source{ir};
+    source.add(ir.namespace_node(ir.strings.intern(""), globals.build()), 2);
+    for (auto const function : functions) {
+        source.add(ir.definition(function), 2);
     }
-    write(R"(    }}
-    checkNoEntry();
-    return FGameSettingValue{{state.{}}};
-}}
 
-auto set_game_setting_value({}& state, EGameSetting const id, FGameSettingValue const& value) -> bool {{
-    switch (id) {{
-)",
-          context.text(context.declarations.settings.name[context.declarations.settings.index(
-              context.declarations
-                  .items(context.declarations.settings_modules
-                             .settings_list[context.declarations.settings_modules.index(module)])
-                  .front())]),
-          context.text(context.declarations.settings_modules
-                           .state_name[context.declarations.settings_modules.index(module)]));
-    auto const setting_count{context.declarations.settings_modules
-                                 .settings_list[context.declarations.settings_modules.index(module)]
-                                 .size()};
-    for (std::size_t index{}; index < setting_count; ++index) {
-        auto const setting{context.declarations.items(
-            context.declarations.settings_modules
-                .settings_list[context.declarations.settings_modules.index(module)])[index]};
-
-        auto const type{ir.types.spelling(setting_types[index])};
-        write(
-            R"(    case EGameSetting::{}: {{
-        auto const* typed_value{{std::get_if<{}>(&value)}};
-        if (typed_value == nullptr) {{ return false; }}
-        state.{} = *typed_value;
-        return true;
-    }}
-)",
-            title_case(context.text(
-                context.declarations.settings.name[context.declarations.settings.index(setting)])),
-            type,
-            context.text(
-                context.declarations.settings.name[context.declarations.settings.index(setting)]));
+    auto nodes{source.build()};
+    if (auto const namespace_name{
+            declarations.module_settings_store
+                .namespace_name[declarations.module_settings_store.index(settings)]}) {
+        return {ir.namespace_node(*namespace_name, nodes)};
     }
-    write(R"(    }}
-    return false;
-}}
-{})",
-          namespace_close(context, settings));
-    return output;
+    return nodes;
 }
 
 } // namespace
@@ -631,7 +558,8 @@ auto lower_settings_module(LoweringContext& context, ModuleHandle module) -> Mod
             context.resolve(context.declarations.settings
                                 .value_type[context.declarations.settings.index(setting)]));
     }
-    auto header_declarations{build_header(context, module, setting_types, dependencies)};
+    auto const functions{build_functions(context, module, setting_types)};
+    auto header_declarations{build_header(context, module, setting_types, functions, dependencies)};
 
     NodeListBuilder header_nodes{ir};
     header_nodes.add(ir.include_dependencies(), 2);
@@ -653,7 +581,7 @@ auto lower_settings_module(LoweringContext& context, ModuleHandle module) -> Mod
         context.declarations.items(settings_store.include_order[settings_row])};
     auto const header_file{
         ir.files.append(settings_store.header[settings_row], header_nodes.build())};
-    ir.files.flags[ir.files.index(header_file)].set_clang_format_off(true);
+    ir.files.flags[ir.files.index(header_file)].set_format_generated(true);
     ir.files.set_include_order(header_file, include_order);
     CppFileId source_file;
     if (auto const path{settings_store.source[settings_row]}) {
@@ -661,11 +589,11 @@ auto lower_settings_module(LoweringContext& context, ModuleHandle module) -> Mod
         source_nodes
             .add(ir.include(ir.store_text(source_include(context, settings)), IncludeStyle::quoted),
                  2)
-            .add(ir.raw(build_source(context, module, setting_types)), 2);
+            .append(build_source(context, module, functions));
         source_file = ir.files.append(*path, source_nodes.build());
         auto const source_row{ir.files.index(source_file)};
         ir.files.flags[source_row].set_pragma_once(false);
-        ir.files.flags[source_row].set_clang_format_off(true);
+        ir.files.flags[source_row].set_format_generated(true);
         ir.files.set_include_order(source_file, include_order);
     }
     return ir.modules.append(settings_store.name[settings_row], header_file, source_file);

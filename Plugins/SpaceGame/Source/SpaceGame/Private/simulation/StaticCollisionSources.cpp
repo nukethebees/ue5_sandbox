@@ -25,8 +25,7 @@ auto FStaticCollisionSourcesConstView::get_view(int32 const offset, int32 const 
     -> ConstView {
     return ConstView{
         TConstArrayView<TWeakObjectPtr<UPrimitiveComponent>>{components}.Slice(offset, count),
-        TConstArrayView<ECollisionEnabled::Type>{original_collision_modes}.Slice(offset, count),
-    };
+        TConstArrayView<ECollisionEnabled::Type>{original_collision_modes}.Slice(offset, count)};
 }
 
 auto FStaticCollisionSourcesConstView::get_const_view() const -> ConstView {
@@ -37,8 +36,7 @@ auto FStaticCollisionSourcesConstView::get_const_view(int32 const offset, int32 
     -> ConstView {
     return ConstView{
         TConstArrayView<TWeakObjectPtr<UPrimitiveComponent>>{components}.Slice(offset, count),
-        TConstArrayView<ECollisionEnabled::Type>{original_collision_modes}.Slice(offset, count),
-    };
+        TConstArrayView<ECollisionEnabled::Type>{original_collision_modes}.Slice(offset, count)};
 }
 
 auto FStaticCollisionSourcesConstView::num() const noexcept -> int32 {
@@ -71,10 +69,8 @@ auto FStaticCollisionSourcesView::get_view() -> View {
 }
 
 auto FStaticCollisionSourcesView::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<TWeakObjectPtr<UPrimitiveComponent>>{components}.Slice(offset, count),
-        TArrayView<ECollisionEnabled::Type>{original_collision_modes}.Slice(offset, count),
-    };
+    return View{TArrayView<TWeakObjectPtr<UPrimitiveComponent>>{components}.Slice(offset, count),
+                TArrayView<ECollisionEnabled::Type>{original_collision_modes}.Slice(offset, count)};
 }
 
 auto FStaticCollisionSourcesView::get_view() const -> ConstView {
@@ -85,8 +81,7 @@ auto FStaticCollisionSourcesView::get_view(int32 const offset, int32 const count
     -> ConstView {
     return ConstView{
         TConstArrayView<TWeakObjectPtr<UPrimitiveComponent>>{components}.Slice(offset, count),
-        TConstArrayView<ECollisionEnabled::Type>{original_collision_modes}.Slice(offset, count),
-    };
+        TConstArrayView<ECollisionEnabled::Type>{original_collision_modes}.Slice(offset, count)};
 }
 
 auto FStaticCollisionSourcesView::get_const_view() const -> ConstView {
@@ -97,8 +92,7 @@ auto FStaticCollisionSourcesView::get_const_view(int32 const offset, int32 const
     -> ConstView {
     return ConstView{
         TConstArrayView<TWeakObjectPtr<UPrimitiveComponent>>{components}.Slice(offset, count),
-        TConstArrayView<ECollisionEnabled::Type>{original_collision_modes}.Slice(offset, count),
-    };
+        TConstArrayView<ECollisionEnabled::Type>{original_collision_modes}.Slice(offset, count)};
 }
 
 auto FStaticCollisionSourcesView::num() const noexcept -> int32 {
@@ -150,10 +144,8 @@ auto FStaticCollisionSources::get_view() -> View {
 }
 
 auto FStaticCollisionSources::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<TWeakObjectPtr<UPrimitiveComponent>>{components}.Slice(offset, count),
-        TArrayView<ECollisionEnabled::Type>{original_collision_modes}.Slice(offset, count),
-    };
+    return View{TArrayView<TWeakObjectPtr<UPrimitiveComponent>>{components}.Slice(offset, count),
+                TArrayView<ECollisionEnabled::Type>{original_collision_modes}.Slice(offset, count)};
 }
 
 auto FStaticCollisionSources::get_view() const -> ConstView {
@@ -163,8 +155,7 @@ auto FStaticCollisionSources::get_view() const -> ConstView {
 auto FStaticCollisionSources::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
         TConstArrayView<TWeakObjectPtr<UPrimitiveComponent>>{components}.Slice(offset, count),
-        TConstArrayView<ECollisionEnabled::Type>{original_collision_modes}.Slice(offset, count),
-    };
+        TConstArrayView<ECollisionEnabled::Type>{original_collision_modes}.Slice(offset, count)};
 }
 
 auto FStaticCollisionSources::get_const_view() const -> ConstView {
@@ -175,8 +166,7 @@ auto FStaticCollisionSources::get_const_view(int32 const offset, int32 const cou
     -> ConstView {
     return ConstView{
         TConstArrayView<TWeakObjectPtr<UPrimitiveComponent>>{components}.Slice(offset, count),
-        TConstArrayView<ECollisionEnabled::Type>{original_collision_modes}.Slice(offset, count),
-    };
+        TConstArrayView<ECollisionEnabled::Type>{original_collision_modes}.Slice(offset, count)};
 }
 
 auto FStaticCollisionSources::num() const noexcept -> int32 {

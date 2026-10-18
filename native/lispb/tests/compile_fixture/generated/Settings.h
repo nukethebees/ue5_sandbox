@@ -19,13 +19,44 @@ enum class EGameSettingCategory : uint8 {
     Video,
 };
 
-enum class ESettingApplyMode : uint8 { Immediate, Deferred, Confirm };
-enum class ESettingControlKind : uint8 { Toggle, Choice, FloatRange, IntegerRange, Custom };
-enum class EGameSettingDevice : uint8 { Shared, KeyboardMouse, Controller };
-enum class EGameSettingValueType : uint8 { Bool, Float };
-enum class EGameSettingBackend : uint8 { Engine };
-enum class EGameSettingOptionProvider : uint8 { None, FrameLimits };
-enum class EGameSettingAvailabilityProvider : uint8 { Always, FrameLimit };
+enum class ESettingApplyMode : uint8 {
+    Immediate,
+    Deferred,
+    Confirm,
+};
+
+enum class ESettingControlKind : uint8 {
+    Toggle,
+    Choice,
+    FloatRange,
+    IntegerRange,
+    Custom,
+};
+
+enum class EGameSettingDevice : uint8 {
+    Shared,
+    KeyboardMouse,
+    Controller,
+};
+
+enum class EGameSettingValueType : uint8 {
+    Bool,
+    Float,
+};
+
+enum class EGameSettingBackend : uint8 {
+    Engine,
+};
+
+enum class EGameSettingOptionProvider : uint8 {
+    None,
+    FrameLimits,
+};
+
+enum class EGameSettingAvailabilityProvider : uint8 {
+    Always,
+    FrameLimit,
+};
 
 struct COMPILE_FIXTURE_API FGameSettingCategoryDescriptor {
     EGameSettingCategory id;
@@ -64,11 +95,12 @@ using FGameSettingValue = std::variant<bool, float>;
 COMPILE_FIXTURE_API auto game_setting_category_descriptors()
     -> TConstArrayView<FGameSettingCategoryDescriptor>;
 COMPILE_FIXTURE_API auto game_setting_descriptors() -> TConstArrayView<FGameSettingDescriptor>;
-COMPILE_FIXTURE_API auto game_setting_descriptor(EGameSetting id) -> FGameSettingDescriptor const&;
-COMPILE_FIXTURE_API auto game_setting_value(FSettingsState const& state, EGameSetting id)
+COMPILE_FIXTURE_API auto game_setting_descriptor(EGameSetting const id)
+    -> FGameSettingDescriptor const&;
+COMPILE_FIXTURE_API auto game_setting_value(FSettingsState const& state, EGameSetting const id)
     -> FGameSettingValue;
 COMPILE_FIXTURE_API auto set_game_setting_value(FSettingsState& state,
-                                                EGameSetting id,
+                                                EGameSetting const id,
                                                 FGameSettingValue const& value) -> bool;
 
 template <typename Derived>

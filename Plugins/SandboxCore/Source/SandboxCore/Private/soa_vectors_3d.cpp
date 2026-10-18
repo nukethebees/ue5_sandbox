@@ -14,11 +14,9 @@ auto FVectors3dConstView::get_view() const -> ConstView {
 }
 
 auto FVectors3dConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<double>{xs}.Slice(offset, count),
-        TConstArrayView<double>{ys}.Slice(offset, count),
-        TConstArrayView<double>{zs}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<double>{xs}.Slice(offset, count),
+                     TConstArrayView<double>{ys}.Slice(offset, count),
+                     TConstArrayView<double>{zs}.Slice(offset, count)};
 }
 
 auto FVectors3dConstView::get_const_view() const -> ConstView {
@@ -26,11 +24,9 @@ auto FVectors3dConstView::get_const_view() const -> ConstView {
 }
 
 auto FVectors3dConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<double>{xs}.Slice(offset, count),
-        TConstArrayView<double>{ys}.Slice(offset, count),
-        TConstArrayView<double>{zs}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<double>{xs}.Slice(offset, count),
+                     TConstArrayView<double>{ys}.Slice(offset, count),
+                     TConstArrayView<double>{zs}.Slice(offset, count)};
 }
 
 auto FVectors3dConstView::num() const noexcept -> int32 {
@@ -62,11 +58,9 @@ auto FVectors3dView::get_view() -> View {
 }
 
 auto FVectors3dView::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<double>{xs}.Slice(offset, count),
-        TArrayView<double>{ys}.Slice(offset, count),
-        TArrayView<double>{zs}.Slice(offset, count),
-    };
+    return View{TArrayView<double>{xs}.Slice(offset, count),
+                TArrayView<double>{ys}.Slice(offset, count),
+                TArrayView<double>{zs}.Slice(offset, count)};
 }
 
 auto FVectors3dView::get_view() const -> ConstView {
@@ -74,11 +68,9 @@ auto FVectors3dView::get_view() const -> ConstView {
 }
 
 auto FVectors3dView::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<double>{xs}.Slice(offset, count),
-        TConstArrayView<double>{ys}.Slice(offset, count),
-        TConstArrayView<double>{zs}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<double>{xs}.Slice(offset, count),
+                     TConstArrayView<double>{ys}.Slice(offset, count),
+                     TConstArrayView<double>{zs}.Slice(offset, count)};
 }
 
 auto FVectors3dView::get_const_view() const -> ConstView {
@@ -86,11 +78,9 @@ auto FVectors3dView::get_const_view() const -> ConstView {
 }
 
 auto FVectors3dView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<double>{xs}.Slice(offset, count),
-        TConstArrayView<double>{ys}.Slice(offset, count),
-        TConstArrayView<double>{zs}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<double>{xs}.Slice(offset, count),
+                     TConstArrayView<double>{ys}.Slice(offset, count),
+                     TConstArrayView<double>{zs}.Slice(offset, count)};
 }
 
 auto FVectors3dView::num() const noexcept -> int32 {
@@ -158,11 +148,9 @@ auto FVectors3d::get_view() -> View {
 }
 
 auto FVectors3d::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<double>{xs}.Slice(offset, count),
-        TArrayView<double>{ys}.Slice(offset, count),
-        TArrayView<double>{zs}.Slice(offset, count),
-    };
+    return View{TArrayView<double>{xs}.Slice(offset, count),
+                TArrayView<double>{ys}.Slice(offset, count),
+                TArrayView<double>{zs}.Slice(offset, count)};
 }
 
 auto FVectors3d::get_view() const -> ConstView {
@@ -170,11 +158,9 @@ auto FVectors3d::get_view() const -> ConstView {
 }
 
 auto FVectors3d::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<double>{xs}.Slice(offset, count),
-        TConstArrayView<double>{ys}.Slice(offset, count),
-        TConstArrayView<double>{zs}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<double>{xs}.Slice(offset, count),
+                     TConstArrayView<double>{ys}.Slice(offset, count),
+                     TConstArrayView<double>{zs}.Slice(offset, count)};
 }
 
 auto FVectors3d::get_const_view() const -> ConstView {
@@ -182,11 +168,9 @@ auto FVectors3d::get_const_view() const -> ConstView {
 }
 
 auto FVectors3d::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<double>{xs}.Slice(offset, count),
-        TConstArrayView<double>{ys}.Slice(offset, count),
-        TConstArrayView<double>{zs}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<double>{xs}.Slice(offset, count),
+                     TConstArrayView<double>{ys}.Slice(offset, count),
+                     TConstArrayView<double>{zs}.Slice(offset, count)};
 }
 
 auto FVectors3d::num() const noexcept -> int32 {

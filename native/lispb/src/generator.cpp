@@ -229,21 +229,22 @@ auto lower_umbrella(detail::LoweringContext& context, ModuleHandle module) -> Mo
     return ir.modules.append(settings_store.name[row], file);
 }
 
-auto scalar_constant_literal(CppTypes const& types,
-                             CppTypeId const type,
-                             PackedIntegerValue const value) -> std::string {
-    std::string literal;
+auto scalar_constant_expression(CppIR& ir, CppTypeId const type, PackedIntegerValue const value)
+    -> Expr {
     if (value.negative && value.magnitude == (std::uint64_t{1} << 63)) {
-        literal = "(-9223372036854775807LL - 1)";
-    } else {
-        literal = value.negative ? "-" : "";
-        literal += std::to_string(value.magnitude);
-        if (!value.negative && value.magnitude > static_cast<std::uint64_t>(
-                                                     (std::numeric_limits<std::int64_t>::max)())) {
-            literal += "ULL";
-        }
+        return ir.static_cast_expr(type,
+                                   ir.parenthesized(ir.binary(BinaryOperator::subtract,
+                                                              ir.literal("-9223372036854775807LL"),
+                                                              ir.literal("1"))));
     }
-    return "static_cast<" + std::string{types.spelling(type)} + ">(" + literal + ")";
+
+    std::string literal{value.negative ? "-" : ""};
+    literal += std::to_string(value.magnitude);
+    if (!value.negative &&
+        value.magnitude > static_cast<std::uint64_t>((std::numeric_limits<std::int64_t>::max)())) {
+        literal += "ULL";
+    }
+    return ir.static_cast_expr(type, ir.literal(literal));
 }
 
 auto scalar_cpp_type(detail::LoweringContext& context, TypeRefId reference) -> CppTypeId {
@@ -264,58 +265,32 @@ auto scalar_cpp_type(detail::LoweringContext& context, TypeRefId reference) -> C
 auto lower_scalar(detail::LoweringContext& context, DeclarationHandle scalar)
     -> detail::DeclarationEmission {
     auto& ir{context.ir};
-    auto const scalar_name{
-        context.text(context.declarations.integer_scalars
-                         .name[context.declarations.integer_scalars.index(scalar)])};
+    auto const& scalars{context.declarations.integer_scalars};
+    auto const row{scalars.index(scalar)};
+    auto const& codes{context.declarations.packed_named_codes};
+    auto const scalar_name{context.text(scalars.name[row])};
     NodeListBuilder declarations{ir};
-    if (context.declarations.integer_scalars
-            .cpp_emission[context.declarations.integer_scalars.index(scalar)] ==
-        IntegerScalarCppEmission::alias) {
-        auto const cpp_type{
-            scalar_cpp_type(context,
-                            *context.declarations.integer_scalars
-                                 .cpp_type[context.declarations.integer_scalars.index(scalar)])};
-        declarations.add(
-            ir.raw("using " + scalar_name + " = " + std::string{ir.types.spelling(cpp_type)} + ";",
-                   std::vector<TypeDependencyId>{ir.types.dependencies(cpp_type).begin(),
-                                                 ir.types.dependencies(cpp_type).end()}));
+    if (scalars.cpp_emission[row] == IntegerScalarCppEmission::alias) {
+        auto const cpp_type{scalar_cpp_type(context, *scalars.cpp_type[row])};
+        declarations.add(ir.using_declaration(ir.strings.intern(scalar_name), cpp_type));
         return {.header = declarations.build()};
     }
-    if (context.declarations.integer_scalars
-            .cpp_emission[context.declarations.integer_scalars.index(scalar)] !=
-        IntegerScalarCppEmission::none) {
-        assert(context.declarations.integer_scalars
-                   .cpp_type[context.declarations.integer_scalars.index(scalar)]
-                   .has_value());
-        auto const cpp_type{
-            scalar_cpp_type(context,
-                            *context.declarations.integer_scalars
-                                 .cpp_type[context.declarations.integer_scalars.index(scalar)])};
-        for (auto const code_id : context.declarations.items(
-                 context.declarations.integer_scalars
-                     .named_codes[context.declarations.integer_scalars.index(scalar)])) {
+    if (scalars.cpp_emission[row] != IntegerScalarCppEmission::none) {
+        assert(scalars.cpp_type[row].has_value());
+        auto const cpp_type{scalar_cpp_type(context, *scalars.cpp_type[row])};
+        auto const constant_type{ir.types.derive(
+            cpp_type, "inline constexpr " + std::string{ir.types.spelling(cpp_type)})};
+        for (auto const code_id : context.declarations.items(scalars.named_codes[row])) {
             auto const code{code_id};
-            auto const code_name{
-                context.text(context.declarations.packed_named_codes
-                                 .name[context.declarations.packed_named_codes.index(code)])};
-            auto const declaration{
-                "inline constexpr " + std::string{ir.types.spelling(cpp_type)} + " " + scalar_name +
-                "_" + code_name + "{" +
-                scalar_constant_literal(
-                    ir.types,
-                    cpp_type,
-                    context.declarations.packed_named_codes
-                        .value[context.declarations.packed_named_codes.index(code)]) +
-                "};"};
+            auto const code_row{codes.index(code)};
+            auto const code_name{context.text(codes.name[code_row])};
             declarations.add(
-                ir.raw(declaration,
-                       std::vector<TypeDependencyId>{ir.types.dependencies(cpp_type).begin(),
-                                                     ir.types.dependencies(cpp_type).end()}),
+                ir.variable(constant_type,
+                            ir.strings.intern(scalar_name + "_" + code_name),
+                            scalar_constant_expression(ir, cpp_type, codes.value[code_row])),
                 1);
         }
-        if (context.declarations.integer_scalars
-                .cpp_emission[context.declarations.integer_scalars.index(scalar)] ==
-            IntegerScalarCppEmission::constants_with_names) {
+        if (scalars.cpp_emission[row] == IntegerScalarCppEmission::constants_with_names) {
             auto const lookup{
                 ir.function(ir.strings.intern(scalar_name + "_name"), ir.types.intern("auto"))};
             ir.set_function_return_type(
@@ -335,18 +310,13 @@ auto lower_scalar(detail::LoweringContext& context, DeclarationHandle scalar)
             ir.set_function_noexcept(lookup);
 
             std::vector<SwitchCaseId> cases;
-            for (auto const code_id : context.declarations.items(
-                     context.declarations.integer_scalars
-                         .named_codes[context.declarations.integer_scalars.index(scalar)])) {
+            for (auto const code_id : context.declarations.items(scalars.named_codes[row])) {
                 auto const code{code_id};
-                auto const code_name{
-                    context.text(context.declarations.packed_named_codes
-                                     .name[context.declarations.packed_named_codes.index(code)])};
-                cases.push_back(ir.switch_case(
-                    ir.named(scalar_name + '_' + code_name),
-                    ir.block({ir.return_statement(ir.string_literal(string_id(
-                        context.declarations.packed_named_codes
-                            .name[context.declarations.packed_named_codes.index(code)])))})));
+                auto const code_row{codes.index(code)};
+                auto const code_name{context.text(codes.name[code_row])};
+                cases.push_back(ir.switch_case(ir.named(scalar_name + '_' + code_name),
+                                               ir.block({ir.return_statement(ir.string_literal(
+                                                   string_id(codes.name[code_row])))})));
             }
             NodeListBuilder body{ir};
             body.add(ir.switch_statement(ir.named("value"), cases), 2)

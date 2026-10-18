@@ -18,6 +18,7 @@
 #include <codegen/ast/parameter_passing.h>
 #include <codegen/ast/return_syntax.h>
 #include <codegen/ast/type_operation.h>
+#include <codegen/ast/unary_operator.h>
 #include <codegen/lowering/indices.h>
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/function_schemas.h>
@@ -70,9 +71,14 @@ auto storage_operation_body(LoweringContext& context,
                             std::string const& operation,
                             std::vector<std::string> arguments = {}) -> Nodes {
     auto& ir{context.ir};
-    arguments.insert(arguments.begin(), "*this");
-    return {ir.raw("ioj::soa_ops::" + operation + "(" + join(arguments, ", ") + ");",
-                   {ir.types.dependency("ioj::soa_ops", "SandboxCore/soa_storage_ops.h")})};
+    std::vector<Expr> values{ir.unary(UnaryOperator::dereference, ir.named("this"))};
+    for (auto const& argument : arguments) {
+        values.push_back(ir.named(argument));
+    }
+    return {ir.expression_statement(
+        ir.call(ir.named("ioj::soa_ops::" + operation,
+                         {ir.types.dependency("ioj::soa_ops", "SandboxCore/soa_storage_ops.h")}),
+                values))};
 }
 
 auto has_custom_remove_at_swap(LoweringContext& context, std::span<ResolvedMemberId const> members)
@@ -510,10 +516,17 @@ auto soa_permutation_functions(LoweringContext& context, std::span<ResolvedMembe
                      ir.strings.intern("scratch_indices"))});
             ir.set_function_body(
                 created_function,
-                {ir.raw("ioj::soa_ops::sort(*this, std::forward<Compare>(compare), "
-                        "scratch_indices);",
-                        {ir.types.dependency("ioj::soa_ops", "SandboxCore/soa_storage_ops.h"),
-                         ir.types.dependency("std::forward", "utility")})});
+                {ir.expression_statement(ir.call(
+                    ir.named(
+                        "ioj::soa_ops::sort",
+                        {ir.types.dependency("ioj::soa_ops", "SandboxCore/soa_storage_ops.h")}),
+                    {ir.unary(UnaryOperator::dereference, ir.named("this")),
+                     ir.call(
+                         ir.template_id(ir.named("std::forward",
+                                                 {ir.types.dependency("std::forward", "utility")}),
+                                        {ir.type_reference(ir.types.intern("Compare"))}),
+                         {ir.named("compare")}),
+                     ir.named("scratch_indices")}))});
             ir.function_flags(created_function).set_is_inline(true);
             ir.function_flags(created_function).set_define_in_header(true);
             ir.set_function_template(created_function,
@@ -532,8 +545,13 @@ auto soa_permutation_functions(LoweringContext& context, std::span<ResolvedMembe
                     ir.strings.intern("scratch_indices"))});
             ir.set_function_body(
                 created_function,
-                {ir.raw("ioj::soa_ops::sort<Compare>(*this, scratch_indices);",
-                        {ir.types.dependency("ioj::soa_ops", "SandboxCore/soa_storage_ops.h")})});
+                {ir.expression_statement(ir.call(
+                    ir.template_id(ir.named("ioj::soa_ops::sort",
+                                            {ir.types.dependency("ioj::soa_ops",
+                                                                 "SandboxCore/soa_storage_ops.h")}),
+                                   {ir.named("Compare")}),
+                    {ir.unary(UnaryOperator::dereference, ir.named("this")),
+                     ir.named("scratch_indices")}))});
             ir.function_flags(created_function).set_is_inline(true);
             ir.function_flags(created_function).set_define_in_header(true);
             ir.set_function_template(created_function,

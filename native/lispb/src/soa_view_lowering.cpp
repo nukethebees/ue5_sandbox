@@ -4,14 +4,17 @@
 #include "soa_functions.h"
 #include "soa_internal.h"
 
+#include <codegen/ast/binary_operator.h>
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>
+#include <codegen/ast/expr.h>
 #include <codegen/ast/function_receiver.h>
 #include <codegen/ast/indices.h>
 #include <codegen/ast/node_id.h>
 #include <codegen/ast/node_list_builder.h>
 #include <codegen/ast/nodes.h>
 #include <codegen/ast/return_syntax.h>
+#include <codegen/ast/unary_operator.h>
 #include <codegen/lowering/indices.h>
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/indices.h>
@@ -25,37 +28,38 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 namespace lispb::codegen::detail {
 namespace {
 
-auto view_expression(LoweringContext& context, ResolvedMemberId member, bool const_view)
-    -> std::string {
+auto view_expression(LoweringContext& context, ResolvedMemberId member, bool const_view) -> Expr {
     auto& resolved_store{context.ir.lowering.resolved_members};
-    auto const resolved_store_index{resolved_store.index(member)};
+    auto const row{resolved_store.index(member)};
     auto& ir{context.ir};
-    if (resolved_store.kind[resolved_store_index] == SoaMemberKind::nested) {
-        return context.text(resolved_store.name[resolved_store_index]) +
-               (const_view ? ".get_const_view(offset, count)" : ".get_view(offset, count)");
+    auto const column{ir.named(resolved_store.name[row])};
+    if (resolved_store.kind[row] == SoaMemberKind::nested) {
+        return ir.call(ir.member_access(column, const_view ? "get_const_view" : "get_view"),
+                       {ir.named("offset"), ir.named("count")});
     }
-    auto const type{const_view ? resolved_store.const_view_type[resolved_store_index]
-                               : resolved_store.view_type[resolved_store_index]};
-    return std::string{ir.types.spelling(type)} + "{" +
-           context.text(resolved_store.name[resolved_store_index]) + "}.Slice(offset, count)";
+
+    auto const type{const_view ? resolved_store.const_view_type[row]
+                               : resolved_store.view_type[row]};
+    return ir.call(ir.member_access(ir.init_list({column}, type), "Slice"),
+                   {ir.named("offset"), ir.named("count")});
 }
 
-auto equivalent_expression(LoweringContext& context,
-                           ResolvedMemberId member,
-                           std::string const& index) -> std::string {
+auto equivalent_expression(LoweringContext& context, ResolvedMemberId member, Expr index) -> Expr {
     auto& resolved_store{context.ir.lowering.resolved_members};
-    auto const resolved_store_index{resolved_store.index(member)};
-    if (resolved_store.kind[resolved_store_index] == SoaMemberKind::array) {
-        return context.text(resolved_store.name[resolved_store_index]) + ".GetData()[" + index +
-               "]";
-    }
-    return context.text(resolved_store.name[resolved_store_index]) + "[" + index + "]";
+    auto const row{resolved_store.index(member)};
+    auto& ir{context.ir};
+    auto const column{ir.named(resolved_store.name[row])};
+    auto const values{resolved_store.kind[row] == SoaMemberKind::array
+                          ? ir.call(ir.member_access(column, "GetData"))
+                          : column};
+    return ir.subscript(values, index);
 }
 
 auto column_names(LoweringContext& context, std::span<ResolvedMemberId const> members)
@@ -139,9 +143,9 @@ auto soa_equivalent_nodes(LoweringContext& context,
                           std::span<ResolvedMemberId const> members) -> Nodes {
     auto& ir{context.ir};
     auto const equivalent{context.resolve(equivalent_reference)};
-    std::vector<std::string> values;
+    std::vector<Expr> values;
     for (auto const member : members) {
-        values.push_back(equivalent_expression(context, member, "index"));
+        values.push_back(equivalent_expression(context, member, ir.named("index")));
     }
     NodeListBuilder result{ir};
     result.add(ir.using_declaration(ir.strings.intern("equivalent_type"), equivalent), 2)
@@ -151,9 +155,7 @@ auto soa_equivalent_nodes(LoweringContext& context,
             ir.set_function_parameters(
                 created_function,
                 {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("index"))});
-            ir.set_function_body(
-                created_function,
-                {ir.return_statement(ir.raw_expression("{" + join(values, ", ") + "}"))});
+            ir.set_function_body(created_function, {ir.return_statement(ir.init_list(values))});
             ir.set_function_return_type(created_function, equivalent, ReturnSyntax::trailing);
             ir.set_function_receiver(created_function, FunctionReceiver::const_);
             ir.function_flags(created_function).set_is_inline(true);
@@ -170,15 +172,18 @@ auto soa_equivalent_nodes(LoweringContext& context,
             ir.set_function_body(
                 created_function,
                 {
-                    ir.expression_statement(ir.raw_expression("validate_array_sizes()")),
-                    ir.expression_statement(ir.raw_expression("check("
-                                                              "index "
-                                                              ">= "
-                                                              "0)"),
-                                            {ir.types.dependency("check", "CoreMinimal.h")}),
-                    ir.expression_statement(ir.raw_expression("check(index < "
-                                                              "num())")),
-                    ir.return_statement(ir.raw_expression("(*this)[index]")),
+                    ir.expression_statement(ir.call(ir.named("validate_array_sizes"))),
+                    ir.expression_statement(ir.call(
+                        ir.named("check", {ir.types.dependency("check", "CoreMinimal.h")}),
+                        {ir.binary(
+                            BinaryOperator::greater_equal, ir.named("index"), ir.literal("0"))})),
+                    ir.expression_statement(ir.call(ir.named("check"),
+                                                    {ir.binary(BinaryOperator::less,
+                                                               ir.named("index"),
+                                                               ir.call(ir.named("num")))})),
+                    ir.return_statement(ir.subscript(
+                        ir.parenthesized(ir.unary(UnaryOperator::dereference, ir.named("this"))),
+                        ir.named("index"))),
                 });
             ir.set_function_return_type(created_function, equivalent, ReturnSyntax::trailing);
             ir.set_function_receiver(created_function, FunctionReceiver::const_);
@@ -195,138 +200,139 @@ auto soa_view_functions(LoweringContext& context,
     auto& resolved_store{context.ir.lowering.resolved_members};
     auto& ir{context.ir};
     std::vector<FunctionId> result;
-    auto add = [&](std::string name,
+    auto add = [&](std::string_view name,
                    CppTypeId return_type,
                    std::vector<FunctionParameterId> parameters,
-                   std::string body,
+                   Nodes body,
                    ReturnSyntax syntax,
                    bool const is_const = false,
-                   bool const is_noexcept = false,
-                   std::vector<TypeDependencyId> dependencies = {}) {
-        result.push_back([&] {
-            auto const created_function{
-                ir.function(ir.strings.intern(std::move(name)), std::move(return_type))};
-            ir.set_function_parameters(created_function, std::move(parameters));
-            ir.set_function_body(created_function,
-                                 {ir.raw(std::move(body), std::move(dependencies))});
-            ir.set_function_return_type(created_function, return_type, syntax);
-            ir.set_function_receiver(created_function,
-                                     is_const ? FunctionReceiver::const_
-                                              : FunctionReceiver::unqualified);
-            if (is_noexcept) {
-                ir.set_function_noexcept(created_function);
-            }
-            return created_function;
-        }());
+                   bool const is_noexcept = false) {
+        auto const created_function{ir.function(ir.strings.intern(name), return_type)};
+        ir.set_function_parameters(created_function, parameters);
+        ir.set_function_body(created_function, body);
+        ir.set_function_return_type(created_function, return_type, syntax);
+        ir.set_function_receiver(
+            created_function, is_const ? FunctionReceiver::const_ : FunctionReceiver::unqualified);
+        if (is_noexcept) {
+            ir.set_function_noexcept(created_function);
+        }
+        result.push_back(created_function);
+    };
+    auto return_call = [&](std::string_view name, std::vector<Expr> arguments) -> Nodes {
+        return {ir.return_statement(ir.call(ir.named(name), arguments))};
     };
 
+    auto const offset{ir.named("offset")};
+    auto const count{ir.named("count")};
+    auto const num{ir.call(ir.named("num"))};
     if (!const_only) {
         add("get_view",
             ir.types.intern("View"),
             {},
-            "return get_view(0, num());",
+            return_call("get_view", {ir.literal("0"), num}),
             ReturnSyntax::trailing);
-        std::vector<std::string> values;
+        std::vector<Expr> values;
         for (auto const member : members) {
-            values.push_back("    " + view_expression(context, member, false) + ",");
+            values.push_back(view_expression(context, member, false));
         }
         add("get_view",
             ir.types.intern("View"),
             {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("offset")),
              ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))},
-            "return View{\n" + join_lines(values) + "\n};",
+            {ir.return_statement(ir.init_list(values, ir.types.intern("View")))},
             ReturnSyntax::trailing);
     }
 
     add("get_view",
         ir.types.intern("ConstView"),
         {},
-        "return get_view(0, num());",
+        return_call("get_view", {ir.literal("0"), num}),
         ReturnSyntax::trailing,
         true);
-    std::vector<std::string> const_values;
+    std::vector<Expr> const_values;
     for (auto const member : members) {
-        const_values.push_back("    " + view_expression(context, member, true) + ",");
+        const_values.push_back(view_expression(context, member, true));
     }
     add("get_view",
         ir.types.intern("ConstView"),
         {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("offset")),
          ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))},
-        "return ConstView{\n" + join_lines(const_values) + "\n};",
+        {ir.return_statement(ir.init_list(const_values, ir.types.intern("ConstView")))},
         ReturnSyntax::trailing,
         true);
     add("get_const_view",
         ir.types.intern("ConstView"),
         {},
-        "return get_const_view(0, num());",
+        return_call("get_const_view", {ir.literal("0"), num}),
         ReturnSyntax::trailing,
         true);
     add("get_const_view",
         ir.types.intern("ConstView"),
         {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("offset")),
          ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))},
-        "return ConstView{\n" + join_lines(const_values) + "\n};",
+        {ir.return_statement(ir.init_list(const_values, ir.types.intern("ConstView")))},
         ReturnSyntax::trailing,
         true);
     add("num",
         ir.types.intern("int32"),
         {},
-        "return ioj::num(" +
-            context.text(resolved_store.name[resolved_store.index(members.front())]) + ");",
+        {ir.return_statement(ir.call(
+            ir.named("ioj::num", {ir.types.dependency("ioj::num", "SandboxCore/container_ops.h")}),
+            {ir.named(resolved_store.name[resolved_store.index(members.front())])}))},
         ReturnSyntax::trailing,
         true,
-        true,
-        {ir.types.dependency("ioj::num", "SandboxCore/container_ops.h")});
+        true);
     add("is_empty",
         ir.types.intern("bool"),
         {},
-        "return num() == 0;",
+        {ir.return_statement(ir.binary(BinaryOperator::equal, num, ir.literal("0")))},
         ReturnSyntax::trailing,
         true,
         true);
     add("validate_array_sizes",
         ir.types.intern("void"),
         {},
-        "ioj::soa_ops::validate_array_sizes(*this);",
+        {ir.expression_statement(ir.call(
+            ir.named("ioj::soa_ops::validate_array_sizes",
+                     {ir.types.dependency("ioj::soa_ops", "SandboxCore/soa_storage_ops.h")}),
+            {ir.unary(UnaryOperator::dereference, ir.named("this"))}))},
         ReturnSyntax::direct,
-        true,
-        false,
-        {ir.types.dependency("ioj::soa_ops", "SandboxCore/soa_storage_ops.h")});
+        true);
     if (!const_only) {
         add("slice",
             ir.types.intern("View"),
             {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("offset")),
              ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))},
-            "return get_view(offset, count);",
+            return_call("get_view", {offset, count}),
             ReturnSyntax::trailing);
         add("left",
             ir.types.intern("View"),
             {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))},
-            "return slice(0, count);",
+            return_call("slice", {ir.literal("0"), count}),
             ReturnSyntax::trailing);
         add("right",
             ir.types.intern("View"),
             {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))},
-            "return slice(num() - count, count);",
+            return_call("slice", {ir.binary(BinaryOperator::subtract, num, count), count}),
             ReturnSyntax::trailing);
     }
     add("slice",
         ir.types.intern("ConstView"),
         {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("offset")),
          ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))},
-        "return get_view(offset, count);",
+        return_call("get_view", {offset, count}),
         ReturnSyntax::trailing,
         true);
     add("left",
         ir.types.intern("ConstView"),
         {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))},
-        "return slice(0, count);",
+        return_call("slice", {ir.literal("0"), count}),
         ReturnSyntax::trailing,
         true);
     add("right",
         ir.types.intern("ConstView"),
         {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))},
-        "return slice(num() - count, count);",
+        return_call("slice", {ir.binary(BinaryOperator::subtract, num, count), count}),
         ReturnSyntax::trailing,
         true);
     return result;

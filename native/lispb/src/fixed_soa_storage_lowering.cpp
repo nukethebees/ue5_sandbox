@@ -5,11 +5,13 @@
 #include <codegen/ast/binary_operator.h>
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>
+#include <codegen/ast/expr.h>
 #include <codegen/ast/function_flags.h>
 #include <codegen/ast/function_receiver.h>
 #include <codegen/ast/indices.h>
 #include <codegen/ast/node_id.h>
 #include <codegen/ast/node_list_builder.h>
+#include <codegen/ast/nodes.h>
 #include <codegen/ast/return_syntax.h>
 #include <codegen/ast/template_id.h>
 #include <codegen/ast/template_parameter_id.h>
@@ -21,6 +23,7 @@
 #include <lispb/strings.h>
 
 #include <cstddef>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -47,88 +50,86 @@ auto fixed_storage_type(LoweringContext& context, FixedMemberLayoutId member) ->
 }
 
 auto fixed_member_view(LoweringContext& context, FixedMemberLayoutId member, bool is_const)
-    -> std::string {
-    auto& fixed_member_store{context.ir.lowering.fixed_member_layouts};
-    auto const fixed_member_store_index{fixed_member_store.index(member)};
-    auto& resolved_store{context.ir.lowering.resolved_members};
+    -> Expr {
+    auto& fixed_members{context.ir.lowering.fixed_member_layouts};
+    auto& resolved{context.ir.lowering.resolved_members};
+    auto const row{resolved.index(fixed_members.member[fixed_members.index(member)])};
     auto& ir{context.ir};
-    if (resolved_store
-            .kind[resolved_store.index(fixed_member_store.member[fixed_member_store_index])] ==
-        SoaMemberKind::array) {
-        return std::string{is_const ? "TConstArrayView<" : "TArrayView<"} +
-               std::string{ir.types.spelling(resolved_store.element_type[resolved_store.index(
-                   fixed_member_store.member[fixed_member_store_index])])} +
-               ">{" +
-               context.text(resolved_store.name[resolved_store.index(
-                   fixed_member_store.member[fixed_member_store_index])]) +
-               "_.data() + offset, count}";
+    auto const column{ir.named(context.text(resolved.name[row]) + "_")};
+    if (resolved.kind[row] == SoaMemberKind::array) {
+        auto const type{
+            ir.types.intern(std::string{is_const ? "TConstArrayView<" : "TArrayView<"} +
+                                std::string{ir.types.spelling(resolved.element_type[row])} + ">",
+                            {ir.types.dependency("TArrayView", "Containers/ArrayView.h")})};
+        return ir.init_list({ir.binary(BinaryOperator::add,
+                                       ir.call(ir.member_access(column, "data")),
+                                       ir.named("offset")),
+                             ir.named("count")},
+                            type);
     }
-    return context.text(resolved_store.name[resolved_store.index(
-               fixed_member_store.member[fixed_member_store_index])]) +
-           (is_const ? "_.get_const_view(offset, count)" : "_.get_view(offset, count)");
+    return ir.call(ir.member_access(column, is_const ? "get_const_view" : "get_view"),
+                   {ir.named("offset"), ir.named("count")});
 }
 
-auto fixed_construct_lines(LoweringContext& context,
+auto fixed_construct_nodes(LoweringContext& context,
                            FixedLayoutId layout,
-                           std::string const& operation,
-                           std::vector<std::string> const& arguments = {})
-    -> std::vector<std::string> {
-    auto& layout_store{context.ir.lowering.fixed_layouts};
-    auto& fixed_member_store{context.ir.lowering.fixed_member_layouts};
-    auto& resolved_store{context.ir.lowering.resolved_members};
-    std::vector<std::string> result;
+                           std::string_view operation,
+                           std::span<Expr const> arguments = {}) -> Nodes {
+    auto& layouts{context.ir.lowering.fixed_layouts};
+    auto& fixed_members{context.ir.lowering.fixed_member_layouts};
+    auto& resolved{context.ir.lowering.resolved_members};
+    auto& ir{context.ir};
+    NodeListBuilder result{ir};
     std::size_t argument_index{};
-    for (auto const member :
-         context.ir.lowering.items(layout_store.members[layout_store.index(layout)])) {
-        auto const name{context.text(resolved_store.name[resolved_store.index(
-                            fixed_member_store.member[fixed_member_store.index(member)])]) +
-                        "_"};
-        auto const leaf_count{
-            context.ir.lowering.items(fixed_member_store.leaves[fixed_member_store.index(member)])
-                .size()};
-        std::vector<std::string> member_arguments;
-        for (std::size_t index{0}; index < leaf_count && argument_index < arguments.size();
-             ++index) {
-            member_arguments.push_back(arguments[argument_index++]);
-        }
+    for (auto const member : context.ir.lowering.items(layouts.members[layouts.index(layout)])) {
+        auto const member_row{fixed_members.index(member)};
+        auto const row{resolved.index(fixed_members.member[member_row])};
+        auto const name{context.text(resolved.name[row])};
+        auto const column{ir.named(name + "_")};
+        auto const array{resolved.kind[row] == SoaMemberKind::array};
+        auto const index{ir.named("index")};
+        auto const other_index{ir.named("other_index")};
+        std::string_view method{"construct_at"};
+        std::vector<Expr> values{index};
         if (operation == "arguments") {
-            result.push_back(name + ".construct_at(index, " + join(member_arguments, ", ") + ");");
+            auto const leaf_count{
+                context.ir.lowering.items(fixed_members.leaves[member_row]).size()};
+            for (std::size_t leaf{}; leaf < leaf_count && argument_index < arguments.size();
+                 ++leaf) {
+                values.push_back(arguments[argument_index++]);
+            }
         } else if (operation == "default") {
-            result.push_back(resolved_store.kind[resolved_store.index(
-                                 fixed_member_store.member[fixed_member_store.index(member)])] ==
-                                     SoaMemberKind::array
-                                 ? name + ".construct_at(index);"
-                                 : name + ".default_construct_at(index);");
-        } else if (operation == "copy") {
-            result.push_back(resolved_store.kind[resolved_store.index(
-                                 fixed_member_store.member[fixed_member_store.index(member)])] ==
-                                     SoaMemberKind::array
-                                 ? name + ".construct_at(index, other." + name + "[other_index]);"
-                                 : name + ".copy_construct_at(index, other." + name +
-                                       ", other_index);");
-        } else if (operation == "move") {
-            result.push_back(
-                resolved_store.kind[resolved_store.index(
-                    fixed_member_store.member[fixed_member_store.index(member)])] ==
-                        SoaMemberKind::array
-                    ? name + ".construct_at(index, MoveTemp(other." + name + "[other_index]));"
-                    : name + ".move_construct_at(index, other." + name + ", other_index);");
+            method = array ? "construct_at" : "default_construct_at";
+        } else if (operation == "copy" || operation == "move") {
+            auto const other{ir.member_access(ir.named("other"), name + "_")};
+            if (array) {
+                auto value{ir.subscript(other, other_index)};
+                if (operation == "move") {
+                    value = ir.call(
+                        ir.named("MoveTemp",
+                                 {ir.types.dependency("MoveTemp", "Templates/UnrealTemplate.h")}),
+                        {value});
+                }
+                values.push_back(value);
+            } else {
+                method = operation == "copy" ? "copy_construct_at" : "move_construct_at";
+                values.push_back(other);
+                values.push_back(other_index);
+            }
         } else if (operation == "view") {
-            result.push_back(
-                resolved_store.kind[resolved_store.index(
-                    fixed_member_store.member[fixed_member_store.index(member)])] ==
-                        SoaMemberKind::array
-                    ? name + ".construct_at(index, source." +
-                          context.text(resolved_store.name[resolved_store.index(
-                              fixed_member_store.member[fixed_member_store.index(member)])]) +
-                          "[source_index]);"
-                    : name + ".construct_from_view_at(index, source." +
-                          context.text(resolved_store.name[resolved_store.index(
-                              fixed_member_store.member[fixed_member_store.index(member)])]) +
-                          ", source_index);");
+            auto const source{ir.member_access(ir.named("source"), name)};
+            auto const source_index{ir.named("source_index")};
+            if (array) {
+                values.push_back(ir.subscript(source, source_index));
+            } else {
+                method = "construct_from_view_at";
+                values.push_back(source);
+                values.push_back(source_index);
+            }
         }
+        result.add(ir.expression_statement(ir.call(ir.member_access(column, method), values)));
     }
-    return result;
+    return result.build();
 }
 
 } // namespace
@@ -145,7 +146,7 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
             *context.declarations.soas.fixed[context.declarations.soas.index(schema)])])};
     std::vector<TemplateParameterId> template_parameters;
     std::vector<FunctionParameterId> function_parameters;
-    std::vector<std::string> forwarded;
+    std::vector<Expr> forwarded;
     for (std::size_t index{0};
          index < context.ir.lowering.items(layout_store.leaves[layout_store_index]).size();
          ++index) {
@@ -156,51 +157,57 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
         function_parameters.push_back(
             ir.parameter(ir.types.intern("TArg" + std::to_string(index) + "&&"),
                          ir.strings.intern("new_" + argument)));
-        forwarded.push_back("std::forward<TArg" + std::to_string(index) + ">(new_" + argument +
-                            ")");
+        forwarded.push_back(
+            ir.call(ir.template_id(
+                        ir.named("std::forward", {ir.types.dependency("std::forward", "utility")}),
+                        {ir.type_reference(ir.types.intern("TArg" + std::to_string(index)))}),
+                    {ir.named("new_" + argument)}));
     }
-    std::vector<std::string> mutable_views;
-    std::vector<std::string> const_views;
-    std::vector<std::string> copy_assign;
-    std::vector<std::string> move_assign;
-    for (auto const member : context.ir.lowering.items(layout_store.members[layout_store_index])) {
+    std::vector<Expr> mutable_views;
+    std::vector<Expr> const_views;
+    Nodes copy_assign;
+    Nodes move_assign;
+    auto const members{context.ir.lowering.items(layout_store.members[layout_store_index])};
+    for (auto const member : members) {
         mutable_views.push_back(fixed_member_view(context, member, false));
         const_views.push_back(fixed_member_view(context, member, true));
-        auto const name{context.text(resolved_store.name[resolved_store.index(
-                            fixed_member_store.member[fixed_member_store.index(member)])]) +
-                        "_"};
-        copy_assign.push_back(
-            resolved_store.kind[resolved_store.index(
-                fixed_member_store.member[fixed_member_store.index(member)])] ==
-                    SoaMemberKind::array
-                ? name + "[dst_index] = source." +
-                      context.text(resolved_store.name[resolved_store.index(
-                          fixed_member_store.member[fixed_member_store.index(member)])]) +
-                      "[source_index];"
-                : name + ".copy_assign_from_view_at(dst_index, source." +
-                      context.text(resolved_store.name[resolved_store.index(
-                          fixed_member_store.member[fixed_member_store.index(member)])]) +
-                      ", source_index);");
-        move_assign.push_back(
-            resolved_store.kind[resolved_store.index(
-                fixed_member_store.member[fixed_member_store.index(member)])] ==
-                    SoaMemberKind::array
-                ? name + "[dst_index] = MoveTemp(other." + name + "[source_index]);"
-                : name + ".move_assign_at(dst_index, other." + name + ", source_index);");
+        auto const row{
+            resolved_store.index(fixed_member_store.member[fixed_member_store.index(member)])};
+        auto const name{context.text(resolved_store.name[row])};
+        auto const column{ir.named(name + "_")};
+        auto const source{ir.member_access(ir.named("source"), name)};
+        auto const other{ir.member_access(ir.named("other"), name + "_")};
+        auto const destination_index{ir.named("dst_index")};
+        auto const source_index{ir.named("source_index")};
+        if (resolved_store.kind[row] == SoaMemberKind::array) {
+            copy_assign.push_back(ir.assignment(ir.subscript(column, destination_index),
+                                                ir.subscript(source, source_index)));
+            move_assign.push_back(ir.assignment(
+                ir.subscript(column, destination_index),
+                ir.call(ir.named("MoveTemp",
+                                 {ir.types.dependency("MoveTemp", "Templates/UnrealTemplate.h")}),
+                        {ir.subscript(other, source_index)})));
+        } else {
+            copy_assign.push_back(ir.expression_statement(
+                ir.call(ir.member_access(column, "copy_assign_from_view_at"),
+                        {destination_index, source, source_index})));
+            move_assign.push_back(
+                ir.expression_statement(ir.call(ir.member_access(column, "move_assign_at"),
+                                                {destination_index, other, source_index})));
+        }
     }
-    std::vector<std::string> destroy;
-    for (auto iterator{
-             context.ir.lowering.items(layout_store.members[layout_store_index]).rbegin()};
-         iterator != context.ir.lowering.items(layout_store.members[layout_store_index]).rend();
-         ++iterator) {
-        destroy.push_back(context.text(resolved_store.name[resolved_store.index(
-                              fixed_member_store.member[fixed_member_store.index(*iterator)])]) +
-                          "_.destroy_at(index);");
+    Nodes destroy;
+    for (auto iterator{members.rbegin()}; iterator != members.rend(); ++iterator) {
+        auto const row{
+            resolved_store.index(fixed_member_store.member[fixed_member_store.index(*iterator)])};
+        auto const column{ir.named(context.text(resolved_store.name[row]) + "_")};
+        destroy.push_back(ir.expression_statement(
+            ir.call(ir.member_access(column, "destroy_at"), {ir.named("index")})));
     }
     auto function = [&ir](std::string_view name,
                           CppTypeId return_type,
                           std::vector<FunctionParameterId> parameters,
-                          std::string body,
+                          Nodes body,
                           FunctionReceiver receiver = FunctionReceiver::unqualified,
                           ReturnSyntax return_syntax = ReturnSyntax::direct,
                           std::vector<TypeDependencyId> dependencies = {},
@@ -209,7 +216,8 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
         ir.set_function_return_type(created_function, return_type, return_syntax);
         ir.set_function_receiver(created_function, receiver);
         ir.set_function_parameters(created_function, parameters);
-        ir.set_function_body(created_function, {ir.raw(body, dependencies)});
+        ir.set_function_body(created_function, body);
+        ir.set_function_dependencies(created_function, dependencies);
         ir.function_flags(created_function).set_is_inline(true);
         ir.function_flags(created_function).set_define_in_header(true);
         ir.set_function_template(created_function, function_template);
@@ -228,7 +236,7 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
             ir.types.intern("View"),
             {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("offset")),
                        ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))},
-            "return View{" + join(mutable_views, ", ") + "};",
+            Nodes{ir.return_statement(ir.init_list(mutable_views, ir.types.intern("View")))},
             FunctionReceiver::unqualified,
             ReturnSyntax::trailing,
             {ir.types.dependency("TArrayView", "Containers/ArrayView.h")})),
@@ -237,7 +245,7 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
             ir.types.intern("ConstView"),
             {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("offset")),
                        ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))},
-            "return ConstView{" + join(const_views, ", ") + "};",
+            Nodes{ir.return_statement(ir.init_list(const_views, ir.types.intern("ConstView")))},
             FunctionReceiver::const_,
             ReturnSyntax::trailing,
             {ir.types.dependency("TArrayView", "Containers/ArrayView.h")})),
@@ -250,7 +258,7 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
                                        ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("index")));
                      return parameters;
                  }(),
-            join_lines(fixed_construct_lines(context, layout, "arguments", forwarded)),
+            fixed_construct_nodes(context, layout, "arguments", forwarded),
             FunctionReceiver::unqualified,
             ReturnSyntax::direct,
             {ir.types.dependency("std::forward", "utility")},
@@ -259,21 +267,21 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
         .add(ir.header_function(function("default_construct_at",
             ir.types.intern("void"),
             {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("index"))},
-            join_lines(fixed_construct_lines(context, layout, "default")))),
+            fixed_construct_nodes(context, layout, "default"))),
              2)
         .add(ir.header_function(function("copy_construct_at",
             ir.types.intern("void"),
             {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("index")),
                        ir.parameter(ir.types.intern(storage_name + " const&"), ir.strings.intern("other")),
                        ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("other_index"))},
-            join_lines(fixed_construct_lines(context, layout, "copy")))),
+            fixed_construct_nodes(context, layout, "copy"))),
              2)
         .add(ir.header_function(function("move_construct_at",
             ir.types.intern("void"),
             {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("index")),
                        ir.parameter(ir.types.intern(storage_name + "&"), ir.strings.intern("other")),
                        ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("other_index"))},
-            join_lines(fixed_construct_lines(context, layout, "move")),
+            fixed_construct_nodes(context, layout, "move"),
             FunctionReceiver::unqualified,
             ReturnSyntax::direct,
             {ir.types.dependency("MoveTemp", "Templates/UnrealTemplate.h")})),
@@ -283,7 +291,7 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
             {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("index")),
                        ir.parameter(ir.types.intern("SourceView const&"), ir.strings.intern("source")),
                        ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("source_index"))},
-            join_lines(fixed_construct_lines(context, layout, "view")),
+            fixed_construct_nodes(context, layout, "view"),
             FunctionReceiver::unqualified,
             ReturnSyntax::direct,
             {},
@@ -294,7 +302,7 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
             {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("dst_index")),
                        ir.parameter(ir.types.intern("SourceView const&"), ir.strings.intern("source")),
                        ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("source_index"))},
-            join_lines(copy_assign),
+            copy_assign,
             FunctionReceiver::unqualified,
             ReturnSyntax::direct,
             {},
@@ -305,7 +313,7 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
             {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("dst_index")),
                        ir.parameter(ir.types.intern(storage_name + "&"), ir.strings.intern("other")),
                        ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("source_index"))},
-            join_lines(move_assign),
+            move_assign,
             FunctionReceiver::unqualified,
             ReturnSyntax::direct,
             {ir.types.dependency("MoveTemp", "Templates/UnrealTemplate.h")})),
@@ -313,7 +321,7 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
         .add(ir.header_function([&] { auto const created{function("destroy_at",
             ir.types.intern("void"),
             {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("index"))},
-            join_lines(destroy))}; ir.set_function_noexcept(created); return created; }()),
+            destroy)}; ir.set_function_noexcept(created); return created; }()),
              2);
     for (std::size_t index{0};
          index < context.ir.lowering.items(layout_store.members[layout_store_index]).size();

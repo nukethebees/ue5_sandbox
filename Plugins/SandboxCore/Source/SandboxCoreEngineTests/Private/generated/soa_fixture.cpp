@@ -16,11 +16,9 @@ auto VectorsConstView::get_view() const -> ConstView {
 }
 
 auto VectorsConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<float>{xs}.Slice(offset, count),
-        TConstArrayView<float>{ys}.Slice(offset, count),
-        TConstArrayView<float>{zs}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<float>{xs}.Slice(offset, count),
+                     TConstArrayView<float>{ys}.Slice(offset, count),
+                     TConstArrayView<float>{zs}.Slice(offset, count)};
 }
 
 auto VectorsConstView::get_const_view() const -> ConstView {
@@ -28,11 +26,9 @@ auto VectorsConstView::get_const_view() const -> ConstView {
 }
 
 auto VectorsConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<float>{xs}.Slice(offset, count),
-        TConstArrayView<float>{ys}.Slice(offset, count),
-        TConstArrayView<float>{zs}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<float>{xs}.Slice(offset, count),
+                     TConstArrayView<float>{ys}.Slice(offset, count),
+                     TConstArrayView<float>{zs}.Slice(offset, count)};
 }
 
 auto VectorsConstView::num() const noexcept -> int32 {
@@ -64,11 +60,9 @@ auto VectorsView::get_view() -> View {
 }
 
 auto VectorsView::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<float>{xs}.Slice(offset, count),
-        TArrayView<float>{ys}.Slice(offset, count),
-        TArrayView<float>{zs}.Slice(offset, count),
-    };
+    return View{TArrayView<float>{xs}.Slice(offset, count),
+                TArrayView<float>{ys}.Slice(offset, count),
+                TArrayView<float>{zs}.Slice(offset, count)};
 }
 
 auto VectorsView::get_view() const -> ConstView {
@@ -76,11 +70,9 @@ auto VectorsView::get_view() const -> ConstView {
 }
 
 auto VectorsView::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<float>{xs}.Slice(offset, count),
-        TConstArrayView<float>{ys}.Slice(offset, count),
-        TConstArrayView<float>{zs}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<float>{xs}.Slice(offset, count),
+                     TConstArrayView<float>{ys}.Slice(offset, count),
+                     TConstArrayView<float>{zs}.Slice(offset, count)};
 }
 
 auto VectorsView::get_const_view() const -> ConstView {
@@ -88,11 +80,9 @@ auto VectorsView::get_const_view() const -> ConstView {
 }
 
 auto VectorsView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<float>{xs}.Slice(offset, count),
-        TConstArrayView<float>{ys}.Slice(offset, count),
-        TConstArrayView<float>{zs}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<float>{xs}.Slice(offset, count),
+                     TConstArrayView<float>{ys}.Slice(offset, count),
+                     TConstArrayView<float>{zs}.Slice(offset, count)};
 }
 
 auto VectorsView::num() const noexcept -> int32 {
@@ -160,11 +150,9 @@ auto Vectors::get_view() -> View {
 }
 
 auto Vectors::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<float>{xs}.Slice(offset, count),
-        TArrayView<float>{ys}.Slice(offset, count),
-        TArrayView<float>{zs}.Slice(offset, count),
-    };
+    return View{TArrayView<float>{xs}.Slice(offset, count),
+                TArrayView<float>{ys}.Slice(offset, count),
+                TArrayView<float>{zs}.Slice(offset, count)};
 }
 
 auto Vectors::get_view() const -> ConstView {
@@ -172,11 +160,9 @@ auto Vectors::get_view() const -> ConstView {
 }
 
 auto Vectors::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<float>{xs}.Slice(offset, count),
-        TConstArrayView<float>{ys}.Slice(offset, count),
-        TConstArrayView<float>{zs}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<float>{xs}.Slice(offset, count),
+                     TConstArrayView<float>{ys}.Slice(offset, count),
+                     TConstArrayView<float>{zs}.Slice(offset, count)};
 }
 
 auto Vectors::get_const_view() const -> ConstView {
@@ -184,11 +170,9 @@ auto Vectors::get_const_view() const -> ConstView {
 }
 
 auto Vectors::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<float>{xs}.Slice(offset, count),
-        TConstArrayView<float>{ys}.Slice(offset, count),
-        TConstArrayView<float>{zs}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<float>{xs}.Slice(offset, count),
+                     TConstArrayView<float>{ys}.Slice(offset, count),
+                     TConstArrayView<float>{zs}.Slice(offset, count)};
 }
 
 auto Vectors::num() const noexcept -> int32 {

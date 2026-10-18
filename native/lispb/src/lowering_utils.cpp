@@ -141,22 +141,28 @@ auto title_case_identifier(std::string_view const identifier) -> std::string {
     }
     return result;
 }
+auto call_array_callback(CppIR& ir, std::span<Expr const> const arguments) -> Expr {
+    auto const forwarded{ir.call(
+        ir.template_id(ir.named("std::forward", {ir.types.dependency("std::forward", "utility")}),
+                       {ir.type_reference(ir.types.intern("TFunc"))}),
+        {ir.named("func")})};
+    return ir.call(forwarded, arguments);
+}
+
 auto column_apply_arrays_function(CppIR& ir, std::vector<std::string> const& columns) -> NodeId {
-    std::vector<std::string> body{"return std::forward<TFunc>(func)("};
-    auto const count{columns.size()};
-    for (std::size_t index{0}; index < count; ++index) {
-        body.push_back("    self." + columns[index] + (index + 1 < count ? "," : ""));
+    std::vector<Expr> arguments;
+    arguments.reserve(columns.size());
+    for (auto const& column : columns) {
+        arguments.push_back(ir.member_access(ir.named("self"), column));
     }
-    body.emplace_back(");");
     auto const created_function{
         ir.function(ir.strings.intern("apply_arrays"), ir.types.intern("auto"))};
     ir.set_function_parameters(
         created_function,
         {ir.parameter(ir.types.intern("this auto&&"), ir.strings.intern("self")),
          ir.parameter(ir.types.intern("TFunc&&"), ir.strings.intern("func"))});
-    ir.set_function_body(
-        created_function,
-        {ir.raw(join_lines(body), {ir.types.dependency("std::forward", "utility")})});
+    ir.set_function_body(created_function,
+                         {ir.return_statement(call_array_callback(ir, arguments))});
     ir.set_function_return_type(
         created_function, ir.types.intern("decltype(auto)"), ReturnSyntax::trailing);
     ir.function_flags(created_function).set_is_inline(true);
@@ -169,13 +175,12 @@ auto column_apply_arrays_function(CppIR& ir, std::vector<std::string> const& col
 
 auto column_apply_array_pairs_function(CppIR& ir, std::vector<std::string> const& columns)
     -> NodeId {
-    std::vector<std::string> body{"return std::forward<TFunc>(func)("};
-    auto const count{columns.size()};
-    for (std::size_t index{0}; index < count; ++index) {
-        auto const& name{columns[index]};
-        body.push_back("    self." + name + ", other." + name + (index + 1 < count ? "," : ""));
+    std::vector<Expr> arguments;
+    arguments.reserve(columns.size() * 2);
+    for (auto const& column : columns) {
+        arguments.push_back(ir.member_access(ir.named("self"), column));
+        arguments.push_back(ir.member_access(ir.named("other"), column));
     }
-    body.emplace_back(");");
     auto const created_function{
         ir.function(ir.strings.intern("apply_array_pairs"), ir.types.intern("auto"))};
     ir.set_function_parameters(
@@ -183,9 +188,8 @@ auto column_apply_array_pairs_function(CppIR& ir, std::vector<std::string> const
         {ir.parameter(ir.types.intern("this Self&&"), ir.strings.intern("self")),
          ir.parameter(ir.types.intern("Other&&"), ir.strings.intern("other")),
          ir.parameter(ir.types.intern("TFunc&&"), ir.strings.intern("func"))});
-    ir.set_function_body(
-        created_function,
-        {ir.raw(join_lines(body), {ir.types.dependency("std::forward", "utility")})});
+    ir.set_function_body(created_function,
+                         {ir.return_statement(call_array_callback(ir, arguments))});
     ir.set_function_return_type(
         created_function, ir.types.intern("decltype(auto)"), ReturnSyntax::trailing);
     ir.function_flags(created_function).set_is_inline(true);

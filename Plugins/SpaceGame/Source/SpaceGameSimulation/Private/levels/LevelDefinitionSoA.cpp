@@ -3,6 +3,9 @@
 
 #include "SpaceGameSimulation/levels/LevelDefinitionSoA.h"
 
+#include "ioj/levels/team.h"
+#include "SpaceGameSimulation/levels/LevelTypes.h"
+
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_storage_ops.h"
 
@@ -17,14 +20,12 @@ auto FLevelEntityTableConstView::get_view() const -> ConstView {
 
 auto FLevelEntityTableConstView::get_view(int32 const offset, int32 const count) const
     -> ConstView {
-    return ConstView{
-        TConstArrayView<ioj::FLevelEntityId>{ids}.Slice(offset, count),
-        TConstArrayView<ioj::FEntityArchetypeId>{archetypes}.Slice(offset, count),
-        TConstArrayView<::ioj::Team>{teams}.Slice(offset, count),
-        positions.get_const_view(offset, count),
-        rotations.get_const_view(offset, count),
-        TConstArrayView<double>{spawn_times_seconds}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<ioj::FLevelEntityId>{ids}.Slice(offset, count),
+                     TConstArrayView<ioj::FEntityArchetypeId>{archetypes}.Slice(offset, count),
+                     TConstArrayView<::ioj::Team>{teams}.Slice(offset, count),
+                     positions.get_const_view(offset, count),
+                     rotations.get_const_view(offset, count),
+                     TConstArrayView<double>{spawn_times_seconds}.Slice(offset, count)};
 }
 
 auto FLevelEntityTableConstView::get_const_view() const -> ConstView {
@@ -33,14 +34,12 @@ auto FLevelEntityTableConstView::get_const_view() const -> ConstView {
 
 auto FLevelEntityTableConstView::get_const_view(int32 const offset, int32 const count) const
     -> ConstView {
-    return ConstView{
-        TConstArrayView<ioj::FLevelEntityId>{ids}.Slice(offset, count),
-        TConstArrayView<ioj::FEntityArchetypeId>{archetypes}.Slice(offset, count),
-        TConstArrayView<::ioj::Team>{teams}.Slice(offset, count),
-        positions.get_const_view(offset, count),
-        rotations.get_const_view(offset, count),
-        TConstArrayView<double>{spawn_times_seconds}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<ioj::FLevelEntityId>{ids}.Slice(offset, count),
+                     TConstArrayView<ioj::FEntityArchetypeId>{archetypes}.Slice(offset, count),
+                     TConstArrayView<::ioj::Team>{teams}.Slice(offset, count),
+                     positions.get_const_view(offset, count),
+                     rotations.get_const_view(offset, count),
+                     TConstArrayView<double>{spawn_times_seconds}.Slice(offset, count)};
 }
 
 auto FLevelEntityTableConstView::num() const noexcept -> int32 {
@@ -72,14 +71,12 @@ auto FLevelEntityTableView::get_view() -> View {
 }
 
 auto FLevelEntityTableView::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<ioj::FLevelEntityId>{ids}.Slice(offset, count),
-        TArrayView<ioj::FEntityArchetypeId>{archetypes}.Slice(offset, count),
-        TArrayView<::ioj::Team>{teams}.Slice(offset, count),
-        positions.get_view(offset, count),
-        rotations.get_view(offset, count),
-        TArrayView<double>{spawn_times_seconds}.Slice(offset, count),
-    };
+    return View{TArrayView<ioj::FLevelEntityId>{ids}.Slice(offset, count),
+                TArrayView<ioj::FEntityArchetypeId>{archetypes}.Slice(offset, count),
+                TArrayView<::ioj::Team>{teams}.Slice(offset, count),
+                positions.get_view(offset, count),
+                rotations.get_view(offset, count),
+                TArrayView<double>{spawn_times_seconds}.Slice(offset, count)};
 }
 
 auto FLevelEntityTableView::get_view() const -> ConstView {
@@ -87,14 +84,12 @@ auto FLevelEntityTableView::get_view() const -> ConstView {
 }
 
 auto FLevelEntityTableView::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<ioj::FLevelEntityId>{ids}.Slice(offset, count),
-        TConstArrayView<ioj::FEntityArchetypeId>{archetypes}.Slice(offset, count),
-        TConstArrayView<::ioj::Team>{teams}.Slice(offset, count),
-        positions.get_const_view(offset, count),
-        rotations.get_const_view(offset, count),
-        TConstArrayView<double>{spawn_times_seconds}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<ioj::FLevelEntityId>{ids}.Slice(offset, count),
+                     TConstArrayView<ioj::FEntityArchetypeId>{archetypes}.Slice(offset, count),
+                     TConstArrayView<::ioj::Team>{teams}.Slice(offset, count),
+                     positions.get_const_view(offset, count),
+                     rotations.get_const_view(offset, count),
+                     TConstArrayView<double>{spawn_times_seconds}.Slice(offset, count)};
 }
 
 auto FLevelEntityTableView::get_const_view() const -> ConstView {
@@ -103,14 +98,12 @@ auto FLevelEntityTableView::get_const_view() const -> ConstView {
 
 auto FLevelEntityTableView::get_const_view(int32 const offset, int32 const count) const
     -> ConstView {
-    return ConstView{
-        TConstArrayView<ioj::FLevelEntityId>{ids}.Slice(offset, count),
-        TConstArrayView<ioj::FEntityArchetypeId>{archetypes}.Slice(offset, count),
-        TConstArrayView<::ioj::Team>{teams}.Slice(offset, count),
-        positions.get_const_view(offset, count),
-        rotations.get_const_view(offset, count),
-        TConstArrayView<double>{spawn_times_seconds}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<ioj::FLevelEntityId>{ids}.Slice(offset, count),
+                     TConstArrayView<ioj::FEntityArchetypeId>{archetypes}.Slice(offset, count),
+                     TConstArrayView<::ioj::Team>{teams}.Slice(offset, count),
+                     positions.get_const_view(offset, count),
+                     rotations.get_const_view(offset, count),
+                     TConstArrayView<double>{spawn_times_seconds}.Slice(offset, count)};
 }
 
 auto FLevelEntityTableView::num() const noexcept -> int32 {
@@ -178,14 +171,12 @@ auto FLevelEntityTable::get_view() -> View {
 }
 
 auto FLevelEntityTable::get_view(int32 const offset, int32 const count) -> View {
-    return View{
-        TArrayView<ioj::FLevelEntityId>{ids}.Slice(offset, count),
-        TArrayView<ioj::FEntityArchetypeId>{archetypes}.Slice(offset, count),
-        TArrayView<::ioj::Team>{teams}.Slice(offset, count),
-        positions.get_view(offset, count),
-        rotations.get_view(offset, count),
-        TArrayView<double>{spawn_times_seconds}.Slice(offset, count),
-    };
+    return View{TArrayView<ioj::FLevelEntityId>{ids}.Slice(offset, count),
+                TArrayView<ioj::FEntityArchetypeId>{archetypes}.Slice(offset, count),
+                TArrayView<::ioj::Team>{teams}.Slice(offset, count),
+                positions.get_view(offset, count),
+                rotations.get_view(offset, count),
+                TArrayView<double>{spawn_times_seconds}.Slice(offset, count)};
 }
 
 auto FLevelEntityTable::get_view() const -> ConstView {
@@ -193,14 +184,12 @@ auto FLevelEntityTable::get_view() const -> ConstView {
 }
 
 auto FLevelEntityTable::get_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<ioj::FLevelEntityId>{ids}.Slice(offset, count),
-        TConstArrayView<ioj::FEntityArchetypeId>{archetypes}.Slice(offset, count),
-        TConstArrayView<::ioj::Team>{teams}.Slice(offset, count),
-        positions.get_const_view(offset, count),
-        rotations.get_const_view(offset, count),
-        TConstArrayView<double>{spawn_times_seconds}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<ioj::FLevelEntityId>{ids}.Slice(offset, count),
+                     TConstArrayView<ioj::FEntityArchetypeId>{archetypes}.Slice(offset, count),
+                     TConstArrayView<::ioj::Team>{teams}.Slice(offset, count),
+                     positions.get_const_view(offset, count),
+                     rotations.get_const_view(offset, count),
+                     TConstArrayView<double>{spawn_times_seconds}.Slice(offset, count)};
 }
 
 auto FLevelEntityTable::get_const_view() const -> ConstView {
@@ -208,14 +197,12 @@ auto FLevelEntityTable::get_const_view() const -> ConstView {
 }
 
 auto FLevelEntityTable::get_const_view(int32 const offset, int32 const count) const -> ConstView {
-    return ConstView{
-        TConstArrayView<ioj::FLevelEntityId>{ids}.Slice(offset, count),
-        TConstArrayView<ioj::FEntityArchetypeId>{archetypes}.Slice(offset, count),
-        TConstArrayView<::ioj::Team>{teams}.Slice(offset, count),
-        positions.get_const_view(offset, count),
-        rotations.get_const_view(offset, count),
-        TConstArrayView<double>{spawn_times_seconds}.Slice(offset, count),
-    };
+    return ConstView{TConstArrayView<ioj::FLevelEntityId>{ids}.Slice(offset, count),
+                     TConstArrayView<ioj::FEntityArchetypeId>{archetypes}.Slice(offset, count),
+                     TConstArrayView<::ioj::Team>{teams}.Slice(offset, count),
+                     positions.get_const_view(offset, count),
+                     rotations.get_const_view(offset, count),
+                     TConstArrayView<double>{spawn_times_seconds}.Slice(offset, count)};
 }
 
 auto FLevelEntityTable::num() const noexcept -> int32 {

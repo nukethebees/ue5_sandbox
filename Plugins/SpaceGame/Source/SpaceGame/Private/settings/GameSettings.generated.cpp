@@ -4,16 +4,13 @@
 #include "SpaceGame/settings/GameSettings.generated.h"
 
 namespace ioj {
-
 namespace {
-
 static TArray<FGameSettingCategoryDescriptor> const category_descriptors{
     {EGameSettingCategory::Video, FText::FromString(TEXT("Video"))},
     {EGameSettingCategory::Gameplay, FText::FromString(TEXT("Gameplay"))},
     {EGameSettingCategory::Audio, FText::FromString(TEXT("Audio"))},
     {EGameSettingCategory::Controls, FText::FromString(TEXT("Controls"))},
-    {EGameSettingCategory::Accessibility, FText::FromString(TEXT("Accessibility"))},
-};
+    {EGameSettingCategory::Accessibility, FText::FromString(TEXT("Accessibility"))}};
 
 static TArray<FGameSettingDescriptor> const descriptors{
     {EGameSetting::Resolution,
@@ -552,9 +549,7 @@ static TArray<FGameSettingDescriptor> const descriptors{
      0,
      0,
      0,
-     TEXT("")},
-};
-
+     TEXT("")}};
 } // namespace
 
 auto game_setting_category_descriptors() -> TConstArrayView<FGameSettingCategoryDescriptor> {
@@ -572,72 +567,105 @@ auto game_setting_descriptor(EGameSetting const id) -> FGameSettingDescriptor co
 auto game_setting_value(FGameSettingsState const& state, EGameSetting const id)
     -> FGameSettingValue {
     switch (id) {
-        case EGameSetting::Resolution:
+        case EGameSetting::Resolution: {
             return FGameSettingValue{state.resolution};
-        case EGameSetting::WindowMode:
+        }
+        case EGameSetting::WindowMode: {
             return FGameSettingValue{state.window_mode};
-        case EGameSetting::VSync:
+        }
+        case EGameSetting::VSync: {
             return FGameSettingValue{state.vsync};
-        case EGameSetting::FrameRateLimit:
+        }
+        case EGameSetting::FrameRateLimit: {
             return FGameSettingValue{state.frame_rate_limit};
-        case EGameSetting::ResolutionScale:
+        }
+        case EGameSetting::ResolutionScale: {
             return FGameSettingValue{state.resolution_scale};
-        case EGameSetting::OverallQuality:
+        }
+        case EGameSetting::OverallQuality: {
             return FGameSettingValue{state.overall_quality};
-        case EGameSetting::ViewDistanceQuality:
+        }
+        case EGameSetting::ViewDistanceQuality: {
             return FGameSettingValue{state.view_distance_quality};
-        case EGameSetting::AAMethod:
+        }
+        case EGameSetting::AAMethod: {
             return FGameSettingValue{state.aa_method};
-        case EGameSetting::AAQuality:
+        }
+        case EGameSetting::AAQuality: {
             return FGameSettingValue{state.aa_quality};
-        case EGameSetting::ShadowQuality:
+        }
+        case EGameSetting::ShadowQuality: {
             return FGameSettingValue{state.shadow_quality};
-        case EGameSetting::GlobalIlluminationQuality:
+        }
+        case EGameSetting::GlobalIlluminationQuality: {
             return FGameSettingValue{state.global_illumination_quality};
-        case EGameSetting::ReflectionsQuality:
+        }
+        case EGameSetting::ReflectionsQuality: {
             return FGameSettingValue{state.reflections_quality};
-        case EGameSetting::PostProcessingQuality:
+        }
+        case EGameSetting::PostProcessingQuality: {
             return FGameSettingValue{state.post_processing_quality};
-        case EGameSetting::TextureQuality:
+        }
+        case EGameSetting::TextureQuality: {
             return FGameSettingValue{state.texture_quality};
-        case EGameSetting::EffectsQuality:
+        }
+        case EGameSetting::EffectsQuality: {
             return FGameSettingValue{state.effects_quality};
-        case EGameSetting::ShadingQuality:
+        }
+        case EGameSetting::ShadingQuality: {
             return FGameSettingValue{state.shading_quality};
-        case EGameSetting::Bloom:
+        }
+        case EGameSetting::Bloom: {
             return FGameSettingValue{state.bloom};
-        case EGameSetting::MotionBlur:
+        }
+        case EGameSetting::MotionBlur: {
             return FGameSettingValue{state.motion_blur};
-        case EGameSetting::MasterVolume:
+        }
+        case EGameSetting::MasterVolume: {
             return FGameSettingValue{state.master_volume};
-        case EGameSetting::MusicVolume:
+        }
+        case EGameSetting::MusicVolume: {
             return FGameSettingValue{state.music_volume};
-        case EGameSetting::SfxVolume:
+        }
+        case EGameSetting::SfxVolume: {
             return FGameSettingValue{state.sfx_volume};
-        case EGameSetting::UIVolume:
+        }
+        case EGameSetting::UIVolume: {
             return FGameSettingValue{state.ui_volume};
-        case EGameSetting::Bees:
+        }
+        case EGameSetting::Bees: {
             return FGameSettingValue{state.bees};
-        case EGameSetting::MouseTurnSensitivity:
+        }
+        case EGameSetting::MouseTurnSensitivity: {
             return FGameSettingValue{state.mouse_turn_sensitivity};
-        case EGameSetting::GamepadTurnSensitivity:
+        }
+        case EGameSetting::GamepadTurnSensitivity: {
             return FGameSettingValue{state.gamepad_turn_sensitivity};
-        case EGameSetting::GamepadTurnDeadZone:
+        }
+        case EGameSetting::GamepadTurnDeadZone: {
             return FGameSettingValue{state.gamepad_turn_dead_zone};
-        case EGameSetting::GamepadMoveDeadZone:
+        }
+        case EGameSetting::GamepadMoveDeadZone: {
             return FGameSettingValue{state.gamepad_move_dead_zone};
-        case EGameSetting::InvertMousePitch:
+        }
+        case EGameSetting::InvertMousePitch: {
             return FGameSettingValue{state.invert_mouse_pitch};
-        case EGameSetting::InvertMouseYaw:
+        }
+        case EGameSetting::InvertMouseYaw: {
             return FGameSettingValue{state.invert_mouse_yaw};
-        case EGameSetting::InvertGamepadPitch:
+        }
+        case EGameSetting::InvertGamepadPitch: {
             return FGameSettingValue{state.invert_gamepad_pitch};
-        case EGameSetting::InvertGamepadYaw:
+        }
+        case EGameSetting::InvertGamepadYaw: {
             return FGameSettingValue{state.invert_gamepad_yaw};
-        case EGameSetting::InvertGamepadRoll:
+        }
+        case EGameSetting::InvertGamepadRoll: {
             return FGameSettingValue{state.invert_gamepad_roll};
-        case EGameSetting::InvertGamepadVerticalTranslation:
+        }
+        case EGameSetting::InvertGamepadVerticalTranslation: {
             return FGameSettingValue{state.invert_gamepad_vertical_translation};
+        }
     }
     checkNoEntry();
     return FGameSettingValue{state.resolution};

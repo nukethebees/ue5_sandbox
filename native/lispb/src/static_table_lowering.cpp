@@ -36,34 +36,24 @@ auto static_array_type(CppIR& ir, CppTypeId element_type) -> CppTypeId {
 
 auto group_getter(LoweringContext& context, StaticTableGroupId group) -> NodeId {
     auto& ir{context.ir};
-    auto const result_type{
-        context.resolve(context.declarations.static_table_groups
-                            .type[context.declarations.static_table_groups.index(group)])};
-    std::vector<std::string> arguments;
-    arguments.reserve(context.declarations.static_table_groups
-                          .columns[context.declarations.static_table_groups.index(group)]
-                          .size());
-    for (auto const column : context.declarations.items(
-             context.declarations.static_table_groups
-                 .columns[context.declarations.static_table_groups.index(group)])) {
-        arguments.push_back(context.text(column) + "[index]");
+    auto const& groups{context.declarations.static_table_groups};
+    auto const row{groups.index(group)};
+    auto const result_type{context.resolve(groups.type[row])};
+    std::vector<Expr> arguments;
+    arguments.reserve(groups.columns[row].size());
+    for (auto const column : context.declarations.items(groups.columns[row])) {
+        arguments.push_back(ir.subscript(ir.named(column), ir.named("index")));
     }
 
     auto const created_function{ir.function(
-        ir.strings.intern(
-            "get_" +
-            context.text(context.declarations.static_table_groups
-                             .name[context.declarations.static_table_groups.index(group)])),
-        ir.types.intern("auto"))};
+        ir.strings.intern("get_" + context.text(groups.name[row])), ir.types.intern("auto"))};
     ir.set_function_parameters(
         created_function,
         {ir.parameter(
             ir.types.intern("int32 const", {ir.types.dependency("int32 const", "CoreMinimal.h")}),
             ir.strings.intern("index"))});
-    ir.set_function_body(
-        created_function,
-        {ir.return_statement(ir.raw_expression(std::string{ir.types.spelling(result_type)} + "{" +
-                                               join(arguments, ", ") + "}"))});
+    ir.set_function_body(created_function,
+                         {ir.return_statement(ir.init_list(arguments, result_type))});
     ir.set_function_return_type(created_function, result_type, ReturnSyntax::trailing);
     ir.set_function_receiver(created_function, FunctionReceiver::const_);
     ir.function_flags(created_function).set_is_inline(true);
@@ -80,7 +70,7 @@ auto table_node(LoweringContext& context, DeclarationHandle table) -> NodeId {
     NodeListBuilder children{ir};
     children.add(ir.constexpr_member(int32_type,
                                      ir.strings.intern("num_rows"),
-                                     ir.raw_expression(std::to_string(rows.size()))),
+                                     ir.literal(std::to_string(rows.size()))),
                  2);
 
     for (std::size_t index{0}; index < rows.size(); ++index) {
@@ -92,14 +82,13 @@ auto table_node(LoweringContext& context, DeclarationHandle table) -> NodeId {
                         context.declarations.static_table_rows
                             .name[context.declarations.static_table_rows.index(rows[index])]) +
                     "_index"),
-                ir.raw_expression(std::to_string(index))),
+                ir.literal(std::to_string(index))),
             index + 1 < rows.size() ? 1 : 2);
     }
 
     children.add(ir.header_function([&] {
         auto const created_function{ir.function(ir.strings.intern("num"), ir.types.intern("auto"))};
-        ir.set_function_body(created_function,
-                             {ir.return_statement(ir.raw_expression("num_rows"))});
+        ir.set_function_body(created_function, {ir.return_statement(ir.named("num_rows"))});
         ir.set_function_return_type(created_function, int32_type, ReturnSyntax::trailing);
         ir.set_function_noexcept(created_function);
         ir.set_function_receiver(created_function, FunctionReceiver::static_);
@@ -144,7 +133,7 @@ auto table_node(LoweringContext& context, DeclarationHandle table) -> NodeId {
                             .type[context.declarations.static_table_columns.index(column)])),
                 context.declarations.static_table_columns
                     .name[context.declarations.static_table_columns.index(column)],
-                ir.raw_expression("")),
+                ir.init_list({})),
             1);
     }
 
