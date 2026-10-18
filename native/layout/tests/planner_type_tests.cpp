@@ -104,10 +104,12 @@ TEST_P(DeclarationStatusTest, DistinguishesUnknownFactsFromErrors) {
     ASSERT_TRUE(document.valid()) << diagnostic_messages(document);
     auto const type{document.find_type("test", "Value")};
     ASSERT_TRUE(type);
-    EXPECT_EQ(declaration_status(document.types(), *type, Variant{}, AbiProfile::host_common(), 64),
+    EXPECT_EQ(declaration_status(
+                  document.types(), *type, ResolvedVariant{}, AbiProfile::host_common(), 64),
               test.known);
-    EXPECT_EQ(declaration_status(document.types(), *type, Variant{}, AbiProfile{"unknown"}, 64),
-              test.unknown);
+    EXPECT_EQ(
+        declaration_status(document.types(), *type, ResolvedVariant{}, AbiProfile{"unknown"}, 64),
+        test.unknown);
 }
 
 INSTANTIATE_TEST_SUITE_P(

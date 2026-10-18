@@ -9,56 +9,57 @@ namespace ioj::layout {
 auto Variants::size() const -> std::size_t {
     return ids_.size();
 }
-auto Variants::ids() const -> std::vector<std::uint64_t> const& {
+auto Variants::ids() const -> std::vector<VariantId> const& {
     return ids_;
 }
-auto Variants::contains(std::uint64_t const id) const -> bool {
+auto Variants::contains(VariantId const id) const -> bool {
     return std::ranges::find(ids_, id) != ids_.end();
 }
-auto Variants::index(std::uint64_t const id) const -> std::size_t {
+auto Variants::index(VariantId const id) const -> std::size_t {
     auto const found{std::ranges::find(ids_, id)};
     assert(found != ids_.end());
     return static_cast<std::size_t>(found - ids_.begin());
 }
-auto Variants::name(std::uint64_t const id) const -> std::string const& {
+auto Variants::name(VariantId const id) const -> std::string const& {
     return names_[index(id)];
 }
-auto Variants::settings(std::uint64_t const id) const -> VariantSettings const& {
+auto Variants::settings(VariantId const id) const -> VariantSettings const& {
     return settings_[index(id)];
 }
-auto Variants::edit(std::uint64_t const id) -> VariantSettings& {
-    assert(id != baseline_id);
+auto Variants::edit(VariantId const id) -> VariantSettings& {
+    assert(id != VariantId{});
     return settings_[index(id)];
 }
-auto Variants::create(std::string name) -> std::uint64_t {
+auto Variants::create(std::string name) -> VariantId {
     assert(!name.empty());
-    auto const id{next_id_++};
+    auto const id{next_id_};
+    ++next_id_.value;
     ids_.push_back(id);
     names_.push_back(std::move(name));
     settings_.emplace_back();
     return id;
 }
-auto Variants::duplicate(std::uint64_t const source, std::string name) -> std::uint64_t {
+auto Variants::duplicate(VariantId const source, std::string name) -> VariantId {
     auto copy{settings(source)};
     auto const id{create(std::move(name))};
     edit(id) = std::move(copy);
     return id;
 }
-void Variants::rename(std::uint64_t const id, std::string name) {
-    assert(id != baseline_id && !name.empty());
+void Variants::rename(VariantId const id, std::string name) {
+    assert(id != VariantId{} && !name.empty());
     names_[index(id)] = std::move(name);
 }
-void Variants::reset(std::uint64_t const id) {
+void Variants::reset(VariantId const id) {
     edit(id) = {};
 }
-void Variants::erase(std::uint64_t const id) {
-    assert(id != baseline_id);
+void Variants::erase(VariantId const id) {
+    assert(id != VariantId{});
     auto const row{static_cast<std::ptrdiff_t>(index(id))};
     ids_.erase(ids_.begin() + row);
     names_.erase(names_.begin() + row);
     settings_.erase(settings_.begin() + row);
 }
-void Variants::set_packed_storage(std::uint64_t const id,
+void Variants::set_packed_storage(VariantId const id,
                                   lispb::schema::DeclarationId const type,
                                   std::optional<std::string> value) {
     auto& columns{edit(id)};
@@ -78,9 +79,9 @@ void Variants::set_packed_storage(std::uint64_t const id,
         columns.packed_storage.erase(columns.packed_storage.begin() + row);
     }
 }
-void Variants::set_field_width(std::uint64_t const id,
+void Variants::set_field_width(VariantId const id,
                                lispb::schema::DeclarationId const type,
-                               std::string member,
+                               lispb::IdentifierId member,
                                std::optional<std::uint32_t> const value) {
     auto& columns{edit(id)};
     auto const count{columns.field_types.size()};
@@ -93,7 +94,7 @@ void Variants::set_field_width(std::uint64_t const id,
     if (row == count) {
         if (value) {
             columns.field_types.push_back(type);
-            columns.field_names.push_back(std::move(member));
+            columns.field_names.push_back(member);
             columns.field_widths.push_back(*value);
         }
         return;
@@ -107,9 +108,9 @@ void Variants::set_field_width(std::uint64_t const id,
         columns.field_widths.erase(columns.field_widths.begin() + offset);
     }
 }
-void Variants::set_column_type(std::uint64_t const id,
+void Variants::set_column_type(VariantId const id,
                                lispb::schema::DeclarationId const type,
-                               std::string member,
+                               lispb::IdentifierId member,
                                std::optional<std::string> value) {
     auto& columns{edit(id)};
     auto const count{columns.column_types.size()};
@@ -122,7 +123,7 @@ void Variants::set_column_type(std::uint64_t const id,
     if (row == count) {
         if (value) {
             columns.column_types.push_back(type);
-            columns.column_names.push_back(std::move(member));
+            columns.column_names.push_back(member);
             columns.column_spelling.push_back(std::move(*value));
         }
         return;
@@ -136,7 +137,7 @@ void Variants::set_column_type(std::uint64_t const id,
         columns.column_spelling.erase(columns.column_spelling.begin() + offset);
     }
 }
-void Variants::set_capacity(std::uint64_t const id,
+void Variants::set_capacity(VariantId const id,
                             lispb::schema::DeclarationId const type,
                             std::optional<std::uint64_t> const value) {
     auto& columns{edit(id)};
@@ -158,8 +159,8 @@ void Variants::set_capacity(std::uint64_t const id,
 }
 
 void Variants::rename_member(lispb::schema::DeclarationId const type,
-                             std::string_view const old_name,
-                             std::string_view const new_name) {
+                             lispb::IdentifierId const old_name,
+                             lispb::IdentifierId const new_name) {
     for (auto& columns : settings_) {
         auto const fields{columns.field_types.size()};
         for (std::size_t row{}; row < fields; ++row) {
@@ -175,11 +176,12 @@ void Variants::rename_member(lispb::schema::DeclarationId const type,
         }
     }
 }
-void Variants::erase_member(lispb::schema::DeclarationId const type, std::string_view const name) {
+void Variants::erase_member(lispb::schema::DeclarationId const type,
+                            lispb::IdentifierId const name) {
     auto const count{ids_.size()};
     for (std::size_t row{1}; row < count; ++row) {
-        set_field_width(ids_[row], type, std::string{name}, std::nullopt);
-        set_column_type(ids_[row], type, std::string{name}, std::nullopt);
+        set_field_width(ids_[row], type, name, std::nullopt);
+        set_column_type(ids_[row], type, name, std::nullopt);
     }
 }
 void Variants::erase_declaration(lispb::schema::DeclarationId const type) {

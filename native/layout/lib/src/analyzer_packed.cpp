@@ -29,7 +29,7 @@ namespace ioj::layout {
 
 auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
                               lispb::schema::TypeId const type,
-                              Variant const& variant,
+                              ResolvedVariant const& variant,
                               AbiProfile const& abi,
                               std::uint64_t const element_count,
                               std::span<RelationshipTargetFacts const> const relationship_targets)
@@ -113,9 +113,9 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
             field.has_value() &&
             variant.overrides.packed_field_widths.contains(FieldOverrideId{
                 .type = type,
-                .field_name = std::string{types.strings().view(
+                .field_name =
                     types.definitions()
-                        .packed_fields.name[types.definitions().packed_fields.index(*field)])}})};
+                        .packed_fields.name[types.definitions().packed_fields.index(*field)]})};
         auto const representation_owned_width{
             field.has_value() &&
             (types.definitions()

@@ -1370,7 +1370,7 @@ class Analyzer {
             -> IntegerVarintDistributionComparison;
     static auto analyze_packed(lispb::schema::TypeGraph const& types,
                                lispb::schema::TypeId type,
-                               Variant const& variant,
+                               ResolvedVariant const& variant,
                                AbiProfile const& abi,
                                std::uint64_t element_count = 1,
                                std::span<RelationshipTargetFacts const> relationship_targets = {})
@@ -1436,7 +1436,7 @@ class Analyzer {
                                       RecordAccessAnalysis const& second) -> RecordAccessComparison;
     static auto analyze_soa(lispb::schema::TypeGraph const& types,
                             lispb::schema::TypeId type,
-                            Variant const& variant,
+                            ResolvedVariant const& variant,
                             AbiProfile const& abi,
                             std::uint64_t default_capacity,
                             SoaAllocationStrategy allocation_strategy =
@@ -1445,7 +1445,7 @@ class Analyzer {
         -> SoaTargetComparison;
     static auto derive_relationship_target_facts(
         lispb::schema::TypeGraph const& types,
-        Variant const& variant,
+        ResolvedVariant const& variant,
         AbiProfile const& abi,
         std::uint64_t default_capacity,
         SoaAllocationStrategy allocation_strategy = SoaAllocationStrategy::separate_columns)

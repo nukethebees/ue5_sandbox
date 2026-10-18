@@ -26,7 +26,7 @@ class PhysicalFactsResolver {
   public:
     PhysicalFactsResolver(lispb::schema::TypeGraph const& types,
                           AbiProfile const& abi,
-                          Variant const* variant = nullptr);
+                          ResolvedVariant const* variant = nullptr);
 
     auto resolve(lispb::schema::ResolvedOccurrenceId const use) -> PhysicalFactsResult;
     auto resolve(lispb::schema::TypeId type) -> PhysicalFactsResult;
@@ -68,7 +68,7 @@ class PhysicalFactsResolver {
 
     lispb::schema::TypeGraph const& types_;
     AbiProfile const& abi_;
-    Variant const* variant_{};
+    ResolvedVariant const* variant_{};
     std::map<lispb::schema::TypeId, TypeFacts> known_;
 };
 

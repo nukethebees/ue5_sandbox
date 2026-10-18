@@ -66,6 +66,7 @@ class Document {
   private:
     Document();
     auto replay(std::size_t position) -> bool;
+    // Keep the compiler's mutually referencing stores at stable addresses when Document moves.
     std::unique_ptr<DocumentState> state_;
 };
 }

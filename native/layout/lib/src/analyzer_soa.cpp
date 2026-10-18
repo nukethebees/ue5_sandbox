@@ -23,7 +23,7 @@ namespace ioj::layout {
 
 auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
                            lispb::schema::TypeId const type,
-                           Variant const& variant,
+                           ResolvedVariant const& variant,
                            AbiProfile const& abi,
                            std::uint64_t const default_capacity,
                            SoaAllocationStrategy const allocation_strategy) -> SoaAnalysis {
@@ -102,8 +102,11 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
                     types.definitions().soa_columns.semantic_type
                         [types.definitions().soa_columns.index(column)])])},
             .physical_type = effective_column_type(types, type, column, variant),
-            .overridden = variant.overrides.soa_column_types.contains(
-                FieldOverrideId{.type = type, .field_name = column_name}),
+            .overridden = variant.overrides.soa_column_types.contains(FieldOverrideId{
+                .type = type,
+                .field_name =
+                    types.definitions()
+                        .soa_columns.name[types.definitions().soa_columns.index(column)]}),
             .type_facts = std::nullopt,
             .total_bytes = std::nullopt,
             .allocation_offset_bytes = std::nullopt,
@@ -383,7 +386,7 @@ auto Analyzer::compare_soa_targets(SoaAnalysis const& first, SoaAnalysis const& 
 }
 
 auto Analyzer::derive_relationship_target_facts(lispb::schema::TypeGraph const& types,
-                                                Variant const& variant,
+                                                ResolvedVariant const& variant,
                                                 AbiProfile const& abi,
                                                 std::uint64_t const default_capacity,
                                                 SoaAllocationStrategy const allocation_strategy)

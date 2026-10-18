@@ -21,7 +21,7 @@ AnalysisCase const cases[]{
      [](Document const& doc) {
          auto const result{Analyzer::analyze_packed(doc.types(),
                                                     doc.find_type("game", "Value").value(),
-                                                    Variant{},
+                                                    ResolvedVariant{},
                                                     AbiProfile::host_common(),
                                                     100)};
          EXPECT_EQ(result.storage_bits, 32);
@@ -46,7 +46,7 @@ AnalysisCase const cases[]{
      [](Document const& doc) {
          auto const result{Analyzer::analyze_packed(doc.types(),
                                                     doc.find_type("game", "Value").value(),
-                                                    Variant{},
+                                                    ResolvedVariant{},
                                                     AbiProfile::host_common())};
          EXPECT_EQ(result.byte_order, lispb::codegen::PackedByteOrder::big_endian);
          EXPECT_EQ(result.fields[0].least_significant_bit, 12);
@@ -62,7 +62,7 @@ AnalysisCase const cases[]{
      [](Document const& doc) {
          auto const result{Analyzer::analyze_packed(doc.types(),
                                                     doc.find_type("game", "Value").value(),
-                                                    Variant{},
+                                                    ResolvedVariant{},
                                                     AbiProfile::host_common())};
          auto const& field{result.fields.front()};
          EXPECT_EQ(field.bit_width, 8);
@@ -83,7 +83,7 @@ AnalysisCase const cases[]{
      [](Document const& doc) {
          auto const result{Analyzer::analyze_packed(doc.types(),
                                                     doc.find_type("game", "Value").value(),
-                                                    Variant{},
+                                                    ResolvedVariant{},
                                                     AbiProfile::host_common())};
          EXPECT_EQ(result.payload_bits, 20);
          ASSERT_TRUE(result.fields[0].linear_quantized);
@@ -104,19 +104,20 @@ AnalysisCase const cases[]{
                    .unsigned_value_bits = 32,
                    .provenance = {}});
          auto const first{Analyzer::analyze_packed(
-             doc.types(), type, Variant{}, AbiProfile::host_common(), 100)};
-         auto const second{Analyzer::analyze_packed(doc.types(), type, Variant{}, wide, 100)};
+             doc.types(), type, ResolvedVariant{}, AbiProfile::host_common(), 100)};
+         auto const second{
+             Analyzer::analyze_packed(doc.types(), type, ResolvedVariant{}, wide, 100)};
          auto const comparison{Analyzer::compare_packed_targets(first, second)};
          EXPECT_EQ(comparison.storage_size_delta->magnitude, 4);
          EXPECT_EQ(comparison.total_storage_delta->magnitude, 400);
          EXPECT_EQ(comparison.unused_bit_delta->magnitude, 32);
-         auto const unknown{
-             Analyzer::analyze_packed(doc.types(), type, Variant{}, AbiProfile{"unknown"}, 100)};
+         auto const unknown{Analyzer::analyze_packed(
+             doc.types(), type, ResolvedVariant{}, AbiProfile{"unknown"}, 100)};
          EXPECT_FALSE(unknown.storage_bits);
          EXPECT_FALSE(Analyzer::compare_packed_targets(first, unknown).storage_size_delta);
          auto const overflow{Analyzer::analyze_packed(doc.types(),
                                                       type,
-                                                      Variant{},
+                                                      ResolvedVariant{},
                                                       AbiProfile::host_common(),
                                                       std::numeric_limits<std::uint64_t>::max())};
          EXPECT_FALSE(overflow.aggregate.total_storage_bytes);
@@ -130,7 +131,7 @@ AnalysisCase const cases[]{
      [](Document const& doc) {
          auto const abi{AbiProfile::host_common()};
          auto const packed{Analyzer::analyze_packed(
-             doc.types(), doc.find_type("game", "Value").value(), Variant{}, abi, 100)};
+             doc.types(), doc.find_type("game", "Value").value(), ResolvedVariant{}, abi, 100)};
          std::array const accesses{AccessIntent{"kind", AccessOperation::read}};
          auto const result{Analyzer::analyze_packed_access(packed, accesses, abi, 3)};
          EXPECT_EQ(result.useful_bits, 800);
@@ -172,7 +173,7 @@ TEST_P(RelationshipCapacityTest, DerivesWidthFromTargetExtent) {
         document.find_type("game", "Entities").value(), test.extent, test.extent}};
     auto const result{Analyzer::analyze_packed(document.types(),
                                                document.find_type("game", "Handle").value(),
-                                               Variant{},
+                                               ResolvedVariant{},
                                                AbiProfile::host_common(),
                                                1,
                                                targets)};

@@ -16,6 +16,17 @@
 namespace ioj::layout {
 class DocumentState {
   public:
+    void error(std::string_view message);
+    auto register_declaration(lispb::codegen::DeclarationHandle declaration)
+        -> lispb::schema::DeclarationId;
+    void inherit_declaration(lispb::codegen::DeclarationHandle before,
+                             lispb::codegen::DeclarationHandle after);
+    void inherit_module(lispb::codegen::ModuleHandle before, lispb::codegen::ModuleHandle after);
+    void edit_source(std::string_view operation,
+                     std::string_view path,
+                     std::string_view text,
+                     lispb::codegen::Manifest& candidate);
+
     lispb::CompilerStorage storage;
     lispb::codegen::Manifest manifest{lispb::codegen::manifest_schema_version,
                                       lispb::codegen::TypeRegistry{storage.registered_types},
@@ -26,7 +37,7 @@ class DocumentState {
     Variants variants;
     DocumentIoState io;
     std::map<lispb::codegen::DeclarationHandle, lispb::schema::DeclarationId> declaration_ids;
-    std::uint32_t next_declaration_id{1};
+    lispb::schema::DeclarationId next_declaration_id{1};
     std::vector<lispb::codegen::ModuleHandle> baseline;
     std::optional<lispb::Project> project;
     std::optional<lispb::TargetId> target;
@@ -48,16 +59,5 @@ class DocumentState {
     std::size_t diagnostic_begin{};
     Revision revision{};
     bool valid{};
-
-    void error(std::string_view message);
-    auto register_declaration(lispb::codegen::DeclarationHandle declaration)
-        -> lispb::schema::DeclarationId;
-    void inherit_declaration(lispb::codegen::DeclarationHandle before,
-                             lispb::codegen::DeclarationHandle after);
-    void inherit_module(lispb::codegen::ModuleHandle before, lispb::codegen::ModuleHandle after);
-    void edit_source(std::string_view operation,
-                     std::string_view path,
-                     std::string_view text,
-                     lispb::codegen::Manifest& candidate);
 };
 }

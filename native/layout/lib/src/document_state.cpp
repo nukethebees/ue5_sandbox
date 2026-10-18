@@ -5,10 +5,9 @@
 namespace ioj::layout {
 auto DocumentState::register_declaration(lispb::codegen::DeclarationHandle declaration)
     -> lispb::schema::DeclarationId {
-    auto const [found, inserted]{
-        declaration_ids.emplace(declaration, lispb::schema::DeclarationId{next_declaration_id})};
+    auto const [found, inserted]{declaration_ids.emplace(declaration, next_declaration_id)};
     if (inserted) {
-        ++next_declaration_id;
+        ++next_declaration_id.value;
     }
     return found->second;
 }

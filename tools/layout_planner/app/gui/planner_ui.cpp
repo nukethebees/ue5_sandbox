@@ -883,7 +883,7 @@ void PlannerUi::draw_variants() {
     ImGui::Begin("Variants");
     auto const active{analysis_.inputs().workspace.active_variant_id()};
     for (auto const& variant : analysis_.inputs().workspace.variants()) {
-        ImGui::PushID(static_cast<int>(variant.id));
+        ImGui::PushID(static_cast<int>(variant.id.value));
         if (ImGui::Selectable(variant.name.c_str(), active == variant.id)) {
             analysis_.edit_inputs().workspace.select_variant(variant.id);
             variant_name_ = variant.name;
@@ -908,7 +908,7 @@ void PlannerUi::draw_variants() {
             analysis_.edit_inputs().workspace.select_variant(id);
         }
     }
-    ImGui::BeginDisabled(active == layout::LayoutWorkspace::baseline_variant_id);
+    ImGui::BeginDisabled(active == layout::VariantId{});
     if (ImGui::Button("Rename")) {
         auto transaction{document_->transaction()};
         transaction.rename_variant(active, variant_name_);
@@ -966,7 +966,7 @@ void PlannerUi::draw_variants() {
     ImGui::EndDisabled();
 
     if (ImGui::CollapsingHeader("Compare variants")) {
-        auto const draw_picker{[&](char const* name, std::uint64_t selected, bool first) {
+        auto const draw_picker{[&](char const* name, layout::VariantId selected, bool first) {
             auto const* variant{analysis_.inputs().workspace.variant(selected)};
             assert(variant);
             if (ImGui::BeginCombo(name, variant->name.c_str())) {

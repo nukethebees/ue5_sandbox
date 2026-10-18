@@ -19,7 +19,7 @@ LayoutWorkspace::LayoutWorkspace(lispb::schema::TypeGraph const& types,
                                  std::uint64_t const default_capacity)
     : types_{&types}
     , default_capacity_{default_capacity} {
-    variants_.push_back({.id = baseline_variant_id, .name = "Baseline", .overrides = {}});
+    variants_.push_back({.id = VariantId{}, .name = "Baseline", .overrides = {}});
 }
 auto LayoutWorkspace::types() const -> lispb::schema::TypeGraph const& {
     return *types_;
@@ -30,19 +30,19 @@ auto LayoutWorkspace::default_capacity() const -> std::uint64_t {
 auto LayoutWorkspace::element_count() const -> std::uint64_t {
     return element_count_;
 }
-auto LayoutWorkspace::variants() const -> std::vector<Variant> const& {
+auto LayoutWorkspace::variants() const -> std::vector<ResolvedVariant> const& {
     return variants_;
 }
-auto LayoutWorkspace::variant(std::uint64_t const id) const -> Variant const* {
-    auto const found{std::ranges::find(variants_, id, &Variant::id)};
+auto LayoutWorkspace::variant(VariantId const id) const -> ResolvedVariant const* {
+    auto const found{std::ranges::find(variants_, id, &ResolvedVariant::id)};
     return found == variants_.end() ? nullptr : &*found;
 }
-auto LayoutWorkspace::active_variant() const -> Variant const& {
+auto LayoutWorkspace::active_variant() const -> ResolvedVariant const& {
     auto const* selected{variant(active_variant_id_)};
     assert(selected);
     return *selected;
 }
-auto LayoutWorkspace::active_variant_id() const -> std::uint64_t {
+auto LayoutWorkspace::active_variant_id() const -> VariantId {
     return active_variant_id_;
 }
 void LayoutWorkspace::bind(Document const& document) {
@@ -50,8 +50,8 @@ void LayoutWorkspace::bind(Document const& document) {
     variants_.clear();
     auto const& authored{document.variants()};
     for (auto const id : authored.ids()) {
-        auto& resolved{
-            variants_.emplace_back(Variant{.id = id, .name = authored.name(id), .overrides = {}})};
+        auto& resolved{variants_.emplace_back(
+            ResolvedVariant{.id = id, .name = authored.name(id), .overrides = {}})};
         auto const& settings{authored.settings(id)};
         auto const storage_count{settings.packed_types.size()};
         for (std::size_t row{}; row < storage_count; ++row) {
@@ -83,10 +83,10 @@ void LayoutWorkspace::bind(Document const& document) {
         }
     }
     if (!authored.contains(active_variant_id_)) {
-        active_variant_id_ = baseline_variant_id;
+        active_variant_id_ = VariantId{};
     }
 }
-auto LayoutWorkspace::select_variant(std::uint64_t const id) -> bool {
+auto LayoutWorkspace::select_variant(VariantId const id) -> bool {
     assert(variant(id));
     if (active_variant_id_ == id) {
         return false;

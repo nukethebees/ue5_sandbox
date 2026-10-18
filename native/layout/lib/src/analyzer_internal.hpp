@@ -451,12 +451,11 @@ inline auto enum_domain_fits_backing(EnumCodeValue const minimum,
 inline auto effective_field_width(lispb::schema::TypeGraph const& types,
                                   lispb::schema::TypeId const type,
                                   lispb::schema::PackedSegmentId const& field,
-                                  Variant const& variant) -> std::uint32_t {
+                                  ResolvedVariant const& variant) -> std::uint32_t {
     auto const found{variant.overrides.packed_field_widths.find(FieldOverrideId{
         .type = type,
-        .field_name = std::string{types.strings().view(
-            types.definitions()
-                .packed_fields.name[types.definitions().packed_fields.index(field)])}})};
+        .field_name = types.definitions()
+                          .packed_fields.name[types.definitions().packed_fields.index(field)]})};
     return found == variant.overrides.packed_field_widths.end()
              ? types.definitions()
                    .packed_fields.bit_width[types.definitions().packed_fields.index(field)]
@@ -466,7 +465,7 @@ inline auto effective_field_width(lispb::schema::TypeGraph const& types,
 inline auto effective_storage_type(lispb::schema::TypeGraph const& types,
                                    lispb::schema::TypeId const type,
                                    lispb::schema::TypeDefinitionId const& packed,
-                                   Variant const& variant) -> std::string {
+                                   ResolvedVariant const& variant) -> std::string {
     auto const found{variant.overrides.packed_storage_types.find(type)};
     if (found != variant.overrides.packed_storage_types.end()) {
         return found->second;
@@ -483,12 +482,11 @@ inline auto effective_storage_type(lispb::schema::TypeGraph const& types,
 inline auto effective_column_type(lispb::schema::TypeGraph const& types,
                                   lispb::schema::TypeId const type,
                                   lispb::schema::SoaColumnId const& column,
-                                  Variant const& variant) -> std::string {
+                                  ResolvedVariant const& variant) -> std::string {
     auto const found{variant.overrides.soa_column_types.find(FieldOverrideId{
         .type = type,
-        .field_name = std::string{types.strings().view(
-            types.definitions()
-                .soa_columns.name[types.definitions().soa_columns.index(column)])}})};
+        .field_name =
+            types.definitions().soa_columns.name[types.definitions().soa_columns.index(column)]})};
     if (found != variant.overrides.soa_column_types.end()) {
         return found->second;
     }

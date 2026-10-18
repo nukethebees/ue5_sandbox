@@ -2,6 +2,8 @@
 #include <ioj/layout/planner_session.hpp>
 #include <ioj/layout/workspace.hpp>
 
+#include <lispb/strings.h>
+
 #include <gtest/gtest.h>
 
 #include <string_view>
@@ -64,8 +66,11 @@ TEST(DocumentVariants, MixedSchemaAndVariantEditsUndoAsOneTransaction) {
     auto const state{doc.find_type("game", "State").value()};
     auto const ships{doc.find_type("game", "Ships").value()};
     EXPECT_EQ(workspace.active_variant().overrides.packed_storage_types.at(state), "std::uint32_t");
-    EXPECT_EQ(workspace.active_variant().overrides.packed_field_widths.at({state, "health"}), 20);
-    EXPECT_EQ(workspace.active_variant().overrides.soa_column_types.at({ships, "values"}),
+    EXPECT_EQ(workspace.active_variant().overrides.packed_field_widths.at(
+                  {state, doc.types().strings().find("health")}),
+              20);
+    EXPECT_EQ(workspace.active_variant().overrides.soa_column_types.at(
+                  {ships, doc.types().strings().find("values")}),
               "std::uint16_t");
     EXPECT_EQ(workspace.active_variant().overrides.capacities.at(ships), 42);
     ASSERT_TRUE(doc.undo());

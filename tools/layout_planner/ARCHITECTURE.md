@@ -12,6 +12,9 @@ physical variants, diagnostics, and one history cursor. `Transaction` queues
 instructions in parallel columns. Names resolve in instruction order, so later
 instructions can use a declaration created or renamed earlier in the transaction.
 
+The owned state stays at a stable address when `Document` moves: the compiler
+stores reference one another and cannot be moved independently.
+
 Applying an instruction appends immutable declaration/module versions to the
 compiler's SoA stores. Intermediate versions may be invalid. Commit resolves and
 validates the final schema before publishing its roots. Rejection retains the
@@ -27,6 +30,10 @@ Declaration IDs survive typed edits, rename, move, and replay. Semantic `TypeId`
 belong to the resolved graph revision. Variants use durable declaration IDs and
 member names; named member edits update their overrides. Variants are session
 experiments and are not written into LispB source files.
+
+`Variants` stores authored settings in SoA form. `ResolvedVariant` is one analysis
+projection using graph-local type IDs. `VariantId{}` selects the baseline. Member
+keys use interned `IdentifierId`s from the document's existing LispB string store.
 
 ## Reading and writing
 

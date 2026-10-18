@@ -1,6 +1,7 @@
 #pragma once
 #include <ioj/layout/analyzer.hpp>
 #include <ioj/layout/planner_type.hpp>
+#include <ioj/layout/variant_id.hpp>
 
 #include <cstdint>
 #include <optional>
@@ -30,7 +31,7 @@ struct PlannerAnalysisResults {
     std::optional<PackedAccessAnalysis> packed_access_analysis;
     std::optional<PackedAccessComparison> packed_target_access_comparison;
     std::optional<PackedAccessComparison> packed_access_comparison;
-    std::vector<std::pair<std::uint64_t, PackedAnalysis>> packed_variants;
+    std::vector<std::pair<VariantId, PackedAnalysis>> packed_variants;
     std::optional<SoaAnalysis> baseline_soa;
     std::optional<SoaAnalysis> active_soa;
     std::optional<SoaTargetComparison> soa_target_comparison;
@@ -38,7 +39,7 @@ struct PlannerAnalysisResults {
     std::optional<SoaAccessComparison> soa_target_access_comparison;
     std::optional<RecordSoaAccessComparison> record_soa_access_comparison;
     std::optional<SoaAccessComparison> soa_access_comparison;
-    std::vector<std::pair<std::uint64_t, SoaAnalysis>> soa_variants;
+    std::vector<std::pair<VariantId, SoaAnalysis>> soa_variants;
     std::optional<PackedAnalysis> comparison_a_packed;
     std::optional<PackedAnalysis> comparison_b_packed;
     std::optional<RecordAnalysis> record_analysis;

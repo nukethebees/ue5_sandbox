@@ -49,8 +49,11 @@ TEST(PhysicalFacts, GeneratedCppAgreesForPointersNestedRecordsAndAlignedExternal
     EXPECT_EQ(envelope.members[0].offset_bytes, offsetof(Envelope, pairs));
     EXPECT_EQ(envelope.members[1].offset_bytes, offsetof(Envelope, node));
     EXPECT_EQ(envelope.members[2].offset_bytes, offsetof(Envelope, aligned));
-    auto const rows{Analyzer::analyze_soa(
-        types, *document.find_type("native_soa_fixture", "PairRows"), Variant{}, profile, 7)};
+    auto const rows{Analyzer::analyze_soa(types,
+                                          *document.find_type("native_soa_fixture", "PairRows"),
+                                          ResolvedVariant{},
+                                          profile,
+                                          7)};
     PairRows generated;
     generated.set_num(7);
     EXPECT_EQ(rows.columns[0].total_bytes, generated.pairs.size() * sizeof(generated.pairs[0]));

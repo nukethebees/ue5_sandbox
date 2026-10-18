@@ -31,7 +31,7 @@ namespace ioj::layout {
 
 PhysicalFactsResolver::PhysicalFactsResolver(lispb::schema::TypeGraph const& types,
                                              AbiProfile const& abi,
-                                             Variant const* variant)
+                                             ResolvedVariant const* variant)
     : types_{types}
     , abi_{abi}
     , variant_{variant} {}

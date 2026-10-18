@@ -1,5 +1,7 @@
 #pragma once
 #include <ioj/layout/revision.hpp>
+#include <ioj/layout/transaction_kind.hpp>
+#include <ioj/layout/variant_id.hpp>
 
 #include <cstdint>
 #include <optional>
@@ -105,74 +107,32 @@ class Transaction {
     void remove_source(std::string_view path);
     void rename_source(std::string_view path, std::string_view new_path);
     void create_variant(std::string_view name);
-    void duplicate_variant(std::uint64_t id, std::string_view name);
-    void rename_variant(std::uint64_t id, std::string_view name);
-    void delete_variant(std::uint64_t id);
-    void reset_variant(std::uint64_t id);
-    void set_variant_packed_storage(std::uint64_t id,
+    void duplicate_variant(VariantId id, std::string_view name);
+    void rename_variant(VariantId id, std::string_view name);
+    void delete_variant(VariantId id);
+    void reset_variant(VariantId id);
+    void set_variant_packed_storage(VariantId id,
                                     std::string_view module,
                                     std::string_view declaration,
                                     std::optional<std::string> type);
-    void set_variant_field_bits(std::uint64_t id,
+    void set_variant_field_bits(VariantId id,
                                 std::string_view module,
                                 std::string_view declaration,
                                 std::string_view field,
                                 std::optional<std::uint32_t> bits);
-    void set_variant_member_type(std::uint64_t id,
+    void set_variant_member_type(VariantId id,
                                  std::string_view module,
                                  std::string_view declaration,
                                  std::string_view member,
                                  std::optional<std::string> type);
-    void set_variant_capacity(std::uint64_t id,
+    void set_variant_capacity(VariantId id,
                               std::string_view module,
                               std::string_view declaration,
                               std::optional<std::uint64_t> capacity);
   private:
     friend class Document;
-    enum class Kind : std::uint8_t {
-        field_bits,
-        packed_storage,
-        member_type,
-        create,
-        replace,
-        erase,
-        rename,
-        duplicate,
-        move,
-        create_module,
-        delete_module,
-        rename_module,
-        add_member,
-        delete_member,
-        rename_member,
-        reorder_member,
-        member_count,
-        add_field,
-        field_type,
-        delete_field,
-        rename_field,
-        reorder_field,
-        add_enumerator,
-        delete_enumerator,
-        rename_enumerator,
-        enumerator_initializer,
-        reorder_enumerator,
-        source_add,
-        source_replace,
-        source_remove,
-        source_rename,
-        variant_create,
-        variant_duplicate,
-        variant_rename,
-        variant_delete,
-        variant_reset,
-        variant_packed_storage,
-        variant_field_bits,
-        variant_member_type,
-        variant_capacity
-    };
     Transaction(Document const& owner, Revision revision);
-    void append(Kind kind,
+    void append(TransactionKind kind,
                 std::string_view module,
                 std::string_view declaration,
                 std::string_view member,
@@ -181,13 +141,13 @@ class Transaction {
     void apply(DocumentState& state, lispb::codegen::Manifest& manifest) const;
     Document const* owner_;
     Revision revision_;
-    std::vector<Kind> kinds_;
+    std::vector<TransactionKind> kinds_;
     std::vector<std::string> modules_;
     std::vector<std::string> declarations_;
     std::vector<std::string> members_;
     std::vector<std::string> texts_;
     std::vector<std::optional<std::uint64_t>> numbers_;
-    std::vector<std::uint64_t> variant_ids_;
+    std::vector<VariantId> variant_ids_;
 };
 
 }

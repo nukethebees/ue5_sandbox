@@ -1,0 +1,50 @@
+#pragma once
+
+#include <cstdint>
+
+namespace ioj::layout {
+
+enum class TransactionKind : std::uint8_t {
+    field_bits,
+    packed_storage,
+    member_type,
+    create,
+    replace,
+    erase,
+    rename,
+    duplicate,
+    move,
+    create_module,
+    delete_module,
+    rename_module,
+    add_member,
+    delete_member,
+    rename_member,
+    reorder_member,
+    member_count,
+    add_field,
+    field_type,
+    delete_field,
+    rename_field,
+    reorder_field,
+    add_enumerator,
+    delete_enumerator,
+    rename_enumerator,
+    enumerator_initializer,
+    reorder_enumerator,
+    source_add,
+    source_replace,
+    source_remove,
+    source_rename,
+    variant_create,
+    variant_duplicate,
+    variant_rename,
+    variant_delete,
+    variant_reset,
+    variant_packed_storage,
+    variant_field_bits,
+    variant_member_type,
+    variant_capacity
+};
+
+}

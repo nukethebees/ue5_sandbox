@@ -1,14 +1,17 @@
 #pragma once
 
+#include <ioj/layout/variant_id.hpp>
 #include <ioj/layout/variant_overrides.hpp>
 
-#include <cstdint>
 #include <string>
 
 namespace ioj::layout {
-struct Variant {
-    std::uint64_t id{};
+
+// Graph-local projection of one durable variant for the layout calculators.
+struct ResolvedVariant {
+    VariantId id{};
     std::string name;
     VariantOverrides overrides;
 };
+
 }

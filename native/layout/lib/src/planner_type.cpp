@@ -143,7 +143,7 @@ auto external_dependencies(lispb::schema::TypeGraph const& types, AbiProfile con
 
 auto analyze_external_type(lispb::schema::TypeGraph const& types,
                            lispb::schema::TypeId const type,
-                           Variant const& variant,
+                           ResolvedVariant const& variant,
                            AbiProfile const& abi,
                            std::uint64_t const capacity,
                            SoaAllocationStrategy const allocation_strategy)
@@ -393,7 +393,7 @@ auto declaration_kind_label(DeclarationKind const kind) -> char const* {
 
 auto declaration_status(lispb::schema::TypeGraph const& types,
                         lispb::schema::TypeId const type,
-                        Variant const& variant,
+                        ResolvedVariant const& variant,
                         AbiProfile const& abi,
                         std::uint64_t const default_capacity) -> LayoutStatus {
     auto const targets{
@@ -410,7 +410,7 @@ auto declaration_status(lispb::schema::TypeGraph const& types,
 
 auto declaration_status(lispb::schema::TypeGraph const& types,
                         lispb::schema::TypeId const type,
-                        Variant const& variant,
+                        ResolvedVariant const& variant,
                         AbiProfile const& abi,
                         std::uint64_t const default_capacity,
                         std::uint64_t const element_count,

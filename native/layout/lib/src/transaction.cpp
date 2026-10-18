@@ -318,7 +318,7 @@ void reorder(std::vector<Id>& values, std::size_t from, std::size_t to) {
 Transaction::Transaction(Document const& owner, Revision revision)
     : owner_{&owner}
     , revision_{revision} {}
-void Transaction::append(Kind kind,
+void Transaction::append(TransactionKind kind,
                          std::string_view module,
                          std::string_view declaration,
                          std::string_view member,
@@ -330,196 +330,196 @@ void Transaction::append(Kind kind,
     members_.emplace_back(member);
     texts_.emplace_back(text);
     numbers_.push_back(number);
-    variant_ids_.push_back(0);
+    variant_ids_.emplace_back();
 }
 void Transaction::set_field_bits(std::string_view m,
                                  std::string_view d,
                                  std::string_view f,
                                  int bits) {
-    append(Kind::field_bits, m, d, f, {}, static_cast<std::uint64_t>(bits));
+    append(TransactionKind::field_bits, m, d, f, {}, static_cast<std::uint64_t>(bits));
 }
 void
     Transaction::set_packed_storage(std::string_view m, std::string_view d, std::string_view type) {
-    append(Kind::packed_storage, m, d, {}, type);
+    append(TransactionKind::packed_storage, m, d, {}, type);
 }
 void Transaction::set_member_type(std::string_view m,
                                   std::string_view d,
                                   std::string_view n,
                                   std::string_view type) {
-    append(Kind::member_type, m, d, n, type);
+    append(TransactionKind::member_type, m, d, n, type);
 }
 void Transaction::create_declaration(std::string_view m, std::string_view source) {
-    append(Kind::create, m, {}, {}, source);
+    append(TransactionKind::create, m, {}, {}, source);
 }
 void Transaction::replace_declaration(std::string_view m,
                                       std::string_view n,
                                       std::string_view source) {
-    append(Kind::replace, m, n, {}, source);
+    append(TransactionKind::replace, m, n, {}, source);
 }
 void Transaction::delete_declaration(std::string_view m, std::string_view n) {
-    append(Kind::erase, m, n, {}, {});
+    append(TransactionKind::erase, m, n, {}, {});
 }
 void
     Transaction::rename_declaration(std::string_view m, std::string_view n, std::string_view name) {
-    append(Kind::rename, m, n, {}, name);
+    append(TransactionKind::rename, m, n, {}, name);
 }
 void Transaction::duplicate_declaration(std::string_view m,
                                         std::string_view n,
                                         std::string_view name) {
-    append(Kind::duplicate, m, n, {}, name);
+    append(TransactionKind::duplicate, m, n, {}, name);
 }
 void Transaction::move_declaration(std::string_view m,
                                    std::string_view n,
                                    std::string_view destination) {
-    append(Kind::move, m, n, {}, destination);
+    append(TransactionKind::move, m, n, {}, destination);
 }
 void Transaction::create_module(std::string_view source, std::string_view path) {
-    append(Kind::create_module, {}, {}, path, source);
+    append(TransactionKind::create_module, {}, {}, path, source);
 }
 void Transaction::delete_module(std::string_view m) {
-    append(Kind::delete_module, m, {}, {}, {});
+    append(TransactionKind::delete_module, m, {}, {}, {});
 }
 void Transaction::rename_module(std::string_view m, std::string_view name) {
-    append(Kind::rename_module, m, {}, {}, name);
+    append(TransactionKind::rename_module, m, {}, {}, name);
 }
 void Transaction::add_member(std::string_view m,
                              std::string_view d,
                              std::string_view n,
                              std::string_view type) {
-    append(Kind::add_member, m, d, n, type);
+    append(TransactionKind::add_member, m, d, n, type);
 }
 void Transaction::delete_member(std::string_view m, std::string_view d, std::string_view n) {
-    append(Kind::delete_member, m, d, n, {});
+    append(TransactionKind::delete_member, m, d, n, {});
 }
 void Transaction::rename_member(std::string_view m,
                                 std::string_view d,
                                 std::string_view n,
                                 std::string_view name) {
-    append(Kind::rename_member, m, d, n, name);
+    append(TransactionKind::rename_member, m, d, n, name);
 }
 void Transaction::reorder_member(std::string_view m,
                                  std::string_view d,
                                  std::string_view n,
                                  std::size_t position) {
-    append(Kind::reorder_member, m, d, n, {}, position);
+    append(TransactionKind::reorder_member, m, d, n, {}, position);
 }
 void Transaction::set_member_count(std::string_view m,
                                    std::string_view d,
                                    std::string_view n,
                                    std::optional<std::uint64_t> count) {
-    append(Kind::member_count, m, d, n, {}, count);
+    append(TransactionKind::member_count, m, d, n, {}, count);
 }
 void Transaction::add_field(
     std::string_view m, std::string_view d, std::string_view n, std::string_view type, int bits) {
-    append(Kind::add_field, m, d, n, type, static_cast<std::uint64_t>(bits));
+    append(TransactionKind::add_field, m, d, n, type, static_cast<std::uint64_t>(bits));
 }
 void Transaction::set_field_type(std::string_view m,
                                  std::string_view d,
                                  std::string_view n,
                                  std::string_view type) {
-    append(Kind::field_type, m, d, n, type);
+    append(TransactionKind::field_type, m, d, n, type);
 }
 void Transaction::delete_field(std::string_view m, std::string_view d, std::string_view n) {
-    append(Kind::delete_field, m, d, n, {});
+    append(TransactionKind::delete_field, m, d, n, {});
 }
 void Transaction::rename_field(std::string_view m,
                                std::string_view d,
                                std::string_view n,
                                std::string_view name) {
-    append(Kind::rename_field, m, d, n, name);
+    append(TransactionKind::rename_field, m, d, n, name);
 }
 void Transaction::reorder_field(std::string_view m,
                                 std::string_view d,
                                 std::string_view n,
                                 std::size_t position) {
-    append(Kind::reorder_field, m, d, n, {}, position);
+    append(TransactionKind::reorder_field, m, d, n, {}, position);
 }
 void Transaction::add_enumerator(std::string_view m,
                                  std::string_view d,
                                  std::string_view n,
                                  std::string_view initializer) {
-    append(Kind::add_enumerator, m, d, n, initializer);
+    append(TransactionKind::add_enumerator, m, d, n, initializer);
 }
 void Transaction::delete_enumerator(std::string_view m, std::string_view d, std::string_view n) {
-    append(Kind::delete_enumerator, m, d, n, {});
+    append(TransactionKind::delete_enumerator, m, d, n, {});
 }
 void Transaction::rename_enumerator(std::string_view m,
                                     std::string_view d,
                                     std::string_view n,
                                     std::string_view name) {
-    append(Kind::rename_enumerator, m, d, n, name);
+    append(TransactionKind::rename_enumerator, m, d, n, name);
 }
 void Transaction::set_enumerator_initializer(std::string_view m,
                                              std::string_view d,
                                              std::string_view n,
                                              std::string_view initializer) {
-    append(Kind::enumerator_initializer, m, d, n, initializer);
+    append(TransactionKind::enumerator_initializer, m, d, n, initializer);
 }
 void Transaction::reorder_enumerator(std::string_view m,
                                      std::string_view d,
                                      std::string_view n,
                                      std::size_t position) {
-    append(Kind::reorder_enumerator, m, d, n, {}, position);
+    append(TransactionKind::reorder_enumerator, m, d, n, {}, position);
 }
 void Transaction::add_source(std::string_view path, std::string_view source) {
-    append(Kind::source_add, path, {}, {}, source);
+    append(TransactionKind::source_add, path, {}, {}, source);
 }
 void Transaction::replace_source(std::string_view path, std::string_view source) {
-    append(Kind::source_replace, path, {}, {}, source);
+    append(TransactionKind::source_replace, path, {}, {}, source);
 }
 void Transaction::remove_source(std::string_view path) {
-    append(Kind::source_remove, path, {}, {}, {});
+    append(TransactionKind::source_remove, path, {}, {}, {});
 }
 void Transaction::rename_source(std::string_view path, std::string_view destination) {
-    append(Kind::source_rename, path, {}, {}, destination);
+    append(TransactionKind::source_rename, path, {}, {}, destination);
 }
 void Transaction::create_variant(std::string_view name) {
-    append(Kind::variant_create, {}, {}, {}, name);
+    append(TransactionKind::variant_create, {}, {}, {}, name);
 }
-void Transaction::duplicate_variant(std::uint64_t id, std::string_view name) {
-    append(Kind::variant_duplicate, {}, {}, {}, name);
+void Transaction::duplicate_variant(VariantId id, std::string_view name) {
+    append(TransactionKind::variant_duplicate, {}, {}, {}, name);
     variant_ids_.back() = id;
 }
-void Transaction::rename_variant(std::uint64_t id, std::string_view name) {
-    append(Kind::variant_rename, {}, {}, {}, name);
+void Transaction::rename_variant(VariantId id, std::string_view name) {
+    append(TransactionKind::variant_rename, {}, {}, {}, name);
     variant_ids_.back() = id;
 }
-void Transaction::delete_variant(std::uint64_t id) {
-    append(Kind::variant_delete, {}, {}, {}, {});
+void Transaction::delete_variant(VariantId id) {
+    append(TransactionKind::variant_delete, {}, {}, {}, {});
     variant_ids_.back() = id;
 }
-void Transaction::reset_variant(std::uint64_t id) {
-    append(Kind::variant_reset, {}, {}, {}, {});
+void Transaction::reset_variant(VariantId id) {
+    append(TransactionKind::variant_reset, {}, {}, {}, {});
     variant_ids_.back() = id;
 }
-void Transaction::set_variant_packed_storage(std::uint64_t id,
+void Transaction::set_variant_packed_storage(VariantId id,
                                              std::string_view m,
                                              std::string_view d,
                                              std::optional<std::string> type) {
-    append(Kind::variant_packed_storage, m, d, {}, type.value_or(""));
+    append(TransactionKind::variant_packed_storage, m, d, {}, type.value_or(""));
     variant_ids_.back() = id;
 }
-void Transaction::set_variant_field_bits(std::uint64_t id,
+void Transaction::set_variant_field_bits(VariantId id,
                                          std::string_view m,
                                          std::string_view d,
                                          std::string_view field,
                                          std::optional<std::uint32_t> bits) {
-    append(Kind::variant_field_bits, m, d, field, {}, bits);
+    append(TransactionKind::variant_field_bits, m, d, field, {}, bits);
     variant_ids_.back() = id;
 }
-void Transaction::set_variant_member_type(std::uint64_t id,
+void Transaction::set_variant_member_type(VariantId id,
                                           std::string_view m,
                                           std::string_view d,
                                           std::string_view member,
                                           std::optional<std::string> type) {
-    append(Kind::variant_member_type, m, d, member, type.value_or(""));
+    append(TransactionKind::variant_member_type, m, d, member, type.value_or(""));
     variant_ids_.back() = id;
 }
-void Transaction::set_variant_capacity(std::uint64_t id,
+void Transaction::set_variant_capacity(VariantId id,
                                        std::string_view m,
                                        std::string_view d,
                                        std::optional<std::uint64_t> capacity) {
-    append(Kind::variant_capacity, m, d, {}, {}, capacity);
+    append(TransactionKind::variant_capacity, m, d, {}, {}, capacity);
     variant_ids_.back() = id;
 }
 
@@ -547,51 +547,52 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
         auto const& child_name{members_[instruction]};
         auto const number{numbers_[instruction]};
 
-        if (kind == Kind::source_add || kind == Kind::source_replace ||
-            kind == Kind::source_remove || kind == Kind::source_rename) {
+        if (kind == TransactionKind::source_add || kind == TransactionKind::source_replace ||
+            kind == TransactionKind::source_remove || kind == TransactionKind::source_rename) {
             auto const before{manifest.modules};
-            state.edit_source(kind == Kind::source_add       ? "add"
-                              : kind == Kind::source_replace ? "replace"
-                              : kind == Kind::source_remove  ? "remove"
-                                                             : "rename",
+            state.edit_source(kind == TransactionKind::source_add       ? "add"
+                              : kind == TransactionKind::source_replace ? "replace"
+                              : kind == TransactionKind::source_remove  ? "remove"
+                                                                        : "rename",
                               modules_[instruction],
                               text,
                               manifest);
-            if (kind == Kind::source_remove || kind == Kind::source_replace) {
+            if (kind == TransactionKind::source_remove || kind == TransactionKind::source_replace) {
                 for (auto const module : before) {
                     if (module.kind() == ModuleKind::normal &&
                         std::ranges::find(manifest.modules, module) == manifest.modules.end()) {
                         for (auto const declaration : declarations_of(store, module)) {
-                            record_removed(declaration, module, kind == Kind::source_remove);
+                            record_removed(
+                                declaration, module, kind == TransactionKind::source_remove);
                         }
                     }
                 }
             }
             continue;
         }
-        if (kind == Kind::variant_create) {
+        if (kind == TransactionKind::variant_create) {
             static_cast<void>(state.variants.create(text));
             continue;
         }
-        if (kind >= Kind::variant_duplicate) {
+        if (kind >= TransactionKind::variant_duplicate) {
             auto const id{variant_ids_[instruction]};
             if (!state.variants.contains(id) ||
-                (id == Variants::baseline_id && kind != Kind::variant_duplicate)) {
+                (id == VariantId{} && kind != TransactionKind::variant_duplicate)) {
                 throw std::invalid_argument{"Expected an editable variant"};
             }
-            if (kind == Kind::variant_duplicate) {
+            if (kind == TransactionKind::variant_duplicate) {
                 static_cast<void>(state.variants.duplicate(id, text));
                 continue;
             }
-            if (kind == Kind::variant_rename) {
+            if (kind == TransactionKind::variant_rename) {
                 state.variants.rename(id, text);
                 continue;
             }
-            if (kind == Kind::variant_delete) {
+            if (kind == TransactionKind::variant_delete) {
                 state.variants.erase(id);
                 continue;
             }
-            if (kind == Kind::variant_reset) {
+            if (kind == TransactionKind::variant_reset) {
                 state.variants.reset(id);
                 continue;
             }
@@ -600,11 +601,12 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
             auto const declaration{
                 values[declaration_index(store, values, declarations_[instruction])]};
             auto const identity{state.declaration_ids.at(declaration)};
-            if (kind == Kind::variant_packed_storage || kind == Kind::variant_field_bits) {
+            if (kind == TransactionKind::variant_packed_storage ||
+                kind == TransactionKind::variant_field_bits) {
                 if (declaration.kind() != DeclarationKind::packed_value) {
                     throw std::invalid_argument{"Expected a packed-value declaration"};
                 }
-                if (kind == Kind::variant_field_bits) {
+                if (kind == TransactionKind::variant_field_bits) {
                     auto const fields{store.items(
                         store.packed_values.segments[store.packed_values.index(declaration)])};
                     if (!std::ranges::any_of(fields, [&](auto field) {
@@ -618,7 +620,7 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
                     state.variants.set_field_width(
                         id,
                         identity,
-                        child_name,
+                        strings.intern_retained(child_name),
                         number ? std::optional{static_cast<std::uint32_t>(*number)} : std::nullopt);
                 } else {
                     state.variants.set_packed_storage(
@@ -628,7 +630,7 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
                 if (declaration.kind() != DeclarationKind::soa) {
                     throw std::invalid_argument{"Expected a soa declaration"};
                 }
-                if (kind == Kind::variant_capacity) {
+                if (kind == TransactionKind::variant_capacity) {
                     state.variants.set_capacity(id, identity, number);
                 } else {
                     auto const members{
@@ -642,7 +644,7 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
                     }
                     state.variants.set_column_type(id,
                                                    identity,
-                                                   child_name,
+                                                   strings.intern_retained(child_name),
                                                    text.empty() ? std::nullopt
                                                                 : std::optional{text});
                 }
@@ -650,7 +652,7 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
             continue;
         }
 
-        if (kind == Kind::create_module) {
+        if (kind == TransactionKind::create_module) {
             auto const path{std::filesystem::path{child_name}.lexically_normal()};
             auto const file{state.storage.sources.add(path.generic_string(), text)};
             auto const parsed{parse_module_source(state.storage, file)};
@@ -675,14 +677,14 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
         }
         auto const module{module_index(manifest, modules_[instruction])};
         auto const original_module{manifest.modules[module]};
-        if (kind == Kind::delete_module) {
+        if (kind == TransactionKind::delete_module) {
             for (auto declaration : declarations_of(store, original_module)) {
                 record_removed(declaration, original_module);
             }
             manifest.modules.erase(manifest.modules.begin() + static_cast<std::ptrdiff_t>(module));
             continue;
         }
-        if (kind == Kind::rename_module) {
+        if (kind == TransactionKind::rename_module) {
             auto const previous{store.module_settings(original_module)};
             if (strings.view(store.module_settings_store
                                  .name[store.module_settings_store.index(previous)]) == text) {
@@ -698,16 +700,16 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
             continue;
         }
         auto values{declarations_of(store, original_module)};
-        auto const index{kind == Kind::create
+        auto const index{kind == TransactionKind::create
                              ? values.size()
                              : declaration_index(store, values, declarations_[instruction])};
-        if (kind == Kind::erase) {
+        if (kind == TransactionKind::erase) {
             record_removed(values[index], original_module);
             values.erase(values.begin() + static_cast<std::ptrdiff_t>(index));
             publish_module(state, manifest, module, values);
             continue;
         }
-        if (kind == Kind::create || kind == Kind::replace) {
+        if (kind == TransactionKind::create || kind == TransactionKind::replace) {
             auto const file{state.storage.sources.add(
                 "edit.lispb", "(module edit :header \"Edit.h\" " + text + ")")};
             auto const parsed{parse_module_source(state.storage, file)};
@@ -717,7 +719,7 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
             }
             state.comments.capture(state.storage, parsed.modules, parsed.file);
             std::optional<DeclarationHandle> replaced;
-            if (kind == Kind::create) {
+            if (kind == TransactionKind::create) {
                 values.push_back(created.front());
                 state.register_declaration(created.front());
             } else {
@@ -735,7 +737,7 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
             continue;
         }
         auto const previous{values[index]};
-        if (kind == Kind::move) {
+        if (kind == TransactionKind::move) {
             auto const destination{module_index(manifest, text)};
             if (destination == module) {
                 continue;
@@ -756,12 +758,13 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
                 state, manifest, previous, original_module, moved, destination_module);
             continue;
         }
-        if (kind == Kind::rename || kind == Kind::duplicate) {
-            if (kind == Kind::rename && strings.view(declaration_name(store, previous)) == text) {
+        if (kind == TransactionKind::rename || kind == TransactionKind::duplicate) {
+            if (kind == TransactionKind::rename &&
+                strings.view(declaration_name(store, previous)) == text) {
                 continue;
             }
             auto const replacement{renamed(store, previous, text)};
-            if (kind == Kind::rename) {
+            if (kind == TransactionKind::rename) {
                 state.inherit_declaration(previous, replacement);
                 values[index] = replacement;
             } else {
@@ -770,14 +773,14 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
                 values.insert(values.begin() + static_cast<std::ptrdiff_t>(index + 1), replacement);
             }
             publish_module(state, manifest, module, values);
-            if (kind == Kind::rename) {
+            if (kind == TransactionKind::rename) {
                 repair_references(
                     state, manifest, previous, original_module, replacement, original_module);
             }
             continue;
         }
         auto replacement{previous};
-        if (kind == Kind::packed_storage) {
+        if (kind == TransactionKind::packed_storage) {
             if (previous.kind() != DeclarationKind::packed_value) {
                 throw std::invalid_argument{"Expected a packed-value declaration"};
             }
@@ -788,9 +791,10 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
             replacement = store.packed_values.clone(previous);
             store.packed_values.storage_type[store.packed_values.index(replacement)] =
                 new_type(store, text);
-        } else if (kind == Kind::field_bits || kind == Kind::field_type ||
-                   kind == Kind::add_field || kind == Kind::delete_field ||
-                   kind == Kind::rename_field || kind == Kind::reorder_field) {
+        } else if (kind == TransactionKind::field_bits || kind == TransactionKind::field_type ||
+                   kind == TransactionKind::add_field || kind == TransactionKind::delete_field ||
+                   kind == TransactionKind::rename_field ||
+                   kind == TransactionKind::reorder_field) {
             if (previous.kind() != DeclarationKind::packed_value) {
                 throw std::invalid_argument{"Expected a packed-value declaration"};
             }
@@ -802,45 +806,46 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
                        strings.view(store.packed_fields.name[store.packed_fields.index(id)]) ==
                            child_name;
             })};
-            if (kind != Kind::add_field && found == children.end()) {
+            if (kind != TransactionKind::add_field && found == children.end()) {
                 throw std::invalid_argument{"Unknown packed field '" + child_name + "'"};
             }
             auto const position{static_cast<std::size_t>(found - children.begin())};
-            if (kind == Kind::rename_field && child_name == text) {
+            if (kind == TransactionKind::rename_field && child_name == text) {
                 continue;
             }
-            if (kind == Kind::reorder_field && position == number) {
+            if (kind == TransactionKind::reorder_field && position == number) {
                 continue;
             }
-            if (kind == Kind::field_type &&
+            if (kind == TransactionKind::field_type &&
                 strings.view(store.type_refs.name[store.type_refs.index(
                     store.packed_fields.type[store.packed_fields.index(*found)])]) == text) {
                 continue;
             }
-            if (kind == Kind::delete_field) {
+            if (kind == TransactionKind::delete_field) {
                 children.erase(found);
-            } else if (kind == Kind::reorder_field) {
+            } else if (kind == TransactionKind::reorder_field) {
                 reorder(children, position, *number);
             } else {
-                if (kind == Kind::field_bits &&
+                if (kind == TransactionKind::field_bits &&
                     store.packed_fields.bits[store.packed_fields.index(*found)] ==
                         static_cast<int>(*number)) {
                     continue;
                 }
-                auto const field{kind == Kind::add_field ? store.packed_fields.append()
-                                                         : store.packed_fields.clone(*found)};
+                auto const field{kind == TransactionKind::add_field
+                                     ? store.packed_fields.append()
+                                     : store.packed_fields.clone(*found)};
                 auto const row{store.packed_fields.index(field)};
-                if (kind == Kind::add_field || kind == Kind::rename_field) {
+                if (kind == TransactionKind::add_field || kind == TransactionKind::rename_field) {
                     store.packed_fields.name[row] =
-                        strings.intern(kind == Kind::add_field ? child_name : text);
+                        strings.intern(kind == TransactionKind::add_field ? child_name : text);
                 }
-                if (kind == Kind::add_field || kind == Kind::field_type) {
+                if (kind == TransactionKind::add_field || kind == TransactionKind::field_type) {
                     store.packed_fields.type[row] = new_type(store, text);
                 }
-                if (kind == Kind::add_field || kind == Kind::field_bits) {
+                if (kind == TransactionKind::add_field || kind == TransactionKind::field_bits) {
                     store.packed_fields.bits[row] = static_cast<int>(*number);
                 }
-                if (kind == Kind::add_field) {
+                if (kind == TransactionKind::add_field) {
                     children.push_back(field);
                 } else {
                     children[position] = field;
@@ -849,9 +854,11 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
             replacement = store.packed_values.clone(previous);
             store.packed_values.segments[store.packed_values.index(replacement)] =
                 store.range(children);
-        } else if (kind == Kind::add_enumerator || kind == Kind::delete_enumerator ||
-                   kind == Kind::rename_enumerator || kind == Kind::enumerator_initializer ||
-                   kind == Kind::reorder_enumerator) {
+        } else if (kind == TransactionKind::add_enumerator ||
+                   kind == TransactionKind::delete_enumerator ||
+                   kind == TransactionKind::rename_enumerator ||
+                   kind == TransactionKind::enumerator_initializer ||
+                   kind == TransactionKind::reorder_enumerator) {
             if (previous.kind() != DeclarationKind::enumeration) {
                 throw std::invalid_argument{"Expected an enum declaration"};
             }
@@ -861,17 +868,17 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
                 return strings.view(store.enumerators.name[store.enumerators.index(id)]) ==
                        child_name;
             })};
-            if (kind != Kind::add_enumerator && found == children.end()) {
+            if (kind != TransactionKind::add_enumerator && found == children.end()) {
                 throw std::invalid_argument{"Unknown enumerator '" + child_name + "'"};
             }
             auto const position{static_cast<std::size_t>(found - children.begin())};
-            if (kind == Kind::rename_enumerator && child_name == text) {
+            if (kind == TransactionKind::rename_enumerator && child_name == text) {
                 continue;
             }
-            if (kind == Kind::reorder_enumerator && position == number) {
+            if (kind == TransactionKind::reorder_enumerator && position == number) {
                 continue;
             }
-            if (kind == Kind::enumerator_initializer) {
+            if (kind == TransactionKind::enumerator_initializer) {
                 auto const previous_initializer{
                     store.enumerators.initializer[store.enumerators.index(*found)]};
                 if ((previous_initializer && strings.view(*previous_initializer) == text) ||
@@ -879,23 +886,26 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
                     continue;
                 }
             }
-            if (kind == Kind::delete_enumerator) {
+            if (kind == TransactionKind::delete_enumerator) {
                 children.erase(found);
-            } else if (kind == Kind::reorder_enumerator) {
+            } else if (kind == TransactionKind::reorder_enumerator) {
                 reorder(children, position, *number);
             } else {
-                auto const child{kind == Kind::add_enumerator ? store.enumerators.append()
-                                                              : store.enumerators.clone(*found)};
+                auto const child{kind == TransactionKind::add_enumerator
+                                     ? store.enumerators.append()
+                                     : store.enumerators.clone(*found)};
                 auto const row{store.enumerators.index(child)};
-                if (kind == Kind::add_enumerator || kind == Kind::rename_enumerator) {
+                if (kind == TransactionKind::add_enumerator ||
+                    kind == TransactionKind::rename_enumerator) {
                     store.enumerators.name[row] =
-                        strings.intern(kind == Kind::add_enumerator ? child_name : text);
+                        strings.intern(kind == TransactionKind::add_enumerator ? child_name : text);
                 }
-                if (kind == Kind::add_enumerator || kind == Kind::enumerator_initializer) {
+                if (kind == TransactionKind::add_enumerator ||
+                    kind == TransactionKind::enumerator_initializer) {
                     store.enumerators.initializer[row] =
                         text.empty() ? std::nullopt : std::optional{strings.add(text)};
                 }
-                if (kind == Kind::add_enumerator) {
+                if (kind == TransactionKind::add_enumerator) {
                     children.push_back(child);
                 } else {
                     children[position] = child;
@@ -904,9 +914,10 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
             replacement = store.enums.clone(previous);
             store.enums.values[store.enums.index(replacement)] = store.range(children);
         } else {
-            assert(kind == Kind::member_type || kind == Kind::add_member ||
-                   kind == Kind::delete_member || kind == Kind::rename_member ||
-                   kind == Kind::reorder_member || kind == Kind::member_count);
+            assert(
+                kind == TransactionKind::member_type || kind == TransactionKind::add_member ||
+                kind == TransactionKind::delete_member || kind == TransactionKind::rename_member ||
+                kind == TransactionKind::reorder_member || kind == TransactionKind::member_count);
             if (previous.kind() != DeclarationKind::soa &&
                 previous.kind() != DeclarationKind::record) {
                 throw std::invalid_argument{"Expected a soa or record declaration"};
@@ -918,57 +929,60 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
                 auto const found{std::ranges::find_if(children, [&](auto id) {
                     return strings.view(columns.name[columns.index(id)]) == child_name;
                 })};
-                if (kind != Kind::add_member && found == children.end()) {
+                if (kind != TransactionKind::add_member && found == children.end()) {
                     throw std::invalid_argument{"Unknown member '" + child_name + "'"};
                 }
                 auto const position{static_cast<std::size_t>(found - children.begin())};
-                if (kind == Kind::rename_member && child_name == text) {
+                if (kind == TransactionKind::rename_member && child_name == text) {
                     return;
                 }
-                if (kind == Kind::reorder_member && position == number) {
+                if (kind == TransactionKind::reorder_member && position == number) {
                     return;
                 }
-                if (kind == Kind::delete_member) {
+                if (kind == TransactionKind::delete_member) {
                     children.erase(found);
-                } else if (kind == Kind::reorder_member) {
+                } else if (kind == TransactionKind::reorder_member) {
                     reorder(children, position, *number);
                 } else {
                     if constexpr (std::is_same_v<Id, SoaMemberId>) {
-                        if (kind == Kind::member_type &&
+                        if (kind == TransactionKind::member_type &&
                             columns.kind[columns.index(*found)] != SoaMemberKind::array) {
                             throw std::invalid_argument{"Expected an array member"};
                         }
                     }
-                    if (kind == Kind::member_type &&
+                    if (kind == TransactionKind::member_type &&
                         strings.view(store.type_refs.name[store.type_refs.index(
                             columns.type[columns.index(*found)])]) == text) {
                         return;
                     }
-                    auto const child{kind == Kind::add_member ? columns.append()
-                                                              : columns.clone(*found)};
+                    auto const child{kind == TransactionKind::add_member ? columns.append()
+                                                                         : columns.clone(*found)};
                     auto const row{columns.index(child)};
-                    if (kind == Kind::add_member || kind == Kind::rename_member) {
+                    if (kind == TransactionKind::add_member ||
+                        kind == TransactionKind::rename_member) {
                         columns.name[row] =
-                            strings.intern(kind == Kind::add_member ? child_name : text);
+                            strings.intern(kind == TransactionKind::add_member ? child_name : text);
                     }
-                    if (kind == Kind::add_member || kind == Kind::member_type) {
+                    if (kind == TransactionKind::add_member ||
+                        kind == TransactionKind::member_type) {
                         columns.type[row] = new_type(store, text);
                     }
                     if constexpr (std::is_same_v<Id, SoaMemberId>) {
-                        if (kind == Kind::member_count) {
+                        if (kind == TransactionKind::member_count) {
                             throw std::invalid_argument{"Array counts belong to record members"};
                         }
-                        if (kind == Kind::add_member || kind == Kind::member_type) {
+                        if (kind == TransactionKind::add_member ||
+                            kind == TransactionKind::member_type) {
                             columns.kind[row] = SoaMemberKind::array;
                             columns.nested_schema[row].reset();
                             columns.fixed_schema[row].reset();
                         }
                     } else {
-                        if (kind == Kind::member_count) {
+                        if (kind == TransactionKind::member_count) {
                             columns.count[row] = number;
                         }
                     }
-                    if (kind == Kind::add_member) {
+                    if (kind == TransactionKind::add_member) {
                         children.push_back(child);
                     } else {
                         children[position] = child;
@@ -985,28 +999,31 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
         }
         if (replacement != previous) {
             state.inherit_declaration(previous, replacement);
-            if (kind == Kind::rename_field || kind == Kind::rename_member) {
-                state.variants.rename_member(state.declaration_ids.at(previous), child_name, text);
+            if (kind == TransactionKind::rename_field || kind == TransactionKind::rename_member) {
+                state.variants.rename_member(state.declaration_ids.at(previous),
+                                             strings.intern_retained(child_name),
+                                             strings.intern_retained(text));
             }
-            if (kind == Kind::delete_field || kind == Kind::delete_member) {
-                state.variants.erase_member(state.declaration_ids.at(previous), child_name);
+            if (kind == TransactionKind::delete_field || kind == TransactionKind::delete_member) {
+                state.variants.erase_member(state.declaration_ids.at(previous),
+                                            strings.intern_retained(child_name));
             }
-            if (kind == Kind::rename_field) {
+            if (kind == TransactionKind::rename_field) {
                 state.comments.rename_child(replacement, "field", child_name, text);
             }
-            if (kind == Kind::rename_member) {
+            if (kind == TransactionKind::rename_member) {
                 state.comments.rename_child(replacement, "member", child_name, text);
             }
-            if (kind == Kind::rename_enumerator) {
+            if (kind == TransactionKind::rename_enumerator) {
                 state.comments.rename_child(replacement, "value", child_name, text);
             }
-            if (kind == Kind::delete_field) {
+            if (kind == TransactionKind::delete_field) {
                 state.comments.remove_child(replacement, "field", child_name);
             }
-            if (kind == Kind::delete_member) {
+            if (kind == TransactionKind::delete_member) {
                 state.comments.remove_child(replacement, "member", child_name);
             }
-            if (kind == Kind::delete_enumerator) {
+            if (kind == TransactionKind::delete_enumerator) {
                 state.comments.remove_child(replacement, "value", child_name);
             }
             values[index] = replacement;

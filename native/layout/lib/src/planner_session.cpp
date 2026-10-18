@@ -329,12 +329,12 @@ auto PlannerAnalysisSession::status(TypeId const type) -> LayoutStatus {
 
 void PlannerAnalysisSession::validate_comparison_variants() {
     if (inputs_.workspace.variant(inputs_.comparison_a_variant_id) == nullptr) {
-        inputs_.comparison_a_variant_id = LayoutWorkspace::baseline_variant_id;
+        inputs_.comparison_a_variant_id = VariantId{};
     }
     if (inputs_.comparison_b_follows_active) {
         inputs_.comparison_b_variant_id = inputs_.workspace.active_variant_id();
     } else if (inputs_.workspace.variant(inputs_.comparison_b_variant_id) == nullptr) {
-        inputs_.comparison_b_variant_id = LayoutWorkspace::baseline_variant_id;
+        inputs_.comparison_b_variant_id = VariantId{};
     }
 }
 
@@ -446,12 +446,12 @@ auto PlannerAnalysisSession::refresh(Document* document) -> bool {
 
 void PlannerAnalysisSession::analyze_selected(Document const* document) {
     auto const& definition{inputs_.workspace.types().definition(*inputs_.selection.type)};
-    auto const& baseline{*inputs_.workspace.variant(LayoutWorkspace::baseline_variant_id)};
+    auto const& baseline{*inputs_.workspace.variant(VariantId{})};
     auto const& active{inputs_.workspace.active_variant()};
     auto const& comparison_a{*inputs_.workspace.variant(inputs_.comparison_a_variant_id)};
     auto const& comparison_b{*inputs_.workspace.variant(inputs_.comparison_b_variant_id)};
     auto const element_count{inputs_.workspace.element_count()};
-    auto const relationship_targets_for{[this](Variant const& variant) {
+    auto const relationship_targets_for{[this](ResolvedVariant const& variant) {
         return Analyzer::derive_relationship_target_facts(inputs_.workspace.types(),
                                                           variant,
                                                           primary_abi_,
@@ -459,7 +459,7 @@ void PlannerAnalysisSession::analyze_selected(Document const* document) {
                                                           inputs_.soa_allocation_strategy);
     }};
     auto const relationship_targets_for_profile{
-        [this](Variant const& variant, AbiProfile const& abi) {
+        [this](ResolvedVariant const& variant, AbiProfile const& abi) {
             return Analyzer::derive_relationship_target_facts(inputs_.workspace.types(),
                                                               variant,
                                                               abi,
@@ -723,7 +723,7 @@ void PlannerAnalysisSession::analyze_selected(Document const* document) {
                 *results_.packed_access_analysis, comparison_target_access);
         }
         for (auto const& variant : inputs_.workspace.variants()) {
-            if (variant.id != LayoutWorkspace::baseline_variant_id) {
+            if (variant.id != VariantId{}) {
                 auto const targets{relationship_targets_for(variant)};
                 results_.packed_variants.emplace_back(
                     variant.id,
@@ -845,7 +845,7 @@ void PlannerAnalysisSession::analyze_selected(Document const* document) {
             }
         }
         for (auto const& variant : inputs_.workspace.variants()) {
-            if (variant.id != LayoutWorkspace::baseline_variant_id) {
+            if (variant.id != VariantId{}) {
                 results_.soa_variants.emplace_back(
                     variant.id,
                     Analyzer::analyze_soa(inputs_.workspace.types(),

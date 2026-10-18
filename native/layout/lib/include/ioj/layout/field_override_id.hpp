@@ -1,14 +1,16 @@
 #pragma once
 
+#include <lispb/indices.h>
 #include <lispb/schema/indices.h>
 
 #include <compare>
-#include <string>
 
 namespace ioj::layout {
+// Both handles belong to the analyzed document.
 struct FieldOverrideId {
-    lispb::schema::TypeId type;
-    std::string field_name;
     auto operator<=>(FieldOverrideId const&) const = default;
+
+    lispb::schema::TypeId type;
+    lispb::IdentifierId field_name;
 };
 }

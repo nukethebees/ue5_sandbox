@@ -20,7 +20,7 @@ AnalysisCase const cases[]{
      [](Document const& doc) {
          auto const result{Analyzer::analyze_soa(doc.types(),
                                                  doc.find_type("game", "Value").value(),
-                                                 Variant{},
+                                                 ResolvedVariant{},
                                                  AbiProfile::host_common(),
                                                  3)};
          EXPECT_EQ(result.total_payload_bytes, 24);
@@ -33,7 +33,7 @@ AnalysisCase const cases[]{
      [](Document const& doc) {
          auto const result{Analyzer::analyze_soa(doc.types(),
                                                  doc.find_type("game", "Value").value(),
-                                                 Variant{},
+                                                 ResolvedVariant{},
                                                  AbiProfile::host_common(),
                                                  3,
                                                  SoaAllocationStrategy::aligned_contiguous)};
@@ -49,9 +49,13 @@ AnalysisCase const cases[]{
      [](Document const& doc) {
          auto const type{doc.find_type("game", "Value").value()};
          auto const abi{AbiProfile::host_common()};
-         auto const separate{Analyzer::analyze_soa(doc.types(), type, Variant{}, abi, 3)};
-         auto const contiguous{Analyzer::analyze_soa(
-             doc.types(), type, Variant{}, abi, 3, SoaAllocationStrategy::aligned_contiguous)};
+         auto const separate{Analyzer::analyze_soa(doc.types(), type, ResolvedVariant{}, abi, 3)};
+         auto const contiguous{Analyzer::analyze_soa(doc.types(),
+                                                     type,
+                                                     ResolvedVariant{},
+                                                     abi,
+                                                     3,
+                                                     SoaAllocationStrategy::aligned_contiguous)};
          EXPECT_EQ(separate.allocation_count, 2);
          EXPECT_EQ(separate.total_payload_bytes, 15);
          EXPECT_EQ(contiguous.allocation_count, 1);
@@ -65,7 +69,7 @@ AnalysisCase const cases[]{
      [](Document const& doc) {
          auto const result{Analyzer::analyze_soa(doc.types(),
                                                  doc.find_type("game", "Value").value(),
-                                                 Variant{},
+                                                 ResolvedVariant{},
                                                  AbiProfile::host_common(),
                                                  std::numeric_limits<std::uint64_t>::max())};
          EXPECT_FALSE(result.total_payload_bytes);
@@ -84,13 +88,13 @@ AnalysisCase const cases[]{
                    .integer_signed = false,
                    .unsigned_value_bits = 32,
                    .provenance = {}});
-         auto const first{
-             Analyzer::analyze_soa(doc.types(), type, Variant{}, AbiProfile::host_common(), 3)};
-         auto const second{Analyzer::analyze_soa(doc.types(), type, Variant{}, wide, 3)};
+         auto const first{Analyzer::analyze_soa(
+             doc.types(), type, ResolvedVariant{}, AbiProfile::host_common(), 3)};
+         auto const second{Analyzer::analyze_soa(doc.types(), type, ResolvedVariant{}, wide, 3)};
          auto const comparison{Analyzer::compare_soa_targets(first, second)};
          EXPECT_EQ(comparison.columns[1].total_byte_delta->magnitude, 12);
          auto const unknown{
-             Analyzer::analyze_soa(doc.types(), type, Variant{}, AbiProfile{"unknown"}, 3)};
+             Analyzer::analyze_soa(doc.types(), type, ResolvedVariant{}, AbiProfile{"unknown"}, 3)};
          EXPECT_FALSE(Analyzer::compare_soa_targets(first, unknown).columns[1].total_byte_delta);
      }},
     {"SelectedWorkload",
@@ -99,7 +103,7 @@ AnalysisCase const cases[]{
      [](Document const& doc) {
          auto const abi{AbiProfile::host_common()};
          auto const result{Analyzer::analyze_soa(
-             doc.types(), doc.find_type("game", "Value").value(), Variant{}, abi, 100)};
+             doc.types(), doc.find_type("game", "Value").value(), ResolvedVariant{}, abi, 100)};
          std::array const accesses{AccessIntent{"x", AccessOperation::read}};
          auto const access{Analyzer::analyze_soa_access(result, accesses, abi, 10, 3)};
          EXPECT_EQ(access.useful_bytes, 40);
@@ -121,7 +125,7 @@ AnalysisCase const cases[]{
          auto const record{
              Analyzer::analyze_record(doc.types(), doc.find_type("game", "Row").value(), abi, 100)};
          auto const soa{Analyzer::analyze_soa(
-             doc.types(), doc.find_type("game", "Columns").value(), Variant{}, abi, 100)};
+             doc.types(), doc.find_type("game", "Columns").value(), ResolvedVariant{}, abi, 100)};
          std::array const accesses{AccessIntent{"x", AccessOperation::read}};
          auto const record_access{Analyzer::analyze_record_access(record, accesses, abi)};
          auto const soa_access{Analyzer::analyze_soa_access(soa, accesses, abi, 100)};
@@ -154,7 +158,7 @@ TEST_P(SoaCapacityTest, ScalesPayloadAndMemoryRegions) {
                           .l3_cache_bytes = 16384,
                           .provenance = "test memory"});
     auto const result{Analyzer::analyze_soa(
-        doc.types(), doc.find_type("game", "Value").value(), Variant{}, abi, capacity)};
+        doc.types(), doc.find_type("game", "Value").value(), ResolvedVariant{}, abi, capacity)};
     EXPECT_EQ(result.bytes_per_logical_element, 12);
     EXPECT_EQ(result.total_payload_bytes, 12 * capacity);
     EXPECT_EQ(result.columns[0].minimum_cache_lines, (4 * capacity + 63) / 64);

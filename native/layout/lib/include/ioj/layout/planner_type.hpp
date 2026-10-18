@@ -73,7 +73,7 @@ struct ExternalTypeAnalysis {
 
 auto analyze_external_type(lispb::schema::TypeGraph const& types,
                            lispb::schema::TypeId type,
-                           Variant const& variant,
+                           ResolvedVariant const& variant,
                            AbiProfile const& abi,
                            std::uint64_t capacity,
                            SoaAllocationStrategy allocation_strategy) -> ExternalTypeAnalysis;
@@ -88,12 +88,12 @@ auto declaration_capabilities(lispb::codegen::DeclarationHandle declaration)
 auto declaration_kind_label(DeclarationKind kind) -> char const*;
 auto declaration_status(lispb::schema::TypeGraph const& types,
                         lispb::schema::TypeId type,
-                        Variant const& variant,
+                        ResolvedVariant const& variant,
                         AbiProfile const& abi,
                         std::uint64_t default_capacity) -> LayoutStatus;
 auto declaration_status(lispb::schema::TypeGraph const& types,
                         lispb::schema::TypeId type,
-                        Variant const& variant,
+                        ResolvedVariant const& variant,
                         AbiProfile const& abi,
                         std::uint64_t default_capacity,
                         std::uint64_t element_count,
