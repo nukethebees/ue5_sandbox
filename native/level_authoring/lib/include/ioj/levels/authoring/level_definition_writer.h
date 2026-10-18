@@ -1,12 +1,8 @@
 #pragma once
-#include <ioj/levels/level_definition.h>
+#include <ioj/levels/authoring/editor_level.h>
 
-#include <expected>
 #include <string>
 
 namespace ioj::levels::authoring {
-[[nodiscard]] auto validate_editor_level(LevelDefinition const& definition)
-    -> std::expected<void, Diagnostics>;
-[[nodiscard]] auto emit_editor_level_source(LevelDefinition const& definition)
-    -> std::expected<std::string, Diagnostics>;
+[[nodiscard]] auto emit_editor_level_source(EditorLevel const& level) -> std::string;
 }

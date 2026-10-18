@@ -17,6 +17,12 @@
 
 namespace ioj::levels::authoring::tests {
 namespace {
+auto emit_source(LevelDefinition definition) -> std::expected<std::string, Diagnostics> {
+    return EditorLevel::make(std::move(definition)).transform([](EditorLevel const& level) {
+        return emit_editor_level_source(level);
+    });
+}
+
 auto make_level(std::string id, std::vector<LevelId> unlocks = {}) -> LevelDefinition {
     LevelDefinition result{
         .metadata = {.id = LevelId{std::move(id)}, .title = "Test Level"},
@@ -221,7 +227,7 @@ TEST(NativeLevelAuthoringReader, GeneratesLevelLocalIdsAndDefaultsRotations) {
             EXPECT_DOUBLE_EQ(entity.rotation.roll, 0.0);
         }
 
-        auto const emitted{emit_editor_level_source(*result)};
+        auto const emitted{emit_source(*result)};
         ASSERT_TRUE(emitted) << format_diagnostics(emitted.error());
         EXPECT_FALSE(emitted->contains(":rotation"));
         EXPECT_TRUE(emitted->contains(":id 'red-capital-ship-1"));
@@ -307,7 +313,7 @@ TEST(NativeLevelAuthoringReader, DerivesDistinctTeamsIncludingScheduledSpawns) {
         .id = EntityId{"ally"}, .archetype = EntityArchetype::CapitalShip, .team = Team::Blue});
     EXPECT_TRUE(validate_level(definition));
     EXPECT_EQ(participating_teams(definition), (std::vector{Team::Red, Team::Blue}));
-    auto const source{emit_editor_level_source(definition)};
+    auto const source{emit_source(definition)};
     ASSERT_TRUE(source) << format_diagnostics(source.error());
     EXPECT_FALSE(source->contains(":teams"));
     auto const parsed{DefinitionReader{}.read_level_source(*source)};
@@ -382,8 +388,8 @@ TEST(NativeLevelAuthoringWriter, EmitsDeterministicReadableSource) {
                               .spawn_time_seconds = 2.5});
     auto second{first};
     std::ranges::reverse(second.entities);
-    auto const a{emit_editor_level_source(first)};
-    auto const b{emit_editor_level_source(second)};
+    auto const a{emit_source(first)};
+    auto const b{emit_source(second)};
     ASSERT_TRUE(a) << format_diagnostics(a.error());
     ASSERT_TRUE(b);
     EXPECT_EQ(*a, *b);
@@ -399,7 +405,7 @@ TEST(NativeLevelAuthoringWriter, HandlesEmptyCollectionsEscapesAndNumericBoundar
     auto definition{make_level("numbers")};
     definition.metadata.description = std::string{"a\0b\t\r\\\"", 7};
     definition.entities[0].position = {-0.0001, 0.0005, 1.0e100};
-    auto source{emit_editor_level_source(definition)};
+    auto source{emit_source(definition)};
     ASSERT_TRUE(source) << format_diagnostics(source.error());
     EXPECT_TRUE(source->contains(":position '(0 0.001 "));
     auto parsed{DefinitionReader{}.read_level_source(*source)};
@@ -419,7 +425,7 @@ TEST(NativeLevelAuthoringCollisionGrid, PreservesIndependentOverridesAcrossSourc
         if ((mask & 2) != 0) {
             definition.collision_grid->cell_size = ml::Vector3d{5000, 5000, 5000};
         }
-        auto const source{emit_editor_level_source(definition)};
+        auto const source{emit_source(definition)};
         ASSERT_TRUE(source) << format_diagnostics(source.error());
         auto const parsed{DefinitionReader{}.read_level_source(*source)};
         ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
@@ -452,7 +458,7 @@ TEST(NativeLevelAuthoringWriter, RoundTripsInitialMissionObjectives) {
                                                 .hero_entity_ids = {EntityId{"player"}},
                                                 .must_survive_entity_ids = {EntityId{"player"}},
                                                 .required_kill_entity_ids = {EntityId{"enemy"}}};
-    auto const source{emit_editor_level_source(definition)};
+    auto const source{emit_source(definition)};
     ASSERT_TRUE(source);
     auto const parsed{DefinitionReader{}.read_level_source(*source)};
     ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
@@ -461,12 +467,12 @@ TEST(NativeLevelAuthoringWriter, RoundTripsInitialMissionObjectives) {
     EXPECT_EQ(parsed->mission->required_kill_entity_ids,
               definition.mission->required_kill_entity_ids);
 }
-TEST(NativeLevelAuthoringWriter, PreservesUnsupportedEditorFeatureDiagnostics) {
+TEST(NativeEditorLevel, RejectsUnsupportedEditorFeaturesAtConstruction) {
     auto definition{make_level("unsupported")};
     definition.metadata.par_time_seconds = 10;
     definition.unlock_level_ids.emplace_back("other");
     definition.mission_events.push_back({});
-    auto const result{emit_editor_level_source(definition)};
+    auto const result{EditorLevel::make(std::move(definition))};
     ASSERT_FALSE(result);
     EXPECT_EQ(std::ranges::count(
                   result.error(), DiagnosticCode::UnsupportedEditorFeature, &Diagnostic::code),

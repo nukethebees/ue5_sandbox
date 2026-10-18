@@ -1,6 +1,6 @@
 #include <ioj/levels/authoring/identifiers.h>
 #include <ioj/levels/authoring/level_definition_writer.h>
-#include <ioj/levels/authoring/scene.h>
+#include <ioj/levels/authoring/scene_reconciliation.h>
 #include <ioj/levels/authoring/source_session.h>
 
 #include <gtest/gtest.h>
@@ -11,6 +11,13 @@
 
 namespace ioj::levels::authoring::tests {
 namespace {
+auto reconcile(SceneSnapshot const& observed, LevelDefinition incoming)
+    -> std::expected<SyncPlan, Diagnostics> {
+    return EditorLevel::make(std::move(incoming)).transform([&](EditorLevel const& level) {
+        return reconcile_scene(observed, level);
+    });
+}
+
 auto scene() -> SceneSnapshot {
     SceneSnapshot result;
     result.definition.metadata = {.id = LevelId{"fixture"}, .title = "Fixture"};
@@ -21,6 +28,7 @@ auto scene() -> SceneSnapshot {
     result.properties = {{.label = "player"}, {.label = "enemy"}};
     return result;
 }
+
 struct EntityCase {
     char const* name;
     std::function<void(SceneSnapshot&, LevelDefinition&)> edit;
@@ -28,13 +36,16 @@ struct EntityCase {
     bool configure;
     bool relabel;
 };
+
 class Reconciliation : public ::testing::TestWithParam<EntityCase> {};
+
 TEST_P(Reconciliation, ProducesOnlyNecessaryOperations) {
     auto observed{scene()};
     auto incoming{observed.definition};
     auto const& test{GetParam()};
     test.edit(observed, incoming);
-    auto const plan{reconcile_scene(observed, incoming)};
+    auto const plan{reconcile(observed, incoming)};
+
     ASSERT_TRUE(plan);
     ASSERT_EQ(plan->changes.size(), 1);
     EXPECT_EQ(plan->changes[0].action, test.action);
@@ -105,10 +116,10 @@ TEST(NativeEditorScene, UnchangedAndEquivalentRotationsNeedNoOperations) {
     auto observed{scene()};
     auto incoming{observed.definition};
     incoming.entities[1].rotation.yaw = 360.0;
-    auto const plan{reconcile_scene(observed, incoming)};
+    auto const plan{reconcile(observed, incoming)};
     ASSERT_TRUE(plan);
     EXPECT_FALSE(plan->has_changes());
-    EXPECT_TRUE(same_scene(observed, observed));
+    EXPECT_TRUE(observed == observed);
 }
 
 TEST(NativeEditorScene, ReferenceOrderDoesNotChangeThePlan) {
@@ -125,7 +136,7 @@ TEST(NativeEditorScene, ReferenceOrderDoesNotChangeThePlan) {
     auto incoming{definition};
     std::ranges::reverse(incoming.camera->target_entity_ids);
     std::ranges::reverse(incoming.mission->hero_entity_ids);
-    auto const plan{reconcile_scene(observed, incoming)};
+    auto const plan{reconcile(observed, incoming)};
     ASSERT_TRUE(plan);
     EXPECT_FALSE(plan->has_changes());
 }
@@ -134,11 +145,23 @@ TEST(NativeEditorScene, InvalidObservedValuesCanBeComparedAndRepaired) {
     auto observed{scene()};
     auto const incoming{observed.definition};
     observed.definition.entities[1].spawn_time_seconds = std::numeric_limits<double>::quiet_NaN();
-    EXPECT_TRUE(same_scene(observed, observed));
-    auto const plan{reconcile_scene(observed, incoming)};
+    EXPECT_TRUE(observed == observed);
+    auto const plan{reconcile(observed, incoming)};
     ASSERT_TRUE(plan);
     ASSERT_EQ(plan->changes.size(), 1);
     EXPECT_FALSE(plan->changes[0].configure_actor);
+
+    auto const nan{std::numeric_limits<double>::quiet_NaN()};
+    observed.definition.collision_grid = {.level_size = ml::Vector3d{nan, 1.0, 1.0}};
+    observed.definition.camera = {.offset_direction = {nan, 0.0, 0.0}, .distance = nan};
+    observed.definition.mission = {.time_limit_seconds = std::numeric_limits<float>::quiet_NaN()};
+    EXPECT_EQ(observed, observed);
+
+    auto const repaired{reconcile(observed, incoming)};
+    ASSERT_TRUE(repaired);
+    EXPECT_TRUE(repaired->collision_grid_changed);
+    EXPECT_TRUE(repaired->viewpoint_changed);
+    EXPECT_TRUE(repaired->mission_changed);
 }
 
 TEST(NativeEditorScene, ComparesDocumentFieldsAndRepairsInvalidReferences) {
@@ -150,7 +173,7 @@ TEST(NativeEditorScene, ComparesDocumentFieldsAndRepairsInvalidReferences) {
                         .kill_count = 1,
                         .hero_entity_ids = {EntityId{"player"}},
                         .required_kill_entity_ids = {EntityId{"enemy"}}};
-    auto const plan{reconcile_scene(observed, incoming)};
+    auto const plan{reconcile(observed, incoming)};
     ASSERT_TRUE(plan);
     EXPECT_TRUE(plan->changes.empty());
     EXPECT_TRUE(plan->metadata_changed);
@@ -163,13 +186,13 @@ TEST(NativeEditorScene, ComparesDocumentFieldsAndRepairsInvalidReferences) {
     incoming.camera = {.target_entity_ids = {EntityId{"enemy"}},
                        .offset_direction = {-1.0, 0.0, 0.0},
                        .distance = 1000.0};
-    auto const camera_plan{reconcile_scene(observed, incoming)};
+    auto const camera_plan{reconcile(observed, incoming)};
     ASSERT_TRUE(camera_plan);
     EXPECT_TRUE(camera_plan->viewpoint_changed);
     observed.viewpoint_valid = false;
     observed.mission_references_valid = false;
-    EXPECT_TRUE(same_scene(observed, observed));
-    auto const repaired{reconcile_scene(observed, incoming)};
+    EXPECT_TRUE(observed == observed);
+    auto const repaired{reconcile(observed, incoming)};
     ASSERT_TRUE(repaired);
     EXPECT_TRUE(repaired->mission_changed);
 }
@@ -190,6 +213,7 @@ TEST(NativeEditorIdentifiers, UsesAsciiAndAllocatesDeterministicCollisions) {
     }
     EXPECT_FALSE(is_canonical_symbol("\xc3\xa9"));
     EXPECT_FALSE(is_canonical_symbol("Enemy"));
+
     std::unordered_set<EntityId> used{EntityId{"enemy"}, EntityId{"enemy-2"}};
     EXPECT_EQ(allocate_entity_id("Enemy", "entity", used), EntityId{"enemy-3"});
     EXPECT_EQ(allocate_entity_id("enemy", "entity", used), EntityId{"enemy-4"});
@@ -201,26 +225,32 @@ TEST(NativeEditorSession, SeparatesSavedAppliedConflictedAndDetachedState) {
     state.observe({});
     EXPECT_FALSE(state.disk_conflict);
     EXPECT_FALSE(state.dirty());
+
     state.preview = PreviewState::Valid;
     state.edited("edited", false);
     EXPECT_TRUE(state.dirty());
     EXPECT_EQ(state.preview, PreviewState::Stale);
+
     state.saved("edited", false);
     EXPECT_FALSE(state.dirty());
     EXPECT_TRUE(state.unapplied("original"));
+
     state.preview = PreviewState::Valid;
     state.observe({true, "external"});
     EXPECT_TRUE(state.disk_conflict);
     EXPECT_EQ(state.preview, PreviewState::Valid);
+
     state.edited("unsaved", false);
     state.scene_dirty = true;
     state.document_changed();
     EXPECT_TRUE(state.recovery_required);
     EXPECT_FALSE(state.scene_dirty);
     EXPECT_EQ(state.preview, PreviewState::None);
+
     state.saved("unsaved", true);
     EXPECT_TRUE(state.recovery_required);
     EXPECT_FALSE(state.dirty());
+
     state.loaded({true, "next"}, "next", false, true);
     EXPECT_FALSE(state.recovery_required);
     EXPECT_FALSE(state.disk_conflict);

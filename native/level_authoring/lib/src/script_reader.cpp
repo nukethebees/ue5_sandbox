@@ -189,6 +189,13 @@ auto DefinitionReader::read_level_source(std::string_view const source) const
     -> LevelDefinitionReadResult {
     return evaluate(source, script_library_root_).and_then(decode_level);
 }
+
+auto DefinitionReader::read_editor_level_source(std::string_view const source) const
+    -> std::expected<EditorLevel, Diagnostics> {
+    return evaluate(source, script_library_root_).and_then([](s7::Ast const& ast) {
+        return parse_level(ast, ast.root).and_then(EditorLevel::make);
+    });
+}
 auto DefinitionReader::read_campaign_source(std::string_view const source) const
     -> CampaignDefinitionReadResult {
     return evaluate(source, script_library_root_).and_then(decode_campaign);

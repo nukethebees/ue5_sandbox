@@ -1,6 +1,4 @@
-#include <ioj/levels/authoring/scene.h>
-
-#include <ioj/levels/authoring/level_definition_writer.h>
+#include <ioj/levels/authoring/scene_reconciliation.h>
 
 #include <algorithm>
 #include <array>
@@ -10,7 +8,7 @@
 #include <unordered_map>
 
 namespace ioj::levels::authoring {
-namespace {
+namespace scene_comparison {
 auto near(double const lhs, double const rhs) -> bool {
     return std::abs(lhs - rhs) <= 0.001;
 }
@@ -43,57 +41,71 @@ auto same_rotation(ioj::Rotator3d const lhs, ioj::Rotator3d const rhs) -> bool {
     }
     return equal || negated;
 }
-auto same_ids(std::vector<EntityId> lhs, std::vector<EntityId> rhs) -> bool {
-    std::ranges::sort(lhs);
-    std::ranges::sort(rhs);
-    return lhs == rhs;
+auto operator==(LevelMissionDefinition const& lhs, LevelMissionDefinition const& rhs) -> bool {
+    auto const same_time{
+        lhs.time_limit_seconds.has_value() == rhs.time_limit_seconds.has_value() &&
+        (!lhs.time_limit_seconds || same_number(*lhs.time_limit_seconds, *rhs.time_limit_seconds))};
+    return lhs.mode == rhs.mode && same_time && lhs.kill_count == rhs.kill_count &&
+           std::ranges::is_permutation(lhs.hero_entity_ids, rhs.hero_entity_ids) &&
+           std::ranges::is_permutation(lhs.must_survive_entity_ids, rhs.must_survive_entity_ids) &&
+           std::ranges::is_permutation(lhs.required_kill_entity_ids, rhs.required_kill_entity_ids);
 }
-auto same_mission(std::optional<LevelMissionDefinition> const& lhs,
-                  std::optional<LevelMissionDefinition> const& rhs) -> bool {
-    if (!lhs || !rhs) {
-        return lhs.has_value() == rhs.has_value();
-    }
-    auto const same_time{lhs->time_limit_seconds.has_value() ==
-                             rhs->time_limit_seconds.has_value() &&
-                         (!lhs->time_limit_seconds ||
-                          same_number(*lhs->time_limit_seconds, *rhs->time_limit_seconds))};
-    return lhs->mode == rhs->mode && same_time && lhs->kill_count == rhs->kill_count &&
-           same_ids(lhs->hero_entity_ids, rhs->hero_entity_ids) &&
-           same_ids(lhs->must_survive_entity_ids, rhs->must_survive_entity_ids) &&
-           same_ids(lhs->required_kill_entity_ids, rhs->required_kill_entity_ids);
+
+auto operator==(LevelCameraDefinition const& lhs, LevelCameraDefinition const& rhs) -> bool {
+    return std::ranges::is_permutation(lhs.target_entity_ids, rhs.target_entity_ids) &&
+           same_vector(lhs.offset_direction, rhs.offset_direction) &&
+           same_number(lhs.distance, rhs.distance);
 }
+
+auto operator==(std::optional<ml::Vector3d> const& lhs, std::optional<ml::Vector3d> const& rhs)
+    -> bool {
+    return lhs.has_value() == rhs.has_value() && (!lhs || same_vector(*lhs, *rhs));
+}
+
+// Keep observation equality local: std::optional's ordinary equality deliberately
+// treats NaN as unequal, whereas an unchanged invalid observation is still current.
+template <typename T>
+auto operator==(std::optional<T> const& lhs, std::optional<T> const& rhs) -> bool {
+    return lhs.has_value() == rhs.has_value() && (!lhs || *lhs == *rhs);
+}
+
+auto operator==(LevelCollisionGridDefinition const& lhs, LevelCollisionGridDefinition const& rhs)
+    -> bool {
+    return lhs.level_size == rhs.level_size && lhs.cell_size == rhs.cell_size;
+}
+
 auto same_viewpoint(LevelDefinition const& lhs, LevelDefinition const& rhs) -> bool {
-    if (lhs.player_entity_id != rhs.player_entity_id ||
-        lhs.camera.has_value() != rhs.camera.has_value()) {
-        return false;
-    }
-    return !lhs.camera ||
-           (same_ids(lhs.camera->target_entity_ids, rhs.camera->target_entity_ids) &&
-            same_vector(lhs.camera->offset_direction, rhs.camera->offset_direction) &&
-            same_number(lhs.camera->distance, rhs.camera->distance));
+    return lhs.player_entity_id == rhs.player_entity_id && lhs.camera == rhs.camera;
 }
-auto same_grid(std::optional<LevelCollisionGridDefinition> const& lhs,
-               std::optional<LevelCollisionGridDefinition> const& rhs) -> bool {
-    auto const a{lhs.value_or(LevelCollisionGridDefinition{})};
-    auto const b{rhs.value_or(LevelCollisionGridDefinition{})};
-    auto const same_optional_vector{[](auto const& x, auto const& y) {
-        return x.has_value() == y.has_value() && (!x || same_vector(*x, *y));
-    }};
-    return same_optional_vector(a.level_size, b.level_size) &&
-           same_optional_vector(a.cell_size, b.cell_size);
+
+auto operator==(EntitySpawnDefinition const& lhs, EntitySpawnDefinition const& rhs) -> bool {
+    return lhs.id == rhs.id && lhs.archetype == rhs.archetype && lhs.team == rhs.team &&
+           same_vector(lhs.position, rhs.position) &&
+           same_number(lhs.rotation.pitch, rhs.rotation.pitch) &&
+           same_number(lhs.rotation.yaw, rhs.rotation.yaw) &&
+           same_number(lhs.rotation.roll, rhs.rotation.roll) &&
+           same_number(lhs.spawn_time_seconds, rhs.spawn_time_seconds);
 }
+
+auto operator==(SceneEntityProperties const& lhs, SceneEntityProperties const& rhs) -> bool {
+    return lhs.label == rhs.label && same_vector(lhs.scale, rhs.scale) &&
+           lhs.class_matches == rhs.class_matches;
+}
+
 auto document_changes(SceneSnapshot const& scene,
                       LevelDefinition const& incoming,
                       bool const repair_invalid = true) -> SyncPlan {
     auto const& current{scene.definition};
-    return {.collision_grid_changed = !same_grid(current.collision_grid, incoming.collision_grid),
+    return {.collision_grid_changed =
+                !(current.collision_grid.value_or(LevelCollisionGridDefinition{}) ==
+                  incoming.collision_grid.value_or(LevelCollisionGridDefinition{})),
             .metadata_changed = current.metadata.id != incoming.metadata.id ||
                                 current.metadata.title != incoming.metadata.title ||
                                 current.metadata.description != incoming.metadata.description,
             .viewpoint_changed =
                 (repair_invalid && !scene.viewpoint_valid) || !same_viewpoint(current, incoming),
             .mission_changed = (repair_invalid && !scene.mission_references_valid) ||
-                               !same_mission(current.mission, incoming.mission)};
+                               !(current.mission == incoming.mission)};
 }
 }
 
@@ -105,13 +117,10 @@ auto SyncPlan::has_changes() const -> bool {
            mission_changed;
 }
 
-auto reconcile_scene(SceneSnapshot const& scene, LevelDefinition const& incoming)
-    -> std::expected<SyncPlan, Diagnostics> {
+auto reconcile_scene(SceneSnapshot const& scene, EditorLevel const& level) -> SyncPlan {
+    using namespace scene_comparison;
+    auto const& incoming{level.definition()};
     assert(scene.definition.entities.size() == scene.properties.size());
-    auto validation{validate_editor_level(incoming)};
-    if (!validation) {
-        return std::unexpected{std::move(validation.error())};
-    }
 
     auto result{document_changes(scene, incoming)};
     std::unordered_map<EntityId, std::size_t> existing;
@@ -155,7 +164,8 @@ auto reconcile_scene(SceneSnapshot const& scene, LevelDefinition const& incoming
     return result;
 }
 
-auto same_scene(SceneSnapshot const& lhs, SceneSnapshot const& rhs) -> bool {
+auto operator==(SceneSnapshot const& lhs, SceneSnapshot const& rhs) -> bool {
+    using namespace scene_comparison;
     assert(lhs.definition.entities.size() == lhs.properties.size());
     assert(rhs.definition.entities.size() == rhs.properties.size());
     if (lhs.viewpoint_valid != rhs.viewpoint_valid ||
@@ -164,22 +174,8 @@ auto same_scene(SceneSnapshot const& lhs, SceneSnapshot const& rhs) -> bool {
         lhs.definition.entities.size() != rhs.definition.entities.size()) {
         return false;
     }
-    auto const count{lhs.definition.entities.size()};
-    for (std::size_t i{}; i < count; ++i) {
-        auto const& a{lhs.definition.entities[i]};
-        auto const& b{rhs.definition.entities[i]};
-        auto const& x{lhs.properties[i]};
-        auto const& y{rhs.properties[i]};
-        if (a.id != b.id || a.archetype != b.archetype || a.team != b.team ||
-            !same_vector(a.position, b.position) ||
-            !same_number(a.rotation.pitch, b.rotation.pitch) ||
-            !same_number(a.rotation.yaw, b.rotation.yaw) ||
-            !same_number(a.rotation.roll, b.rotation.roll) ||
-            !same_number(a.spawn_time_seconds, b.spawn_time_seconds) || x.label != y.label ||
-            !same_vector(x.scale, y.scale) || x.class_matches != y.class_matches) {
-            return false;
-        }
-    }
-    return true;
+    auto const equal{[](auto const& a, auto const& b) { return a == b; }};
+    return std::ranges::equal(lhs.definition.entities, rhs.definition.entities, equal) &&
+           std::ranges::equal(lhs.properties, rhs.properties, equal);
 }
 }
