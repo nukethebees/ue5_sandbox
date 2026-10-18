@@ -27,7 +27,6 @@ class LevelReadAccess {
     auto get_player() const -> player::Sim const*;
     auto get_clock() const -> SimClock const&;
     auto get_entity_ledger() const -> EntityLedger const&;
-    auto frame_sequence() const -> std::uint64_t;
     auto interpolation_alpha() const -> double;
   private:
     LevelSim const& level_;

@@ -29,9 +29,6 @@ auto LevelReadAccess::get_clock() const -> SimClock const& {
 auto LevelReadAccess::get_entity_ledger() const -> EntityLedger const& {
     return level_.get_entity_ledger();
 }
-auto LevelReadAccess::frame_sequence() const -> std::uint64_t {
-    return level_.frame_sequence_;
-}
 auto LevelReadAccess::interpolation_alpha() const -> double {
     auto const& clock{get_clock()};
     return std::clamp(clock.tick_loop.accumulator / clock.get_tick_period(), 0.0, 1.0);

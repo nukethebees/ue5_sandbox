@@ -282,7 +282,6 @@ void LevelSim::advance(time_type const dt) {
         player_ship_phase.emplace(*player_ship_simulation_);
     }
 
-    ++frame_sequence_;
     entity_ledger_.reset_frame_output();
     capital_ships_simulation_.reset_frame_output();
     turrets_simulation_.reset_frame_output();

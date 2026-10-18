@@ -51,7 +51,7 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     turrets.simulation_ = &view.get_turrets();
     spinners.simulation_ = &view.get_spinners();
     lasers.simulation_ = &view.get_lasers();
-    last_frame_sequence_ = view.frame_sequence();
+    last_completed_tick_ = view.get_clock().get_completed_ticks();
     lasers.player_colours_ =
         UTestTeamVisualData::build_team_colour_cache(config.player_ship.team_visual_data);
     lasers.fighter_colours_ =
@@ -72,9 +72,9 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
 }
 
 void FLevelPresentation::tick(float const dt, ::ioj::sim::LevelReadAccess const& view) {
-    auto const consume_changes{last_frame_sequence_ != view.frame_sequence()};
-    last_frame_sequence_ = view.frame_sequence();
-    last_completed_tick_ = view.get_clock().get_completed_ticks();
+    auto const completed_tick{view.get_clock().get_completed_ticks()};
+    auto const consume_changes{last_completed_tick_ != completed_tick};
+    last_completed_tick_ = completed_tick;
     ++tick_count_;
     auto const* player{view.get_player()};
     if (player_.IsSet() && player != nullptr) {

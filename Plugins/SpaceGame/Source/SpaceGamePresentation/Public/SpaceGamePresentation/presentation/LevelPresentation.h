@@ -46,7 +46,6 @@ struct SPACEGAMEPRESENTATION_API FLevelPresentation {
     FDelayedNiagaraSpawns effects;
   private:
     TOptional<FPlayerPresentation> player_;
-    uint64 last_frame_sequence_{};
     uint64 tick_count_{};
     ::ioj::sim::SimTick last_completed_tick_{};
 };

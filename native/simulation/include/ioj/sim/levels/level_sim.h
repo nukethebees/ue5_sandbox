@@ -168,6 +168,5 @@ struct LevelSim {
 
     LevelTelemetryManager level_telemetry_manager_;
     std::optional<LevelTelemetryRunMetadata> telemetry_metadata_{};
-    std::uint64_t frame_sequence_{};
 };
 } // namespace ioj::sim
