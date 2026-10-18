@@ -146,12 +146,19 @@ auto CanonicalRenderer::quote(std::string_view const value) -> std::string {
 }
 auto CanonicalRenderer::render_type_ref(codegen::TypeRefId id) -> std::string {
     auto const type{id};
+    auto const name{text(store_.type_refs.name[store_.type_refs.index(type)])};
+    auto const needs_quotes{name.empty() || name.starts_with('#') ||
+                            (name.starts_with(':') && !name.starts_with("::")) ||
+                            std::ranges::any_of(name, [](unsigned char character) {
+                                return std::isspace(character) != 0 || character == '(' ||
+                                       character == ')' || character == '"' || character == ';';
+                            })};
+    auto const rendered_name{needs_quotes ? quote(name) : std::string{name}};
     if (text(store_.type_refs.suffix[store_.type_refs.index(type)]).empty() &&
         !store_.type_refs.nested[store_.type_refs.index(type)].has_value()) {
-        return std::string{text(store_.type_refs.name[store_.type_refs.index(type)])};
+        return rendered_name;
     }
-    auto result{std::string{"(type-ref "} +
-                std::string{text(store_.type_refs.name[store_.type_refs.index(type)])}};
+    auto result{std::string{"(type-ref "} + rendered_name};
     if (!text(store_.type_refs.suffix[store_.type_refs.index(type)]).empty()) {
         result += " :suffix " + quote(text(store_.type_refs.suffix[store_.type_refs.index(type)]));
     }
