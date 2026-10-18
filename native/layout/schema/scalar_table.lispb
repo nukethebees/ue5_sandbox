@@ -1,0 +1,31 @@
+(module scalar_table
+  :header "ioj/layout/analysis/scalar_table.hpp"
+  :source "ioj/layout/analysis/scalar_table.cpp"
+  :header-include "ioj/layout/analysis/scalar_table.hpp"
+  :backend standard-library
+  :namespace ioj::layout
+  :prelude #cpp{#include <optional>}cpp#
+  (struct ScalarTable
+    :storage vector
+    :operations (set-num reset)
+    (member type array @type_id)
+    (member integer_domain array @optional_integer_domain)
+    (member enum_domain array @optional_enum_domain)
+    (member optional_sentinel_encoding array @optional_optional_sentinel_encoding)
+    (member optional_presence_encoding array @optional_optional_presence_encoding)
+    (member quantized_encoding array @optional_quantized_encoding)
+    (member fixed_encoding array @optional_fixed_encoding)
+    (member float_encoding array @optional_float_encoding)
+    (member varint_encoding array @optional_varint_encoding)
+    (function append @size_t :definition-in-source true
+      (parameter value @type_id)
+      :body #cpp{auto const row{num()};
+set_num(row + 1);
+type[row] = value;
+return row;}cpp#)
+    (function find @size_t :const true :definition-in-source true
+      (parameter value @type_id)
+      :body #cpp{auto const found{std::ranges::find(type, value)};
+assert(found != type.end());
+return static_cast<std::size_t>(found - type.begin());}cpp#)
+  ))

@@ -1,0 +1,39 @@
+(module workload_table
+  :header "ioj/layout/analysis/workload_table.hpp"
+  :source "ioj/layout/analysis/workload_table.cpp"
+  :header-include "ioj/layout/analysis/workload_table.hpp"
+  :backend standard-library
+  :namespace ioj::layout
+  :prelude #cpp{#include <optional>}cpp#
+  (struct WorkloadTable
+    :storage vector
+    :operations (set-num reset)
+    (member analysis array @analysis_id)
+    (member selections array @row_range)
+    (member element_count array @uint64_t)
+    (member multiplicity array @uint64_t)
+    (member bytes array @payload_footprint)
+    (member bits array @payload_footprint)
+    (member cache array @region_footprint)
+    (member pages array @region_footprint)
+    (member cache_capacity array @cache_capacity_analysis)
+    (member packed_waste array @packed_access_waste)
+    (member footprint_exact array @uint8_t)
+    (member storage_bytes array @optional_uint64_t)
+    (member full_logical_payload_bytes array @optional_uint64_t)
+    (member unselected_payload_bytes array @optional_uint64_t)
+    (member allocated_payload_bytes array @optional_uint64_t)
+    (member capacity_slack_bytes array @optional_uint64_t)
+    (function append @workload_id :definition-in-source true
+      (parameter owner @analysis_id)
+      (parameter selected @row_range)
+      (parameter count @uint64_t)
+      (parameter repeat @uint64_t)
+      :body #cpp{auto const row{num()};
+set_num(row + 1);
+analysis[row] = owner;
+selections[row] = selected;
+element_count[row] = count;
+multiplicity[row] = repeat;
+return WorkloadId{row};}cpp#)
+  ))

@@ -1,0 +1,39 @@
+(module packed_field_table
+  :header "ioj/layout/analysis/packed_field_table.hpp"
+  :source "ioj/layout/analysis/packed_field_table.cpp"
+  :header-include "ioj/layout/analysis/packed_field_table.hpp"
+  :backend standard-library
+  :namespace ioj::layout
+  :prelude #cpp{#include <optional>}cpp#
+  (struct PackedFieldTable
+    :storage vector
+    :operations (set-num reset)
+    (member parent array @analysis_id)
+    (member segment array @packed_segment_id)
+    (member name array @string_view)
+    (member semantic_type array @optional_type_id)
+    (member logical_type array @string)
+    (member kind array @packed_field_kind)
+    (member reserved array @uint8_t)
+    (member schema_bit_width array @uint32_t)
+    (member schema_bit_width_auto array @uint8_t)
+    (member bit_width array @uint32_t)
+    (member overridden array @uint8_t)
+    (member least_significant_bit array @uint64_t)
+    (member most_significant_bit array @optional_uint64_t)
+    (member maximum_unsigned_value array @optional_uint64_t)
+    (member minimum_signed_value array @optional_int64_t)
+    (member maximum_signed_value array @optional_int64_t)
+    (member minimum_semantic_value array @optional_packed_integer_value)
+    (member maximum_semantic_value array @optional_packed_integer_value)
+    (member semantic_value_count array @optional_uint64_t)
+    (member sentinel_code_count array @uint64_t)
+    (member required_code_count array @optional_uint64_t)
+    (member minimum_required_bits array @optional_uint32_t)
+    (member unused_codes array @optional_uint64_t)
+    (member codes array @row_range)
+    (function append @size_t :definition-in-source true
+      :body #cpp{auto const row{num()};
+set_num(row + 1);
+return row;}cpp#)
+  ))

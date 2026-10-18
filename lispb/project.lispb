@@ -7,6 +7,23 @@
     :sources ("native/lispb/schema/compiler_ir.lispb")
     :output-root (project-path "native/lispb/include/codegen/ast"))
 
+  (cpp-schema layout-analysis
+    :types "native/layout/schema/types.lispb"
+    :sources (
+      "native/layout/schema/code_table.lispb"
+      "native/layout/schema/component_table.lispb"
+      "native/layout/schema/distribution_entry_table.lispb"
+      "native/layout/schema/distribution_table.lispb"
+      "native/layout/schema/packed_field_table.lispb"
+      "native/layout/schema/relationship_table.lispb"
+      "native/layout/schema/scalar_table.lispb"
+      "native/layout/schema/selection_table.lispb"
+      "native/layout/schema/soa_column_table.lispb"
+      "native/layout/schema/tag_table.lispb"
+      "native/layout/schema/type_analysis_table.lispb"
+      "native/layout/schema/workload_table.lispb")
+    :output-root (build-path "native/layout/generated"))
+
   (cpp-schema sandbox-code
     :types "lispb/schema/types.lispb"
     :sources (

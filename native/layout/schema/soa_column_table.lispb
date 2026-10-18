@@ -1,0 +1,30 @@
+(module soa_column_table
+  :header "ioj/layout/analysis/soa_column_table.hpp"
+  :source "ioj/layout/analysis/soa_column_table.cpp"
+  :header-include "ioj/layout/analysis/soa_column_table.hpp"
+  :backend standard-library
+  :namespace ioj::layout
+  :prelude #cpp{#include <optional>}cpp#
+  (struct SoaColumnTable
+    :storage vector
+    :operations (set-num reset)
+    (member parent array @analysis_id)
+    (member name array @string_view)
+    (member semantic_type array @type_id)
+    (member schema_type array @string)
+    (member physical_type array @string)
+    (member overridden array @uint8_t)
+    (member type_facts array @optional_type_facts)
+    (member total_bytes array @optional_uint64_t)
+    (member allocation_offset_bytes array @optional_uint64_t)
+    (member padding_before_bytes array @optional_uint64_t)
+    (member minimum_cache_lines array @optional_uint64_t)
+    (member elements_per_cache_line array @optional_uint64_t)
+    (member minimum_pages array @optional_uint64_t)
+    (member complete_elements_per_page array @optional_uint64_t)
+    (member cache_line_tiling array @optional_cache_line_tiling)
+    (function append @size_t :definition-in-source true
+      :body #cpp{auto const row{num()};
+set_num(row + 1);
+return row;}cpp#)
+  ))

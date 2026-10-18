@@ -1,0 +1,15 @@
+(module tag_table
+  :header "ioj/layout/analysis/tag_table.hpp"
+  :source "ioj/layout/analysis/tag_table.cpp"
+  :header-include "ioj/layout/analysis/tag_table.hpp"
+  :backend standard-library
+  :namespace ioj::layout
+  :prelude #cpp{#include <optional>}cpp#
+  (struct TagTable
+    :storage vector
+    :operations (set-num reset)
+    (member name array @string_view)
+    (member mapped array @uint8_t)
+    (member sentinel array @uint8_t)
+    (member count_sentinel array @uint8_t)
+  ))

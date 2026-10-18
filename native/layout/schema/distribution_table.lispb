@@ -1,0 +1,34 @@
+(module distribution_table
+  :header "ioj/layout/analysis/distribution_table.hpp"
+  :source "ioj/layout/analysis/distribution_table.cpp"
+  :header-include "ioj/layout/analysis/distribution_table.hpp"
+  :backend standard-library
+  :namespace ioj::layout
+  :prelude #cpp{#include <optional>}cpp#
+  (struct DistributionTable
+    :storage vector
+    :operations (set-num reset)
+    (member analysis array @analysis_id)
+    (member entries array @row_range)
+    (member element_count array @uint64_t)
+    (member total_weight array @optional_uint64_t)
+    (member total_extent_bytes array @optional_uint64_t)
+    (member total_slack_bytes array @optional_uint64_t)
+    (member expected_extent_bytes array @optional_long_double)
+    (member expected_slack_bytes array @optional_long_double)
+    (member expected_selected_extent_bytes array @optional_long_double)
+    (member expected_selected_slack_bytes array @optional_long_double)
+    (function append @distribution_id :definition-in-source true
+      (parameter owner @analysis_id)
+      (parameter samples @row_range)
+      (parameter count @uint64_t)
+      :body #cpp{auto const row{num()};
+set_num(row + 1);
+analysis[row] = owner;
+entries[row] = samples;
+element_count[row] = count;
+total_weight[row] = 0;
+total_extent_bytes[row] = 0;
+total_slack_bytes[row] = 0;
+return DistributionId{row};}cpp#)
+  ))

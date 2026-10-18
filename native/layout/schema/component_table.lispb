@@ -1,0 +1,25 @@
+(module component_table
+  :header "ioj/layout/analysis/component_table.hpp"
+  :source "ioj/layout/analysis/component_table.cpp"
+  :header-include "ioj/layout/analysis/component_table.hpp"
+  :backend standard-library
+  :namespace ioj::layout
+  :prelude #cpp{#include <optional>}cpp#
+  (struct ComponentTable
+    :storage vector
+    :operations (set-num reset)
+    (member parent array @analysis_id)
+    (member name array @string_view)
+    (member tag array @string_view)
+    (member semantic_type array @type_id)
+    (member element_count array @uint64_t)
+    (member element_facts array @optional_type_facts)
+    (member offset_bytes array @optional_uint64_t)
+    (member extent_bytes array @optional_uint64_t)
+    (member padding_before_bytes array @optional_uint64_t)
+    (member slack_bytes array @optional_uint64_t)
+    (function append @size_t :definition-in-source true
+      :body #cpp{auto const row{num()};
+set_num(row + 1);
+return row;}cpp#)
+  ))

@@ -1,0 +1,20 @@
+(module code_table
+  :header "ioj/layout/analysis/code_table.hpp"
+  :source "ioj/layout/analysis/code_table.cpp"
+  :header-include "ioj/layout/analysis/code_table.hpp"
+  :backend standard-library
+  :namespace ioj::layout
+  :prelude #cpp{#include <optional>}cpp#
+  (struct CodeTable
+    :storage vector
+    :operations (set-num reset)
+    (member name array @string_view)
+    (member sentinel array @uint8_t)
+    (member count_sentinel array @uint8_t)
+    (member code array @optional_enum_code_value)
+    (member integer_value array @optional_packed_integer_value)
+    (function append @size_t :definition-in-source true
+      :body #cpp{auto const row{num()};
+set_num(row + 1);
+return row;}cpp#)
+  ))

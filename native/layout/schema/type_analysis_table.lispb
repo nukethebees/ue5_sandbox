@@ -1,0 +1,37 @@
+(module type_analysis_table
+  :header "ioj/layout/analysis/type_analysis_table.hpp"
+  :source "ioj/layout/analysis/type_analysis_table.cpp"
+  :header-include "ioj/layout/analysis/type_analysis_table.hpp"
+  :backend standard-library
+  :namespace ioj::layout
+  :prelude #cpp{#include <optional>}cpp#
+  (struct TypeAnalysisTable
+    :storage vector
+    :operations (set-num reset)
+    (member schema_type array @type_id)
+    (member scenario array @scenario_id)
+    (member physical array @optional_type_facts)
+    (member enum_backing array @optional_enum_backing)
+    (member aggregate array @optional_aggregate_layout)
+    (member packed array @optional_packed_layout)
+    (member soa array @optional_soa_layout)
+    (function append @analysis_id :definition-in-source true
+      (parameter type @type_id)
+      (parameter scenario_id @scenario_id)
+      :body #cpp{auto const row{num()};
+set_num(row + 1);
+schema_type[row] = type;
+scenario[row] = scenario_id;
+return AnalysisId{row};}cpp#)
+    (function find @analysis_id :const true :definition-in-source true
+      (parameter type @type_id)
+      (parameter scenario_id @scenario_id)
+      :body #cpp{auto const count{num()};
+for (std::uint32_t row{}; row < count; ++row) {
+    if (schema_type[row] == type && scenario[row] == scenario_id) {
+        return AnalysisId{row};
+    }
+}
+assert(false && "Analysis type is outside the completed pass");
+return {};}cpp#)
+  ))

@@ -1,0 +1,18 @@
+(module distribution_entry_table
+  :header "ioj/layout/analysis/distribution_entry_table.hpp"
+  :source "ioj/layout/analysis/distribution_entry_table.cpp"
+  :header-include "ioj/layout/analysis/distribution_entry_table.hpp"
+  :backend standard-library
+  :namespace ioj::layout
+  :prelude #cpp{#include <optional>}cpp#
+  (struct DistributionEntryTable
+    :storage vector
+    :operations (set-num reset)
+    (member component array @optional_size_t)
+    (member value array @optional_packed_integer_value)
+    (member weight array @uint64_t)
+    (member extent_bytes array @optional_uint64_t)
+    (member slack_bytes array @optional_uint64_t)
+    (member weighted_extent_bytes array @optional_uint64_t)
+    (member weighted_slack_bytes array @optional_uint64_t)
+  ))
