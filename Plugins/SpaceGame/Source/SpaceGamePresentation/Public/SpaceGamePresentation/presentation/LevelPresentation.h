@@ -32,7 +32,6 @@ struct SPACEGAMEPRESENTATION_API FLevelPresentation {
     auto operator=(FLevelPresentation&&) -> FLevelPresentation& = delete;
 
     void tick(float dt, ::ioj::sim::LevelReadAccess const& view);
-    auto get_tick_count() const -> uint64 { return tick_count_; }
     auto get_last_completed_tick() const -> ::ioj::sim::SimTick { return last_completed_tick_; }
   private:
     FLevelVisualConfig config_;
@@ -46,6 +45,5 @@ struct SPACEGAMEPRESENTATION_API FLevelPresentation {
     FDelayedNiagaraSpawns effects;
   private:
     TOptional<FPlayerPresentation> player_;
-    uint64 tick_count_{};
     ::ioj::sim::SimTick last_completed_tick_{};
 };

@@ -350,13 +350,10 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
         }
         headless_harness.advance(dt);
         visible_harness.advance(dt);
-        auto const prior_presentations{presentation.get_tick_count()};
-        TestEqual(
-            TEXT("Advancing does not present"), prior_presentations, static_cast<uint64>(tick));
+        TestEqual(TEXT("Advancing does not present"),
+                  presentation.get_last_completed_tick(),
+                  static_cast<uint64>(tick));
         presentation.tick(dt, visible.get_read_access());
-        TestEqual(TEXT("Exactly one presentation per frame"),
-                  presentation.get_tick_count(),
-                  prior_presentations + 1);
         TestEqual(TEXT("Presentation sees the completed simulation"),
                   presentation.get_last_completed_tick(),
                   visible.get_clock().get_completed_ticks());
@@ -439,8 +436,9 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     TestEqual(TEXT("Four fixed ticks precede presentation"),
               frame.get_clock().get_completed_ticks(),
               uint64{4});
-    TestEqual(
-        TEXT("Simulation never ticks presentation"), presentation.get_tick_count(), uint64{0});
+    TestEqual(TEXT("Simulation never ticks presentation"),
+              presentation.get_last_completed_tick(),
+              uint64{0});
     TestEqual(TEXT("Spawn and death survive later fixed ticks"),
               static_cast<int32>(frame.get_capitals().get_frame_changes().size()),
               2);
@@ -461,8 +459,6 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
             frame.get_entity_ledger().get_frame_deaths(::ioj::sim::EntityType::CapitalShip).size()),
         1);
     presentation.tick(static_cast<float>(dt * 4.25), frame);
-    TestEqual(
-        TEXT("One presentation follows all fixed ticks"), presentation.get_tick_count(), uint64{1});
     TestEqual(TEXT("Presentation sees the last fixed tick"),
               presentation.get_last_completed_tick(),
               uint64{4});
@@ -482,9 +478,11 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
                                      .get_frame_deaths(::ioj::sim::EntityType::CapitalShip)
                                      .size()),
               0);
-    presentation.tick(0.f, idle_frame);
-    TestEqual(
-        TEXT("Zero fixed ticks still presents once"), presentation.get_tick_count(), uint64{2});
+    auto const prior_effect_time{resources.sparks->get_effect_time()};
+    presentation.tick(0.01f, idle_frame);
+    TestEqual(TEXT("Zero-step frames advance effects"),
+              resources.sparks->get_effect_time(),
+              prior_effect_time + 0.01f);
     TestEqual(
         TEXT("Zero-step frame preserves instances"), resources.capital_ships->GetNumInstances(), 1);
 

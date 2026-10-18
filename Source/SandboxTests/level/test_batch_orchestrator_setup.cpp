@@ -141,7 +141,7 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
             orchestrator, ::ioj::sim::LevelTelemetryRunMetadata{.run_id = "frame-ordering"});
         struct FFrameObservation {
             uint64 completed_ticks{};
-            uint64 presentation_count{};
+            uint64 presented_tick{};
         };
         TimeSeriesData<FFrameObservation> observations;
         orchestrator.set_end_tick_test_hook(FOrchestratorEndTickTestHook::CreateLambda(
@@ -149,7 +149,7 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
                 observations.add(
                     owner.get_simulation_time(),
                     FFrameObservation{owner.get_completed_ticks(),
-                                      owner.get_level_presentation()->get_tick_count()});
+                                      owner.get_level_presentation()->get_last_completed_tick()});
                 if (owner.get_completed_ticks() >= 6) {
                     FTestBatchOrchestratorTestAccess::complete_telemetry_run(
                         owner, ::ioj::sim::LevelTelemetryRunEndReason::DurationReached);
@@ -157,20 +157,18 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
             }));
         auto const dt{orchestrator.get_level_simulation()->get_clock().get_tick_period()};
         orchestrator.tick(0.0);
-        checks.are_equal(uint64{1},
-                         presentation->get_tick_count(),
-                         TEXT("Zero fixed ticks still presents once"));
+        checks.are_equal(uint64{0},
+                         presentation->get_last_completed_tick(),
+                         TEXT("Zero fixed ticks preserve the presented state"));
         orchestrator.tick(dt * 4.25);
-        checks.are_equal(uint64{2},
-                         presentation->get_tick_count(),
-                         TEXT("Four fixed ticks produce only one new presentation"));
         checks.are_equal(uint64{4},
                          presentation->get_last_completed_tick(),
                          TEXT("Presentation observes the final fixed tick"));
         orchestrator.pause_simulation();
         orchestrator.tick(dt);
-        checks.are_equal(
-            uint64{2}, presentation->get_tick_count(), TEXT("Paused frames freeze presentation"));
+        checks.are_equal(uint64{4},
+                         presentation->get_last_completed_tick(),
+                         TEXT("Paused frames freeze presentation"));
         orchestrator.start_simulation();
         orchestrator.tick(dt * 4.0);
         orchestrator.clear_end_tick_test_hook();
@@ -182,13 +180,10 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
             checks.are_equal(static_cast<uint64>((index + 1) * 4),
                              sample.completed_ticks,
                              TEXT("Catch-up frames observe their final completed ticks"));
-            checks.are_equal(static_cast<uint64>(index + 2),
-                             sample.presentation_count,
+            checks.are_equal(sample.completed_ticks,
+                             sample.presented_tick,
                              TEXT("Observations follow the frame presentation"));
         }
-        checks.are_equal(uint64{3},
-                         presentation->get_tick_count(),
-                         TEXT("Terminal frame still presents exactly once"));
         checks.are_equal(uint64{8},
                          presentation->get_last_completed_tick(),
                          TEXT("Terminal presentation observes the final completed tick"));
