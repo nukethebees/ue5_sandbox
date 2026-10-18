@@ -22,8 +22,7 @@ auto emit_source(LevelDefinition const& level) -> std::expected<std::string, Dia
     return emit_editor_level_source(level);
 }
 
-auto emit_source(LevelDefinitionComponents definition)
-    -> std::expected<std::string, Diagnostics> {
+auto emit_source(LevelDefinitionComponents definition) -> std::expected<std::string, Diagnostics> {
     return LevelDefinition::make(std::move(definition)).and_then([](LevelDefinition const& level) {
         return emit_editor_level_source(level);
     });
@@ -114,7 +113,7 @@ TEST(NativeSourceSession, PreservesTextAndSeparatesSavedFromAppliedState) {
     EXPECT_EQ(read_file(path).value(), source);
 
     session.state().preview = PreviewState::Valid;
-    ASSERT_TRUE(session.save_replacement("canonical", session.state().buffer_digest));
+    ASSERT_TRUE(session.save_replacement("canonical", session.state().buffer_text));
     EXPECT_EQ(session.buffer(), "canonical");
     EXPECT_EQ(session.state().preview, PreviewState::Stale);
     EXPECT_GT(session.state().revision, revision);
@@ -176,31 +175,18 @@ TEST(NativeSourceSession, ProtectsDiskChangesAndRecoversDetachedBuffers) {
     }
 }
 
-TEST(NativeSourceSession, PreservesExistingDigestsAndDecodesBomText) {
-    EXPECT_EQ(SourceSession::source_digest(""), "DA39A3EE5E6B4B0D3255BFEF95601890AFD80709");
-    EXPECT_EQ(SourceSession::source_digest("abc"), "A9993E364706816ABA3E25717850C26C9CD0D89D");
-    EXPECT_EQ(
-        SourceSession::source_digest("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"),
-        "84983E441C3BD26EBAAE4AA1F95129E5E54670F1");
-
+TEST(NativeSourceSession, ReadsUtf8BomText) {
     TemporaryLevelDirectory directory;
     auto const path{directory.path() / "encoding.scm"};
-    for (auto const& bytes : {std::string{"\xef\xbb\xbf"
-                                          "A\xcf\x80"},
-                              std::string{"\xff\xfe"
-                                          "A\0\xc0\x03",
-                                          6},
-                              std::string{"\xfe\xff"
-                                          "\0A\x03\xc0",
-                                          6}}) {
-        std::ofstream{path, std::ios::binary}.write(bytes.data(),
-                                                    static_cast<std::streamsize>(bytes.size()));
-        SourceSession session;
-        ASSERT_TRUE(session.attach(path));
-        EXPECT_EQ(session.buffer(), "A\xcf\x80");
-        ASSERT_TRUE(session.save());
-        EXPECT_EQ(read_file(path).value(), session.buffer());
-    }
+    std::string const bytes{"\xef\xbb\xbf"
+                            "A\xcf\x80"};
+    std::ofstream{path, std::ios::binary}.write(bytes.data(),
+                                                static_cast<std::streamsize>(bytes.size()));
+    SourceSession session;
+    ASSERT_TRUE(session.attach(path));
+    EXPECT_EQ(session.buffer(), "A\xcf\x80");
+    ASSERT_TRUE(session.save());
+    EXPECT_EQ(read_file(path).value(), session.buffer());
 }
 
 TEST(NativeLevelAuthoringReader, ReadsFileWithRootRelativeLibrary) {

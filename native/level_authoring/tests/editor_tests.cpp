@@ -221,17 +221,17 @@ TEST(NativeEditorIdentifiers, UsesAsciiAndAllocatesDeterministicCollisions) {
 
 TEST(NativeEditorSession, SeparatesSavedAppliedConflictedAndDetachedState) {
     SourceSessionState state;
-    state.loaded({}, "empty", true, true);
+    state.loaded({}, "", true);
     state.observe({});
     EXPECT_FALSE(state.disk_conflict);
     EXPECT_FALSE(state.dirty());
 
     state.preview = PreviewState::Valid;
-    state.edited("edited", false);
+    state.edited("edited");
     EXPECT_TRUE(state.dirty());
     EXPECT_EQ(state.preview, PreviewState::Stale);
 
-    state.saved("edited", false);
+    state.saved(false);
     EXPECT_FALSE(state.dirty());
     EXPECT_TRUE(state.unapplied("original"));
 
@@ -240,18 +240,18 @@ TEST(NativeEditorSession, SeparatesSavedAppliedConflictedAndDetachedState) {
     EXPECT_TRUE(state.disk_conflict);
     EXPECT_EQ(state.preview, PreviewState::Valid);
 
-    state.edited("unsaved", false);
+    state.edited("unsaved");
     state.scene_dirty = true;
     state.document_changed();
     EXPECT_TRUE(state.recovery_required);
     EXPECT_FALSE(state.scene_dirty);
     EXPECT_EQ(state.preview, PreviewState::None);
 
-    state.saved("unsaved", true);
+    state.saved(true);
     EXPECT_TRUE(state.recovery_required);
     EXPECT_FALSE(state.dirty());
 
-    state.loaded({true, "next"}, "next", false, true);
+    state.loaded({true, "next"}, "next", true);
     EXPECT_FALSE(state.recovery_required);
     EXPECT_FALSE(state.disk_conflict);
 }

@@ -15,7 +15,7 @@
 
 namespace ioj::editor {
 namespace s7_level_authoring_preview_detail {
-auto level_config_digest(USpaceGameLevelConfig const* const level_config) -> FString {
+auto level_config_snapshot(USpaceGameLevelConfig const* const level_config) -> FString {
     if (!IsValid(level_config)) {
         return {};
     }
@@ -37,7 +37,7 @@ auto level_config_digest(USpaceGameLevelConfig const* const level_config) -> FSt
         signature += value;
         signature.AppendChar(TEXT('|'));
     }
-    return FS7LevelSourceSession::source_digest(signature);
+    return signature;
 }
 
 auto actor_identities(ULevel const& level, AS7LevelAuthoringDocument const& document)
@@ -104,7 +104,8 @@ auto make_s7_level_authoring_preview(ULevel& level,
         .level = &level,
         .document = &document,
         .level_config = level_config,
-        .level_config_digest = s7_level_authoring_preview_detail::level_config_digest(level_config),
+        .level_config_snapshot =
+            s7_level_authoring_preview_detail::level_config_snapshot(level_config),
         .actor_identities = s7_level_authoring_preview_detail::actor_identities(level, document),
         .scene = MoveTemp(*scene)};
 }
@@ -124,8 +125,8 @@ auto validate_s7_level_authoring_preview(ULevel& level,
     auto* const level_config{document.level_config.Get()};
     auto const configuration_changed{
         preview.level_config.Get() != level_config ||
-        preview.level_config_digest !=
-            s7_level_authoring_preview_detail::level_config_digest(level_config)};
+        preview.level_config_snapshot !=
+            s7_level_authoring_preview_detail::level_config_snapshot(level_config)};
 
     auto const current_scene{collect_s7_scene(level, document)};
     auto const scene_changed{!current_scene || *current_scene != preview.scene};
@@ -159,14 +160,13 @@ auto apply_s7_level_authoring_preview(ULevel& level,
             FS7LevelPreviewError{ES7LevelPreviewError::Execution, applied.error()}};
     }
     document.Modify();
-    document.synchronized_source_hash = ioj::to_fstring(source_session.state().buffer_digest);
+    document.synchronized_source = ioj::to_fstring(source_session.state().buffer_text);
     auto const definition{collect_s7_editor_level(level, document)};
-    document.synchronized_scene_hash.Empty();
+    document.synchronized_scene_source.Empty();
     if (definition) {
         auto const source{levels::authoring::emit_editor_level_source(*definition)};
         if (source) {
-            document.synchronized_scene_hash =
-                FS7LevelSourceSession::source_digest(ioj::to_fstring(*source));
+            document.synchronized_scene_source = ioj::to_fstring(*source);
         }
     }
     return {};

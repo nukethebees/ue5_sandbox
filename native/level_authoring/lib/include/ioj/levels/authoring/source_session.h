@@ -9,7 +9,7 @@
 namespace ioj::levels::authoring {
 struct SourceDiskState {
     bool exists{};
-    std::string digest{};
+    std::string source{};
     auto operator==(SourceDiskState const&) const -> bool = default;
 };
 
@@ -18,21 +18,20 @@ enum class PreviewState { None, Valid, Stale };
 // Shared synchronization state; document lifetimes remain with the host.
 struct SourceSessionState {
     SourceDiskState disk_baseline{};
-    std::string buffer_digest{};
-    std::string saved_buffer_digest{};
+    std::string buffer_text{};
+    std::string saved_buffer_text{};
     std::uint64_t revision{};
-    bool buffer_empty{true};
     bool disk_conflict{};
     bool scene_dirty{};
     bool recovery_required{};
     PreviewState preview{PreviewState::None};
 
-    [[nodiscard]] auto dirty() const -> bool { return buffer_digest != saved_buffer_digest; }
-    [[nodiscard]] auto unapplied(std::string_view synchronized_digest) const -> bool;
+    [[nodiscard]] auto dirty() const -> bool { return buffer_text != saved_buffer_text; }
+    [[nodiscard]] auto unapplied(std::string_view synchronized_source) const -> bool;
     void document_changed();
-    void loaded(SourceDiskState disk, std::string digest, bool empty, bool source_changed);
-    void edited(std::string digest, bool empty);
-    void saved(std::string digest, bool source_changed);
+    void loaded(SourceDiskState disk, std::string source, bool source_changed);
+    void edited(std::string source);
+    void saved(bool source_changed);
     void observe(SourceDiskState const& disk);
     void invalidate_preview();
 };
@@ -55,21 +54,20 @@ class SourceSession {
     [[nodiscard]] auto save() -> std::expected<void, std::string>;
     [[nodiscard]] auto save_as(std::filesystem::path const& path, SourceOverwritePolicy overwrite)
         -> std::expected<void, std::string>;
-    [[nodiscard]] auto save_replacement(std::string source, std::string_view synchronized_digest)
+    [[nodiscard]] auto save_replacement(std::string source, std::string_view synchronized_source)
         -> std::expected<void, std::string>;
     [[nodiscard]] auto save_replacement_as(std::string source,
                                            std::filesystem::path const& path,
-                                           std::string_view synchronized_digest,
+                                           std::string_view synchronized_source,
                                            SourceOverwritePolicy overwrite)
         -> std::expected<void, std::string>;
     [[nodiscard]] auto refresh_external_conflict() -> std::expected<void, std::string>;
 
     [[nodiscard]] auto path() const -> std::filesystem::path const& { return path_; }
-    [[nodiscard]] auto buffer() const -> std::string const& { return buffer_; }
+    [[nodiscard]] auto buffer() const -> std::string const& { return state_.buffer_text; }
     [[nodiscard]] auto is_attached() const -> bool { return attached_; }
     auto state() -> SourceSessionState& { return state_; }
     auto state() const -> SourceSessionState const& { return state_; }
-    [[nodiscard]] static auto source_digest(std::string_view source) -> std::string;
   private:
     [[nodiscard]] auto load_attached(std::filesystem::path const& path)
         -> std::expected<void, std::string>;
@@ -79,7 +77,6 @@ class SourceSession {
                              bool replace_buffer) -> std::expected<void, std::string>;
 
     std::filesystem::path path_{};
-    std::string buffer_{};
     SourceSessionState state_{};
     bool attached_{};
 };

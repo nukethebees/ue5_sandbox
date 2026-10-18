@@ -3,8 +3,6 @@
 #include <ioj/ascii.h>
 #include <ioj/files.h>
 
-#include <array>
-#include <bit>
 #include <format>
 #include <fstream>
 #include <utility>
@@ -20,52 +18,17 @@ auto read_source(std::filesystem::path const& path) -> std::expected<std::string
     if (!bytes) {
         return std::unexpected{std::format("Could not read source file '{}'.", path_to_utf8(path))};
     }
+    if (bytes->starts_with("\xff\xfe") || bytes->starts_with("\xfe\xff")) {
+        return std::unexpected{std::format(
+            "Source file '{}' is UTF-16. Save it as UTF-8 before opening it.", path_to_utf8(path))};
+    }
     if (bytes->starts_with("\xef\xbb\xbf")) {
         bytes->erase(0, 3);
-    } else if (bytes->starts_with("\xff\xfe") || bytes->starts_with("\xfe\xff")) {
-        auto const little{static_cast<unsigned char>((*bytes)[0]) == 0xff};
-        std::string utf8;
-        auto unit{[&](std::size_t const i) -> std::uint32_t {
-            auto const a{static_cast<unsigned char>((*bytes)[i])};
-            auto const b{static_cast<unsigned char>((*bytes)[i + 1])};
-            return little ? a | (b << 8) : (a << 8) | b;
-        }};
-        for (std::size_t i{2}; i + 1 < bytes->size(); i += 2) {
-            auto code{unit(i)};
-            if (code >= 0xd800 && code <= 0xdbff && i + 3 < bytes->size()) {
-                auto const low{unit(i + 2)};
-                if (low >= 0xdc00 && low <= 0xdfff) {
-                    code = 0x10000 + ((code - 0xd800) << 10) + low - 0xdc00;
-                    i += 2;
-                }
-            }
-            if (code >= 0xd800 && code <= 0xdfff) {
-                code = 0xfffd;
-            }
-            if (code < 0x80) {
-                utf8.push_back(static_cast<char>(code));
-            } else {
-                if (code >= 0x10000) {
-                    utf8.push_back(static_cast<char>(0xf0 | (code >> 18)));
-                    utf8.push_back(static_cast<char>(0x80 | ((code >> 12) & 0x3f)));
-                } else if (code >= 0x800) {
-                    utf8.push_back(static_cast<char>(0xe0 | (code >> 12)));
-                } else {
-                    utf8.push_back(static_cast<char>(0xc0 | (code >> 6)));
-                }
-                if (code >= 0x800) {
-                    utf8.push_back(static_cast<char>(0x80 | ((code >> 6) & 0x3f)));
-                }
-                utf8.push_back(static_cast<char>(0x80 | (code & 0x3f)));
-            }
-        }
-        return utf8;
     }
     return std::move(*bytes);
 }
 
-auto observe(std::filesystem::path const& path, std::string* const output = nullptr)
-    -> std::expected<SourceDiskState, std::string> {
+auto observe(std::filesystem::path const& path) -> std::expected<SourceDiskState, std::string> {
     std::error_code error;
     auto const exists{!path.empty() && std::filesystem::exists(path, error)};
     if (error) {
@@ -79,59 +42,8 @@ auto observe(std::filesystem::path const& path, std::string* const output = null
     if (!source) {
         return std::unexpected{std::move(source.error())};
     }
-    auto result{SourceDiskState{true, SourceSession::source_digest(*source)}};
-    if (output) {
-        *output = std::move(*source);
-    }
-    return result;
+    return SourceDiskState{true, std::move(*source)};
 }
-}
-
-auto SourceSession::source_digest(std::string_view const source) -> std::string {
-    // Preserve the SHA-1 digests stored in existing Unreal authoring documents.
-    std::array<std::uint32_t, 5> hash{0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0};
-    auto const padded_size{((source.size() + 9 + 63) / 64) * 64};
-    auto const bit_count{static_cast<std::uint64_t>(source.size()) * 8};
-    for (std::size_t offset{}; offset < padded_size; offset += 64) {
-        std::array<std::uint32_t, 80> words{};
-        for (std::size_t i{}; i < 64; ++i) {
-            auto const index{offset + i};
-            auto const byte{
-                index < source.size()    ? static_cast<std::uint8_t>(source[index])
-                : index == source.size() ? std::uint8_t{0x80}
-                : index >= padded_size - 8
-                    ? static_cast<std::uint8_t>(bit_count >> ((padded_size - 1 - index) * 8))
-                    : std::uint8_t{0}};
-            words[i / 4] |= static_cast<std::uint32_t>(byte) << ((3 - i % 4) * 8);
-        }
-        for (std::size_t i{16}; i < words.size(); ++i) {
-            words[i] = std::rotl(words[i - 3] ^ words[i - 8] ^ words[i - 14] ^ words[i - 16], 1);
-        }
-        auto a{hash[0]}, b{hash[1]}, c{hash[2]}, d{hash[3]}, e{hash[4]};
-        for (std::size_t i{}; i < words.size(); ++i) {
-            auto const f{i < 20   ? (b & c) | (~b & d)
-                         : i < 40 ? b ^ c ^ d
-                         : i < 60 ? (b & c) | (b & d) | (c & d)
-                                  : b ^ c ^ d};
-            auto const k{i < 20   ? 0x5a827999u
-                         : i < 40 ? 0x6ed9eba1u
-                         : i < 60 ? 0x8f1bbcdcu
-                                  : 0xca62c1d6u};
-            auto const next{std::rotl(a, 5) + f + e + k + words[i]};
-            e = d;
-            d = c;
-            c = std::rotl(b, 30);
-            b = a;
-            a = next;
-        }
-        hash[0] += a;
-        hash[1] += b;
-        hash[2] += c;
-        hash[3] += d;
-        hash[4] += e;
-    }
-    return std::format(
-        "{:08X}{:08X}{:08X}{:08X}{:08X}", hash[0], hash[1], hash[2], hash[3], hash[4]);
 }
 
 auto SourceSession::attach(std::filesystem::path const& path) -> std::expected<void, std::string> {
@@ -183,29 +95,27 @@ void SourceSession::detach() {
 }
 
 void SourceSession::set_buffer(std::string source) {
-    if (source == buffer_) {
+    if (source == state_.buffer_text) {
         return;
     }
-    buffer_ = std::move(source);
-    state_.edited(source_digest(buffer_), buffer_.empty());
+    state_.edited(std::move(source));
 }
 
 auto SourceSession::load_attached(std::filesystem::path const& path)
     -> std::expected<void, std::string> {
     auto normalized{source_session_detail::normalize(path)};
-    std::string source;
-    auto disk{source_session_detail::observe(normalized, &source)};
+    auto disk{source_session_detail::observe(normalized)};
     if (!disk) {
         return std::unexpected{std::move(disk.error())};
     }
-    auto const changed{path_ != normalized || buffer_ != source};
+    auto const changed{path_ != normalized || state_.buffer_text != disk->source};
     if (!attached_) {
         state_.document_changed();
     }
     attached_ = true;
     path_ = std::move(normalized);
-    buffer_ = std::move(source);
-    state_.loaded(std::move(*disk), source_digest(buffer_), buffer_.empty(), changed);
+    auto source{disk->source};
+    state_.loaded(std::move(*disk), std::move(source), changed);
     return {};
 }
 
@@ -226,24 +136,24 @@ auto SourceSession::save() -> std::expected<void, std::string> {
     if (!attached_) {
         return std::unexpected{"Use Save Buffer As to recover the detached source buffer."};
     }
-    return write(buffer_, path_, SourceOverwritePolicy::ReplaceExisting, false);
+    return write(state_.buffer_text, path_, SourceOverwritePolicy::ReplaceExisting, false);
 }
 auto SourceSession::save_as(std::filesystem::path const& path,
                             SourceOverwritePolicy const overwrite)
     -> std::expected<void, std::string> {
-    return write(buffer_, path, overwrite, false);
+    return write(state_.buffer_text, path, overwrite, false);
 }
-auto SourceSession::save_replacement(std::string source, std::string_view const synchronized_digest)
+auto SourceSession::save_replacement(std::string source, std::string_view const synchronized_source)
     -> std::expected<void, std::string> {
     return save_replacement_as(
-        std::move(source), path_, synchronized_digest, SourceOverwritePolicy::ReplaceExisting);
+        std::move(source), path_, synchronized_source, SourceOverwritePolicy::ReplaceExisting);
 }
 auto SourceSession::save_replacement_as(std::string source,
                                         std::filesystem::path const& path,
-                                        std::string_view const synchronized_digest,
+                                        std::string_view const synchronized_source,
                                         SourceOverwritePolicy const overwrite)
     -> std::expected<void, std::string> {
-    if (state_.unapplied(synchronized_digest)) {
+    if (state_.unapplied(synchronized_source)) {
         return std::unexpected{"The source buffer has unapplied edits; apply or discard them "
                                "before saving canonical scene state."};
     }
@@ -293,16 +203,16 @@ auto SourceSession::write(std::string const& source,
         return std::unexpected{
             std::format("Could not write source file '{}'.", path_to_utf8(normalized))};
     }
-    auto const changed{path_ != normalized || (replace_buffer && buffer_ != source)};
+    auto const changed{path_ != normalized || (replace_buffer && state_.buffer_text != source)};
     path_ = std::move(normalized);
     if (replace_buffer) {
         set_buffer(source);
     }
-    state_.saved(state_.buffer_digest, changed);
+    state_.saved(changed);
     return {};
 }
-auto SourceSessionState::unapplied(std::string_view const synchronized_digest) const -> bool {
-    return dirty() || (!buffer_empty && buffer_digest != synchronized_digest);
+auto SourceSessionState::unapplied(std::string_view const synchronized_source) const -> bool {
+    return dirty() || (!buffer_text.empty() && buffer_text != synchronized_source);
 }
 void SourceSessionState::document_changed() {
     recovery_required = recovery_required || dirty();
@@ -311,13 +221,11 @@ void SourceSessionState::document_changed() {
     preview = PreviewState::None;
 }
 void SourceSessionState::loaded(SourceDiskState disk,
-                                std::string digest,
-                                bool const empty,
+                                std::string source,
                                 bool const source_changed) {
     disk_baseline = std::move(disk);
-    buffer_digest = std::move(digest);
-    saved_buffer_digest = buffer_digest;
-    buffer_empty = empty;
+    buffer_text = std::move(source);
+    saved_buffer_text = buffer_text;
     disk_conflict = false;
     recovery_required = false;
     if (source_changed) {
@@ -325,18 +233,17 @@ void SourceSessionState::loaded(SourceDiskState disk,
         invalidate_preview();
     }
 }
-void SourceSessionState::edited(std::string digest, bool const empty) {
-    if (buffer_digest == digest) {
+void SourceSessionState::edited(std::string source) {
+    if (buffer_text == source) {
         return;
     }
-    buffer_digest = std::move(digest);
-    buffer_empty = empty;
+    buffer_text = std::move(source);
     ++revision;
     invalidate_preview();
 }
-void SourceSessionState::saved(std::string digest, bool const source_changed) {
-    disk_baseline = {.exists = true, .digest = digest};
-    saved_buffer_digest = std::move(digest);
+void SourceSessionState::saved(bool const source_changed) {
+    disk_baseline = {.exists = true, .source = buffer_text};
+    saved_buffer_text = buffer_text;
     disk_conflict = false;
     if (source_changed) {
         ++revision;

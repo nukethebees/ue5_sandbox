@@ -28,7 +28,7 @@ struct SANDBOXEDITOR_API FS7LevelAuthoringPreview {
     TWeakObjectPtr<ULevel> level{};
     TWeakObjectPtr<AS7LevelAuthoringDocument> document{};
     TWeakObjectPtr<USpaceGameLevelConfig> level_config{};
-    FString level_config_digest{};
+    FString level_config_snapshot{};
     TArray<TWeakObjectPtr<AActor>> actor_identities{};
     levels::authoring::SceneSnapshot scene{};
 };

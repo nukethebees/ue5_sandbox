@@ -80,18 +80,18 @@ auto FS7LevelSourceSession::save_as(FStringView const source_path,
     }
     return result(session_.save_as(s7_source_session_detail::path(source_path), overwrite));
 }
-auto FS7LevelSourceSession::save_replacement(FString source, FStringView const synchronized_digest)
+auto FS7LevelSourceSession::save_replacement(FString source, FStringView const synchronized_source)
     -> std::expected<void, FString> {
-    return result(session_.save_replacement(text(source), text(synchronized_digest)));
+    return result(session_.save_replacement(text(source), text(synchronized_source)));
 }
 auto FS7LevelSourceSession::save_replacement_as(FString source,
                                                 FStringView const source_path,
-                                                FStringView const synchronized_digest,
+                                                FStringView const synchronized_source,
                                                 ES7SourceOverwritePolicy const overwrite)
     -> std::expected<void, FString> {
     return result(session_.save_replacement_as(text(source),
                                                s7_source_session_detail::path(source_path),
-                                               text(synchronized_digest),
+                                               text(synchronized_source),
                                                overwrite));
 }
 auto FS7LevelSourceSession::refresh_external_conflict() -> std::expected<void, FString> {
@@ -121,12 +121,9 @@ auto FS7LevelSourceSession::is_dirty() const -> bool {
 auto FS7LevelSourceSession::has_external_conflict() const -> bool {
     return session_.state().disk_conflict;
 }
-auto FS7LevelSourceSession::has_unapplied_buffer(FStringView const synchronized_digest) const
+auto FS7LevelSourceSession::has_unapplied_buffer(FStringView const synchronized_source) const
     -> bool {
-    return session_.state().unapplied(text(synchronized_digest));
-}
-auto FS7LevelSourceSession::source_digest(FStringView const source) -> FString {
-    return ioj::to_fstring(levels::authoring::SourceSession::source_digest(text(source)));
+    return session_.state().unapplied(text(synchronized_source));
 }
 
 auto FS7LevelSourceSession::read() const

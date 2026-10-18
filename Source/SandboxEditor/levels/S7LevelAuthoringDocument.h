@@ -103,10 +103,10 @@ class SANDBOXEDITOR_API AS7LevelAuthoringDocument final : public AInfo {
     FString source_path{};
 
     UPROPERTY(VisibleAnywhere, Category = "Document")
-    FString synchronized_source_hash{};
+    FString synchronized_source{};
 
     UPROPERTY(VisibleAnywhere, Category = "Document")
-    FString synchronized_scene_hash{};
+    FString synchronized_scene_source{};
 
     UPROPERTY(EditAnywhere, Category = "Level")
     FName level_id{NAME_None};

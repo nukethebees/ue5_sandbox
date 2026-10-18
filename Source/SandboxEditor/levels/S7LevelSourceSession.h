@@ -26,11 +26,11 @@ class SANDBOXEDITOR_API FS7LevelSourceSession final {
     [[nodiscard]] auto save() -> std::expected<void, FString>;
     [[nodiscard]] auto save_as(FStringView path, ES7SourceOverwritePolicy overwrite)
         -> std::expected<void, FString>;
-    [[nodiscard]] auto save_replacement(FString source, FStringView synchronized_source_digest)
+    [[nodiscard]] auto save_replacement(FString source, FStringView synchronized_source)
         -> std::expected<void, FString>;
     [[nodiscard]] auto save_replacement_as(FString source,
                                            FStringView path,
-                                           FStringView synchronized_source_digest,
+                                           FStringView synchronized_source,
                                            ES7SourceOverwritePolicy overwrite)
         -> std::expected<void, FString>;
 
@@ -44,12 +44,10 @@ class SANDBOXEDITOR_API FS7LevelSourceSession final {
     [[nodiscard]] auto is_attached() const -> bool;
     [[nodiscard]] auto is_dirty() const -> bool;
     [[nodiscard]] auto has_external_conflict() const -> bool;
-    [[nodiscard]] auto has_unapplied_buffer(FStringView synchronized_source_digest) const -> bool;
+    [[nodiscard]] auto has_unapplied_buffer(FStringView synchronized_source) const -> bool;
     void detach();
     auto state() -> levels::authoring::SourceSessionState& { return session_.state(); }
     auto state() const -> levels::authoring::SourceSessionState const& { return session_.state(); }
-
-    [[nodiscard]] static auto source_digest(FStringView source) -> FString;
   private:
     TWeakObjectPtr<AS7LevelAuthoringDocument> document_{};
     levels::authoring::SourceSession session_{};

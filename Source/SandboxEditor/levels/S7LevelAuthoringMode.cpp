@@ -173,20 +173,19 @@ void US7LevelAuthoringMode::Tick(FEditorViewportClient* const viewport_client,
     if (!scene || !observed_scene_.IsSet() || *scene != *observed_scene_ ||
         observed_actor_count_ != level->Actors.Num()) {
         auto const definition{collect_s7_editor_level(*level, *document_)};
-        observed_scene_digest_.Empty();
+        observed_scene_source_.Empty();
         if (definition) {
             auto const source{levels::authoring::emit_editor_level_source(*definition)};
             if (source) {
-                observed_scene_digest_ =
-                    FS7LevelSourceSession::source_digest(ioj::to_fstring(*source));
+                observed_scene_source_ = ioj::to_fstring(*source);
             }
         }
         observed_scene_ = scene ? TOptional{*scene} : NullOpt;
         observed_actor_count_ = level->Actors.Num();
     }
-    state.scene_dirty = observed_scene_digest_.IsEmpty() ||
-                        (!document_->synchronized_scene_hash.IsEmpty() &&
-                         document_->synchronized_scene_hash != observed_scene_digest_);
+    state.scene_dirty = observed_scene_source_.IsEmpty() ||
+                        (!document_->synchronized_scene_source.IsEmpty() &&
+                         document_->synchronized_scene_source != observed_scene_source_);
     if (preview_.IsSet() && state.preview == PreviewState::Valid) {
         auto const current{
             validate_s7_level_authoring_preview(*level, *document_, source_session_, *preview_)};
@@ -351,16 +350,16 @@ auto US7LevelAuthoringMode::script_editor_state() const -> FS7LevelScriptEditorS
     auto const has_document{document_.IsValid()};
     auto const attached{source_session_.is_attached() &&
                         source_session_.document() == document_.Get()};
-    return {.path = source_session_.path(),
-            .source_dirty = source_session_.is_dirty(),
-            .unapplied_buffer = has_document && source_session_.has_unapplied_buffer(
-                                                    document_->synchronized_source_hash),
-            .scene_dirty = source_session_.state().scene_dirty,
-            .disk_conflict = source_session_.has_external_conflict(),
-            .preview_valid =
-                preview_.IsSet() && source_session_.state().preview == PreviewState::Valid,
-            .preview_stale = source_session_.state().preview == PreviewState::Stale,
-            .detached = !attached};
+    return {
+        .path = source_session_.path(),
+        .source_dirty = source_session_.is_dirty(),
+        .unapplied_buffer =
+            has_document && source_session_.has_unapplied_buffer(document_->synchronized_source),
+        .scene_dirty = source_session_.state().scene_dirty,
+        .disk_conflict = source_session_.has_external_conflict(),
+        .preview_valid = preview_.IsSet() && source_session_.state().preview == PreviewState::Valid,
+        .preview_stale = source_session_.state().preview == PreviewState::Stale,
+        .detached = !attached};
 }
 
 auto US7LevelAuthoringMode::status() const -> FText const& {
@@ -927,7 +926,7 @@ void US7LevelAuthoringMode::save_canonical_from_scene() {
     if (!IsValid(level) || !document_.IsValid() || source_session_.document() != document_.Get()) {
         return;
     }
-    if (source_session_.has_unapplied_buffer(document_->synchronized_source_hash)) {
+    if (source_session_.has_unapplied_buffer(document_->synchronized_source)) {
         set_status(LOCTEXT("UnappliedSource",
                            "Apply or discard the source buffer before saving canonical scene "
                            "state."));
@@ -963,9 +962,9 @@ void US7LevelAuthoringMode::save_canonical_from_scene() {
             overwrite = ES7SourceOverwritePolicy::ReplaceExisting;
         }
         saved = source_session_.save_replacement_as(
-            source, selected.GetValue(), document_->synchronized_source_hash, overwrite);
+            source, selected.GetValue(), document_->synchronized_source, overwrite);
     } else {
-        saved = source_session_.save_replacement(source, document_->synchronized_source_hash);
+        saved = source_session_.save_replacement(source, document_->synchronized_source);
     }
     if (!saved) {
         set_status(FText::FromString(saved.error()));
@@ -974,9 +973,8 @@ void US7LevelAuthoringMode::save_canonical_from_scene() {
     }
     document_->Modify();
     update_document_source_path();
-    auto const digest{FS7LevelSourceSession::source_digest(source)};
-    document_->synchronized_source_hash = digest;
-    document_->synchronized_scene_hash = digest;
+    document_->synchronized_source = source;
+    document_->synchronized_scene_source = source;
     set_status(FText::FromString(
         FString::Printf(TEXT("Saved canonical scene state with %d entities to %s."),
                         static_cast<int32>(definition->components().entities.size()),
