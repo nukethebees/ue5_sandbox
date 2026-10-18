@@ -21,7 +21,14 @@ auto FGlobalPlayerInput::initialise(ASpaceGamePlayerController& owner,
         !IsValid(input.toggle_menu)) {
         UE_LOG(LogSandboxController,
                Error,
-               TEXT("FGlobalPlayerInput::initialise: Input dependencies are invalid."));
+               TEXT("FGlobalPlayerInput::initialise: Input dependencies are invalid. "
+                    "Subsystem=%s, mapping_context=%s, toggle_menu=%s. "
+                    "Assign Global Input Mapping Context and Toggle Menu on the SpaceGame "
+                    "player controller, and initialise input after the local player's Enhanced "
+                    "Input subsystem is available."),
+               *GetNameSafe(subsystem_object),
+               *GetNameSafe(input.mapping_context),
+               *GetNameSafe(input.toggle_menu));
         return false;
     }
     component_ = &component;
