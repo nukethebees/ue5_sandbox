@@ -14,7 +14,18 @@
 	"IsBetaVersion": false,
 	"IsExperimentalVersion": false,
 	"Installed": false,
+	"Plugins": [
+		{
+			"Name": "PlatformCrypto",
+			"Enabled": true
+		}
+	],
 	"Modules": [
+		{
+			"Name": "NativeSettings",
+			"Type": "Runtime",
+			"LoadingPhase": "PostConfigInit"
+		},
 		{
 			"Name": "SandboxCore",
 			"Type": "Runtime",
