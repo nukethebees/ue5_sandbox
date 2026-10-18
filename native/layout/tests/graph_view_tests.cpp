@@ -1,10 +1,7 @@
-#include "analyzer_test_fixtures.hpp"
+#include <ioj/layout/document.hpp>
 #include <ioj/layout/graph_view.hpp>
-#include <ioj/layout/schema_loader.hpp>
 
-#include <codegen/schema/schema_version.h>
-#include <lispb/compiler_storage.h>
-#include <lispb/schema/type_graph.h>
+#include <lispb/strings.h>
 
 #include <gtest/gtest.h>
 
@@ -17,13 +14,13 @@
 #include <vector>
 
 namespace ioj::layout {
-namespace {
+namespace graph_view_tests {
 
 TEST(GraphView, RealProjectModuleProjectionReducesScopeAndKeepsBoundaries) {
-    auto const loaded{load_lispb_schema(
+    auto const document{Document::load(
         std::filesystem::path{IOJ_SOURCE_DIR} / "lispb/project.lispb", "sandbox-code")};
-    ASSERT_TRUE(loaded.loaded);
-    auto const& types{loaded.document->types()};
+    ASSERT_TRUE(document.valid());
+    auto const& types{document.types()};
     auto const project{project_graph(types, {})};
     GraphScope scope{};
     scope.module = "native_world_aabbs";
@@ -39,23 +36,13 @@ TEST(GraphView, RealProjectModuleProjectionReducesScopeAndKeepsBoundaries) {
         EXPECT_LE((positions[index][1] + sizes[index][1]) * fit.zoom + fit.pan[1], 800.0F);
     }
 }
-auto graph_fixture(lispb::CompilerStorage& storage) -> lispb::schema::TypeGraph {
-    std::string source;
-    for (auto const name : {"a", "b", "c"}) {
-        source += "(module " + std::string{name} + " :header \"" + name + ".h\" (record " + name +
-                  "Record";
-        for (auto const field : {"max", "x"}) {
-            source += " (member " + std::string{field} + " " +
-                      (std::string_view{name} == "a" ? "bRecord" : "float") + ')';
-        }
-        source += "))";
-    }
-    return fixture_graph(storage, source);
-}
-
 TEST(GraphView, ModuleScopeKeepsDirectBoundariesWithoutExpandingTheirDependencies) {
-    lispb::CompilerStorage storage;
-    auto const types{graph_fixture(storage)};
+    auto const document{Document::from_source(R"(
+        (module a :header "a.h" (record aRecord (member max bRecord) (member x bRecord)))
+        (module b :header "b.h" (record bRecord (member max float) (member x float)))
+        (module c :header "c.h" (record cRecord (member max float) (member x float))))")};
+    ASSERT_TRUE(document.valid());
+    auto const& types{document.types()};
     GraphScope scope{};
     scope.module = "a";
     auto const graph{project_graph(types, scope)};
@@ -67,7 +54,7 @@ TEST(GraphView, ModuleScopeKeepsDirectBoundariesWithoutExpandingTheirDependencie
     EXPECT_EQ(types.strings().view(types.name(graph.nodes[edge.dependency].type)), "bRecord");
     EXPECT_EQ(edge.labels, (std::vector<std::string>{"max", "x"}));
     EXPECT_EQ(edge.summary, "max, x");
-    scope.members.push_back(types.identity(*fixture_find(types, "c", "cRecord")));
+    scope.members.push_back(types.identity(*document.find_type("c", "cRecord")));
     EXPECT_EQ(project_graph(types, scope).nodes.size(), 4);
     EXPECT_EQ(project_graph(types, {}).nodes.size(), types.types().size());
 }

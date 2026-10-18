@@ -15,6 +15,8 @@ namespace lispb::codegen {
 
 auto load_type_registry(CompilerStorage& storage, std::filesystem::path const& root)
     -> LoadedTypeRegistry;
+// Parse an existing source without reading its root path; includes resolve beside that path.
+auto parse_type_registry(CompilerStorage& storage, sexpr::SourceFileId root) -> LoadedTypeRegistry;
 auto parse_module_source(CompilerStorage& storage, sexpr::SourceFileId file) -> LoadedModuleSource;
 
 auto load_module_source(CompilerStorage& storage, std::filesystem::path const& path)

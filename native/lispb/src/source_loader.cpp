@@ -39,6 +39,12 @@ auto set_module_source_read_hook_for_testing(ModuleSourceReadHook const hook) no
 
 auto load_type_registry(lispb::CompilerStorage& storage, std::filesystem::path const& root)
     -> LoadedTypeRegistry {
+    auto const path{std::filesystem::weakly_canonical(root)};
+    return parse_type_registry(storage, storage.sources.load(path));
+}
+
+auto parse_type_registry(lispb::CompilerStorage& storage, sexpr::SourceFileId const root)
+    -> LoadedTypeRegistry {
     auto& syntax{storage.syntax};
     SchemaParser parser{syntax};
     sexpr::Parser fields_parser{syntax};
@@ -46,8 +52,9 @@ auto load_type_registry(lispb::CompilerStorage& storage, std::filesystem::path c
         .types = TypeRegistry{storage.registered_types}, .sources = {}, .declarations = {}};
     std::map<std::filesystem::path, sexpr::SourceFileId> loaded;
     std::set<std::filesystem::path> active;
-    auto load = [&](auto&& self, std::filesystem::path const& source_path) -> sexpr::SourceFileId {
-        auto const path{std::filesystem::weakly_canonical(source_path)};
+    auto load = [&](auto&& self,
+                    sexpr::SourceFileId const file,
+                    std::filesystem::path const& path) -> sexpr::SourceFileId {
         if (active.contains(path)) {
             storage.diagnostics.fail(syntax.sources(),
                                      {.file = loaded.at(path)},
@@ -57,7 +64,6 @@ auto load_type_registry(lispb::CompilerStorage& storage, std::filesystem::path c
             return found->second;
         }
         active.insert(path);
-        auto const file{syntax.sources().load(path)};
         syntax.sources().set_kind(file, sexpr::SourceFileKind::type_registry);
         loaded.emplace(path, file);
         auto const forms{sexpr::read_forms(syntax, file)};
@@ -73,7 +79,11 @@ auto load_type_registry(lispb::CompilerStorage& storage, std::filesystem::path c
                     path.parent_path() /
                     fields_parser.text(include.positional(0), "include path"))};
                 try {
-                    auto const target_file{self(self, target)};
+                    auto const found{loaded.find(target)};
+                    auto const target_file{
+                        self(self,
+                             found == loaded.end() ? syntax.sources().load(target) : found->second,
+                             target)};
                     include_targets.push_back(target_file);
                     include_spans.push_back(syntax.span(form));
                 } catch (sexpr::SourceError const&) {
@@ -95,7 +105,9 @@ auto load_type_registry(lispb::CompilerStorage& storage, std::filesystem::path c
         active.erase(path);
         return file;
     };
-    load(load, root);
+    load(load,
+         root,
+         std::filesystem::absolute(storage.sources.filesystem_path(root)).lexically_normal());
     return result;
 }
 

@@ -5935,12 +5935,12 @@ TEST(Validation, RejectsUnsupportedProgrammaticSchemaVersions) {
     EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 }
 
-TEST(Validation, RejectsManifestsWithoutModules) {
+TEST(Validation, AllowsManifestsWithoutModules) {
     CompilerTestContext context;
     lispb::codegen::Manifest const manifest{
         manifest_schema_version, make_test_registry(context), context.storage.declarations, {}};
 
-    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
+    EXPECT_NO_THROW(lower_test_manifest(context, manifest));
 }
 
 TEST(Validation, RejectsKeywordsAndReservedIdentifiers) {

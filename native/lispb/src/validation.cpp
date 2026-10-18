@@ -4160,9 +4160,6 @@ class Validator {
         }
         std::set<lispb::IdentifierId> module_names;
         std::set<std::string> output_paths;
-        if (manifest.modules.empty()) {
-            throw std::invalid_argument{"Manifest must contain at least one module"};
-        }
         auto const& cpp_types{manifest.types.cpp_types};
         for (auto const& [name_id, registered] : manifest.types.entries) {
             auto const name{std::string{cpp_types.strings().view(name_id)}};

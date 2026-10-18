@@ -46,7 +46,6 @@ target_sources(lispb-project
     src/project_loader.cpp
     src/project_parser.cpp
     src/rooted_path.cpp
-    src/editable_project_document.cpp
 )
 target_include_directories(lispb-project PUBLIC include)
 target_link_libraries(lispb-project
@@ -108,9 +107,13 @@ target_sources(lispb-schema PRIVATE
   src/union_alternative_schemas.cpp
   src/union_schemas.cpp
   src/vector_soa_schemas.cpp
-  src/editable_document.cpp
-  src/editable_document_state.cpp
-  src/editor_declarations.cpp
+  src/declaration_query.cpp
+  src/document_query.cpp
+  src/field_query.cpp
+  src/member_query.cpp
+  src/packed_value_query.cpp
+  src/soa_query.cpp
+  src/module_query.cpp
   src/manifest.cpp
   src/packed_integer_value.cpp
   src/semantic_relation_kind.cpp
@@ -118,7 +121,9 @@ target_sources(lispb-schema PRIVATE
   src/type_reference_role.cpp
   src/type_registry.cpp
   src/registered_types.cpp
-  src/editable_source_rendering.cpp
+  src/source_renderer.cpp
+  src/canonical_renderer.cpp
+  src/source_comments.cpp
   src/enum_storage_requirement.cpp
   src/enum_code.cpp
   src/enum_domains.cpp
@@ -354,7 +359,6 @@ ioj_enable_warnings(codegen-generated-tests CODEGEN)
 add_executable(codegen-tests
   tests/test_utilities.cpp
   tests/ast_tests.cpp
-  tests/editable_document_tests.cpp
   tests/expr_tests.cpp
   tests/fixed_soa_lowering_tests.cpp
   tests/single_allocation_soa_tests.cpp

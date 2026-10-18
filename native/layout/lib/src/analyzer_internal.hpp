@@ -20,6 +20,7 @@
 #include <lispb/schema/packed_fields.h>
 #include <lispb/schema/packed_types.h>
 #include <lispb/schema/soa_columns.h>
+#include <lispb/strings.h>
 
 #include <algorithm>
 #include <cmath>

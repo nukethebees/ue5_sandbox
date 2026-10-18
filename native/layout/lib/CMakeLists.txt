@@ -1,5 +1,12 @@
 add_library(native-layout)
+set_target_properties(native-layout PROPERTIES UNITY_BUILD OFF)
 target_sources(native-layout PRIVATE
+  src/document.cpp
+  src/document_io.cpp
+  src/document_file_updates.cpp
+  src/document_source_edit.cpp
+  src/document_state.cpp
+  src/transaction.cpp
   src/abi_profile.cpp
   src/profile_probe.cpp
   src/graph_view.cpp
@@ -13,9 +20,8 @@ target_sources(native-layout PRIVATE
   src/frame_pacer.cpp
   src/planner_selection.cpp
   src/planner_session.cpp
-  src/planner_session_analysis.cpp
+  src/variants.cpp
   src/planner_type.cpp
-  src/schema_loader.cpp
   src/workspace.cpp
 )
 target_include_directories(native-layout PUBLIC include)

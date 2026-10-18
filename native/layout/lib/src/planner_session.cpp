@@ -1,19 +1,17 @@
 #include <ioj/layout/planner_session.hpp>
 
-#include <ioj/layout/string_set.hpp>
+#include <ioj/layout/document.hpp>
 
 #include <codegen/schema.h>
-#include <codegen/schema/tagged_union_alternative_schemas.h>
-#include <codegen/schema/tagged_union_schemas.h>
-#include <codegen/schema/union_alternative_schemas.h>
-#include <codegen/schema/union_schemas.h>
-#include <lispb/compiler_storage.h>
-#include <lispb/schema/editable_document.h>
+#include <codegen/schema/soa_backend.h>
 #include <lispb/schema/enum_types.h>
 #include <lispb/schema/external_types.h>
+#include <lispb/schema/fixed_point_types.h>
 #include <lispb/schema/indices.h>
+#include <lispb/schema/integer_scalar_types.h>
 #include <lispb/schema/integer_varint_types.h>
 #include <lispb/schema/linear_quantized_types.h>
+#include <lispb/schema/mini_float_types.h>
 #include <lispb/schema/optional_presence_bit_types.h>
 #include <lispb/schema/optional_sentinel_types.h>
 #include <lispb/schema/packed_types.h>
@@ -29,11 +27,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <expected>
-#include <iterator>
-#include <limits>
 #include <map>
 #include <optional>
 #include <ranges>
+#include <set>
 #include <span>
 #include <string>
 #include <utility>
@@ -44,37 +41,70 @@ using namespace lispb::schema;
 
 namespace {
 
+auto comparison_source(TypeGraph const& types, TypeId const type) -> std::optional<TypeId> {
+    auto const definition{types.definition(type)};
+    auto const& definitions{types.definitions()};
+    std::optional<ResolvedOccurrenceId> source;
+    switch (definition.kind()) {
+        case TypeDefinitionKind::linear_quantized:
+            source =
+                definitions.linear_quantized.source[definitions.linear_quantized.index(definition)];
+            break;
+        case TypeDefinitionKind::integer_varint:
+            source =
+                definitions.integer_varints.source[definitions.integer_varints.index(definition)];
+            break;
+        case TypeDefinitionKind::optional_sentinel:
+            source = definitions.optional_sentinels
+                         .source[definitions.optional_sentinels.index(definition)];
+            break;
+        case TypeDefinitionKind::optional_presence_bit:
+            source = definitions.optional_presence_bits
+                         .source[definitions.optional_presence_bits.index(definition)];
+            break;
+        default:
+            return std::nullopt;
+    }
+    return types.occurrences().type[types.occurrences().index(*source)];
+}
+
+auto comparison_kind(TypeDefinitionKind const kind) -> TypeDefinitionKind {
+    return kind == TypeDefinitionKind::optional_presence_bit ? TypeDefinitionKind::optional_sentinel
+                                                             : kind;
+}
+
+void choose_comparison(TypeGraph const& types,
+                       TypeId const selected,
+                       std::optional<TypeIdentity>& comparison) {
+    auto const source{comparison_source(types, selected)};
+    auto const kind{comparison_kind(types.definition(selected).kind())};
+    auto const compatible{[&](TypeId const candidate) {
+        return candidate != selected &&
+               comparison_kind(types.definition(candidate).kind()) == kind &&
+               comparison_source(types, candidate) == source;
+    }};
+    if (comparison) {
+        auto const candidate{types.find(*comparison)};
+        if (candidate && compatible(*candidate)) {
+            return;
+        }
+    }
+    comparison.reset();
+    auto const count{types.types().size()};
+    for (std::uint32_t row{}; row < count; ++row) {
+        auto const candidate{TypeId{row}};
+        if (compatible(candidate)) {
+            comparison = types.identity(candidate);
+            return;
+        }
+    }
+}
+
 auto same_profile(AbiProfile const& first, AbiProfile const& second) -> bool {
     return first.name() == second.name() && first.identity() == second.identity() &&
            first.types() == second.types() && first.representations() == second.representations() &&
            first.memory_facts() == second.memory_facts() &&
            first.object_pointer_representation() == second.object_pointer_representation();
-}
-
-auto reconcile_weight_keys(std::map<std::string, std::uint64_t>& weights,
-                           std::span<std::string const> previous_keys,
-                           std::vector<std::string> const& current_keys) -> bool {
-    StringSet previous{previous_keys.begin(), previous_keys.end()};
-    StringSet current{current_keys.begin(), current_keys.end()};
-    std::vector<std::string> removed;
-    std::vector<std::string> added;
-    std::ranges::set_difference(previous, current, std::back_inserter(removed));
-    std::ranges::set_difference(current, previous, std::back_inserter(added));
-
-    auto changed{false};
-    if (removed.size() == 1 && added.size() == 1) {
-        auto const previous_weight{weights.find(removed.front())};
-        if (previous_weight != weights.end()) {
-            auto const weight{previous_weight->second};
-            weights.erase(previous_weight);
-            weights.insert_or_assign(added.front(), weight);
-            changed = true;
-        }
-    }
-
-    auto const previous_size{weights.size()};
-    std::erase_if(weights, [&](auto const& entry) { return !current.contains(entry.first); });
-    return changed || weights.size() != previous_size;
 }
 
 auto set_distribution_weight(PlannerAnalysisSession::DistributionTable& distributions,
@@ -108,7 +138,15 @@ auto set_distribution_weight(PlannerAnalysisSession::DistributionTable& distribu
 } // namespace
 
 PlannerAnalysisSession::PlannerAnalysisSession(TypeGraph const& types) {
-    inputs.workspace = LayoutWorkspace{types};
+    inputs_.workspace = LayoutWorkspace{types};
+}
+
+auto PlannerAnalysisSession::inputs() const -> PlannerAnalysisInputs const& {
+    return inputs_;
+}
+auto PlannerAnalysisSession::edit_inputs() -> PlannerAnalysisInputs& {
+    ++inputs_revision_;
+    return inputs_;
 }
 
 auto PlannerAnalysisSession::primary_abi() const -> AbiProfile const& {
@@ -118,7 +156,7 @@ auto PlannerAnalysisSession::primary_abi() const -> AbiProfile const& {
 auto PlannerAnalysisSession::set_external_type_facts(TypeId const type, TypeFacts facts)
     -> std::expected<bool, std::string> {
     auto const& node{type};
-    if (!((inputs.workspace.types().definition(node)).kind() ==
+    if (!((inputs_.workspace.types().definition(node)).kind() ==
           lispb::schema::TypeDefinitionKind::external)) {
         return std::unexpected{"Manual facts can only be supplied for external types."};
     }
@@ -130,9 +168,10 @@ auto PlannerAnalysisSession::set_external_type_facts(TypeId const type, TypeFact
         facts.provenance = "Entered in Memory Layout Planner";
     }
     auto profile{primary_abi_};
-    profile.set(lispb::codegen::native_spelling(std::string{inputs.workspace.types().strings().view(
-                    inputs.workspace.types().cpp_spelling(node))}),
-                facts);
+    profile.set(
+        lispb::codegen::native_spelling(std::string{inputs_.workspace.types().strings().view(
+            inputs_.workspace.types().cpp_spelling(node))}),
+        facts);
     return set_primary_abi(std::move(profile));
 }
 
@@ -145,7 +184,7 @@ auto PlannerAnalysisSession::set_primary_abi(AbiProfile abi) -> bool {
         return false;
     }
     primary_abi_ = std::move(abi);
-    ++target_profile_revision_;
+    ++inputs_revision_;
     return true;
 }
 
@@ -154,7 +193,7 @@ auto PlannerAnalysisSession::set_comparison_abi(AbiProfile abi) -> bool {
         return false;
     }
     comparison_abi_ = std::move(abi);
-    ++comparison_target_profile_revision_;
+    ++inputs_revision_;
     return true;
 }
 
@@ -184,7 +223,7 @@ auto PlannerAnalysisSession::set_union_distribution_weight(DeclarationId const d
     if (!set_distribution_weight(union_distributions_, declaration, std::move(name), weight)) {
         return false;
     }
-    ++union_distribution_revision_;
+    ++inputs_revision_;
     return true;
 }
 
@@ -196,7 +235,7 @@ auto PlannerAnalysisSession::set_tagged_union_distribution_weight(DeclarationId 
             tagged_union_distributions_, declaration, std::move(name), weight)) {
         return false;
     }
-    ++tagged_distribution_revision_;
+    ++inputs_revision_;
     return true;
 }
 
@@ -204,7 +243,7 @@ auto PlannerAnalysisSession::clear_union_distribution(DeclarationId const declar
     if (union_distributions_.erase(declaration) == 0) {
         return false;
     }
-    ++union_distribution_revision_;
+    ++inputs_revision_;
     return true;
 }
 
@@ -213,18 +252,18 @@ auto PlannerAnalysisSession::clear_tagged_union_distribution(DeclarationId const
     if (tagged_union_distributions_.erase(declaration) == 0) {
         return false;
     }
-    ++tagged_distribution_revision_;
+    ++inputs_revision_;
     return true;
 }
 
 void PlannerAnalysisSession::clear_distributions() {
     if (!union_distributions_.empty()) {
         union_distributions_.clear();
-        ++union_distribution_revision_;
+        ++inputs_revision_;
     }
     if (!tagged_union_distributions_.empty()) {
         tagged_union_distributions_.clear();
-        ++tagged_distribution_revision_;
+        ++inputs_revision_;
     }
     set_varint_distribution(std::nullopt, {}, false);
 }
@@ -244,88 +283,17 @@ auto PlannerAnalysisSession::set_varint_distribution(
     varint_distribution_source_ = std::move(source);
     varint_distribution_entries_ = std::move(entries);
     varint_distribution_rows_present_ = rows_present;
-    ++varint_distribution_revision_;
+    ++inputs_revision_;
     return true;
 }
 
-void PlannerAnalysisSession::replace_types(EditableSchemaDocument const& document,
+void PlannerAnalysisSession::replace_types(Document const& document,
                                            std::optional<TypeIdentity> selection) {
-    auto raw_weights_changed{false};
-    for (auto entry = union_distributions_.begin(); entry != union_distributions_.end();) {
-        auto const declaration{document.declarations().find(entry->first)};
-        auto const schema{
-            document.declaration_handle(entry->first, lispb::codegen::DeclarationKind::union_type)};
-        if (!declaration.has_value() || !schema) {
-            entry = union_distributions_.erase(entry);
-            raw_weights_changed = true;
-            continue;
-        }
-
-        auto const previous_keys{inputs.workspace.previous_alternative_keys(
-            document.storage().strings,
-            document.declarations().identity[document.declarations().index(*declaration)])};
-        std::vector<std::string> current_keys;
-        current_keys.reserve(
-            document.storage()
-                .declarations.unions
-                .alternatives[document.storage().declarations.unions.index(*schema)]
-                .size());
-        for (auto const alternative : document.storage().declarations.items(
-                 document.storage()
-                     .declarations.unions
-                     .alternatives[document.storage().declarations.unions.index(*schema)])) {
-            current_keys.emplace_back(document.storage().strings.view(
-                document.storage()
-                    .declarations.union_alternatives
-                    .name[document.storage().declarations.union_alternatives.index(alternative)]));
-        }
-        raw_weights_changed |= reconcile_weight_keys(entry->second, previous_keys, current_keys);
-        ++entry;
-    }
-    if (raw_weights_changed) {
-        ++union_distribution_revision_;
-    }
-
-    auto tagged_weights_changed{false};
-    for (auto entry = tagged_union_distributions_.begin();
-         entry != tagged_union_distributions_.end();) {
-        auto const declaration{document.declarations().find(entry->first)};
-        auto const schema{document.declaration_handle(
-            entry->first, lispb::codegen::DeclarationKind::tagged_union)};
-        if (!declaration.has_value() || !schema) {
-            entry = tagged_union_distributions_.erase(entry);
-            tagged_weights_changed = true;
-            continue;
-        }
-
-        auto const previous_keys{inputs.workspace.previous_alternative_keys(
-            document.storage().strings,
-            document.declarations().identity[document.declarations().index(*declaration)])};
-        std::vector<std::string> current_keys;
-        current_keys.reserve(
-            document.storage()
-                .declarations.tagged_unions
-                .alternatives[document.storage().declarations.tagged_unions.index(*schema)]
-                .size());
-        for (auto const alternative : document.storage().declarations.items(
-                 document.storage()
-                     .declarations.tagged_unions
-                     .alternatives[document.storage().declarations.tagged_unions.index(*schema)])) {
-            current_keys.emplace_back(document.storage().strings.view(
-                document.storage()
-                    .declarations.tagged_union_alternatives
-                    .tag[document.storage().declarations.tagged_union_alternatives.index(
-                        alternative)]));
-        }
-        tagged_weights_changed |= reconcile_weight_keys(entry->second, previous_keys, current_keys);
-        ++entry;
-    }
-    if (tagged_weights_changed) {
-        ++tagged_distribution_revision_;
-    }
-
-    inputs.workspace.replace_types(document.types());
-    inputs.selection.reconcile(inputs.workspace.types(), std::move(selection), &document);
+    inputs_.workspace.bind(document);
+    inputs_.selection.reconcile(document.types(), std::move(selection));
+    document_ = &document;
+    document_revision_ = document.revision();
+    ++inputs_revision_;
 }
 
 auto PlannerAnalysisSession::results() const -> PlannerAnalysisResults const& {
@@ -333,328 +301,590 @@ auto PlannerAnalysisSession::results() const -> PlannerAnalysisResults const& {
 }
 
 auto PlannerAnalysisSession::status(TypeId const type) -> LayoutStatus {
-    if (status_revision_ != inputs.workspace.revision() ||
-        status_profile_revision_ != target_profile_revision_ ||
-        status_allocation_strategy_ != inputs.soa_allocation_strategy) {
+    if (status_inputs_revision_ != inputs_revision_) {
         status_cache_.clear();
         status_relationship_targets_ =
-            Analyzer::derive_relationship_target_facts(inputs.workspace.types(),
-                                                       inputs.workspace.active_variant(),
+            Analyzer::derive_relationship_target_facts(inputs_.workspace.types(),
+                                                       inputs_.workspace.active_variant(),
                                                        primary_abi_,
-                                                       inputs.workspace.default_capacity(),
-                                                       inputs.soa_allocation_strategy);
-        status_revision_ = inputs.workspace.revision();
-        status_profile_revision_ = target_profile_revision_;
-        status_allocation_strategy_ = inputs.soa_allocation_strategy;
+                                                       inputs_.workspace.default_capacity(),
+                                                       inputs_.soa_allocation_strategy);
+        status_inputs_revision_ = inputs_revision_;
     }
     auto const found{status_cache_.find(type.value)};
     if (found != status_cache_.end()) {
         return found->second;
     }
-    auto const value{declaration_status(inputs.workspace.types(),
+    auto const value{declaration_status(inputs_.workspace.types(),
                                         type,
-                                        inputs.workspace.active_variant(),
+                                        inputs_.workspace.active_variant(),
                                         primary_abi_,
-                                        inputs.workspace.default_capacity(),
-                                        inputs.workspace.element_count(),
-                                        inputs.soa_allocation_strategy,
+                                        inputs_.workspace.default_capacity(),
+                                        inputs_.workspace.element_count(),
+                                        inputs_.soa_allocation_strategy,
                                         status_relationship_targets_)};
     status_cache_.emplace(type.value, value);
     return value;
 }
 
 void PlannerAnalysisSession::validate_comparison_variants() {
-    if (inputs.workspace.variant(inputs.comparison_a_variant_id) == nullptr) {
-        inputs.comparison_a_variant_id = LayoutWorkspace::baseline_variant_id;
+    if (inputs_.workspace.variant(inputs_.comparison_a_variant_id) == nullptr) {
+        inputs_.comparison_a_variant_id = LayoutWorkspace::baseline_variant_id;
     }
-    if (inputs.comparison_b_follows_active) {
-        inputs.comparison_b_variant_id = inputs.workspace.active_variant_id();
-    } else if (inputs.workspace.variant(inputs.comparison_b_variant_id) == nullptr) {
-        inputs.comparison_b_variant_id = LayoutWorkspace::baseline_variant_id;
+    if (inputs_.comparison_b_follows_active) {
+        inputs_.comparison_b_variant_id = inputs_.workspace.active_variant_id();
+    } else if (inputs_.workspace.variant(inputs_.comparison_b_variant_id) == nullptr) {
+        inputs_.comparison_b_variant_id = LayoutWorkspace::baseline_variant_id;
     }
 }
 
-auto PlannerAnalysisSession::refresh(EditableSchemaDocument const* document) -> bool {
-    validate_comparison_variants();
-
-    if (inputs.selection.type.has_value()) {
-        auto const selected_quantized{
-            ((inputs.workspace.types().definition(*inputs.selection.type)).kind() ==
-                     lispb::schema::TypeDefinitionKind::linear_quantized
-                 ? std::optional{inputs.workspace.types().definition(*inputs.selection.type)}
-                 : std::nullopt)};
-        if (static_cast<bool>(selected_quantized)) {
-            auto valid_comparison_type = [&](TypeId const candidate) {
-                if (candidate == *inputs.selection.type) {
-                    return false;
-                }
-                auto const candidate_quantized{
-                    ((inputs.workspace.types().definition(candidate)).kind() ==
-                             lispb::schema::TypeDefinitionKind::linear_quantized
-                         ? std::optional{inputs.workspace.types().definition(candidate)}
-                         : std::nullopt)};
-                return static_cast<bool>(candidate_quantized) &&
-                       inputs.workspace.types()
-                               .occurrences()
-                               .type[inputs.workspace.types().occurrences().index(
-                                   inputs.workspace.types().definitions().linear_quantized.source
-                                       [inputs.workspace.types()
-                                            .definitions()
-                                            .linear_quantized.index(*candidate_quantized)])] ==
-                           inputs.workspace.types()
-                               .occurrences()
-                               .type[inputs.workspace.types().occurrences().index(
-                                   inputs.workspace.types().definitions().linear_quantized.source
-                                       [inputs.workspace.types()
-                                            .definitions()
-                                            .linear_quantized.index(*selected_quantized)])];
-            };
-
-            std::optional<TypeId> comparison_id;
-            if (inputs.quantized_comparison_type.has_value()) {
-                comparison_id = inputs.workspace.types().find(*inputs.quantized_comparison_type);
-            }
-            if (!comparison_id.has_value() || !valid_comparison_type(*comparison_id)) {
-                inputs.quantized_comparison_type.reset();
-                auto const types{inputs.workspace.types().types()};
-                for (std::size_t index{}; index < types.size(); ++index) {
-                    auto const candidate{TypeId{static_cast<std::uint32_t>(index)}};
-                    if (valid_comparison_type(candidate)) {
-                        inputs.quantized_comparison_type =
-                            inputs.workspace.types().identity(types[index]);
-                        break;
-                    }
-                }
-            }
-        } else {
-            inputs.quantized_comparison_type.reset();
-        }
-    } else {
-        inputs.quantized_comparison_type.reset();
+auto PlannerAnalysisSession::refresh(Document* document) -> bool {
+    if (document && (document_ != document || document_revision_ != document->revision())) {
+        replace_types(*document, std::nullopt);
     }
-
-    if (inputs.selection.type.has_value()) {
-        auto const selected_varint{
-            ((inputs.workspace.types().definition(*inputs.selection.type)).kind() ==
-                     lispb::schema::TypeDefinitionKind::integer_varint
-                 ? std::optional{inputs.workspace.types().definition(*inputs.selection.type)}
-                 : std::nullopt)};
-        if (static_cast<bool>(selected_varint)) {
-            auto valid_comparison_type = [&](TypeId const candidate) {
-                if (candidate == *inputs.selection.type) {
-                    return false;
-                }
-                auto const candidate_varint{
-                    ((inputs.workspace.types().definition(candidate)).kind() ==
-                             lispb::schema::TypeDefinitionKind::integer_varint
-                         ? std::optional{inputs.workspace.types().definition(candidate)}
-                         : std::nullopt)};
-                return static_cast<bool>(candidate_varint) &&
-                       inputs.workspace.types()
-                               .occurrences()
-                               .type[inputs.workspace.types().occurrences().index(
-                                   inputs.workspace.types().definitions().integer_varints.source
-                                       [inputs.workspace.types()
-                                            .definitions()
-                                            .integer_varints.index(*candidate_varint)])] ==
-                           inputs.workspace.types()
-                               .occurrences()
-                               .type[inputs.workspace.types().occurrences().index(
-                                   inputs.workspace.types().definitions().integer_varints.source
-                                       [inputs.workspace.types()
-                                            .definitions()
-                                            .integer_varints.index(*selected_varint)])];
-            };
-
-            std::optional<TypeId> comparison_id;
-            if (inputs.varint_comparison_type.has_value()) {
-                comparison_id = inputs.workspace.types().find(*inputs.varint_comparison_type);
-            }
-            if (!comparison_id.has_value() || !valid_comparison_type(*comparison_id)) {
-                inputs.varint_comparison_type.reset();
-                auto const types{inputs.workspace.types().types()};
-                for (std::size_t index{}; index < types.size(); ++index) {
-                    auto const candidate{TypeId{static_cast<std::uint32_t>(index)}};
-                    if (valid_comparison_type(candidate)) {
-                        inputs.varint_comparison_type =
-                            inputs.workspace.types().identity(types[index]);
-                        break;
-                    }
-                }
-            }
-        } else {
-            inputs.varint_comparison_type.reset();
-        }
-    } else {
-        inputs.varint_comparison_type.reset();
-    }
-
-    auto optional_source = [&](TypeId const type) -> std::optional<TypeId> {
-        auto const& definition{inputs.workspace.types().definition(type)};
-        if (auto const sentinel{
-                ((definition).kind() == lispb::schema::TypeDefinitionKind::optional_sentinel
-                     ? std::optional{definition}
-                     : std::nullopt)}) {
-            return inputs.workspace.types()
-                .occurrences()
-                .type[inputs.workspace.types().occurrences().index(
-                    inputs.workspace.types().definitions().optional_sentinels.source
-                        [inputs.workspace.types().definitions().optional_sentinels.index(
-                            *sentinel)])];
-        }
-        if (auto const presence{
-                ((definition).kind() == lispb::schema::TypeDefinitionKind::optional_presence_bit
-                     ? std::optional{definition}
-                     : std::nullopt)}) {
-            return inputs.workspace.types()
-                .occurrences()
-                .type[inputs.workspace.types().occurrences().index(
-                    inputs.workspace.types().definitions().optional_presence_bits.source
-                        [inputs.workspace.types().definitions().optional_presence_bits.index(
-                            *presence)])];
-        }
-        return std::nullopt;
-    };
-    if (inputs.selection.type.has_value()) {
-        auto const selected_source{optional_source(*inputs.selection.type)};
-        if (selected_source.has_value()) {
-            auto valid_comparison_type = [&](TypeId const candidate) {
-                return candidate != *inputs.selection.type &&
-                       optional_source(candidate) == selected_source;
-            };
-
-            std::optional<TypeId> comparison_id;
-            if (inputs.optional_comparison_type.has_value()) {
-                comparison_id = inputs.workspace.types().find(*inputs.optional_comparison_type);
-            }
-            if (!comparison_id.has_value() || !valid_comparison_type(*comparison_id)) {
-                inputs.optional_comparison_type.reset();
-                auto const types{inputs.workspace.types().types()};
-                for (std::size_t index{}; index < types.size(); ++index) {
-                    auto const candidate{TypeId{static_cast<std::uint32_t>(index)}};
-                    if (valid_comparison_type(candidate)) {
-                        inputs.optional_comparison_type =
-                            inputs.workspace.types().identity(types[index]);
-                        break;
-                    }
-                }
-            }
-        } else {
-            inputs.optional_comparison_type.reset();
-        }
-    } else {
-        inputs.optional_comparison_type.reset();
-    }
-
-    auto const same_declaration{cached_revision_ == inputs.workspace.revision() &&
-                                cached_type_ == inputs.selection.type};
-    auto const same_targets{cached_target_profile_revision_ == target_profile_revision_ &&
-                            cached_comparison_target_profile_revision_ ==
-                                comparison_target_profile_revision_};
-    auto const same_access{
-        cached_access_operation_ == inputs.access_operation &&
-        cached_access_multiplicity_ == inputs.access_multiplicity &&
-        cached_selected_field_ == inputs.selection.field &&
-        cached_packed_access_fields_ == inputs.selection.packed_access_fields &&
-        cached_packed_access_set_explicit_ == inputs.selection.packed_access_set_explicit &&
-        cached_record_access_members_ == inputs.selection.record_access_members &&
-        cached_record_access_set_explicit_ == inputs.selection.record_access_set_explicit &&
-        cached_soa_access_columns_ == inputs.selection.soa_access_columns &&
-        cached_soa_access_set_explicit_ == inputs.selection.soa_access_set_explicit};
-    auto const same_variants{cached_comparison_a_variant_id_ == inputs.comparison_a_variant_id &&
-                             cached_comparison_b_variant_id_ == inputs.comparison_b_variant_id};
-    if (same_declaration && inputs.selection.type.has_value()) {
-        auto const& definition{inputs.workspace.types().definition(*inputs.selection.type)};
-        if (((definition).kind() == lispb::schema::TypeDefinitionKind::enumeration) &&
-            same_targets) {
-            return false;
-        }
-        if (((definition).kind() == lispb::schema::TypeDefinitionKind::record) && same_targets &&
-            same_access) {
-            return false;
-        }
-        if (((definition).kind() == lispb::schema::TypeDefinitionKind::union_type) &&
-            same_targets && cached_union_distribution_revision_ == union_distribution_revision_) {
-            return false;
-        }
-        if (((definition).kind() == lispb::schema::TypeDefinitionKind::tagged_union) &&
-            same_targets && cached_tagged_distribution_revision_ == tagged_distribution_revision_) {
-            return false;
-        }
-        if (((definition).kind() == lispb::schema::TypeDefinitionKind::packed) && same_targets &&
-            same_access && same_variants &&
-            cached_soa_allocation_strategy_ == inputs.soa_allocation_strategy) {
-            return false;
-        }
-        if (((definition).kind() == lispb::schema::TypeDefinitionKind::soa) && same_targets &&
-            same_access && same_variants &&
-            cached_soa_allocation_strategy_ == inputs.soa_allocation_strategy) {
-            return false;
-        }
-    }
-    if (cached_revision_ == inputs.workspace.revision() && cached_type_ == inputs.selection.type &&
-        cached_target_profile_revision_ == target_profile_revision_ &&
-        cached_comparison_target_profile_revision_ == comparison_target_profile_revision_ &&
-        cached_access_operation_ == inputs.access_operation &&
-        cached_access_multiplicity_ == inputs.access_multiplicity &&
-        cached_soa_allocation_strategy_ == inputs.soa_allocation_strategy &&
-        cached_selected_field_ == inputs.selection.field &&
-        cached_packed_access_fields_ == inputs.selection.packed_access_fields &&
-        cached_packed_access_set_explicit_ == inputs.selection.packed_access_set_explicit &&
-        cached_record_access_members_ == inputs.selection.record_access_members &&
-        cached_record_access_set_explicit_ == inputs.selection.record_access_set_explicit &&
-        cached_soa_access_columns_ == inputs.selection.soa_access_columns &&
-        cached_soa_access_set_explicit_ == inputs.selection.soa_access_set_explicit &&
-        cached_comparison_a_variant_id_ == inputs.comparison_a_variant_id &&
-        cached_comparison_b_variant_id_ == inputs.comparison_b_variant_id &&
-        cached_quantized_comparison_type_ == inputs.quantized_comparison_type &&
-        cached_varint_comparison_type_ == inputs.varint_comparison_type &&
-        cached_varint_distribution_revision_ == varint_distribution_revision_ &&
-        cached_optional_comparison_type_ == inputs.optional_comparison_type &&
-        cached_union_distribution_revision_ == union_distribution_revision_ &&
-        cached_tagged_distribution_revision_ == tagged_distribution_revision_) {
+    if (cached_inputs_revision_ == inputs_revision_) {
         return false;
     }
-    auto const reuse_primary{same_declaration &&
-                             cached_target_profile_revision_ == target_profile_revision_ &&
-                             cached_soa_allocation_strategy_ == inputs.soa_allocation_strategy};
-    auto const reuse_comparison_target{reuse_primary &&
-                                       cached_comparison_target_profile_revision_ ==
-                                           comparison_target_profile_revision_};
-    auto const reuse_variant_comparison{reuse_primary && same_variants};
-    auto previous{std::move(results_)};
-    results_ = {};
-    cached_revision_ = inputs.workspace.revision();
-    cached_target_profile_revision_ = target_profile_revision_;
-    cached_comparison_target_profile_revision_ = comparison_target_profile_revision_;
-    cached_access_operation_ = inputs.access_operation;
-    cached_access_multiplicity_ = inputs.access_multiplicity;
-    cached_soa_allocation_strategy_ = inputs.soa_allocation_strategy;
-    cached_type_ = inputs.selection.type;
-    cached_selected_field_ = inputs.selection.field;
-    cached_packed_access_fields_ = inputs.selection.packed_access_fields;
-    cached_packed_access_set_explicit_ = inputs.selection.packed_access_set_explicit;
-    cached_record_access_members_ = inputs.selection.record_access_members;
-    cached_record_access_set_explicit_ = inputs.selection.record_access_set_explicit;
-    cached_soa_access_columns_ = inputs.selection.soa_access_columns;
-    cached_soa_access_set_explicit_ = inputs.selection.soa_access_set_explicit;
-    cached_comparison_a_variant_id_ = inputs.comparison_a_variant_id;
-    cached_comparison_b_variant_id_ = inputs.comparison_b_variant_id;
-    cached_quantized_comparison_type_ = inputs.quantized_comparison_type;
-    cached_varint_comparison_type_ = inputs.varint_comparison_type;
-    cached_varint_distribution_revision_ = varint_distribution_revision_;
-    cached_optional_comparison_type_ = inputs.optional_comparison_type;
-    cached_union_distribution_revision_ = union_distribution_revision_;
-    cached_tagged_distribution_revision_ = tagged_distribution_revision_;
-    if (!inputs.selection.type.has_value()) {
-        return true;
+    validate_comparison_variants();
+
+    auto const& types{inputs_.workspace.types()};
+    auto const selected{inputs_.selection.type};
+    auto const kind{selected ? types.definition(*selected).kind() : TypeDefinitionKind{}};
+    if (selected && kind == TypeDefinitionKind::linear_quantized) {
+        choose_comparison(types, *selected, inputs_.quantized_comparison_type);
+    } else {
+        inputs_.quantized_comparison_type.reset();
     }
-    analyze_selected(document,
-                     std::move(previous),
-                     reuse_primary,
-                     reuse_comparison_target,
-                     reuse_variant_comparison);
+    if (selected && kind == TypeDefinitionKind::integer_varint) {
+        choose_comparison(types, *selected, inputs_.varint_comparison_type);
+    } else {
+        inputs_.varint_comparison_type.reset();
+    }
+    if (selected && (kind == TypeDefinitionKind::optional_sentinel ||
+                     kind == TypeDefinitionKind::optional_presence_bit)) {
+        choose_comparison(types, *selected, inputs_.optional_comparison_type);
+    } else {
+        inputs_.optional_comparison_type.reset();
+    }
+
+    results_ = {};
+    cached_inputs_revision_ = inputs_revision_;
+    if (inputs_.selection.type) {
+        analyze_selected(document);
+    }
+    if (document) {
+        std::set<std::string> errors;
+        auto const collect_diagnostics{[&errors](std::span<Diagnostic const> diagnostics) {
+            for (auto const& diagnostic : diagnostics) {
+                if (diagnostic.severity == DiagnosticSeverity::error) {
+                    errors.insert(diagnostic.message);
+                }
+            }
+        }};
+        auto const collect{[&collect_diagnostics](auto const& result) {
+            if (result) {
+                collect_diagnostics(result->diagnostics);
+            }
+        }};
+        if (results_.external_type) {
+            collect_diagnostics(results_.external_type->physical.diagnostics);
+        }
+        collect(results_.enum_domain);
+        collect(results_.enum_target_comparison);
+        collect(results_.integer_scalar_analysis);
+        collect(results_.linear_quantized_comparison);
+        collect(results_.integer_varint_analysis);
+        collect(results_.integer_varint_comparison);
+        collect(results_.integer_varint_distribution);
+        collect(results_.integer_varint_distribution_comparison);
+        collect(results_.fixed_point_analysis);
+        collect(results_.mini_float_analysis);
+        collect(results_.optional_sentinel_analysis);
+        collect(results_.optional_presence_bit_analysis);
+        collect(results_.optional_encoding_comparison);
+        collect(results_.baseline_packed);
+        collect(results_.active_packed);
+        collect(results_.packed_target_comparison);
+        collect(results_.packed_access_analysis);
+        collect(results_.packed_target_access_comparison);
+        collect(results_.packed_access_comparison);
+        collect(results_.baseline_soa);
+        collect(results_.active_soa);
+        collect(results_.soa_target_comparison);
+        collect(results_.soa_access_analysis);
+        collect(results_.soa_target_access_comparison);
+        collect(results_.record_soa_access_comparison);
+        collect(results_.soa_access_comparison);
+        collect(results_.comparison_a_packed);
+        collect(results_.comparison_b_packed);
+        collect(results_.record_analysis);
+        collect(results_.record_target_comparison);
+        collect(results_.record_access_analysis);
+        collect(results_.record_target_access_comparison);
+        collect(results_.union_analysis);
+        collect(results_.union_target_comparison);
+        collect(results_.union_distribution_analysis);
+        collect(results_.union_target_distribution_comparison);
+        collect(results_.tagged_union_analysis);
+        collect(results_.tagged_union_target_comparison);
+        collect(results_.tagged_union_distribution_analysis);
+        collect(results_.tagged_union_target_distribution_comparison);
+        collect(results_.comparison_a_soa);
+        collect(results_.comparison_b_soa);
+        for (auto const& [id, result] : results_.packed_variants) {
+            collect_diagnostics(result.diagnostics);
+        }
+        for (auto const& [id, result] : results_.soa_variants) {
+            collect_diagnostics(result.diagnostics);
+        }
+        for (auto const& message : errors) {
+            document->record_error(message);
+        }
+    }
     return true;
+}
+
+void PlannerAnalysisSession::analyze_selected(Document const* document) {
+    auto const& definition{inputs_.workspace.types().definition(*inputs_.selection.type)};
+    auto const& baseline{*inputs_.workspace.variant(LayoutWorkspace::baseline_variant_id)};
+    auto const& active{inputs_.workspace.active_variant()};
+    auto const& comparison_a{*inputs_.workspace.variant(inputs_.comparison_a_variant_id)};
+    auto const& comparison_b{*inputs_.workspace.variant(inputs_.comparison_b_variant_id)};
+    auto const element_count{inputs_.workspace.element_count()};
+    auto const relationship_targets_for{[this](Variant const& variant) {
+        return Analyzer::derive_relationship_target_facts(inputs_.workspace.types(),
+                                                          variant,
+                                                          primary_abi_,
+                                                          inputs_.workspace.default_capacity(),
+                                                          inputs_.soa_allocation_strategy);
+    }};
+    auto const relationship_targets_for_profile{
+        [this](Variant const& variant, AbiProfile const& abi) {
+            return Analyzer::derive_relationship_target_facts(inputs_.workspace.types(),
+                                                              variant,
+                                                              abi,
+                                                              inputs_.workspace.default_capacity(),
+                                                              inputs_.soa_allocation_strategy);
+        }};
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::external)) {
+        results_.external_type = analyze_external_type(inputs_.workspace.types(),
+                                                       *inputs_.selection.type,
+                                                       active,
+                                                       primary_abi_,
+                                                       inputs_.workspace.default_capacity(),
+                                                       inputs_.soa_allocation_strategy);
+    } else if (((definition).kind() == lispb::schema::TypeDefinitionKind::enumeration)) {
+        results_.enum_domain = Analyzer::analyze_enum(
+            inputs_.workspace.types(), *inputs_.selection.type, primary_abi_, element_count);
+
+        auto comparison_domain{Analyzer::analyze_enum(
+            inputs_.workspace.types(), *inputs_.selection.type, comparison_abi_, element_count)};
+        results_.enum_target_comparison =
+            Analyzer::compare_enum_targets(*results_.enum_domain, comparison_domain);
+    } else if (((definition).kind() == lispb::schema::TypeDefinitionKind::integer_scalar)) {
+        auto const active_targets{relationship_targets_for(active)};
+        results_.integer_scalar_analysis = Analyzer::analyze_integer_scalar(
+            inputs_.workspace.types(), *inputs_.selection.type, active_targets);
+        auto const comparison_a_targets{relationship_targets_for(comparison_a)};
+        auto const comparison_b_targets{relationship_targets_for(comparison_b)};
+        results_.integer_scalar_capacity_comparison =
+            Analyzer::compare_integer_scalar_capacity(inputs_.workspace.types(),
+                                                      *inputs_.selection.type,
+                                                      comparison_a_targets,
+                                                      comparison_b_targets);
+    } else if (((definition).kind() == lispb::schema::TypeDefinitionKind::linear_quantized)) {
+        results_.linear_quantized_analysis =
+            Analyzer::analyze_linear_quantized(inputs_.workspace.types(), *inputs_.selection.type);
+        if (inputs_.quantized_comparison_type.has_value()) {
+            auto const comparison_type{
+                inputs_.workspace.types().find(*inputs_.quantized_comparison_type)};
+            if (comparison_type.has_value()) {
+                results_.linear_quantized_comparison =
+                    Analyzer::compare_linear_quantized(inputs_.workspace.types(),
+                                                       *inputs_.selection.type,
+                                                       *comparison_type,
+                                                       element_count);
+            }
+        }
+    } else if (((definition).kind() == lispb::schema::TypeDefinitionKind::integer_varint)) {
+        results_.integer_varint_analysis = Analyzer::analyze_integer_varint(
+            inputs_.workspace.types(), *inputs_.selection.type, element_count);
+        if (varint_distribution_source_ ==
+            inputs_.workspace.types().identity(
+                inputs_.workspace.types()
+                    .occurrences()
+                    .type[inputs_.workspace.types().occurrences().index(
+                        inputs_.workspace.types().definitions().integer_varints.source
+                            [inputs_.workspace.types().definitions().integer_varints.index(
+                                definition)])])) {
+            results_.integer_varint_distribution =
+                Analyzer::analyze_integer_varint_distribution(inputs_.workspace.types(),
+                                                              *inputs_.selection.type,
+                                                              varint_distribution_entries_,
+                                                              element_count);
+        }
+        if (inputs_.varint_comparison_type.has_value()) {
+            auto const comparison_type{
+                inputs_.workspace.types().find(*inputs_.varint_comparison_type)};
+            if (comparison_type.has_value()) {
+                results_.integer_varint_comparison =
+                    Analyzer::compare_integer_varint(inputs_.workspace.types(),
+                                                     *inputs_.selection.type,
+                                                     *comparison_type,
+                                                     element_count);
+                if (varint_distribution_rows_present_ &&
+                    results_.integer_varint_distribution.has_value()) {
+                    results_.integer_varint_distribution_comparison =
+                        Analyzer::compare_integer_varint_distribution(inputs_.workspace.types(),
+                                                                      *inputs_.selection.type,
+                                                                      *comparison_type,
+                                                                      varint_distribution_entries_,
+                                                                      element_count);
+                }
+            }
+        }
+    } else if (((definition).kind() == lispb::schema::TypeDefinitionKind::fixed_point)) {
+        results_.fixed_point_analysis = Analyzer::analyze_fixed_point(
+            inputs_.workspace.types(), *inputs_.selection.type, element_count);
+    } else if (((definition).kind() == lispb::schema::TypeDefinitionKind::mini_float)) {
+        results_.mini_float_analysis = Analyzer::analyze_mini_float(
+            inputs_.workspace.types(), *inputs_.selection.type, element_count);
+    } else if (((definition).kind() == lispb::schema::TypeDefinitionKind::optional_sentinel)) {
+        results_.optional_sentinel_analysis = Analyzer::analyze_optional_sentinel(
+            inputs_.workspace.types(), *inputs_.selection.type, element_count);
+        if (inputs_.optional_comparison_type.has_value()) {
+            auto const comparison_type{
+                inputs_.workspace.types().find(*inputs_.optional_comparison_type)};
+            if (comparison_type.has_value()) {
+                results_.optional_encoding_comparison =
+                    Analyzer::compare_optional_encodings(inputs_.workspace.types(),
+                                                         *inputs_.selection.type,
+                                                         *comparison_type,
+                                                         element_count);
+            }
+        }
+    } else if (((definition).kind() == lispb::schema::TypeDefinitionKind::optional_presence_bit)) {
+        results_.optional_presence_bit_analysis = Analyzer::analyze_optional_presence_bit(
+            inputs_.workspace.types(), *inputs_.selection.type, element_count);
+        if (inputs_.optional_comparison_type.has_value()) {
+            auto const comparison_type{
+                inputs_.workspace.types().find(*inputs_.optional_comparison_type)};
+            if (comparison_type.has_value()) {
+                results_.optional_encoding_comparison =
+                    Analyzer::compare_optional_encodings(inputs_.workspace.types(),
+                                                         *inputs_.selection.type,
+                                                         *comparison_type,
+                                                         element_count);
+            }
+        }
+    } else if (((definition).kind() == lispb::schema::TypeDefinitionKind::record)) {
+        results_.record_analysis = Analyzer::analyze_record(
+            inputs_.workspace.types(), *inputs_.selection.type, primary_abi_, element_count);
+
+        auto comparison_record{Analyzer::analyze_record(
+            inputs_.workspace.types(), *inputs_.selection.type, comparison_abi_, element_count)};
+        results_.record_target_comparison =
+            Analyzer::compare_record_targets(*results_.record_analysis, comparison_record);
+        std::vector<AccessIntent> access_members;
+        access_members.reserve(inputs_.selection.record_access_members.size());
+        for (auto const& [name, operation] : inputs_.selection.record_access_members) {
+            access_members.push_back({.name = name, .operation = operation});
+        }
+        if (!inputs_.selection.record_access_set_explicit && !inputs_.selection.field.empty()) {
+            access_members.clear();
+            access_members.push_back(
+                {.name = inputs_.selection.field, .operation = inputs_.access_operation});
+        }
+        if (!access_members.empty()) {
+            results_.record_access_analysis =
+                Analyzer::analyze_record_access(*results_.record_analysis,
+                                                access_members,
+                                                primary_abi_,
+                                                inputs_.access_multiplicity);
+            auto const comparison_access{Analyzer::analyze_record_access(
+                comparison_record, access_members, comparison_abi_, inputs_.access_multiplicity)};
+            results_.record_target_access_comparison = Analyzer::compare_record_access(
+                *results_.record_access_analysis, comparison_access);
+        }
+    } else if (((definition).kind() == lispb::schema::TypeDefinitionKind::union_type)) {
+        results_.union_analysis = Analyzer::analyze_union(
+            inputs_.workspace.types(), *inputs_.selection.type, primary_abi_, element_count);
+
+        auto comparison_target_union{Analyzer::analyze_union(
+            inputs_.workspace.types(), *inputs_.selection.type, comparison_abi_, element_count)};
+        results_.union_target_comparison =
+            Analyzer::compare_union_targets(*results_.union_analysis, comparison_target_union);
+        auto const declaration{document != nullptr
+                                   ? document->find_declaration(inputs_.workspace.types().identity(
+                                         *inputs_.selection.type))
+                                   : std::optional<DeclarationId>{}};
+        auto const found{declaration.has_value() ? union_distributions_.find(*declaration)
+                                                 : union_distributions_.end()};
+        if (found != union_distributions_.end()) {
+            std::vector<UnionDistributionEntry> entries;
+            for (auto const& [alternative_name, weight] : found->second) {
+                if (weight != 0) {
+                    entries.push_back({.alternative_name = alternative_name, .weight = weight});
+                }
+            }
+            if (!entries.empty()) {
+                results_.union_distribution_analysis = Analyzer::analyze_union_distribution(
+                    *results_.union_analysis, entries, element_count);
+                auto const comparison_target_distribution{Analyzer::analyze_union_distribution(
+                    comparison_target_union, entries, element_count)};
+                results_.union_target_distribution_comparison =
+                    Analyzer::compare_union_distributions(*results_.union_distribution_analysis,
+                                                          comparison_target_distribution);
+            }
+        }
+    } else if (((definition).kind() == lispb::schema::TypeDefinitionKind::tagged_union)) {
+        results_.tagged_union_analysis = Analyzer::analyze_tagged_union(
+            inputs_.workspace.types(), *inputs_.selection.type, primary_abi_, element_count);
+
+        auto comparison_target_tagged{Analyzer::analyze_tagged_union(
+            inputs_.workspace.types(), *inputs_.selection.type, comparison_abi_, element_count)};
+        results_.tagged_union_target_comparison = Analyzer::compare_tagged_union_targets(
+            *results_.tagged_union_analysis, comparison_target_tagged);
+        auto const declaration{document != nullptr
+                                   ? document->find_declaration(inputs_.workspace.types().identity(
+                                         *inputs_.selection.type))
+                                   : std::optional<DeclarationId>{}};
+        auto const found{declaration.has_value() ? tagged_union_distributions_.find(*declaration)
+                                                 : tagged_union_distributions_.end()};
+        if (found != tagged_union_distributions_.end()) {
+            std::vector<TaggedUnionDistributionEntry> entries;
+            for (auto const& [tag, weight] : found->second) {
+                if (weight != 0) {
+                    entries.push_back({.tag = tag, .weight = weight});
+                }
+            }
+            if (!entries.empty()) {
+                results_.tagged_union_distribution_analysis =
+                    Analyzer::analyze_tagged_union_distribution(
+                        *results_.tagged_union_analysis, entries, element_count);
+                auto const comparison_target_distribution{
+                    Analyzer::analyze_tagged_union_distribution(
+                        comparison_target_tagged, entries, element_count)};
+                results_.tagged_union_target_distribution_comparison =
+                    Analyzer::compare_tagged_union_distributions(
+                        *results_.tagged_union_distribution_analysis,
+                        comparison_target_distribution);
+            }
+        }
+    } else if (((definition).kind() == lispb::schema::TypeDefinitionKind::packed)) {
+        auto const baseline_targets{relationship_targets_for(baseline)};
+        auto const active_targets{relationship_targets_for(active)};
+        results_.baseline_packed = Analyzer::analyze_packed(inputs_.workspace.types(),
+                                                            *inputs_.selection.type,
+                                                            baseline,
+                                                            primary_abi_,
+                                                            element_count,
+                                                            baseline_targets);
+        results_.active_packed = Analyzer::analyze_packed(inputs_.workspace.types(),
+                                                          *inputs_.selection.type,
+                                                          active,
+                                                          primary_abi_,
+                                                          element_count,
+                                                          active_targets);
+
+        auto comparison_target_packed{
+            Analyzer::analyze_packed(inputs_.workspace.types(),
+                                     *inputs_.selection.type,
+                                     active,
+                                     comparison_abi_,
+                                     element_count,
+                                     relationship_targets_for_profile(active, comparison_abi_))};
+        results_.packed_target_comparison =
+            Analyzer::compare_packed_targets(*results_.active_packed, comparison_target_packed);
+        std::vector<AccessIntent> access_fields;
+        access_fields.reserve(inputs_.selection.packed_access_fields.size());
+        for (auto const& [name, operation] : inputs_.selection.packed_access_fields) {
+            access_fields.push_back({.name = name, .operation = operation});
+        }
+        if (!inputs_.selection.packed_access_set_explicit && !inputs_.selection.field.empty()) {
+            access_fields.clear();
+            auto const selected{std::ranges::find(results_.active_packed->fields,
+                                                  inputs_.selection.field,
+                                                  &PackedFieldAnalysis::name)};
+            if (selected != results_.active_packed->fields.end() && !selected->reserved) {
+                access_fields.push_back(
+                    {.name = inputs_.selection.field, .operation = inputs_.access_operation});
+            }
+        }
+        if (!access_fields.empty()) {
+            results_.packed_access_analysis = Analyzer::analyze_packed_access(
+                *results_.active_packed, access_fields, primary_abi_, inputs_.access_multiplicity);
+            auto const comparison_target_access{
+                Analyzer::analyze_packed_access(comparison_target_packed,
+                                                access_fields,
+                                                comparison_abi_,
+                                                inputs_.access_multiplicity)};
+            results_.packed_target_access_comparison = Analyzer::compare_packed_access(
+                *results_.packed_access_analysis, comparison_target_access);
+        }
+        for (auto const& variant : inputs_.workspace.variants()) {
+            if (variant.id != LayoutWorkspace::baseline_variant_id) {
+                auto const targets{relationship_targets_for(variant)};
+                results_.packed_variants.emplace_back(
+                    variant.id,
+                    Analyzer::analyze_packed(inputs_.workspace.types(),
+                                             *inputs_.selection.type,
+                                             variant,
+                                             primary_abi_,
+                                             element_count,
+                                             targets));
+            }
+        }
+
+        results_.comparison_a_packed =
+            Analyzer::analyze_packed(inputs_.workspace.types(),
+                                     *inputs_.selection.type,
+                                     comparison_a,
+                                     primary_abi_,
+                                     element_count,
+                                     relationship_targets_for(comparison_a));
+        results_.comparison_b_packed =
+            Analyzer::analyze_packed(inputs_.workspace.types(),
+                                     *inputs_.selection.type,
+                                     comparison_b,
+                                     primary_abi_,
+                                     element_count,
+                                     relationship_targets_for(comparison_b));
+
+        if (!access_fields.empty()) {
+            auto const comparison_a_access{
+                Analyzer::analyze_packed_access(*results_.comparison_a_packed,
+                                                access_fields,
+                                                primary_abi_,
+                                                inputs_.access_multiplicity)};
+            auto const comparison_b_access{
+                Analyzer::analyze_packed_access(*results_.comparison_b_packed,
+                                                access_fields,
+                                                primary_abi_,
+                                                inputs_.access_multiplicity)};
+            results_.packed_access_comparison =
+                Analyzer::compare_packed_access(comparison_a_access, comparison_b_access);
+        }
+    } else if (auto const soa{((definition).kind() == lispb::schema::TypeDefinitionKind::soa
+                                   ? std::optional{definition}
+                                   : std::nullopt)};
+               static_cast<bool>(soa) &&
+               inputs_.workspace.types()
+                       .definitions()
+                       .soas.backend[inputs_.workspace.types().definitions().soas.index(*soa)] ==
+                   lispb::codegen::SoaBackend::standard_library) {
+        results_.baseline_soa = Analyzer::analyze_soa(inputs_.workspace.types(),
+                                                      *inputs_.selection.type,
+                                                      baseline,
+                                                      primary_abi_,
+                                                      inputs_.workspace.default_capacity(),
+                                                      inputs_.soa_allocation_strategy);
+        results_.active_soa = Analyzer::analyze_soa(inputs_.workspace.types(),
+                                                    *inputs_.selection.type,
+                                                    active,
+                                                    primary_abi_,
+                                                    inputs_.workspace.default_capacity(),
+                                                    inputs_.soa_allocation_strategy);
+
+        auto comparison_target_soa{Analyzer::analyze_soa(inputs_.workspace.types(),
+                                                         *inputs_.selection.type,
+                                                         active,
+                                                         comparison_abi_,
+                                                         inputs_.workspace.default_capacity(),
+                                                         inputs_.soa_allocation_strategy)};
+        results_.soa_target_comparison =
+            Analyzer::compare_soa_targets(*results_.active_soa, comparison_target_soa);
+        std::vector<AccessIntent> access_columns;
+        access_columns.reserve(inputs_.selection.soa_access_columns.size());
+        for (auto const& [name, operation] : inputs_.selection.soa_access_columns) {
+            access_columns.push_back({.name = name, .operation = operation});
+        }
+        if (!inputs_.selection.soa_access_set_explicit && !inputs_.selection.field.empty()) {
+            access_columns.clear();
+            access_columns.push_back(
+                {.name = inputs_.selection.field, .operation = inputs_.access_operation});
+        }
+        if (!access_columns.empty()) {
+            results_.soa_access_analysis =
+                Analyzer::analyze_soa_access(*results_.active_soa,
+                                             access_columns,
+                                             primary_abi_,
+                                             inputs_.workspace.element_count(),
+                                             inputs_.access_multiplicity);
+            auto const comparison_target_access{
+                Analyzer::analyze_soa_access(comparison_target_soa,
+                                             access_columns,
+                                             comparison_abi_,
+                                             inputs_.workspace.element_count(),
+                                             inputs_.access_multiplicity)};
+            results_.soa_target_access_comparison = Analyzer::compare_soa_access(
+                *results_.soa_access_analysis, comparison_target_access);
+            if (lispb::schema::is_valid(
+                    inputs_.workspace.types().definitions().soas.equivalent_type
+                        [inputs_.workspace.types().definitions().soas.index(*soa)]) &&
+                ((inputs_.workspace.types().definition(
+                      inputs_.workspace.types()
+                          .occurrences()
+                          .type[inputs_.workspace.types().occurrences().index(
+                              inputs_.workspace.types().definitions().soas.equivalent_type
+                                  [inputs_.workspace.types().definitions().soas.index(*soa)])]))
+                     .kind() == lispb::schema::TypeDefinitionKind::record)) {
+                auto const equivalent_record{Analyzer::analyze_record(
+                    inputs_.workspace.types(),
+                    inputs_.workspace.types()
+                        .occurrences()
+                        .type[inputs_.workspace.types().occurrences().index(
+                            inputs_.workspace.types().definitions().soas.equivalent_type
+                                [inputs_.workspace.types().definitions().soas.index(*soa)])],
+                    primary_abi_,
+                    inputs_.workspace.element_count())};
+                auto const record_access{Analyzer::analyze_record_access(
+                    equivalent_record, access_columns, primary_abi_, inputs_.access_multiplicity)};
+                results_.record_soa_access_comparison = Analyzer::compare_record_soa_access(
+                    record_access, *results_.soa_access_analysis);
+            }
+        }
+        for (auto const& variant : inputs_.workspace.variants()) {
+            if (variant.id != LayoutWorkspace::baseline_variant_id) {
+                results_.soa_variants.emplace_back(
+                    variant.id,
+                    Analyzer::analyze_soa(inputs_.workspace.types(),
+                                          *inputs_.selection.type,
+                                          variant,
+                                          primary_abi_,
+                                          inputs_.workspace.default_capacity(),
+                                          inputs_.soa_allocation_strategy));
+            }
+        }
+
+        results_.comparison_a_soa = Analyzer::analyze_soa(inputs_.workspace.types(),
+                                                          *inputs_.selection.type,
+                                                          comparison_a,
+                                                          primary_abi_,
+                                                          inputs_.workspace.default_capacity(),
+                                                          inputs_.soa_allocation_strategy);
+        results_.comparison_b_soa = Analyzer::analyze_soa(inputs_.workspace.types(),
+                                                          *inputs_.selection.type,
+                                                          comparison_b,
+                                                          primary_abi_,
+                                                          inputs_.workspace.default_capacity(),
+                                                          inputs_.soa_allocation_strategy);
+
+        if (!access_columns.empty()) {
+            auto const first_access{Analyzer::analyze_soa_access(*results_.comparison_a_soa,
+                                                                 access_columns,
+                                                                 primary_abi_,
+                                                                 inputs_.workspace.element_count(),
+                                                                 inputs_.access_multiplicity)};
+            auto const second_access{Analyzer::analyze_soa_access(*results_.comparison_b_soa,
+                                                                  access_columns,
+                                                                  primary_abi_,
+                                                                  inputs_.workspace.element_count(),
+                                                                  inputs_.access_multiplicity)};
+            results_.soa_access_comparison =
+                Analyzer::compare_soa_access(first_access, second_access);
+        }
+    }
 }
 
 } // namespace ioj::layout

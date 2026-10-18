@@ -1,9 +1,6 @@
 #include <ioj/layout/planner_selection.hpp>
 
 #include <codegen/schema/soa_backend.h>
-#include <lispb/compiler_storage.h>
-#include <lispb/schema/editable_document.h>
-#include <lispb/schema/editor_declarations.h>
 #include <lispb/schema/indices.h>
 #include <lispb/schema/packed_fields.h>
 #include <lispb/schema/packed_reserved_segments.h>
@@ -26,23 +23,9 @@
 #include <string>
 
 namespace ioj::layout {
-namespace {
-
-auto declaration_kind(lispb::schema::EditableSchemaDocument const& document,
-                      lispb::schema::DeclarationId const info) -> DeclarationKind {
-    auto const handle{document.declaration_handle(info)};
-    assert(handle);
-    return declaration_capabilities(*handle).kind;
-}
-
-} // namespace
-
 auto PlannerSelection::select_type(lispb::schema::TypeGraph const& types,
                                    std::optional<lispb::schema::TypeId> next) -> bool {
-    if (next.has_value() &&
-        (!lispb::schema::is_valid(*next) || next->value >= types.types().size())) {
-        next.reset();
-    }
+    assert(!next || (lispb::schema::is_valid(*next) && next->value < types.types().size()));
     auto const next_identity{next.has_value() ? std::optional{types.identity(*next)}
                                               : std::optional<lispb::schema::TypeIdentity>{}};
     auto const next_kind{next.has_value()
@@ -50,42 +33,12 @@ auto PlannerSelection::select_type(lispb::schema::TypeGraph const& types,
                              : std::nullopt};
     auto const retained{next_identity ? retain_identity(types.strings(), next_identity)
                                       : std::nullopt};
-    if (type == next && !declaration.has_value() && identity_ == next_identity &&
-        retained_identity_ == retained && kind_ == next_kind) {
+    if (type == next && identity_ == next_identity && retained_identity_ == retained &&
+        kind_ == next_kind) {
         return false;
     }
     type = next;
-    declaration.reset();
     identity_ = next_identity;
-    retained_identity_ = retained;
-    kind_ = next_kind;
-    clear_type_local_state();
-    return true;
-}
-
-auto PlannerSelection::select_declaration(lispb::schema::EditableSchemaDocument const& document,
-                                          lispb::schema::DeclarationId const next) -> bool {
-    auto const info{document.declarations().find(next)};
-    if (!info.has_value()) {
-        return false;
-    }
-    if (auto const semantic{document.types().find(
-            document.declarations().identity[document.declarations().index(*info)])}) {
-        return select_type(document.types(), *semantic);
-    }
-    auto const next_kind{declaration_kind(document, *info)};
-    auto const retained{
-        retain_identity(document.storage().strings,
-                        document.declarations().identity[document.declarations().index(*info)])};
-    if (declaration == next && !type.has_value() &&
-        identity_ == document.declarations().identity[document.declarations().index(*info)] &&
-        retained_identity_ == retained && kind_ == next_kind) {
-        return false;
-    }
-
-    type.reset();
-    declaration = next;
-    identity_ = document.declarations().identity[document.declarations().index(*info)];
     retained_identity_ = retained;
     kind_ = next_kind;
     clear_type_local_state();
@@ -97,9 +50,8 @@ auto PlannerSelection::identity() const -> std::optional<lispb::schema::TypeIden
 }
 
 void PlannerSelection::reconcile(lispb::schema::TypeGraph const& types,
-                                 std::optional<lispb::schema::TypeIdentity> selected_identity,
-                                 lispb::schema::EditableSchemaDocument const* const document) {
-    if (types.types().empty() && document == nullptr) {
+                                 std::optional<lispb::schema::TypeIdentity> selected_identity) {
+    if (types.types().empty()) {
         select_type(types, std::nullopt);
         return;
     }
@@ -108,26 +60,17 @@ void PlannerSelection::reconcile(lispb::schema::TypeGraph const& types,
                                                              : restore_identity(types.strings())};
     auto const next_type{target_identity.has_value() ? types.find(*target_identity)
                                                      : std::optional<lispb::schema::TypeId>{}};
-    auto const next_declaration{target_identity.has_value() && !next_type.has_value() &&
-                                        document != nullptr
-                                    ? document->find_declaration(*target_identity)
-                                    : std::optional<lispb::schema::DeclarationId>{}};
     auto const next_kind{next_type.has_value()
                              ? std::optional{declaration_capabilities(types, *next_type).kind}
-                         : next_declaration.has_value()
-                             ? std::optional{declaration_kind(*document, *next_declaration)}
                              : std::nullopt};
     auto const retained{retain_identity(types.strings(), target_identity)};
     if (retained != retained_identity_ || next_kind != kind_ ||
-        type.has_value() != next_type.has_value() ||
-        declaration.has_value() != next_declaration.has_value()) {
+        type.has_value() != next_type.has_value()) {
         clear_type_local_state();
     }
 
     type = next_type;
-    declaration = next_declaration;
-    identity_ =
-        next_type.has_value() || next_declaration.has_value() ? target_identity : std::nullopt;
+    identity_ = next_type.has_value() ? target_identity : std::nullopt;
     retained_identity_ = identity_.has_value() ? retained : std::nullopt;
     kind_ = next_kind;
     if (type.has_value()) {

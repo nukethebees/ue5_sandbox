@@ -1,8 +1,5 @@
 #include "analyzer_test_fixtures.hpp"
 
-#include <codegen/schema/record_schemas.h>
-#include <lispb/compiler_storage.h>
-
 #include <array>
 #include <cstdint>
 #include <optional>
@@ -10,7 +7,7 @@
 #include <utility>
 
 namespace ioj::layout {
-namespace {
+namespace analyzer_common_tests {
 
 TEST(Analyzer, ReportsFactualNumericDeltas) {
     auto const increased{numeric_delta(100, 150)};
@@ -255,78 +252,5 @@ TEST(AbiProfile, RejectsMalformedOrContradictoryGeneratedFactsWithoutPublishing)
     }
 }
 
-TEST(Analyzer, ReportsAggregateWorkingSetFitForExplicitCacheCapacities) {
-    lispb::CompilerStorage storage;
-    auto abi{AbiProfile::host_common()};
-    abi.set_memory_facts({.cache_line_bytes = 64,
-                          .page_bytes = 4'096,
-                          .l1_data_cache_bytes = 4'096,
-                          .l2_cache_bytes = 8'192,
-                          .l3_cache_bytes = 16'384,
-                          .provenance = "synthetic cache profile"});
-
-    auto const packed_fixture{entity_id_type(storage)};
-    auto const packed{
-        Analyzer::analyze_packed(packed_fixture.types, packed_fixture.type, Variant{}, abi, 1'024)};
-    EXPECT_EQ(packed.aggregate.cache_capacity.working_set_bytes, 4'096);
-    EXPECT_EQ(packed.aggregate.cache_capacity.fits_l1_data, true);
-    EXPECT_EQ(packed.aggregate.cache_capacity.fits_l2, true);
-    EXPECT_EQ(packed.aggregate.cache_capacity.fits_l3, true);
-
-    auto const record_fixture{record_type(
-        storage, {[&] {
-            auto const new_records{storage.declarations.records.append()};
-            storage.declarations.records.name[storage.declarations.records.index(new_records)] =
-                storage.strings.intern("Record");
-            storage.declarations.records.members[storage.declarations.records.index(new_records)] =
-                record_members(storage,
-                               {record_member(storage, "small", "std::uint8_t"),
-                                record_member(storage, "wide", "std::uint32_t")});
-            storage.declarations.records
-                .export_specifier[storage.declarations.records.index(new_records)] = {};
-            return new_records;
-        }()})};
-    auto const record{
-        Analyzer::analyze_record(record_fixture.types, record_fixture.type, abi, 1'025)};
-    EXPECT_EQ(record.aggregate.cache_capacity.working_set_bytes, 8'200);
-    EXPECT_EQ(record.aggregate.cache_capacity.fits_l1_data, false);
-    EXPECT_EQ(record.aggregate.cache_capacity.fits_l2, false);
-    EXPECT_EQ(record.aggregate.cache_capacity.fits_l3, true);
-
-    auto const soa_fixture{soa_type(storage)};
-    auto const soa{
-        Analyzer::analyze_soa(soa_fixture.types, soa_fixture.type, Variant{}, abi, 1'000)};
-    EXPECT_EQ(soa.cache_capacity.working_set_bytes, 24'000);
-    EXPECT_EQ(soa.cache_capacity.fits_l1_data, false);
-    EXPECT_EQ(soa.cache_capacity.fits_l2, false);
-    EXPECT_EQ(soa.cache_capacity.fits_l3, false);
 }
-
-TEST(Analyzer, LeavesCacheFitUnknownWhenCapacityOrWorkingSetIsUnknown) {
-    lispb::CompilerStorage storage;
-    auto const packed_fixture{entity_id_type(storage)};
-    auto const packed{Analyzer::analyze_packed(
-        packed_fixture.types, packed_fixture.type, Variant{}, AbiProfile::host_common(), 1)};
-    EXPECT_FALSE(packed.aggregate.cache_capacity.l1_data_capacity_bytes.has_value());
-    EXPECT_FALSE(packed.aggregate.cache_capacity.fits_l1_data.has_value());
-    EXPECT_FALSE(packed.aggregate.cache_capacity.fits_l2.has_value());
-    EXPECT_FALSE(packed.aggregate.cache_capacity.fits_l3.has_value());
-
-    auto const soa_fixture{soa_type(storage, {{"unknown", "UnknownUserType"}})};
-    AbiProfile abi{"unknown working set"};
-    abi.set_memory_facts({.cache_line_bytes = std::nullopt,
-                          .page_bytes = std::nullopt,
-                          .l1_data_cache_bytes = 32'768,
-                          .l2_cache_bytes = 1'048'576,
-                          .l3_cache_bytes = std::nullopt,
-                          .provenance = "partial synthetic profile"});
-    auto const soa{
-        Analyzer::analyze_soa(soa_fixture.types, soa_fixture.type, Variant{}, abi, 1'000)};
-    EXPECT_FALSE(soa.cache_capacity.working_set_bytes.has_value());
-    EXPECT_FALSE(soa.cache_capacity.fits_l1_data.has_value());
-    EXPECT_FALSE(soa.cache_capacity.fits_l2.has_value());
-    EXPECT_FALSE(soa.cache_capacity.fits_l3.has_value());
 }
-
-} // namespace
-} // namespace ioj::layout

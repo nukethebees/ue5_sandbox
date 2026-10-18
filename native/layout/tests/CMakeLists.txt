@@ -1,6 +1,10 @@
 add_executable(native-layout-tests)
+set_target_properties(native-layout-tests PROPERTIES UNITY_BUILD OFF)
 add_dependencies(native-layout-tests generate-native-soa-fixture)
 target_sources(native-layout-tests PRIVATE
+  document_tests.cpp
+  document_serialization_tests.cpp
+  document_project_serialization_tests.cpp
   analyzer_tests.cpp
   analyzer_aggregate_tests.cpp
   analyzer_packed_tests.cpp
@@ -48,3 +52,15 @@ add_test(NAME layout-exported-probe
     "-DOUTPUT=${CMAKE_CURRENT_BINARY_DIR}/probed.profile"
     -P "${CMAKE_CURRENT_SOURCE_DIR}/probe_fixture.cmake")
 set_tests_properties(layout-exported-probe PROPERTIES LABELS "unit;developer-tool;layout")
+
+add_executable(native-layout-document-benchmark)
+target_sources(native-layout-document-benchmark
+  PRIVATE
+    document_benchmark.cpp
+)
+target_link_libraries(native-layout-document-benchmark
+  PRIVATE
+    native-layout
+    sandbox::native_defaults
+)
+ioj_enable_warnings(native-layout-document-benchmark)

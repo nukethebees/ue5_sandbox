@@ -1,0 +1,24 @@
+#pragma once
+#include <ioj/layout/analyzer.hpp>
+#include <ioj/layout/planner_selection.hpp>
+
+#include <lispb/schema/type_identity.h>
+
+#include <cstdint>
+#include <optional>
+namespace ioj::layout {
+struct PlannerAnalysisInputs {
+    LayoutWorkspace workspace;
+    PlannerSelection selection;
+    AccessOperation access_operation{AccessOperation::read};
+    std::uint64_t access_multiplicity{1};
+    SoaAllocationStrategy soa_allocation_strategy{SoaAllocationStrategy::separate_columns};
+    std::uint64_t comparison_a_variant_id{LayoutWorkspace::baseline_variant_id};
+    std::uint64_t comparison_b_variant_id{LayoutWorkspace::baseline_variant_id};
+    bool comparison_b_follows_active{true};
+    std::optional<lispb::schema::TypeIdentity> quantized_comparison_type;
+    std::optional<lispb::schema::TypeIdentity> varint_comparison_type;
+    std::optional<lispb::schema::TypeIdentity> optional_comparison_type;
+};
+
+}
