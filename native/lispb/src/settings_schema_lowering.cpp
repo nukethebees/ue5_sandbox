@@ -1,0 +1,152 @@
+#include "declaration_emission.h"
+#include "lowering.h"
+#include "lowering_context.h"
+
+#include <codegen/ast/cpp_ir.h>
+#include <codegen/ast/cpp_types.h>
+#include <codegen/ast/function_flags.h>
+#include <codegen/ast/node_list_builder.h>
+#include <codegen/ast/return_syntax.h>
+#include <codegen/schema/declarations.h>
+#include <codegen/schema/settings_schema_schemas.h>
+#include <lispb/strings.h>
+
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace lispb::codegen::detail {
+namespace settings_schema {
+auto member_expression(CppIR& ir, std::string_view path) -> Expr {
+    auto result{ir.named("target")};
+    while (true) {
+        auto const separator{path.find('.')};
+        result = ir.member_access(result, path.substr(0, separator));
+        if (separator == std::string_view::npos) {
+            return result;
+        }
+        path.remove_prefix(separator + 1);
+    }
+}
+
+auto parser_function(LoweringContext& context,
+                     std::string const& enum_name,
+                     std::string const& stem,
+                     std::span<StringId const> const paths) -> NodeId {
+    auto& ir{context.ir};
+    std::vector<Expr> entries;
+    entries.reserve(paths.size());
+    for (auto const path : paths) {
+        auto const name{context.text(path)};
+        entries.push_back(
+            ir.init_list({ir.string_literal(name),
+                          ir.named(enum_name + "::" + settings_schema_field_name(name))}));
+    }
+
+    auto const parser{
+        ir.function(ir.strings.intern("try_parse_" + stem + "_field"), ir.types.intern("auto"))};
+    ir.set_function_return_type(parser,
+                                ir.types.intern("std::optional<" + enum_name + ">",
+                                                {ir.types.dependency("std::optional", "optional")}),
+                                ReturnSyntax::trailing);
+    ir.set_function_parameters(
+        parser,
+        {ir.parameter(ir.types.intern("std::string_view const",
+                                      {ir.types.dependency("std::string_view", "string_view")}),
+                      ir.strings.intern("path"))});
+    auto& flags{ir.function_flags(parser)};
+    flags.set_define_in_header(true);
+    flags.set_is_inline(true);
+    flags.set_is_nodiscard(true);
+    ir.set_function_body(
+        parser,
+        {ir.variable(
+             ir.types.intern("static std::unordered_map<std::string_view, " + enum_name + "> const",
+                             {ir.types.dependency("std::unordered_map", "unordered_map")}),
+             ir.strings.intern("values"),
+             ir.init_list(entries)),
+         ir.return_statement(
+             ir.call(ir.named("ioj::lookup_enum",
+                              {ir.types.dependency("ioj::lookup_enum", "ioj/enum_lookup.h")}),
+                     {ir.named("values"), ir.named("path")}))});
+    return ir.header_function(parser);
+}
+
+auto visitor_function(LoweringContext& context,
+                      std::string const& enum_name,
+                      std::string const& stem,
+                      IdentifierId const target,
+                      StringId const target_header,
+                      std::span<StringId const> const paths,
+                      std::span<StringId const> const members) -> NodeId {
+    auto& ir{context.ir};
+    std::vector<SwitchCaseId> cases;
+    auto const count{paths.size()};
+    cases.reserve(count);
+    for (std::size_t index{}; index < count; ++index) {
+        cases.push_back(ir.switch_case(
+            ir.named(enum_name + "::" + settings_schema_field_name(context.text(paths[index]))),
+            ir.block({ir.return_statement(ir.call(
+                ir.named("callback"), {member_expression(ir, context.text(members[index]))}))})));
+    }
+
+    auto const visitor{
+        ir.function(ir.strings.intern("visit_" + stem + "_field"), ir.types.intern("bool"))};
+    ir.set_function_template(
+        visitor,
+        ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Callback"))}));
+    ir.set_function_parameters(
+        visitor,
+        {ir.parameter(ir.types.intern(
+                          context.text(target) + "&",
+                          {ir.types.dependency(context.text(target), context.text(target_header))}),
+                      ir.strings.intern("target")),
+         ir.parameter(ir.types.intern(enum_name + " const"), ir.strings.intern("field")),
+         ir.parameter(ir.types.intern("Callback&&"), ir.strings.intern("callback"))});
+    ir.function_flags(visitor).set_define_in_header(true);
+    ir.function_flags(visitor).set_is_nodiscard(true);
+    ir.set_function_body(
+        visitor,
+        {ir.switch_statement(ir.named("field"), cases),
+         ir.expression_statement(
+             ir.call(ir.named("assert", {ir.types.dependency("assert", "cassert")}),
+                     {ir.literal("false")})),
+         ir.expression_statement(ir.call(
+             ir.named("std::unreachable", {ir.types.dependency("std::unreachable", "utility")})))});
+    return ir.header_function(visitor);
+}
+}
+
+auto lower_settings_schema(LoweringContext& context, DeclarationHandle const schema)
+    -> DeclarationEmission {
+    auto& ir{context.ir};
+    auto const& schemas{context.declarations.settings_schemas};
+    auto const row{schemas.index(schema)};
+    auto const name{context.text(schemas.name[row])};
+    auto const enum_name{name + "Field"};
+    auto const stem{settings_schema_function_stem(name)};
+    auto const paths{context.declarations.items(schemas.paths[row])};
+    auto const members{context.declarations.items(schemas.members[row])};
+
+    std::vector<EnumValueId> values;
+    values.reserve(paths.size());
+    for (auto const path : paths) {
+        values.push_back(
+            ir.enumerator(ir.strings.intern(settings_schema_field_name(context.text(path)))));
+    }
+
+    NodeListBuilder declarations{ir};
+    declarations.add(
+        ir.enumeration(
+            ir.strings.intern(enum_name),
+            ir.types.intern("std::uint32_t", {ir.types.dependency("std::uint32_t", "cstdint")}),
+            values),
+        2);
+    declarations.add(settings_schema::parser_function(context, enum_name, stem, paths), 2);
+    declarations.add(ir.line_comment("Require a valid field returned by the schema's key parser."),
+                     1);
+    declarations.add(settings_schema::visitor_function(
+        context, enum_name, stem, schemas.target[row], schemas.target_header[row], paths, members));
+    return {.header = declarations.build(), .format_generated = true};
+}
+}

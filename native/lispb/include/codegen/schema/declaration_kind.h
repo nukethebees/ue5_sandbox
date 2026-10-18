@@ -22,6 +22,7 @@ enum class DeclarationKind : std::uint8_t {
     homogeneous_layout,
     static_table,
     facade,
+    settings_schema,
 };
 
 } // namespace lispb::codegen

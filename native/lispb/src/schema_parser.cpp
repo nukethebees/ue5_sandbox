@@ -1745,6 +1745,31 @@ auto SchemaParser::parse_vector_soa(Declarations& declarations, sexpr::FormId co
     return record_id;
 }
 
+auto SchemaParser::parse_settings_schema(Declarations& declarations, sexpr::FormId const form)
+    -> DeclarationHandle {
+    Fields const fields{parser_, form, "settings-schema", 1};
+    fields.validate({"target", "target-header"}, {"field"});
+    std::vector<StringId> paths;
+    std::vector<StringId> members;
+    for (auto const declaration : fields.declarations()) {
+        Fields const field{parser_, declaration, "field", 2};
+        field.validate({});
+        paths.push_back(parser_.text_id(field.positional(0), "settings field path"));
+        members.push_back(parser_.text_id(field.positional(1), "settings member path"));
+    }
+
+    auto& schemas{declarations.settings_schemas};
+    auto const result{schemas.append()};
+    auto const row{schemas.index(result)};
+    schemas.name[row] = parser_.identifier(fields.positional(0), "settings schema name");
+    schemas.target[row] = parser_.identifier(fields.required("target"), "settings target type");
+    schemas.target_header[row] =
+        parser_.text_id(fields.required("target-header"), "settings target header");
+    schemas.paths[row] = declarations.range(paths);
+    schemas.members[row] = declarations.range(members);
+    return result;
+}
+
 auto SchemaParser::parse_normal_declaration(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     auto const head{syntax_.head(form)};
@@ -1799,6 +1824,9 @@ auto SchemaParser::parse_normal_declaration(Declarations& declarations, sexpr::F
     if (head == "facade") {
         return parse_facade(declarations, form);
     }
+    if (head == "settings-schema") {
+        return parse_settings_schema(declarations, form);
+    }
     parser_.fail(form, "unknown normal module declaration '" + std::string{head} + "'");
 }
 
@@ -1832,6 +1860,7 @@ auto SchemaParser::parse_module(Declarations& declarations, sexpr::FormId const 
                          "layout",
                          "table",
                          "facade",
+                         "settings-schema",
                          "array-allocator"});
         auto& modules{declarations.normal_modules};
         auto const module{modules.append()};

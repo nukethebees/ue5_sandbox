@@ -554,6 +554,8 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
 
                                     return detail::lower_facade(context, value);
                                 }
+                                case lispb::codegen::DeclarationKind::settings_schema:
+                                    return detail::lower_settings_schema(context, value);
                                 case lispb::codegen::DeclarationKind::enumeration: {
 
                                     return detail::lower_enum(

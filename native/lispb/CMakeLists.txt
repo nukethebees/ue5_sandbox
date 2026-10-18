@@ -94,6 +94,7 @@ target_sources(lispb-schema PRIVATE
   src/setting_control_schemas.cpp
   src/setting_schemas.cpp
   src/settings_module_schemas.cpp
+  src/settings_schema_schemas.cpp
   src/soa_mask_dimension_schemas.cpp
   src/soa_member_schemas.cpp
   src/soa_schemas.cpp
@@ -217,6 +218,7 @@ target_sources(codegen-lib PRIVATE
   src/lowering_utils.cpp
   src/module_assembly.cpp
   src/settings_lowering.cpp
+  src/settings_schema_lowering.cpp
   src/soa_lowering.cpp
   src/soa_api.cpp
   src/soa_member_resolution.cpp

@@ -1222,6 +1222,23 @@ auto CanonicalRenderer::render_declaration_schema(codegen::DeclarationHandle con
 
                 return render_facade(value);
             }
+            case lispb::codegen::DeclarationKind::settings_schema: {
+                auto const& schemas{store_.settings_schemas};
+                auto const row{schemas.index(value)};
+                std::ostringstream output;
+                output << "(settings-schema " << text(schemas.name[row]) << "\n    :target "
+                       << text(schemas.target[row]) << "\n    :target-header "
+                       << quote(text(schemas.target_header[row]));
+                auto const paths{items(schemas.paths[row])};
+                auto const members{items(schemas.members[row])};
+                auto const count{paths.size()};
+                for (std::size_t index{}; index < count; ++index) {
+                    output << "\n    (field " << quote(text(paths[index])) << ' '
+                           << quote(text(members[index])) << ')';
+                }
+                output << ')';
+                return output.str();
+            }
             default:
                 std::unreachable();
         }

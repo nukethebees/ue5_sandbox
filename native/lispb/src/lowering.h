@@ -33,6 +33,8 @@ auto assemble_module(LoweringContext& context,
                      ModuleSettingsId settings,
                      std::span<DeclarationEmission> emissions) -> std::vector<ModuleId>;
 auto lower_record(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission;
+auto lower_settings_schema(LoweringContext& context, DeclarationHandle schema)
+    -> DeclarationEmission;
 auto lower_union(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission;
 auto lower_tagged_union(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission;
 auto lower_static_table(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission;

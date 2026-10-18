@@ -174,6 +174,7 @@ auto traverse_references(Store& store, DeclarationHandle declaration, Visitor co
             });
             break;
         case DeclarationKind::fixed_point:
+        case DeclarationKind::settings_schema:
             break;
         case DeclarationKind::homogeneous_layout:
             rewrite_row(store.homogeneous_layouts, declaration, [&](auto field, auto row) {
@@ -494,12 +495,15 @@ auto declaration_head(DeclarationHandle declaration) -> std::string_view {
             return "table";
         case DeclarationKind::facade:
             return "facade";
+        case DeclarationKind::settings_schema:
+            return "settings-schema";
     }
     std::unreachable();
 }
 
 auto has_primary_semantic_type(DeclarationHandle declaration) -> bool {
-    return declaration.kind() != DeclarationKind::homogeneous_layout;
+    return declaration.kind() != DeclarationKind::homogeneous_layout &&
+           declaration.kind() != DeclarationKind::settings_schema;
 }
 
 void visit_type_references(
@@ -528,6 +532,9 @@ auto declaration_name(Declarations const& declarations, DeclarationHandle declar
             return declarations.enums.name[declarations.enums.index(declaration)];
         case DeclarationKind::facade:
             return declarations.facades.name[declarations.facades.index(declaration)];
+        case DeclarationKind::settings_schema:
+            return declarations.settings_schemas
+                .name[declarations.settings_schemas.index(declaration)];
         case DeclarationKind::fixed_point:
             return declarations.fixed_points.name[declarations.fixed_points.index(declaration)];
         case DeclarationKind::homogeneous_layout:
@@ -576,6 +583,12 @@ auto generated_cpp_names(Declarations const& declarations,
     auto const id{declaration_name(declarations, declaration)};
     auto const name{text(id)};
     switch (declaration.kind()) {
+        case DeclarationKind::settings_schema: {
+            auto const stem{settings_schema_function_stem(name)};
+            return {strings.intern(name + "Field"),
+                    strings.intern("try_parse_" + stem + "_field"),
+                    strings.intern("visit_" + stem + "_field")};
+        }
         case DeclarationKind::enumeration:
             return {id, strings.intern(name + "Underlying")};
         case DeclarationKind::packed_value:

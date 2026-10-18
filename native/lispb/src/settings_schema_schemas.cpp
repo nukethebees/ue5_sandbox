@@ -1,0 +1,79 @@
+#include <codegen/schema/settings_schema_schemas.h>
+
+#include <cassert>
+#include <cctype>
+
+namespace lispb::codegen {
+auto SettingsSchemaSchemas::index(DeclarationHandle const id) const -> std::uint32_t {
+    assert(id.kind() == DeclarationKind::settings_schema);
+    auto const row{id.index()};
+    assert(row < name.size());
+    return row;
+}
+
+auto SettingsSchemaSchemas::append() -> DeclarationHandle {
+    auto const row{static_cast<std::uint32_t>(name.size())};
+    assert(row < 0x00fffffe);
+    name.push_back({});
+    target.push_back({});
+    target_header.push_back({});
+    paths.push_back({});
+    members.push_back({});
+    return DeclarationHandle{(static_cast<std::uint32_t>(DeclarationKind::settings_schema) << 24) |
+                             (row + 1)};
+}
+
+auto SettingsSchemaSchemas::clone(DeclarationHandle const id) -> DeclarationHandle {
+    auto const source{index(id)};
+    auto const result{append()};
+    auto const destination{index(result)};
+    name[destination] = name[source];
+    target[destination] = target[source];
+    target_header[destination] = target_header[source];
+    paths[destination] = paths[source];
+    members[destination] = members[source];
+    return result;
+}
+
+void SettingsSchemaSchemas::clear() {
+    name.clear();
+    target.clear();
+    target_header.clear();
+    paths.clear();
+    members.clear();
+}
+
+auto settings_schema_function_stem(std::string_view const name) -> std::string {
+    std::string result;
+    auto const count{name.size()};
+    for (std::size_t index{}; index < count; ++index) {
+        auto const character{static_cast<unsigned char>(name[index])};
+        auto const uppercase{std::isupper(character) != 0};
+        auto const previous_lower{index > 0 &&
+                                  std::islower(static_cast<unsigned char>(name[index - 1])) != 0};
+        auto const next_lower{index + 1 < count &&
+                              std::islower(static_cast<unsigned char>(name[index + 1])) != 0};
+        if (uppercase && index > 0 && (previous_lower || next_lower)) {
+            result += '_';
+        }
+        result += static_cast<char>(std::tolower(character));
+    }
+    return result;
+}
+
+auto settings_schema_field_name(std::string_view const path) -> std::string {
+    std::string result;
+    bool uppercase{true};
+    for (auto const character : path) {
+        if (character == '.' || character == '-' || character == '_') {
+            uppercase = true;
+        } else {
+            result += uppercase
+                        ? static_cast<char>(std::toupper(static_cast<unsigned char>(character)))
+                        : character;
+            uppercase = false;
+        }
+    }
+    return result;
+}
+}
