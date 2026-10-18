@@ -67,6 +67,7 @@
   :namespace ioj::sim
   (enum ShipLaserMode @native_uint8
     :native-api true
+    :helpers (try-parse-serialized)
     (value Single :value "0" :display-name "Single" :serialized-name "single")
     (value Double :value "1" :display-name "Double" :serialized-name "double")
     (value Hyper :value "2" :display-name "Hyper" :serialized-name "hyper")))
@@ -84,7 +85,7 @@
   :namespace ioj::sim
   (enum ShipFireRate @native_uint8
     :native-api true
-    :helpers (to-string)
+    :helpers (to-string try-parse-serialized)
     :enum-array true
     (unreal-projection ETestShipFireRate
       :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRate.h"
@@ -93,8 +94,8 @@
       :native-header-include "ioj/sim/player/fire_rate.h"
       :reflection uenum)
     (value Single :value "0" :display-name "Single" :serialized-name "single")
-    (value Burst3 :value "1" :display-name "Burst 3" :serialized-name "burst_3")
-    (value FullAuto :value "2" :display-name "Full Auto" :serialized-name "full_auto")))
+    (value Burst3 :value "1" :display-name "Burst 3" :serialized-name "burst3")
+    (value FullAuto :value "2" :display-name "Full Auto" :serialized-name "full-auto")))
 
 (module native_level_telemetry_run_end_reason
   :header "native/simulation/include/ioj/sim/telemetry/run_end_reason.h"

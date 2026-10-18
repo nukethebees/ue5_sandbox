@@ -82,3 +82,12 @@ retain their optional settings assignments. The native simulation resolver appli
 to existing simulation structs; presentation consumers apply their own sections. Unknown fields
 and type mismatches are configuration errors at the owning consumer. Asset-derived geometry
 and Unreal resource references remain at the Unreal boundary.
+
+AST parsers, Scheme file readers and serializers live under `s7/src/`. General authoring code
+such as scene reconciliation and source sessions remains under `lib/src/`. The AST-only and
+interpreter-backed libraries keep their existing dependency boundaries.
+
+Lispb `settings-schema` declarations generate field-name enums, keyword lookup and typed member
+dispatch beside the S7 readers. The readers default-construct native settings, assign supplied
+fields through that dispatch and then validate domain constraints. Generated adapters stay
+separate from runtime types; simulation and presentation code consume resolved settings.

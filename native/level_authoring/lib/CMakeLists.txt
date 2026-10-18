@@ -1,12 +1,12 @@
 add_library(native-level-authoring STATIC)
 target_sources(native-level-authoring
   PRIVATE
-    src/ast_parser.cpp
-    src/settings_parser.cpp
-    src/level_parser.cpp
-    src/campaign_parser.cpp
-    src/catalog_parser.cpp
-    src/level_definition_writer.cpp
+    ../s7/src/ast_parser.cpp
+    ../s7/src/settings_parser.cpp
+    ../s7/src/level_parser.cpp
+    ../s7/src/campaign_parser.cpp
+    ../s7/src/catalog_parser.cpp
+    ../s7/src/level_definition_writer.cpp
     src/editor_support.cpp
     src/identifiers.cpp
     src/scene.cpp
@@ -33,8 +33,8 @@ target_sources(native-level-authoring-s7
   PUBLIC
     include/ioj/levels/authoring/starfield_reader.h
   PRIVATE
-    src/script_reader.cpp
-    src/starfield_reader.cpp
+    ../s7/src/script_reader.cpp
+    ../s7/src/starfield_reader.cpp
 )
 target_include_directories(native-level-authoring-s7
   PUBLIC

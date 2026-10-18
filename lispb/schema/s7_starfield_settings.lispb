@@ -1,0 +1,34 @@
+(module s7_starfield_settings
+  :header "native/level_authoring/s7/src/generated/starfield_fields.h"
+  :header-include "generated/starfield_fields.h"
+  :backend standard-library
+  :namespace ioj::s7::starfield_fields
+  (settings-schema Fields
+    :target ioj::starfield::Settings
+    :target-header "ioj/gfx/starfield_settings.h"
+    (field "starfield.generation.star-count" "generation.star_count")
+    (field "starfield.generation.random-seed" "generation.random_seed")
+    (field "starfield.star.scale" "star.scale")
+    (field "starfield.star.size-multiplier" "star.size_multiplier")
+    (field "starfield.star.global-brightness" "star.global_brightness")
+    (field "starfield.star.colour-variation-strength" "star.colour_variation_strength")
+    (field "starfield.star.parallax-strength" "star.parallax_strength")
+    (field "starfield.galactic-band.strength" "galactic_band.strength")
+    (field "starfield.galactic-band.width-degrees" "galactic_band.width_degrees")
+    (field "starfield.stellar-cluster.strength" "stellar_cluster.strength")
+    (field "starfield.stellar-cluster.width-degrees" "stellar_cluster.width_degrees")
+    (field "starfield.dust-lane.strength" "dust_lane.strength")
+    (field "starfield.dust-lane.width-degrees" "dust_lane.width_degrees")
+    (field "starfield.dust-lane.irregularity" "dust_lane.irregularity")
+    (field "starfield.bright-star.fraction" "bright_star.fraction")
+    (field "starfield.bright-star.size-multiplier" "bright_star.size_multiplier")
+    (field "starfield.bright-star.brightness-multiplier" "bright_star.brightness_multiplier")
+    (field "starfield.bright-star.shape-strength" "bright_star.shape_strength")
+    (field "starfield.twinkle.strength" "twinkle.strength")
+    (field "starfield.twinkle.speed" "twinkle.speed")
+    (field "starfield.galactic-haze.strength" "galactic_haze.strength")
+    (field "starfield.galactic-haze.width-degrees" "galactic_haze.width_degrees")
+    (field "starfield.galactic-core.strength" "galactic_core.strength")
+    (field "starfield.galactic-core.width-degrees" "galactic_core.width_degrees")
+    (field "starfield.nebular-knot.strength" "nebular_knot.strength")
+    (field "starfield.nebular-knot.size-degrees" "nebular_knot.size_degrees")))
