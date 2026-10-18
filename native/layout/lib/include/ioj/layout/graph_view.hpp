@@ -1,43 +1,16 @@
 #pragma once
 
-#include <lispb/schema/indices.h>
-#include <lispb/schema/type_graph.h>
-#include <lispb/schema/type_identity.h>
+#include <ioj/layout/graph_projection.hpp>
+#include <ioj/layout/graph_scope.hpp>
+#include <ioj/layout/graph_viewport.hpp>
 
-#include <array>
-#include <cstddef>
-#include <optional>
+#include <lispb/schema/type_graph.h>
+
 #include <span>
 #include <string>
 #include <vector>
 
 namespace ioj::layout {
-
-struct GraphScope {
-    // Empty means project overview; membership allows later scopes spanning modules.
-    std::optional<std::string> module;
-    std::vector<lispb::schema::TypeIdentity> members;
-    auto operator==(GraphScope const&) const -> bool = default;
-};
-struct GraphOccurrence {
-    lispb::schema::TypeId type;
-    bool boundary{};
-};
-struct GraphEdge {
-    std::size_t user{};
-    std::size_t dependency{};
-    std::vector<std::string> labels;
-    std::string summary;
-};
-struct GraphProjection {
-    std::vector<GraphOccurrence> nodes;
-    std::vector<GraphEdge> edges;
-};
-using GraphPoint = std::array<float, 2>;
-struct GraphViewport {
-    float zoom{1.0F};
-    GraphPoint pan{};
-};
 
 auto graph_edge_labels(lispb::schema::TypeGraph const& types,
                        lispb::schema::TypeId user,

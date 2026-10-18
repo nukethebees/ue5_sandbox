@@ -1,6 +1,6 @@
-#include <ioj/layout/analyzer.hpp>
+#include <ioj/layout/analyzer/physical_type_spelling.hpp>
 
-#include "enum_backing.hpp"
+#include "../enum_backing.hpp"
 
 #include <codegen/ast/cpp_types.h>
 #include <codegen/schema.h>
@@ -9,7 +9,10 @@
 #include <lispb/schema/indices.h>
 #include <lispb/schema/integer_scalar_types.h>
 #include <lispb/schema/packed_types.h>
+#include <lispb/schema/type_graph.h>
+#include <lispb/strings.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <optional>
 #include <ranges>
@@ -110,28 +113,6 @@ auto physical_type_spelling(lispb::schema::TypeGraph const& types,
                                       types.occurrences().type[types.occurrences().index(use)])
              : std::optional{std::string{types.cpp_types().spelling(
                    types.occurrences().cpp_type[types.occurrences().index(use)])}};
-}
-
-auto numeric_delta(std::optional<std::uint64_t> const baseline,
-                   std::optional<std::uint64_t> const variant) -> std::optional<NumericDelta> {
-    if (!baseline.has_value() || !variant.has_value()) {
-        return std::nullopt;
-    }
-    if (*baseline == *variant) {
-        return NumericDelta{.direction = NumericDeltaDirection::unchanged,
-                            .magnitude = 0,
-                            .percentage =
-                                *baseline == 0 ? std::nullopt : std::optional<double>{0.0}};
-    }
-    auto const increased{*variant > *baseline};
-    auto const magnitude{increased ? *variant - *baseline : *baseline - *variant};
-    return NumericDelta{.direction = increased ? NumericDeltaDirection::increased
-                                               : NumericDeltaDirection::decreased,
-                        .magnitude = magnitude,
-                        .percentage = *baseline == 0 ? std::nullopt
-                                                     : std::optional<double>{
-                                                           static_cast<double>(magnitude) * 100.0 /
-                                                           static_cast<double>(*baseline)}};
 }
 
 } // namespace ioj::layout

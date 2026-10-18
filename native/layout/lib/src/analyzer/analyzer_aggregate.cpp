@@ -1,11 +1,33 @@
-#include "checked_arithmetic.hpp"
-#include "memory_regions.hpp"
-#include <ioj/layout/analyzer.hpp>
+#include "../checked_arithmetic.hpp"
+#include "../memory_regions.hpp"
+#include <ioj/layout/abi_profile.hpp>
+#include <ioj/layout/analyzer/analyzer.hpp>
+#include <ioj/layout/analyzer/numeric_delta.hpp>
+#include <ioj/layout/analyzer/record_analysis.hpp>
+#include <ioj/layout/analyzer/record_member_analysis.hpp>
+#include <ioj/layout/analyzer/record_target_comparison.hpp>
+#include <ioj/layout/analyzer/tagged_union_alternative_analysis.hpp>
+#include <ioj/layout/analyzer/tagged_union_analysis.hpp>
+#include <ioj/layout/analyzer/tagged_union_distribution_analysis.hpp>
+#include <ioj/layout/analyzer/tagged_union_distribution_comparison.hpp>
+#include <ioj/layout/analyzer/tagged_union_distribution_entry.hpp>
+#include <ioj/layout/analyzer/tagged_union_distribution_entry_analysis.hpp>
+#include <ioj/layout/analyzer/tagged_union_target_comparison.hpp>
+#include <ioj/layout/analyzer/union_alternative_analysis.hpp>
+#include <ioj/layout/analyzer/union_analysis.hpp>
+#include <ioj/layout/analyzer/union_distribution_analysis.hpp>
+#include <ioj/layout/analyzer/union_distribution_comparison.hpp>
+#include <ioj/layout/analyzer/union_distribution_entry.hpp>
+#include <ioj/layout/analyzer/union_distribution_entry_analysis.hpp>
+#include <ioj/layout/analyzer/union_target_comparison.hpp>
 #include <ioj/layout/physical_facts.hpp>
 #include <ioj/layout/string_set.hpp>
+#include <ioj/layout/type_facts.hpp>
 
 #include <lispb/schema/indices.h>
+#include <lispb/schema/type_graph.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <optional>
 #include <ranges>
@@ -672,17 +694,7 @@ auto Analyzer::analyze_union_distribution(UnionAnalysis const& analysis,
                                           std::uint64_t const selected_element_count)
     -> UnionDistributionAnalysis {
     UnionDistributionAnalysis result{.type = analysis.type,
-                                     .valid_entry_count = 0,
-                                     .total_weight = 0,
-                                     .total_extent_bytes = 0,
-                                     .total_slack_bytes = 0,
-                                     .expected_extent_bytes_per_value = std::nullopt,
-                                     .expected_slack_bytes_per_value = std::nullopt,
-                                     .selected_element_count = selected_element_count,
-                                     .expected_selected_extent_bytes = std::nullopt,
-                                     .expected_selected_slack_bytes = std::nullopt,
-                                     .entries = {},
-                                     .diagnostics = {}};
+                                     .selected_element_count = selected_element_count};
     StringSet seen_alternatives;
     auto exact_weight_overflow_reported{false};
     auto exact_extent_overflow_reported{false};
@@ -882,17 +894,7 @@ auto Analyzer::analyze_tagged_union_distribution(
     std::span<TaggedUnionDistributionEntry const> const entries,
     std::uint64_t const selected_element_count) -> TaggedUnionDistributionAnalysis {
     TaggedUnionDistributionAnalysis result{.type = tagged_union.type,
-                                           .valid_entry_count = 0,
-                                           .total_weight = 0,
-                                           .total_payload_extent_bytes = 0,
-                                           .total_payload_slack_bytes = 0,
-                                           .expected_payload_extent_bytes_per_value = std::nullopt,
-                                           .expected_payload_slack_bytes_per_value = std::nullopt,
-                                           .selected_element_count = selected_element_count,
-                                           .expected_selected_payload_extent_bytes = std::nullopt,
-                                           .expected_selected_payload_slack_bytes = std::nullopt,
-                                           .entries = {},
-                                           .diagnostics = {}};
+                                           .selected_element_count = selected_element_count};
     StringSet seen_tags;
     auto exact_weight_overflow_reported{false};
     auto exact_extent_overflow_reported{false};

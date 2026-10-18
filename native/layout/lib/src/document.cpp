@@ -3,6 +3,7 @@
 #include <ioj/layout/editor_session.hpp>
 
 #include <codegen/sexpr/source_error.h>
+#include <lispb/schema/type_graph.h>
 
 #include <cassert>
 #include <stdexcept>

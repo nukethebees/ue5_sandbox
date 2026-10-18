@@ -1,4 +1,19 @@
 #include "analyzer_test_fixtures.hpp"
+#include <ioj/layout/abi_profile.hpp>
+#include <ioj/layout/analyzer/analyzer.hpp>
+#include <ioj/layout/analyzer/enum_domain_analysis.hpp>
+#include <ioj/layout/analyzer/fixed_point_analysis.hpp>
+#include <ioj/layout/analyzer/integer_scalar_analysis.hpp>
+#include <ioj/layout/analyzer/integer_varint_analysis.hpp>
+#include <ioj/layout/analyzer/integer_varint_comparison.hpp>
+#include <ioj/layout/analyzer/integer_varint_distribution_analysis.hpp>
+#include <ioj/layout/analyzer/integer_varint_distribution_entry.hpp>
+#include <ioj/layout/analyzer/linear_quantized_analysis.hpp>
+#include <ioj/layout/analyzer/linear_quantized_comparison.hpp>
+#include <ioj/layout/analyzer/mini_float_analysis.hpp>
+#include <ioj/layout/analyzer/optional_encoding_comparison.hpp>
+#include <ioj/layout/analyzer/optional_presence_bit_analysis.hpp>
+#include <ioj/layout/analyzer/optional_sentinel_analysis.hpp>
 #include <ioj/layout/editor_session.hpp>
 
 #include <cmath>

@@ -1,7 +1,7 @@
 #include <ioj/layout/profile_probe.hpp>
 
 #include <ioj/layout/abi_profile.hpp>
-#include <ioj/layout/planner_type.hpp>
+#include <ioj/layout/external_dependency.hpp>
 
 #include <codegen/ast/indices.h>
 #include <codegen/schema.h>
@@ -10,6 +10,7 @@
 #include <lispb/compiler_storage.h>
 #include <lispb/schema/external_types.h>
 #include <lispb/schema/indices.h>
+#include <lispb/schema/type_graph.h>
 
 #include <algorithm>
 #include <cstdint>

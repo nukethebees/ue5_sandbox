@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/layout/analyzer.hpp>
+#include <ioj/layout/analyzer/access_operation.hpp>
 
 #include <functional>
 #include <map>

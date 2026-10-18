@@ -499,7 +499,8 @@ auto fit_graph(std::span<GraphPoint const> positions,
             maximum[axis] = std::max(maximum[axis], positions[index][axis] + sizes[index][axis]);
         }
     }
-    GraphViewport result{2.0F, {}};
+    GraphViewport result{};
+    result.zoom = 2.0F;
     for (std::size_t axis{}; axis < 2; ++axis) {
         viewport[axis] = std::max(viewport[axis], 1.0F);
         auto const available{viewport[axis] - 2.0F * std::min(margin, viewport[axis] * 0.1F)};

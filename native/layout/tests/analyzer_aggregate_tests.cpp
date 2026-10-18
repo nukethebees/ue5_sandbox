@@ -1,4 +1,14 @@
 #include "analyzer_test_fixtures.hpp"
+#include <ioj/layout/abi_profile.hpp>
+#include <ioj/layout/analyzer/access_operation.hpp>
+#include <ioj/layout/analyzer/analyzer.hpp>
+#include <ioj/layout/analyzer/record_access_analysis.hpp>
+#include <ioj/layout/analyzer/record_analysis.hpp>
+#include <ioj/layout/analyzer/record_target_comparison.hpp>
+#include <ioj/layout/analyzer/tagged_union_analysis.hpp>
+#include <ioj/layout/analyzer/union_analysis.hpp>
+#include <ioj/layout/analyzer/union_distribution_analysis.hpp>
+#include <ioj/layout/analyzer/union_distribution_entry.hpp>
 #include <ioj/layout/editor_session.hpp>
 
 namespace ioj::layout {

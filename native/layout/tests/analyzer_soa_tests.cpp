@@ -1,5 +1,17 @@
 #include "analyzer_test_fixtures.hpp"
+#include <ioj/layout/abi_profile.hpp>
+#include <ioj/layout/analyzer/access_intent.hpp>
+#include <ioj/layout/analyzer/access_operation.hpp>
+#include <ioj/layout/analyzer/analyzer.hpp>
+#include <ioj/layout/analyzer/record_access_analysis.hpp>
+#include <ioj/layout/analyzer/record_analysis.hpp>
+#include <ioj/layout/analyzer/record_soa_access_comparison.hpp>
+#include <ioj/layout/analyzer/soa_access_analysis.hpp>
+#include <ioj/layout/analyzer/soa_allocation_strategy.hpp>
+#include <ioj/layout/analyzer/soa_analysis.hpp>
+#include <ioj/layout/analyzer/soa_target_comparison.hpp>
 #include <ioj/layout/editor_session.hpp>
+#include <ioj/layout/resolved_variant.hpp>
 
 namespace ioj::layout {
 namespace analyzer_soa_tests {

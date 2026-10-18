@@ -1,4 +1,9 @@
 #include "analyzer_test_fixtures.hpp"
+#include <ioj/layout/abi_profile.hpp>
+#include <ioj/layout/analyzer/analyzer.hpp>
+#include <ioj/layout/analyzer/numeric_delta.hpp>
+#include <ioj/layout/analyzer/numeric_delta_direction.hpp>
+#include <ioj/layout/type_facts.hpp>
 
 #include <array>
 #include <cstdint>

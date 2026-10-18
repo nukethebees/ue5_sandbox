@@ -1,104 +1,10 @@
 #pragma once
 
-#include <ioj/layout/abi_profile.hpp>
-#include <ioj/layout/analyzer.hpp>
-#include <ioj/layout/physical_facts.hpp>
-#include <ioj/layout/workspace.hpp>
-
-#include <codegen/schema/declaration_handle.h>
-#include <lispb/schema/indices.h>
-#include <lispb/schema/integer_domain.h>
 #include <lispb/schema/type_graph.h>
-#include <lispb/schema/type_identity.h>
 
-#include <cstddef>
-#include <cstdint>
-#include <optional>
-#include <span>
 #include <string>
-#include <vector>
 
 namespace ioj::layout {
-
-enum class DeclarationKind {
-    external,
-    enumeration,
-    integer_scalar,
-    linear_quantized,
-    integer_varint,
-    fixed_point,
-    mini_float,
-    optional_sentinel,
-    optional_presence_bit,
-    packed,
-    record,
-    union_,
-    tagged_union,
-    soa,
-    vector_soa,
-    homogeneous_layout,
-    static_table,
-    facade,
-};
-
-struct DeclarationCapabilities {
-    DeclarationKind kind{DeclarationKind::external};
-    bool inspectable{};
-    bool editable{};
-    bool physical_analysis_available{};
-    bool supports_variant_overrides{};
-};
-
-enum class LayoutStatus { available, unknown, error };
-
-struct ExternalDependency {
-    std::string cpp_spelling;
-    std::vector<lispb::schema::TypeId> types;
-    std::vector<std::string> registered_names;
-    std::vector<lispb::schema::TypeUseId> uses;
-    std::vector<lispb::schema::TypeIdentity> declarations;
-    std::vector<std::string> modules;
-    bool semantics_known{};
-    std::optional<TypeFacts> physical_facts{};
-};
-
-auto external_dependencies(lispb::schema::TypeGraph const& types, AbiProfile const* abi = nullptr)
-    -> std::vector<ExternalDependency>;
-
-struct ExternalTypeAnalysis {
-    bool semantics_known{};
-    PhysicalFactsResult physical;
-    std::vector<lispb::schema::TypeIdentity> blocked_declarations;
-};
-
-auto analyze_external_type(lispb::schema::TypeGraph const& types,
-                           lispb::schema::TypeId type,
-                           ResolvedVariant const& variant,
-                           AbiProfile const& abi,
-                           std::uint64_t capacity,
-                           SoaAllocationStrategy allocation_strategy) -> ExternalTypeAnalysis;
-
 auto integer_source_reference(lispb::schema::TypeGraph const& types,
                               lispb::schema::TypeId const node) -> std::string;
-
-auto declaration_capabilities(lispb::schema::TypeGraph const& types,
-                              lispb::schema::TypeId const node) -> DeclarationCapabilities;
-auto declaration_capabilities(lispb::codegen::DeclarationHandle declaration)
-    -> DeclarationCapabilities;
-auto declaration_kind_label(DeclarationKind kind) -> char const*;
-auto declaration_status(lispb::schema::TypeGraph const& types,
-                        lispb::schema::TypeId type,
-                        ResolvedVariant const& variant,
-                        AbiProfile const& abi,
-                        std::uint64_t default_capacity) -> LayoutStatus;
-auto declaration_status(lispb::schema::TypeGraph const& types,
-                        lispb::schema::TypeId type,
-                        ResolvedVariant const& variant,
-                        AbiProfile const& abi,
-                        std::uint64_t default_capacity,
-                        std::uint64_t element_count,
-                        SoaAllocationStrategy allocation_strategy,
-                        std::span<RelationshipTargetFacts const> relationship_targets)
-    -> LayoutStatus;
-
-} // namespace ioj::layout
+}

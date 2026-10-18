@@ -1,11 +1,14 @@
 #pragma once
 
-#include <ioj/layout/analyzer.hpp>
+#include <ioj/layout/abi_profile.hpp>
+#include <ioj/layout/analyzer/integer_varint_distribution_entry.hpp>
+#include <ioj/layout/analyzer/relationship_target_facts.hpp>
+#include <ioj/layout/layout_status.hpp>
 #include <ioj/layout/planner_analysis_inputs.hpp>
 #include <ioj/layout/planner_analysis_results.hpp>
 #include <ioj/layout/planner_selection.hpp>
-#include <ioj/layout/planner_type.hpp>
 #include <ioj/layout/revision.hpp>
+#include <ioj/layout/type_facts.hpp>
 
 #include <lispb/schema/indices.h>
 #include <lispb/schema/type_identity.h>

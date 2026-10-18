@@ -1,5 +1,14 @@
 #include "analyzer_test_fixtures.hpp"
+#include <ioj/layout/abi_profile.hpp>
+#include <ioj/layout/analyzer/access_intent.hpp>
+#include <ioj/layout/analyzer/access_operation.hpp>
+#include <ioj/layout/analyzer/analyzer.hpp>
+#include <ioj/layout/analyzer/packed_access_analysis.hpp>
+#include <ioj/layout/analyzer/packed_analysis.hpp>
+#include <ioj/layout/analyzer/packed_target_comparison.hpp>
+#include <ioj/layout/analyzer/relationship_target_facts.hpp>
 #include <ioj/layout/editor_session.hpp>
+#include <ioj/layout/resolved_variant.hpp>
 
 namespace ioj::layout {
 namespace analyzer_packed_tests {

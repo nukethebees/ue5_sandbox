@@ -1,8 +1,13 @@
 #include "document_test_support.hpp"
+#include <ioj/layout/abi_profile.hpp>
+#include <ioj/layout/declaration_capabilities.hpp>
 #include <ioj/layout/document.hpp>
 #include <ioj/layout/editor_session.hpp>
+#include <ioj/layout/external_dependency.hpp>
+#include <ioj/layout/layout_status.hpp>
 #include <ioj/layout/planner_session.hpp>
-#include <ioj/layout/planner_type.hpp>
+#include <ioj/layout/resolved_variant.hpp>
+#include <ioj/layout/type_facts.hpp>
 
 #include <gtest/gtest.h>
 

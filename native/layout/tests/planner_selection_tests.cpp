@@ -1,3 +1,4 @@
+#include <ioj/layout/analyzer/access_operation.hpp>
 #include <ioj/layout/document.hpp>
 #include <ioj/layout/editor_session.hpp>
 #include <ioj/layout/planner_selection.hpp>

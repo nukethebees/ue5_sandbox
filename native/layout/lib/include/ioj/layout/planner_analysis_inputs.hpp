@@ -1,7 +1,9 @@
 #pragma once
-#include <ioj/layout/analyzer.hpp>
+#include <ioj/layout/analyzer/access_operation.hpp>
+#include <ioj/layout/analyzer/soa_allocation_strategy.hpp>
 #include <ioj/layout/planner_selection.hpp>
 #include <ioj/layout/variant_id.hpp>
+#include <ioj/layout/workspace.hpp>
 
 #include <lispb/schema/type_identity.h>
 

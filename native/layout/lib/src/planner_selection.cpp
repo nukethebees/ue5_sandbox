@@ -1,5 +1,7 @@
 #include <ioj/layout/planner_selection.hpp>
 
+#include <ioj/layout/declaration_capabilities.hpp>
+
 #include <codegen/schema/soa_backend.h>
 #include <lispb/schema/indices.h>
 #include <lispb/schema/packed_fields.h>
@@ -11,6 +13,7 @@
 #include <lispb/schema/soa_types.h>
 #include <lispb/schema/tagged_union_alternatives.h>
 #include <lispb/schema/tagged_union_types.h>
+#include <lispb/schema/type_graph.h>
 #include <lispb/schema/type_identity.h>
 #include <lispb/schema/union_alternatives.h>
 #include <lispb/schema/union_types.h>

@@ -1,20 +1,48 @@
-#include "checked_arithmetic.hpp"
-#include "enum_backing.hpp"
-#include "integer_code_domain.hpp"
-#include "memory_regions.hpp"
-#include "relationship_extent.hpp"
-#include "varint_encoding.hpp"
-#include <ioj/layout/analyzer.hpp>
+#include "../analysis_limits.hpp"
+#include "../checked_arithmetic.hpp"
+#include "../enum_backing.hpp"
+#include "../integer_code_domain.hpp"
+#include "../memory_regions.hpp"
+#include "../relationship_extent.hpp"
+#include "../varint_encoding.hpp"
+#include <ioj/layout/abi_profile.hpp>
+#include <ioj/layout/analyzer/analyzer.hpp>
+#include <ioj/layout/analyzer/enum_domain_analysis.hpp>
+#include <ioj/layout/analyzer/enum_target_comparison.hpp>
+#include <ioj/layout/analyzer/exact_code_count.hpp>
+#include <ioj/layout/analyzer/fixed_point_analysis.hpp>
+#include <ioj/layout/analyzer/integer_scalar_analysis.hpp>
+#include <ioj/layout/analyzer/integer_scalar_capacity_comparison.hpp>
+#include <ioj/layout/analyzer/integer_varint_analysis.hpp>
+#include <ioj/layout/analyzer/integer_varint_comparison.hpp>
+#include <ioj/layout/analyzer/integer_varint_distribution_analysis.hpp>
+#include <ioj/layout/analyzer/integer_varint_distribution_comparison.hpp>
+#include <ioj/layout/analyzer/integer_varint_distribution_entry.hpp>
+#include <ioj/layout/analyzer/linear_quantized_analysis.hpp>
+#include <ioj/layout/analyzer/linear_quantized_comparison.hpp>
+#include <ioj/layout/analyzer/mini_float_analysis.hpp>
+#include <ioj/layout/analyzer/numeric_delta.hpp>
+#include <ioj/layout/analyzer/optional_encoding_comparison.hpp>
+#include <ioj/layout/analyzer/optional_encoding_kind.hpp>
+#include <ioj/layout/analyzer/optional_encoding_summary.hpp>
+#include <ioj/layout/analyzer/optional_presence_bit_analysis.hpp>
+#include <ioj/layout/analyzer/optional_sentinel_analysis.hpp>
+#include <ioj/layout/analyzer/packed_named_code_analysis.hpp>
+#include <ioj/layout/analyzer/physical_type_spelling.hpp>
+#include <ioj/layout/analyzer/relationship_target_facts.hpp>
 #include <ioj/layout/physical_facts.hpp>
 #include <ioj/layout/string_set.hpp>
+#include <ioj/layout/type_facts.hpp>
 
 #include <codegen/ast/cpp_types.h>
+#include <codegen/schema/declarations.h>
 #include <codegen/schema/fixed_point_rounding.h>
 #include <codegen/schema/packed_integer_value.h>
 #include <codegen/schema/packed_named_code_schemas.h>
 #include <codegen/schema/semantic_relation_kind.h>
 #include <lispb/project_loader.h>
 #include <lispb/schema/enum_domain_issue_severity.h>
+#include <lispb/schema/enum_domains.h>
 #include <lispb/schema/enum_types.h>
 #include <lispb/schema/fixed_point_types.h>
 #include <lispb/schema/indices.h>
@@ -25,8 +53,10 @@
 #include <lispb/schema/optional_presence_bit_types.h>
 #include <lispb/schema/optional_sentinel_types.h>
 #include <lispb/schema/type_definitions.h>
+#include <lispb/schema/type_graph.h>
 #include <lispb/strings.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -70,34 +100,11 @@ auto Analyzer::analyze_enum(lispb::schema::TypeGraph const& types,
         .type = type,
         .backing_type = backing_type,
         .backing_facts = physical.facts,
-        .backing_bits = std::nullopt,
-        .live_value_count = 0,
-        .reserved_value_count = 0,
-        .minimum_value = std::nullopt,
-        .maximum_value = std::nullopt,
-        .signed_domain = std::nullopt,
         .declared_signedness = declared_signedness,
-        .minimum_required_bits = std::nullopt,
         .declared_bit_width =
             types.definitions().enums.bit_width[types.definitions().enums.index(enumeration)],
-        .effective_bit_width = std::nullopt,
-        .semantic_width_can_represent_domain = std::nullopt,
-        .unused_semantic_codes = std::nullopt,
-        .backing_can_represent_domain = std::nullopt,
-        .unused_backing_codes = std::nullopt,
-        .enumerators = {},
         .diagnostics = std::move(physical.diagnostics),
-        .aggregate = {.element_count = element_count,
-                      .total_storage_bytes = std::nullopt,
-                      .cache_line_bytes = std::nullopt,
-                      .minimum_cache_lines = std::nullopt,
-                      .complete_elements_per_cache_line = std::nullopt,
-                      .cache_line_straddling_elements = std::nullopt,
-                      .page_bytes = std::nullopt,
-                      .minimum_pages = std::nullopt,
-                      .complete_elements_per_page = std::nullopt,
-                      .page_straddling_elements = std::nullopt,
-                      .cache_capacity = {}}};
+        .aggregate = {.element_count = element_count}};
     if (backing_type == "Unknown") {
         result.diagnostics.push_back(
             {DiagnosticSeverity::error,
@@ -564,19 +571,7 @@ auto Analyzer::analyze_integer_scalar(
                           types.relationships().target[types.relationships().index(
                               types.definitions().integer_scalars.relationship
                                   [types.definitions().integer_scalars.index(scalar)])])]))}}
-                : std::nullopt,
-        .relationship_target_extent = std::nullopt,
-        .relationship_live_value_count = std::nullopt,
-        .relationship_required_code_count = std::nullopt,
-        .relationship_minimum_required_bits = std::nullopt,
-        .relationship_width_sufficient = std::nullopt,
-        .relationship_code_space_capacity_limit = std::nullopt,
-        .relationship_capacity_headroom = std::nullopt,
-        .relationship_semantic_capacity_limit = std::nullopt,
-        .relationship_sentinel_capacity_limit = std::nullopt,
-        .relationship_effective_capacity_limit = std::nullopt,
-        .relationship_effective_capacity_headroom = std::nullopt,
-        .diagnostics = {}}};
+                : std::nullopt}};
     if (lispb::schema::is_valid(
             types.definitions()
                 .integer_scalars.relationship[types.definitions().integer_scalars.index(scalar)]) &&
@@ -732,7 +727,6 @@ auto Analyzer::analyze_optional_sentinel(lispb::schema::TypeGraph const& types,
             types.definitions()
                 .integer_scalars.maximum_value[types.definitions().integer_scalars.index(source)],
         .present_value_count = source_analysis.live_value_count,
-        .absence_code_count = 1,
         .other_sentinel_code_count = source_analysis.sentinel_code_count - 1,
         .unused_code_count = source_analysis.unused_codes,
         .encoded_storage_bits =
@@ -743,7 +737,7 @@ auto Analyzer::analyze_optional_sentinel(lispb::schema::TypeGraph const& types,
             types.definitions()
                         .optional_sentinels
                         .bit_width[types.definitions().optional_sentinels.index(optional)] == 64
-                ? ExactCodeCount{.value = 0, .two_to_64 = true}
+                ? ExactCodeCount{.two_to_64 = true}
                 : ExactCodeCount{.value =
                                      std::uint64_t{1}
                                      << types.definitions()
@@ -756,9 +750,7 @@ auto Analyzer::analyze_optional_sentinel(lispb::schema::TypeGraph const& types,
             checked_multiply(types.definitions()
                                  .optional_sentinels
                                  .bit_width[types.definitions().optional_sentinels.index(optional)],
-                             element_count),
-        .diagnostics = {},
-    };
+                             element_count)};
     if (!result.total_encoded_bits.has_value()) {
         result.diagnostics.push_back(
             {DiagnosticSeverity::warning,
@@ -798,10 +790,8 @@ auto Analyzer::analyze_optional_presence_bit(lispb::schema::TypeGraph const& typ
             types.definitions()
                 .integer_scalars.maximum_value[types.definitions().integer_scalars.index(source)],
         .present_value_count = source_analysis.live_value_count,
-        .canonical_absence_state_count = 1,
         .source_sentinel_code_count = source_analysis.sentinel_code_count,
         .source_unused_payload_codes = source_analysis.unused_codes,
-        .presence_bits = 1,
         .payload_bits =
             types.definitions()
                 .optional_presence_bits
@@ -825,9 +815,7 @@ auto Analyzer::analyze_optional_presence_bit(lispb::schema::TypeGraph const& typ
             types.definitions()
                 .optional_presence_bits
                 .encoded_bits[types.definitions().optional_presence_bits.index(optional)],
-            element_count),
-        .diagnostics = {},
-    };
+            element_count)};
     if (!result.total_encoded_bits.has_value()) {
         result.diagnostics.push_back(
             {DiagnosticSeverity::warning,
@@ -863,10 +851,8 @@ auto Analyzer::compare_optional_encodings(lispb::schema::TypeGraph const& types,
                 .source_sentinel_codes_used_for_absence = 1,
                 .remaining_source_sentinel_code_count = analysis.other_sentinel_code_count,
                 .source_unused_payload_codes = analysis.unused_code_count,
-                .noncanonical_absence_patterns = 0,
                 .encoded_storage_bits = analysis.encoded_storage_bits,
-                .total_encoded_bits = analysis.total_encoded_bits,
-            };
+                .total_encoded_bits = analysis.total_encoded_bits};
         }
         if (((definition).kind() == lispb::schema::TypeDefinitionKind::optional_presence_bit)) {
             auto const analysis{analyze_optional_presence_bit(types, type, element_count)};
@@ -876,17 +862,14 @@ auto Analyzer::compare_optional_encodings(lispb::schema::TypeGraph const& types,
                 .type = type,
                 .source_type = analysis.source_type,
                 .kind = OptionalEncodingKind::presence_bit,
-                .absence_sentinel_name = std::nullopt,
                 .present_value_count = analysis.present_value_count,
                 .canonical_absence_state_count = analysis.canonical_absence_state_count,
                 .source_sentinel_code_count = analysis.source_sentinel_code_count,
-                .source_sentinel_codes_used_for_absence = 0,
                 .remaining_source_sentinel_code_count = analysis.source_sentinel_code_count,
                 .source_unused_payload_codes = analysis.source_unused_payload_codes,
                 .noncanonical_absence_patterns = analysis.noncanonical_absence_patterns,
                 .encoded_storage_bits = analysis.encoded_storage_bits,
-                .total_encoded_bits = analysis.total_encoded_bits,
-            };
+                .total_encoded_bits = analysis.total_encoded_bits};
         }
         result.diagnostics.push_back(
             {DiagnosticSeverity::error,
@@ -933,7 +916,7 @@ auto Analyzer::analyze_linear_quantized(lispb::schema::TypeGraph const& types,
     auto const total_code_count{
         types.definitions().linear_quantized.bit_width[types.definitions().linear_quantized.index(
             quantized)] == 64
-            ? ExactCodeCount{.value = 0, .two_to_64 = true}
+            ? ExactCodeCount{.two_to_64 = true}
             : ExactCodeCount{
                   .value = std::uint64_t{1}
                         << types.definitions()
@@ -1183,8 +1166,7 @@ auto Analyzer::analyze_fixed_point(lispb::schema::TypeGraph const& types,
         .rounding = types.definitions()
                         .fixed_points.rounding[types.definitions().fixed_points.index(fixed)],
         .element_count = element_count,
-        .total_encoded_bits = total_encoded_bits,
-        .diagnostics = {}};
+        .total_encoded_bits = total_encoded_bits};
     if (!total_encoded_bits.has_value()) {
         result.diagnostics.push_back(
             {DiagnosticSeverity::error, "Fixed-point encoded payload bit count overflows uint64."});
@@ -1246,11 +1228,6 @@ auto Analyzer::analyze_mini_float(lispb::schema::TypeGraph const& types,
         .infinity_code_count = sign_code_count,
         .nan_code_count = (significand_code_count - 1) * sign_code_count,
         .nonzero_subnormal_code_count = (significand_code_count - 1) * sign_code_count,
-        .minimum_positive_subnormal = std::nullopt,
-        .minimum_positive_normal = std::nullopt,
-        .maximum_finite = std::nullopt,
-        .minimum_finite = std::nullopt,
-        .unit_interval_resolution = std::nullopt,
         .maximum_relative_rounding_error = std::ldexp(
             1.0L,
             -static_cast<int>(
@@ -1258,8 +1235,7 @@ auto Analyzer::analyze_mini_float(lispb::schema::TypeGraph const& types,
                     .mini_floats.significand_bits[types.definitions().mini_floats.index(mini)]) -
                 1),
         .element_count = element_count,
-        .total_encoded_bits = total_encoded_bits,
-        .diagnostics = {}};
+        .total_encoded_bits = total_encoded_bits};
 
     auto retain_positive_finite =
         [&](long double const value,
@@ -1384,8 +1360,7 @@ auto Analyzer::analyze_integer_varint(lispb::schema::TypeGraph const& types,
         .maximum_encoded_bytes = maximum_bytes,
         .element_count = element_count,
         .minimum_total_bytes = checked_multiply(minimum_bytes, element_count),
-        .maximum_total_bytes = checked_multiply(maximum_bytes, element_count),
-        .diagnostics = {}};
+        .maximum_total_bytes = checked_multiply(maximum_bytes, element_count)};
     if (!result.minimum_total_bytes.has_value()) {
         result.diagnostics.push_back(
             {DiagnosticSeverity::error, "Minimum varint byte total overflows uint64."});
@@ -1442,15 +1417,9 @@ auto Analyzer::analyze_integer_varint_distribution(
         types.occurrences().type[types.occurrences().index(
             types.definitions()
                 .integer_varints.source[types.definitions().integer_varints.index(varint)])])};
-    IntegerVarintDistributionAnalysis result{.type = type,
-                                             .valid_entry_count = 0,
-                                             .total_weight = 0,
-                                             .total_encoded_bytes = 0,
-                                             .expected_bytes_per_value = std::nullopt,
-                                             .selected_element_count = selected_element_count,
-                                             .expected_selected_bytes = std::nullopt,
-                                             .entries = {},
-                                             .diagnostics = {}};
+    IntegerVarintDistributionAnalysis result{};
+    result.type = type;
+    result.selected_element_count = selected_element_count;
 
     auto exact_weight_overflow_reported{false};
     auto exact_bytes_overflow_reported{false};
@@ -1551,11 +1520,7 @@ auto Analyzer::compare_integer_varint_distribution(
                                      [types.definitions().integer_varints.index(first_varint)])] ==
                              types.occurrences().type[types.occurrences().index(
                                  types.definitions().integer_varints.source
-                                     [types.definitions().integer_varints.index(second_varint)])],
-        .total_encoded_byte_delta = std::nullopt,
-        .expected_bytes_per_value_delta = std::nullopt,
-        .expected_selected_bytes_delta = std::nullopt,
-        .diagnostics = {}};
+                                     [types.definitions().integer_varints.index(second_varint)])]};
     if (!result.compatible_source) {
         result.diagnostics.push_back(
             {DiagnosticSeverity::error,

@@ -2,7 +2,17 @@
 
 #include "checked_arithmetic.hpp"
 #include "enum_backing.hpp"
+#include <ioj/layout/abi_profile.hpp>
+#include <ioj/layout/analyzer/record_analysis.hpp>
+#include <ioj/layout/analyzer/record_member_analysis.hpp>
+#include <ioj/layout/analyzer/tagged_union_alternative_analysis.hpp>
+#include <ioj/layout/analyzer/tagged_union_analysis.hpp>
+#include <ioj/layout/analyzer/union_alternative_analysis.hpp>
+#include <ioj/layout/analyzer/union_analysis.hpp>
+#include <ioj/layout/diagnostic.hpp>
+#include <ioj/layout/resolved_variant.hpp>
 #include <ioj/layout/string_set.hpp>
+#include <ioj/layout/type_facts.hpp>
 
 #include <codegen/ast/cpp_types.h>
 #include <codegen/schema.h>
@@ -22,6 +32,7 @@
 #include <lispb/schema/tagged_union_alternatives.h>
 #include <lispb/schema/tagged_union_types.h>
 #include <lispb/schema/type_definitions.h>
+#include <lispb/schema/type_graph.h>
 #include <lispb/schema/union_alternatives.h>
 #include <lispb/schema/union_types.h>
 #include <lispb/strings.h>
@@ -230,15 +241,13 @@ auto PhysicalFactsResolver::facts_for(lispb::schema::TypeId const type,
         if (!nested.size_bytes.has_value() || !nested.alignment_bytes.has_value()) {
             return std::nullopt;
         }
-        TypeFacts facts{.size_bytes = *nested.size_bytes,
-                        .alignment_bytes = *nested.alignment_bytes,
-                        .integer_signed = std::nullopt,
-                        .unsigned_value_bits = std::nullopt,
-                        .provenance =
-                            "Derived from LispB '" +
-                            std::string{types_.strings().view(types_.cpp_spelling(node))} +
-                            "' using profile '" + abi_.name() + "'.",
-                        .origin = FactOrigin::derived};
+        TypeFacts facts{};
+        facts.size_bytes = *nested.size_bytes;
+        facts.alignment_bytes = *nested.alignment_bytes;
+        facts.provenance = "Derived from LispB '" +
+                           std::string{types_.strings().view(types_.cpp_spelling(node))} +
+                           "' using profile '" + abi_.name() + "'.";
+        facts.origin = FactOrigin::derived;
         check_supplied_layout(type, nested.size_bytes, nested.alignment_bytes, diagnostics);
         if (!nested.size_bytes.has_value()) {
             return std::nullopt;
@@ -357,15 +366,9 @@ auto PhysicalFactsResolver::facts_for(lispb::schema::TypeId const type,
 auto PhysicalFactsResolver::analyze_record(lispb::schema::TypeId const type,
                                            std::vector<lispb::schema::TypeId>& active)
     -> RecordAnalysis {
-    RecordAnalysis result{.type = type,
-                          .members = {},
-                          .payload_bytes = std::nullopt,
-                          .internal_padding_bytes = std::nullopt,
-                          .tail_padding_bytes = std::nullopt,
-                          .size_bytes = std::nullopt,
-                          .alignment_bytes = std::nullopt,
-                          .diagnostics = {},
-                          .aggregate = {}};
+    RecordAnalysis result{};
+    result.type = type;
+
     auto const& node{type};
     auto const record{((types_.definition(node)).kind() == lispb::schema::TypeDefinitionKind::record
                            ? std::optional{types_.definition(node)}
@@ -391,21 +394,17 @@ auto PhysicalFactsResolver::analyze_record(lispb::schema::TypeId const type,
     result.members.reserve(types_.definitions().records.members_of(*record).size());
     for (auto const member_id : types_.definitions().records.members_of(*record)) {
         auto const member{member_id};
-        auto member_result{RecordMemberAnalysis{
-            .name = std::string{types_.strings().view(
-                types_.definitions()
-                    .record_members.name[types_.definitions().record_members.index(member)])},
-            .semantic_type = types_.occurrences().type[types_.occurrences().index(
-                types_.definitions().record_members.semantic_type
-                    [types_.definitions().record_members.index(member)])],
-            .element_count =
-                types_.definitions()
-                    .record_members.count[types_.definitions().record_members.index(member)]
-                    .value_or(1),
-            .element_facts = std::nullopt,
-            .offset_bytes = std::nullopt,
-            .extent_bytes = std::nullopt,
-            .padding_before_bytes = std::nullopt}};
+        RecordMemberAnalysis member_result{};
+        member_result.name = std::string{types_.strings().view(
+            types_.definitions()
+                .record_members.name[types_.definitions().record_members.index(member)])};
+        member_result.semantic_type = types_.occurrences().type[types_.occurrences().index(
+            types_.definitions()
+                .record_members.semantic_type[types_.definitions().record_members.index(member)])];
+        member_result.element_count =
+            types_.definitions()
+                .record_members.count[types_.definitions().record_members.index(member)]
+                .value_or(1);
         auto const context{
             "Record '" + std::string{types_.strings().view(types_.name(node))} + "' member '" +
             std::string{types_.strings().view(
@@ -498,14 +497,9 @@ auto PhysicalFactsResolver::analyze_record(lispb::schema::TypeId const type,
 auto PhysicalFactsResolver::analyze_union(lispb::schema::TypeId const type,
                                           std::vector<lispb::schema::TypeId>& active)
     -> UnionAnalysis {
-    UnionAnalysis result{.type = type,
-                         .alternatives = {},
-                         .largest_alternative_bytes = std::nullopt,
-                         .tail_padding_bytes = std::nullopt,
-                         .size_bytes = std::nullopt,
-                         .alignment_bytes = std::nullopt,
-                         .diagnostics = {},
-                         .aggregate = {}};
+    UnionAnalysis result{};
+    result.type = type;
+
     auto const& node{type};
     auto const union_type{
         ((types_.definition(node)).kind() == lispb::schema::TypeDefinitionKind::union_type
@@ -531,22 +525,19 @@ auto PhysicalFactsResolver::analyze_union(lispb::schema::TypeId const type,
     result.alternatives.reserve(types_.definitions().unions.alternatives_of(*union_type).size());
     for (auto const alternative_id : types_.definitions().unions.alternatives_of(*union_type)) {
         auto const alternative{alternative_id};
-        auto alternative_result{UnionAlternativeAnalysis{
-            .name = std::string{types_.strings().view(
-                types_.definitions()
-                    .union_alternatives
-                    .name[types_.definitions().union_alternatives.index(alternative)])},
-            .semantic_type = types_.occurrences().type[types_.occurrences().index(
-                types_.definitions().union_alternatives.semantic_type
-                    [types_.definitions().union_alternatives.index(alternative)])],
-            .element_count = types_.definitions()
-                                 .union_alternatives
-                                 .count[types_.definitions().union_alternatives.index(alternative)]
-                                 .value_or(1),
-            .element_facts = std::nullopt,
-            .extent_bytes = std::nullopt,
-            .slack_bytes = std::nullopt,
-            .total_slack_bytes = std::nullopt}};
+        UnionAlternativeAnalysis alternative_result{};
+        alternative_result.name = std::string{types_.strings().view(
+            types_.definitions()
+                .union_alternatives
+                .name[types_.definitions().union_alternatives.index(alternative)])};
+        alternative_result.semantic_type = types_.occurrences().type[types_.occurrences().index(
+            types_.definitions().union_alternatives.semantic_type
+                [types_.definitions().union_alternatives.index(alternative)])];
+        alternative_result.element_count =
+            types_.definitions()
+                .union_alternatives
+                .count[types_.definitions().union_alternatives.index(alternative)]
+                .value_or(1);
         auto const context{
             "Union '" + std::string{types_.strings().view(types_.name(node))} + "' alternative '" +
             std::string{types_.strings().view(
@@ -610,24 +601,9 @@ auto PhysicalFactsResolver::analyze_union(lispb::schema::TypeId const type,
 auto PhysicalFactsResolver::analyze_tagged_union(lispb::schema::TypeId const type,
                                                  std::vector<lispb::schema::TypeId>& active)
     -> TaggedUnionAnalysis {
-    TaggedUnionAnalysis result{.type = type,
-                               .discriminant_type = {},
-                               .discriminant_facts = std::nullopt,
-                               .alternatives = {},
-                               .largest_alternative_bytes = std::nullopt,
-                               .payload_size_bytes = std::nullopt,
-                               .payload_alignment_bytes = std::nullopt,
-                               .payload_offset_bytes = std::nullopt,
-                               .internal_padding_bytes = std::nullopt,
-                               .tail_padding_bytes = std::nullopt,
-                               .size_bytes = std::nullopt,
-                               .alignment_bytes = std::nullopt,
-                               .mapped_live_tags = {},
-                               .unmapped_live_tags = {},
-                               .sentinel_tags = {},
-                               .count_sentinel_tag = std::nullopt,
-                               .diagnostics = {},
-                               .aggregate = {}};
+    TaggedUnionAnalysis result{};
+    result.type = type;
+
     auto const& node{type};
     auto const tagged{
         ((types_.definition(node)).kind() == lispb::schema::TypeDefinitionKind::tagged_union
@@ -698,27 +674,23 @@ auto PhysicalFactsResolver::analyze_tagged_union(lispb::schema::TypeId const typ
     result.alternatives.reserve(types_.definitions().tagged_unions.alternatives_of(*tagged).size());
     for (auto const alternative_id : types_.definitions().tagged_unions.alternatives_of(*tagged)) {
         auto const alternative{alternative_id};
-        auto alternative_result{TaggedUnionAlternativeAnalysis{
-            .name = std::string{types_.strings().view(
-                types_.definitions()
-                    .tagged_union_alternatives
-                    .name[types_.definitions().tagged_union_alternatives.index(alternative)])},
-            .tag = std::string{types_.strings().view(
-                types_.definitions()
-                    .tagged_union_alternatives
-                    .tag[types_.definitions().tagged_union_alternatives.index(alternative)])},
-            .semantic_type = types_.occurrences().type[types_.occurrences().index(
-                types_.definitions().tagged_union_alternatives.semantic_type
-                    [types_.definitions().tagged_union_alternatives.index(alternative)])],
-            .element_count =
-                types_.definitions()
-                    .tagged_union_alternatives
-                    .count[types_.definitions().tagged_union_alternatives.index(alternative)]
-                    .value_or(1),
-            .element_facts = std::nullopt,
-            .extent_bytes = std::nullopt,
-            .payload_slack_bytes = std::nullopt,
-            .total_payload_slack_bytes = std::nullopt}};
+        TaggedUnionAlternativeAnalysis alternative_result{};
+        alternative_result.name = std::string{types_.strings().view(
+            types_.definitions()
+                .tagged_union_alternatives
+                .name[types_.definitions().tagged_union_alternatives.index(alternative)])};
+        alternative_result.tag = std::string{types_.strings().view(
+            types_.definitions()
+                .tagged_union_alternatives
+                .tag[types_.definitions().tagged_union_alternatives.index(alternative)])};
+        alternative_result.semantic_type = types_.occurrences().type[types_.occurrences().index(
+            types_.definitions().tagged_union_alternatives.semantic_type
+                [types_.definitions().tagged_union_alternatives.index(alternative)])];
+        alternative_result.element_count =
+            types_.definitions()
+                .tagged_union_alternatives
+                .count[types_.definitions().tagged_union_alternatives.index(alternative)]
+                .value_or(1);
         auto const context{
             "Tagged union '" + std::string{types_.strings().view(types_.name(node))} +
             "' alternative '" +

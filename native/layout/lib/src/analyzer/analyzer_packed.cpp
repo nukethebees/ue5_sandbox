@@ -1,14 +1,30 @@
-#include "access_intents.hpp"
-#include "checked_arithmetic.hpp"
-#include "integer_code_domain.hpp"
-#include "memory_regions.hpp"
-#include "relationship_extent.hpp"
-#include "variant_projection.hpp"
-#include <ioj/layout/analyzer.hpp>
+#include "../access_intents.hpp"
+#include "../analysis_limits.hpp"
+#include "../checked_arithmetic.hpp"
+#include "../integer_code_domain.hpp"
+#include "../memory_regions.hpp"
+#include "../relationship_extent.hpp"
+#include "../variant_projection.hpp"
+#include <ioj/layout/abi_profile.hpp>
+#include <ioj/layout/analyzer/access_intent.hpp>
+#include <ioj/layout/analyzer/analyzer.hpp>
+#include <ioj/layout/analyzer/numeric_delta.hpp>
+#include <ioj/layout/analyzer/packed_access_analysis.hpp>
+#include <ioj/layout/analyzer/packed_access_comparison.hpp>
+#include <ioj/layout/analyzer/packed_analysis.hpp>
+#include <ioj/layout/analyzer/packed_field_access_analysis.hpp>
+#include <ioj/layout/analyzer/packed_field_analysis.hpp>
+#include <ioj/layout/analyzer/packed_named_code_analysis.hpp>
+#include <ioj/layout/analyzer/packed_target_comparison.hpp>
+#include <ioj/layout/analyzer/physical_type_spelling.hpp>
+#include <ioj/layout/analyzer/relationship_target_facts.hpp>
 #include <ioj/layout/physical_facts.hpp>
+#include <ioj/layout/resolved_variant.hpp>
 #include <ioj/layout/string_set.hpp>
+#include <ioj/layout/type_facts.hpp>
 
 #include <codegen/ast/cpp_types.h>
+#include <codegen/schema/declarations.h>
 #include <codegen/schema/packed_bit_order.h>
 #include <codegen/schema/packed_field_kind.h>
 #include <codegen/schema/packed_integer_value.h>
@@ -23,7 +39,10 @@
 #include <lispb/schema/packed_reserved_segments.h>
 #include <lispb/schema/packed_types.h>
 #include <lispb/schema/type_definitions.h>
+#include <lispb/schema/type_graph.h>
+#include <lispb/strings.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -59,31 +78,9 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
         .byte_order =
             types.definitions().packed.byte_order[types.definitions().packed.index(packed)],
         .bit_order = types.definitions().packed.bit_order[types.definitions().packed.index(packed)],
-        .storage_facts = std::nullopt,
-        .storage_bits = std::nullopt,
-        .bits_used = std::nullopt,
-        .payload_bits = std::nullopt,
-        .reserved_bits = std::nullopt,
-        .unused_bits = std::nullopt,
-        .overflow_bits = std::nullopt,
         .invalid_raw_value =
             types.definitions().packed.invalid_raw_value[types.definitions().packed.index(packed)],
-        .fields = {},
-        .diagnostics = {},
-        .aggregate = {.element_count = element_count,
-                      .total_storage_bytes = std::nullopt,
-                      .total_payload_bits = std::nullopt,
-                      .total_reserved_bits = std::nullopt,
-                      .total_unused_bits = std::nullopt,
-                      .cache_line_bytes = std::nullopt,
-                      .minimum_cache_lines = std::nullopt,
-                      .complete_elements_per_cache_line = std::nullopt,
-                      .cache_line_straddling_elements = std::nullopt,
-                      .page_bytes = std::nullopt,
-                      .minimum_pages = std::nullopt,
-                      .complete_elements_per_page = std::nullopt,
-                      .page_straddling_elements = std::nullopt,
-                      .cache_capacity = {}}};
+        .aggregate = {.element_count = element_count}};
     auto physical{PhysicalFactsResolver{types, abi, &variant}.resolve(type)};
     result.storage_facts = physical.facts;
     result.diagnostics = std::move(physical.diagnostics);
@@ -196,7 +193,6 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
             .bit_width = width,
             .overridden = field_override && !representation_owned_width,
             .least_significant_bit = least_significant_bit,
-            .most_significant_bit = std::nullopt,
             .maximum_unsigned_value =
                 field.has_value() ? maximum_unsigned_value(width) : std::nullopt,
             .minimum_signed_value =
@@ -227,15 +223,6 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
                           .packed_fields
                           .maximum_value[types.definitions().packed_fields.index(*field)]
                     : std::nullopt,
-            .semantic_value_count = std::nullopt,
-            .sentinel_code_count = 0,
-            .required_code_count = std::nullopt,
-            .minimum_required_bits = std::nullopt,
-            .unused_codes = std::nullopt,
-            .named_codes = {},
-            .linear_quantized = std::nullopt,
-            .fixed_point = std::nullopt,
-            .mini_float = std::nullopt,
             .relationship_kind =
                 field.has_value() &&
                         lispb::schema::is_valid(
@@ -267,18 +254,7 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
                               types.relationships().target[types.relationships().index(
                                   types.definitions().packed_fields.relationship
                                       [types.definitions().packed_fields.index(*field)])])]))}}
-                    : std::nullopt,
-            .relationship_target_extent = std::nullopt,
-            .relationship_live_value_count = std::nullopt,
-            .relationship_required_code_count = std::nullopt,
-            .relationship_minimum_required_bits = std::nullopt,
-            .relationship_width_sufficient = std::nullopt,
-            .relationship_code_space_capacity_limit = std::nullopt,
-            .relationship_capacity_headroom = std::nullopt,
-            .relationship_semantic_capacity_limit = std::nullopt,
-            .relationship_sentinel_capacity_limit = std::nullopt,
-            .relationship_effective_capacity_limit = std::nullopt,
-            .relationship_effective_capacity_headroom = std::nullopt};
+                    : std::nullopt};
         if (width == 0) {
             result.diagnostics.push_back(
                 {DiagnosticSeverity::error,

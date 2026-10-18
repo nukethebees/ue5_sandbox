@@ -1,10 +1,27 @@
-#include "access_intents.hpp"
-#include "checked_arithmetic.hpp"
-#include "memory_regions.hpp"
-#include "variant_projection.hpp"
-#include <ioj/layout/analyzer.hpp>
+#include "../access_intents.hpp"
+#include "../checked_arithmetic.hpp"
+#include "../memory_regions.hpp"
+#include "../variant_projection.hpp"
+#include <ioj/layout/abi_profile.hpp>
+#include <ioj/layout/analyzer/access_footprint_summary.hpp>
+#include <ioj/layout/analyzer/access_intent.hpp>
+#include <ioj/layout/analyzer/access_operation.hpp>
+#include <ioj/layout/analyzer/analyzer.hpp>
+#include <ioj/layout/analyzer/numeric_delta.hpp>
+#include <ioj/layout/analyzer/record_access_analysis.hpp>
+#include <ioj/layout/analyzer/record_soa_access_comparison.hpp>
+#include <ioj/layout/analyzer/relationship_target_facts.hpp>
+#include <ioj/layout/analyzer/soa_access_analysis.hpp>
+#include <ioj/layout/analyzer/soa_access_comparison.hpp>
+#include <ioj/layout/analyzer/soa_allocation_strategy.hpp>
+#include <ioj/layout/analyzer/soa_analysis.hpp>
+#include <ioj/layout/analyzer/soa_column_access_analysis.hpp>
+#include <ioj/layout/analyzer/soa_column_analysis.hpp>
+#include <ioj/layout/analyzer/soa_target_comparison.hpp>
 #include <ioj/layout/physical_facts.hpp>
+#include <ioj/layout/resolved_variant.hpp>
 #include <ioj/layout/string_set.hpp>
+#include <ioj/layout/type_facts.hpp>
 
 #include <codegen/ast/cpp_types.h>
 #include <codegen/schema/soa_backend.h>
@@ -14,7 +31,10 @@
 #include <lispb/schema/soa_columns.h>
 #include <lispb/schema/soa_types.h>
 #include <lispb/schema/type_definitions.h>
+#include <lispb/schema/type_graph.h>
+#include <lispb/strings.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -53,17 +73,8 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
                 : (allocation_strategy == SoaAllocationStrategy::separate_columns
                        ? static_cast<std::uint64_t>(types.definitions().soas.columns_of(soa).size())
                        : 1U),
-        .columns = {},
-        .bytes_per_logical_element = std::nullopt,
-        .total_payload_bytes = std::nullopt,
-        .total_allocation_bytes = std::nullopt,
-        .total_alignment_padding_bytes = std::nullopt,
-        .allocation_alignment_bytes = std::nullopt,
         .cache_line_bytes = abi.memory_facts().cache_line_bytes,
-        .page_bytes = abi.memory_facts().page_bytes,
-        .minimum_pages = std::nullopt,
-        .cache_capacity = {},
-        .diagnostics = {}};
+        .page_bytes = abi.memory_facts().page_bytes};
     auto const cache_line_bytes{result.cache_line_bytes};
     auto const has_cache_line_size{cache_line_bytes.has_value() && *cache_line_bytes != 0};
     if (!cache_line_bytes.has_value()) {
@@ -113,16 +124,7 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
                 .type = type,
                 .field_name =
                     types.definitions()
-                        .soa_columns.name[types.definitions().soa_columns.index(column)]}),
-            .type_facts = std::nullopt,
-            .total_bytes = std::nullopt,
-            .allocation_offset_bytes = std::nullopt,
-            .padding_before_bytes = std::nullopt,
-            .minimum_cache_lines = std::nullopt,
-            .elements_per_cache_line = std::nullopt,
-            .minimum_pages = std::nullopt,
-            .complete_elements_per_page = std::nullopt,
-            .cache_line_tiling = std::nullopt};
+                        .soa_columns.name[types.definitions().soa_columns.index(column)]})};
         auto const cv_qualified{
             column_result.overridden
                 ? lispb::codegen::classify_physical_type_use(
@@ -423,10 +425,7 @@ auto Analyzer::analyze_soa_access(SoaAnalysis const& soa,
                                   AbiProfile const& abi,
                                   std::uint64_t const element_count,
                                   std::uint64_t const multiplicity) -> SoaAccessAnalysis {
-    SoaAccessAnalysis result{.column_names = {},
-                             .accesses = {},
-                             .columns = {},
-                             .element_count = element_count,
+    SoaAccessAnalysis result{.element_count = element_count,
                              .multiplicity = multiplicity,
                              .allocation_strategy = soa.allocation_strategy,
                              .footprint_exact = soa.allocation_strategy ==
@@ -435,33 +434,19 @@ auto Analyzer::analyze_soa_access(SoaAnalysis const& soa,
                              .useful_bytes = std::uint64_t{},
                              .read_useful_bytes = std::uint64_t{},
                              .write_useful_bytes = std::uint64_t{},
-                             .logical_read_useful_bytes = std::nullopt,
-                             .logical_write_useful_bytes = std::nullopt,
-                             .full_logical_payload_bytes = std::nullopt,
-                             .unselected_payload_bytes = std::nullopt,
                              .allocated_capacity_payload_bytes = soa.total_payload_bytes,
-                             .capacity_slack_payload_bytes = std::nullopt,
                              .total_allocation_bytes = soa.total_allocation_bytes,
                              .alignment_padding_bytes = soa.total_alignment_padding_bytes,
                              .cache_line_bytes = abi.memory_facts().cache_line_bytes,
                              .minimum_cache_lines_touched = std::uint64_t{},
-                             .minimum_cache_bytes_touched = std::nullopt,
                              .minimum_read_cache_lines_touched = std::uint64_t{},
-                             .minimum_read_cache_bytes_touched = std::nullopt,
                              .minimum_write_cache_lines_touched = std::uint64_t{},
-                             .minimum_write_cache_bytes_touched = std::nullopt,
-                             .non_payload_cache_bytes = std::nullopt,
                              .minimum_cache_footprint_capacity =
                                  cache_capacity_analysis(std::nullopt, abi.memory_facts()),
                              .page_bytes = abi.memory_facts().page_bytes,
                              .minimum_pages_touched = std::uint64_t{},
-                             .minimum_page_bytes_touched = std::nullopt,
                              .minimum_read_pages_touched = std::uint64_t{},
-                             .minimum_read_page_bytes_touched = std::nullopt,
-                             .minimum_write_pages_touched = std::uint64_t{},
-                             .minimum_write_page_bytes_touched = std::nullopt,
-                             .non_payload_page_bytes = std::nullopt,
-                             .diagnostics = {}};
+                             .minimum_write_pages_touched = std::uint64_t{}};
     if (multiplicity == 0) {
         result.diagnostics.push_back(
             {DiagnosticSeverity::error, "Access multiplicity must be non-zero."});
@@ -563,16 +548,7 @@ auto Analyzer::analyze_soa_access(SoaAnalysis const& soa,
                 classified_useful_bytes(flat_accessed_bytes,
                                         access_includes_write(access.operation)),
                 multiplicity),
-            .minimum_cache_lines = std::nullopt,
-            .minimum_cache_bytes = std::nullopt,
-            .non_payload_cache_bytes = std::nullopt,
-            .aligned_cache_line_straddling_elements = std::nullopt,
-            .minimum_pages = std::nullopt,
-            .minimum_page_bytes = std::nullopt,
-            .non_payload_page_bytes = std::nullopt,
-            .aligned_page_straddling_elements = std::nullopt,
-            .allocated_capacity_payload_bytes = column->total_bytes,
-            .capacity_slack_payload_bytes = std::nullopt};
+            .allocated_capacity_payload_bytes = column->total_bytes};
         if (multiplicity != 0 && column_access.read_useful_bytes.has_value() &&
             !column_access.logical_read_useful_bytes.has_value()) {
             result.diagnostics.push_back(
@@ -980,27 +956,7 @@ auto Analyzer::compare_record_soa_access(RecordAccessAnalysis const& record,
         .record_non_useful_cache_bytes = record.non_selected_cache_bytes,
         .soa_non_useful_cache_bytes = soa.non_payload_cache_bytes,
         .record_non_useful_page_bytes = record.non_selected_page_bytes,
-        .soa_non_useful_page_bytes = soa.non_payload_page_bytes,
-        .useful_byte_delta = std::nullopt,
-        .read_useful_byte_delta = std::nullopt,
-        .write_useful_byte_delta = std::nullopt,
-        .logical_read_useful_byte_delta = std::nullopt,
-        .logical_write_useful_byte_delta = std::nullopt,
-        .cache_line_delta = std::nullopt,
-        .cache_byte_delta = std::nullopt,
-        .read_cache_line_delta = std::nullopt,
-        .read_cache_byte_delta = std::nullopt,
-        .write_cache_line_delta = std::nullopt,
-        .write_cache_byte_delta = std::nullopt,
-        .page_delta = std::nullopt,
-        .page_byte_delta = std::nullopt,
-        .read_page_delta = std::nullopt,
-        .read_page_byte_delta = std::nullopt,
-        .write_page_delta = std::nullopt,
-        .write_page_byte_delta = std::nullopt,
-        .non_useful_cache_byte_delta = std::nullopt,
-        .non_useful_page_byte_delta = std::nullopt,
-        .diagnostics = {}};
+        .soa_non_useful_page_bytes = soa.non_payload_page_bytes};
     for (auto const& diagnostic : record.diagnostics) {
         result.diagnostics.push_back({diagnostic.severity, "AoS access: " + diagnostic.message});
     }
@@ -1091,7 +1047,6 @@ auto Analyzer::compare_soa_access(SoaAccessAnalysis const& first, SoaAccessAnaly
     SoaAccessComparison result{
         .column_names = first.column_names,
         .accesses = first.accesses,
-        .columns = {},
         .element_count = first.element_count,
         .multiplicity = first.multiplicity,
         .allocation_strategy = first.allocation_strategy,
@@ -1104,9 +1059,6 @@ auto Analyzer::compare_soa_access(SoaAccessAnalysis const& first, SoaAccessAnaly
         .second_total_allocation_bytes = second.total_allocation_bytes,
         .first_alignment_padding_bytes = first.alignment_padding_bytes,
         .second_alignment_padding_bytes = second.alignment_padding_bytes,
-        .allocation_count_delta = std::nullopt,
-        .total_allocation_byte_delta = std::nullopt,
-        .alignment_padding_byte_delta = std::nullopt,
         .first_minimum_cache_footprint_capacity = first.minimum_cache_footprint_capacity,
         .second_minimum_cache_footprint_capacity = second.minimum_cache_footprint_capacity,
         .first_allocated_capacity_payload_bytes = first.allocated_capacity_payload_bytes,
@@ -1120,31 +1072,7 @@ auto Analyzer::compare_soa_access(SoaAccessAnalysis const& first, SoaAccessAnaly
         .first_non_payload_cache_bytes = first.non_payload_cache_bytes,
         .second_non_payload_cache_bytes = second.non_payload_cache_bytes,
         .first_non_payload_page_bytes = first.non_payload_page_bytes,
-        .second_non_payload_page_bytes = second.non_payload_page_bytes,
-        .useful_byte_delta = std::nullopt,
-        .read_useful_byte_delta = std::nullopt,
-        .write_useful_byte_delta = std::nullopt,
-        .logical_read_useful_byte_delta = std::nullopt,
-        .logical_write_useful_byte_delta = std::nullopt,
-        .cache_line_delta = std::nullopt,
-        .cache_byte_delta = std::nullopt,
-        .read_cache_line_delta = std::nullopt,
-        .read_cache_byte_delta = std::nullopt,
-        .write_cache_line_delta = std::nullopt,
-        .write_cache_byte_delta = std::nullopt,
-        .page_delta = std::nullopt,
-        .page_byte_delta = std::nullopt,
-        .read_page_delta = std::nullopt,
-        .read_page_byte_delta = std::nullopt,
-        .write_page_delta = std::nullopt,
-        .write_page_byte_delta = std::nullopt,
-        .allocated_capacity_payload_delta = std::nullopt,
-        .capacity_slack_payload_delta = std::nullopt,
-        .full_logical_payload_delta = std::nullopt,
-        .unselected_payload_delta = std::nullopt,
-        .non_payload_cache_byte_delta = std::nullopt,
-        .non_payload_page_byte_delta = std::nullopt,
-        .diagnostics = {}};
+        .second_non_payload_page_bytes = second.non_payload_page_bytes};
     for (auto const& diagnostic : first.diagnostics) {
         result.diagnostics.push_back(
             {diagnostic.severity, "First SoA access: " + diagnostic.message});

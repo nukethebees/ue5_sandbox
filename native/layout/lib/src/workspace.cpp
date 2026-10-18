@@ -1,6 +1,7 @@
 #include <ioj/layout/workspace.hpp>
 
 #include <ioj/layout/document.hpp>
+#include <ioj/layout/resolved_variant.hpp>
 #include <ioj/layout/variants.hpp>
 
 #include <lispb/schema/type_graph.h>

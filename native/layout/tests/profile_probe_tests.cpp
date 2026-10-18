@@ -1,8 +1,9 @@
 #include "document_test_support.hpp"
+#include <ioj/layout/abi_profile.hpp>
 #include <ioj/layout/document.hpp>
 #include <ioj/layout/editor_session.hpp>
+#include <ioj/layout/external_dependency.hpp>
 #include <ioj/layout/physical_facts.hpp>
-#include <ioj/layout/planner_type.hpp>
 #include <ioj/layout/profile_probe.hpp>
 
 #include <lispb/strings.h>

@@ -113,42 +113,6 @@ void write_memory_fact(std::ostringstream& output,
 
 } // namespace
 
-auto fact_origin_name(FactOrigin const origin) -> std::string_view {
-    switch (origin) {
-        case FactOrigin::unspecified:
-            return "unspecified";
-        case FactOrigin::target_abi:
-            return "target-abi";
-        case FactOrigin::compiler_probe:
-            return "compiler-probe";
-        case FactOrigin::manual_assumption:
-            return "manual-assumption";
-        case FactOrigin::derived:
-            return "derived";
-    }
-    return "unspecified";
-}
-
-auto validate_type_facts(TypeFacts const& facts) -> std::expected<void, std::string> {
-    if (facts.size_bytes == 0 || !is_power_of_two(facts.alignment_bytes)) {
-        return std::unexpected{
-            "Complete-object size must be nonzero and alignment a nonzero power of two."};
-    }
-    if (facts.size_bytes % facts.alignment_bytes != 0) {
-        return std::unexpected{
-            "Complete-object size must be a multiple of alignment (include tail padding)."};
-    }
-    if (facts.unsigned_value_bits.has_value()) {
-        auto const bits{*facts.unsigned_value_bits};
-        if (facts.integer_signed != false || bits == 0 ||
-            facts.size_bytes < (static_cast<std::uint64_t>(bits) + 7) / 8) {
-            return std::unexpected{
-                "Unsigned value bits require an unsigned integer and must fit its physical width."};
-        }
-    }
-    return {};
-}
-
 AbiProfile::AbiProfile(std::string name, AbiProfileIdentity identity)
     : name_{std::move(name)}
     , identity_{std::move(identity)} {}

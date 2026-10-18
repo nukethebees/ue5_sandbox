@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ioj/layout/analyzer.hpp>
 #include <ioj/layout/document.hpp>
 
 #include <gtest/gtest.h>

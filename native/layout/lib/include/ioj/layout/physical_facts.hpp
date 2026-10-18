@@ -1,6 +1,12 @@
 #pragma once
 
-#include <ioj/layout/analyzer.hpp>
+#include <ioj/layout/abi_profile.hpp>
+#include <ioj/layout/analyzer/record_analysis.hpp>
+#include <ioj/layout/analyzer/tagged_union_analysis.hpp>
+#include <ioj/layout/analyzer/union_analysis.hpp>
+#include <ioj/layout/diagnostic.hpp>
+#include <ioj/layout/resolved_variant.hpp>
+#include <ioj/layout/type_facts.hpp>
 
 #include <codegen/ast/indices.h>
 #include <codegen/schema/module_handle.h>
@@ -18,8 +24,8 @@
 namespace ioj::layout {
 
 struct PhysicalFactsResult {
-    std::optional<TypeFacts> facts;
-    std::vector<Diagnostic> diagnostics;
+    std::optional<TypeFacts> facts{};
+    std::vector<Diagnostic> diagnostics{};
 };
 
 class PhysicalFactsResolver {

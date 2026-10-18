@@ -2,8 +2,12 @@
 
 #include "platform/file_dialog.hpp"
 #include <ioj/layout/abi_profile.hpp>
+#include <ioj/layout/analyzer/access_operation.hpp>
+#include <ioj/layout/analyzer/packed_analysis.hpp>
+#include <ioj/layout/analyzer/record_analysis.hpp>
+#include <ioj/layout/analyzer/soa_allocation_strategy.hpp>
+#include <ioj/layout/analyzer/soa_analysis.hpp>
 #include <ioj/layout/editor_session.hpp>
-#include <ioj/layout/planner_type.hpp>
 
 #include <lispb/diagnostics.h>
 #include <lispb/schema/declaration_query.h>

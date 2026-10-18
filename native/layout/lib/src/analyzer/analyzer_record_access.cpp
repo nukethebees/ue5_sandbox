@@ -1,8 +1,18 @@
-#include "access_intents.hpp"
-#include "checked_arithmetic.hpp"
-#include "memory_regions.hpp"
-#include <ioj/layout/analyzer.hpp>
+#include "../access_intents.hpp"
+#include "../checked_arithmetic.hpp"
+#include "../memory_regions.hpp"
+#include <ioj/layout/abi_profile.hpp>
+#include <ioj/layout/analyzer/access_intent.hpp>
+#include <ioj/layout/analyzer/access_operation.hpp>
+#include <ioj/layout/analyzer/analyzer.hpp>
+#include <ioj/layout/analyzer/numeric_delta.hpp>
+#include <ioj/layout/analyzer/record_access_analysis.hpp>
+#include <ioj/layout/analyzer/record_access_comparison.hpp>
+#include <ioj/layout/analyzer/record_analysis.hpp>
+#include <ioj/layout/analyzer/record_member_analysis.hpp>
 #include <ioj/layout/string_set.hpp>
+
+#include <algorithm>
 
 namespace ioj::layout {
 using namespace analysis_detail;
@@ -12,35 +22,13 @@ auto Analyzer::analyze_record_access(RecordAnalysis const& record,
                                      AbiProfile const& abi,
                                      std::uint64_t const multiplicity) -> RecordAccessAnalysis {
     RecordAccessAnalysis result{.type = record.type,
-                                .member_names = {},
-                                .accesses = {},
                                 .element_count = record.aggregate.element_count,
                                 .multiplicity = multiplicity,
-                                .useful_bytes = std::nullopt,
                                 .read_useful_bytes = std::uint64_t{},
                                 .write_useful_bytes = std::uint64_t{},
-                                .logical_read_useful_bytes = std::nullopt,
-                                .logical_write_useful_bytes = std::nullopt,
                                 .object_footprint_bytes = record.aggregate.total_storage_bytes,
-                                .cache_line_bytes = std::nullopt,
-                                .cache_lines_touched = std::nullopt,
-                                .cache_bytes_touched = std::nullopt,
-                                .read_cache_lines_touched = std::nullopt,
-                                .read_cache_bytes_touched = std::nullopt,
-                                .write_cache_lines_touched = std::nullopt,
-                                .write_cache_bytes_touched = std::nullopt,
-                                .non_selected_cache_bytes = std::nullopt,
                                 .cache_footprint_capacity =
-                                    cache_capacity_analysis(std::nullopt, abi.memory_facts()),
-                                .page_bytes = std::nullopt,
-                                .pages_touched = std::nullopt,
-                                .page_bytes_touched = std::nullopt,
-                                .read_pages_touched = std::nullopt,
-                                .read_page_bytes_touched = std::nullopt,
-                                .write_pages_touched = std::nullopt,
-                                .write_page_bytes_touched = std::nullopt,
-                                .non_selected_page_bytes = std::nullopt,
-                                .diagnostics = {}};
+                                    cache_capacity_analysis(std::nullopt, abi.memory_facts())};
     if (multiplicity == 0) {
         result.diagnostics.push_back(
             {DiagnosticSeverity::error, "Access multiplicity must be non-zero."});

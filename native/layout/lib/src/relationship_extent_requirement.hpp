@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/layout/analyzer.hpp>
+#include <ioj/layout/analyzer/exact_code_count.hpp>
 
 #include <cstdint>
 #include <optional>

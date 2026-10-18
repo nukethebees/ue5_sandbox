@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ioj/layout/access_set.hpp>
-#include <ioj/layout/planner_type.hpp>
+#include <ioj/layout/declaration_kind.hpp>
 
 #include <lispb/schema/indices.h>
 #include <lispb/schema/type_graph.h>

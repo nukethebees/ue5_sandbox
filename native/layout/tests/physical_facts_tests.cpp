@@ -1,7 +1,12 @@
-#include <ioj/layout/analyzer.hpp>
+#include <ioj/layout/abi_profile.hpp>
+#include <ioj/layout/analyzer/analyzer.hpp>
+#include <ioj/layout/analyzer/record_analysis.hpp>
+#include <ioj/layout/analyzer/soa_analysis.hpp>
 #include <ioj/layout/document.hpp>
 #include <ioj/layout/editor_session.hpp>
 #include <ioj/layout/physical_facts.hpp>
+#include <ioj/layout/resolved_variant.hpp>
+#include <ioj/layout/type_facts.hpp>
 
 #include <gtest/gtest.h>
 #include <native_soa_types.h>

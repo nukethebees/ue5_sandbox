@@ -1,7 +1,10 @@
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
+#include <ioj/layout/abi_profile_identity.hpp>
+#include <ioj/layout/abi_profile_parse_error.hpp>
+#include <ioj/layout/memory_facts.hpp>
+#include <ioj/layout/type_facts.hpp>
+
 #include <expected>
 #include <filesystem>
 #include <map>
@@ -10,52 +13,6 @@
 #include <string_view>
 
 namespace ioj::layout {
-
-struct AbiProfileIdentity {
-    std::optional<std::string> platform;
-    std::optional<std::string> architecture;
-    std::optional<std::string> abi;
-    std::optional<std::string> compiler;
-    std::optional<std::string> build_configuration;
-
-    auto operator==(AbiProfileIdentity const&) const -> bool = default;
-};
-
-enum class FactOrigin { unspecified, target_abi, compiler_probe, manual_assumption, derived };
-
-auto fact_origin_name(FactOrigin origin) -> std::string_view;
-
-struct TypeFacts {
-    // Complete-object sizeof, including tail padding; also the stride in an array.
-    std::uint64_t size_bytes{};
-    std::uint64_t alignment_bytes{};
-    std::optional<bool> integer_signed;
-    std::optional<std::uint32_t> unsigned_value_bits;
-    std::string provenance;
-    FactOrigin origin{FactOrigin::unspecified};
-
-    auto operator==(TypeFacts const&) const -> bool = default;
-};
-
-auto validate_type_facts(TypeFacts const& facts) -> std::expected<void, std::string>;
-
-struct MemoryFacts {
-    std::optional<std::uint64_t> cache_line_bytes;
-    std::optional<std::uint64_t> page_bytes;
-    std::optional<std::uint64_t> l1_data_cache_bytes;
-    std::optional<std::uint64_t> l2_cache_bytes;
-    std::optional<std::uint64_t> l3_cache_bytes;
-    std::string provenance;
-
-    auto operator==(MemoryFacts const&) const -> bool = default;
-};
-
-struct AbiProfileParseError {
-    std::size_t line{};
-    std::string message;
-
-    auto operator==(AbiProfileParseError const&) const -> bool = default;
-};
 
 class AbiProfile {
   public:
