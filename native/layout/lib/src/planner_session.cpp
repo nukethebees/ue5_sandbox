@@ -312,7 +312,7 @@ auto PlannerAnalysisSession::status(TypeId const type) -> LayoutStatus {
                                                        inputs_.soa_allocation_strategy);
         status_inputs_revision_ = inputs_revision_;
     }
-    auto const found{status_cache_.find(type.value)};
+    auto const found{status_cache_.find(type)};
     if (found != status_cache_.end()) {
         return found->second;
     }
@@ -324,7 +324,7 @@ auto PlannerAnalysisSession::status(TypeId const type) -> LayoutStatus {
                                         inputs_.workspace.element_count(),
                                         inputs_.soa_allocation_strategy,
                                         status_relationship_targets_)};
-    status_cache_.emplace(type.value, value);
+    status_cache_.emplace(type, value);
     return value;
 }
 

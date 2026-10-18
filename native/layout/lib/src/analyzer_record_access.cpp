@@ -1,7 +1,11 @@
-#include "analyzer_internal.hpp"
+#include "access_intents.hpp"
+#include "checked_arithmetic.hpp"
+#include "memory_regions.hpp"
+#include <ioj/layout/analyzer.hpp>
 #include <ioj/layout/string_set.hpp>
 
 namespace ioj::layout {
+using namespace analysis_detail;
 
 auto Analyzer::analyze_record_access(RecordAnalysis const& record,
                                      std::span<AccessIntent const> const accesses,

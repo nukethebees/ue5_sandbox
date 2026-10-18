@@ -1,7 +1,12 @@
-#include "analyzer_internal.hpp"
+#include <ioj/layout/physical_facts.hpp>
+
+#include "checked_arithmetic.hpp"
+#include "enum_backing.hpp"
 #include <ioj/layout/string_set.hpp>
 
+#include <codegen/ast/cpp_types.h>
 #include <codegen/schema.h>
+#include <codegen/schema/declarations.h>
 #include <codegen/schema/module_handle.h>
 #include <codegen/schema/physical_type_form.h>
 #include <codegen/schema/physical_type_use.h>
@@ -19,7 +24,9 @@
 #include <lispb/schema/type_definitions.h>
 #include <lispb/schema/union_alternatives.h>
 #include <lispb/schema/union_types.h>
+#include <lispb/strings.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <optional>
 #include <ranges>
@@ -28,6 +35,7 @@
 #include <vector>
 
 namespace ioj::layout {
+using namespace analysis_detail;
 
 PhysicalFactsResolver::PhysicalFactsResolver(lispb::schema::TypeGraph const& types,
                                              AbiProfile const& abi,

@@ -1,6 +1,14 @@
-#include "analyzer_internal.hpp"
+#include "checked_arithmetic.hpp"
+#include "enum_backing.hpp"
+#include "integer_code_domain.hpp"
+#include "memory_regions.hpp"
+#include "relationship_extent.hpp"
+#include "varint_encoding.hpp"
+#include <ioj/layout/analyzer.hpp>
+#include <ioj/layout/physical_facts.hpp>
 #include <ioj/layout/string_set.hpp>
 
+#include <codegen/ast/cpp_types.h>
 #include <codegen/schema/fixed_point_rounding.h>
 #include <codegen/schema/packed_integer_value.h>
 #include <codegen/schema/packed_named_code_schemas.h>
@@ -17,10 +25,11 @@
 #include <lispb/schema/optional_presence_bit_types.h>
 #include <lispb/schema/optional_sentinel_types.h>
 #include <lispb/schema/type_definitions.h>
+#include <lispb/strings.h>
 
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <optional>
 #include <ranges>
 #include <span>
@@ -31,6 +40,7 @@
 #include <vector>
 
 namespace ioj::layout {
+using namespace analysis_detail;
 
 auto Analyzer::analyze_enum(lispb::schema::TypeGraph const& types,
                             lispb::schema::TypeId const type,
@@ -452,8 +462,7 @@ auto Analyzer::analyze_integer_scalar(
         unused_codes =
             types.definitions().integer_scalars.bit_width[types.definitions().integer_scalars.index(
                 scalar)] == 64
-                ? std::optional<std::uint64_t>{std::numeric_limits<std::uint64_t>::max() -
-                                               *required_count + 1}
+                ? std::optional<std::uint64_t>{maximum_analysis_count - *required_count + 1}
                 : std::optional<std::uint64_t>{
                       (std::uint64_t{1}
                        << types.definitions()
@@ -463,8 +472,7 @@ auto Analyzer::analyze_integer_scalar(
     } else if (types.definitions()
                        .integer_scalars
                        .bit_width[types.definitions().integer_scalars.index(scalar)] == 64 &&
-               live_count.has_value() &&
-               sentinel_count > (std::numeric_limits<std::uint64_t>::max)() - *live_count) {
+               live_count.has_value() && sentinel_count > maximum_analysis_count - *live_count) {
         unused_codes = 0;
     } else if (sentinel_count == 0 &&
                types.definitions()
@@ -480,7 +488,7 @@ auto Analyzer::analyze_integer_scalar(
             types.definitions()
                     .integer_scalars
                     .maximum_value[types.definitions().integer_scalars.index(scalar)] ==
-                lispb::codegen::PackedIntegerValue{(std::numeric_limits<std::uint64_t>::max)()}};
+                lispb::codegen::PackedIntegerValue{maximum_unsigned_code}};
         auto const full_signed_domain{
             types.definitions()
                 .integer_scalars.signedness[types.definitions().integer_scalars.index(scalar)] &&
@@ -491,7 +499,7 @@ auto Analyzer::analyze_integer_scalar(
             types.definitions()
                     .integer_scalars
                     .maximum_value[types.definitions().integer_scalars.index(scalar)] ==
-                lispb::codegen::PackedIntegerValue{(std::numeric_limits<std::int64_t>::max)()}};
+                lispb::codegen::PackedIntegerValue{maximum_signed_code}};
         if (full_unsigned_domain || full_signed_domain) {
             unused_codes = 0;
         }
@@ -807,7 +815,7 @@ auto Analyzer::analyze_optional_presence_bit(lispb::schema::TypeGraph const& typ
                         .optional_presence_bits
                         .payload_bits[types.definitions().optional_presence_bits.index(optional)] ==
                     64
-                ? (std::numeric_limits<std::uint64_t>::max)()
+                ? maximum_analysis_count
                 : (std::uint64_t{1}
                    << types.definitions().optional_presence_bits.payload_bits
                           [types.definitions().optional_presence_bits.index(optional)]) -
@@ -940,7 +948,7 @@ auto Analyzer::analyze_linear_quantized(lispb::schema::TypeGraph const& types,
             ? total_code_count
             : ExactCodeCount{
                   .value = total_code_count.two_to_64
-                             ? (std::numeric_limits<std::uint64_t>::max)() -
+                             ? maximum_analysis_count -
                                    types.definitions().linear_quantized.reserved_codes
                                        [types.definitions().linear_quantized.index(quantized)] +
                                    1
@@ -1112,7 +1120,7 @@ auto Analyzer::analyze_fixed_point(lispb::schema::TypeGraph const& types,
             types.definitions()
                         .fixed_points.total_bits[types.definitions().fixed_points.index(fixed)] ==
                     64
-                ? (std::numeric_limits<std::uint64_t>::max)()
+                ? maximum_unsigned_code
                 : (std::uint64_t{1}
                    << types.definitions()
                           .fixed_points.total_bits[types.definitions().fixed_points.index(fixed)]) -

@@ -1,6 +1,12 @@
-#include "analyzer_internal.hpp"
+#include "access_intents.hpp"
+#include "checked_arithmetic.hpp"
+#include "memory_regions.hpp"
+#include "variant_projection.hpp"
+#include <ioj/layout/analyzer.hpp>
+#include <ioj/layout/physical_facts.hpp>
 #include <ioj/layout/string_set.hpp>
 
+#include <codegen/ast/cpp_types.h>
 #include <codegen/schema/soa_backend.h>
 #include <codegen/schema/soa_member_kind.h>
 #include <lispb/project_loader.h>
@@ -20,6 +26,7 @@
 #include <vector>
 
 namespace ioj::layout {
+using namespace analysis_detail;
 
 auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
                            lispb::schema::TypeId const type,

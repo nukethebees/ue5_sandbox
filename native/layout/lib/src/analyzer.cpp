@@ -1,5 +1,8 @@
-#include "analyzer_internal.hpp"
+#include <ioj/layout/analyzer.hpp>
 
+#include "enum_backing.hpp"
+
+#include <codegen/ast/cpp_types.h>
 #include <codegen/schema.h>
 #include <lispb/schema/enum_types.h>
 #include <lispb/schema/external_types.h>
@@ -14,6 +17,7 @@
 #include <vector>
 
 namespace ioj::layout {
+using namespace analysis_detail;
 
 auto physical_type_spelling(lispb::schema::TypeGraph const& types, lispb::schema::TypeId const type)
     -> std::optional<std::string> {

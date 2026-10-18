@@ -1,4 +1,7 @@
-#include "analyzer_internal.hpp"
+#include "checked_arithmetic.hpp"
+#include "memory_regions.hpp"
+#include <ioj/layout/analyzer.hpp>
+#include <ioj/layout/physical_facts.hpp>
 #include <ioj/layout/string_set.hpp>
 
 #include <lispb/schema/indices.h>
@@ -10,6 +13,7 @@
 #include <string>
 
 namespace ioj::layout {
+using namespace analysis_detail;
 
 auto Analyzer::analyze_record(lispb::schema::TypeGraph const& types,
                               lispb::schema::TypeId const type,

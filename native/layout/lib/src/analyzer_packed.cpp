@@ -1,6 +1,14 @@
-#include "analyzer_internal.hpp"
+#include "access_intents.hpp"
+#include "checked_arithmetic.hpp"
+#include "integer_code_domain.hpp"
+#include "memory_regions.hpp"
+#include "relationship_extent.hpp"
+#include "variant_projection.hpp"
+#include <ioj/layout/analyzer.hpp>
+#include <ioj/layout/physical_facts.hpp>
 #include <ioj/layout/string_set.hpp>
 
+#include <codegen/ast/cpp_types.h>
 #include <codegen/schema/packed_bit_order.h>
 #include <codegen/schema/packed_field_kind.h>
 #include <codegen/schema/packed_integer_value.h>
@@ -18,7 +26,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <optional>
 #include <ranges>
 #include <span>
@@ -26,6 +33,7 @@
 #include <utility>
 
 namespace ioj::layout {
+using namespace analysis_detail;
 
 auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
                               lispb::schema::TypeId const type,
@@ -429,18 +437,16 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
                                  .name[types.definitions().packed_fields.index(*field)])} +
                          "' semantic range or sentinel codes do not fit its planned width."});
             } else if (width == 64 && field_result.required_code_count.has_value()) {
-                field_result.unused_codes = std::numeric_limits<std::uint64_t>::max() -
-                                          *field_result.required_code_count + 1;
+                field_result.unused_codes =
+                    maximum_analysis_count - *field_result.required_code_count + 1;
             } else if (width == 64 && field_result.sentinel_code_count == 0) {
                 auto const full_signed_domain{
                     signed_domain && minimum.negative &&
                     minimum.magnitude == (std::uint64_t{1} << 63) && !maximum.negative &&
-                    maximum.magnitude ==
-                        static_cast<std::uint64_t>((std::numeric_limits<std::int64_t>::max)())};
+                    maximum.magnitude == static_cast<std::uint64_t>(maximum_signed_code)};
                 auto const full_unsigned_domain{!signed_domain && !minimum.negative &&
                                                 minimum.magnitude == 0 && !maximum.negative &&
-                                                maximum.magnitude ==
-                                                    (std::numeric_limits<std::uint64_t>::max)()};
+                                                maximum.magnitude == maximum_unsigned_code};
                 if (full_signed_domain || full_unsigned_domain) {
                     field_result.unused_codes = 0;
                 }

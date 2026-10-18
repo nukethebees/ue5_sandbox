@@ -75,7 +75,7 @@ class PlannerAnalysisSession {
     bool varint_distribution_rows_present_{};
     DistributionTable union_distributions_;
     DistributionTable tagged_union_distributions_;
-    std::map<std::uint32_t, LayoutStatus> status_cache_;
+    std::map<lispb::schema::TypeId, LayoutStatus> status_cache_;
     std::vector<RelationshipTargetFacts> status_relationship_targets_;
     Revision inputs_revision_{};
     Document const* document_{};
