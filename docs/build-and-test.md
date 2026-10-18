@@ -220,7 +220,7 @@ To prepare dependencies and IDE projects without running the full build workflow
 ```powershell
 cmake --preset debug-game
 cmake --build --preset generate-worktree-code-debug-game
-cmake --build --preset worktree-dependencies-debug-game
+cmake --build --preset debug-game --target unreal-generated-inputs unreal-native-dependencies
 coj unreal project-files --build-dir out/build/debug-game
 ```
 

@@ -150,20 +150,6 @@
       ]
     },
     {
-      "name": "worktree-dependencies-debug-game",
-      "configurePreset": "debug-game",
-      "targets": [
-        "worktree-dependencies"
-      ]
-    },
-    {
-      "name": "worktree-dependencies-development",
-      "configurePreset": "development",
-      "targets": [
-        "worktree-dependencies"
-      ]
-    },
-    {
       "name": "debug",
       "configurePreset": "debug",
       "targets": [

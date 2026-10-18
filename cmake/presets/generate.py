@@ -460,16 +460,6 @@ def make_unreal_document() -> dict[str, Any]:
                 "generate-slate-code",
             ],
         },
-        {
-            "name": "worktree-dependencies-debug-game",
-            "configurePreset": "debug-game",
-            "targets": ["worktree-dependencies"],
-        },
-        {
-            "name": "worktree-dependencies-development",
-            "configurePreset": "development",
-            "targets": ["worktree-dependencies"],
-        },
     ]
     for suffix, _, _, _ in compiler_variants:
         for name, _, _, _ in unreal_configurations:

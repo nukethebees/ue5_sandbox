@@ -15,7 +15,6 @@ foreach(sandbox_unreal_dependency IN LISTS sandbox_unreal_native_dependency_targ
     list(APPEND sandbox_unreal_native_dependencies ${sandbox_unreal_dependency})
   endif()
 endforeach()
-
 add_custom_target(unreal-native-dependencies
   DEPENDS ${sandbox_unreal_native_dependencies}
 )
@@ -53,16 +52,3 @@ foreach(sandbox_unreal_packaging_target IN ITEMS
   endif()
 endforeach()
 
-add_custom_target(worktree-dependencies
-  DEPENDS
-    unreal-native-dependencies
-    sandbox-material-gen
-    sandbox-mesh-gen
-    check-generated-code
-    check-generated-slate-code
-    compile-ui-glow-material
-  WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
-  COMMENT "Preparing worktree dependencies"
-  VERBATIM
-)
-set_property(TARGET worktree-dependencies PROPERTY FOLDER "Sandbox/Unreal/Dependencies")
