@@ -6,7 +6,38 @@
 #include <ioj/layout/planner_session.hpp>
 #include <ioj/layout/schema_loader.hpp>
 
+#include <codegen/schema/declaration_handle.h>
+#include <codegen/schema/packed_segment_id.h>
+#include <lispb/editable_project_document.h>
+#include <lispb/indices.h>
+#include <lispb/project_edit_request.h>
+#include <lispb/project_loader.h>
+#include <lispb/schema/editable_document.h>
+#include <lispb/schema/editor_declarations.h>
+#include <lispb/schema/enum_types.h>
+#include <lispb/schema/fixed_point_types.h>
+#include <lispb/schema/indices.h>
+#include <lispb/schema/integer_domain.h>
+#include <lispb/schema/integer_scalar_types.h>
+#include <lispb/schema/integer_varint_types.h>
+#include <lispb/schema/linear_quantized_types.h>
+#include <lispb/schema/mini_float_types.h>
+#include <lispb/schema/optional_presence_bit_types.h>
+#include <lispb/schema/optional_sentinel_types.h>
+#include <lispb/schema/packed_segment_id.h>
+#include <lispb/schema/packed_types.h>
+#include <lispb/schema/record_types.h>
+#include <lispb/schema/schema_edit_command.h>
+#include <lispb/schema/soa_types.h>
+#include <lispb/schema/tagged_union_types.h>
+#include <lispb/schema/type_definitions.h>
+#include <lispb/schema/type_identity.h>
+#include <lispb/schema/type_origin.h>
+#include <lispb/schema/union_types.h>
+#include <lispb/strings.h>
+
 #include <array>
+#include <compare>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -36,6 +67,14 @@ struct VarintDistributionRow {
     std::uint64_t weight{1};
 };
 
+struct RetainedTypeIdentity {
+    lispb::schema::TypeOrigin origin;
+    lispb::IdentifierId module_name;
+    lispb::IdentifierId namespace_name;
+    lispb::IdentifierId name;
+    auto operator<=>(RetainedTypeIdentity const&) const = default;
+};
+
 class PlannerUi {
   public:
     explicit PlannerUi(layout::SchemaLoadResult loaded);
@@ -52,29 +91,52 @@ class PlannerUi {
     [[nodiscard]] auto window_title() const -> std::string;
   private:
     friend struct PlannerUiTestAccess;
-    struct PendingPackedEnumBinding {
-        lispb::schema::DeclarationId packed_declaration;
-        std::string field_name;
-    };
 
-    struct PendingPackedIntegerScalarBinding {
-        lispb::schema::DeclarationId packed_declaration;
-        std::string field_name;
-    };
+    auto retain_identity(lispb::schema::TypeIdentity identity) -> RetainedTypeIdentity;
+    auto restore_identity(RetainedTypeIdentity identity) const
+        -> std::optional<lispb::schema::TypeIdentity>;
 
-    struct PendingPackedFixedPointBinding {
+    auto declarations() const -> lispb::codegen::Declarations& {
+        return analysis_session_.inputs.workspace.types().declarations();
+    }
+    auto strings() const -> lispb::Strings&;
+    auto definitions() const -> lispb::schema::TypeDefinitions const& {
+        return analysis_session_.inputs.workspace.types().definitions();
+    }
+    auto text(lispb::IdentifierId const id) const -> std::string {
+        return std::string{strings().view(id)};
+    }
+    auto text(lispb::StringId const id) const -> std::string {
+        return std::string{strings().view(id)};
+    }
+    template <typename Id>
+    auto read_optional_text(std::optional<Id> const id) const -> std::optional<std::string> {
+        return id ? std::optional{text(*id)} : std::nullopt;
+    }
+    auto store_text(std::optional<std::string> const& value) const
+        -> std::optional<lispb::StringId> {
+        return value ? std::optional{strings().add(*value)} : std::nullopt;
+    }
+    auto store_identifier(std::optional<std::string> const& value) const
+        -> std::optional<lispb::IdentifierId> {
+        return value ? std::optional{strings().intern(*value)} : std::nullopt;
+    }
+    auto packed_name(lispb::codegen::PackedSegmentId id) const -> std::string;
+    auto packed_name(lispb::schema::PackedSegmentId id) const -> std::string;
+    auto packed_bits(lispb::codegen::PackedSegmentId id) const -> std::optional<int>;
+    auto packed_width(lispb::schema::PackedSegmentId id) const -> std::uint32_t;
+    auto rename_packed_segment(lispb::codegen::PackedSegmentId id, lispb::IdentifierId name)
+        -> lispb::codegen::PackedSegmentId;
+    auto resize_packed_segment(lispb::codegen::PackedSegmentId id, int bits)
+        -> lispb::codegen::PackedSegmentId;
+    struct PendingPackedBinding {
         lispb::schema::DeclarationId packed_declaration;
-        std::string field_name;
-    };
-
-    struct PendingPackedMiniFloatBinding {
-        lispb::schema::DeclarationId packed_declaration;
-        std::string field_name;
+        lispb::IdentifierId field_name;
     };
 
     struct PendingSoaRecordBinding {
         lispb::schema::DeclarationId soa_declaration;
-        std::string column_name;
+        lispb::IdentifierId column_name;
     };
 
     enum class NewDeclarationDialog {
@@ -127,48 +189,44 @@ class PlannerUi {
     void draw_new_union_dialog();
     void draw_new_tagged_union_dialog();
     void draw_new_soa_dialog();
-    void draw_enum_editor(lispb::schema::TypeNode const& node,
-                          lispb::schema::EnumType const& enumeration);
-    auto draw_packed_editor(lispb::schema::TypeNode const& node,
-                            lispb::schema::PackedType const& packed) -> bool;
-    auto draw_integer_scalar_editor(lispb::schema::TypeNode const& node,
-                                    lispb::schema::IntegerScalarType const& scalar) -> bool;
-    auto draw_linear_quantized_editor(lispb::schema::TypeNode const& node,
-                                      lispb::schema::LinearQuantizedType const& quantized) -> bool;
-    auto draw_integer_varint_editor(lispb::schema::TypeNode const& node,
-                                    lispb::schema::IntegerVarintType const& varint) -> bool;
-    auto draw_fixed_point_editor(lispb::schema::TypeNode const& node,
-                                 lispb::schema::FixedPointType const& fixed) -> bool;
-    auto draw_mini_float_editor(lispb::schema::TypeNode const& node,
-                                lispb::schema::MiniFloatType const& mini_float) -> bool;
-    auto draw_optional_sentinel_editor(lispb::schema::TypeNode const& node,
-                                       lispb::schema::OptionalSentinelType const& optional) -> bool;
-    auto draw_optional_presence_bit_editor(lispb::schema::TypeNode const& node,
-                                           lispb::schema::OptionalPresenceBitType const& optional)
-        -> bool;
-    auto draw_record_editor(lispb::schema::TypeNode const& node,
-                            lispb::schema::RecordType const& record) -> bool;
-    auto draw_union_editor(lispb::schema::TypeNode const& node,
-                           lispb::schema::UnionType const& union_type) -> bool;
-    auto draw_tagged_union_editor(lispb::schema::TypeNode const& node,
-                                  lispb::schema::TaggedUnionType const& tagged_union) -> bool;
-    auto draw_soa_editor(lispb::schema::TypeNode const& node, lispb::schema::SoaType const& soa)
-        -> bool;
+    void draw_enum_editor(lispb::schema::TypeId const node,
+                          lispb::schema::TypeDefinitionId const& enumeration);
+    auto draw_packed_editor(lispb::schema::TypeId const node,
+                            lispb::schema::TypeDefinitionId const& packed) -> bool;
+    auto draw_integer_scalar_editor(lispb::schema::TypeId const node,
+                                    lispb::schema::TypeDefinitionId const& scalar) -> bool;
+    auto draw_linear_quantized_editor(lispb::schema::TypeId const node,
+                                      lispb::schema::TypeDefinitionId const& quantized) -> bool;
+    auto draw_integer_varint_editor(lispb::schema::TypeId const node,
+                                    lispb::schema::TypeDefinitionId const& varint) -> bool;
+    auto draw_fixed_point_editor(lispb::schema::TypeId const node,
+                                 lispb::schema::TypeDefinitionId const& fixed) -> bool;
+    auto draw_mini_float_editor(lispb::schema::TypeId const node,
+                                lispb::schema::TypeDefinitionId const& mini_float) -> bool;
+    auto draw_optional_sentinel_editor(lispb::schema::TypeId const node,
+                                       lispb::schema::TypeDefinitionId const& optional) -> bool;
+    auto draw_optional_presence_bit_editor(lispb::schema::TypeId const node,
+                                           lispb::schema::TypeDefinitionId const& optional) -> bool;
+    auto draw_record_editor(lispb::schema::TypeId const node,
+                            lispb::schema::TypeDefinitionId const& record) -> bool;
+    auto draw_union_editor(lispb::schema::TypeId const node,
+                           lispb::schema::TypeDefinitionId const& union_type) -> bool;
+    auto draw_tagged_union_editor(lispb::schema::TypeId const node,
+                                  lispb::schema::TypeDefinitionId const& tagged_union) -> bool;
+    auto draw_soa_editor(lispb::schema::TypeId const node,
+                         lispb::schema::TypeDefinitionId const& soa) -> bool;
     auto apply_document_edit(lispb::schema::SchemaEditCommand command,
                              std::optional<lispb::schema::TypeIdentity> selection = std::nullopt)
         -> bool;
-    auto bind_new_enum_to_packed_field(lispb::schema::TypeIdentity const& enumeration) -> bool;
-    auto bind_new_integer_scalar_to_packed_field(lispb::schema::TypeIdentity const& scalar) -> bool;
-    auto bind_new_fixed_point_to_packed_field(lispb::schema::TypeIdentity const& fixed_point)
-        -> bool;
-    auto bind_new_mini_float_to_packed_field(lispb::schema::TypeIdentity const& mini_float) -> bool;
+    auto bind_new_type_to_packed_field(lispb::schema::TypeIdentity const& source,
+                                       std::optional<PendingPackedBinding> const& pending) -> bool;
     auto bind_new_record_to_soa_column(lispb::schema::TypeIdentity const& record) -> bool;
-    auto apply_project_edit(lispb::ProjectEditCommand command) -> bool;
+    auto apply_project_edit(lispb::ProjectEditRequest command) -> bool;
     [[nodiscard]] auto project_history_active() const -> bool;
     [[nodiscard]] auto has_dirty_changes() const -> bool;
     auto save_changes() -> bool;
     auto export_cpp(std::filesystem::path const& build_root) -> bool;
-    auto draw_type_picker(std::string_view module_name, lispb::schema::TypeIdentity const& owner)
+    auto draw_type_picker(lispb::IdentifierId module_name, lispb::schema::TypeIdentity const& owner)
         -> std::optional<std::string>;
     void sync_document_graph(std::optional<lispb::schema::TypeIdentity> selection);
     auto load_project(std::filesystem::path const& path,
@@ -183,8 +241,8 @@ class PlannerUi {
     void select_declaration(lispb::schema::DeclarationId declaration);
     void draw_declaration_dependencies(lispb::schema::TypeIdentity const& identity);
     void draw_type_users(lispb::schema::TypeId type);
-    auto draw_structural_declaration(lispb::schema::DeclarationInfo const& info) -> bool;
-    void draw_structural_fields(codegen::DeclarationSchema& draft,
+    auto draw_structural_declaration(lispb::schema::DeclarationId const info) -> bool;
+    void draw_structural_fields(lispb::codegen::DeclarationHandle& draft,
                                 lispb::schema::TypeIdentity const& identity);
     void draw_new_structural_dialog();
     void invalidate_type_editor_state();
@@ -209,17 +267,18 @@ class PlannerUi {
     void draw_union_target_comparison();
     void draw_tagged_union_target_comparison();
     void draw_graph_panel();
-    void export_external_probe(lispb::schema::TypeNode const& node);
+    void export_external_probe(lispb::schema::TypeId const node);
     std::array<char, 512> external_probe_header_{};
     auto draw_element_count() -> bool;
     auto draw_access_operation() -> bool;
-    void draw_packed_layout(lispb::schema::PackedType const& packed,
+    void draw_packed_layout(lispb::schema::TypeDefinitionId const& packed,
                             layout::PackedAnalysis const& baseline);
     void draw_record_layout(layout::RecordAnalysis const& analysis);
     void draw_fixed_point_bit_layout(layout::FixedPointAnalysis const& analysis);
-    void draw_soa_layout(lispb::schema::SoaType const& soa, layout::SoaAnalysis const& baseline);
+    void draw_soa_layout(lispb::schema::TypeDefinitionId const& soa,
+                         layout::SoaAnalysis const& baseline);
     void draw_diagnostics(std::vector<layout::Diagnostic> const& diagnostics) const;
-    auto duplicate_selected_declaration(lispb::schema::TypeNode const& node) -> bool;
+    auto duplicate_selected_declaration(lispb::schema::TypeId const node) -> bool;
     auto delete_declaration(lispb::schema::DeclarationId declaration) -> bool;
     void sync_variant_name();
     void sync_target_memory_fact_inputs();
@@ -228,7 +287,7 @@ class PlannerUi {
     void use_builtin_target_profile(bool clear_persisted);
     auto load_comparison_target_profile(std::filesystem::path const& path) -> bool;
     void use_builtin_comparison_target_profile();
-    void draw_external_facts(lispb::schema::TypeNode const& node);
+    void draw_external_facts(lispb::schema::TypeId const node);
     auto export_target_profile() -> bool;
     void discard_target_profile_edits();
     void create_variant_for_selected_schema();
@@ -260,11 +319,11 @@ class PlannerUi {
     std::array<char, 512> external_provenance_{};
     std::string external_facts_error_;
     bool open_profile_close_confirmation_{};
-    std::optional<codegen::DeclarationSchema> structural_draft_;
+    std::optional<lispb::codegen::DeclarationHandle> structural_draft_;
     std::optional<lispb::schema::TypeIdentity> structural_draft_identity_;
     std::uint64_t structural_draft_revision_{};
     std::optional<std::size_t> structural_creation_module_;
-    std::optional<codegen::DeclarationSchema> structural_creation_draft_;
+    std::optional<lispb::codegen::DeclarationHandle> structural_creation_draft_;
     bool open_new_structural_dialog_{};
     std::array<char, 128> type_picker_filter_{};
     std::array<char, 1024> target_profile_path_{};
@@ -513,7 +572,8 @@ class PlannerUi {
     std::map<std::string, std::map<lispb::schema::TypeIdentity, std::array<float, 2>>>
         module_graph_positions_;
     std::map<lispb::schema::TypeIdentity, std::array<float, 2>> graph_node_positions_;
-    std::map<std::string, std::map<lispb::schema::TypeIdentity, std::array<float, 2>>, std::less<>>
+    lispb::Strings retained_strings_;
+    std::map<std::string, std::map<RetainedTypeIdentity, std::array<float, 2>>, std::less<>>
         persisted_graph_node_positions_;
     std::map<std::string, std::filesystem::path, std::less<>> persisted_target_profile_paths_;
     std::map<std::string, layout::MemoryFacts, std::less<>> persisted_target_memory_facts_;
@@ -530,16 +590,16 @@ class PlannerUi {
     bool reset_dock_layout_requested_{};
     bool open_new_module_dialog_{};
     bool open_new_enum_dialog_{};
-    std::optional<PendingPackedEnumBinding> pending_packed_enum_binding_;
+    std::optional<PendingPackedBinding> pending_packed_enum_binding_;
     bool open_new_packed_value_dialog_{};
     bool open_new_integer_scalar_dialog_{};
-    std::optional<PendingPackedIntegerScalarBinding> pending_packed_integer_scalar_binding_;
+    std::optional<PendingPackedBinding> pending_packed_integer_scalar_binding_;
     bool open_new_linear_quantized_dialog_{};
     bool open_new_integer_varint_dialog_{};
     bool open_new_fixed_point_dialog_{};
-    std::optional<PendingPackedFixedPointBinding> pending_packed_fixed_point_binding_;
+    std::optional<PendingPackedBinding> pending_packed_fixed_point_binding_;
     bool open_new_mini_float_dialog_{};
-    std::optional<PendingPackedMiniFloatBinding> pending_packed_mini_float_binding_;
+    std::optional<PendingPackedBinding> pending_packed_mini_float_binding_;
     bool open_new_optional_sentinel_dialog_{};
     bool open_new_optional_presence_bit_dialog_{};
     bool open_new_record_dialog_{};

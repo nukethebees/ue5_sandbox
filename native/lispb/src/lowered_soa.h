@@ -1,12 +1,11 @@
 #pragma once
 
-#include <codegen/ast.h>
-
-namespace codegen::detail {
+#include <codegen/ast/nodes.h>
+namespace lispb::codegen::detail {
 
 struct LoweredSoa {
     Nodes header;
     Nodes source;
 };
 
-} // namespace codegen::detail
+} // namespace lispb::codegen::detail

@@ -1,4 +1,5 @@
 add_library(slate-codegen-lib
+  src/document.cpp
   src/compiler.cpp
   src/parser.cpp
   src/preprocessor.cpp
@@ -9,8 +10,9 @@ target_link_libraries(slate-codegen-lib
   PUBLIC
     sandbox::native_defaults
     lispb-output
-  PRIVATE
     lispb-syntax
+    codegen-lib
+  PRIVATE
     ioj::codegen_pch
 )
 ioj_enable_warnings(slate-codegen-lib CODEGEN)

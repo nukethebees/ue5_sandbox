@@ -1,9 +1,9 @@
 #pragma once
 
-#include <lispb/compilation.h>
+#include <lispb/text_artifact.h>
 
-namespace codegen {
+namespace lispb::codegen {
 
 using GeneratedFile = lispb::TextArtifact;
 
-} // namespace codegen
+} // namespace lispb::codegen

@@ -1,5 +1,14 @@
 #include "analyzer_internal.hpp"
 
+#include <lispb/schema/indices.h>
+
+#include <cstdint>
+#include <optional>
+#include <ranges>
+#include <set>
+#include <span>
+#include <string>
+
 namespace ioj::layout {
 
 auto Analyzer::analyze_record(lispb::schema::TypeGraph const& types,

@@ -5,7 +5,6 @@ use clap::{CommandFactory, error::ErrorKind};
 fn command_definitions_are_consistent_and_every_command_has_help() {
     Cli::command().debug_assert();
     for name in [
-        "kernel-report",
         "native-simulation",
         "fighter-simulation",
         "frame-memory-level",
@@ -35,18 +34,7 @@ fn command_definitions_are_consistent_and_every_command_has_help() {
 #[test]
 fn rejects_unknown_duplicate_missing_and_invalid_options() {
     for arguments in [
-        vec!["kernel-report", "--unknown=1"],
-        vec!["kernel-report", "--min-time"],
-        vec!["kernel-report", "--repetitions=1", "--repetitions=2"],
-        vec!["kernel-report", "--skip-build", "--skip-build"],
-        vec!["kernel-report", "--min-time=NaN"],
-        vec!["kernel-report", "--min-time=inf"],
-        vec!["kernel-report", "--min-time=-1"],
-        vec!["kernel-report", "--min-time=181"],
-        vec!["kernel-report", "--repetitions=0"],
-        vec!["kernel-report", "--workload=unknown"],
         vec!["plot", "--kind=other", "--input=x", "--output-dir=y"],
-        vec!["plot", "--kind=kernel"],
         vec!["compare"],
         vec!["tracy-report", "--trace=x", "--sort=other"],
         vec!["spark", "--capacity=0"],
@@ -100,14 +88,6 @@ fn conflicting_and_dependent_options_are_validated_by_clap() {
 
 #[test]
 fn defaults_and_closed_choices_are_typed() {
-    let Command::KernelReport(kernel) = Cli::try_parse_from(["benchmark-tools", "kernel-report"])
-        .unwrap()
-        .command
-    else {
-        panic!()
-    };
-    assert_eq!(kernel.workload, KernelWorkload::Representative);
-    assert!(kernel.repetitions.is_none());
     let Command::FighterSimulation(fighter) =
         Cli::try_parse_from(["benchmark-tools", "fighter-simulation"])
             .unwrap()

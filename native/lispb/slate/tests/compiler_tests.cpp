@@ -1,31 +1,58 @@
 #include "parser.h"
 #include "renderer.h"
 
+#include <codegen/ast/cpp_ir.h>
+#include <codegen/ast/cpp_types.h>
 #include <codegen/sexpr/reader.h>
+#include <codegen/sexpr/source_error.h>
+#include <codegen/sexpr/sources.h>
+#include <codegen/sexpr/syntax.h>
+#include <lispb/strings.h>
+#include <slate_codegen/document.h>
+#include <slate_codegen/indices.h>
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace slate_codegen::detail {
 namespace {
 
-auto parse_source(std::string_view const source) -> Document {
-    return parse("test.lispb", codegen::sexpr::read_forms("test.lispb", source));
+struct TestDocument {
+    lispb::Strings strings;
+    lispb::codegen::sexpr::Sources sources{strings};
+    lispb::codegen::sexpr::Syntax syntax{strings, sources};
+    Document document;
+    lispb::codegen::CppTypes types{strings};
+    lispb::codegen::CppIR ir{strings, types};
+
+    explicit TestDocument(std::string_view const source) {
+        auto const file{sources.add("test.lispb", source)};
+        parse(syntax, lispb::codegen::sexpr::read_forms(syntax, file), document);
+    }
+    auto render(std::uint32_t const index = 0) -> std::string {
+        return ir.render(detail::lower("test.lispb", sources, document, DeclarationId{index}, ir));
+    }
+};
+
+auto parse_source(std::string_view const source) -> TestDocument {
+    return TestDocument{source};
 }
 
 auto parse_error(std::string_view const source) -> std::string {
     try {
-        [[maybe_unused]] auto const document{parse_source(source)};
-    } catch (SourceError const& error) {
+        [[maybe_unused]] auto document{parse_source(source)};
+    } catch (lispb::codegen::sexpr::SourceError const& error) {
         return error.what();
     }
     return {};
 }
 
 TEST(SlateDsl, LibrariesRenderInlineFunctionsWithExplicitParameters) {
-    auto const document{parse_source(R"(
+    auto document{parse_source(R"(
 (widget-library Example::Controls
   (function Empty (params) (SBox))
   (function Build
@@ -38,8 +65,8 @@ TEST(SlateDsl, LibrariesRenderInlineFunctionsWithExplicitParameters) {
 (widget-class SOwner
   (function Build (params) (assign image_ SImage)))
 )")};
-    ASSERT_EQ(document.declarations.size(), 2);
-    auto const output{render("test.lispb", document.declarations.front())};
+    ASSERT_EQ(document.document.declarations.size(), 2);
+    auto const output{document.render()};
     EXPECT_TRUE(output.contains("namespace SlateGenerated::Example::Controls {"));
     EXPECT_TRUE(output.contains("inline auto Empty()"));
     EXPECT_TRUE(output.contains(
@@ -48,8 +75,7 @@ TEST(SlateDsl, LibrariesRenderInlineFunctionsWithExplicitParameters) {
     EXPECT_TRUE(output.contains("make_child(label)"));
     EXPECT_FALSE(output.contains("ThisClass"));
     EXPECT_FALSE(output.contains("self_"));
-    EXPECT_TRUE(
-        render("test.lispb", document.declarations.back()).contains("SAssignNew(self_.image_"));
+    EXPECT_TRUE(document.render(1).contains("SAssignNew(self_.image_"));
 }
 
 TEST(SlateDsl, LibrariesRejectHostDependentForms) {
@@ -63,7 +89,7 @@ TEST(SlateDsl, LibrariesRejectHostDependentForms) {
 }
 
 TEST(SlateDsl, ExplicitParametersDetermineSignatureAndRoles) {
-    auto const document{parse_source(R"(
+    auto document{parse_source(R"(
 (widget-class FOwner
   (function Build
     (params
@@ -78,8 +104,8 @@ TEST(SlateDsl, ExplicitParametersDetermineSignatureAndRoles) {
       (auto (SButton :Text label :OnClicked (callback on_clicked))))))
 )")};
 
-    ASSERT_EQ(document.declarations.size(), 1);
-    auto const output{render("test.lispb", document.declarations.front())};
+    ASSERT_EQ(document.document.declarations.size(), 1);
+    auto const output{document.render()};
     EXPECT_NE(output.find("auto Build(auto&& label, auto&& make_child, auto&& supplied_child, "
                           "auto&& on_clicked)"),
               std::string::npos);
@@ -88,7 +114,7 @@ TEST(SlateDsl, ExplicitParametersDetermineSignatureAndRoles) {
 }
 
 TEST(SlateDsl, LetBindingsSupportValuesAndMargins) {
-    auto const document{parse_source(R"(
+    auto document{parse_source(R"(
 (widget-class FOwner
   (function Build
     (params)
@@ -99,7 +125,7 @@ TEST(SlateDsl, LetBindingsSupportValuesAndMargins) {
           (SBox :WidthOverride width))))))
 )")};
 
-    auto const output{render("test.lispb", document.declarations.front())};
+    auto const output{document.render()};
     EXPECT_NE(output.find("auto const gap{FMargin{0.0f, 0.0f, 0.0f, 10.0f}};"), std::string::npos);
     EXPECT_NE(output.find("auto const width{512.0f};"), std::string::npos);
     EXPECT_NE(output.find("vbox_auto_slot(FMargin{gap})"), std::string::npos);
@@ -107,7 +133,7 @@ TEST(SlateDsl, LetBindingsSupportValuesAndMargins) {
 }
 
 TEST(SlateDsl, ValueParametersWorkInLetBindingsAndPadding) {
-    auto const document{parse_source(R"(
+    auto document{parse_source(R"(
 (widget-class FOwner
   (function Build
     (params
@@ -119,7 +145,7 @@ TEST(SlateDsl, ValueParametersWorkInLetBindingsAndPadding) {
           (SBox :WidthOverride box_width))))))
 )")};
 
-    auto const output{render("test.lispb", document.declarations.front())};
+    auto const output{document.render()};
     EXPECT_NE(output.find("auto const box_width{width};"), std::string::npos);
     EXPECT_NE(output.find("vbox_auto_slot(FMargin{padding})"), std::string::npos);
     EXPECT_NE(output.find(".WidthOverride(box_width)"), std::string::npos);
@@ -150,7 +176,7 @@ TEST(SlateDsl, RejectsRepeatedSingleUseParameters) {
 }
 
 TEST(SlateDsl, RendersSupportedTreeForms) {
-    auto const document{parse_source(R"(
+    auto document{parse_source(R"(
 (widget-class FOwner
   (function Build
     (params (value title))
@@ -165,7 +191,7 @@ TEST(SlateDsl, RendersSupportedTreeForms) {
         (assign child_ SBox)))))
 )")};
 
-    auto const output{render("test.lispb", document.declarations.front())};
+    auto const output{document.render()};
     EXPECT_NE(output.find("NSLOCTEXT(\"Tests\", \"Description\", \"Description text\")"),
               std::string::npos);
     EXPECT_NE(output.find(".State(&self_, &ThisClass::current_state)"), std::string::npos);
@@ -177,7 +203,7 @@ TEST(SlateDsl, RendersSupportedTreeForms) {
 }
 
 TEST(SlateDsl, RendersBoxOptionsAndMultipleFunctions) {
-    auto const document{parse_source(R"(
+    auto document{parse_source(R"(
 (widget-class FOwner
   (function BuildControls
     (params)
@@ -189,7 +215,7 @@ TEST(SlateDsl, RendersBoxOptionsAndMultipleFunctions) {
     (SImage)))
 )")};
 
-    auto const output{render("test.lispb", document.declarations.front())};
+    auto const output{document.render()};
     EXPECT_NE(output.find("auto BuildControls()"), std::string::npos);
     EXPECT_NE(output.find("auto BuildPreview()"), std::string::npos);
     EXPECT_NE(output.find("vbox_fill_slot(2.0f, FMargin{1.0f, 2.0f})"), std::string::npos);
@@ -198,7 +224,7 @@ TEST(SlateDsl, RendersBoxOptionsAndMultipleFunctions) {
 }
 
 TEST(SlateDsl, RendersValueParametersAsBoxOptions) {
-    auto const document{parse_source(R"(
+    auto document{parse_source(R"(
 (widget-class FOwner
   (function Build
     (params
@@ -211,7 +237,7 @@ TEST(SlateDsl, RendersValueParametersAsBoxOptions) {
 )
 )")};
 
-    auto const output{render("test.lispb", document.declarations.front())};
+    auto const output{document.render()};
     EXPECT_NE(output.find("hbox_fill_slot(fill_width)"), std::string::npos);
     EXPECT_NE(output.find(".HAlign(horizontal_alignment)"), std::string::npos);
     EXPECT_NE(output.find(".VAlign(vertical_alignment)"), std::string::npos);

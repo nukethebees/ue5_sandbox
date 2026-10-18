@@ -1,8 +1,17 @@
 #include <codegen/schema/physical_type_use.h>
 
-#include <cctype>
+#include <codegen/ast/cpp_types.h>
+#include <codegen/ast/indices.h>
+#include <codegen/schema/physical_type_form.h>
+#include <lispb/strings.h>
 
-namespace codegen {
+#include <cctype>
+#include <cstddef>
+#include <cstdint>
+#include <string>
+#include <string_view>
+
+namespace lispb::codegen {
 namespace physical_use_detail {
 
 auto trim(std::string_view text) -> std::string_view {
@@ -47,15 +56,9 @@ auto strip_cv(std::string_view text) -> std::string_view {
 
 } // namespace physical_use_detail
 
-auto classify_physical_type_use(std::string_view spelling) -> PhysicalTypeUse {
+auto classify_physical_type_use(CppTypes& types, CppTypeId const type) -> PhysicalTypeUse {
     using namespace physical_use_detail;
-    auto unsupported = [&] {
-        return PhysicalTypeUse{.form = PhysicalTypeForm::unsupported,
-                               .object_spelling = {},
-                               .diagnostic =
-                                   "Unsupported physical type use '" + std::string{spelling} + "'.",
-                               .names_semantic_type = false};
-    };
+    auto const spelling{types.spelling(type)};
     auto text{trim(spelling)};
     std::size_t modifier{text.size()};
     unsigned template_depth{};
@@ -65,7 +68,7 @@ auto classify_physical_type_use(std::string_view spelling) -> PhysicalTypeUse {
             ++template_depth;
         } else if (character == '>') {
             if (template_depth == 0) {
-                return unsupported();
+                return {};
             }
             --template_depth;
         } else if (template_depth == 0) {
@@ -75,17 +78,19 @@ auto classify_physical_type_use(std::string_view spelling) -> PhysicalTypeUse {
             }
             if (character == '(' || character == ')' || character == '[' || character == ']' ||
                 character == ';' || character == '{' || character == '}') {
-                return unsupported();
+                return {};
             }
         }
     }
     auto const object{strip_cv(text.substr(0, modifier))};
     if (object.empty() || template_depth != 0 || object.ends_with("::")) {
-        return unsupported();
+        return {};
     }
     PhysicalTypeUse result{.form = PhysicalTypeForm::value,
-                           .object_spelling = std::string{object},
-                           .diagnostic = {},
+                           .object_spelling = types.strings().slice(
+                               types.spelling_id(type),
+                               static_cast<std::uint32_t>(object.data() - spelling.data()),
+                               static_cast<std::uint32_t>(object.size())),
                            .names_semantic_type = false};
     result.cv_qualified = object != trim(text.substr(0, modifier));
     auto suffix{trim(text.substr(modifier))};
@@ -102,9 +107,13 @@ auto classify_physical_type_use(std::string_view spelling) -> PhysicalTypeUse {
     } else if (suffix == "&&") {
         result.form = PhysicalTypeForm::rvalue_reference;
     } else if (!suffix.empty()) {
-        return unsupported();
+        return {};
     }
     return result;
 }
 
-} // namespace codegen
+auto physical_type_diagnostic(CppTypes const& types, CppTypeId const type) -> std::string {
+    return "Unsupported physical type use '" + std::string{types.spelling(type)} + "'.";
+}
+
+} // namespace lispb::codegen

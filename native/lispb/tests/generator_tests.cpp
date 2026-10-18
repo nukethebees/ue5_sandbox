@@ -1,8 +1,28 @@
+#include "compiler_test_context.h"
+#include "test_utilities.h"
+
+#include <codegen/ast/cpp_types.h>
+#include <codegen/ast/indices.h>
+#include <codegen/ast/record_kind.h>
+#include <codegen/ast/type_operation.h>
+#include <codegen/generated_file.h>
 #include <codegen/generator.h>
 #include <codegen/schema.h>
+#include <codegen/schema/declarations.h>
+#include <codegen/schema/facade_schemas.h>
+#include <codegen/schema/manifest.h>
+#include <codegen/schema/module_settings_store.h>
+#include <codegen/schema/normal_module_schemas.h>
 #include <codegen/schema/schema_version.h>
+#include <codegen/schema/soa_backend.h>
+#include <codegen/schema/soa_schemas.h>
+#include <codegen/schema/storage_operation.h>
 #include <codegen/source_loader.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/indices.h>
 #include <lispb/project.h>
+#include <lispb/project_loader.h>
+#include <lispb/strings.h>
 
 #include <gtest/gtest.h>
 
@@ -10,48 +30,32 @@
 #include <filesystem>
 #include <fstream>
 #include <map>
+#include <stdexcept>
 #include <string>
+#include <vector>
 
-namespace codegen {
+namespace lispb::codegen {
 namespace {
 
-auto example_manifest() -> Manifest {
-    CppType handle{"FHandle", "Project/Handle.h"};
-    handle.member_operations.emplace(TypeOperation::remove_at_swap, "remove_at_swap");
-    return Manifest{
-        .schema_version = manifest_schema_version,
-        .types = {{"handle", RegisteredTypeSchema{.cpp_type = std::move(handle)}}},
-        .modules =
-            {
-                NormalModuleSchema{
-                    .settings =
-                        ModuleSettings{
-                            .name = "example",
-                            .header = "Generated.h",
-                            .source = "Generated.cpp",
-                            .header_include = "Project/Generated.h",
-                            .namespace_name = "example",
-                            .include_order = {"Project/", "SandboxCore/"},
-                        },
-                    .declarations = {SoaSchema{
-                        .name = "FData",
-                        .members =
-                            {
-                                SoaMemberSchema{
-                                    "handles", SoaMemberKind::array, TypeRef{"@handle"}},
-                                SoaMemberSchema{"weights", SoaMemberKind::array, TypeRef{"float"}},
-                                SoaMemberSchema{
-                                    "nested_handles", SoaMemberKind::nested, TypeRef{"@handle"}},
-                            },
-                        .operations = all_storage_operations(),
-                        .export_specifier = "EXAMPLE_API",
-                    }}},
-            },
-    };
+auto example_manifest(CompilerTestContext& context) -> Manifest {
+    auto const handle{context.storage.cpp_types.add(
+        "FHandle", {context.storage.cpp_types.dependency("FHandle", "Project/Handle.h")})};
+    context.storage.cpp_types.set_operation(
+        handle, TypeOperation::remove_at_swap, "remove_at_swap");
+    return parse_test_manifest(context,
+                               R"(
+        (module example :header "Generated.h" :source "Generated.cpp"
+          :header-include "Project/Generated.h" :namespace example :include-order ("Project/" "SandboxCore/")
+          (struct FData :operations (all) :export-specifier EXAMPLE_API
+            (member handles array @handle)
+            (member weights array float)
+            (member nested_handles nested @handle))))",
+                               {{"handle", handle}});
 }
 
 TEST(Generator, LowersDynamicSoaIntoTypedHeaderAndSource) {
-    auto const files{render_modules(lower_modules(example_manifest()))};
+    CompilerTestContext context;
+    auto const files{render_test_manifest(context, example_manifest(context))};
     ASSERT_EQ(files.size(), 2);
     auto const& header{files.front().content};
     auto const& source{files.back().content};
@@ -75,40 +79,16 @@ TEST(Generator, LowersDynamicSoaIntoTypedHeaderAndSource) {
 }
 
 TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
-    Manifest const
-        manifest{
-            .schema_version = manifest_schema_version,
-            .modules =
-                {NormalModuleSchema{.settings = ModuleSettings{.name = "mask",
-                                                               .header = "Mask.h",
-                                                               .source = "Mask.cpp"},
-                                    .declarations =
-                                        {
-                                            SoaSchema{
-                                                .name = "FRows",
-                                                .members =
-                                                    {
-                                                        SoaMemberSchema{"masks",
-                                                                        SoaMemberKind::array,
-                                                                        TypeRef{"FFieldMask"}},
-                                                        SoaMemberSchema{.name = "first",
-                                                                        .kind =
-                                                                            SoaMemberKind::array,
-                                                                        .type = TypeRef{"int32"},
-                                                                        .mask_field = true},
-                                                        SoaMemberSchema{.name = "matrix", .kind = SoaMemberKind::array, .type = TypeRef{"int32"}, .mask_field = true, .mask_dimensions = {{"row_index", "2"}, {"column_index", "3"}}, .relationship = std::nullopt},
-                                                        SoaMemberSchema{.name = "last",
-                                                                        .kind = SoaMemberKind::
-                                                                            array,
-                                                                        .type = TypeRef{"int32"},
-                                                                        .mask_field = true},
-                                                    },
-                                                .field_mask_name = "FFieldMask",
-                                                .field_enum_name = "EField",
-                                            }}}},
-    };
+    CompilerTestContext context;
+    auto manifest{parse_test_manifest(context, R"(
+        (module mask :header "Mask.h" :source "Mask.cpp"
+          (struct FRows :field-mask-name FFieldMask :field-enum-name EField
+            (member masks array FFieldMask)
+            (member first array int32 :mask-field true)
+            (member matrix array int32 :mask-field true :mask-dimensions ((row_index "2") (column_index "3")))
+            (member last array int32 :mask-field true))))")};
 
-    auto const header{render_modules(lower_modules(manifest)).front().content};
+    auto const header{render_test_manifest(context, manifest).front().content};
     EXPECT_NE(header.find("enum class EField : uint8"), std::string::npos);
     EXPECT_NE(header.find("First = 0"), std::string::npos);
     EXPECT_NE(header.find("Matrix = static_cast<uint8>(First) + 1"), std::string::npos);
@@ -119,10 +99,15 @@ TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
     EXPECT_NE(header.find("TArray<FFieldMask> masks;"), std::string::npos);
 
     auto native_manifest{manifest};
-    auto& native_module{std::get<NormalModuleSchema>(native_manifest.modules.front())};
-    native_module.soa_backend = SoaBackend::standard_library;
-    native_module.settings.source.reset();
-    auto const native_header{render_modules(lower_modules(native_manifest)).front().content};
+    auto& store{context.storage.declarations};
+    auto native_module{manifest.modules.front()};
+    store.normal_modules.soa_backend[store.normal_modules.index(native_module)] =
+        SoaBackend::standard_library;
+    auto settings{store.normal_modules.settings[store.normal_modules.index(native_module)]};
+    store.module_settings_store.source[store.module_settings_store.index(settings)].reset();
+    store.normal_modules.settings[store.normal_modules.index(native_module)] = settings;
+    native_manifest.modules.front() = native_module;
+    auto const native_header{render_test_manifest(context, native_manifest).front().content};
     EXPECT_NE(native_header.find("enum class EField : std::uint8_t"), std::string::npos);
     EXPECT_NE(native_header.find("Last = static_cast<std::uint8_t>(Matrix) + (2) * (3)"),
               std::string::npos);
@@ -138,78 +123,66 @@ TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
 }
 
 TEST(Generator, RejectsDuplicateOutputPaths) {
-    auto manifest{example_manifest()};
-    manifest.modules.push_back(UmbrellaModuleSchema{
-        .settings = ModuleSettings{.name = "duplicate", .header = "Generated.h"},
-        .headers = {},
-    });
+    CompilerTestContext context;
+    auto manifest{example_manifest(context)};
+    auto duplicate{parse_test_manifest(
+        context, R"((umbrella-module duplicate :header "Generated.h" :headers ()))")};
+    manifest.modules.push_back(duplicate.modules.front());
 
-    EXPECT_THROW(render_modules(lower_modules(manifest)), std::invalid_argument);
+    EXPECT_THROW(render_test_manifest(context, manifest), std::invalid_argument);
 }
 
 TEST(Generator, RejectsCaseInsensitiveDuplicateOutputPaths) {
-    auto manifest{example_manifest()};
-    manifest.modules.push_back(UmbrellaModuleSchema{
-        .settings = ModuleSettings{.name = "duplicate", .header = "generated.h"},
-        .headers = {},
-    });
+    CompilerTestContext context;
+    auto manifest{example_manifest(context)};
+    auto duplicate{parse_test_manifest(
+        context, R"((umbrella-module duplicate :header "generated.h" :headers ()))")};
+    manifest.modules.push_back(duplicate.modules.front());
 
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 }
 
 TEST(Generator, RejectsInvalidVectorDimensions) {
-    Manifest const manifest{
-        .schema_version = manifest_schema_version,
-        .modules = {NormalModuleSchema{
-            .settings = ModuleSettings{.name = "vectors", .header = "Vectors.h"},
-            .declarations = {codegen::VectorSoaSchema{.name = "FVectors",
-                                                      .value_type = TypeRef{"float"},
-                                                      .components = {},
-                                                      .equivalent_type = TypeRef{"FVector"}}}}},
-    };
+    CompilerTestContext context;
+    auto manifest{parse_test_manifest(context, R"(
+        (module vectors :header "Vectors.h"
+          (vector-soa FVectors :value-type float :components () :equivalent-type FVector)))")};
 
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 }
 
 TEST(Generator, RejectsDuplicateStorageOperations) {
-    auto manifest{example_manifest()};
-    auto& module{std::get<NormalModuleSchema>(manifest.modules.front())};
-    std::get<codegen::SoaSchema>(module.declarations.front())
-        .operations.push_back(StorageOperation::reset);
+    CompilerTestContext context;
+    auto manifest{example_manifest(context)};
+    auto& store{context.storage.declarations};
+    auto module{manifest.modules.front()};
+    auto soa{
+        store.items(store.normal_modules.declarations[store.normal_modules.index(module)]).front()};
+    auto operations{all_storage_operations()};
+    operations.push_back(StorageOperation::reset);
+    store.soas.operations[store.soas.index(soa)] = store.range(operations);
+    store.normal_modules.declarations[store.normal_modules.index(module)] = store.range({soa});
+    manifest.modules.front() = module;
 
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 }
 
 TEST(Generator, RejectsPartiallyEquivalentHomogeneousLayouts) {
-    Manifest const manifest{
-        .schema_version = manifest_schema_version,
-        .modules = {NormalModuleSchema{
-            .settings =
-                ModuleSettings{.name = "vectors", .header = "Vectors.h", .source = "Vectors.cpp"},
-            .declarations = {HomogeneousLayoutSchema{
-                .name = "Vectors",
-                .components = {"xs", "ys"},
-                .value_types =
-                    {
-                        HomogeneousValueSchema{
-                            .type = TypeRef{"float"},
-                            .suffix = "f",
-                            .equivalent_type = TypeRef{"FVector2f"},
-                        },
-                        HomogeneousValueSchema{
-                            .type = TypeRef{"double"},
-                            .suffix = "d",
-                        },
-                    },
-            }}}},
-    };
+    CompilerTestContext context;
+    auto manifest{parse_test_manifest(context, R"(
+        (module vectors :header "Vectors.h" :source "Vectors.cpp"
+          (layout Vectors :components (xs ys)
+            (value-type float f :equivalent-type FVector2f)
+            (value-type double d))))")};
 
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 }
 
 TEST(Generator, RendersDeterministically) {
-    auto const modules{lower_modules(example_manifest())};
-    EXPECT_EQ(render_modules(modules).front().content, render_modules(modules).front().content);
+    CompilerTestContext context;
+    auto const modules{lower_test_manifest(context, example_manifest(context))};
+    EXPECT_EQ(render_modules(context.ir, modules).front().content,
+              render_modules(context.ir, modules).front().content);
 }
 
 TEST(Generator, WritesAndChecksOutputRoots) {
@@ -365,68 +338,53 @@ TEST(Generator, MapsAbsoluteProjectPathsIntoASeparateOutputRoot) {
 }
 
 TEST(Generator, LowersFacadeWithPrivateBindingAndSourceDefinitions) {
-    auto manifest{Manifest{
-        .schema_version = manifest_schema_version,
-        .types = {{"target",
-                   RegisteredTypeSchema{.cpp_type = CppType{"FTarget", "Project/Target.h"}}}},
-        .modules = {NormalModuleSchema{
-            .settings =
-                ModuleSettings{
-                    .name = "facade",
-                    .header = "Facade.h",
-                    .source = "Facade.cpp",
-                    .header_include = "Project/Facade.h",
-                },
-            .declarations = {FacadeSchema{
-                .name = "FFacade",
-                .target_type = TypeRef{"@target"},
-                .target_member_name = "target",
-                .methods = {FacadeMethodSchema{
-                    .name = "get",
-                    .return_type = TypeRef{"int32"},
-                    .parameters = {ParameterSchema{TypeRef{"int32"}, "index"}},
-                }},
-                .validation_lines = {"check(target != nullptr);"},
-                .validation_dependencies = {"check"},
-                .bind_access = "private",
-                .friends = {"FOwner"},
-                .definitions_in_source = true,
-            }}}},
-    }};
-    manifest.types.emplace("check",
-                           RegisteredTypeSchema{.cpp_type = CppType{"check", "CoreMinimal.h"}});
+    CompilerTestContext context;
+    auto manifest{parse_test_manifest(
+        context,
+        R"(
+        (module facade :header "Facade.h" :source "Facade.cpp" :header-include "Project/Facade.h"
+          (facade FFacade @target target :validation ("check(target != nullptr);")
+            :validation-dependencies (check) :bind-access private :friends (FOwner) :definitions-in-source true
+            (method get int32 (parameter index int32)))))",
+        {{"target",
+          context.storage.cpp_types.add(
+              "FTarget", {context.storage.cpp_types.dependency("FTarget", "Project/Target.h")})}})};
 
-    auto const files{render_modules(lower_modules(manifest))};
+    manifest.types.add(
+        "check",
+        context.storage.cpp_types.add(
+            "check", {context.storage.cpp_types.dependency("check", "CoreMinimal.h")}));
+
+    auto const files{render_test_manifest(context, manifest)};
     ASSERT_EQ(files.size(), 2);
     EXPECT_NE(files[0].content.find("friend class FOwner;"), std::string::npos);
     EXPECT_NE(files[0].content.find("FTarget* target{nullptr};"), std::string::npos);
     EXPECT_NE(files[1].content.find("void FFacade::bind(FTarget& new_target)"), std::string::npos);
     EXPECT_NE(files[1].content.find("return target->get(index);"), std::string::npos);
 
-    std::get<codegen::FacadeSchema>(
-        std::get<NormalModuleSchema>(manifest.modules.front()).declarations.front())
-        .friend_kind = "struct";
-    auto const struct_files{render_modules(lower_modules(manifest))};
+    auto& store{context.storage.declarations};
+    auto module{manifest.modules.front()};
+    auto facade{
+        store.items(store.normal_modules.declarations[store.normal_modules.index(module)]).front()};
+    store.facades.friend_kind[store.facades.index(facade)] = RecordKind::struct_;
+    store.normal_modules.declarations[store.normal_modules.index(module)] = store.range({facade});
+    manifest.modules.front() = module;
+    auto const struct_files{render_test_manifest(context, manifest)};
     EXPECT_NE(struct_files[0].content.find("friend struct FOwner;"), std::string::npos);
 }
 
 TEST(Generator, LowersFacadeWithReferenceTarget) {
-    Manifest const manifest{
-        .schema_version = manifest_schema_version,
-        .types = {{"target",
-                   RegisteredTypeSchema{.cpp_type = CppType{"FTarget", "Project/Target.h"}}}},
-        .modules = {NormalModuleSchema{
-            .settings = ModuleSettings{.name = "facade", .header = "Facade.h"},
-            .declarations = {FacadeSchema{
-                .name = "FFacade",
-                .target_type = TypeRef{"@target"},
-                .target_member_name = "target",
-                .methods = {FacadeMethodSchema{.name = "get", .return_type = TypeRef{"int32"}}},
-                .reference_target = true,
-            }}}},
-    };
+    CompilerTestContext context;
+    auto manifest{parse_test_manifest(
+        context,
+        R"(
+        (module facade :header "Facade.h"
+          (facade FFacade @target target :target-storage reference (method get int32))))",
+        {{"target",
+          context.storage.cpp_types.add(
+              "FTarget", {context.storage.cpp_types.dependency("FTarget", "Project/Target.h")})}})};
 
-    auto const files{render_modules(lower_modules(manifest))};
+    auto const files{render_test_manifest(context, manifest)};
     ASSERT_EQ(files.size(), 1);
     EXPECT_NE(files[0].content.find("FFacade(FTarget& new_target)"), std::string::npos);
     EXPECT_NE(files[0].content.find(": target{new_target}"), std::string::npos);
@@ -436,21 +394,12 @@ TEST(Generator, LowersFacadeWithReferenceTarget) {
 }
 
 TEST(Generator, LowersHomogeneousLayouts) {
-    Manifest const manifest{
-        .schema_version = manifest_schema_version,
-        .modules = {NormalModuleSchema{
-            .settings = ModuleSettings{.name = "rotators",
-                                       .header = "Rotators.h",
-                                       .source = "Rotators.cpp"},
-            .declarations = {HomogeneousLayoutSchema{
-                .name = "Rotators",
-                .components = {"pitches", "yaws", "rolls"},
-                .value_types = {HomogeneousValueSchema{TypeRef{"float"}, "f"}},
-                .export_specifier = "EXAMPLE_API",
-            }}}},
-    };
+    CompilerTestContext context;
+    auto manifest{parse_test_manifest(context, R"(
+        (module rotators :header "Rotators.h" :source "Rotators.cpp"
+          (layout Rotators :components (pitches yaws rolls) :export-specifier EXAMPLE_API (value-type float f))))")};
 
-    auto const files{render_modules(lower_modules(manifest))};
+    auto const files{render_test_manifest(context, manifest)};
     ASSERT_EQ(files.size(), 2);
     EXPECT_NE(files[0].content.find("template <typename T>\nstruct TRotatorsView"),
               std::string::npos);
@@ -459,21 +408,18 @@ TEST(Generator, LowersHomogeneousLayouts) {
 }
 
 TEST(Generator, LowersVectorLayoutsThroughDynamicSoa) {
-    Manifest const manifest{
-        .schema_version = manifest_schema_version,
-        .types = {{"vector",
-                   RegisteredTypeSchema{.cpp_type = CppType{"FVector3f", "CoreMinimal.h"}}}},
-        .modules = {NormalModuleSchema{
-            .settings =
-                ModuleSettings{.name = "vectors", .header = "Vectors.h", .source = "Vectors.cpp"},
-            .declarations = {codegen::VectorSoaSchema{.name = "FVectors3f",
-                                                      .value_type = TypeRef{"float"},
-                                                      .components = {"xs", "ys", "zs"},
-                                                      .equivalent_type = TypeRef{"@vector"},
-                                                      .export_specifier = "EXAMPLE_API"}}}},
-    };
+    CompilerTestContext context;
+    auto manifest{parse_test_manifest(
+        context,
+        R"(
+        (module vectors :header "Vectors.h" :source "Vectors.cpp"
+          (vector-soa FVectors3f :value-type float :components (xs ys zs) :equivalent-type @vector :export-specifier EXAMPLE_API)))",
+        {{"vector",
+          context.storage.cpp_types.add(
+              "FVector3f",
+              {context.storage.cpp_types.dependency("FVector3f", "CoreMinimal.h")})}})};
 
-    auto const files{render_modules(lower_modules(manifest))};
+    auto const files{render_test_manifest(context, manifest)};
     ASSERT_EQ(files.size(), 2);
     EXPECT_NE(files[0].content.find("struct Data"), std::string::npos);
     EXPECT_NE(files[0].content.find("FVector3f"), std::string::npos);
@@ -482,7 +428,7 @@ TEST(Generator, LowersVectorLayoutsThroughDynamicSoa) {
     EXPECT_NE(files[0].content.find("auto at(int32 const index) const -> FVector3f {\n"
                                     "        validate_array_sizes();"),
               std::string::npos);
-    EXPECT_NE(files[0].content.find("auto add(value_type const x"), std::string::npos);
+    EXPECT_NE(files[0].content.find("auto add(float const new_xs"), std::string::npos);
     EXPECT_NE(files[0].content.find("return add(value.X, value.Y, value.Z);"), std::string::npos);
 
     auto const mutable_view_start{files[0].content.find("struct EXAMPLE_API FVectors3fView")};
@@ -491,32 +437,21 @@ TEST(Generator, LowersVectorLayoutsThroughDynamicSoa) {
     ASSERT_NE(storage_start, std::string::npos);
     auto const mutable_view{
         files[0].content.substr(mutable_view_start, storage_start - mutable_view_start)};
-    EXPECT_NE(mutable_view.find("void set(int32 const i, float const x, float const y, "
-                                "float const z) const"),
-              std::string::npos);
+    EXPECT_NE(
+        mutable_view.find("void set(int32 const index, float const new_xs, float const new_ys, "
+                          "float const new_zs) const"),
+        std::string::npos);
     EXPECT_NE(mutable_view.find("void set(int32 const i, FVector3f const value) const"),
               std::string::npos);
 }
 
 TEST(Generator, AppliesVectorNamespaceAndPreludeSettings) {
-    Manifest const manifest{
-        .schema_version = manifest_schema_version,
-        .modules = {NormalModuleSchema{
-            .settings =
-                ModuleSettings{
-                    .name = "vectors",
-                    .header = "Vectors.h",
-                    .source = "Vectors.cpp",
-                    .namespace_name = "project::vectors",
-                    .prelude_lines = {"class FVectorForward;"},
-                },
-            .declarations = {codegen::VectorSoaSchema{.name = "FVectors",
-                                                      .value_type = TypeRef{"float"},
-                                                      .components = {"xs", "ys"},
-                                                      .equivalent_type = TypeRef{"FVector2f"}}}}},
-    };
+    CompilerTestContext context;
+    auto manifest{parse_test_manifest(context, R"(
+        (module vectors :header "Vectors.h" :source "Vectors.cpp" :namespace project::vectors :prelude ("class FVectorForward;")
+          (vector-soa FVectors :value-type float :components (xs ys) :equivalent-type FVector2f)))")};
 
-    auto const files{render_modules(lower_modules(manifest))};
+    auto const files{render_test_manifest(context, manifest)};
     ASSERT_EQ(files.size(), 2);
     EXPECT_NE(files[0].content.find("class FVectorForward;"), std::string::npos);
     EXPECT_NE(files[0].content.find("namespace project::vectors {"), std::string::npos);
@@ -524,79 +459,38 @@ TEST(Generator, AppliesVectorNamespaceAndPreludeSettings) {
 }
 
 TEST(Generator, AppliesFacadePreludeSettings) {
-    auto manifest{Manifest{
-        .schema_version = manifest_schema_version,
-        .modules = {NormalModuleSchema{.settings =
-                                           ModuleSettings{
-                                               .name = "facade",
-                                               .header = "Facade.h",
-                                               .prelude_lines = {"class FFacadeForward;"},
-                                           },
-                                       .declarations = {FacadeSchema{
-                                           .name = "FFacade",
-                                           .target_type = TypeRef{"FTarget"},
-                                           .target_member_name = "target",
-                                           .methods = {FacadeMethodSchema{
-                                               .name = "reset",
-                                               .return_type = TypeRef{"void"},
-                                           }},
-                                       }}}},
-    }};
+    CompilerTestContext context;
+    auto manifest{parse_test_manifest(context, R"(
+        (module facade :header "Facade.h" :prelude ("class FFacadeForward;")
+          (facade FFacade FTarget target (method reset void))))")};
 
-    auto const files{render_modules(lower_modules(manifest))};
+    auto const files{render_test_manifest(context, manifest)};
     ASSERT_EQ(files.size(), 1);
     EXPECT_NE(files[0].content.find("class FFacadeForward;"), std::string::npos);
 }
 
 TEST(Generator, AppliesUmbrellaPreludeSettings) {
-    Manifest const manifest{
-        .schema_version = manifest_schema_version,
-        .modules = {UmbrellaModuleSchema{
-            .settings =
-                ModuleSettings{
-                    .name = "all",
-                    .header = "All.h",
-                    .prelude_lines = {"#define PROJECT_INCLUDED 1"},
-                },
-            .headers = {"Project/First.h", "Project/Second.h"},
-        }},
-    };
+    CompilerTestContext context;
+    auto manifest{parse_test_manifest(context, R"(
+        (umbrella-module all :header "All.h" :prelude ("#define PROJECT_INCLUDED 1") :headers ("Project/First.h" "Project/Second.h")))")};
 
-    auto const files{render_modules(lower_modules(manifest))};
+    auto const files{render_test_manifest(context, manifest)};
     ASSERT_EQ(files.size(), 1);
     EXPECT_NE(files[0].content.find("#define PROJECT_INCLUDED 1"), std::string::npos);
     EXPECT_NE(files[0].content.find("#include \"Project/First.h\""), std::string::npos);
 }
 
 TEST(Generator, LowersFlatAndNestedFixedSoaLayouts) {
-    CppType child_type{"FChild"};
-    child_type.member_operations.emplace(TypeOperation::remove_at_swap, "remove_at_swap");
-    Manifest const manifest{
-        .schema_version = manifest_schema_version,
-        .types = {{"child", RegisteredTypeSchema{.cpp_type = std::move(child_type)}}},
-        .modules = {NormalModuleSchema{
-            .settings = ModuleSettings{.name = "fixed", .header = "Fixed.h", .source = "Fixed.cpp"},
-            .declarations =
-                {SoaSchema{
-                     .name = "FChild",
-                     .members = {SoaMemberSchema{"values", SoaMemberKind::array, TypeRef{"float"}}},
-                     .operations = all_storage_operations(),
-                     .fixed = FixedSoaSchema{"TChildStorage", {}},
-                 },
-                 SoaSchema{
-                     .name = "FRows",
-                     .members =
-                         {
-                             SoaMemberSchema{"ids", SoaMemberKind::array, TypeRef{"int32"}},
-                             SoaMemberSchema{
-                                 "children", SoaMemberKind::nested, TypeRef{"@child"}, "FChild"},
-                         },
-                     .operations = all_storage_operations(),
-                     .fixed = FixedSoaSchema{"TRowsStorage", {"TFixedRows"}},
-                 }}}},
-    };
+    CompilerTestContext context;
+    auto manifest{parse_test_manifest(context,
+                                      R"(
+        (module fixed :header "Fixed.h" :source "Fixed.cpp"
+          (struct FChild :operations (all) (member values array float) (fixed TChildStorage))
+          (struct FRows :operations (all) (member ids array int32)
+            (member children nested @child :fixed-schema FChild) (fixed TRowsStorage :containers (TFixedRows)))))",
+                                      {{"child", context.storage.cpp_types.add("FChild")}})};
 
-    auto const files{render_modules(lower_modules(manifest))};
+    auto const files{render_test_manifest(context, manifest)};
     ASSERT_EQ(files.size(), 2);
     auto const& header{files.front().content};
     EXPECT_NE(header.find("struct TChildStorage"), std::string::npos);
@@ -607,16 +501,18 @@ TEST(Generator, LowersFlatAndNestedFixedSoaLayouts) {
 }
 
 TEST(Generator, CommittedProductionFilesAreCurrent) {
+    CompilerTestContext context;
     auto const project_root{
         std::filesystem::path{IOJ_CODEGEN_SOURCE_DIR}.parent_path().parent_path()};
-    auto const project{lispb::load_project(project_root / "lispb/project.lispb")};
-    auto const& target{std::get<lispb::CppSchemaTarget>(project.targets.at("sandbox-code"))};
+    auto const project{
+        lispb::load_project(context.storage.syntax, project_root / "lispb/project.lispb")};
+    auto const target{*project.find_target("sandbox-code")};
     std::vector<std::filesystem::path> sources;
-    for (auto const& source : target.sources) {
+    for (auto const& source : project.sources(target)) {
         sources.push_back(project.root / source);
     }
-    auto const manifest{load_sources(project.root / target.types, sources)};
-    auto const files{render_modules(lower_modules(manifest))};
+    auto manifest{load_sources(context.storage, project.root / project.types(target), sources)};
+    auto const files{render_test_manifest(context, manifest)};
 
     EXPECT_EQ(generate_files(files, project.root, project.root, true), 0);
 }
@@ -677,4 +573,4 @@ TEST(Generator, FormatsOptedInOutputBeforeWritingAndChecking) {
 }
 
 } // namespace
-} // namespace codegen
+} // namespace lispb::codegen

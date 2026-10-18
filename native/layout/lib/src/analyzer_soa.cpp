@@ -1,5 +1,24 @@
 #include "analyzer_internal.hpp"
 
+#include <codegen/schema/soa_backend.h>
+#include <codegen/schema/soa_member_kind.h>
+#include <lispb/project_loader.h>
+#include <lispb/schema/indices.h>
+#include <lispb/schema/soa_columns.h>
+#include <lispb/schema/soa_types.h>
+#include <lispb/schema/type_definitions.h>
+
+#include <cstddef>
+#include <cstdint>
+#include <optional>
+#include <ranges>
+#include <set>
+#include <span>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+
 namespace ioj::layout {
 
 auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
@@ -8,7 +27,7 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
                            AbiProfile const& abi,
                            std::uint64_t const default_capacity,
                            SoaAllocationStrategy const allocation_strategy) -> SoaAnalysis {
-    auto const& soa{std::get<lispb::schema::SoaType>(types.type(type).definition)};
+    auto const& soa{types.definition(type)};
     auto capacity{default_capacity};
     bool capacity_overridden{};
     if (auto const found{variant.overrides.capacities.find(type)};
@@ -16,27 +35,28 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
         capacity = found->second;
         capacity_overridden = true;
     }
-    SoaAnalysis result{.type = type,
-                       .capacity = capacity,
-                       .capacity_overridden = capacity_overridden,
-                       .allocation_strategy = allocation_strategy,
-                       .allocation_count =
-                           capacity == 0 || soa.columns.empty()
-                               ? 0U
-                               : (allocation_strategy == SoaAllocationStrategy::separate_columns
-                                      ? static_cast<std::uint64_t>(soa.columns.size())
-                                      : 1U),
-                       .columns = {},
-                       .bytes_per_logical_element = std::nullopt,
-                       .total_payload_bytes = std::nullopt,
-                       .total_allocation_bytes = std::nullopt,
-                       .total_alignment_padding_bytes = std::nullopt,
-                       .allocation_alignment_bytes = std::nullopt,
-                       .cache_line_bytes = abi.memory_facts().cache_line_bytes,
-                       .page_bytes = abi.memory_facts().page_bytes,
-                       .minimum_pages = std::nullopt,
-                       .cache_capacity = {},
-                       .diagnostics = {}};
+    SoaAnalysis result{
+        .type = type,
+        .capacity = capacity,
+        .capacity_overridden = capacity_overridden,
+        .allocation_strategy = allocation_strategy,
+        .allocation_count =
+            capacity == 0 || types.definitions().soas.columns_of(soa).empty()
+                ? 0U
+                : (allocation_strategy == SoaAllocationStrategy::separate_columns
+                       ? static_cast<std::uint64_t>(types.definitions().soas.columns_of(soa).size())
+                       : 1U),
+        .columns = {},
+        .bytes_per_logical_element = std::nullopt,
+        .total_payload_bytes = std::nullopt,
+        .total_allocation_bytes = std::nullopt,
+        .total_alignment_padding_bytes = std::nullopt,
+        .allocation_alignment_bytes = std::nullopt,
+        .cache_line_bytes = abi.memory_facts().cache_line_bytes,
+        .page_bytes = abi.memory_facts().page_bytes,
+        .minimum_pages = std::nullopt,
+        .cache_capacity = {},
+        .diagnostics = {}};
     auto const cache_line_bytes{result.cache_line_bytes};
     auto const has_cache_line_size{cache_line_bytes.has_value() && *cache_line_bytes != 0};
     if (!cache_line_bytes.has_value()) {
@@ -66,16 +86,24 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
     std::optional<std::uint64_t> allocation_offset{0};
     std::optional<std::uint64_t> allocation_padding{0};
     std::optional<std::uint64_t> allocation_alignment{1};
-    result.columns.reserve(soa.columns.size());
+    result.columns.reserve(types.definitions().soas.columns_of(soa).size());
 
-    for (auto const& column : soa.columns) {
+    for (auto const column_id : types.definitions().soas.columns_of(soa)) {
+        auto const column{column_id};
+        auto const column_name{std::string{types.strings().view(
+            types.definitions().soa_columns.name[types.definitions().soa_columns.index(column)])}};
         SoaColumnAnalysis column_result{
-            .name = column.name,
-            .semantic_type = column.semantic_type.type,
-            .schema_type = column.semantic_type.cpp_type.spelling,
+            .name = column_name,
+            .semantic_type = types.occurrences().type[types.occurrences().index(
+                types.definitions()
+                    .soa_columns.semantic_type[types.definitions().soa_columns.index(column)])],
+            .schema_type = std::string{types.cpp_types().spelling(
+                types.occurrences().cpp_type[types.occurrences().index(
+                    types.definitions().soa_columns.semantic_type
+                        [types.definitions().soa_columns.index(column)])])},
             .physical_type = effective_column_type(types, type, column, variant),
             .overridden = variant.overrides.soa_column_types.contains(
-                FieldOverrideId{.type = type, .field_name = column.name}),
+                FieldOverrideId{.type = type, .field_name = column_name}),
             .type_facts = std::nullopt,
             .total_bytes = std::nullopt,
             .allocation_offset_bytes = std::nullopt,
@@ -85,23 +113,34 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
             .minimum_pages = std::nullopt,
             .complete_elements_per_page = std::nullopt,
             .cache_line_tiling = std::nullopt};
-        auto const physical_use{column_result.overridden ? codegen::classify_physical_type_use(
-                                                               column_result.physical_type)
-                                                         : column.semantic_type.physical};
-        if (column.kind != codegen::SoaMemberKind::array ||
-            soa.backend != codegen::SoaBackend::standard_library || physical_use.cv_qualified) {
+        auto const cv_qualified{
+            column_result.overridden
+                ? lispb::codegen::classify_physical_type_use(
+                      types.cpp_types(), types.cpp_types().intern(column_result.physical_type))
+                      .cv_qualified
+                : types.occurrences().cv_qualified[types.occurrences().index(
+                      types.definitions().soa_columns.semantic_type
+                          [types.definitions().soa_columns.index(column)])] != 0};
+        if (types.definitions().soa_columns.kind[types.definitions().soa_columns.index(column)] !=
+                lispb::codegen::SoaMemberKind::array ||
+            types.definitions().soas.backend[types.definitions().soas.index(soa)] !=
+                lispb::codegen::SoaBackend::standard_library ||
+            cv_qualified) {
             result.diagnostics.push_back(
                 {DiagnosticSeverity::warning,
-                 "SoA column '" + column.name +
+                 "SoA column '" + column_name +
                      "' has an unsupported owning-storage representation."});
         } else {
-            auto resolved{column_result.overridden
-                              ? resolver.resolve_spelling(column_result.physical_type,
-                                                          types.type(type).identity.module_name)
-                              : resolver.resolve(column.semantic_type)};
+            auto resolved{
+                column_result.overridden
+                    ? resolver.resolve_spelling(column_result.physical_type, types.module(type))
+                    : resolver.resolve(
+                          types.definitions()
+                              .soa_columns
+                              .semantic_type[types.definitions().soa_columns.index(column)])};
             column_result.type_facts = resolved.facts;
             for (auto& diagnostic : resolved.diagnostics) {
-                diagnostic.message = "SoA column '" + column.name + "': " + diagnostic.message;
+                diagnostic.message = "SoA column '" + column_name + "': " + diagnostic.message;
                 result.diagnostics.push_back(std::move(diagnostic));
             }
         }
@@ -113,7 +152,7 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
             allocation_alignment.reset();
             row_bytes.reset();
             result.diagnostics.push_back({DiagnosticSeverity::warning,
-                                          "Unknown physical facts for SoA column '" + column.name +
+                                          "Unknown physical facts for SoA column '" + column_name +
                                               "' type '" + column_result.physical_type + "'."});
             result.columns.push_back(std::move(column_result));
             continue;
@@ -130,7 +169,7 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
             row_bytes.reset();
             result.diagnostics.push_back(
                 {DiagnosticSeverity::error,
-                 "SoA column '" + column.name + "' has a zero-byte size or zero-byte alignment."});
+                 "SoA column '" + column_name + "' has a zero-byte size or zero-byte alignment."});
             result.columns.push_back(std::move(column_result));
             continue;
         }
@@ -140,7 +179,7 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
             pages_complete = false;
             result.diagnostics.push_back(
                 {DiagnosticSeverity::error,
-                 "Byte count overflows uint64 for SoA column '" + column.name + "'."});
+                 "Byte count overflows uint64 for SoA column '" + column_name + "'."});
         } else if (has_cache_line_size) {
             column_result.minimum_cache_lines =
                 minimum_regions(*column_result.total_bytes, *cache_line_bytes);
@@ -206,7 +245,7 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
                 result.diagnostics.push_back(
                     {DiagnosticSeverity::error,
                      "Aligned contiguous allocation arithmetic overflows at SoA column '" +
-                         column.name + "'."});
+                         column_name + "'."});
             }
         }
         result.columns.push_back(std::move(column_result));
@@ -354,8 +393,8 @@ auto Analyzer::derive_relationship_target_facts(lispb::schema::TypeGraph const& 
     result.reserve(resolved_types.size());
 
     for (std::size_t type_index{}; type_index < resolved_types.size(); ++type_index) {
-        if (!std::holds_alternative<lispb::schema::SoaType>(
-                resolved_types[type_index].definition)) {
+        if (!((types.definition(resolved_types[type_index])).kind() ==
+              lispb::schema::TypeDefinitionKind::soa)) {
             continue;
         }
 

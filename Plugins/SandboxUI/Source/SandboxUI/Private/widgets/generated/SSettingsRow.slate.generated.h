@@ -4,9 +4,7 @@
 #pragma once
 
 #include <utility>
-
 namespace SlateGenerated {
-
 struct SSettingsRowBuilder {
     using ThisClass = ::SSettingsRow;
 
@@ -32,5 +30,4 @@ struct SSettingsRowBuilder {
   private:
     ThisClass& self_;
 };
-
-}
+} // namespace SlateGenerated

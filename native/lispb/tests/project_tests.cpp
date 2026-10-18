@@ -1,13 +1,28 @@
+#include <codegen/schema/module_settings_store.h>
+#include <codegen/schema/normal_module_schemas.h>
+#include <codegen/sexpr/indices.h>
 #include <codegen/source_loader.h>
+#include <lispb/compile_mode.h>
+#include <lispb/compiled_target.h>
+#include <lispb/compiler.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/editable_project_document.h>
 #include <lispb/project.h>
+#include <lispb/project_edit_kind.h>
+#include <lispb/project_edit_request.h>
+#include <lispb/project_loader.h>
+#include <lispb/project_source_update.h>
 #include <lispb/schema/editable_document.h>
 
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <ranges>
 #include <string>
+#include <vector>
 
 namespace lispb {
 namespace {
@@ -42,6 +57,37 @@ class TemporaryProject {
   private:
     std::filesystem::path root_;
 };
+
+TEST(Compiler, RecompilesChangedSourcesAndRetainsProjectAndOverlays) {
+    TemporaryProject files;
+    files.write("types.lispb", "");
+    files.write("project.lispb", R"((lispb-project :language-version 1 :project-root "."
+      (cpp-schema test :types "types.lispb" :sources ("values.lispb")
+        :output-root (project-path "generated"))))");
+    files.write("values.lispb", R"((module values :header "Values.h" (record Before)))");
+
+    Compiler compiler;
+    auto const project{load_project(compiler.storage().syntax, files.path("project.lispb"))};
+    auto const target{*project.find_target("test")};
+    auto const compile_text{[&] {
+        auto const& output{compiler.compile(project, target, files.path("build")).compilation};
+        return output.text(output.artifacts.front());
+    }};
+    EXPECT_NE(compile_text().find("struct Before"), std::string::npos);
+
+    files.write("values.lispb", R"((module values :header "Values.h" (record After)))");
+    auto const changed{compile_text()};
+    EXPECT_NE(changed.find("struct After"), std::string::npos);
+    EXPECT_EQ(compile_text(), changed);
+    EXPECT_TRUE(compiler.compile(project, target, files.path("build"), CompileMode::validate)
+                    .compilation.artifacts.empty());
+
+    static_cast<void>(compiler.storage().sources.overlay(
+        files.path("values.lispb"), R"((module values :header "Values.h" (record Unsaved)))"));
+    EXPECT_NE(compile_text().find("struct Unsaved"), std::string::npos);
+    EXPECT_EQ(project.target_name(target), "test");
+    EXPECT_FALSE(std::filesystem::exists(files.path("generated/Values.h")));
+}
 
 TEST(EditableProjectDocument, AddsValidatesPreviewsAndSavesCppSchemaSources) {
     TemporaryProject files;
@@ -80,55 +126,63 @@ TEST(EditableProjectDocument, AddsValidatesPreviewsAndSavesCppSchemaSources) {
 
     auto document{load_editable_project_document(files.path("project.lispb"))};
     ASSERT_FALSE(document.dirty());
-    ASSERT_EQ(
-        std::get<CppSchemaTarget>(document.project().targets.at("test-schema")).sources.size(), 1U);
+    ASSERT_EQ(document.project().sources(*document.project().find_target("test-schema")).size(),
+              1U);
 
     auto const original_revision{document.revision()};
-    auto rejected{document.apply(
-        AddCppSchemaSource{.target_name = "test-schema", .source = "missing.lispb"})};
+    auto rejected{document.apply(ProjectEditRequest{.kind = ProjectEditKind::add_source,
+                                                    .target_name = "test-schema",
+                                                    .source = "missing.lispb"})};
     ASSERT_FALSE(rejected.has_value());
     EXPECT_NE(rejected.error().message.find("does not exist"), std::string::npos);
     EXPECT_EQ(document.revision(), original_revision);
-    rejected =
-        document.apply(AddCppSchemaSource{.target_name = "test-schema", .source = "base.lispb"});
+    rejected = document.apply(ProjectEditRequest{
+        .kind = ProjectEditKind::add_source, .target_name = "test-schema", .source = "base.lispb"});
     ASSERT_FALSE(rejected.has_value());
     EXPECT_NE(rejected.error().message.find("already registered"), std::string::npos);
     EXPECT_EQ(document.revision(), original_revision);
-    rejected =
-        document.apply(AddCppSchemaSource{.target_name = "test-schema", .source = "./base.lispb"});
+    rejected = document.apply(ProjectEditRequest{.kind = ProjectEditKind::add_source,
+                                                 .target_name = "test-schema",
+                                                 .source = "./base.lispb"});
     ASSERT_FALSE(rejected.has_value());
     EXPECT_NE(rejected.error().message.find("already registered"), std::string::npos);
     EXPECT_EQ(document.revision(), original_revision);
-    rejected = document.apply(
-        AddCppSchemaSource{.target_name = "test-schema", .source = "../outside.lispb"});
+    rejected = document.apply(ProjectEditRequest{.kind = ProjectEditKind::add_source,
+                                                 .target_name = "test-schema",
+                                                 .source = "../outside.lispb"});
     ASSERT_FALSE(rejected.has_value());
     EXPECT_NE(rejected.error().message.find("project root"), std::string::npos);
     EXPECT_EQ(document.revision(), original_revision);
 
-    rejected = document.apply(CreateCppSchemaSource{
-        .target_name = "test-schema", .source = "missing/authored.lispb", .contents = ""});
+    rejected = document.apply(ProjectEditRequest{.kind = ProjectEditKind::create_source,
+                                                 .target_name = "test-schema",
+                                                 .source = "missing/authored.lispb",
+                                                 .contents = ""});
     ASSERT_FALSE(rejected.has_value());
     EXPECT_NE(rejected.error().message.find("parent directory"), std::string::npos);
     EXPECT_EQ(document.revision(), original_revision);
-    rejected = document.apply(
-        AddCppSchemaSource{.target_name = "missing-target", .source = "extra.lispb"});
+    rejected = document.apply(ProjectEditRequest{.kind = ProjectEditKind::add_source,
+                                                 .target_name = "missing-target",
+                                                 .source = "extra.lispb"});
     ASSERT_FALSE(rejected.has_value());
     EXPECT_NE(rejected.error().message.find("Unknown Lispb target"), std::string::npos);
     EXPECT_EQ(document.revision(), original_revision);
-    rejected =
-        document.apply(AddCppSchemaSource{.target_name = "test-schema", .source = "invalid.lispb"});
+    rejected = document.apply(ProjectEditRequest{.kind = ProjectEditKind::add_source,
+                                                 .target_name = "test-schema",
+                                                 .source = "invalid.lispb"});
     ASSERT_FALSE(rejected.has_value());
     EXPECT_EQ(document.revision(), original_revision);
 
-    auto applied{
-        document.apply(AddCppSchemaSource{.target_name = "test-schema", .source = "extra.lispb"})};
+    auto applied{document.apply(ProjectEditRequest{.kind = ProjectEditKind::add_source,
+                                                   .target_name = "test-schema",
+                                                   .source = "extra.lispb"})};
     ASSERT_TRUE(applied.has_value()) << applied.error().message;
     ASSERT_TRUE(*applied);
     EXPECT_TRUE(document.dirty());
     EXPECT_TRUE(document.can_undo());
     EXPECT_FALSE(document.can_redo());
-    EXPECT_EQ(
-        std::get<CppSchemaTarget>(document.project().targets.at("test-schema")).sources.size(), 2U);
+    EXPECT_EQ(document.project().sources(*document.project().find_target("test-schema")).size(),
+              2U);
 
     auto preview{document.preview_source_updates()};
     ASSERT_TRUE(preview.has_value()) << preview.error().message;
@@ -156,15 +210,17 @@ TEST(EditableProjectDocument, AddsValidatesPreviewsAndSavesCppSchemaSources) {
     EXPECT_FALSE(document.dirty());
     EXPECT_FALSE(std::filesystem::exists(files.path("project.lispb.layout-planner.tmp")));
 
-    auto const project{load_project(files.path("project.lispb"))};
-    auto const& target{std::get<CppSchemaTarget>(project.targets.at("test-schema"))};
-    ASSERT_EQ(target.sources.size(), 2U);
-    EXPECT_EQ(target.sources[1], "extra.lispb");
+    CompilerStorage storage;
+    auto const project{load_project(storage.syntax, files.path("project.lispb"))};
+    auto const target{*project.find_target("test-schema")};
+    ASSERT_EQ(project.sources(target).size(), 2U);
+    EXPECT_EQ(project.sources(target)[1], "extra.lispb");
     std::vector<std::filesystem::path> sources;
-    for (auto const& source : target.sources) {
+    for (auto const& source : project.sources(target)) {
         sources.push_back(project.root / source);
     }
-    auto const manifest{codegen::load_sources(project.root / target.types, sources)};
+    auto const manifest{
+        lispb::codegen::load_sources(storage, project.root / project.types(target), sources)};
     EXPECT_EQ(manifest.modules.size(), 2U);
     EXPECT_NE(files.read("project.lispb").find("; keep this comment"), std::string::npos);
 }
@@ -196,16 +252,19 @@ TEST(EditableProjectDocument, CreatesValidatesPreviewsAndPublishesNewCppSchemaSo
     auto const original_revision{document.revision()};
     auto const original_project{files.read("project.lispb")};
 
-    auto rejected{document.apply(CreateCppSchemaSource{.target_name = "test-schema",
-                                                       .source = "invalid.lispb",
-                                                       .contents = "(not-a-module invalid)\n"})};
+    auto rejected{document.apply(ProjectEditRequest{.kind = ProjectEditKind::create_source,
+                                                    .target_name = "test-schema",
+                                                    .source = "invalid.lispb",
+                                                    .contents = "(not-a-module invalid)\n"})};
     ASSERT_FALSE(rejected.has_value());
     EXPECT_EQ(document.revision(), original_revision);
     EXPECT_FALSE(document.dirty());
     EXPECT_FALSE(std::filesystem::exists(files.path("invalid.lispb")));
 
-    rejected = document.apply(CreateCppSchemaSource{
-        .target_name = "test-schema", .source = "collision.lispb", .contents = R"((module base
+    rejected = document.apply(ProjectEditRequest{.kind = ProjectEditKind::create_source,
+                                                 .target_name = "test-schema",
+                                                 .source = "collision.lispb",
+                                                 .contents = R"((module base
   :header "Collision.h"
   :namespace test
   (enum Base
@@ -215,21 +274,27 @@ TEST(EditableProjectDocument, CreatesValidatesPreviewsAndPublishesNewCppSchemaSo
     EXPECT_EQ(document.revision(), original_revision);
     EXPECT_FALSE(std::filesystem::exists(files.path("collision.lispb")));
 
-    rejected = document.apply(CreateCppSchemaSource{
-        .target_name = "test-schema", .source = "occupied.lispb", .contents = ""});
+    rejected = document.apply(ProjectEditRequest{.kind = ProjectEditKind::create_source,
+                                                 .target_name = "test-schema",
+                                                 .source = "occupied.lispb",
+                                                 .contents = ""});
     ASSERT_FALSE(rejected.has_value());
     EXPECT_NE(rejected.error().message.find("already exists"), std::string::npos);
     EXPECT_EQ(files.read("occupied.lispb"), "; user-owned source\n");
     EXPECT_EQ(document.revision(), original_revision);
 
-    rejected = document.apply(CreateCppSchemaSource{
-        .target_name = "test-schema", .source = "../outside.lispb", .contents = ""});
+    rejected = document.apply(ProjectEditRequest{.kind = ProjectEditKind::create_source,
+                                                 .target_name = "test-schema",
+                                                 .source = "../outside.lispb",
+                                                 .contents = ""});
     ASSERT_FALSE(rejected.has_value());
     EXPECT_NE(rejected.error().message.find("project root"), std::string::npos);
     EXPECT_EQ(document.revision(), original_revision);
 
-    auto created{document.apply(CreateCppSchemaSource{
-        .target_name = "test-schema", .source = "authored.lispb", .contents = ""})};
+    auto created{document.apply(ProjectEditRequest{.kind = ProjectEditKind::create_source,
+                                                   .target_name = "test-schema",
+                                                   .source = "authored.lispb",
+                                                   .contents = ""})};
     ASSERT_TRUE(created.has_value()) << created.error().message;
     ASSERT_TRUE(*created);
     EXPECT_TRUE(document.dirty());
@@ -237,8 +302,10 @@ TEST(EditableProjectDocument, CreatesValidatesPreviewsAndPublishesNewCppSchemaSo
     EXPECT_FALSE(std::filesystem::exists(files.path("authored.lispb")));
 
     auto const created_revision{document.revision()};
-    rejected = document.apply(CreateCppSchemaSource{
-        .target_name = "test-schema", .source = "./authored.lispb", .contents = ""});
+    rejected = document.apply(ProjectEditRequest{.kind = ProjectEditKind::create_source,
+                                                 .target_name = "test-schema",
+                                                 .source = "./authored.lispb",
+                                                 .contents = ""});
     ASSERT_FALSE(rejected.has_value());
     EXPECT_NE(rejected.error().message.find("already registered"), std::string::npos);
     EXPECT_EQ(document.revision(), created_revision);
@@ -278,28 +345,42 @@ TEST(EditableProjectDocument, CreatesValidatesPreviewsAndPublishesNewCppSchemaSo
     EXPECT_FALSE(std::filesystem::exists(files.path("project.lispb.layout-planner.tmp")));
     EXPECT_NE(files.read("project.lispb").find("; original source"), std::string::npos);
 
-    auto const project{load_project(files.path("project.lispb"))};
-    auto const& target{std::get<CppSchemaTarget>(project.targets.at("test-schema"))};
-    ASSERT_EQ(target.sources.size(), 2U);
-    EXPECT_EQ(target.sources[1], "authored.lispb");
+    CompilerStorage storage;
+    auto const project{load_project(storage.syntax, files.path("project.lispb"))};
+    auto const target{*project.find_target("test-schema")};
+    ASSERT_EQ(project.sources(target).size(), 2U);
+    EXPECT_EQ(project.sources(target)[1], "authored.lispb");
     std::vector<std::filesystem::path> sources;
-    for (auto const& source : target.sources) {
+    for (auto const& source : project.sources(target)) {
         sources.push_back(project.root / source);
     }
     auto schema_document{
-        schema::load_editable_schema_document(project.root / target.types, sources)};
-    auto const authored_source{std::ranges::find(schema_document.source_files(),
-                                                 files.path("authored.lispb"),
-                                                 &schema::SchemaSourceFile::path)};
+        schema::load_editable_schema_document(project.root / project.types(target), sources)};
+    auto const authored_source{std::ranges::find(
+        schema_document.source_files(), files.path("authored.lispb"), [&](auto file) {
+            return schema_document.storage().sources.filesystem_path(file);
+        })};
     ASSERT_NE(authored_source, schema_document.source_files().end());
-    auto const source_index{
-        static_cast<std::size_t>(authored_source - schema_document.source_files().begin())};
-    auto module_created{schema_document.apply(
-        schema::CreateModule{.source_file_index = source_index,
-                             .schema = codegen::NormalModuleSchema{
-                                 .settings = codegen::ModuleSettings{.name = "authored_scalars",
-                                                                     .header = "AuthoredScalars.h",
-                                                                     .namespace_name = "test"}}})};
+    auto& schema_store{schema_document.storage()};
+    auto module_created{schema_document.apply(schema_document.create_module(*authored_source, [&] {
+        auto const new_normal_modules{schema_store.declarations.normal_modules.append()};
+        schema_store.declarations.normal_modules
+            .settings[schema_store.declarations.normal_modules.index(new_normal_modules)] = [&] {
+            auto const new_module_settings_store{
+                schema_store.declarations.module_settings_store.append()};
+            schema_store.declarations.module_settings_store
+                .name[schema_store.declarations.module_settings_store.index(
+                    new_module_settings_store)] = schema_store.strings.intern("authored_scalars");
+            schema_store.declarations.module_settings_store
+                .header[schema_store.declarations.module_settings_store.index(
+                    new_module_settings_store)] = schema_store.strings.add("AuthoredScalars.h");
+            schema_store.declarations.module_settings_store
+                .namespace_name[schema_store.declarations.module_settings_store.index(
+                    new_module_settings_store)] = schema_store.strings.intern("test");
+            return new_module_settings_store;
+        }();
+        return new_normal_modules;
+    }()))};
     ASSERT_TRUE(module_created.has_value()) << module_created.error().message;
     ASSERT_TRUE(*module_created);
     auto module_preview{schema_document.preview_source_updates()};
@@ -329,11 +410,15 @@ TEST(EditableProjectDocument, ValidatesMultiplePendingSourcesAndCleansFailedPubl
     auto document{load_editable_project_document(files.path("project.lispb"))};
 
     ASSERT_TRUE(document
-                    .apply(CreateCppSchemaSource{
-                        .target_name = "test-schema", .source = "first.lispb", .contents = ""})
+                    .apply(ProjectEditRequest{.kind = ProjectEditKind::create_source,
+                                              .target_name = "test-schema",
+                                              .source = "first.lispb",
+                                              .contents = ""})
                     .has_value());
-    auto second{document.apply(CreateCppSchemaSource{
-        .target_name = "test-schema", .source = "second.lispb", .contents = R"((module values
+    auto second{document.apply(ProjectEditRequest{.kind = ProjectEditKind::create_source,
+                                                  .target_name = "test-schema",
+                                                  .source = "second.lispb",
+                                                  .contents = R"((module values
   :header "Values.h"
   (integer-scalar Value
     :signed false
@@ -372,14 +457,16 @@ TEST(EditableProjectDocument, ValidatesMultiplePendingSourcesAndCleansFailedPubl
     EXPECT_TRUE(std::filesystem::is_regular_file(files.path("first.lispb")));
     EXPECT_NE(files.read("second.lispb").find("(module values"), std::string::npos);
 
-    auto const project{load_project(files.path("project.lispb"))};
-    auto const& target{std::get<CppSchemaTarget>(project.targets.at("test-schema"))};
-    ASSERT_EQ(target.sources.size(), 3U);
+    CompilerStorage storage;
+    auto const project{load_project(storage.syntax, files.path("project.lispb"))};
+    auto const target{*project.find_target("test-schema")};
+    ASSERT_EQ(project.sources(target).size(), 3U);
     std::vector<std::filesystem::path> sources;
-    for (auto const& source : target.sources) {
+    for (auto const& source : project.sources(target)) {
         sources.push_back(project.root / source);
     }
-    auto const manifest{codegen::load_sources(project.root / target.types, sources)};
+    auto const manifest{
+        lispb::codegen::load_sources(storage, project.root / project.types(target), sources)};
     EXPECT_EQ(manifest.modules.size(), 2U);
 }
 
@@ -422,15 +509,17 @@ TEST(EditableProjectDocument, UnregistersOriginalSourceWithoutDeletingIt) {
     auto document{load_editable_project_document(files.path("project.lispb"))};
     auto const original_revision{document.revision()};
 
-    auto rejected{document.apply(
-        RemoveCppSchemaSource{.target_name = "test-schema", .source = "base.lispb"})};
+    auto rejected{document.apply(ProjectEditRequest{.kind = ProjectEditKind::remove_source,
+                                                    .target_name = "test-schema",
+                                                    .source = "base.lispb"})};
     ASSERT_FALSE(rejected.has_value());
     EXPECT_EQ(document.revision(), original_revision);
     EXPECT_FALSE(document.dirty());
     EXPECT_EQ(files.read("project.lispb"), original_project);
 
-    auto removed{document.apply(
-        RemoveCppSchemaSource{.target_name = "test-schema", .source = "independent.lispb"})};
+    auto removed{document.apply(ProjectEditRequest{.kind = ProjectEditKind::remove_source,
+                                                   .target_name = "test-schema",
+                                                   .source = "independent.lispb"})};
     ASSERT_TRUE(removed.has_value()) << removed.error().message;
     ASSERT_TRUE(*removed);
     EXPECT_TRUE(document.dirty());
@@ -445,8 +534,10 @@ TEST(EditableProjectDocument, UnregistersOriginalSourceWithoutDeletingIt) {
     EXPECT_NE(preview->front().updated.find("\"dependent.lispb\" ; dependent source note"),
               std::string::npos);
 
-    auto created{document.apply(CreateCppSchemaSource{
-        .target_name = "test-schema", .source = "authored.lispb", .contents = {}})};
+    auto created{document.apply(ProjectEditRequest{.kind = ProjectEditKind::create_source,
+                                                   .target_name = "test-schema",
+                                                   .source = "authored.lispb",
+                                                   .contents = {}})};
     ASSERT_TRUE(created.has_value()) << created.error().message;
     ASSERT_TRUE(*created);
     preview = document.preview_source_updates();
@@ -463,8 +554,9 @@ TEST(EditableProjectDocument, UnregistersOriginalSourceWithoutDeletingIt) {
     ASSERT_TRUE(document.redo().value());
     EXPECT_TRUE(document.dirty());
 
-    auto restored{document.apply(
-        AddCppSchemaSource{.target_name = "test-schema", .source = "independent.lispb"})};
+    auto restored{document.apply(ProjectEditRequest{.kind = ProjectEditKind::add_source,
+                                                    .target_name = "test-schema",
+                                                    .source = "independent.lispb"})};
     ASSERT_TRUE(restored.has_value()) << restored.error().message;
     ASSERT_TRUE(*restored);
     EXPECT_TRUE(document.preview_source_updates()->empty());
@@ -483,10 +575,11 @@ TEST(EditableProjectDocument, UnregistersOriginalSourceWithoutDeletingIt) {
     EXPECT_TRUE(std::filesystem::is_regular_file(files.path("independent.lispb")));
 
     auto const reloaded{load_editable_project_document(files.path("project.lispb"))};
-    auto const& target{std::get<CppSchemaTarget>(reloaded.project().targets.at("test-schema"))};
-    ASSERT_EQ(target.sources.size(), 2U);
-    EXPECT_EQ(target.sources[0], "base.lispb");
-    EXPECT_EQ(target.sources[1], "dependent.lispb");
+    auto const& project{reloaded.project()};
+    auto const target{*project.find_target("test-schema")};
+    ASSERT_EQ(project.sources(target).size(), 2U);
+    EXPECT_EQ(project.sources(target)[0], "base.lispb");
+    EXPECT_EQ(project.sources(target)[1], "dependent.lispb");
     EXPECT_NE(files.read("project.lispb").find("; independent source note"), std::string::npos);
 }
 

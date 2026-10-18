@@ -1,29 +1,68 @@
 #include "parser.h"
 
+#include <codegen/sexpr/indices.h>
+#include <codegen/sexpr/reader.h>
+#include <codegen/sexpr/source_error.h>
+#include <codegen/sexpr/source_span.h>
+#include <codegen/sexpr/sources.h>
+#include <codegen/sexpr/syntax.h>
+#include <codegen/sexpr/token_kind.h>
+#include <kernel_codegen/aliasing.h>
+#include <kernel_codegen/binary_operator.h>
+#include <kernel_codegen/constant_kind.h>
+#include <kernel_codegen/document.h>
+#include <kernel_codegen/expression_id.h>
+#include <kernel_codegen/expression_kind.h>
+#include <kernel_codegen/indices.h>
+#include <kernel_codegen/operation_kind.h>
+#include <kernel_codegen/scalar_type.h>
+#include <kernel_codegen/storage_kind.h>
+#include <kernel_codegen/variant_kind.h>
+#include <lispb/indices.h>
+#include <lispb/kernel_profile.h>
+#include <lispb/strings.h>
+
 #include <algorithm>
 #include <cctype>
 #include <charconv>
 #include <cmath>
+#include <compare>
+#include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <limits>
 #include <map>
 #include <optional>
 #include <set>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <utility>
+#include <vector>
 
 namespace kernel_codegen::detail {
 namespace {
 
-using codegen::sexpr::Form;
-using codegen::sexpr::SourceError;
-using codegen::sexpr::SourceSpan;
-using codegen::sexpr::TokenKind;
+using lispb::codegen::sexpr::FormId;
+using lispb::codegen::sexpr::SourceError;
+using lispb::codegen::sexpr::SourceSpan;
+using lispb::codegen::sexpr::TokenKind;
 
 struct DecimalLiteral {
     std::string spelling;
     long double value;
+};
+
+struct OutputPath {
+    lispb::KernelProfile profile;
+    std::filesystem::path path;
+    auto operator<=>(OutputPath const&) const = default;
+};
+
+struct VariantShape {
+    VariantKind kind;
+    std::optional<OperandId> target;
+    auto operator<=>(VariantShape const&) const = default;
 };
 
 auto parse_decimal_literal(std::string_view const source) -> std::optional<DecimalLiteral> {
@@ -110,88 +149,90 @@ auto parse_decimal_literal(std::string_view const source) -> std::optional<Decim
 
 class Parser {
   public:
-    Parser(std::string_view const path, std::vector<Form> forms)
-        : path_{path}
-        , forms_{std::move(forms)} {}
+    Parser(lispb::codegen::sexpr::Syntax& syntax,
+           Document& document,
+           lispb::codegen::sexpr::SourceFileId const file,
+           lispb::codegen::sexpr::HandleRange const forms)
+        : syntax_{syntax}
+        , document_{document}
+        , file_{file}
+        , forms_{forms} {}
 
-    auto parse() -> Document {
-        Document result;
-        std::set<std::string> names;
-        std::set<std::string> output_paths;
-        for (auto const& form : forms_) {
+    void parse() {
+        auto const initial_modules{document_.modules.size()};
+        std::set<lispb::IdentifierId> names;
+        std::set<OutputPath> output_paths;
+        for (auto const form : syntax_.forms(forms_)) {
             auto module{parse_module(form)};
-            if (!names.insert(module.name).second) {
-                fail(module.span, "duplicate kernel module '" + module.name + "'");
+            if (!names.insert(document_.modules.name(module)).second) {
+                fail(document_.modules.span(module),
+                     "duplicate kernel module '" + text(document_.modules.name(module)) + "'");
             }
-            for (auto const& emission : module.emissions) {
-                std::vector<std::filesystem::path> paths{emission.header, emission.source};
-                if (emission.tests) {
-                    paths.push_back(*emission.tests);
+            for (auto const& emission : document_.modules.emissions(module)) {
+                std::vector<lispb::StringId> paths{document_.emissions.header(emission),
+                                                   document_.emissions.source(emission)};
+                if (document_.emissions.tests(emission)) {
+                    paths.push_back(*document_.emissions.tests(emission));
                 }
                 for (auto const& output_path : paths) {
-                    auto const key{std::to_string(static_cast<int>(emission.profile)) + ":" +
-                                   output_path.generic_string()};
-                    if (!output_paths.insert(key).second) {
-                        fail(emission.span,
-                             "duplicate generated output path '" + output_path.generic_string() +
+                    if (!output_paths
+                             .insert({document_.emissions.profile(emission),
+                                      document_.text(output_path)})
+                             .second) {
+                        fail(document_.emissions.span(emission),
+                             "duplicate generated output path '" + document_.text(output_path) +
                                  "'");
                     }
                 }
             }
-            result.modules.push_back(std::move(module));
         }
-        if (result.modules.empty()) {
-            fail(SourceSpan{.path = path_}, "document must contain at least one kernel-module");
+        if (document_.modules.size() == initial_modules) {
+            fail(syntax_.sources().span(file_, 0, 0),
+                 "document must contain at least one kernel-module");
         }
-        return result;
     }
   private:
     [[noreturn]] void fail(SourceSpan const& span, std::string const& message) const {
-        throw SourceError{path_, span, message};
+        throw SourceError{syntax_.sources(), span, message};
     }
 
-    auto head(Form const& form, std::string_view const context) const -> std::string const& {
-        if (!form.is_list() || form.children.empty() ||
-            form.children.front().token.kind != TokenKind::atom) {
-            fail(form.token.span, std::string{"expected "} + std::string{context} + " form");
+    auto text(lispb::IdentifierId const id) const -> std::string {
+        return std::string{syntax_.strings().view(id)};
+    }
+
+    auto head(FormId const form, std::string_view const context) const -> std::string {
+        if (!syntax_.is_list(form) || syntax_.children(form).empty() ||
+            syntax_.kind(syntax_.children(form).front()) != TokenKind::atom) {
+            fail(syntax_.token_span(form),
+                 std::string{"expected "} + std::string{context} + " form");
         }
-        return form.children.front().token.text;
+        return std::string{syntax_.text(syntax_.children(form).front())};
     }
 
-    auto atom(Form const& form, std::string_view const message) const -> std::string const& {
-        if (form.is_list() || form.token.kind != TokenKind::atom) {
-            fail(form.token.span, std::string{message});
+    auto atom(FormId const form, std::string_view const message) const -> std::string {
+        if (syntax_.is_list(form) || syntax_.kind(form) != TokenKind::atom) {
+            fail(syntax_.token_span(form), std::string{message});
         }
-        return form.token.text;
+        return std::string{syntax_.text(form)};
     }
 
-    auto string_value(Form const& form, std::string_view const message) const
-        -> std::string const& {
-        if (form.is_list() || form.token.kind != TokenKind::string) {
-            fail(form.token.span, std::string{message});
+    auto string_value(FormId const form, std::string_view const message) const -> lispb::StringId {
+        if (syntax_.is_list(form) || syntax_.kind(form) != TokenKind::string) {
+            fail(syntax_.token_span(form), std::string{message});
         }
-        return form.token.text;
+        return syntax_.text_id(form);
     }
 
-    auto integer_value(Form const& form, std::string_view const message) const -> int {
-        auto const& value{atom(form, message)};
-        int result{};
-        auto const [end, error]{std::from_chars(value.data(), value.data() + value.size(), result)};
-        if (error != std::errc{} || end != value.data() + value.size()) {
-            fail(form.token.span, std::string{message});
-        }
-        return result;
-    }
-
-    void
-        require_size(Form const& form, std::size_t const size, std::string_view const usage) const {
-        if (form.children.size() != size) {
-            fail(form.token.span, "expected " + std::string{usage});
+    void require_size(FormId const form,
+                      std::size_t const size,
+                      std::string_view const usage) const {
+        if (syntax_.children(form).size() != size) {
+            fail(syntax_.token_span(form), "expected " + std::string{usage});
         }
     }
 
-    static auto is_identifier(std::string const& value) -> bool {
-        static std::set<std::string> const cpp_keywords{
+    static auto is_identifier(std::string_view const value) -> bool {
+        static constexpr std::string_view cpp_keywords[]{
             "alignas",       "alignof",     "and",
             "and_eq",        "asm",         "auto",
             "bitand",        "bitor",       "bool",
@@ -228,13 +269,13 @@ class Parser {
                               value.front() != '_')) {
             return false;
         }
-        return !cpp_keywords.contains(value) &&
+        return std::ranges::find(cpp_keywords, value) == std::end(cpp_keywords) &&
                std::ranges::all_of(value, [](unsigned char const character) {
                    return std::isalnum(character) != 0 || character == '_';
                });
     }
 
-    static auto is_qualified_identifier(std::string const& value) -> bool {
+    static auto is_qualified_identifier(std::string_view const value) -> bool {
         std::size_t start{};
         while (true) {
             auto const separator{value.find("::", start)};
@@ -249,25 +290,41 @@ class Parser {
         }
     }
 
-    auto parse_expression(Form const& form) const -> Expression {
-        if (!form.is_list()) {
-            auto const& value{atom(form, "expected operand reference or numeric literal")};
+    auto parse_expression(FormId const form,
+                          OperationId const owner,
+                          std::vector<bool>& used_operands) const -> ExpressionId {
+        auto& expressions{document_.expressions};
+        if (!syntax_.is_list(form)) {
+            auto const value{atom(form, "expected operand reference or numeric literal")};
             if (is_identifier(value)) {
-                return Expression{ExpressionKind::reference, value, {}, form.token.span};
+                auto const found{std::ranges::find_if(
+                    document_.operations.operands(owner), [&](auto const& operand) {
+                        return document_.operands.name(operand) == syntax_.identifier(form);
+                    })};
+                if (found == document_.operations.operands(owner).end()) {
+                    fail(syntax_.token_span(form),
+                         "expression references unknown operand '" + value + "'");
+                }
+                auto const index{static_cast<std::uint32_t>(
+                    found - document_.operations.operands(owner).begin())};
+                used_operands[index] = true;
+                return expressions.reference(*found, syntax_.token_span(form));
             }
-            auto literal{parse_decimal_literal(value)};
+            auto const literal{parse_decimal_literal(value)};
             if (!literal) {
-                fail(form.token.span,
+                fail(syntax_.token_span(form),
                      "expected operand reference or finite decimal literal, got '" + value + "'");
             }
-            return Expression{
-                ExpressionKind::literal, std::move(literal->spelling), {}, form.token.span};
+            auto const spelling{literal->spelling == syntax_.text(form)
+                                    ? syntax_.text_id(form)
+                                    : syntax_.strings().add(literal->spelling)};
+            return expressions.literal(spelling, literal->value, syntax_.token_span(form));
         }
 
-        auto const& operation{head(form, "expression")};
+        auto const operation{head(form, "expression")};
         if (operation == "constant") {
             require_size(form, 2, "'(constant nan|infinity|negative-infinity)'");
-            auto const& name{atom(form.children[1], "expected constant name")};
+            auto const name{atom(syntax_.children(form)[1], "expected constant name")};
             ConstantKind constant;
             if (name == "nan") {
                 constant = ConstantKind::nan;
@@ -276,24 +333,48 @@ class Parser {
             } else if (name == "negative-infinity") {
                 constant = ConstantKind::negative_infinity;
             } else {
-                fail(form.children[1].token.span, "unknown constant '" + name + "'");
+                fail(syntax_.token_span(syntax_.children(form)[1]),
+                     "unknown constant '" + name + "'");
             }
-            return Expression{ExpressionKind::constant, {}, {}, form.token.span, constant};
+            return expressions.constant(constant, syntax_.token_span(form));
         }
 
         require_size(form, 3, "binary expression '(operator lhs rhs)'");
-        if (operation != "+" && operation != "-" && operation != "*" && operation != "/") {
-            fail(form.children[0].token.span,
+        BinaryOperator binary;
+        if (operation == "+") {
+            binary = BinaryOperator::add;
+        } else if (operation == "-") {
+            binary = BinaryOperator::subtract;
+        } else if (operation == "*") {
+            binary = BinaryOperator::multiply;
+        } else if (operation == "/") {
+            binary = BinaryOperator::divide;
+        } else {
+            fail(syntax_.token_span(syntax_.children(form)[0]),
                  "unsupported expression operator '" + operation + "'");
         }
-        std::vector<Expression> arguments;
-        arguments.push_back(parse_expression(form.children[1]));
-        arguments.push_back(parse_expression(form.children[2]));
-        return Expression{ExpressionKind::binary, operation, std::move(arguments), form.token.span};
+        auto const left{parse_expression(syntax_.children(form)[1], owner, used_operands)};
+        auto const right{parse_expression(syntax_.children(form)[2], owner, used_operands)};
+        return expressions.binary(binary, left, right, syntax_.token_span(form));
     }
 
-    auto parse_storage(Form const& form) const -> std::vector<StorageKind> {
-        auto parse_one = [&](Form const& item) {
+    void parse_operation_expression(OperationId const operation,
+                                    lispb::codegen::sexpr::FormId const form) const {
+        std::vector<bool> used_operands(document_.operations.operands(operation).size());
+        document_.operations.expression(operation) =
+            parse_expression(form, operation, used_operands);
+        auto const count{document_.operations.operands(operation).size()};
+        for (std::size_t index{}; index < count; ++index) {
+            if (!used_operands[index]) {
+                auto const& operand{document_.operations.operands(operation)[index]};
+                fail(document_.operands.span(operand),
+                     "unused operand '" + text(document_.operands.name(operand)) + "'");
+            }
+        }
+    }
+
+    void parse_storage(FormId const form, OperandId const operand) const {
+        auto parse_one = [&](FormId const item) {
             auto const& value{atom(item, "expected 'array' or 'scalar'")};
             if (value == "array") {
                 return StorageKind::array;
@@ -301,391 +382,333 @@ class Parser {
             if (value == "scalar") {
                 return StorageKind::scalar;
             }
-            fail(item.token.span, "unknown operand storage '" + value + "'");
+            fail(syntax_.token_span(item), "unknown operand storage '" + value + "'");
         };
 
-        std::vector<StorageKind> result;
-        if (form.is_list()) {
-            if (form.children.empty()) {
-                fail(form.token.span, "operand storage list must not be empty");
+        if (syntax_.is_list(form)) {
+            if (syntax_.children(form).empty()) {
+                fail(syntax_.token_span(form), "operand storage list must not be empty");
             }
-            for (auto const& item : form.children) {
+            for (auto const& item : syntax_.children(form)) {
                 auto const storage{parse_one(item)};
-                if (std::ranges::find(result, storage) != result.end()) {
-                    fail(item.token.span, "duplicate operand storage");
+                if (std::ranges::find(document_.operands.storage(operand), storage) !=
+                    document_.operands.storage(operand).end()) {
+                    fail(syntax_.token_span(item), "duplicate operand storage");
                 }
-                result.push_back(storage);
+                document_.operands.append_storage(operand, storage);
             }
         } else {
-            result.push_back(parse_one(form));
+            document_.operands.append_storage(operand, parse_one(form));
         }
-        return result;
     }
 
-    auto parse_variant(Form const& form) const -> Variant {
+    auto parse_variant(FormId const form, OperationId const operation) const -> VariantId {
         auto const& form_head{head(form, "variant")};
         if (form_head == "out-of-place") {
             require_size(form, 2, "'(out-of-place public_name)'");
-            auto const& public_name{atom(form.children[1], "expected public function name")};
+            auto const& public_name{
+                atom(syntax_.children(form)[1], "expected public function name")};
             if (!is_identifier(public_name)) {
-                fail(form.children[1].token.span, "public function name must be a C++ identifier");
+                fail(syntax_.token_span(syntax_.children(form)[1]),
+                     "public function name must be a C++ identifier");
             }
-            return Variant{VariantKind::out_of_place, public_name, std::nullopt, form.token.span};
+            return document_.variants.add(VariantKind::out_of_place,
+                                          syntax_.identifier(syntax_.children(form)[1]),
+                                          std::nullopt,
+                                          syntax_.token_span(form));
         }
         if (form_head == "in-place") {
             require_size(form, 3, "'(in-place target public_name)'");
-            auto const& target{atom(form.children[1], "expected in-place target")};
-            auto const& public_name{atom(form.children[2], "expected public function name")};
+            auto const& target{atom(syntax_.children(form)[1], "expected in-place target")};
+            auto const& public_name{
+                atom(syntax_.children(form)[2], "expected public function name")};
             if (!is_identifier(public_name)) {
-                fail(form.children[2].token.span, "public function name must be a C++ identifier");
+                fail(syntax_.token_span(syntax_.children(form)[2]),
+                     "public function name must be a C++ identifier");
             }
-            return Variant{VariantKind::in_place, public_name, target, form.token.span};
+            auto const operand{std::ranges::find_if(
+                document_.operations.operands(operation), [&](auto const& value) {
+                    return document_.operands.name(value) ==
+                           syntax_.identifier(syntax_.children(form)[1]);
+                })};
+            if (operand == document_.operations.operands(operation).end()) {
+                fail(syntax_.token_span(form), "unknown in-place target '" + target + "'");
+            }
+            return document_.variants.add(VariantKind::in_place,
+                                          syntax_.identifier(syntax_.children(form)[2]),
+                                          *operand,
+                                          syntax_.token_span(form));
         }
-        fail(form.token.span, "unknown variant '" + form_head + "'");
+        fail(syntax_.token_span(form), "unknown variant '" + form_head + "'");
     }
 
-    auto parse_operation(Form const& form) const -> Operation {
+    auto resolve_type_set(ModuleId const module, FormId const form) const -> TypeSetId {
+        auto const name{atom(form, "expected type-set name")};
+        auto const found{
+            std::ranges::find_if(document_.modules.type_sets(module), [&](auto const& type_set) {
+                return document_.type_sets.name(type_set) == syntax_.identifier(form);
+            })};
+        if (found == document_.modules.type_sets(module).end()) {
+            fail(syntax_.token_span(form), "unknown type-set '" + name + "'");
+        }
+        return *found;
+    }
+
+    auto parse_operation(FormId const form, ModuleId const module) const -> OperationId {
         auto const form_head{head(form, "map or component-map")};
-        if ((form_head != "map" && form_head != "component-map") || form.children.size() < 2) {
-            fail(form.token.span, "expected '(map|component-map name ...)'");
+        if ((form_head != "map" && form_head != "component-map") ||
+            syntax_.children(form).size() < 2) {
+            fail(syntax_.token_span(form), "expected '(map|component-map name ...)'");
         }
         auto const is_component_map{form_head == "component-map"};
-        auto const& name{atom(form.children[1], "expected map name")};
+        auto const& name{atom(syntax_.children(form)[1], "expected map name")};
         if (!is_identifier(name)) {
-            fail(form.children[1].token.span, "map name must be a C++ identifier");
+            fail(syntax_.token_span(syntax_.children(form)[1]),
+                 "map name must be a C++ identifier");
         }
 
-        Operation result{.kind =
-                             is_component_map ? OperationKind::component_map : OperationKind::map,
-                         .name = name,
-                         .expression = Expression{ExpressionKind::literal, {}, {}, {}},
-                         .span = form.token.span};
-        std::set<std::string> fields;
-        std::set<std::string> operand_names;
-        bool has_expression{false};
-        for (std::size_t index{2}; index < form.children.size(); ++index) {
-            auto const& field{form.children[index]};
+        auto const result{document_.operations.add(is_component_map ? OperationKind::component_map
+                                                                    : OperationKind::map,
+                                                   syntax_.identifier(syntax_.children(form)[1]),
+                                                   syntax_.token_span(form))};
+        std::set<lispb::IdentifierId> fields;
+        std::set<lispb::IdentifierId> operand_names;
+        std::optional<lispb::codegen::sexpr::FormId> expression_form;
+        std::optional<lispb::codegen::sexpr::FormId> variants_form;
+        for (std::size_t index{2}; index < syntax_.children(form).size(); ++index) {
+            auto const& field{syntax_.children(form)[index]};
             auto const& field_name{head(field, "map field")};
             if (field_name == "operand" || field_name == "component-operand") {
                 if (field_name == "component-operand" && !is_component_map) {
-                    fail(field.token.span, "component-operand is valid only in component-map");
+                    fail(syntax_.token_span(field),
+                         "component-operand is valid only in component-map");
                 }
                 require_size(field, 3, "'(operand name storage)'");
-                auto operand_name{atom(field.children[1], "expected operand name")};
+                auto operand_name{atom(syntax_.children(field)[1], "expected operand name")};
                 if (!is_identifier(operand_name)) {
-                    fail(field.children[1].token.span, "operand name must be a C++ identifier");
+                    fail(syntax_.token_span(syntax_.children(field)[1]),
+                         "operand name must be a C++ identifier");
                 }
-                if (!operand_names.insert(operand_name).second) {
-                    fail(field.children[1].token.span, "duplicate operand '" + operand_name + "'");
+                if (!operand_names.insert(syntax_.identifier(syntax_.children(field)[1])).second) {
+                    fail(syntax_.token_span(syntax_.children(field)[1]),
+                         "duplicate operand '" + operand_name + "'");
                 }
-                result.operands.push_back(Operand{std::move(operand_name),
-                                                  parse_storage(field.children[2]),
-                                                  field.token.span,
-                                                  field_name == "component-operand"});
+                auto const operand{
+                    document_.operands.add(syntax_.identifier(syntax_.children(field)[1]),
+                                           syntax_.token_span(field),
+                                           field_name == "component-operand")};
+                parse_storage(syntax_.children(field)[2], operand);
+                document_.operations.append_operands(result, operand);
                 continue;
             }
-            if (!fields.insert(field_name).second) {
-                fail(field.token.span, "duplicate map field '" + field_name + "'");
+            if (!fields.insert(syntax_.identifier(syntax_.children(field).front())).second) {
+                fail(syntax_.token_span(field), "duplicate map field '" + field_name + "'");
             }
             if (field_name == "components") {
-                if (!is_component_map || field.children.size() < 3) {
-                    fail(field.token.span, "component-map requires at least two component names");
+                if (!is_component_map || syntax_.children(field).size() < 3) {
+                    fail(syntax_.token_span(field),
+                         "component-map requires at least two component names");
                 }
-                std::set<std::string> components;
-                for (std::size_t component_index{1}; component_index < field.children.size();
+                std::set<lispb::IdentifierId> components;
+                for (std::size_t component_index{1};
+                     component_index < syntax_.children(field).size();
                      ++component_index) {
                     auto component{
-                        atom(field.children[component_index], "expected component name")};
-                    if (!is_identifier(component) || !components.insert(component).second) {
-                        fail(field.children[component_index].token.span,
+                        atom(syntax_.children(field)[component_index], "expected component name")};
+                    if (!is_identifier(component) ||
+                        !components
+                             .insert(syntax_.identifier(syntax_.children(field)[component_index]))
+                             .second) {
+                        fail(syntax_.token_span(syntax_.children(field)[component_index]),
                              "component names must be unique C++ identifiers");
                     }
-                    result.components.push_back(std::move(component));
+                    document_.operations.append_components(
+                        result, syntax_.identifier(syntax_.children(field)[component_index]));
                 }
             } else if (field_name == "types") {
                 require_size(field, 2, "'(types type_set)'");
-                result.type_set = atom(field.children[1], "expected type-set name");
+                document_.operations.type_set(result) =
+                    resolve_type_set(module, syntax_.children(field)[1]);
             } else if (field_name == "output") {
                 require_size(field, 2, "'(output name)'");
-                result.output = atom(field.children[1], "expected output name");
-                if (!is_identifier(result.output)) {
-                    fail(field.children[1].token.span, "output name must be a C++ identifier");
+                static_cast<void>(atom(syntax_.children(field)[1], "expected output name"));
+                document_.operations.output(result) =
+                    syntax_.identifier(syntax_.children(field)[1]);
+                if (!is_identifier(text(document_.operations.output(result)))) {
+                    fail(syntax_.token_span(syntax_.children(field)[1]),
+                         "output name must be a C++ identifier");
                 }
             } else if (field_name == "expression") {
                 require_size(field, 2, "'(expression expression)'");
-                result.expression = parse_expression(field.children[1]);
-                has_expression = true;
+                expression_form = syntax_.children(field)[1];
             } else if (field_name == "variants") {
-                if (field.children.size() < 2) {
-                    fail(field.token.span, "variants must not be empty");
+                if (syntax_.children(field).size() < 2) {
+                    fail(syntax_.token_span(field), "variants must not be empty");
                 }
-                for (std::size_t variant_index{1}; variant_index < field.children.size();
-                     ++variant_index) {
-                    result.variants.push_back(parse_variant(field.children[variant_index]));
-                }
+                variants_form = field;
             } else if (field_name == "aliasing") {
                 require_size(field, 2, "'(aliasing output-disjoint|pairwise-disjoint)'");
-                auto const& policy{atom(field.children[1], "expected aliasing policy")};
+                auto const& policy{atom(syntax_.children(field)[1], "expected aliasing policy")};
                 if (policy == "output-disjoint") {
-                    result.aliasing = Aliasing::output_disjoint;
+                    document_.operations.aliasing(result) = Aliasing::output_disjoint;
                 } else if (policy == "pairwise-disjoint") {
-                    result.aliasing = Aliasing::pairwise_disjoint;
+                    document_.operations.aliasing(result) = Aliasing::pairwise_disjoint;
                 } else {
-                    fail(field.children[1].token.span, "unknown aliasing policy '" + policy + "'");
+                    fail(syntax_.token_span(syntax_.children(field)[1]),
+                         "unknown aliasing policy '" + policy + "'");
                 }
             } else {
-                fail(field.token.span, "unknown map field '" + field_name + "'");
+                fail(syntax_.token_span(field), "unknown map field '" + field_name + "'");
             }
         }
 
-        if (result.type_set.empty() || result.output.empty() || result.operands.empty() ||
-            result.variants.empty() || !has_expression) {
-            fail(form.token.span, "map requires types, operands, output, expression, and variants");
+        if (document_.operations.type_set(result).value == 0xffffffff ||
+            document_.operations.output(result).value == 0 ||
+            document_.operations.operands(result).empty() || !variants_form || !expression_form) {
+            fail(syntax_.token_span(form),
+                 "map requires types, operands, output, expression, and variants");
         }
-        if (is_component_map && (result.components.empty() ||
-                                 std::ranges::none_of(result.operands, [](auto const& operand) {
-                                     return operand.is_component;
-                                 }))) {
-            fail(form.token.span,
+        if (is_component_map &&
+            (document_.operations.components(result).empty() ||
+             std::ranges::none_of(document_.operations.operands(result), [&](auto const operand) {
+                 return document_.operands.is_component(operand);
+             }))) {
+            fail(syntax_.token_span(form),
                  "component-map requires components and at least one component-operand");
         }
-        if (operand_names.contains(result.output)) {
-            fail(form.token.span, "output name must differ from operand names");
+        if (operand_names.contains(document_.operations.output(result))) {
+            fail(syntax_.token_span(form), "output name must differ from operand names");
         }
 
-        std::set<std::string> references;
-        auto collect_references = [&](auto const& self, Expression const& expression) -> void {
-            if (expression.kind == ExpressionKind::reference) {
-                references.insert(expression.value);
-            }
-            for (auto const& argument : expression.arguments) {
-                self(self, argument);
-            }
-        };
-        collect_references(collect_references, result.expression);
-        for (auto const& reference : references) {
-            if (!operand_names.contains(reference)) {
-                fail(result.expression.span,
-                     "expression references unknown operand '" + reference + "'");
-            }
-        }
-        for (auto const& operand : result.operands) {
-            if (!references.contains(operand.name)) {
-                fail(operand.span, "unused operand '" + operand.name + "'");
-            }
+        parse_operation_expression(result, *expression_form);
+        auto const variants{*variants_form};
+        auto const variant_count{syntax_.children(variants).size()};
+        for (std::size_t index{1}; index < variant_count; ++index) {
+            document_.operations.append_variants(
+                result, parse_variant(syntax_.children(variants)[index], result));
         }
 
-        std::set<std::string> variant_shapes;
-        for (auto const& variant : result.variants) {
-            auto const shape{variant.kind == VariantKind::out_of_place ? std::string{"out-of-place"}
-                             : variant.kind == VariantKind::in_place ? "in-place:" + *variant.target
-                                                                     : std::string{"sum"}};
-            if (!variant_shapes.insert(shape).second) {
-                fail(variant.span, "duplicate generated variant '" + shape + "'");
+        std::set<VariantShape> variant_shapes;
+        for (auto const& variant : document_.operations.variants(result)) {
+            if (!variant_shapes
+                     .insert({document_.variants.kind(variant), document_.variants.target(variant)})
+                     .second) {
+                auto const shape{document_.variants.kind(variant) == VariantKind::out_of_place
+                                     ? std::string{"out-of-place"}
+                                     : "in-place:" + text(document_.operands.name(
+                                                         *document_.variants.target(variant)))};
+                fail(document_.variants.span(variant),
+                     "duplicate generated variant '" + shape + "'");
             }
-            if (variant.kind == VariantKind::out_of_place) {
-                auto const has_array_operand{
-                    std::ranges::any_of(result.operands, [](auto const& operand) {
-                        return std::ranges::find(operand.storage, StorageKind::array) !=
-                               operand.storage.end();
+            if (document_.variants.kind(variant) == VariantKind::out_of_place) {
+                auto const has_array_operand{std::ranges::any_of(
+                    document_.operations.operands(result), [&](auto const operand) {
+                        return std::ranges::find(document_.operands.storage(operand),
+                                                 StorageKind::array) !=
+                               document_.operands.storage(operand).end();
                     })};
                 if (!has_array_operand) {
-                    fail(variant.span, "out-of-place map must allow at least one array operand");
+                    fail(document_.variants.span(variant),
+                         "out-of-place map must allow at least one array operand");
                 }
-            } else if (!operand_names.contains(*variant.target)) {
-                fail(variant.span, "unknown in-place target '" + *variant.target + "'");
             } else if (is_component_map) {
-                auto const target{std::ranges::find_if(result.operands, [&](auto const& operand) {
-                    return operand.name == *variant.target;
-                })};
-                if (!target->is_component) {
-                    fail(variant.span, "component-map in-place target must be a component-operand");
+                if (!document_.operands.is_component(*document_.variants.target(variant))) {
+                    fail(document_.variants.span(variant),
+                         "component-map in-place target must be a component-operand");
                 }
             }
         }
         return result;
     }
 
-    auto parse_sum_operation(Form const& form) const -> Operation {
-        if (head(form, "sum") != "sum" || form.children.size() < 2) {
-            fail(form.token.span, "expected '(sum name ...)'");
+    void validate_expression_type(ExpressionId const expression, ScalarType const type) const {
+        if (expression.kind() == ExpressionKind::constant &&
+            (type == ScalarType::int32 || type == ScalarType::uint32)) {
+            fail(document_.expressions.span(expression),
+                 "constant is not supported by integral concrete type '" + type_spelling(type) +
+                     "'");
         }
-        auto const& name{atom(form.children[1], "expected sum name")};
-        if (!is_identifier(name)) {
-            fail(form.children[1].token.span, "sum name must be a C++ identifier");
-        }
-
-        Operation result{.kind = OperationKind::sum,
-                         .name = name,
-                         .expression = Expression{ExpressionKind::literal, {}, {}, {}},
-                         .aliasing = Aliasing::pairwise_disjoint,
-                         .span = form.token.span};
-        std::set<std::string> fields;
-        std::set<std::string> operand_names;
-        bool has_expression{false};
-        for (std::size_t index{2}; index < form.children.size(); ++index) {
-            auto const& field{form.children[index]};
-            auto const& field_name{head(field, "sum field")};
-            if (field_name == "operand") {
-                require_size(field, 3, "'(operand name array)'");
-                auto operand_name{atom(field.children[1], "expected operand name")};
-                if (!is_identifier(operand_name)) {
-                    fail(field.children[1].token.span, "operand name must be a C++ identifier");
-                }
-                if (!operand_names.insert(operand_name).second) {
-                    fail(field.children[1].token.span, "duplicate operand '" + operand_name + "'");
-                }
-                auto const storage{parse_storage(field.children[2])};
-                if (storage != std::vector{StorageKind::array}) {
-                    fail(field.children[2].token.span, "sum operands must use array storage");
-                }
-                result.operands.push_back(
-                    Operand{std::move(operand_name), storage, field.token.span});
-                continue;
-            }
-            if (!fields.insert(field_name).second) {
-                fail(field.token.span, "duplicate sum field '" + field_name + "'");
-            }
-            if (field_name == "types") {
-                require_size(field, 2, "'(types type_set)'");
-                result.type_set = atom(field.children[1], "expected type-set name");
-            } else if (field_name == "expression") {
-                require_size(field, 2, "'(expression expression)'");
-                result.expression = parse_expression(field.children[1]);
-                has_expression = true;
-            } else if (field_name == "aliasing") {
-                require_size(field, 2, "'(aliasing pairwise-disjoint)'");
-                auto const& policy{atom(field.children[1], "expected aliasing policy")};
-                if (policy != "pairwise-disjoint") {
-                    fail(field.children[1].token.span,
-                         "sum supports only pairwise-disjoint aliasing");
-                }
-            } else if (field_name == "floating-point-modes") {
-                if (field.children.size() < 2) {
-                    fail(field.token.span, "floating-point-modes must not be empty");
-                }
-                result.floating_point_modes.clear();
-                std::set<std::string> modes;
-                for (std::size_t mode_index{1}; mode_index < field.children.size(); ++mode_index) {
-                    auto const& mode{
-                        atom(field.children[mode_index], "expected floating-point mode")};
-                    if (!modes.insert(mode).second) {
-                        fail(field.children[mode_index].token.span,
-                             "duplicate floating-point mode '" + mode + "'");
-                    }
-                    if (mode == "strict") {
-                        result.floating_point_modes.push_back(FloatingPointMode::strict);
-                    } else if (mode == "relaxed") {
-                        result.floating_point_modes.push_back(FloatingPointMode::relaxed);
-                    } else {
-                        fail(field.children[mode_index].token.span,
-                             "unknown floating-point mode '" + mode + "'");
-                    }
-                }
-            } else {
-                fail(field.token.span, "unknown sum field '" + field_name + "'");
-            }
-        }
-
-        if (result.type_set.empty() || result.operands.empty() || !has_expression) {
-            fail(form.token.span, "sum requires types, operands, and expression");
-        }
-
-        std::set<std::string> references;
-        auto collect_references = [&](auto const& self, Expression const& expression) -> void {
-            if (expression.kind == ExpressionKind::reference) {
-                references.insert(expression.value);
-            }
-            for (auto const& argument : expression.arguments) {
-                self(self, argument);
-            }
-        };
-        collect_references(collect_references, result.expression);
-        for (auto const& reference : references) {
-            if (!operand_names.contains(reference)) {
-                fail(result.expression.span,
-                     "expression references unknown operand '" + reference + "'");
-            }
-        }
-        for (auto const& operand : result.operands) {
-            if (!references.contains(operand.name)) {
-                fail(operand.span, "unused operand '" + operand.name + "'");
-            }
-        }
-
-        result.variants.push_back(
-            Variant{VariantKind::sum, result.name, std::nullopt, form.token.span});
-        return result;
-    }
-
-    void validate_expression_type(Expression const& expression, std::string const& type) const {
-        if (expression.kind == ExpressionKind::constant && (type == "int32" || type == "uint32")) {
-            fail(expression.span,
-                 "constant is not supported by integral concrete type '" + type + "'");
-        }
-        if (expression.kind == ExpressionKind::literal) {
-            auto const literal{parse_decimal_literal(expression.value)};
-            if (!literal) {
-                fail(expression.span, "invalid finite decimal literal '" + expression.value + "'");
-            }
-            auto const value{literal->value};
-            if (type == "int32") {
+        if (expression.kind() == ExpressionKind::literal) {
+            auto const value{document_.expressions.number(expression)};
+            if (type == ScalarType::int32) {
                 if (std::trunc(value) != value ||
                     value < static_cast<long double>(std::numeric_limits<std::int32_t>::min()) ||
                     value > static_cast<long double>(std::numeric_limits<std::int32_t>::max())) {
-                    fail(expression.span,
-                         "literal '" + expression.value + "' is not representable as int32");
+                    fail(document_.expressions.span(expression),
+                         "literal '" + std::string{document_.expressions.literal(expression)} +
+                             "' is not representable as int32");
                 }
-            } else if (type == "uint32") {
+            } else if (type == ScalarType::uint32) {
                 if (std::trunc(value) != value || value < 0.0L ||
                     value > static_cast<long double>(std::numeric_limits<std::uint32_t>::max())) {
-                    fail(expression.span,
-                         "literal '" + expression.value + "' is not representable as uint32");
+                    fail(document_.expressions.span(expression),
+                         "literal '" + std::string{document_.expressions.literal(expression)} +
+                             "' is not representable as uint32");
                 }
-            } else if (type == "float") {
+            } else if (type == ScalarType::float32) {
                 auto const magnitude{std::abs(value)};
                 if (magnitude > static_cast<long double>(std::numeric_limits<float>::max()) ||
                     (magnitude != 0.0L &&
                      magnitude <
                          static_cast<long double>(std::numeric_limits<float>::denorm_min()))) {
-                    fail(expression.span,
-                         "literal '" + expression.value + "' is not representable as float");
+                    fail(document_.expressions.span(expression),
+                         "literal '" + std::string{document_.expressions.literal(expression)} +
+                             "' is not representable as float");
                 }
-            } else if (type == "double") {
+            } else if (type == ScalarType::float64) {
                 auto const magnitude{std::abs(value)};
                 if (magnitude > static_cast<long double>(std::numeric_limits<double>::max()) ||
                     (magnitude != 0.0L &&
                      magnitude <
                          static_cast<long double>(std::numeric_limits<double>::denorm_min()))) {
-                    fail(expression.span,
-                         "literal '" + expression.value + "' is not representable as double");
+                    fail(document_.expressions.span(expression),
+                         "literal '" + std::string{document_.expressions.literal(expression)} +
+                             "' is not representable as double");
                 }
             }
         }
-        for (auto const& argument : expression.arguments) {
-            validate_expression_type(argument, type);
+        if (expression.kind() == ExpressionKind::binary) {
+            validate_expression_type(document_.expressions.left(expression), type);
+            validate_expression_type(document_.expressions.right(expression), type);
         }
     }
 
-    auto parse_type_set(Form const& form) const -> TypeSet {
-        if (head(form, "type-set") != "type-set" || form.children.size() < 3) {
-            fail(form.token.span, "expected '(type-set name type ...)'");
+    auto parse_scalar_type(FormId const form) const -> ScalarType {
+        auto const type{atom(form, "expected concrete type")};
+        if (type == "int32") {
+            return ScalarType::int32;
         }
-        auto const& name{atom(form.children[1], "expected type-set name")};
+        if (type == "uint32") {
+            return ScalarType::uint32;
+        }
+        if (type == "float") {
+            return ScalarType::float32;
+        }
+        if (type == "double") {
+            return ScalarType::float64;
+        }
+        fail(syntax_.token_span(form), "unsupported concrete type '" + type + "'");
+    }
+
+    auto parse_type_set(FormId const form) const -> TypeSetId {
+        if (head(form, "type-set") != "type-set" || syntax_.children(form).size() < 3) {
+            fail(syntax_.token_span(form), "expected '(type-set name type ...)'");
+        }
+        auto const& name{atom(syntax_.children(form)[1], "expected type-set name")};
         if (!is_identifier(name)) {
-            fail(form.children[1].token.span, "type-set name must be an identifier");
+            fail(syntax_.token_span(syntax_.children(form)[1]),
+                 "type-set name must be an identifier");
         }
-        TypeSet result{.name = name, .span = form.token.span};
-        std::set<std::string> types;
-        for (std::size_t index{2}; index < form.children.size(); ++index) {
-            auto const& type{atom(form.children[index], "expected concrete type")};
-            if (type != "int32" && type != "uint32" && type != "float" && type != "double") {
-                fail(form.children[index].token.span, "unsupported concrete type '" + type + "'");
-            }
+        auto const result{document_.type_sets.add(syntax_.identifier(syntax_.children(form)[1]),
+                                                  syntax_.token_span(form))};
+        std::set<ScalarType> types;
+        for (std::size_t index{2}; index < syntax_.children(form).size(); ++index) {
+            auto const type{parse_scalar_type(syntax_.children(form)[index])};
             if (!types.insert(type).second) {
-                fail(form.children[index].token.span, "duplicate concrete type '" + type + "'");
+                fail(syntax_.token_span(syntax_.children(form)[index]),
+                     "duplicate concrete type '" + type_spelling(type) + "'");
             }
-            result.types.push_back(type);
+            document_.type_sets.append_types(result, type);
         }
         return result;
     }
@@ -698,438 +721,200 @@ class Parser {
         }
     }
 
-    auto parse_selection(Form const& form) const -> VariantSelection {
-        if (head(form, "select") != "select") {
-            fail(form.token.span, "expected SIMD lab selection");
+    auto parse_emission(FormId const form) const -> EmissionId {
+        if (head(form, "emit") != "emit" || syntax_.children(form).size() < 2) {
+            fail(syntax_.token_span(form), "expected '(emit unreal|standard ...)'");
         }
-
-        VariantSelection result{.variant = VariantKind::out_of_place, .span = form.token.span};
-        std::set<std::string> fields;
-        bool has_variant{false};
-        for (std::size_t index{1}; index < form.children.size(); ++index) {
-            auto const& field{form.children[index]};
-            auto const& field_name{head(field, "selection field")};
-            if (!fields.insert(field_name).second) {
-                fail(field.token.span, "duplicate selection field '" + field_name + "'");
-            }
-            if (field_name == "storage") {
-                if (field.children.size() < 2) {
-                    fail(field.token.span, "selection storage must not be empty");
-                }
-                for (std::size_t storage_index{1}; storage_index < field.children.size();
-                     ++storage_index) {
-                    auto const& value{
-                        atom(field.children[storage_index], "expected 'array' or 'scalar'")};
-                    if (value == "array") {
-                        result.storage.push_back(StorageKind::array);
-                    } else if (value == "scalar") {
-                        result.storage.push_back(StorageKind::scalar);
-                    } else {
-                        fail(field.children[storage_index].token.span,
-                             "unknown operand storage '" + value + "'");
-                    }
-                }
-                continue;
-            }
-
-            require_size(field, 2, "single-value selection field");
-            if (field_name == "operation") {
-                result.operation = atom(field.children[1], "expected operation name");
-            } else if (field_name == "type") {
-                result.type = atom(field.children[1], "expected concrete type");
-            } else if (field_name == "variant") {
-                auto const& value{atom(field.children[1], "expected variant kind")};
-                if (value == "out-of-place") {
-                    result.variant = VariantKind::out_of_place;
-                } else if (value == "in-place") {
-                    result.variant = VariantKind::in_place;
-                } else if (value == "sum") {
-                    result.variant = VariantKind::sum;
-                } else {
-                    fail(field.children[1].token.span, "unknown variant kind '" + value + "'");
-                }
-                has_variant = true;
-            } else {
-                fail(field.token.span, "unknown selection field '" + field_name + "'");
-            }
-        }
-        if (result.operation.empty() || result.type.empty() || result.storage.empty() ||
-            !has_variant) {
-            fail(form.token.span, "select requires operation, type, storage, and variant");
-        }
-        return result;
-    }
-
-    auto parse_emission(Form const& form) const -> Emission {
-        if (head(form, "emit") != "emit" || form.children.size() < 2) {
-            fail(form.token.span,
-                 "expected '(emit unreal|standard|unreal-avx2-lab|native-x86-simd-lab ...)'");
-        }
-        auto const& profile_name{atom(form.children[1], "expected emission profile")};
-        Profile profile;
+        auto const& profile_name{atom(syntax_.children(form)[1], "expected emission profile")};
+        lispb::KernelProfile profile;
         if (profile_name == "unreal") {
-            profile = Profile::unreal;
+            profile = lispb::KernelProfile::unreal;
         } else if (profile_name == "standard") {
-            profile = Profile::standard;
-        } else if (profile_name == "unreal-avx2-lab") {
-            profile = Profile::unreal_avx2_lab;
-        } else if (profile_name == "native-x86-simd-lab") {
-            profile = Profile::native_x86_simd_lab;
+            profile = lispb::KernelProfile::standard;
         } else {
-            fail(form.children[1].token.span, "unknown emission profile '" + profile_name + "'");
+            fail(syntax_.token_span(syntax_.children(form)[1]),
+                 "unknown emission profile '" + profile_name + "'");
         }
 
-        Emission result{.profile = profile, .span = form.token.span};
-        std::set<std::string> fields;
-        for (std::size_t index{2}; index < form.children.size(); ++index) {
-            auto const& field{form.children[index]};
+        auto const result{document_.emissions.add(profile, syntax_.token_span(form))};
+        std::set<lispb::IdentifierId> fields;
+        for (std::size_t index{2}; index < syntax_.children(form).size(); ++index) {
+            auto const& field{syntax_.children(form)[index]};
             auto const& field_name{head(field, "emission field")};
-            if (!fields.insert(field_name).second) {
-                fail(field.token.span, "duplicate emission field '" + field_name + "'");
-            }
-            if (field_name == "select") {
-                result.selection = parse_selection(field);
-                continue;
-            }
-            if (field_name == "vector3-groups") {
-                if (field.children.size() < 2) {
-                    fail(field.token.span, "vector3-groups must not be empty");
-                }
-                std::set<std::string> group_names;
-                for (std::size_t group_index{1}; group_index < field.children.size();
-                     ++group_index) {
-                    auto const& group{field.children[group_index]};
-                    require_size(group, 4, "'(group_name x_operand y_operand z_operand)'");
-                    auto const& group_name{atom(group.children[0], "expected vector group name")};
-                    if (!is_identifier(group_name)) {
-                        fail(group.children[0].token.span,
-                             "vector group name must be a C++ identifier");
-                    }
-                    if (!group_names.insert(group_name).second) {
-                        fail(group.children[0].token.span,
-                             "duplicate vector group '" + group_name + "'");
-                    }
-                    Vector3Group parsed{.name = group_name, .span = group.token.span};
-                    for (std::size_t component_index{}; component_index < 3; ++component_index) {
-                        auto const& component{atom(group.children[component_index + 1],
-                                                   "expected vector component operand")};
-                        if (!is_identifier(component)) {
-                            fail(group.children[component_index + 1].token.span,
-                                 "vector component operand must be a C++ identifier");
-                        }
-                        parsed.components[component_index] = component;
-                    }
-                    result.vector3_groups.push_back(std::move(parsed));
-                }
-                continue;
+            if (!fields.insert(syntax_.identifier(syntax_.children(field).front())).second) {
+                fail(syntax_.token_span(field), "duplicate emission field '" + field_name + "'");
             }
             require_size(field, 2, "single-value emission field");
             if (field_name == "header") {
-                result.header = string_value(field.children[1], "expected header path string");
+                document_.emissions.header(result) =
+                    string_value(syntax_.children(field)[1], "expected header path string");
             } else if (field_name == "source") {
-                result.source = string_value(field.children[1], "expected source path string");
-            } else if (field_name == "avx512-source") {
-                result.avx512_source =
-                    string_value(field.children[1], "expected AVX-512 source path string");
-            } else if (field_name == "highway-source") {
-                result.highway_source =
-                    string_value(field.children[1], "expected Highway source path string");
-            } else if (field_name == "dispatch-source") {
-                result.dispatch_source =
-                    string_value(field.children[1], "expected dispatch source path string");
-            } else if (field_name == "relaxed-avx2-source") {
-                result.relaxed_avx2_source =
-                    string_value(field.children[1], "expected relaxed AVX2 source path string");
-            } else if (field_name == "relaxed-avx512-source") {
-                result.relaxed_avx512_source =
-                    string_value(field.children[1], "expected relaxed AVX-512 source path string");
+                document_.emissions.source(result) =
+                    string_value(syntax_.children(field)[1], "expected source path string");
             } else if (field_name == "tests") {
-                result.tests = string_value(field.children[1], "expected test path string");
+                document_.emissions.tests(result) =
+                    string_value(syntax_.children(field)[1], "expected test path string");
             } else if (field_name == "header-include") {
-                result.header_include =
-                    string_value(field.children[1], "expected header include string");
+                document_.emissions.header_include(result) =
+                    string_value(syntax_.children(field)[1], "expected header include string");
             } else if (field_name == "namespace") {
-                result.cpp_namespace = atom(field.children[1], "expected C++ namespace");
-                if (!is_qualified_identifier(result.cpp_namespace)) {
-                    fail(field.children[1].token.span,
+                static_cast<void>(atom(syntax_.children(field)[1], "expected C++ namespace"));
+                document_.emissions.cpp_namespace(result) =
+                    syntax_.identifier(syntax_.children(field)[1]);
+                if (!is_qualified_identifier(text(document_.emissions.cpp_namespace(result)))) {
+                    fail(syntax_.token_span(syntax_.children(field)[1]),
                          "namespace must be a qualified C++ identifier");
                 }
             } else if (field_name == "export") {
-                result.export_specifier = atom(field.children[1], "expected export specifier");
-                if (!is_identifier(result.export_specifier)) {
-                    fail(field.children[1].token.span, "export specifier must be an identifier");
+                static_cast<void>(atom(syntax_.children(field)[1], "expected export specifier"));
+                document_.emissions.export_specifier(result) =
+                    syntax_.identifier(syntax_.children(field)[1]);
+                if (!is_identifier(text(document_.emissions.export_specifier(result)))) {
+                    fail(syntax_.token_span(syntax_.children(field)[1]),
+                         "export specifier must be an identifier");
                 }
-            } else if (field_name == "soaos") {
-                result.soaos_lanes = integer_value(field.children[1], "expected SoAoS lane count");
             } else {
-                fail(field.token.span, "unknown emission field '" + field_name + "'");
+                fail(syntax_.token_span(field), "unknown emission field '" + field_name + "'");
             }
         }
-        if (result.header.empty() || result.source.empty() || result.header_include.empty() ||
-            result.cpp_namespace.empty()) {
-            fail(form.token.span, "emit requires header, source, header-include, and namespace");
+        if (document_.emissions.header(result).value == 0 ||
+            document_.emissions.source(result).value == 0 ||
+            document_.strings.view(document_.emissions.header_include(result)).empty() ||
+            document_.emissions.cpp_namespace(result).value == 0) {
+            fail(syntax_.token_span(form),
+                 "emit requires header, source, header-include, and namespace");
         }
-        if (profile == Profile::unreal && result.export_specifier.empty()) {
-            fail(form.token.span, "unreal emission requires export");
+        if (profile == lispb::KernelProfile::unreal &&
+            document_.emissions.export_specifier(result).value == 0) {
+            fail(syntax_.token_span(form), "unreal emission requires export");
         }
-        if (profile == Profile::unreal && result.tests) {
-            fail(form.token.span, "generated tests are supported only by the standard profile");
+        if (profile == lispb::KernelProfile::unreal && document_.emissions.tests(result)) {
+            fail(syntax_.token_span(form),
+                 "generated tests are supported only by the standard profile");
         }
-        if (profile == Profile::standard && !result.export_specifier.empty()) {
-            fail(form.token.span, "export is supported only by the unreal profile");
+        if (profile == lispb::KernelProfile::standard &&
+            document_.emissions.export_specifier(result).value != 0) {
+            fail(syntax_.token_span(form), "export is supported only by the unreal profile");
         }
-        auto const is_simd_lab{profile == Profile::unreal_avx2_lab ||
-                               profile == Profile::native_x86_simd_lab};
-        if (!is_simd_lab && result.selection) {
-            fail(form.token.span, "select is supported only by SIMD lab profiles");
-        }
-        if (is_simd_lab && !result.selection) {
-            fail(form.token.span, "SIMD lab emission requires select");
-        }
-        if (is_simd_lab && (!result.export_specifier.empty() || result.tests)) {
-            fail(form.token.span, "SIMD lab emissions do not support export or tests");
-        }
-        if (profile == Profile::native_x86_simd_lab && !result.avx512_source) {
-            fail(form.token.span, "native-x86-simd-lab emission requires avx512-source");
-        }
-        if (profile != Profile::native_x86_simd_lab &&
-            (result.highway_source || result.avx512_source || result.dispatch_source ||
-             result.relaxed_avx2_source || result.relaxed_avx512_source || result.soaos_lanes ||
-             !result.vector3_groups.empty())) {
-            fail(form.token.span, "native SIMD fields are supported only by native-x86-simd-lab");
-        }
-        if (result.soaos_lanes && *result.soaos_lanes != 16) {
-            fail(form.token.span, "native-x86-simd-lab currently supports only '(soaos 16)'");
-        }
-        if (result.relaxed_avx2_source.has_value() != result.relaxed_avx512_source.has_value()) {
-            fail(form.token.span,
-                 "relaxed-avx2-source and relaxed-avx512-source must be specified together");
-        }
-        validate_output_path(result.header, result.span);
-        validate_output_path(result.source, result.span);
-        if (result.highway_source) {
-            validate_output_path(*result.highway_source, result.span);
-        }
-        if (result.avx512_source) {
-            validate_output_path(*result.avx512_source, result.span);
-        }
-        if (result.dispatch_source) {
-            validate_output_path(*result.dispatch_source, result.span);
-        }
-        if (result.relaxed_avx2_source) {
-            validate_output_path(*result.relaxed_avx2_source, result.span);
-        }
-        if (result.relaxed_avx512_source) {
-            validate_output_path(*result.relaxed_avx512_source, result.span);
-        }
-        if (result.tests) {
-            validate_output_path(*result.tests, result.span);
+        validate_output_path(document_.text(document_.emissions.header(result)),
+                             document_.emissions.span(result));
+        validate_output_path(document_.text(document_.emissions.source(result)),
+                             document_.emissions.span(result));
+        if (document_.emissions.tests(result)) {
+            validate_output_path(document_.text(*document_.emissions.tests(result)),
+                                 document_.emissions.span(result));
         }
         return result;
     }
 
-    auto parse_module(Form const& form) const -> KernelModule {
-        if (head(form, "kernel-module") != "kernel-module" || form.children.size() < 2) {
-            fail(form.token.span, "expected '(kernel-module name ...)'");
+    auto parse_module(FormId const form) const -> ModuleId {
+        if (head(form, "kernel-module") != "kernel-module" || syntax_.children(form).size() < 2) {
+            fail(syntax_.token_span(form), "expected '(kernel-module name ...)'");
         }
-        auto const& name{atom(form.children[1], "expected kernel module name")};
+        auto const& name{atom(syntax_.children(form)[1], "expected kernel module name")};
         if (!is_identifier(name)) {
-            fail(form.children[1].token.span, "kernel module name must be an identifier");
+            fail(syntax_.token_span(syntax_.children(form)[1]),
+                 "kernel module name must be an identifier");
         }
-        KernelModule result{.name = name, .span = form.token.span};
-        std::set<std::string> fields;
-        std::set<Profile> profiles;
-        std::set<std::string> type_sets;
-        std::set<std::string> operation_names;
-        for (std::size_t index{2}; index < form.children.size(); ++index) {
-            auto const& field{form.children[index]};
+        auto const result{document_.modules.add(syntax_.identifier(syntax_.children(form)[1]),
+                                                syntax_.token_span(form))};
+        std::set<lispb::IdentifierId> fields;
+        std::set<lispb::KernelProfile> profiles;
+        std::set<lispb::IdentifierId> type_sets;
+        std::set<lispb::IdentifierId> operation_names;
+        auto const field_count{syntax_.children(form).size()};
+        for (std::size_t index{2}; index < field_count; ++index) {
+            auto const field{syntax_.children(form)[index]};
+            if (head(field, "kernel module field") == "type-set") {
+                auto type_set{parse_type_set(field)};
+                if (!type_sets.insert(document_.type_sets.name(type_set)).second) {
+                    fail(document_.type_sets.span(type_set),
+                         "duplicate type-set '" + text(document_.type_sets.name(type_set)) + "'");
+                }
+                document_.modules.append_type_sets(result, type_set);
+            }
+        }
+        for (std::size_t index{2}; index < syntax_.children(form).size(); ++index) {
+            auto const& field{syntax_.children(form)[index]};
             auto const& field_name{head(field, "kernel module field")};
             if (field_name == "type-set") {
-                auto type_set{parse_type_set(field)};
-                if (!type_sets.insert(type_set.name).second) {
-                    fail(type_set.span, "duplicate type-set '" + type_set.name + "'");
-                }
-                result.type_sets.push_back(std::move(type_set));
                 continue;
             }
             if (field_name == "map" || field_name == "component-map") {
-                auto operation{parse_operation(field)};
-                if (!operation_names.insert(operation.name).second) {
-                    fail(operation.span, "duplicate operation '" + operation.name + "'");
+                auto operation{parse_operation(field, result)};
+                if (!operation_names.insert(document_.operations.name(operation)).second) {
+                    fail(document_.operations.span(operation),
+                         "duplicate operation '" + text(document_.operations.name(operation)) +
+                             "'");
                 }
-                result.operations.push_back(std::move(operation));
-                continue;
-            }
-            if (field_name == "sum") {
-                auto operation{parse_sum_operation(field)};
-                if (!operation_names.insert(operation.name).second) {
-                    fail(operation.span, "duplicate operation '" + operation.name + "'");
-                }
-                result.operations.push_back(std::move(operation));
+                document_.modules.append_operations(result, operation);
                 continue;
             }
             if (field_name == "emit") {
                 auto emission{parse_emission(field)};
-                if (!profiles.insert(emission.profile).second) {
-                    fail(emission.span, "duplicate emission profile");
+                if (!profiles.insert(document_.emissions.profile(emission)).second) {
+                    fail(document_.emissions.span(emission), "duplicate emission profile");
                 }
-                result.emissions.push_back(std::move(emission));
+                document_.modules.append_emissions(result, emission);
                 continue;
             }
-            if (!fields.insert(field_name).second) {
-                fail(field.token.span, "duplicate kernel module field '" + field_name + "'");
+            if (!fields.insert(syntax_.identifier(syntax_.children(field).front())).second) {
+                fail(syntax_.token_span(field),
+                     "duplicate kernel module field '" + field_name + "'");
             }
-            fail(field.token.span, "unknown kernel module field '" + field_name + "'");
+            fail(syntax_.token_span(field), "unknown kernel module field '" + field_name + "'");
         }
-        if (result.emissions.empty() || result.type_sets.empty() || result.operations.empty()) {
-            fail(form.token.span, "kernel-module requires emissions, type sets, and operations");
-        }
-        auto const has_sum{std::ranges::any_of(result.operations, [](auto const& operation) {
-            return operation.kind == OperationKind::sum;
-        })};
-        if (has_sum && std::ranges::any_of(result.emissions, [](auto const& emission) {
-                return emission.profile != Profile::native_x86_simd_lab;
-            })) {
-            fail(form.token.span,
-                 "sum operations are supported only by native-x86-simd-lab emissions");
+        if (document_.modules.emissions(result).empty() ||
+            document_.modules.type_sets(result).empty() ||
+            document_.modules.operations(result).empty()) {
+            fail(syntax_.token_span(form),
+                 "kernel-module requires emissions, type sets, and operations");
         }
         auto const has_component_map{
-            std::ranges::any_of(result.operations, [](auto const& operation) {
-                return operation.kind == OperationKind::component_map;
+            std::ranges::any_of(document_.modules.operations(result), [](auto const id) {
+                return id.kind() == OperationKind::component_map;
             })};
-        if (has_component_map && std::ranges::any_of(result.emissions, [](auto const& emission) {
-                return emission.profile != Profile::standard;
+        if (has_component_map &&
+            std::ranges::any_of(document_.modules.emissions(result), [&](auto const emission) {
+                return document_.emissions.profile(emission) != lispb::KernelProfile::standard;
             })) {
-            fail(form.token.span,
+            fail(syntax_.token_span(form),
                  "component-map operations are supported only by standard emissions");
         }
-        for (auto const& operation : result.operations) {
-            auto const operation_types{
-                std::ranges::find_if(result.type_sets, [&](auto const& type_set) {
-                    return type_set.name == operation.type_set;
-                })};
-            if (operation_types == result.type_sets.end()) {
-                fail(operation.span, "unknown type-set '" + operation.type_set + "'");
+        for (auto const operation : document_.modules.operations(result)) {
+            auto const operation_types{document_.operations.type_set(operation)};
+            for (auto const& type : document_.type_sets.types(operation_types)) {
+                validate_expression_type(document_.operations.expression(operation), type);
             }
-            for (auto const& type : operation_types->types) {
-                validate_expression_type(operation.expression, type);
-            }
-            for (auto const& variant : operation.variants) {
-                if (variant.kind != VariantKind::in_place) {
+            for (auto const& variant : document_.operations.variants(operation)) {
+                if (document_.variants.kind(variant) != VariantKind::in_place) {
                     continue;
                 }
-                auto const found{std::ranges::find_if(operation.operands, [&](auto const& operand) {
-                    return operand.name == *variant.target;
-                })};
-                if (std::ranges::find(found->storage, StorageKind::array) == found->storage.end()) {
-                    fail(variant.span, "in-place target must allow array storage");
+                auto const target{*document_.variants.target(variant)};
+                if (std::ranges::find(document_.operands.storage(target), StorageKind::array) ==
+                    document_.operands.storage(target).end()) {
+                    fail(document_.variants.span(variant),
+                         "in-place target must allow array storage");
                 }
             }
         }
-        for (auto const& emission : result.emissions) {
-            if (!emission.selection) {
-                continue;
-            }
-            auto const& selection{*emission.selection};
-            auto const operation{std::ranges::find_if(result.operations, [&](auto const& item) {
-                return item.name == selection.operation;
-            })};
-            if (operation == result.operations.end()) {
-                fail(selection.span,
-                     "selection references unknown operation '" + selection.operation + "'");
-            }
-            auto const type_set{std::ranges::find_if(result.type_sets, [&](auto const& item) {
-                return item.name == operation->type_set;
-            })};
-            if (std::ranges::find(type_set->types, selection.type) == type_set->types.end()) {
-                fail(selection.span,
-                     "selection type '" + selection.type + "' is not supported by operation '" +
-                         selection.operation + "'");
-            }
-            if (selection.storage.size() != operation->operands.size()) {
-                fail(selection.span, "selection storage count must match the operation operands");
-            }
-            for (std::size_t index{}; index < selection.storage.size(); ++index) {
-                if (std::ranges::find(operation->operands[index].storage,
-                                      selection.storage[index]) ==
-                    operation->operands[index].storage.end()) {
-                    fail(selection.span,
-                         "selection uses storage not supported by operand '" +
-                             operation->operands[index].name + "'");
-                }
-            }
-            auto const variant{std::ranges::find_if(operation->variants, [&](auto const& item) {
-                return item.kind == selection.variant;
-            })};
-            if (variant == operation->variants.end()) {
-                fail(selection.span, "selection variant is not generated by the operation");
-            }
-            if (!emission.vector3_groups.empty()) {
-                if (operation->kind != OperationKind::map || selection.type != "float" ||
-                    selection.variant != VariantKind::out_of_place) {
-                    fail(emission.span,
-                         "vector3-groups supports only out-of-place float map selections");
-                }
-                std::set<std::string> grouped_operands;
-                for (auto const& group : emission.vector3_groups) {
-                    for (auto const& component : group.components) {
-                        auto const operand{
-                            std::ranges::find_if(operation->operands, [&](auto const& item) {
-                                return item.name == component;
-                            })};
-                        if (operand == operation->operands.end()) {
-                            fail(group.span,
-                                 "vector group references unknown operand '" + component + "'");
-                        }
-                        auto const operand_index{static_cast<std::size_t>(
-                            std::distance(operation->operands.begin(), operand))};
-                        if (selection.storage[operand_index] != StorageKind::array) {
-                            fail(group.span, "vector group components must use array storage");
-                        }
-                        if (!grouped_operands.insert(component).second) {
-                            fail(group.span,
-                                 "vector component operand '" + component +
-                                     "' appears in more than one group");
-                        }
-                    }
-                }
-                auto const array_count{static_cast<std::size_t>(
-                    std::ranges::count(selection.storage, StorageKind::array))};
-                if (array_count != operation->operands.size() ||
-                    grouped_operands.size() != array_count) {
-                    fail(emission.span,
-                         "vector3-groups requires and must cover only array operands");
-                }
-                if (!emission.soaos_lanes) {
-                    fail(emission.span, "vector3-groups requires '(soaos 16)'");
-                }
-            }
-            auto const generates_relaxed{
-                std::ranges::find(operation->floating_point_modes, FloatingPointMode::relaxed) !=
-                operation->floating_point_modes.end()};
-            auto const has_relaxed_sources{emission.relaxed_avx2_source.has_value()};
-            if (emission.highway_source && operation->kind == OperationKind::sum &&
-                !generates_relaxed) {
-                fail(emission.span, "Highway reductions require the relaxed floating-point mode");
-            }
-            if (generates_relaxed != has_relaxed_sources) {
-                fail(emission.span,
-                     generates_relaxed
-                         ? "relaxed floating-point mode requires relaxed SIMD source paths"
-                         : "relaxed SIMD source paths require the relaxed floating-point mode");
-            }
-        }
+        document_.modules.expanded_variants(result) =
+            document_.expanded_variants.expand(document_, result);
         return result;
     }
 
-    std::string path_;
-    std::vector<Form> forms_;
+    lispb::codegen::sexpr::Syntax& syntax_;
+    Document& document_;
+    lispb::codegen::sexpr::SourceFileId file_;
+    lispb::codegen::sexpr::HandleRange forms_;
 };
 
 }
 
-auto parse(std::string_view const path, std::vector<Form> forms) -> Document {
-    return Parser{path, std::move(forms)}.parse();
+void parse(lispb::codegen::sexpr::Syntax& syntax,
+           Document& document,
+           lispb::codegen::sexpr::SourceFileId const file) {
+    Parser{syntax, document, file, lispb::codegen::sexpr::read_forms(syntax, file)}.parse();
 }
 
 }

@@ -1,36 +1,43 @@
+#include "compiler_test_context.h"
+#include "test_utilities.h"
+
+#include <codegen/ast/cpp_types.h>
+#include <codegen/ast/indices.h>
 #include <codegen/generator.h>
 #include <codegen/schema.h>
+#include <codegen/schema/declarations.h>
 #include <codegen/schema/schema_version.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/indices.h>
 #include <lispb/schema/type_graph.h>
+#include <lispb/strings.h>
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
+#include <stdexcept>
 #include <string>
+#include <string_view>
+#include <utility>
 
-namespace codegen {
+namespace lispb::codegen {
 namespace {
 
 TEST(RecordLowering, GeneratesSemanticMembersAndFixedArrays) {
-    Manifest const manifest{
-        .schema_version = manifest_schema_version,
-        .types = {{"value", RegisteredTypeSchema{.cpp_type = CppType{"Value", "Project/Value.h"}}}},
-        .modules = {NormalModuleSchema{
-            .settings = ModuleSettings{.name = "records",
-                                       .header = "Records.h",
-                                       .namespace_name = "project"},
-            .declarations =
-                {RecordSchema{.name = "Position",
-                              .members = {{.name = "x", .type = TypeRef{"float"}},
-                                          {.name = "y", .type = TypeRef{"float"}}}},
-                 RecordSchema{
-                     .name = "Sample",
-                     .members = {{.name = "position", .type = TypeRef{"Position"}},
-                                 {.name = "values", .type = TypeRef{"@value"}, .count = 3}},
-                     .export_specifier = "PROJECT_API"}}}},
-    };
+    CompilerTestContext context;
+    auto manifest{parse_test_manifest(
+        context,
+        R"(
+        (module records :header "Records.h" :namespace project
+            (record Position (member x float) (member y float))
+            (record Sample :export-specifier PROJECT_API
+                (member position Position) (member values @value :count 3))))",
+        {{"value",
+          context.storage.cpp_types.add(
+              "Value", {context.storage.cpp_types.dependency("Value", "Project/Value.h")})}})};
 
-    auto const files{render_modules(lower_modules(manifest))};
+    auto const files{render_test_manifest(context, manifest)};
 
     ASSERT_EQ(files.size(), 1U);
     auto const& output{files.front().content};
@@ -45,59 +52,44 @@ TEST(RecordLowering, GeneratesSemanticMembersAndFixedArrays) {
 }
 
 TEST(RecordLowering, AllowsEmptyAndRejectsDuplicateAndZeroCountMembers) {
-    auto module{NormalModuleSchema{
-        .settings = ModuleSettings{.name = "records", .header = "Records.h"},
-        .declarations = {RecordSchema{.name = "Record",
-                                      .members = {{.name = "value", .type = TypeRef{"float"}}}}}}};
-    auto manifest{Manifest{.schema_version = manifest_schema_version, .modules = {module}}};
-    EXPECT_NO_THROW(static_cast<void>(lower_modules(manifest)));
-
-    std::get<codegen::RecordSchema>(
-        std::get<NormalModuleSchema>(manifest.modules.front()).declarations.front())
-        .members.clear();
-    auto const files{render_modules(lower_modules(manifest))};
+    CompilerTestContext context;
+    auto record = [&](std::string_view members) {
+        return parse_test_manifest(context,
+                                   R"((module records :header "Records.h" (record Record )" +
+                                       std::string{members} + "))");
+    };
+    EXPECT_NO_THROW(
+        static_cast<void>(lower_test_manifest(context, record("(member value float)"))));
+    auto const files{render_test_manifest(context, record(""))};
     ASSERT_EQ(files.size(), 1U);
     EXPECT_NE(files.front().content.find("struct Record"), std::string::npos);
-
-    auto& members{std::get<codegen::RecordSchema>(
-                      std::get<NormalModuleSchema>(manifest.modules.front()).declarations.front())
-                      .members};
-    members = {{.name = "value", .type = TypeRef{"float"}},
-               {.name = "value", .type = TypeRef{"float"}}};
-    EXPECT_THROW(static_cast<void>(lower_modules(manifest)), std::invalid_argument);
-
-    members = {{.name = "values", .type = TypeRef{"float"}, .count = 0}};
-    EXPECT_THROW(static_cast<void>(lower_modules(manifest)), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(lower_test_manifest(
+                     context, record("(member value float) (member value float)"))),
+                 std::invalid_argument);
+    EXPECT_THROW(
+        static_cast<void>(lower_test_manifest(context, record("(member values float :count 0)"))),
+        std::invalid_argument);
 }
 
 TEST(RecordLowering, EmitsByValueDependenciesBeforeTheirUsers) {
-    Manifest const manifest{
-        .schema_version = manifest_schema_version,
-        .modules = {NormalModuleSchema{
-            .settings = ModuleSettings{.name = "records", .header = "Records.h"},
-            .declarations = {RecordSchema{
-                                 .name = "Sample",
-                                 .members = {{.name = "position", .type = TypeRef{"Position"}}}},
-                             RecordSchema{.name = "Position",
-                                          .members = {{.name = "x", .type = TypeRef{"float"}}}}}}},
-    };
+    CompilerTestContext context;
+    auto manifest{parse_test_manifest(context, R"(
+        (module records :header "Records.h"
+            (record Sample (member position Position))
+            (record Position (member x float))))")};
 
-    auto const files{render_modules(lower_modules(manifest))};
+    auto const files{render_test_manifest(context, manifest)};
     auto const& output{files.front().content};
     EXPECT_LT(output.find("struct Position"), output.find("struct Sample"));
 }
 
 TEST(RecordLowering, ForwardDeclaresMutuallyReferringPointerRecords) {
-    Manifest const manifest{
-        .schema_version = manifest_schema_version,
-        .modules = {NormalModuleSchema{
-            .settings = ModuleSettings{.name = "records", .header = "Records.h"},
-            .declarations = {
-                RecordSchema{.name = "First",
-                             .members = {{.name = "next", .type = TypeRef{"Second", "*"}}}},
-                RecordSchema{.name = "Second",
-                             .members = {{.name = "next", .type = TypeRef{"First", "*"}}}}}}}};
-    auto const files{render_modules(lower_modules(manifest))};
+    CompilerTestContext context;
+    auto manifest{parse_test_manifest(context, R"(
+        (module records :header "Records.h"
+            (record First (member next (type-ref Second :suffix "*")))
+            (record Second (member next (type-ref First :suffix "*")))))")};
+    auto const files{render_test_manifest(context, manifest)};
     auto const& output{files.front().content};
     EXPECT_NE(output.find("struct First;"), std::string::npos);
     EXPECT_NE(output.find("struct Second;"), std::string::npos);
@@ -106,39 +98,38 @@ TEST(RecordLowering, ForwardDeclaresMutuallyReferringPointerRecords) {
 }
 
 TEST(RecordLowering, SoaPointerCyclesRetainSemanticEdgesInEitherSourceOrder) {
-    NormalModuleSchema module{};
-    module.settings = {
-        .name = "pointers", .header = "Pointers.h", .namespace_name = "example::inner"};
-    module.soa_backend = SoaBackend::standard_library;
-    for (auto const& [name, other] : {std::pair{"A", "B"}, std::pair{"B", "A"}}) {
-        module.declarations.emplace_back(SoaSchema{.name = name,
-                                                   .members = {{.name = "others",
-                                                                .kind = SoaMemberKind::array,
-                                                                .type = TypeRef{other, "*"}}},
-                                                   .operations = all_storage_operations()});
-    }
+    CompilerTestContext context;
+    std::array<std::string_view, 2> declarations{
+        R"((struct A :operations (reset reserve add-uninitialised add-defaulted set-num remove-at-swap copy-element append-from)
+            (member others array (type-ref B :suffix "*"))))",
+        R"((struct B :operations (reset reserve add-uninitialised add-defaulted set-num remove-at-swap copy-element append-from)
+            (member others array (type-ref A :suffix "*"))))"};
     for (int order{}; order < 2; ++order) {
-        Manifest const manifest{.schema_version = manifest_schema_version, .modules = {module}};
-        auto const graph{lispb::schema::resolve_type_graph(manifest)};
+        auto manifest{parse_test_manifest(
+            context,
+            R"((module pointers :header "Pointers.h" :namespace example::inner :backend standard-library )" +
+                std::string{declarations[0]} + std::string{declarations[1]} + ")")};
+        auto const graph{schema::resolve_type_graph(manifest)};
         for (auto const& [name, other] : {std::pair{"A", "B"}, std::pair{"B", "A"}}) {
-            auto const dependencies{graph.dependencies_of(*graph.find_declared("pointers", name))};
-            EXPECT_NE(std::ranges::find(dependencies, *graph.find_declared("pointers", other)),
+            auto const dependencies{
+                graph.dependencies_of(*find_test_type(graph, "pointers", name))};
+            EXPECT_NE(std::ranges::find(dependencies, *find_test_type(graph, "pointers", other)),
                       dependencies.end());
         }
-        auto const output{render_modules(lower_modules(manifest)).front().content};
+        auto const output{render_test_manifest(context, manifest).front().content};
         EXPECT_LT(output.find("namespace example::inner"), output.find("struct A;"));
         EXPECT_LT(output.find("struct A;"), output.find("struct BView"));
         EXPECT_LT(output.find("struct B;"), output.find("struct AView"));
         EXPECT_EQ(output.find("struct A;", output.find("struct A;") + 1), std::string::npos);
-        std::ranges::reverse(module.declarations);
+        std::ranges::reverse(declarations);
     }
 }
 
 TEST(RecordLowering, ForwardDeclarationsMatchGeneratedRecordKindsAndExcludeAliasesAndExternals) {
-    NormalModuleSchema module{};
-    module.settings = {
-        .name = "kinds", .header = "Kinds.h", .source = "Kinds.cpp", .header_include = "Kinds.h"};
-    RecordSchema uses{.name = "Uses"};
+    CompilerTestContext context;
+    std::string source{
+        R"((module kinds :header "Kinds.h" :source "Kinds.cpp" :header-include "Kinds.h"
+        (record Uses )"};
     for (auto const name : {"Record",
                             "Raw",
                             "Tagged",
@@ -149,46 +140,22 @@ TEST(RecordLowering, ForwardDeclarationsMatchGeneratedRecordKindsAndExcludeAlias
                             "Alias",
                             "Tag",
                             "External"}) {
-        uses.members.push_back({.name = std::string{"p"} + name, .type = TypeRef{name, "*"}});
+        source += "(member p" + std::string{name} + " (type-ref " + name + R"( :suffix "*")))";
     }
-    uses.members.push_back({.name = "facade_reference", .type = TypeRef{"Facade", "&"}});
-    module.declarations = {
-        uses,
-        SoaSchema{
-            .name = "LayoutOnly",
-            .members = {{.name = "values", .kind = SoaMemberKind::array, .type = TypeRef{"float"}}},
-            .layout_only = true},
-        RecordSchema{.name = "Record"},
-        UnionSchema{.name = "Raw", .alternatives = {{.name = "value", .type = TypeRef{"float"}}}},
-        EnumSchema{
-            .name = "Tag",
-            .underlying_type = TypeRef{"std::uint8_t"},
-            .values = {{.name = "Value"}},
-        },
-        TaggedUnionSchema{
-            .name = "Tagged",
-            .discriminant = TypeRef{"Tag"},
-            .alternatives = {{.name = "value", .type = TypeRef{"float"}, .tag = "Value"}}},
-        PackedValueSchema{.name = "Packed",
-                          .storage_type = TypeRef{"std::uint8_t"},
-                          .segments = {PackedFieldSchema{
-                              .name = "value", .type = TypeRef{"std::uint8_t"}, .bits = 8}}},
-        StaticTableSchema{
-            .name = "Table", .rows = {{"row"}}, .columns = {{"value", TypeRef{"float"}}}},
-        FacadeSchema{.name = "Facade",
-                     .target_type = TypeRef{"External"},
-                     .target_member_name = "target",
-                     .methods = {{.name = "reset", .return_type = TypeRef{"void"}}}},
-        HomogeneousLayoutSchema{
-            .name = "Values", .components = {"x", "y"}, .value_types = {{TypeRef{"float"}, "f"}}},
-        IntegerScalarSchema{.name = "Alias",
-                            .minimum_value = 0,
-                            .maximum_value = 255,
-                            .bit_width = 8,
-                            .cpp_emission = IntegerScalarCppEmission::alias,
-                            .cpp_type = TypeRef{"std::uint8_t"}}};
-    Manifest const manifest{.schema_version = manifest_schema_version, .modules = {module}};
-    auto const output{render_modules(lower_modules(manifest)).front().content};
+    source += R"((member facade_reference (type-ref Facade :suffix "&")))
+        (struct LayoutOnly :layout-only true (member values array float))
+        (record Record)
+        (union Raw (alternative value float))
+        (enum Tag std::uint8_t (value Value))
+        (tagged-union Tagged :discriminant Tag (alternative value float :tag Value))
+        (packed-value Packed :storage std::uint8_t (field value std::uint8_t :bits 8))
+        (table Table (row row) (column value float))
+        (facade Facade External target (method reset void))
+        (layout Values :components (x y) (value-type float f))
+        (integer-scalar Alias :signed false :minimum 0 :maximum 255 :bit-width 8
+            :cpp-emission alias :cpp-type std::uint8_t)))";
+    auto manifest{parse_test_manifest(context, source)};
+    auto const output{render_test_manifest(context, manifest).front().content};
     for (auto const name : {"Record", "Tagged", "Packed", "Table", "FValuesf"}) {
         EXPECT_NE(output.find(std::string{"struct "} + name + ";"), std::string::npos) << name;
     }
@@ -202,4 +169,4 @@ TEST(RecordLowering, ForwardDeclarationsMatchGeneratedRecordKindsAndExcludeAlias
 }
 
 } // namespace
-} // namespace codegen
+} // namespace lispb::codegen

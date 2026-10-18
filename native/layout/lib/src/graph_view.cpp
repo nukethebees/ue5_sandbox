@@ -1,8 +1,38 @@
 #include <ioj/layout/graph_view.hpp>
 
+#include <codegen/ast/cpp_types.h>
+#include <lispb/schema/enum_types.h>
+#include <lispb/schema/indices.h>
+#include <lispb/schema/integer_scalar_types.h>
+#include <lispb/schema/integer_varint_types.h>
+#include <lispb/schema/linear_quantized_types.h>
+#include <lispb/schema/optional_presence_bit_types.h>
+#include <lispb/schema/optional_sentinel_types.h>
+#include <lispb/schema/packed_fields.h>
+#include <lispb/schema/packed_types.h>
+#include <lispb/schema/record_members.h>
+#include <lispb/schema/record_types.h>
+#include <lispb/schema/soa_columns.h>
+#include <lispb/schema/soa_types.h>
+#include <lispb/schema/tagged_union_alternatives.h>
+#include <lispb/schema/tagged_union_types.h>
+#include <lispb/schema/type_graph.h>
+#include <lispb/schema/union_alternatives.h>
+#include <lispb/schema/union_types.h>
+#include <lispb/strings.h>
+
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <map>
+#include <optional>
+#include <ranges>
 #include <set>
+#include <span>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace ioj::layout {
 using namespace lispb::schema;
@@ -12,11 +42,14 @@ void append_edge_label(std::vector<std::string>& labels, std::string value) {
         labels.push_back(std::move(value));
     }
 }
-auto relationship_label(lispb::schema::SemanticRelationship const& relationship) -> std::string {
-    auto result{std::string{codegen::semantic_relation_kind_name(relationship.kind)}};
-    if (relationship.unit.has_value()) {
+auto relationship_label(TypeGraph const& types, lispb::schema::RelationshipId const relationship)
+    -> std::string {
+    auto result{std::string{lispb::codegen::semantic_relation_kind_name(
+        types.relationships().kind[types.relationships().index(relationship)])}};
+    if (types.relationships().unit[types.relationships().index(relationship)].has_value()) {
         result += " (";
-        result += codegen::semantic_relation_unit_name(*relationship.unit);
+        result += lispb::codegen::semantic_relation_unit_name(
+            *types.relationships().unit[types.relationships().index(relationship)]);
         result += ')';
     }
     return result;
@@ -26,97 +59,277 @@ auto relationship_label(lispb::schema::SemanticRelationship const& relationship)
 
 auto graph_edge_labels(TypeGraph const& types, TypeId const user, TypeId const dependency)
     -> std::vector<std::string> {
-    auto const& definition{types.type(user).definition};
+    auto const& definition{types.definition(user)};
     std::vector<std::string> result;
-    if (auto const* enumeration{std::get_if<EnumType>(&definition)}) {
-        if (enumeration->underlying_type.has_value() &&
-            enumeration->underlying_type->type == dependency) {
+    if (auto const enumeration{
+            ((definition).kind() == lispb::schema::TypeDefinitionKind::enumeration
+                 ? std::optional{definition}
+                 : std::nullopt)}) {
+        if (lispb::schema::is_valid(
+                types.definitions()
+                    .enums.underlying_type[types.definitions().enums.index(*enumeration)]) &&
+            types.occurrences().type[types.occurrences().index(
+                types.definitions()
+                    .enums.underlying_type[types.definitions().enums.index(*enumeration)])] ==
+                dependency) {
             append_edge_label(result, "underlying");
         }
-    } else if (auto const* scalar{std::get_if<IntegerScalarType>(&definition)}) {
-        if (scalar->relationship.has_value() && scalar->relationship->target.type == dependency) {
-            append_edge_label(result, relationship_label(*scalar->relationship));
+    } else if (auto const scalar{
+                   ((definition).kind() == lispb::schema::TypeDefinitionKind::integer_scalar
+                        ? std::optional{definition}
+                        : std::nullopt)}) {
+        if (lispb::schema::is_valid(
+                types.definitions()
+                    .integer_scalars
+                    .relationship[types.definitions().integer_scalars.index(*scalar)]) &&
+            types.occurrences().type[types.occurrences().index(
+                types.relationships().target[types.relationships().index(
+                    types.definitions().integer_scalars.relationship
+                        [types.definitions().integer_scalars.index(*scalar)])])] == dependency) {
+            append_edge_label(
+                result,
+                relationship_label(
+                    types,
+                    types.definitions()
+                        .integer_scalars
+                        .relationship[types.definitions().integer_scalars.index(*scalar)]));
         }
-    } else if (auto const* quantized{std::get_if<LinearQuantizedType>(&definition)}) {
-        if (quantized->source.type == dependency) {
+    } else if (auto const quantized{
+                   ((definition).kind() == lispb::schema::TypeDefinitionKind::linear_quantized
+                        ? std::optional{definition}
+                        : std::nullopt)}) {
+        if (types.occurrences().type[types.occurrences().index(
+                types.definitions().linear_quantized.source
+                    [types.definitions().linear_quantized.index(*quantized)])] == dependency) {
             append_edge_label(result, "quantises");
         }
-    } else if (auto const* varint{std::get_if<IntegerVarintType>(&definition)}) {
-        if (varint->source.type == dependency) {
+    } else if (auto const varint{
+                   ((definition).kind() == lispb::schema::TypeDefinitionKind::integer_varint
+                        ? std::optional{definition}
+                        : std::nullopt)}) {
+        if (types.occurrences().type[types.occurrences().index(
+                types.definitions()
+                    .integer_varints.source[types.definitions().integer_varints.index(*varint)])] ==
+            dependency) {
             append_edge_label(result, "encodes");
         }
-    } else if (auto const* optional{std::get_if<OptionalSentinelType>(&definition)}) {
-        if (optional->source.type == dependency) {
-            append_edge_label(result, "optional via " + optional->sentinel_name);
+    } else if (auto const optional{
+                   ((definition).kind() == lispb::schema::TypeDefinitionKind::optional_sentinel
+                        ? std::optional{definition}
+                        : std::nullopt)}) {
+        if (types.occurrences().type[types.occurrences().index(
+                types.definitions().optional_sentinels.source
+                    [types.definitions().optional_sentinels.index(*optional)])] == dependency) {
+            append_edge_label(
+                result,
+                "optional via " +
+                    std::string{types.cpp_types().strings().view(
+                        types.definitions().optional_sentinels.sentinel_name
+                            [types.definitions().optional_sentinels.index(*optional)])});
         }
-    } else if (auto const* optional{std::get_if<OptionalPresenceBitType>(&definition)}) {
-        if (optional->source.type == dependency) {
+    } else if (auto const optional{
+                   ((definition).kind() == lispb::schema::TypeDefinitionKind::optional_presence_bit
+                        ? std::optional{definition}
+                        : std::nullopt)}) {
+        if (types.occurrences().type[types.occurrences().index(
+                types.definitions().optional_presence_bits.source
+                    [types.definitions().optional_presence_bits.index(*optional)])] == dependency) {
             append_edge_label(result, "optional via presence bit");
         }
-    } else if (auto const* packed{std::get_if<PackedType>(&definition)}) {
-        if (packed->storage_type.type == dependency) {
+    } else if (auto const packed{((definition).kind() == lispb::schema::TypeDefinitionKind::packed
+                                      ? std::optional{definition}
+                                      : std::nullopt)}) {
+        if (types.occurrences().type[types.occurrences().index(
+                types.definitions()
+                    .packed.storage_type[types.definitions().packed.index(*packed)])] ==
+            dependency) {
             append_edge_label(result, "storage");
         }
-        for (auto const& segment : packed->segments) {
-            if (auto const* field{std::get_if<PackedField>(&segment)}; field != nullptr) {
-                if (field->semantic_type.type == dependency) {
-                    append_edge_label(result, field->name);
+        for (auto const& segment : types.definitions().packed.segments_of(*packed)) {
+            if (auto const field{((segment).kind() == lispb::schema::PackedSegmentKind::field
+                                      ? std::optional{segment}
+                                      : std::nullopt)};
+                field) {
+                if (types.occurrences().type[types.occurrences().index(
+                        types.definitions().packed_fields.semantic_type
+                            [types.definitions().packed_fields.index(*field)])] == dependency) {
+                    append_edge_label(
+                        result,
+                        std::string{types.strings().view(
+                            types.definitions()
+                                .packed_fields
+                                .name[types.definitions().packed_fields.index(*field)])});
                 }
-                if (field->relationship.has_value() &&
-                    field->relationship->target.type == dependency) {
-                    append_edge_label(result,
-                                      field->name + " " + relationship_label(*field->relationship));
+                if (lispb::schema::is_valid(
+                        types.definitions()
+                            .packed_fields
+                            .relationship[types.definitions().packed_fields.index(*field)]) &&
+                    types.occurrences().type[types.occurrences().index(
+                        types.relationships().target[types.relationships().index(
+                            types.definitions().packed_fields.relationship
+                                [types.definitions().packed_fields.index(*field)])])] ==
+                        dependency) {
+                    append_edge_label(
+                        result,
+                        std::string{types.strings().view(
+                            types.definitions()
+                                .packed_fields
+                                .name[types.definitions().packed_fields.index(*field)])} +
+                            " " +
+                            relationship_label(
+                                types,
+                                types.definitions().packed_fields.relationship
+                                    [types.definitions().packed_fields.index(*field)]));
                 }
             }
         }
-    } else if (auto const* soa{std::get_if<SoaType>(&definition)}) {
-        if (soa->equivalent_type.has_value() && soa->equivalent_type->type == dependency) {
+    } else if (auto const soa{((definition).kind() == lispb::schema::TypeDefinitionKind::soa
+                                   ? std::optional{definition}
+                                   : std::nullopt)}) {
+        if (lispb::schema::is_valid(
+                types.definitions().soas.equivalent_type[types.definitions().soas.index(*soa)]) &&
+            types.occurrences().type[types.occurrences().index(
+                types.definitions().soas.equivalent_type[types.definitions().soas.index(*soa)])] ==
+                dependency) {
             append_edge_label(result, "equivalent row");
         }
-        for (auto const& column : soa->columns) {
-            if (column.semantic_type.type == dependency) {
-                append_edge_label(result, column.name);
+        for (auto const column_id : types.definitions().soas.columns_of(*soa)) {
+            auto const column{column_id};
+            if (types.occurrences().type[types.occurrences().index(
+                    types.definitions().soa_columns.semantic_type
+                        [types.definitions().soa_columns.index(column)])] == dependency) {
+                append_edge_label(
+                    result,
+                    std::string{types.strings().view(
+                        types.definitions()
+                            .soa_columns.name[types.definitions().soa_columns.index(column)])});
             }
-            if (column.nested_type == dependency) {
-                append_edge_label(result, column.name + " nested");
+            if (types.definitions()
+                    .soa_columns.nested_type[types.definitions().soa_columns.index(column)] ==
+                dependency) {
+                append_edge_label(
+                    result,
+                    std::string{types.strings().view(
+                        types.definitions()
+                            .soa_columns.name[types.definitions().soa_columns.index(column)])} +
+                        " nested");
             }
-            if (column.relationship.has_value() && column.relationship->target.type == dependency) {
-                append_edge_label(result,
-                                  column.name + " " + relationship_label(*column.relationship));
+            if (lispb::schema::is_valid(
+                    types.definitions()
+                        .soa_columns.relationship[types.definitions().soa_columns.index(column)]) &&
+                types.occurrences().type[types.occurrences().index(
+                    types.relationships().target[types.relationships().index(
+                        types.definitions().soa_columns.relationship
+                            [types.definitions().soa_columns.index(column)])])] == dependency) {
+                append_edge_label(
+                    result,
+                    std::string{types.strings().view(
+                        types.definitions()
+                            .soa_columns.name[types.definitions().soa_columns.index(column)])} +
+                        " " +
+                        relationship_label(
+                            types,
+                            types.definitions()
+                                .soa_columns
+                                .relationship[types.definitions().soa_columns.index(column)]));
             }
         }
-    } else if (auto const* record{std::get_if<RecordType>(&definition)}) {
-        for (auto const& member : record->members) {
-            if (member.semantic_type.type == dependency) {
-                append_edge_label(result, member.name);
+    } else if (auto const record{((definition).kind() == lispb::schema::TypeDefinitionKind::record
+                                      ? std::optional{definition}
+                                      : std::nullopt)}) {
+        for (auto const member_id : types.definitions().records.members_of(*record)) {
+            auto const member{member_id};
+            if (types.occurrences().type[types.occurrences().index(
+                    types.definitions().record_members.semantic_type
+                        [types.definitions().record_members.index(member)])] == dependency) {
+                append_edge_label(
+                    result,
+                    std::string{types.strings().view(
+                        types.definitions()
+                            .record_members
+                            .name[types.definitions().record_members.index(member)])});
             }
-            if (member.relationship.has_value() && member.relationship->target.type == dependency) {
-                append_edge_label(result,
-                                  member.name + " " + relationship_label(*member.relationship));
+            if (lispb::schema::is_valid(
+                    types.definitions()
+                        .record_members
+                        .relationship[types.definitions().record_members.index(member)]) &&
+                types.occurrences().type[types.occurrences().index(
+                    types.relationships().target[types.relationships().index(
+                        types.definitions().record_members.relationship
+                            [types.definitions().record_members.index(member)])])] == dependency) {
+                append_edge_label(
+                    result,
+                    std::string{types.strings().view(
+                        types.definitions()
+                            .record_members
+                            .name[types.definitions().record_members.index(member)])} +
+                        " " +
+                        relationship_label(
+                            types,
+                            types.definitions()
+                                .record_members
+                                .relationship[types.definitions().record_members.index(member)]));
             }
         }
-    } else if (auto const* union_type{std::get_if<UnionType>(&definition)}) {
-        for (auto const& alternative : union_type->alternatives) {
-            if (alternative.semantic_type.type == dependency) {
-                append_edge_label(result, alternative.name);
+    } else if (auto const union_type{
+                   ((definition).kind() == lispb::schema::TypeDefinitionKind::union_type
+                        ? std::optional{definition}
+                        : std::nullopt)}) {
+        for (auto const alternative_id : types.definitions().unions.alternatives_of(*union_type)) {
+            auto const alternative{alternative_id};
+            if (types.occurrences().type[types.occurrences().index(
+                    types.definitions().union_alternatives.semantic_type
+                        [types.definitions().union_alternatives.index(alternative)])] ==
+                dependency) {
+                append_edge_label(
+                    result,
+                    std::string{types.strings().view(
+                        types.definitions()
+                            .union_alternatives
+                            .name[types.definitions().union_alternatives.index(alternative)])});
             }
         }
-    } else if (auto const* tagged{std::get_if<TaggedUnionType>(&definition)}) {
-        if (tagged->discriminant.type == dependency) {
+    } else if (auto const tagged{
+                   ((definition).kind() == lispb::schema::TypeDefinitionKind::tagged_union
+                        ? std::optional{definition}
+                        : std::nullopt)}) {
+        if (types.occurrences().type[types.occurrences().index(
+                types.definitions().tagged_unions.discriminant
+                    [types.definitions().tagged_unions.index(*tagged)])] == dependency) {
             append_edge_label(result, "discriminates");
         }
-        for (auto const& alternative : tagged->alternatives) {
-            if (alternative.semantic_type.type == dependency) {
-                append_edge_label(result, alternative.name + " [" + alternative.tag + "]");
+        for (auto const alternative_id :
+             types.definitions().tagged_unions.alternatives_of(*tagged)) {
+            auto const alternative{alternative_id};
+            if (types.occurrences().type[types.occurrences().index(
+                    types.definitions().tagged_union_alternatives.semantic_type
+                        [types.definitions().tagged_union_alternatives.index(alternative)])] ==
+                dependency) {
+                append_edge_label(
+                    result,
+                    std::string{types.strings().view(
+                        types.definitions().tagged_union_alternatives.name
+                            [types.definitions().tagged_union_alternatives.index(alternative)])} +
+                        " [" +
+                        std::string{types.strings().view(
+                            types.definitions()
+                                .tagged_union_alternatives
+                                .tag[types.definitions().tagged_union_alternatives.index(
+                                    alternative)])} +
+                        "]");
             }
         }
     }
     if (result.empty()) {
-        auto const& node{types.type(user)};
-        auto const owner{node.owning_declaration.value_or(node.identity)};
+        auto const& node{user};
+        auto const owner{types.source_declaration(node)};
         for (auto const& use : types.type_uses()) {
-            if (use.declaration == owner && use.target.type == dependency) {
-                append_edge_label(result, use.role);
+            if (types.declaration(use) == owner &&
+                types.occurrences().type[types.occurrences().index(types.target(use))] ==
+                    dependency) {
+                append_edge_label(result,
+                                  lispb::codegen::type_reference_role_text(
+                                      types.cpp_types().strings(), types.role(use)));
             }
         }
     }
@@ -156,14 +369,14 @@ auto project_graph(TypeGraph const& graph, GraphScope const& scope) -> GraphProj
     for (std::size_t index{}; index < count; ++index) {
         auto const& node{graph.types()[index]};
         if ((!scope.module && scope.members.empty()) ||
-            (scope.module && node.identity.module_name == *scope.module) ||
-            std::ranges::find(scope.members, node.identity) != scope.members.end()) {
+            (scope.module && graph.strings().view(graph.module_name(node)) == *scope.module) ||
+            std::ranges::find(scope.members, graph.identity(node)) != scope.members.end()) {
             members.insert(TypeId{static_cast<std::uint32_t>(index)});
         }
     }
     auto visible{members};
     for (auto const id : members) {
-        for (auto const dependency : graph.type(id).dependencies) {
+        for (auto const dependency : graph.dependencies_of(id)) {
             visible.insert(dependency);
         }
     }
@@ -173,7 +386,7 @@ auto project_graph(TypeGraph const& graph, GraphScope const& scope) -> GraphProj
         result.nodes.push_back({id, !members.contains(id)});
     }
     for (auto const id : members) {
-        for (auto const dependency : graph.type(id).dependencies) {
+        for (auto const dependency : graph.dependencies_of(id)) {
             auto labels{graph_edge_labels(graph, id, dependency)};
             auto summary{graph_label_summary(labels)};
             result.edges.push_back({occurrence.at(id),

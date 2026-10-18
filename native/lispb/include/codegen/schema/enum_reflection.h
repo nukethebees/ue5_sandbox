@@ -1,11 +1,12 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include <string_view>
 
-namespace codegen {
+namespace lispb::codegen {
 
-enum class EnumReflection {
+enum class EnumReflection : std::uint8_t {
     none,
     uenum,
     blueprint,
@@ -27,4 +28,4 @@ inline constexpr auto enum_reflection_name(EnumReflection const reflection) -> s
     return "unknown";
 }
 
-} // namespace codegen
+} // namespace lispb::codegen

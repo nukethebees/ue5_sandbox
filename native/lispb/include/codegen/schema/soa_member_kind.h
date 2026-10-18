@@ -1,10 +1,12 @@
 #pragma once
 
-namespace codegen {
+#include <cstdint>
 
-enum class SoaMemberKind {
+namespace lispb::codegen {
+
+enum class SoaMemberKind : std::uint8_t {
     array,
     nested,
 };
 
-} // namespace codegen
+} // namespace lispb::codegen

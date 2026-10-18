@@ -4,7 +4,15 @@
 #include <native_soa_types.h>
 
 #include <array>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <ranges>
 #include <span>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace ml::native_soa_tests {
 using namespace native_soa_fixture;

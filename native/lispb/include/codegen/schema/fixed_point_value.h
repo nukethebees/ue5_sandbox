@@ -7,9 +7,9 @@
 #include <string>
 #include <string_view>
 
-namespace codegen {
+namespace lispb::codegen {
 
 [[nodiscard]] auto parse_fixed_point_value(std::string_view text, std::uint32_t fractional_bits)
     -> std::expected<PackedIntegerValue, std::string>;
 
-} // namespace codegen
+} // namespace lispb::codegen

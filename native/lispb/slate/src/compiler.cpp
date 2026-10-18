@@ -4,32 +4,30 @@
 #include "preprocessor.h"
 #include "renderer.h"
 
+#include <codegen/ast/cpp_files.h>
+#include <codegen/ast/cpp_ir.h>
+#include <codegen/sexpr/sources.h>
+#include <codegen/sexpr/syntax.h>
+#include <lispb/compilation.h>
+#include <lispb/strings.h>
+#include <slate_codegen/document.h>
+#include <slate_codegen/indices.h>
+#include <slate_codegen/source_options.h>
+
+#include <cstdint>
 #include <filesystem>
-#include <set>
+#include <string>
 #include <string_view>
-#include <utility>
 #include <vector>
 
 namespace slate_codegen {
-namespace {
 
-auto output_path(std::string_view owner) -> std::filesystem::path {
-    std::filesystem::path result;
-    while (true) {
-        auto const separator{owner.find("::")};
-        auto const component{owner.substr(0, separator)};
-        if (separator == std::string_view::npos) {
-            result /= std::string{component} + ".slate.generated.h";
-            return result;
-        }
-        result /= component;
-        owner.remove_prefix(separator + 2);
-    }
-}
-
-}
-
-auto compile_sources(SourceOptions const& options) -> lispb::Compilation {
+void compile_sources(lispb::codegen::sexpr::Syntax& syntax,
+                     detail::Document& document,
+                     lispb::codegen::CppIR& ir,
+                     lispb::Compilation& result,
+                     SourceOptions const& options,
+                     bool const emit) {
     auto const source_root{std::filesystem::absolute(options.source_root).lexically_normal()};
     std::vector<std::filesystem::path> include_directories;
     include_directories.reserve(options.include_directories.size());
@@ -38,31 +36,34 @@ auto compile_sources(SourceOptions const& options) -> lispb::Compilation {
             (directory.is_absolute() ? directory : source_root / directory).lexically_normal());
     }
 
-    lispb::Compilation result;
-    std::set<std::string> owners;
     for (auto const& input : options.inputs) {
-        auto preprocessed{detail::preprocess(source_root / input, include_directories)};
+        auto const preprocessed{
+            detail::preprocess(syntax, source_root / input, include_directories)};
         result.dependencies.insert(result.dependencies.end(),
                                    preprocessed.dependencies.begin(),
                                    preprocessed.dependencies.end());
-        auto const document{detail::parse(input.generic_string(), preprocessed.forms)};
-        for (auto const& widget_declaration : document.declarations) {
-            if (!owners.insert(widget_declaration.name).second) {
-                throw detail::SourceError{input.generic_string(),
-                                          widget_declaration.span,
-                                          "duplicate widget declaration '" +
-                                              widget_declaration.name + "'"};
+        auto const begin{document.declarations.size()};
+        detail::parse(syntax, preprocessed.forms, document);
+        auto const end{document.declarations.size()};
+        for (auto index{begin}; index < end; ++index) {
+            if (emit) {
+                auto const file{
+                    detail::lower(input.generic_string(),
+                                  syntax.sources(),
+                                  document,
+                                  detail::DeclarationId{static_cast<std::uint32_t>(index)},
+                                  ir)};
+                auto const file_index{ir.files.index(file)};
+                result.add_text(std::filesystem::path{ir.strings.view(ir.files.path[file_index])},
+                                ir.render(file),
+                                ir.files.flags[file_index].format_generated());
             }
-            result.artifacts.push_back(
-                lispb::TextArtifact{output_path(widget_declaration.name),
-                                    detail::render(input.generic_string(), widget_declaration),
-                                    true});
         }
     }
-    return result;
 }
 
-auto expand_sources(SourceOptions const& options) -> std::string {
+auto expand_sources(lispb::codegen::sexpr::Syntax& syntax, SourceOptions const& options)
+    -> std::string {
     auto const source_root{std::filesystem::absolute(options.source_root).lexically_normal()};
     std::vector<std::filesystem::path> include_directories;
     include_directories.reserve(options.include_directories.size());
@@ -73,11 +74,12 @@ auto expand_sources(SourceOptions const& options) -> std::string {
 
     std::string result;
     for (auto const& input : options.inputs) {
-        auto const preprocessed{detail::preprocess(source_root / input, include_directories)};
+        auto const preprocessed{
+            detail::preprocess(syntax, source_root / input, include_directories)};
         if (!result.empty()) {
             result += '\n';
         }
-        result += detail::format_expansion(preprocessed.forms);
+        result += detail::format_expansion(syntax, preprocessed.forms);
     }
     return result;
 }

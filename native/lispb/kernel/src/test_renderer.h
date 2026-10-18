@@ -2,13 +2,18 @@
 
 #include "lowering.h"
 
-#include <string>
-#include <vector>
+#include <codegen/ast/indices.h>
+#include <kernel_codegen/indices.h>
+
+namespace lispb::codegen {
+class CppIR;
+}
 
 namespace kernel_codegen::detail {
 
-auto render_standard_tests(Emission const& emission,
-                           KernelModule const& module,
-                           std::vector<ExpandedVariant> const& variants) -> std::string;
+auto lower_standard_tests(lispb::codegen::CppIR& cpp,
+                          EmissionId const emission,
+                          ModuleId const module,
+                          Document const& document) -> lispb::codegen::CppFileId;
 
 }

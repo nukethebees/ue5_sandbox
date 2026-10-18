@@ -35,6 +35,7 @@ struct SANDBOXCORE_API FVectors3dConstView {
     }
 
     using value_type = double;
+
     using size_type = TArray<value_type>::SizeType;
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -73,13 +74,19 @@ struct SANDBOXCORE_API FVectors3dView {
         return (*this)[index];
     }
 
-    using value_type = double;
-    using size_type = TArray<value_type>::SizeType;
-    void set(int32 const i, double const x, double const y, double const z) const {
-        xs[i] = x;
-        ys[i] = y;
-        zs[i] = z;
+    void set(int32 const index,
+             double const new_xs,
+             double const new_ys,
+             double const new_zs) const {
+        xs[index] = new_xs;
+        ys[index] = new_ys;
+        zs[index] = new_zs;
     }
+
+    using value_type = double;
+
+    using size_type = TArray<value_type>::SizeType;
+
     void set(int32 const i, FVector3d const value) const { set(i, value.X, value.Y, value.Z); }
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -119,6 +126,7 @@ struct SANDBOXCORE_API FVectors3d {
         double* zs;
     };
 
+    auto get_data() -> Data { return Data{xs.GetData(), ys.GetData(), zs.GetData()}; }
     struct ConstData {
         double const* xs;
 
@@ -127,36 +135,12 @@ struct SANDBOXCORE_API FVectors3d {
         double const* zs;
     };
 
-    using equivalent_type = FVector3d;
-
-    auto operator[](int32 const index) const -> FVector3d {
-        return {xs.GetData()[index], ys.GetData()[index], zs.GetData()[index]};
-    }
-    auto at(int32 const index) const -> FVector3d {
-        validate_array_sizes();
-        check(index >= 0);
-        check(index < num());
-        return (*this)[index];
-    }
-
-    using value_type = double;
-    using size_type = TArray<value_type>::SizeType;
-    auto get_data() -> Data { return Data{xs.GetData(), ys.GetData(), zs.GetData()}; }
     auto get_data() const -> ConstData {
         return ConstData{xs.GetData(), ys.GetData(), zs.GetData()};
     }
-    auto add(value_type const x, value_type const y, value_type const z) -> size_type {
-        auto const index{xs.Add(x)};
-        ys.Add(y);
-        zs.Add(z);
-        return index;
-    }
+    using value_type = double;
+    using size_type = TArray<value_type>::SizeType;
     auto add(FVector3d const& value) -> size_type { return add(value.X, value.Y, value.Z); }
-    void set(int32 const i, value_type const x, value_type const y, value_type const z) {
-        xs[i] = x;
-        ys[i] = y;
-        zs[i] = z;
-    }
     void set(int32 const i, FVector3d const value) { set(i, value.X, value.Y, value.Z); }
     void empty() {
         xs.Empty();
@@ -173,6 +157,31 @@ struct SANDBOXCORE_API FVectors3d {
         ys.AddZeroed(count);
         zs.AddZeroed(count);
     }
+    using equivalent_type = FVector3d;
+
+    auto operator[](int32 const index) const -> FVector3d {
+        return {xs.GetData()[index], ys.GetData()[index], zs.GetData()[index]};
+    }
+    auto at(int32 const index) const -> FVector3d {
+        validate_array_sizes();
+        check(index >= 0);
+        check(index < num());
+        return (*this)[index];
+    }
+    void set(int32 const index, double const new_xs, double const new_ys, double const new_zs) {
+        xs[index] = new_xs;
+        ys[index] = new_ys;
+        zs[index] = new_zs;
+    }
+
+    auto add(double const new_xs, double const new_ys, double const new_zs) -> int32 {
+        auto const index{num()};
+        xs.Add(new_xs);
+        ys.Add(new_ys);
+        zs.Add(new_zs);
+        return index;
+    }
+
     void reset();
 
     void reserve(int32 const count);

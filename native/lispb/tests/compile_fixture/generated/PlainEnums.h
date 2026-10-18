@@ -6,6 +6,8 @@
 #include "ioj/enum_traits.h"
 
 #include "CoreMinimal.h"
+
+#include <cstddef>
 namespace codegen_compile_fixture {
 using EPlainFixtureUnderlying = uint8;
 
@@ -22,7 +24,6 @@ template <>
     -> std::size_t {
     return 2;
 }
-
 } // namespace ml
 
 namespace codegen_compile_fixture {

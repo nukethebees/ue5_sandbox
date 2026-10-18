@@ -1,395 +1,616 @@
+#include "lowering_context.h"
 #include "lowering_utils.h"
 #include "soa_api.h"
+#include "soa_functions.h"
 #include "soa_internal.h"
+#include "soa_receiver.h"
+#include "soa_representation.h"
+
+#include <codegen/ast/binary_operator.h>
+#include <codegen/ast/cpp_ir.h>
+#include <codegen/ast/cpp_types.h>
+#include <codegen/ast/expr.h>
+#include <codegen/ast/function_receiver.h>
+#include <codegen/ast/indices.h>
+#include <codegen/ast/node_id.h>
+#include <codegen/ast/node_list_builder.h>
+#include <codegen/ast/nodes.h>
+#include <codegen/ast/parameter_passing.h>
+#include <codegen/ast/return_syntax.h>
+#include <codegen/ast/type_operation.h>
+#include <codegen/lowering/indices.h>
+#include <codegen/schema/declarations.h>
+#include <codegen/schema/function_schemas.h>
+#include <codegen/schema/indices.h>
+#include <codegen/schema/schema_range.h>
+#include <codegen/schema/soa_member_kind.h>
+#include <codegen/schema/soa_member_schemas.h>
+#include <codegen/schema/soa_schemas.h>
+#include <codegen/schema/storage_operation.h>
+#include <lispb/indices.h>
+#include <lispb/strings.h>
 
 #include <algorithm>
+#include <cstddef>
+#include <map>
+#include <optional>
+#include <span>
+#include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
-namespace codegen::detail {
+namespace lispb::codegen::detail {
 namespace {
 
-TypeDependency const tarray_view{"TArrayView", "Containers/ArrayView.h", {}};
-TypeDependency const allow_shrinking{"EAllowShrinking", "Containers/AllowShrinking.h", {}};
-TypeDependency const soa_storage_ops{"ml::soa_ops", "SandboxCore/soa_storage_ops.h", {}};
-TypeDependency const soa_concepts{"ml::SupportsApplyArrayPairsWith", "ioj/soa_concepts.h", {}};
-TypeDependency const check_dependency{"check", "CoreMinimal.h", {}};
-
-auto container_function(std::string spelling) -> Expr {
-    TypeDependency dependency{spelling, "SandboxCore/container_ops.h", {}};
-    return named(std::move(spelling), {std::move(dependency)});
+auto container_function(LoweringContext& context, std::string spelling) -> Expr {
+    auto& ir{context.ir};
+    auto const dependency{ir.types.dependency(spelling, "SandboxCore/container_ops.h")};
+    return ir.named(std::move(spelling), {std::move(dependency)});
 }
 
-auto has_custom_function(std::vector<FunctionSchema> const& functions, std::string_view const name)
-    -> bool {
+auto has_custom_function(LoweringContext& context,
+                         SchemaRange<FunctionSchemaId> functions,
+                         std::string_view const name) -> bool {
+    auto const identifier{context.ir.strings.intern(name)};
     return std::ranges::any_of(
-        functions, [name](FunctionSchema const& function) { return function.name == name; });
+        context.declarations.items(functions), [&](FunctionSchemaId const function) {
+            return context.declarations.functions
+                       .name[context.declarations.functions.index(function)] == identifier;
+        });
 }
 
-auto parameter_type(CppType type, ParameterPassing const passing) -> CppType {
-    return qualify(std::move(type), passing == ParameterPassing::value ? " const" : " const&");
+auto parameter_type(LoweringContext& context, CppTypeId type, ParameterPassing const passing)
+    -> CppTypeId {
+    auto& ir{context.ir};
+    return qualify(ir, std::move(type), passing == ParameterPassing::value ? " const" : " const&");
 }
 
-auto storage_operation_body(std::string const& operation, std::vector<std::string> arguments = {})
-    -> Nodes {
+auto storage_operation_body(LoweringContext& context,
+                            std::string const& operation,
+                            std::vector<std::string> arguments = {}) -> Nodes {
+    auto& ir{context.ir};
     arguments.insert(arguments.begin(), "*this");
-    return {
-        raw("ml::soa_ops::" + operation + "(" + join(arguments, ", ") + ");", {soa_storage_ops})};
+    return {ir.raw("ml::soa_ops::" + operation + "(" + join(arguments, ", ") + ");",
+                   {ir.types.dependency("ml::soa_ops", "SandboxCore/soa_storage_ops.h")})};
 }
 
-auto has_custom_remove_at_swap(std::vector<ResolvedMember> const& members) -> bool {
-    return std::ranges::any_of(members, [](ResolvedMember const& member) {
-        auto const operation{member.container_type.operation(TypeOperation::remove_at_swap)};
+auto has_custom_remove_at_swap(LoweringContext& context, std::span<ResolvedMemberId const> members)
+    -> bool {
+    auto& resolved_store{context.ir.lowering.resolved_members};
+    auto& ir{context.ir};
+    return std::ranges::any_of(members, [&ir, &resolved_store](ResolvedMemberId member) {
+        std::optional<std::string> const operation{
+            ir.types.operation(resolved_store.container_type[resolved_store.index(member)],
+                               TypeOperation::remove_at_swap)};
         return operation.has_value() && *operation != "RemoveAtSwap" &&
              *operation != "remove_at_swap";
     });
 }
 
-auto explicit_remove_at_swap_body(std::vector<ResolvedMember> const& members) -> Nodes {
-    NodeListBuilder calls;
-    calls.add(ExpressionStmt{call(named("validate_array_sizes"))});
-    for (auto const& member : members) {
-        auto const operation{member.container_type.operation(TypeOperation::remove_at_swap)};
-        auto const invocation{operation.has_value()
-                                  ? call(member_access(named(member.name), *operation),
-                                         {named("index"), named("count"), named("allow_shrinking")})
-                                  : call(container_function("ml::remove_at_swap"),
-                                         {named(member.name),
-                                          named("index"),
-                                          named("count"),
-                                          named("allow_shrinking")})};
-        calls.add(ExpressionStmt{invocation});
+auto explicit_remove_at_swap_body(LoweringContext& context,
+                                  std::span<ResolvedMemberId const> members) -> Nodes {
+    auto& resolved_store{context.ir.lowering.resolved_members};
+    auto& ir{context.ir};
+    NodeListBuilder calls{ir};
+    calls.add(ir.expression_statement(ir.call(ir.named("validate_array_sizes"))));
+    for (auto const member : members) {
+        std::optional<std::string> const operation{
+            ir.types.operation(resolved_store.container_type[resolved_store.index(member)],
+                               TypeOperation::remove_at_swap)};
+        auto const invocation{
+            operation.has_value()
+                ? ir.call(ir.member_access(ir.named(context.text(
+                                               resolved_store.name[resolved_store.index(member)])),
+                                           *operation),
+                          {ir.named("index"), ir.named("count"), ir.named("allow_shrinking")})
+                : ir.call(
+                      container_function(context, "ml::remove_at_swap"),
+                      {ir.named(context.text(resolved_store.name[resolved_store.index(member)])),
+                       ir.named("index"),
+                       ir.named("count"),
+                       ir.named("allow_shrinking")})};
+        calls.add(ir.expression_statement(invocation));
     }
     return calls.build();
 }
 
 } // namespace
 
-auto soa_set_spec(SoaSchema const& schema,
-                  std::vector<ResolvedMember> const& members,
-                  bool const is_const) -> std::optional<FunctionSpec> {
-    if (has_custom_function(schema.functions, "set") ||
-        has_custom_function(schema.mutable_view_functions, "set")) {
+auto soa_set_function(LoweringContext& context,
+                      DeclarationHandle schema,
+                      std::span<ResolvedMemberId const> members,
+                      bool const is_const) -> std::optional<FunctionId> {
+    auto& resolved_store{context.ir.lowering.resolved_members};
+    auto& ir{context.ir};
+    if (has_custom_function(
+            context,
+            context.declarations.soas.functions[context.declarations.soas.index(schema)],
+            "set") ||
+        has_custom_function(context,
+                            context.declarations.soas
+                                .mutable_view_functions[context.declarations.soas.index(schema)],
+                            "set")) {
         return std::nullopt;
     }
 
-    std::vector<FunctionParameter> parameters{FunctionParameter{"int32 const", "index"}};
-    NodeListBuilder body;
-    for (auto const& member : members) {
-        auto const argument{"new_" + member.name};
-        if (member.kind == SoaMemberKind::array) {
-            parameters.emplace_back(
-                parameter_type(member.element_type, member.element_type.parameter_passing),
-                argument);
-            body.add(
-                AssignmentStmt{subscript(named(member.name), named("index")), named(argument)});
+    std::vector<FunctionParameterId> parameters{
+        ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("index"))};
+    NodeListBuilder body{ir};
+    for (auto const member : members) {
+        auto const argument{"new_" +
+                            context.text(resolved_store.name[resolved_store.index(member)])};
+        if (resolved_store.kind[resolved_store.index(member)] == SoaMemberKind::array) {
+            parameters.push_back(ir.parameter(
+                parameter_type(context,
+                               resolved_store.element_type[resolved_store.index(member)],
+                               ir.types.parameter_passing(
+                                   resolved_store.element_type[resolved_store.index(member)])),
+                ir.strings.intern(argument)));
+            body.add(ir.assignment(
+                ir.subscript(
+                    ir.named(context.text(resolved_store.name[resolved_store.index(member)])),
+                    ir.named("index")),
+                ir.named(argument)));
             continue;
         }
 
-        auto const operation{member.container_type.operation(TypeOperation::set_element)};
+        std::optional<std::string> const operation{
+            ir.types.operation(resolved_store.container_type[resolved_store.index(member)],
+                               TypeOperation::set_element)};
         if (!operation.has_value()) {
             return std::nullopt;
         }
-        auto equivalent_type{qualify(member.element_type, "::equivalent_type")};
-        parameters.emplace_back(parameter_type(std::move(equivalent_type),
-                                               member.container_type.operation_parameter_passing(
-                                                   TypeOperation::set_element)),
-                                argument);
-        body.add(ExpressionStmt{call(member_access(named(member.name), *operation),
-                                     {named("index"), named(argument)})});
+        auto equivalent_type{qualify(
+            ir, resolved_store.element_type[resolved_store.index(member)], "::equivalent_type")};
+        parameters.push_back(ir.parameter(
+            parameter_type(context,
+                           std::move(equivalent_type),
+                           ir.types.operation_parameter_passing(
+                               resolved_store.container_type[resolved_store.index(member)],
+                               TypeOperation::set_element)),
+            ir.strings.intern(argument)));
+        body.add(ir.expression_statement(
+            ir.call(ir.member_access(
+                        ir.named(context.text(resolved_store.name[resolved_store.index(member)])),
+                        *operation),
+                    {ir.named("index"), ir.named(argument)})));
     }
-    return FunctionSpec{
-        .name = "set",
-        .return_type = "void",
-        .parameters = std::move(parameters),
-        .body = body.build(),
-        .qualifiers = {.is_const = is_const, .is_inline = true},
-        .define_in_header = true,
-    };
+    auto const created_function{ir.function(ir.strings.intern("set"), ir.types.intern("void"))};
+    ir.set_function_parameters(created_function, std::move(parameters));
+    ir.set_function_body(created_function, body.build());
+    ir.set_function_receiver(created_function,
+                             is_const ? FunctionReceiver::const_ : FunctionReceiver::unqualified);
+    ir.function_flags(created_function).set_is_inline(true);
+    ir.function_flags(created_function).set_define_in_header(true);
+    return created_function;
 }
 
-auto soa_add_spec(SoaSchema const& schema, std::vector<ResolvedMember> const& members)
-    -> std::optional<FunctionSpec> {
-    if (has_custom_function(schema.functions, "add")) {
+auto soa_add_function(LoweringContext& context,
+                      DeclarationHandle schema,
+                      std::span<ResolvedMemberId const> members) -> std::optional<FunctionId> {
+    auto& resolved_store{context.ir.lowering.resolved_members};
+    auto& ir{context.ir};
+    if (has_custom_function(
+            context,
+            context.declarations.soas.functions[context.declarations.soas.index(schema)],
+            "add")) {
         return std::nullopt;
     }
 
-    std::vector<FunctionParameter> parameters;
-    NodeListBuilder body;
-    body.add(VariableDeclarationStmt{"auto const", "index", call(named("num"))});
-    for (auto const& member : members) {
-        auto const argument{"new_" + member.name};
-        if (member.kind == SoaMemberKind::array) {
-            parameters.emplace_back(
-                parameter_type(member.element_type, member.element_type.parameter_passing),
-                argument);
-            body.add(
-                ExpressionStmt{call(member_access(named(member.name), "Add"), {named(argument)})});
+    std::vector<FunctionParameterId> parameters;
+    NodeListBuilder body{ir};
+    body.add(ir.variable(
+        ir.types.intern("auto const"), ir.strings.intern("index"), ir.call(ir.named("num"))));
+    for (auto const member : members) {
+        auto const argument{"new_" +
+                            context.text(resolved_store.name[resolved_store.index(member)])};
+        if (resolved_store.kind[resolved_store.index(member)] == SoaMemberKind::array) {
+            parameters.push_back(ir.parameter(
+                parameter_type(context,
+                               resolved_store.element_type[resolved_store.index(member)],
+                               ir.types.parameter_passing(
+                                   resolved_store.element_type[resolved_store.index(member)])),
+                ir.strings.intern(argument)));
+            body.add(ir.expression_statement(ir.call(
+                ir.member_access(
+                    ir.named(context.text(resolved_store.name[resolved_store.index(member)])),
+                    "Add"),
+                {ir.named(argument)})));
             continue;
         }
 
-        auto const operation{member.container_type.operation(TypeOperation::add_element)};
+        std::optional<std::string> const operation{
+            ir.types.operation(resolved_store.container_type[resolved_store.index(member)],
+                               TypeOperation::add_element)};
         if (!operation.has_value()) {
             return std::nullopt;
         }
-        auto equivalent_type{qualify(member.element_type, "::equivalent_type")};
-        parameters.emplace_back(parameter_type(std::move(equivalent_type),
-                                               member.container_type.operation_parameter_passing(
-                                                   TypeOperation::add_element)),
-                                argument);
-        body.add(
-            ExpressionStmt{call(member_access(named(member.name), *operation), {named(argument)})});
+        auto equivalent_type{qualify(
+            ir, resolved_store.element_type[resolved_store.index(member)], "::equivalent_type")};
+        parameters.push_back(ir.parameter(
+            parameter_type(context,
+                           std::move(equivalent_type),
+                           ir.types.operation_parameter_passing(
+                               resolved_store.container_type[resolved_store.index(member)],
+                               TypeOperation::add_element)),
+            ir.strings.intern(argument)));
+        body.add(ir.expression_statement(
+            ir.call(ir.member_access(
+                        ir.named(context.text(resolved_store.name[resolved_store.index(member)])),
+                        *operation),
+                    {ir.named(argument)})));
     }
-    body.add(ReturnStmt{named("index")});
-    return FunctionSpec{
-        .name = "add",
-        .return_type = "auto",
-        .parameters = std::move(parameters),
-        .body = body.build(),
-        .qualifiers = {.trailing_return_type = CppType{"int32"}, .is_inline = true},
-        .define_in_header = true,
-    };
+    body.add(ir.return_statement(ir.named("index")));
+    auto const created_function{ir.function(ir.strings.intern("add"), ir.types.intern("auto"))};
+    ir.set_function_parameters(created_function, std::move(parameters));
+    ir.set_function_body(created_function, body.build());
+    ir.set_function_return_type(created_function, ir.types.intern("int32"), ReturnSyntax::trailing);
+    ir.function_flags(created_function).set_is_inline(true);
+    ir.function_flags(created_function).set_define_in_header(true);
+    return created_function;
 }
 
-auto soa_storage_operation_specs(SoaSchema const& schema,
-                                 std::vector<ResolvedMember> const& members)
-    -> std::vector<FunctionSpec> {
-    std::vector<FunctionSpec> result;
+auto soa_storage_functions(LoweringContext& context,
+                           DeclarationHandle schema,
+                           std::span<ResolvedMemberId const> members) -> std::vector<FunctionId> {
+    auto& resolved_store{context.ir.lowering.resolved_members};
+    auto& ir{context.ir};
+    std::vector<FunctionId> result;
     auto contains = [&](StorageOperation operation) {
-        return std::ranges::find(schema.operations, operation) != schema.operations.end();
+        auto const operations{context.declarations.items(
+            context.declarations.soas.operations[context.declarations.soas.index(schema)])};
+        return std::ranges::find(operations, operation) != operations.end();
     };
     if (contains(StorageOperation::reset)) {
-        result.push_back(FunctionSpec{
-            .name = "reset",
-            .return_type = "void",
-            .body = storage_operation_body("reset"),
-        });
+        result.push_back([&] {
+            auto const created_function{
+                ir.function(ir.strings.intern("reset"), ir.types.intern("void"))};
+            ir.set_function_body(created_function, storage_operation_body(context, "reset"));
+            return created_function;
+        }());
     }
     if (contains(StorageOperation::reserve)) {
-        result.push_back(FunctionSpec{
-            .name = "reserve",
-            .return_type = "void",
-            .parameters = {FunctionParameter{"int32 const", "count"}},
-            .body = storage_operation_body("reserve", {"count"}),
-        });
+        result.push_back([&] {
+            auto const created_function{
+                ir.function(ir.strings.intern("reserve"), ir.types.intern("void"))};
+            ir.set_function_parameters(
+                created_function,
+                {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))});
+            ir.set_function_body(created_function,
+                                 storage_operation_body(context, "reserve", {"count"}));
+            return created_function;
+        }());
     }
     if (contains(StorageOperation::add_uninitialised)) {
-        result.push_back(FunctionSpec{
-            .name = "add_uninitialised",
-            .return_type = "void",
-            .parameters = {FunctionParameter{"int32 const", "count"}},
-            .body = storage_operation_body("add_uninitialised", {"count"}),
-        });
+        result.push_back([&] {
+            auto const created_function{
+                ir.function(ir.strings.intern("add_uninitialised"), ir.types.intern("void"))};
+            ir.set_function_parameters(
+                created_function,
+                {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))});
+            ir.set_function_body(created_function,
+                                 storage_operation_body(context, "add_uninitialised", {"count"}));
+            return created_function;
+        }());
     }
     if (contains(StorageOperation::add_defaulted)) {
-        result.push_back(FunctionSpec{
-            .name = "add_defaulted",
-            .return_type = "void",
-            .parameters = {FunctionParameter{"int32 const", "count"}},
-            .body = storage_operation_body("add_defaulted", {"count"}),
-        });
+        result.push_back([&] {
+            auto const created_function{
+                ir.function(ir.strings.intern("add_defaulted"), ir.types.intern("void"))};
+            ir.set_function_parameters(
+                created_function,
+                {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))});
+            ir.set_function_body(created_function,
+                                 storage_operation_body(context, "add_defaulted", {"count"}));
+            return created_function;
+        }());
     }
     if (contains(StorageOperation::remove_at_swap)) {
-        auto body{
-            has_custom_remove_at_swap(members)
-                ? explicit_remove_at_swap_body(members)
-                : storage_operation_body("remove_at_swap", {"index", "count", "allow_shrinking"})};
-        result.push_back(FunctionSpec{
-            .name = "remove_at_swap",
-            .return_type = "void",
-            .parameters = {FunctionParameter{"int32 const", "index"},
-                           FunctionParameter{"int32 const", "count"},
-                           FunctionParameter{CppType{"EAllowShrinking const", {allow_shrinking}},
-                                             "allow_shrinking"}},
-            .body = std::move(body),
-            .qualifiers = {.is_inline = true},
-            .define_in_header = true,
-        });
+        auto body{has_custom_remove_at_swap(context, members)
+                      ? explicit_remove_at_swap_body(context, members)
+                      : storage_operation_body(
+                            context, "remove_at_swap", {"index", "count", "allow_shrinking"})};
+        result.push_back([&] {
+            auto const created_function{
+                ir.function(ir.strings.intern("remove_at_swap"), ir.types.intern("void"))};
+            ir.set_function_parameters(
+                created_function,
+                {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("index")),
+                 ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count")),
+                 ir.parameter(ir.types.intern("EAllowShrinking const",
+                                              {ir.types.dependency("EAllowShrinking",
+                                                                   "Containers/AllowShrinking.h")}),
+                              ir.strings.intern("allow_shrinking"))});
+            ir.set_function_body(created_function, std::move(body));
+            ir.function_flags(created_function).set_is_inline(true);
+            ir.function_flags(created_function).set_define_in_header(true);
+            return created_function;
+        }());
     }
     if (contains(StorageOperation::set_num)) {
-        result.push_back(FunctionSpec{
-            .name = "set_num",
-            .return_type = "void",
-            .parameters = {FunctionParameter{"int32 const", "count"},
-                           FunctionParameter{CppType{"EAllowShrinking const", {allow_shrinking}},
-                                             "allow_shrinking"}},
-            .body = storage_operation_body("set_num", {"count", "allow_shrinking"}),
-        });
+        result.push_back([&] {
+            auto const created_function{
+                ir.function(ir.strings.intern("set_num"), ir.types.intern("void"))};
+            ir.set_function_parameters(
+                created_function,
+                {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count")),
+                 ir.parameter(ir.types.intern("EAllowShrinking const",
+                                              {ir.types.dependency("EAllowShrinking",
+                                                                   "Containers/AllowShrinking.h")}),
+                              ir.strings.intern("allow_shrinking"))});
+            ir.set_function_body(
+                created_function,
+                storage_operation_body(context, "set_num", {"count", "allow_shrinking"}));
+            return created_function;
+        }());
     }
     if (contains(StorageOperation::copy_element)) {
-        NodeListBuilder copy_one;
-        NodeListBuilder copy_range;
-        for (auto const& member : members) {
-            auto const destination{named(member.name)};
-            auto const source{member_access(named("other"), member.name)};
-            if (schema.copy_element_memberwise) {
-                copy_one.add(AssignmentStmt{subscript(destination, named("dst_i")),
-                                            subscript(source, named("src_i"))});
+        NodeListBuilder copy_one{ir};
+        NodeListBuilder copy_range{ir};
+        for (auto const member : members) {
+            auto const destination{
+                ir.named(context.text(resolved_store.name[resolved_store.index(member)]))};
+            auto const source{
+                ir.member_access(ir.named("other"),
+                                 context.text(resolved_store.name[resolved_store.index(member)]))};
+            if (context.declarations.soas
+                    .copy_element_memberwise[context.declarations.soas.index(schema)]) {
+                copy_one.add(ir.assignment(ir.subscript(destination, ir.named("dst_i")),
+                                           ir.subscript(source, ir.named("src_i"))));
             } else {
-                copy_one.add(
-                    ExpressionStmt{call(container_function("ml::copy_element"),
-                                        {destination, named("dst_i"), source, named("src_i")})});
+                copy_one.add(ir.expression_statement(
+                    ir.call(container_function(context, "ml::copy_element"),
+                            {destination, ir.named("dst_i"), source, ir.named("src_i")})));
             }
-            copy_range.add(ExpressionStmt{
-                call(container_function("ml::copy_elements"),
-                     {destination, named("dst_i"), source, named("src_i"), named("count")})});
+            copy_range.add(ir.expression_statement(ir.call(
+                container_function(context, "ml::copy_elements"),
+                {destination, ir.named("dst_i"), source, ir.named("src_i"), ir.named("count")})));
         }
-        result.push_back(FunctionSpec{
-            .name = "copy_element",
-            .return_type = "void",
-            .parameters = {FunctionParameter{"int32 const", "dst_i"},
-                           FunctionParameter{"Other const&", "other"},
-                           FunctionParameter{"int32 const", "src_i"}},
-            .body = copy_one.build(),
-            .qualifiers = {.is_inline = true},
-            .define_in_header = true,
-            .template_parameters = "typename Other",
-        });
-        result.push_back(FunctionSpec{
-            .name = "copy_elements",
-            .return_type = "void",
-            .parameters = {FunctionParameter{"int32 const", "dst_i"},
-                           FunctionParameter{"Other const&", "other"},
-                           FunctionParameter{"int32 const", "src_i"},
-                           FunctionParameter{"int32 const", "count"}},
-            .body = copy_range.build(),
-            .qualifiers = {.is_inline = true},
-            .define_in_header = true,
-            .template_parameters = "typename Other",
-        });
-        result.push_back(FunctionSpec{
-            .name = "copy_to_tail",
-            .return_type = "void",
-            .parameters = {FunctionParameter{"Other const&", "other"}},
-            .body =
+        result.push_back([&] {
+            auto const created_function{
+                ir.function(ir.strings.intern("copy_element"), ir.types.intern("void"))};
+            ir.set_function_parameters(
+                created_function,
+                {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("dst_i")),
+                 ir.parameter(ir.types.intern("Other const&"), ir.strings.intern("other")),
+                 ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("src_i"))});
+            ir.set_function_body(created_function, copy_one.build());
+            ir.function_flags(created_function).set_is_inline(true);
+            ir.function_flags(created_function).set_define_in_header(true);
+            ir.set_function_template(
+                created_function,
+                ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Other"))}));
+            return created_function;
+        }());
+        result.push_back([&] {
+            auto const created_function{
+                ir.function(ir.strings.intern("copy_elements"), ir.types.intern("void"))};
+            ir.set_function_parameters(
+                created_function,
+                {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("dst_i")),
+                 ir.parameter(ir.types.intern("Other const&"), ir.strings.intern("other")),
+                 ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("src_i")),
+                 ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))});
+            ir.set_function_body(created_function, copy_range.build());
+            ir.function_flags(created_function).set_is_inline(true);
+            ir.function_flags(created_function).set_define_in_header(true);
+            ir.set_function_template(
+                created_function,
+                ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Other"))}));
+            return created_function;
+        }());
+        result.push_back([&] {
+            auto const created_function{
+                ir.function(ir.strings.intern("copy_to_tail"), ir.types.intern("void"))};
+            ir.set_function_parameters(
+                created_function,
+                {ir.parameter(ir.types.intern("Other const&"), ir.strings.intern("other"))});
+            ir.set_function_body(
+                created_function,
                 {
-                    VariableDeclarationStmt{
-                        "auto const", "count", call(member_access(named("other"), "num"))},
-                    ExpressionStmt{call(named("check", {check_dependency}),
-                                        {binary(BinaryOperator::greater_equal,
-                                                call(named("num")),
-                                                named("count"))})},
-                    ExpressionStmt{
-                        call(named("copy_elements"),
-                             {binary(BinaryOperator::subtract, call(named("num")), named("count")),
-                              named("other"),
-                              literal("0"),
-                              named("count")})},
-                },
-            .qualifiers = {.is_inline = true},
-            .define_in_header = true,
-            .template_parameters = "typename Other",
-        });
+                    ir.variable(ir.types.intern("auto const"),
+                                ir.strings.intern("count"),
+                                ir.call(ir.member_access(ir.named("other"), "num"))),
+                    ir.expression_statement(
+                        ir.call(ir.named("check", {ir.types.dependency("check", "CoreMinimal.h")}),
+                                {ir.binary(BinaryOperator::greater_equal,
+                                           ir.call(ir.named("num")),
+                                           ir.named("count"))})),
+                    ir.expression_statement(ir.call(ir.named("copy_elements"),
+                                                    {ir.binary(BinaryOperator::subtract,
+                                                               ir.call(ir.named("num")),
+                                                               ir.named("count")),
+                                                     ir.named("other"),
+                                                     ir.literal("0"),
+                                                     ir.named("count")})),
+                });
+            ir.function_flags(created_function).set_is_inline(true);
+            ir.function_flags(created_function).set_define_in_header(true);
+            ir.set_function_template(
+                created_function,
+                ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Other"))}));
+            return created_function;
+        }());
     }
     if (contains(StorageOperation::append_from)) {
-        NodeListBuilder calls;
+        NodeListBuilder calls{ir};
         auto const member_count{members.size()};
         for (std::size_t index{}; index < member_count; ++index) {
-            auto const& member{members[index]};
-            auto const destination{named(member.name)};
-            auto const source{member_access(named("other"), member.name)};
+            auto const member{members[index]};
+            auto const destination{
+                ir.named(context.text(resolved_store.name[resolved_store.index(member)]))};
+            auto const source{
+                ir.member_access(ir.named("other"),
+                                 context.text(resolved_store.name[resolved_store.index(member)]))};
             auto const invocation{
-                schema.members[index].nested_schema
-                    ? call(member_access(destination, "append_from"), {source})
-                    : call(container_function("ml::append_from"), {destination, source})};
-            calls.add(ExpressionStmt{invocation});
+                context.declarations.soa_members
+                        .nested_schema[context.declarations.soa_members.index(
+                            context.declarations.items(
+                                context.declarations.soas
+                                    .members[context.declarations.soas.index(schema)])[index])]
+                    ? ir.call(ir.member_access(destination, "append_from"), {source})
+                    : ir.call(container_function(context, "ml::append_from"),
+                              {destination, source})};
+            calls.add(ir.expression_statement(invocation));
         }
-        result.push_back(FunctionSpec{
-            .name = "append_from",
-            .return_type = "void",
-            .parameters = {FunctionParameter{"Other const&", "other"}},
-            .body = calls.build(),
-            .qualifiers = {.is_inline = true},
-            .define_in_header = true,
-            .template_parameters = "typename Other",
-            .requires_clause = "ml::SupportsApplyArrayPairsWith<" + schema.name + ", Other>",
-            .dependencies = {soa_concepts},
-        });
+        result.push_back([&] {
+            auto const created_function{
+                ir.function(ir.strings.intern("append_from"), ir.types.intern("void"))};
+            ir.set_function_parameters(
+                created_function,
+                {ir.parameter(ir.types.intern("Other const&"), ir.strings.intern("other"))});
+            ir.set_function_body(created_function, calls.build());
+            ir.function_flags(created_function).set_is_inline(true);
+            ir.function_flags(created_function).set_define_in_header(true);
+            ir.set_function_template(
+                created_function,
+                ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Other"))}));
+            ir.set_function_requires_clause(
+                created_function,
+                ir.template_id(
+                    ir.named("ml::SupportsApplyArrayPairsWith",
+                             {ir.types.dependency("ml::SupportsApplyArrayPairsWith",
+                                                  "ioj/soa_concepts.h")}),
+                    {ir.type_reference(ir.types.intern(context.text(
+                         context.declarations.soas.name[context.declarations.soas.index(schema)]))),
+                     ir.type_reference(ir.types.intern("Other"))}));
+            return created_function;
+        }());
     }
     return result;
 }
 
-auto soa_permutation_specs(std::vector<ResolvedMember> const&) -> std::vector<FunctionSpec> {
-    auto const apply_body{storage_operation_body("apply_permutation", {"indices"})};
+auto soa_permutation_functions(LoweringContext& context, std::span<ResolvedMemberId const>)
+    -> std::vector<FunctionId> {
+    auto& ir{context.ir};
+    auto const apply_body{storage_operation_body(context, "apply_permutation", {"indices"})};
     return {
-        FunctionSpec{
-            .name = "apply_permutation",
-            .return_type = "void",
-            .parameters = {FunctionParameter{CppType{"TArrayView<int32>", {tarray_view}},
-                                             "indices"}},
-            .body = apply_body,
-        },
-        FunctionSpec{
-            .name = "sort",
-            .return_type = "void",
-            .parameters = {FunctionParameter{"Compare&&", "compare"},
-                           FunctionParameter{CppType{"TArrayView<int32>", {tarray_view}},
-                                             "scratch_indices"}},
-            .body = {raw("ml::soa_ops::sort(*this, std::forward<Compare>(compare), "
-                         "scratch_indices);",
-                         {soa_storage_ops, TypeDependency{"std::forward", "utility", {}}})},
-            .qualifiers = {.is_inline = true},
-            .define_in_header = true,
-            .template_parameters = "typename Compare",
-        },
-        FunctionSpec{
-            .name = "sort",
-            .return_type = "void",
-            .parameters = {FunctionParameter{CppType{"TArrayView<int32>", {tarray_view}},
-                                             "scratch_indices"}},
-            .body = {raw("ml::soa_ops::sort<Compare>(*this, scratch_indices);", {soa_storage_ops})},
-            .qualifiers = {.is_inline = true},
-            .define_in_header = true,
-            .template_parameters = "auto Compare",
-        },
+        [&] {
+            auto const created_function{
+                ir.function(ir.strings.intern("apply_permutation"), ir.types.intern("void"))};
+            ir.set_function_parameters(
+                created_function,
+                {ir.parameter(
+                    ir.types.intern("TArrayView<int32>",
+                                    {ir.types.dependency("TArrayView", "Containers/ArrayView.h")}),
+                    ir.strings.intern("indices"))});
+            ir.set_function_body(created_function, apply_body);
+            return created_function;
+        }(),
+        [&] {
+            auto const created_function{
+                ir.function(ir.strings.intern("sort"), ir.types.intern("void"))};
+            ir.set_function_parameters(
+                created_function,
+                {ir.parameter(ir.types.intern("Compare&&"), ir.strings.intern("compare")),
+                 ir.parameter(
+                     ir.types.intern("TArrayView<int32>",
+                                     {ir.types.dependency("TArrayView", "Containers/ArrayView.h")}),
+                     ir.strings.intern("scratch_indices"))});
+            ir.set_function_body(
+                created_function,
+                {ir.raw("ml::soa_ops::sort(*this, std::forward<Compare>(compare), "
+                        "scratch_indices);",
+                        {ir.types.dependency("ml::soa_ops", "SandboxCore/soa_storage_ops.h"),
+                         ir.types.dependency("std::forward", "utility")})});
+            ir.function_flags(created_function).set_is_inline(true);
+            ir.function_flags(created_function).set_define_in_header(true);
+            ir.set_function_template(created_function,
+                                     ir.template_declaration({ir.type_template_parameter(
+                                         ir.strings.intern("Compare"))}));
+            return created_function;
+        }(),
+        [&] {
+            auto const created_function{
+                ir.function(ir.strings.intern("sort"), ir.types.intern("void"))};
+            ir.set_function_parameters(
+                created_function,
+                {ir.parameter(
+                    ir.types.intern("TArrayView<int32>",
+                                    {ir.types.dependency("TArrayView", "Containers/ArrayView.h")}),
+                    ir.strings.intern("scratch_indices"))});
+            ir.set_function_body(
+                created_function,
+                {ir.raw("ml::soa_ops::sort<Compare>(*this, scratch_indices);",
+                        {ir.types.dependency("ml::soa_ops", "SandboxCore/soa_storage_ops.h")})});
+            ir.function_flags(created_function).set_is_inline(true);
+            ir.function_flags(created_function).set_define_in_header(true);
+            ir.set_function_template(created_function,
+                                     ir.template_declaration({ir.value_template_parameter(
+                                         ir.types.intern("auto"), ir.strings.intern("Compare"))}));
+            return created_function;
+        }(),
     };
 }
 
-auto soa_storage_node(SoaSchema const& schema,
-                      std::vector<ResolvedMember> const& members,
+auto soa_storage_node(LoweringContext& context,
+                      DeclarationHandle schema,
+                      std::span<ResolvedMemberId const> members,
                       std::string const& view_name,
                       std::string const& const_view_name,
-                      TypeRegistry const& types,
+                      SoaFunctions const& functions,
                       Nodes& custom_source,
                       Nodes storage_prelude,
-                      std::map<std::string, SoaSchema const*> const* schemas) -> Node {
-    NodeListBuilder nodes;
-    nodes.add(UsingDeclaration{"View", CppType{view_name}}, 1)
-        .add(UsingDeclaration{"ConstView", CppType{const_view_name}}, 2);
+                      std::map<IdentifierId, DeclarationHandle> const* schemas) -> NodeId {
+    auto& resolved_store{context.ir.lowering.resolved_members};
+    auto& ir{context.ir};
+    NodeListBuilder nodes{ir};
+    nodes.add(ir.using_declaration(ir.strings.intern("View"), ir.types.intern(view_name)), 1)
+        .add(ir.using_declaration(ir.strings.intern("ConstView"), ir.types.intern(const_view_name)),
+             2);
     nodes.append(std::move(storage_prelude));
-    if (schema.equivalent_type.has_value()) {
-        nodes.append(soa_equivalent_nodes(*schema.equivalent_type, members, types)).new_lines(2);
+    if (context.declarations.soas.equivalent_type[context.declarations.soas.index(schema)]
+            .has_value()) {
+        nodes
+            .append(soa_equivalent_nodes(
+                context,
+                *context.declarations.soas.equivalent_type[context.declarations.soas.index(schema)],
+                members))
+            .new_lines(2);
     }
     auto api{lower_soa_api(
-        schema, types, SoaRepresentation::vector, SoaReceiver::owner, schema.name, schemas)};
+        context,
+        schema,
+        SoaRepresentation::vector,
+        SoaReceiver::owner,
+        context.text(context.declarations.soas.name[context.declarations.soas.index(schema)]),
+        schemas)};
     nodes.append(std::move(api.header)).new_lines(1);
     custom_source = std::move(api.source);
-    if (auto set{soa_set_spec(schema, members, false)}; set.has_value()) {
-        nodes.add(header_function(*set), 2);
+    if (auto set{soa_set_function(context, schema, members, false)}; set.has_value()) {
+        nodes.add(ir.header_function(*set), 2);
     }
-    if (auto add{soa_add_spec(schema, members)}; add.has_value()) {
-        nodes.add(header_function(*add), 2);
+    if (auto add{soa_add_function(context, schema, members)}; add.has_value()) {
+        nodes.add(ir.header_function(*add), 2);
     }
-    auto operations{soa_storage_operation_specs(schema, members)};
-    for (auto const& spec : operations) {
-        nodes.add(spec.define_in_header ? header_function(spec) : declaration(spec), 2);
+    for (auto const spec : functions.operations) {
+        nodes.add(ir.function_flags(spec).define_in_header() ? ir.header_function(spec)
+                                                             : ir.declaration(spec),
+                  2);
     }
-    auto permutations{soa_permutation_specs(members)};
-    for (auto const& spec : permutations) {
-        nodes.add(spec.define_in_header ? header_function(spec) : declaration(spec), 2);
+    for (auto const spec : functions.permutations) {
+        nodes.add(ir.function_flags(spec).define_in_header() ? ir.header_function(spec)
+                                                             : ir.declaration(spec),
+                  2);
     }
-    nodes.append(soa_storage_view_nodes(members)).new_lines(2);
+    nodes.append(soa_storage_view_nodes(context, members, functions.mutable_view)).new_lines(2);
     for (std::size_t index{0}; index < members.size(); ++index) {
-        nodes.add(Member{members[index].container_type, members[index].name});
+        nodes.add(
+            ir.instance_member(resolved_store.container_type[resolved_store.index(members[index])],
+                               resolved_store.name[resolved_store.index(members[index])]));
         if (index + 1 < members.size()) {
             nodes.new_lines();
         }
     }
-    return Struct{
-        .name = schema.name,
-        .children = nodes.build(),
-        .export_specifier = schema.export_specifier,
-    };
+    auto const created_record{
+        ir.record(context.declarations.soas.name[context.declarations.soas.index(schema)],
+                  nodes.build(),
+                  RecordKind::struct_)};
+    ir.set_record_export_specifier(
+        created_record,
+        context.declarations.soas.export_specifier[context.declarations.soas.index(schema)]);
+    return created_record;
 }
 
-} // namespace codegen::detail
+} // namespace lispb::codegen::detail

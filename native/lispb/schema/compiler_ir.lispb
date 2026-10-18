@@ -1,0 +1,52 @@
+(module compiler_node_kind
+  :header "node_kind.h"
+  :backend standard-library
+  :namespace lispb::codegen
+  (enum NodeKind std::uint8_t
+    (value invalid)
+    (value raw)
+    (value raw_lines)
+    (value line_comment)
+    (value block_comment)
+    (value block)
+    (value if_stmt)
+    (value switch_stmt)
+    (value break_stmt)
+    (value expression_stmt)
+    (value return_stmt)
+    (value assignment_stmt)
+    (value variable_declaration_stmt)
+    (value static_assert_)
+    (value new_lines)
+    (value access_specifier)
+    (value include)
+    (value include_dependencies)
+    (value forward_declaration)
+    (value friend_declaration)
+    (value using_declaration)
+    (value instance_member)
+    (value static_member)
+    (value constexpr_member)
+    (value function)
+    (value enum_)
+    (value struct_)
+    (value namespace_)))
+
+(module compiler_function_flags
+  :header "function_flags.h"
+  :backend standard-library
+  :namespace lispb::codegen
+  (packed-value FunctionFlags :storage std::uint8_t :mutable true
+    (field is_constexpr bool :bits 1)
+    (field is_inline bool :bits 1)
+    (field is_nodiscard bool :bits 1)
+    (field define_in_header bool :bits 1)))
+
+(module compiler_cpp_file_flags
+  :header "cpp_file_flags.h"
+  :backend standard-library
+  :namespace lispb::codegen
+  (packed-value CppFileFlags :storage std::uint8_t :mutable true
+    (field pragma_once bool :bits 1)
+    (field clang_format_off bool :bits 1)
+    (field format_generated bool :bits 1)))

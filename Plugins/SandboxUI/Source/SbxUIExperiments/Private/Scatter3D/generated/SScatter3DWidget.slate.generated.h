@@ -4,9 +4,7 @@
 #pragma once
 
 #include <utility>
-
 namespace SlateGenerated {
-
 struct SScatter3DWidgetBuilder {
     using ThisClass = ::SScatter3DWidget;
 
@@ -21,5 +19,4 @@ struct SScatter3DWidgetBuilder {
   private:
     ThisClass& self_;
 };
-
-}
+} // namespace SlateGenerated

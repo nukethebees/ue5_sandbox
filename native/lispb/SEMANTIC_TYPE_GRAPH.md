@@ -4,11 +4,11 @@ LispB S-expressions are the canonical editable and persisted schema. `load_sourc
 into the validated `codegen::Manifest`; `lispb::schema::resolve_type_graph` then resolves the
 declarations once into a consumer-neutral `TypeGraph`.
 
-Normal modules expose one ordered `DeclarationSchema` sequence. The graph visits that sequence
+Normal modules expose one ordered `DeclarationHandle` sequence. The graph visits that sequence
 directly, so a semantic node's declaration index is the index in its source module, including
 when different declaration kinds are interleaved. A declaration can own multiple semantic types:
-homogeneous layouts retain declaration identity and produce one `HomogeneousStorageType` per
-value-type specialization. These nodes carry `owning_declaration`; `types_for_declaration` includes
+homogeneous layouts retain declaration identity and produce one homogeneous storage row per
+value-type specialization. These nodes retain their source declaration handle; `types_for_declaration` includes
 both ordinary single-type declarations and generated families. The generic view and equivalent-type
 trait remain template descriptions in the authoritative layout schema, without a fabricated
 concrete TypeId or layout. Settings and umbrella output constructs are exceptional
@@ -35,16 +35,17 @@ not independently create storage. ABI and layout consumers follow physical type 
 derive sizes; they do not replace an enum or packed value with its storage type in the semantic
 model. `dependencies_of` and `users_of` expose the resulting directed graph.
 
-Each `ResolvedTypeRef` also retains the shared `PhysicalTypeUse` classification of that particular
-use. A `Node*` member navigates to canonical `Node`, while its physical form is an object pointer.
+Each `ResolvedOccurrenceId` names shared semantic type, C++ type, and `PhysicalTypeUse` columns.
+Bindings, type uses and semantic children retain the same four-byte handle. A `Node*` member
+navigates to canonical `Node`, while its physical form is an object pointer.
 Only value containment participates in aggregate cycle validation. C++ dependency ordering uses
 the same classification and emits local aggregate forward declarations for indirection.
 The bounded classifier preserves original C++ spelling for lowering; unsupported declarators are
 explicit rather than silently reduced to the base type. `native-layout::PhysicalFactsResolver`
 combines these uses, derived declaration layouts and target-profile facts without a second schema.
 
-`StaticTableType` describes rows, typed fixed-count columns and group result types. `FacadeType`
-describes its target binding and method signatures; target dependencies do not imply by-value
+Static-table columns describe rows, typed fixed-count columns and group result types. Facade columns
+describe target bindings and method signatures; target dependencies do not imply by-value
 storage. Homogeneous storage nodes resolve element, equivalent and input types. These semantic
 models do not assert an ABI layout for Unreal containers or facade reference members.
 
@@ -57,7 +58,7 @@ claim that a registration with no LispB references is unused throughout a C++ pr
 `lispb-schema` owns parsing-adjacent schema validation and this resolved graph. C++ code generation
 and `native-layout` are peer consumers. Consumer-specific analysis results and editable layout
 experiments may project the graph, but must not duplicate or discard LispB semantics. New logical
-kinds such as structs, unions, arrays, and containers should extend `TypeDefinition` and resolution
+kinds such as structs, unions, arrays, and containers should extend the semantic stores and resolution
 rather than introduce another schema hierarchy.
 
 `EditableSchemaDocument` is the authoring boundary above the resolved graph. It owns a mutable

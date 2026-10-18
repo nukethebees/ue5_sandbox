@@ -125,11 +125,7 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
         let status = Command::new("cmake")
             .arg("--build")
             .arg(&build)
-            .args([
-                "--target",
-                "generate-native-soa-fixture",
-                "kernel-native-generated-sources",
-            ])
+            .args(["--target", "generate-native-soa-fixture"])
             .current_dir(&root)
             .status()
             .map_err(|error| error.to_string())?;

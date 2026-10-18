@@ -1,20 +1,43 @@
 #pragma once
-
 #include "planner_ui.hpp"
 #include "planner_ui_support.hpp"
+
+#include <codegen/schema.h>
+#include <codegen/schema/declarations.h>
+#include <codegen/schema/enum_conversion.h>
+#include <codegen/schema/enum_reflection.h>
+#include <codegen/schema/integer_scalar_schemas.h>
+#include <codegen/schema/packed_field_kind.h>
+#include <codegen/schema/packed_field_schemas.h>
+#include <codegen/schema/packed_integer_value.h>
+#include <codegen/schema/packed_named_code_schemas.h>
+#include <codegen/schema/packed_reserved_bits_schemas.h>
+#include <codegen/schema/packed_segment_id.h>
+#include <codegen/schema/schema_range.h>
+#include <codegen/schema/semantic_relation_kind.h>
+#include <codegen/schema/semantic_relation_unit.h>
+#include <codegen/schema/storage_operation.h>
+#include <lispb/indices.h>
+#include <lispb/schema/packed_segment_id.h>
 
 #include <imgui.h>
 
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <filesystem>
 #include <limits>
+#include <optional>
+#include <ranges>
 #include <set>
+#include <span>
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 namespace ioj::layout_planner {
 namespace {
@@ -23,70 +46,71 @@ using namespace layout;
 using namespace lispb::schema;
 
 inline constexpr std::array semantic_relationship_kinds{
-    codegen::SemanticRelationKind::index_into,
-    codegen::SemanticRelationKind::count_of,
-    codegen::SemanticRelationKind::offset_into,
-    codegen::SemanticRelationKind::discriminates,
-    codegen::SemanticRelationKind::contains,
-    codegen::SemanticRelationKind::member_of,
-    codegen::SemanticRelationKind::quantises,
-    codegen::SemanticRelationKind::encoded_as,
-    codegen::SemanticRelationKind::references,
+    lispb::codegen::SemanticRelationKind::index_into,
+    lispb::codegen::SemanticRelationKind::count_of,
+    lispb::codegen::SemanticRelationKind::offset_into,
+    lispb::codegen::SemanticRelationKind::discriminates,
+    lispb::codegen::SemanticRelationKind::contains,
+    lispb::codegen::SemanticRelationKind::member_of,
+    lispb::codegen::SemanticRelationKind::quantises,
+    lispb::codegen::SemanticRelationKind::encoded_as,
+    lispb::codegen::SemanticRelationKind::references,
 };
 inline constexpr std::array semantic_relationship_units{
-    codegen::SemanticRelationUnit::elements,
-    codegen::SemanticRelationUnit::bytes,
+    lispb::codegen::SemanticRelationUnit::elements,
+    lispb::codegen::SemanticRelationUnit::bytes,
 };
-inline constexpr auto enum_conversions{codegen::all_enum_conversions()};
-inline constexpr auto enum_reflections{codegen::all_enum_reflections()};
-inline constexpr std::array enum_projection_reflections{codegen::EnumReflection::uenum,
-                                                        codegen::EnumReflection::blueprint};
+inline constexpr auto enum_conversions{lispb::codegen::all_enum_conversions()};
+inline constexpr auto enum_reflections{lispb::codegen::all_enum_reflections()};
+inline constexpr std::array enum_projection_reflections{lispb::codegen::EnumReflection::uenum,
+                                                        lispb::codegen::EnumReflection::blueprint};
 
 struct EnumConversionDescriptor {
     std::string_view source_name;
     char const* description;
 };
 
-inline auto enum_conversion_descriptor(codegen::EnumConversion const conversion)
+inline auto enum_conversion_descriptor(lispb::codegen::EnumConversion const conversion)
     -> EnumConversionDescriptor {
     switch (conversion) {
-        case codegen::EnumConversion::lex_to_string:
-            return {codegen::enum_conversion_name(conversion),
+        case lispb::codegen::EnumConversion::lex_to_string:
+            return {lispb::codegen::enum_conversion_name(conversion),
                     "Generate the basic enum-to-string conversion."};
-        case codegen::EnumConversion::string_view:
-            return {codegen::enum_conversion_name(conversion),
+        case lispb::codegen::EnumConversion::string_view:
+            return {lispb::codegen::enum_conversion_name(conversion),
                     "Generate a string-view conversion."};
-        case codegen::EnumConversion::string:
-            return {codegen::enum_conversion_name(conversion),
+        case lispb::codegen::EnumConversion::string:
+            return {lispb::codegen::enum_conversion_name(conversion),
                     "Generate an owning string conversion."};
-        case codegen::EnumConversion::lex_to_display_string:
-            return {codegen::enum_conversion_name(conversion),
+        case lispb::codegen::EnumConversion::lex_to_display_string:
+            return {lispb::codegen::enum_conversion_name(conversion),
                     "Generate the display-name conversion."};
-        case codegen::EnumConversion::display_string_view:
-            return {codegen::enum_conversion_name(conversion),
+        case lispb::codegen::EnumConversion::display_string_view:
+            return {lispb::codegen::enum_conversion_name(conversion),
                     "Generate a display-name string-view conversion."};
-        case codegen::EnumConversion::display_string:
-            return {codegen::enum_conversion_name(conversion),
+        case lispb::codegen::EnumConversion::display_string:
+            return {lispb::codegen::enum_conversion_name(conversion),
                     "Generate an owning display-name string conversion."};
-        case codegen::EnumConversion::lex_to_serialized_string:
-            return {codegen::enum_conversion_name(conversion),
+        case lispb::codegen::EnumConversion::lex_to_serialized_string:
+            return {lispb::codegen::enum_conversion_name(conversion),
                     "Generate the serialized-name conversion."};
-        case codegen::EnumConversion::try_parse_serialized:
-            return {codegen::enum_conversion_name(conversion),
+        case lispb::codegen::EnumConversion::try_parse_serialized:
+            return {lispb::codegen::enum_conversion_name(conversion),
                     "Generate parsing from serialized names."};
     }
     return {"unknown", "Unknown enum conversion."};
 }
 
-inline auto has_enum_conversion(std::vector<codegen::EnumConversion> const& conversions,
-                                codegen::EnumConversion const conversion) -> bool {
+inline auto has_enum_conversion(std::span<lispb::codegen::EnumConversion const> const conversions,
+                                lispb::codegen::EnumConversion const conversion) -> bool {
     return std::ranges::find(conversions, conversion) != conversions.end();
 }
 
-inline auto with_enum_conversion(std::vector<codegen::EnumConversion> const& conversions,
-                                 codegen::EnumConversion const changed_conversion,
-                                 bool const enabled) -> std::vector<codegen::EnumConversion> {
-    std::vector<codegen::EnumConversion> result;
+inline auto with_enum_conversion(std::span<lispb::codegen::EnumConversion const> const conversions,
+                                 lispb::codegen::EnumConversion const changed_conversion,
+                                 bool const enabled)
+    -> std::vector<lispb::codegen::EnumConversion> {
+    std::vector<lispb::codegen::EnumConversion> result;
     result.reserve(enum_conversions.size());
     for (auto const conversion : enum_conversions) {
         auto const include{conversion == changed_conversion
@@ -104,39 +128,41 @@ struct StorageOperationDescriptor {
     char const* description;
 };
 
-inline auto storage_operation_descriptor(codegen::StorageOperation const operation)
+inline auto storage_operation_descriptor(lispb::codegen::StorageOperation const operation)
     -> StorageOperationDescriptor {
     switch (operation) {
-        case codegen::StorageOperation::reset:
+        case lispb::codegen::StorageOperation::reset:
             return {"reset", "Reset every column to an empty state."};
-        case codegen::StorageOperation::reserve:
+        case lispb::codegen::StorageOperation::reserve:
             return {"reserve", "Reserve capacity in every column."};
-        case codegen::StorageOperation::add_uninitialised:
+        case lispb::codegen::StorageOperation::add_uninitialised:
             return {"add-uninitialised", "Append rows without value-initialising their elements."};
-        case codegen::StorageOperation::add_defaulted:
+        case lispb::codegen::StorageOperation::add_defaulted:
             return {"add-defaulted", "Append value-initialised rows."};
-        case codegen::StorageOperation::remove_at_swap:
+        case lispb::codegen::StorageOperation::remove_at_swap:
             return {"remove-at-swap", "Remove rows by replacing them with rows from the end."};
-        case codegen::StorageOperation::set_num:
+        case lispb::codegen::StorageOperation::set_num:
             return {"set-num", "Resize every column to the requested row count."};
-        case codegen::StorageOperation::copy_element:
+        case lispb::codegen::StorageOperation::copy_element:
             return {"copy-element", "Copy one logical row between indices."};
-        case codegen::StorageOperation::append_from:
+        case lispb::codegen::StorageOperation::append_from:
             return {"append-from", "Append logical rows from another compatible view."};
     }
     return {"unknown", "Unknown storage operation."};
 }
 
-inline auto has_storage_operation(std::vector<codegen::StorageOperation> const& operations,
-                                  codegen::StorageOperation const operation) -> bool {
+inline auto
+    has_storage_operation(std::span<lispb::codegen::StorageOperation const> const operations,
+                          lispb::codegen::StorageOperation const operation) -> bool {
     return std::ranges::find(operations, operation) != operations.end();
 }
 
-inline auto with_storage_operation(std::vector<codegen::StorageOperation> const& operations,
-                                   codegen::StorageOperation const changed_operation,
-                                   bool const enabled) -> std::vector<codegen::StorageOperation> {
-    auto const canonical_operations{codegen::all_storage_operations()};
-    std::vector<codegen::StorageOperation> result;
+inline auto
+    with_storage_operation(std::span<lispb::codegen::StorageOperation const> const operations,
+                           lispb::codegen::StorageOperation const changed_operation,
+                           bool const enabled) -> std::vector<lispb::codegen::StorageOperation> {
+    auto const canonical_operations{lispb::codegen::all_storage_operations()};
+    std::vector<lispb::codegen::StorageOperation> result;
     result.reserve(canonical_operations.size());
     for (auto const operation : canonical_operations) {
         auto const include{operation == changed_operation
@@ -149,11 +175,13 @@ inline auto with_storage_operation(std::vector<codegen::StorageOperation> const&
     return result;
 }
 
-inline auto unique_soa_using_declaration(std::vector<std::string> const& declarations)
+inline auto unique_soa_using_declaration(lispb::codegen::Declarations const& store,
+                                         lispb::codegen::SchemaRange<lispb::StringId> declarations)
     -> std::string {
     auto alias{std::string{"alias"}};
     for (auto suffix{2U};; ++suffix) {
-        auto const alias_taken{std::ranges::any_of(declarations, [&](std::string const& value) {
+        auto const alias_taken{std::ranges::any_of(store.items(declarations), [&](auto const id) {
+            auto const value{store.strings().view(id)};
             auto const equals{value.find('=')};
             if (equals == std::string::npos) {
                 return false;
@@ -174,23 +202,16 @@ inline auto unique_soa_using_declaration(std::vector<std::string> const& declara
     }
 }
 
-inline auto unique_soa_function_name(std::vector<codegen::FunctionSchema> const& functions,
-                                     std::string const& stem) -> std::string {
+inline auto unique_child_name(lispb::codegen::Declarations const& store,
+                              auto const& columns,
+                              std::span<lispb::IdentifierId const> names,
+                              auto const& children,
+                              std::string const& stem) -> std::string {
     auto suffix{std::size_t{1}};
     auto candidate{stem};
-    while (std::ranges::find(functions, candidate, &codegen::FunctionSchema::name) !=
-           functions.end()) {
-        candidate = stem + std::to_string(suffix++);
-    }
-    return candidate;
-}
-
-inline auto unique_function_parameter_name(std::vector<codegen::ParameterSchema> const& parameters,
-                                           std::string const& stem) -> std::string {
-    auto suffix{std::size_t{1}};
-    auto candidate{stem};
-    while (std::ranges::find(parameters, candidate, &codegen::ParameterSchema::name) !=
-           parameters.end()) {
+    while (std::ranges::any_of(children, [&](auto const id) {
+        return store.strings().view(names[columns.index(id)]) == candidate;
+    })) {
         candidate = stem + std::to_string(suffix++);
     }
     return candidate;
@@ -286,184 +307,130 @@ inline auto matching_unsigned_type(std::string_view const type) -> std::optional
     return found == pairs.end() ? std::nullopt : std::optional<std::string>{found->second};
 }
 
-inline auto unique_segment_name(std::vector<codegen::PackedSegmentSchema> const& segments,
-                                std::string const& stem) -> std::string {
+inline auto
+    unique_segment_name(lispb::codegen::Declarations const& store,
+                        lispb::codegen::SchemaRange<lispb::codegen::PackedSegmentId> const segments,
+                        std::string const& stem) -> std::string {
     auto suffix{std::size_t{1}};
     auto candidate{stem};
-    while (std::ranges::any_of(segments, [&](auto const& segment) {
-        return codegen::packed_segment_name(segment) == candidate;
+    while (std::ranges::any_of(store.items(segments), [&](auto const segment) {
+        auto const field{((segment).kind() == lispb::codegen::PackedSegmentKind::field
+                              ? std::optional{segment}
+                              : std::nullopt)};
+        auto const name{
+            field ? store.packed_fields.name[store.packed_fields.index(*field)]
+                  : store.packed_reserved_bits.name[store.packed_reserved_bits.index(segment)]};
+        return store.strings().view(name) == candidate;
     })) {
         candidate = stem + std::to_string(suffix++);
     }
     return candidate;
 }
 
-inline auto unique_code_name(std::vector<codegen::PackedNamedCodeSchema> const& codes,
-                             std::string const& stem) -> std::string {
-    auto suffix{std::size_t{1}};
-    auto candidate{stem};
-    while (std::ranges::find(codes, candidate, &codegen::PackedNamedCodeSchema::name) !=
-           codes.end()) {
-        candidate = stem + std::to_string(suffix++);
-    }
-    return candidate;
-}
-
-inline auto next_packed_integer(codegen::PackedIntegerValue const value)
-    -> std::optional<codegen::PackedIntegerValue> {
+inline auto next_packed_integer(lispb::codegen::PackedIntegerValue const value)
+    -> std::optional<lispb::codegen::PackedIntegerValue> {
     if (value.negative) {
         return value.magnitude == 1
-                 ? codegen::PackedIntegerValue{0}
-                 : codegen::PackedIntegerValue::from_parts(true, value.magnitude - 1);
+                 ? lispb::codegen::PackedIntegerValue{0}
+                 : lispb::codegen::PackedIntegerValue::from_parts(true, value.magnitude - 1);
     }
     return value.magnitude == std::numeric_limits<std::uint64_t>::max()
              ? std::nullopt
-             : std::optional{codegen::PackedIntegerValue{value.magnitude + 1}};
+             : std::optional{lispb::codegen::PackedIntegerValue{value.magnitude + 1}};
 }
 
-inline auto previous_packed_integer(codegen::PackedIntegerValue const value)
-    -> std::optional<codegen::PackedIntegerValue> {
+inline auto previous_packed_integer(lispb::codegen::PackedIntegerValue const value)
+    -> std::optional<lispb::codegen::PackedIntegerValue> {
     if (!value.negative) {
         return value.magnitude == 0
-                 ? std::optional{codegen::PackedIntegerValue::from_parts(true, 1)}
-                 : std::optional{codegen::PackedIntegerValue{value.magnitude - 1}};
+                 ? std::optional{lispb::codegen::PackedIntegerValue::from_parts(true, 1)}
+                 : std::optional{lispb::codegen::PackedIntegerValue{value.magnitude - 1}};
     }
     return value.magnitude == std::numeric_limits<std::uint64_t>::max()
              ? std::nullopt
-             : std::optional{codegen::PackedIntegerValue::from_parts(true, value.magnitude + 1)};
+             : std::optional{
+                   lispb::codegen::PackedIntegerValue::from_parts(true, value.magnitude + 1)};
 }
 
-inline auto first_available_code(codegen::PackedFieldSchema const& field,
+inline auto first_available_code(lispb::codegen::Declarations const& store,
+                                 lispb::codegen::PackedSegmentId const& field,
                                  std::uint32_t const effective_width,
                                  bool const sentinel)
-    -> std::optional<codegen::PackedIntegerValue> {
-    auto const signed_field{field.kind == codegen::PackedFieldKind::signed_integer};
+    -> std::optional<lispb::codegen::PackedIntegerValue> {
+    auto const signed_field{store.packed_fields.kind[store.packed_fields.index(field)] ==
+                            lispb::codegen::PackedFieldKind::signed_integer};
     auto const magnitude_limit{effective_width >= 64 ? (std::uint64_t{1} << 63)
                                                      : (std::uint64_t{1} << (effective_width - 1))};
-    auto const field_minimum{signed_field
-                                 ? codegen::PackedIntegerValue::from_parts(true, magnitude_limit)
-                                 : codegen::PackedIntegerValue{0}};
-    auto const field_maximum{signed_field ? codegen::PackedIntegerValue{magnitude_limit - 1}
-                                          : codegen::PackedIntegerValue{
+    auto const field_minimum{
+        signed_field ? lispb::codegen::PackedIntegerValue::from_parts(true, magnitude_limit)
+                     : lispb::codegen::PackedIntegerValue{0}};
+    auto const field_maximum{signed_field ? lispb::codegen::PackedIntegerValue{magnitude_limit - 1}
+                                          : lispb::codegen::PackedIntegerValue{
                                                 effective_width >= 64
                                                     ? std::numeric_limits<std::uint64_t>::max()
                                                     : (std::uint64_t{1} << effective_width) - 1}};
-    auto const unused{[&](codegen::PackedIntegerValue const candidate) {
-        return std::ranges::find(field.named_codes,
-                                 candidate,
-                                 &codegen::PackedNamedCodeSchema::value) == field.named_codes.end();
+    auto const unused{[&](lispb::codegen::PackedIntegerValue const candidate) {
+        return std::ranges::none_of(
+            store.items(store.packed_fields.named_codes[store.packed_fields.index(field)]),
+            [&](auto const id) {
+                return store.packed_named_codes.value[store.packed_named_codes.index(id)] ==
+                       candidate;
+            });
     }};
-    auto const search{
-        [&](codegen::PackedIntegerValue const first,
-            codegen::PackedIntegerValue const last) -> std::optional<codegen::PackedIntegerValue> {
-            auto candidate{first};
-            for (std::size_t attempt{}; attempt <= field.named_codes.size() &&
-                                        codegen::packed_integer_less_equal(candidate, last);
-                 ++attempt) {
-                if (unused(candidate)) {
-                    return candidate;
-                }
-                auto const next{next_packed_integer(candidate)};
-                if (!next.has_value()) {
-                    break;
-                }
-                candidate = *next;
+    auto const search{[&](lispb::codegen::PackedIntegerValue const first,
+                          lispb::codegen::PackedIntegerValue const last)
+                          -> std::optional<lispb::codegen::PackedIntegerValue> {
+        auto candidate{first};
+        for (std::size_t attempt{};
+             attempt <= store.packed_fields.named_codes[store.packed_fields.index(field)].count &&
+             lispb::codegen::packed_integer_less_equal(candidate, last);
+             ++attempt) {
+            if (unused(candidate)) {
+                return candidate;
             }
-            return std::nullopt;
-        }};
+            auto const next{next_packed_integer(candidate)};
+            if (!next.has_value()) {
+                break;
+            }
+            candidate = *next;
+        }
+        return std::nullopt;
+    }};
 
     if (!sentinel) {
-        return search(field.minimum_value.value_or(codegen::PackedIntegerValue{0}),
-                      field.maximum_value.value_or(field_maximum));
+        return search(store.packed_fields.minimum_value[store.packed_fields.index(field)].value_or(
+                          lispb::codegen::PackedIntegerValue{0}),
+                      store.packed_fields.maximum_value[store.packed_fields.index(field)].value_or(
+                          field_maximum));
     }
-    if (!field.minimum_value.has_value()) {
+    if (!store.packed_fields.minimum_value[store.packed_fields.index(field)].has_value()) {
         return std::nullopt;
     }
-    if (codegen::packed_integer_less(*field.maximum_value, field_maximum)) {
-        if (auto const next{next_packed_integer(*field.maximum_value)}; next.has_value()) {
+    if (lispb::codegen::packed_integer_less(
+            *store.packed_fields.maximum_value[store.packed_fields.index(field)], field_maximum)) {
+        if (auto const next{next_packed_integer(
+                *store.packed_fields.maximum_value[store.packed_fields.index(field)])};
+            next.has_value()) {
             if (auto value{search(*next, field_maximum)}) {
                 return value;
             }
         }
     }
-    if (codegen::packed_integer_less(field_minimum, *field.minimum_value)) {
-        if (auto const previous{previous_packed_integer(*field.minimum_value)};
+    if (lispb::codegen::packed_integer_less(
+            field_minimum, *store.packed_fields.minimum_value[store.packed_fields.index(field)])) {
+        if (auto const previous{previous_packed_integer(
+                *store.packed_fields.minimum_value[store.packed_fields.index(field)])};
             previous.has_value()) {
             auto candidate{*previous};
-            for (std::size_t attempt{}; attempt <= field.named_codes.size(); ++attempt) {
-                if (unused(candidate)) {
-                    return candidate;
-                }
-                auto const prior{previous_packed_integer(candidate)};
-                if (!prior.has_value() || codegen::packed_integer_less(*prior, field_minimum)) {
-                    break;
-                }
-                candidate = *prior;
-            }
-        }
-    }
-    return std::nullopt;
-}
-
-inline auto first_available_scalar_code(codegen::IntegerScalarSchema const& scalar,
-                                        std::uint32_t const effective_width,
-                                        bool const sentinel)
-    -> std::optional<codegen::PackedIntegerValue> {
-    auto const signed_limit{effective_width >= 64 ? (std::uint64_t{1} << 63)
-                                                  : (std::uint64_t{1} << (effective_width - 1))};
-    auto const representable_minimum{
-        scalar.signedness ? codegen::PackedIntegerValue::from_parts(true, signed_limit)
-                          : codegen::PackedIntegerValue{0}};
-    auto const representable_maximum{
-        scalar.signedness ? codegen::PackedIntegerValue{signed_limit - 1}
-                          : codegen::PackedIntegerValue{
-                                effective_width >= 64 ? std::numeric_limits<std::uint64_t>::max()
-                                                      : (std::uint64_t{1} << effective_width) - 1}};
-    auto const unused{[&](codegen::PackedIntegerValue const candidate) {
-        return std::ranges::find(
-                   scalar.named_codes, candidate, &codegen::PackedNamedCodeSchema::value) ==
-               scalar.named_codes.end();
-    }};
-    auto const search{
-        [&](codegen::PackedIntegerValue const first,
-            codegen::PackedIntegerValue const last) -> std::optional<codegen::PackedIntegerValue> {
-            auto candidate{first};
-            for (std::size_t attempt{}; attempt <= scalar.named_codes.size() &&
-                                        codegen::packed_integer_less_equal(candidate, last);
+            for (std::size_t attempt{};
+                 attempt <= store.packed_fields.named_codes[store.packed_fields.index(field)].count;
                  ++attempt) {
-                if (unused(candidate)) {
-                    return candidate;
-                }
-                auto const next{next_packed_integer(candidate)};
-                if (!next.has_value()) {
-                    break;
-                }
-                candidate = *next;
-            }
-            return std::nullopt;
-        }};
-
-    if (!sentinel) {
-        return search(scalar.minimum_value, scalar.maximum_value);
-    }
-    if (codegen::packed_integer_less(scalar.maximum_value, representable_maximum)) {
-        if (auto const next{next_packed_integer(scalar.maximum_value)}; next.has_value()) {
-            if (auto value{search(*next, representable_maximum)}) {
-                return value;
-            }
-        }
-    }
-    if (codegen::packed_integer_less(representable_minimum, scalar.minimum_value)) {
-        if (auto const previous{previous_packed_integer(scalar.minimum_value)};
-            previous.has_value()) {
-            auto candidate{*previous};
-            for (std::size_t attempt{}; attempt <= scalar.named_codes.size(); ++attempt) {
                 if (unused(candidate)) {
                     return candidate;
                 }
                 auto const prior{previous_packed_integer(candidate)};
                 if (!prior.has_value() ||
-                    codegen::packed_integer_less(*prior, representable_minimum)) {
+                    lispb::codegen::packed_integer_less(*prior, field_minimum)) {
                     break;
                 }
                 candidate = *prior;
@@ -473,49 +440,91 @@ inline auto first_available_scalar_code(codegen::IntegerScalarSchema const& scal
     return std::nullopt;
 }
 
-inline auto unique_member_name(std::vector<codegen::SoaMemberSchema> const& members,
-                               std::string const& stem) -> std::string {
-    auto suffix{std::size_t{1}};
-    auto candidate{stem};
-    while (std::ranges::find(members, candidate, &codegen::SoaMemberSchema::name) !=
-           members.end()) {
-        candidate = stem + std::to_string(suffix++);
-    }
-    return candidate;
-}
+inline auto first_available_scalar_code(lispb::codegen::Declarations const& store,
+                                        lispb::codegen::DeclarationHandle const& scalar,
+                                        std::uint32_t const effective_width,
+                                        bool const sentinel)
+    -> std::optional<lispb::codegen::PackedIntegerValue> {
+    auto const signed_limit{effective_width >= 64 ? (std::uint64_t{1} << 63)
+                                                  : (std::uint64_t{1} << (effective_width - 1))};
+    auto const representable_minimum{
+        store.integer_scalars.signedness[store.integer_scalars.index(scalar)]
+            ? lispb::codegen::PackedIntegerValue::from_parts(true, signed_limit)
+            : lispb::codegen::PackedIntegerValue{0}};
+    auto const representable_maximum{
+        store.integer_scalars.signedness[store.integer_scalars.index(scalar)]
+            ? lispb::codegen::PackedIntegerValue{signed_limit - 1}
+            : lispb::codegen::PackedIntegerValue{effective_width >= 64
+                                                     ? std::numeric_limits<std::uint64_t>::max()
+                                                     : (std::uint64_t{1} << effective_width) - 1}};
+    auto const unused{[&](lispb::codegen::PackedIntegerValue const candidate) {
+        return std::ranges::none_of(
+            store.items(store.integer_scalars.named_codes[store.integer_scalars.index(scalar)]),
+            [&](auto const id) {
+                return store.packed_named_codes.value[store.packed_named_codes.index(id)] ==
+                       candidate;
+            });
+    }};
+    auto const search{[&](lispb::codegen::PackedIntegerValue const first,
+                          lispb::codegen::PackedIntegerValue const last)
+                          -> std::optional<lispb::codegen::PackedIntegerValue> {
+        auto candidate{first};
+        for (std::size_t attempt{};
+             attempt <=
+                 store.integer_scalars.named_codes[store.integer_scalars.index(scalar)].count &&
+             lispb::codegen::packed_integer_less_equal(candidate, last);
+             ++attempt) {
+            if (unused(candidate)) {
+                return candidate;
+            }
+            auto const next{next_packed_integer(candidate)};
+            if (!next.has_value()) {
+                break;
+            }
+            candidate = *next;
+        }
+        return std::nullopt;
+    }};
 
-inline auto
-    unique_mask_dimension_name(std::vector<codegen::SoaMaskDimensionSchema> const& dimensions,
-                               std::string const& stem) -> std::string {
-    auto suffix{std::size_t{1}};
-    auto candidate{stem};
-    while (std::ranges::find(dimensions, candidate, &codegen::SoaMaskDimensionSchema::index_name) !=
-           dimensions.end()) {
-        candidate = stem + std::to_string(suffix++);
+    if (!sentinel) {
+        return search(store.integer_scalars.minimum_value[store.integer_scalars.index(scalar)],
+                      store.integer_scalars.maximum_value[store.integer_scalars.index(scalar)]);
     }
-    return candidate;
-}
-
-inline auto unique_record_member_name(std::vector<codegen::RecordMemberSchema> const& members,
-                                      std::string const& stem) -> std::string {
-    auto suffix{std::size_t{1}};
-    auto candidate{stem};
-    while (std::ranges::find(members, candidate, &codegen::RecordMemberSchema::name) !=
-           members.end()) {
-        candidate = stem + std::to_string(suffix++);
+    if (lispb::codegen::packed_integer_less(
+            store.integer_scalars.maximum_value[store.integer_scalars.index(scalar)],
+            representable_maximum)) {
+        if (auto const next{next_packed_integer(
+                store.integer_scalars.maximum_value[store.integer_scalars.index(scalar)])};
+            next.has_value()) {
+            if (auto value{search(*next, representable_maximum)}) {
+                return value;
+            }
+        }
     }
-    return candidate;
-}
-
-template <typename Alternative>
-inline auto unique_union_alternative_name(std::vector<Alternative> const& alternatives,
-                                          std::string const& stem) -> std::string {
-    auto suffix{std::size_t{1}};
-    auto candidate{stem};
-    while (std::ranges::find(alternatives, candidate, &Alternative::name) != alternatives.end()) {
-        candidate = stem + std::to_string(suffix++);
+    if (lispb::codegen::packed_integer_less(
+            representable_minimum,
+            store.integer_scalars.minimum_value[store.integer_scalars.index(scalar)])) {
+        if (auto const previous{previous_packed_integer(
+                store.integer_scalars.minimum_value[store.integer_scalars.index(scalar)])};
+            previous.has_value()) {
+            auto candidate{*previous};
+            for (std::size_t attempt{};
+                 attempt <=
+                 store.integer_scalars.named_codes[store.integer_scalars.index(scalar)].count;
+                 ++attempt) {
+                if (unused(candidate)) {
+                    return candidate;
+                }
+                auto const prior{previous_packed_integer(candidate)};
+                if (!prior.has_value() ||
+                    lispb::codegen::packed_integer_less(*prior, representable_minimum)) {
+                    break;
+                }
+                candidate = *prior;
+            }
+        }
     }
-    return candidate;
+    return std::nullopt;
 }
 
 template <typename Value>

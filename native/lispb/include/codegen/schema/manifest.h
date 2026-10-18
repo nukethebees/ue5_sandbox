@@ -1,18 +1,28 @@
 #pragma once
 
-#include <codegen/schema/module_schema.h>
-#include <codegen/schema/registered_type_schema.h>
+#include <codegen/schema/module_handle.h>
+#include <codegen/schema/type_registry.h>
 
-#include <map>
-#include <string>
 #include <vector>
 
-namespace codegen {
+namespace lispb::codegen {
+
+class Declarations;
 
 struct Manifest {
+    Manifest(int version,
+             TypeRegistry registry,
+             Declarations& store,
+             std::vector<ModuleHandle> ordered_modules);
+    Manifest(Manifest const&) = default;
+    Manifest(Manifest&&) = default;
+    auto operator=(Manifest const& other) -> Manifest&;
+    auto operator=(Manifest&& other) noexcept -> Manifest&;
+
     int schema_version;
     TypeRegistry types;
-    std::vector<ModuleSchema> modules;
+    Declarations& declarations;
+    std::vector<ModuleHandle> modules;
 };
 
-} // namespace codegen
+} // namespace lispb::codegen

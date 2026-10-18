@@ -37,10 +37,8 @@ enum class ShipFireRate : ShipFireRateUnderlying {
 
 } // namespace ioj::sim
 namespace ml {
-
 template <>
 [[nodiscard]] constexpr auto enum_count<::ioj::sim::ShipFireRate>() noexcept -> std::size_t {
     return 3;
 }
-
 } // namespace ml

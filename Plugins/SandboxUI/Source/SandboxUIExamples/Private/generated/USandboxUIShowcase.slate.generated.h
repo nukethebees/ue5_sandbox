@@ -4,9 +4,7 @@
 #pragma once
 
 #include <utility>
-
 namespace SlateGenerated {
-
 struct USandboxUIShowcaseBuilder {
     using ThisClass = ::USandboxUIShowcase;
 
@@ -63,5 +61,4 @@ struct USandboxUIShowcaseBuilder {
   private:
     ThisClass& self_;
 };
-
-}
+} // namespace SlateGenerated

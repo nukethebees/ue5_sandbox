@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <ranges>
 #include <vector>
 
 namespace ml::native_soa_benchmarks {

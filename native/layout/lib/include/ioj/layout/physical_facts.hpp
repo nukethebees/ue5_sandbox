@@ -2,7 +2,18 @@
 
 #include <ioj/layout/analyzer.hpp>
 
+#include <codegen/ast/indices.h>
+#include <codegen/schema/module_handle.h>
+#include <codegen/schema/physical_type_form.h>
+#include <lispb/indices.h>
+#include <lispb/project_loader.h>
+#include <lispb/schema/indices.h>
+
+#include <cstdint>
 #include <map>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace ioj::layout {
 
@@ -17,9 +28,9 @@ class PhysicalFactsResolver {
                           AbiProfile const& abi,
                           Variant const* variant = nullptr);
 
-    auto resolve(lispb::schema::ResolvedTypeRef const& use) -> PhysicalFactsResult;
+    auto resolve(lispb::schema::ResolvedOccurrenceId const use) -> PhysicalFactsResult;
     auto resolve(lispb::schema::TypeId type) -> PhysicalFactsResult;
-    auto resolve_spelling(std::string const& spelling, std::string const& module = {})
+    auto resolve_spelling(std::string const& spelling, lispb::codegen::ModuleHandle module = {})
         -> PhysicalFactsResult;
     auto analyze_record(lispb::schema::TypeId type) -> RecordAnalysis;
     auto analyze_union(lispb::schema::TypeId type) -> UnionAnalysis;
@@ -29,7 +40,15 @@ class PhysicalFactsResolver {
                                std::optional<std::uint64_t>& size,
                                std::optional<std::uint64_t>& alignment,
                                std::vector<Diagnostic>& diagnostics) const;
-    auto facts_for(lispb::schema::ResolvedTypeRef const& use,
+    auto facts_for(lispb::schema::ResolvedOccurrenceId const use,
+                   std::vector<lispb::schema::TypeId>& active,
+                   std::vector<Diagnostic>& diagnostics,
+                   std::string const& context) -> std::optional<TypeFacts>;
+    auto facts_for(lispb::schema::TypeId semantic_type,
+                   lispb::codegen::CppTypeId cpp_type,
+                   lispb::codegen::PhysicalTypeForm form,
+                   lispb::StringId object_spelling,
+                   bool names_semantic_type,
                    std::vector<lispb::schema::TypeId>& active,
                    std::vector<Diagnostic>& diagnostics,
                    std::string const& context) -> std::optional<TypeFacts>;

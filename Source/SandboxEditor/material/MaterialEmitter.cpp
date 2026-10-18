@@ -1,5 +1,18 @@
 #include "SandboxEditor/material/MaterialEmitter.h"
 
+#include <lispb/indices.h>
+#include <material_gen/BlendMode.h>
+#include <material_gen/Indices.h>
+#include <material_gen/MaterialDomain.h>
+#include <material_gen/MaterialIR.h>
+#include <material_gen/NodeKind.h>
+#include <material_gen/Nodes.h>
+#include <material_gen/PositionSpace.h>
+#include <material_gen/SceneTexture.h>
+#include <material_gen/ShadingModel.h>
+#include <material_gen/TextureSamplerType.h>
+#include <material_gen/ValueType.h>
+
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Engine/Texture.h"
 #include "MaterialDomain.h"
@@ -44,12 +57,22 @@
 #include "UObject/Package.h"
 #include "UObject/SavePackage.h"
 
+#include <cstddef>
+#include <cstdint>
+#include <string>
+
 namespace material_synth {
 namespace {
 
-auto object_path(MaterialSettings const& settings) -> FString {
-    auto const package{FString{UTF8_TO_TCHAR(settings.package_path.c_str())}};
-    auto const name{FString{UTF8_TO_TCHAR(settings.name.c_str())}};
+auto text(MaterialIR const& ir, lispb::StringId const id) -> FString {
+    auto const value{ir.text(id)};
+    FUTF8ToTCHAR const converted{value.data(), static_cast<int32>(value.size())};
+    return FString{converted.Length(), converted.Get()};
+}
+
+auto object_path(MaterialIR const& ir) -> FString {
+    auto const package{text(ir, ir.settings.package_path)};
+    auto const name{text(ir, ir.settings.name)};
     return package + TEXT(".") + name;
 }
 
@@ -93,9 +116,9 @@ struct ExpressionValue {
     FString output_name;
 };
 
-auto output_name(Node const& node) -> FString {
-    if ((node.kind == NodeKind::parameter || node.kind == NodeKind::sample) &&
-        node.type == ValueType::float4) {
+auto output_name(Nodes const& nodes, NodeHandle node) -> FString {
+    if ((nodes.kind(node) == NodeKind::parameter || nodes.kind(node) == NodeKind::sample) &&
+        nodes.type(node) == ValueType::float4) {
         return TEXT("RGBA");
     }
     return {};
@@ -142,18 +165,17 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
 
     for (auto const& dependency : ir.texture_dependencies) {
         auto* const texture{
-            LoadObject<UTexture>(nullptr, UTF8_TO_TCHAR(dependency.c_str()), nullptr, LOAD_NoWarn)};
+            LoadObject<UTexture>(nullptr, *text(ir, dependency), nullptr, LOAD_NoWarn)};
         if (texture == nullptr) {
-            result.errors.Add(
-                FString::Printf(TEXT("Texture dependency disappeared before emission: %s"),
-                                UTF8_TO_TCHAR(dependency.c_str())));
+            result.errors.Add(FString::Printf(
+                TEXT("Texture dependency disappeared before emission: %s"), *text(ir, dependency)));
         }
     }
     if (!result.errors.IsEmpty()) {
         return result;
     }
 
-    auto const desired_object_path{object_path(ir.settings)};
+    auto const desired_object_path{object_path(ir)};
     auto* existing{LoadObject<UObject>(nullptr, *desired_object_path, nullptr, LOAD_NoWarn)};
     auto* material{Cast<UMaterial>(existing)};
     if (existing != nullptr && material == nullptr) {
@@ -169,13 +191,12 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
         return result;
     }
 
-    auto* const package{material != nullptr
-                            ? material->GetOutermost()
-                            : CreatePackage(UTF8_TO_TCHAR(ir.settings.package_path.c_str()))};
+    auto* const package{material != nullptr ? material->GetOutermost()
+                                            : CreatePackage(*text(ir, ir.settings.package_path))};
     bool const is_new{material == nullptr};
     if (material == nullptr) {
         material = NewObject<UMaterial>(package,
-                                        FName{UTF8_TO_TCHAR(ir.settings.name.c_str())},
+                                        FName{*text(ir, ir.settings.name)},
                                         RF_Public | RF_Standalone | RF_Transactional);
     }
     if (material == nullptr) {
@@ -229,69 +250,73 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
 
     auto const node_count{ir.nodes.size()};
     for (std::size_t index{}; index < node_count; ++index) {
-        auto const& node{ir.nodes[index]};
+        auto const node{NodeHandle{static_cast<std::uint32_t>(index)}};
         UMaterialExpression* expression{};
-        switch (node.kind) {
+        switch (ir.nodes.kind(node)) {
             case NodeKind::constant:
-                if (node.type == ValueType::float1) {
+                if (ir.nodes.type(node) == ValueType::float1) {
                     auto* const constant{CastChecked<UMaterialExpressionConstant>(
                         create_expression(UMaterialExpressionConstant::StaticClass()))};
-                    constant->R = static_cast<float>(node.constant[0]);
+                    constant->R = static_cast<float>(ir.nodes.constant(node, 0));
                     expression = constant;
-                } else if (node.type == ValueType::float2) {
+                } else if (ir.nodes.type(node) == ValueType::float2) {
                     auto* const constant{CastChecked<UMaterialExpressionConstant2Vector>(
                         create_expression(UMaterialExpressionConstant2Vector::StaticClass()))};
-                    constant->R = static_cast<float>(node.constant[0]);
-                    constant->G = static_cast<float>(node.constant[1]);
+                    constant->R = static_cast<float>(ir.nodes.constant(node, 0));
+                    constant->G = static_cast<float>(ir.nodes.constant(node, 1));
                     expression = constant;
-                } else if (node.type == ValueType::float3) {
+                } else if (ir.nodes.type(node) == ValueType::float3) {
                     auto* const constant{CastChecked<UMaterialExpressionConstant3Vector>(
                         create_expression(UMaterialExpressionConstant3Vector::StaticClass()))};
-                    constant->Constant = FLinearColor{static_cast<float>(node.constant[0]),
-                                                      static_cast<float>(node.constant[1]),
-                                                      static_cast<float>(node.constant[2]),
-                                                      0.0f};
+                    constant->Constant =
+                        FLinearColor{static_cast<float>(ir.nodes.constant(node, 0)),
+                                     static_cast<float>(ir.nodes.constant(node, 1)),
+                                     static_cast<float>(ir.nodes.constant(node, 2)),
+                                     0.0f};
                     expression = constant;
                 } else {
                     auto* const constant{CastChecked<UMaterialExpressionConstant4Vector>(
                         create_expression(UMaterialExpressionConstant4Vector::StaticClass()))};
-                    constant->Constant = FLinearColor{static_cast<float>(node.constant[0]),
-                                                      static_cast<float>(node.constant[1]),
-                                                      static_cast<float>(node.constant[2]),
-                                                      static_cast<float>(node.constant[3])};
+                    constant->Constant =
+                        FLinearColor{static_cast<float>(ir.nodes.constant(node, 0)),
+                                     static_cast<float>(ir.nodes.constant(node, 1)),
+                                     static_cast<float>(ir.nodes.constant(node, 2)),
+                                     static_cast<float>(ir.nodes.constant(node, 3))};
                     expression = constant;
                 }
                 break;
             case NodeKind::parameter: {
-                auto const& parameter{ir.parameters[node.parameter_index]};
-                auto const name{FName{UTF8_TO_TCHAR(parameter.name.c_str())}};
-                if (parameter.type == ValueType::texture) {
+                auto const parameter{ir.nodes.parameter(node)};
+                auto const name{FName{*text(ir, ir.parameters.name[parameter.value])}};
+                if (ir.parameters.type[parameter.value] == ValueType::texture) {
                     auto* const value{
                         CastChecked<UMaterialExpressionTextureObjectParameter>(create_expression(
                             UMaterialExpressionTextureObjectParameter::StaticClass()))};
                     value->ParameterName = name;
                     value->Texture =
                         LoadObject<UTexture>(nullptr,
-                                             UTF8_TO_TCHAR(parameter.texture_path.c_str()),
+                                             *text(ir, ir.parameters.texture_path[parameter.value]),
                                              nullptr,
                                              LOAD_NoWarn);
-                    value->SamplerType = sampler_type(parameter.texture_sampler_type);
+                    value->SamplerType =
+                        sampler_type(ir.parameters.texture_sampler_type[parameter.value]);
                     expression = value;
-                } else if (parameter.type == ValueType::float1) {
+                } else if (ir.parameters.type[parameter.value] == ValueType::float1) {
                     auto* const value{CastChecked<UMaterialExpressionScalarParameter>(
                         create_expression(UMaterialExpressionScalarParameter::StaticClass()))};
                     value->ParameterName = name;
-                    value->DefaultValue = static_cast<float>(parameter.default_value[0]);
+                    value->DefaultValue =
+                        static_cast<float>(ir.parameters.default_values[0][parameter.value]);
                     expression = value;
                 } else {
                     auto* const value{CastChecked<UMaterialExpressionVectorParameter>(
                         create_expression(UMaterialExpressionVectorParameter::StaticClass()))};
                     value->ParameterName = name;
-                    value->DefaultValue =
-                        FLinearColor{static_cast<float>(parameter.default_value[0]),
-                                     static_cast<float>(parameter.default_value[1]),
-                                     static_cast<float>(parameter.default_value[2]),
-                                     static_cast<float>(parameter.default_value[3])};
+                    value->DefaultValue = FLinearColor{
+                        static_cast<float>(ir.parameters.default_values[0][parameter.value]),
+                        static_cast<float>(ir.parameters.default_values[1][parameter.value]),
+                        static_cast<float>(ir.parameters.default_values[2][parameter.value]),
+                        static_cast<float>(ir.parameters.default_values[3][parameter.value])};
                     expression = value;
                 }
                 break;
@@ -299,27 +324,31 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
             case NodeKind::texture_coordinate: {
                 auto* const coordinate{CastChecked<UMaterialExpressionTextureCoordinate>(
                     create_expression(UMaterialExpressionTextureCoordinate::StaticClass()))};
-                coordinate->CoordinateIndex = node.coordinate_index;
+                coordinate->CoordinateIndex = ir.nodes.coordinate_index(node);
                 expression = coordinate;
                 break;
             }
             case NodeKind::per_instance_custom_data: {
                 auto* const custom_data{CastChecked<UMaterialExpressionPerInstanceCustomData>(
                     create_expression(UMaterialExpressionPerInstanceCustomData::StaticClass()))};
-                custom_data->DataIndex = static_cast<int32>(node.instance_data_index);
+                custom_data->DataIndex = static_cast<int32>(ir.nodes.instance_data_index(node));
                 expression = custom_data;
                 break;
             }
             case NodeKind::add:
             case NodeKind::multiply: {
-                auto value{expressions[node.inputs[0].index]};
-                for (std::size_t input_index{1}; input_index < node.inputs.size(); ++input_index) {
-                    auto* const operation{create_expression(
-                        node.kind == NodeKind::add ? UMaterialExpressionAdd::StaticClass()
-                                                   : UMaterialExpressionMultiply::StaticClass())};
+                auto value{expressions[ir.nodes.inputs(node)[0].value]};
+                for (std::size_t input_index{1}; input_index < ir.nodes.inputs(node).size();
+                     ++input_index) {
+                    auto* const operation{
+                        create_expression(ir.nodes.kind(node) == NodeKind::add
+                                              ? UMaterialExpressionAdd::StaticClass()
+                                              : UMaterialExpressionMultiply::StaticClass())};
                     connect_input(value, operation, TEXT("A"), index);
-                    connect_input(
-                        expressions[node.inputs[input_index].index], operation, TEXT("B"), index);
+                    connect_input(expressions[ir.nodes.inputs(node)[input_index].value],
+                                  operation,
+                                  TEXT("B"),
+                                  index);
                     value = {operation, {}};
                 }
                 expression = value.expression;
@@ -346,8 +375,8 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
                     create_expression(UMaterialExpressionConstant::StaticClass()))};
                 one->R = 1.0f;
                 zero->R = 0.0f;
-                step->A.Connect(0, expressions[node.inputs[1].index].expression);
-                step->B.Connect(0, expressions[node.inputs[0].index].expression);
+                step->A.Connect(0, expressions[ir.nodes.inputs(node)[1].value].expression);
+                step->B.Connect(0, expressions[ir.nodes.inputs(node)[0].value].expression);
                 step->AGreaterThanB.Connect(0, one);
                 step->AEqualsB.Connect(0, one);
                 step->ALessThanB.Connect(0, zero);
@@ -357,20 +386,21 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
             case NodeKind::sample: {
                 auto* const sample{CastChecked<UMaterialExpressionTextureSample>(
                     create_expression(UMaterialExpressionTextureSample::StaticClass()))};
-                sample->SamplerType = sampler_type(node.texture_sampler_type);
+                sample->SamplerType = sampler_type(ir.nodes.texture_sampler_type(node));
                 expression = sample;
                 break;
             }
             case NodeKind::custom: {
                 auto* const custom{CastChecked<UMaterialExpressionCustom>(
                     create_expression(UMaterialExpressionCustom::StaticClass()))};
-                custom->OutputType = custom_output_type(node.type);
-                custom->Description = UTF8_TO_TCHAR(node.description.c_str());
-                custom->Code = UTF8_TO_TCHAR(node.code.c_str());
+                custom->OutputType = custom_output_type(ir.nodes.type(node));
+                custom->Description = *text(ir, ir.nodes.description(node));
+                custom->Code = *text(ir, ir.nodes.code(node));
                 custom->Inputs.Empty();
-                for (auto const& input : node.custom_inputs) {
+                for (auto const& input : ir.nodes.custom_inputs(node)) {
                     auto& custom_input{custom->Inputs.AddDefaulted_GetRef()};
-                    custom_input.InputName = FName{UTF8_TO_TCHAR(input.name.c_str())};
+                    custom_input.InputName =
+                        FName{*text(ir, ir.nodes.input_declarations.name[input.value])};
                 }
                 expression = custom;
                 break;
@@ -379,7 +409,7 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
                 auto* const texture{CastChecked<UMaterialExpressionTextureObject>(
                     create_expression(UMaterialExpressionTextureObject::StaticClass()))};
                 texture->Texture = LoadObject<UTexture>(
-                    nullptr, UTF8_TO_TCHAR(node.texture_path.c_str()), nullptr, LOAD_NoWarn);
+                    nullptr, *text(ir, ir.nodes.texture_path(node)), nullptr, LOAD_NoWarn);
                 texture->SamplerType = sampler_type(texture->Texture);
                 expression = texture;
                 break;
@@ -387,10 +417,10 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
             case NodeKind::component_mask: {
                 auto* const mask{CastChecked<UMaterialExpressionComponentMask>(
                     create_expression(UMaterialExpressionComponentMask::StaticClass()))};
-                mask->R = node.component_mask.find('r') != std::string::npos;
-                mask->G = node.component_mask.find('g') != std::string::npos;
-                mask->B = node.component_mask.find('b') != std::string::npos;
-                mask->A = node.component_mask.find('a') != std::string::npos;
+                mask->R = ir.text(ir.nodes.component_mask(node)).find('r') != std::string::npos;
+                mask->G = ir.text(ir.nodes.component_mask(node)).find('g') != std::string::npos;
+                mask->B = ir.text(ir.nodes.component_mask(node)).find('b') != std::string::npos;
+                mask->A = ir.text(ir.nodes.component_mask(node)).find('a') != std::string::npos;
                 expression = mask;
                 break;
             }
@@ -418,51 +448,55 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
             case NodeKind::transform_position: {
                 auto* const transform{CastChecked<UMaterialExpressionTransformPosition>(
                     create_expression(UMaterialExpressionTransformPosition::StaticClass()))};
-                transform->TransformSourceType = position_space(node.source_space);
-                transform->TransformType = position_space(node.destination_space);
+                transform->TransformSourceType = position_space(ir.nodes.source_space(node));
+                transform->TransformType = position_space(ir.nodes.destination_space(node));
                 expression = transform;
                 break;
             }
             case NodeKind::scene_texture: {
                 auto* const scene_texture{CastChecked<UMaterialExpressionSceneTexture>(
                     create_expression(UMaterialExpressionSceneTexture::StaticClass()))};
-                scene_texture->SceneTextureId = node.scene_texture == SceneTexture::scene_depth
-                                                  ? PPI_SceneDepth
-                                                  : PPI_PostProcessInput0;
+                scene_texture->SceneTextureId =
+                    ir.nodes.scene_texture(node) == SceneTexture::scene_depth
+                        ? PPI_SceneDepth
+                        : PPI_PostProcessInput0;
                 expression = scene_texture;
                 break;
             }
             case NodeKind::shader_call: {
                 auto* const custom{CastChecked<UMaterialExpressionCustom>(
                     create_expression(UMaterialExpressionCustom::StaticClass()))};
-                custom->OutputType = custom_output_type(node.type);
-                custom->Description = UTF8_TO_TCHAR(node.shader_function.c_str());
-                custom->IncludeFilePaths.Add(UTF8_TO_TCHAR(node.shader_path.c_str()));
+                custom->OutputType = custom_output_type(ir.nodes.type(node));
+                custom->Description = *text(ir, ir.nodes.shader_function(node));
+                custom->IncludeFilePaths.Add(*text(ir, ir.nodes.shader_path(node)));
                 custom->Inputs.Empty();
 
                 FString arguments;
-                for (auto const& input : node.custom_inputs) {
+                for (auto const& input : ir.nodes.custom_inputs(node)) {
                     auto& custom_input{custom->Inputs.AddDefaulted_GetRef()};
-                    custom_input.InputName = FName{UTF8_TO_TCHAR(input.name.c_str())};
+                    custom_input.InputName =
+                        FName{*text(ir, ir.nodes.input_declarations.name[input.value])};
                     if (!arguments.IsEmpty()) {
                         arguments += TEXT(", ");
                     }
                     arguments += custom_input.InputName.ToString();
                 }
-                custom->Code = FString::Printf(TEXT("return %s(%s);"),
-                                               UTF8_TO_TCHAR(node.shader_function.c_str()),
-                                               *arguments);
+                custom->Code = FString::Printf(
+                    TEXT("return %s(%s);"), *text(ir, ir.nodes.shader_function(node)), *arguments);
                 expression = custom;
                 break;
             }
             case NodeKind::vector_constructor: {
-                auto value{expressions[node.inputs[0].index]};
-                for (std::size_t input_index{1}; input_index < node.inputs.size(); ++input_index) {
+                auto value{expressions[ir.nodes.inputs(node)[0].value]};
+                for (std::size_t input_index{1}; input_index < ir.nodes.inputs(node).size();
+                     ++input_index) {
                     auto* const append{
                         create_expression(UMaterialExpressionAppendVector::StaticClass())};
                     connect_input(value, append, TEXT("A"), index);
-                    connect_input(
-                        expressions[node.inputs[input_index].index], append, TEXT("B"), index);
+                    connect_input(expressions[ir.nodes.inputs(node)[input_index].value],
+                                  append,
+                                  TEXT("B"),
+                                  index);
                     value = {append, {}};
                 }
                 expression = value.expression;
@@ -496,43 +530,59 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
                 TEXT("Failed to create material expression for IR node %llu."), index));
             return result;
         }
-        expressions.Add({expression, output_name(node)});
+        expressions.Add({expression, output_name(ir.nodes, node)});
 
         static constexpr TCHAR const* binary_inputs[]{TEXT("A"), TEXT("B")};
-        if (node.kind == NodeKind::subtract || node.kind == NodeKind::divide) {
-            connect_input(expressions[node.inputs[0].index], expression, binary_inputs[0], index);
-            connect_input(expressions[node.inputs[1].index], expression, binary_inputs[1], index);
-        } else if (node.kind == NodeKind::lerp) {
-            connect_input(expressions[node.inputs[0].index], expression, TEXT("A"), index);
-            connect_input(expressions[node.inputs[1].index], expression, TEXT("B"), index);
-            connect_input(expressions[node.inputs[2].index], expression, TEXT("Alpha"), index);
-        } else if (node.kind == NodeKind::saturate) {
-            connect_input(expressions[node.inputs[0].index], expression, TEXT(""), index);
-        } else if (node.kind == NodeKind::sample) {
-            connect_input(expressions[node.inputs[0].index], expression, TEXT("Tex"), index);
-            connect_input(expressions[node.inputs[1].index], expression, TEXT("UVs"), index);
-        } else if (node.kind == NodeKind::custom) {
+        if (ir.nodes.kind(node) == NodeKind::subtract || ir.nodes.kind(node) == NodeKind::divide) {
+            connect_input(
+                expressions[ir.nodes.inputs(node)[0].value], expression, binary_inputs[0], index);
+            connect_input(
+                expressions[ir.nodes.inputs(node)[1].value], expression, binary_inputs[1], index);
+        } else if (ir.nodes.kind(node) == NodeKind::lerp) {
+            connect_input(
+                expressions[ir.nodes.inputs(node)[0].value], expression, TEXT("A"), index);
+            connect_input(
+                expressions[ir.nodes.inputs(node)[1].value], expression, TEXT("B"), index);
+            connect_input(
+                expressions[ir.nodes.inputs(node)[2].value], expression, TEXT("Alpha"), index);
+        } else if (ir.nodes.kind(node) == NodeKind::saturate) {
+            connect_input(expressions[ir.nodes.inputs(node)[0].value], expression, TEXT(""), index);
+        } else if (ir.nodes.kind(node) == NodeKind::sample) {
+            connect_input(
+                expressions[ir.nodes.inputs(node)[0].value], expression, TEXT("Tex"), index);
+            connect_input(
+                expressions[ir.nodes.inputs(node)[1].value], expression, TEXT("UVs"), index);
+        } else if (ir.nodes.kind(node) == NodeKind::custom) {
             auto* const custom{CastChecked<UMaterialExpressionCustom>(expression)};
-            for (std::size_t input_index{}; input_index < node.custom_inputs.size();
+            for (std::size_t input_index{}; input_index < ir.nodes.custom_inputs(node).size();
                  ++input_index) {
                 auto const input_name{
-                    FString{UTF8_TO_TCHAR(node.custom_inputs[input_index].name.c_str())}};
-                connect_input(expressions[node.custom_inputs[input_index].node.index],
+                    FString{*text(ir,
+                                  ir.nodes.input_declarations
+                                      .name[ir.nodes.custom_inputs(node)[input_index].value])}};
+                connect_input(expressions[ir.nodes.inputs(node)[input_index].value],
                               custom,
                               *input_name,
                               index);
             }
-        } else if (node.kind == NodeKind::shader_call) {
+        } else if (ir.nodes.kind(node) == NodeKind::shader_call) {
             auto* const custom{CastChecked<UMaterialExpressionCustom>(expression)};
-            for (auto const& input : node.custom_inputs) {
-                auto const input_name{FString{UTF8_TO_TCHAR(input.name.c_str())}};
-                connect_input(expressions[input.node.index], custom, *input_name, index);
+            for (std::size_t input_index{}; input_index < ir.nodes.custom_inputs(node).size();
+                 ++input_index) {
+                auto const& input{ir.nodes.custom_inputs(node)[input_index]};
+                auto const input_name{
+                    FString{*text(ir, ir.nodes.input_declarations.name[input.value])}};
+                connect_input(expressions[ir.nodes.inputs(node)[input_index].value],
+                              custom,
+                              *input_name,
+                              index);
             }
-        } else if (node.kind == NodeKind::component_mask ||
-                   node.kind == NodeKind::transform_position) {
-            connect_input(expressions[node.inputs[0].index], expression, TEXT(""), index);
-        } else if (node.kind == NodeKind::sine || node.kind == NodeKind::cosine) {
-            connect_input(expressions[node.inputs[0].index], expression, TEXT(""), index);
+        } else if (ir.nodes.kind(node) == NodeKind::component_mask ||
+                   ir.nodes.kind(node) == NodeKind::transform_position) {
+            connect_input(expressions[ir.nodes.inputs(node)[0].value], expression, TEXT(""), index);
+        } else if (ir.nodes.kind(node) == NodeKind::sine ||
+                   ir.nodes.kind(node) == NodeKind::cosine) {
+            connect_input(expressions[ir.nodes.inputs(node)[0].value], expression, TEXT(""), index);
         }
     }
 
@@ -540,37 +590,37 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
         return result;
     }
 
-    for (auto const& output : ir.outputs) {
+    for (auto const output : ir.outputs.handles()) {
         bool connected{};
-        if (output.name == "emissive") {
+        if (ir.text(ir.outputs.name[output.value]) == "emissive") {
             connected = UMaterialEditingLibrary::ConnectMaterialProperty(
-                expressions[output.node.index].expression,
-                expressions[output.node.index].output_name,
+                expressions[ir.outputs.node[output.value].value].expression,
+                expressions[ir.outputs.node[output.value].value].output_name,
                 MP_EmissiveColor);
-        } else if (output.name == "opacity") {
+        } else if (ir.text(ir.outputs.name[output.value]) == "opacity") {
             connected = UMaterialEditingLibrary::ConnectMaterialProperty(
-                expressions[output.node.index].expression,
-                expressions[output.node.index].output_name,
+                expressions[ir.outputs.node[output.value].value].expression,
+                expressions[ir.outputs.node[output.value].value].output_name,
                 MP_Opacity);
-        } else if (output.name == "base-color") {
+        } else if (ir.text(ir.outputs.name[output.value]) == "base-color") {
             connected = UMaterialEditingLibrary::ConnectMaterialProperty(
-                expressions[output.node.index].expression,
-                expressions[output.node.index].output_name,
+                expressions[ir.outputs.node[output.value].value].expression,
+                expressions[ir.outputs.node[output.value].value].output_name,
                 MP_BaseColor);
-        } else if (output.name == "opacity-mask") {
+        } else if (ir.text(ir.outputs.name[output.value]) == "opacity-mask") {
             connected = UMaterialEditingLibrary::ConnectMaterialProperty(
-                expressions[output.node.index].expression,
-                expressions[output.node.index].output_name,
+                expressions[ir.outputs.node[output.value].value].expression,
+                expressions[ir.outputs.node[output.value].value].output_name,
                 MP_OpacityMask);
-        } else if (output.name == "world-position-offset") {
+        } else if (ir.text(ir.outputs.name[output.value]) == "world-position-offset") {
             connected = UMaterialEditingLibrary::ConnectMaterialProperty(
-                expressions[output.node.index].expression,
-                expressions[output.node.index].output_name,
+                expressions[ir.outputs.node[output.value].value].expression,
+                expressions[ir.outputs.node[output.value].value].output_name,
                 MP_WorldPositionOffset);
         }
         if (!connected) {
             result.errors.Add(FString::Printf(TEXT("Failed to connect material output %s."),
-                                              UTF8_TO_TCHAR(output.name.c_str())));
+                                              *text(ir, ir.outputs.name[output.value])));
         }
     }
     if (!result.errors.IsEmpty()) {

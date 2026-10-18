@@ -5,8 +5,11 @@
 #include <ioj/layout/planner_type.hpp>
 
 #include <lispb/schema/editable_document.h>
+#include <lispb/schema/indices.h>
+#include <lispb/schema/type_identity.h>
 
 #include <cstdint>
+#include <expected>
 #include <limits>
 #include <map>
 #include <optional>
@@ -85,7 +88,9 @@ class PlannerAnalysisSession {
     using DistributionWeights = std::map<std::string, std::uint64_t>;
     using DistributionTable = std::map<lispb::schema::DeclarationId, DistributionWeights>;
 
-    explicit PlannerAnalysisSession(lispb::schema::TypeGraph types = {});
+    PlannerAnalysisSession() = default;
+    explicit PlannerAnalysisSession(lispb::schema::TypeGraph const& types);
+    PlannerAnalysisSession(lispb::schema::TypeGraph const&&) = delete;
 
     PlannerAnalysisInputs inputs;
     auto primary_abi() const -> AbiProfile const&;

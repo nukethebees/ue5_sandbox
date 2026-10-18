@@ -1,20 +1,101 @@
+#include "test_utilities.h"
+
+#include <codegen/ast/indices.h>
+#include <codegen/ast/type_operation.h>
+#include <codegen/generated_file.h>
 #include <codegen/generator.h>
 #include <codegen/manifest_error.h>
 #include <codegen/schema.h>
+#include <codegen/schema/declaration_schema.h>
+#include <codegen/schema/declarations.h>
+#include <codegen/schema/enum_schemas.h>
+#include <codegen/schema/enumerator_schemas.h>
+#include <codegen/schema/facade_method_schemas.h>
+#include <codegen/schema/facade_schemas.h>
+#include <codegen/schema/fixed_point_rounding.h>
+#include <codegen/schema/fixed_point_schemas.h>
+#include <codegen/schema/floating_point_format.h>
+#include <codegen/schema/function_schemas.h>
+#include <codegen/schema/indices.h>
+#include <codegen/schema/integer_scalar_cpp_emission.h>
+#include <codegen/schema/integer_scalar_schemas.h>
+#include <codegen/schema/integer_varint_encoding.h>
+#include <codegen/schema/integer_varint_schemas.h>
+#include <codegen/schema/linear_quantized_schemas.h>
+#include <codegen/schema/manifest.h>
+#include <codegen/schema/mini_float_schemas.h>
+#include <codegen/schema/module_settings_store.h>
+#include <codegen/schema/native_enum_helper.h>
+#include <codegen/schema/normal_module_schemas.h>
+#include <codegen/schema/optional_presence_bit_schemas.h>
+#include <codegen/schema/optional_sentinel_schemas.h>
+#include <codegen/schema/packed_bit_order.h>
+#include <codegen/schema/packed_byte_order.h>
+#include <codegen/schema/packed_field_kind.h>
+#include <codegen/schema/packed_field_schemas.h>
+#include <codegen/schema/packed_integer_value.h>
+#include <codegen/schema/packed_named_code_schemas.h>
+#include <codegen/schema/packed_reserved_bits_schemas.h>
+#include <codegen/schema/packed_value_schemas.h>
+#include <codegen/schema/physical_type_form.h>
+#include <codegen/schema/quantization_clipping.h>
+#include <codegen/schema/record_comparison.h>
+#include <codegen/schema/record_member_schemas.h>
+#include <codegen/schema/record_schemas.h>
+#include <codegen/schema/schema_range.h>
+#include <codegen/schema/semantic_relation_kind.h>
+#include <codegen/schema/semantic_relation_schemas.h>
+#include <codegen/schema/semantic_relation_unit.h>
+#include <codegen/schema/setting_apply_mode.h>
+#include <codegen/schema/setting_control_kind.h>
+#include <codegen/schema/setting_control_schemas.h>
+#include <codegen/schema/setting_device.h>
+#include <codegen/schema/setting_schemas.h>
+#include <codegen/schema/settings_module_schemas.h>
+#include <codegen/schema/soa_backend.h>
+#include <codegen/schema/soa_mask_dimension_schemas.h>
+#include <codegen/schema/soa_member_schemas.h>
+#include <codegen/schema/soa_schemas.h>
+#include <codegen/schema/soa_storage.h>
+#include <codegen/schema/tagged_union_alternative_schemas.h>
+#include <codegen/schema/tagged_union_schemas.h>
+#include <codegen/schema/type_reference_kind.h>
+#include <codegen/schema/type_reference_role.h>
+#include <codegen/schema/type_refs.h>
+#include <codegen/schema/union_alternative_schemas.h>
+#include <codegen/schema/union_schemas.h>
 #include <codegen/source_loader.h>
-#include <codegen/validation.h>
+#include <lispb/compilation.h>
+#include <lispb/indices.h>
+#include <lispb/schema/external_types.h>
+#include <lispb/schema/integer_domain.h>
+#include <lispb/schema/integer_scalar_types.h>
+#include <lispb/schema/packed_fields.h>
+#include <lispb/schema/packed_types.h>
+#include <lispb/schema/record_members.h>
+#include <lispb/schema/record_types.h>
 #include <lispb/schema/type_graph.h>
+#include <lispb/schema/type_origin.h>
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
+#include <compare>
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <limits>
+#include <optional>
+#include <ranges>
+#include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
+#include <vector>
 
-namespace codegen {
+namespace lispb::codegen {
 namespace {
 
 class TemporaryManifest {
@@ -35,6 +116,7 @@ class TemporaryManifest {
         std::filesystem::create_directories((directory_ / name).parent_path());
         std::ofstream output{directory_ / name};
         output << content;
+        context.storage.sources.refresh();
     }
 
     auto path(std::string const& name) const -> std::filesystem::path { return directory_ / name; }
@@ -46,18 +128,42 @@ class TemporaryManifest {
 
     auto load() const -> Manifest {
         std::filesystem::path const modules[]{path("modules.lispb")};
-        return load_sources(path("types.lispb"), modules);
+        return load_sources(context.storage, path("types.lispb"), modules);
     }
+    auto render(Manifest manifest) const -> std::vector<GeneratedFile> {
+        return render_test_manifest(context, std::move(manifest));
+    }
+    auto lower(Manifest manifest) const -> std::vector<ModuleId> {
+        return lower_test_manifest(context, std::move(manifest));
+    }
+    auto graph() const -> lispb::schema::TypeGraph {
+        auto manifest{load()};
+        return lispb::schema::resolve_type_graph(manifest);
+    }
+    auto store() const -> Declarations& { return context.storage.declarations; }
+    auto text(lispb::IdentifierId id) const -> std::string_view {
+        return context.storage.strings.view(id);
+    }
+    auto text(lispb::StringId id) const -> std::string_view {
+        return context.storage.strings.view(id);
+    }
+    auto text(std::string_view value) const -> std::string_view { return value; }
+    template <typename Id>
+    auto text(std::optional<Id> id) const -> std::optional<std::string_view> {
+        return id.transform([&](auto value) { return text(value); });
+    }
+    mutable CompilerTestContext context;
   private:
     std::filesystem::path directory_;
 };
 
-template <typename Schema>
 auto schema_at(Manifest const& manifest,
                std::size_t const module_index,
-               std::size_t const declaration_index = 0) -> Schema const& {
-    auto const& module{std::get<NormalModuleSchema>(manifest.modules.at(module_index))};
-    return std::get<Schema>(module.declarations.at(declaration_index));
+               std::size_t const declaration_index = 0) -> DeclarationHandle {
+    auto const& store{manifest.declarations};
+    auto const module{manifest.modules.at(module_index)};
+    return store.items(
+        store.normal_modules.declarations[store.normal_modules.index(module)])[declaration_index];
 }
 
 TEST(SourceLoader, RecordValueSemanticsSurviveParsingGraphAndLowering) {
@@ -70,21 +176,47 @@ TEST(SourceLoader, RecordValueSemanticsSurviveParsingGraphAndLowering) {
         (function read int :const true :noexcept true :constexpr true :nodiscard true
           :body ("return explicit_value;"))
         (function validate bool :const true :noexcept true))))");
-    auto const manifest{files.load()};
-    auto const& schema{schema_at<RecordSchema>(manifest, 0)};
-    EXPECT_FALSE(schema.members[0].initializer.has_value());
-    EXPECT_EQ(schema.members[1].initializer, "");
-    EXPECT_EQ(schema.members[2].initializer, "7");
-    EXPECT_EQ(schema.comparison, RecordComparison::three_way);
-    ASSERT_EQ(schema.functions.size(), 2U);
-    EXPECT_TRUE(schema.functions[0].is_constexpr);
+    auto manifest{files.load()};
+    auto const& schema{schema_at(manifest, 0)};
+    EXPECT_FALSE(files.store()
+                     .record_members
+                     .initializer[files.store().record_members.index(files.store().items(
+                         files.store().records.members[files.store().records.index(schema)])[0])]
+                     .has_value());
+    EXPECT_EQ(
+        files.text(files.store().record_members.initializer[files.store().record_members.index(
+            files.store().items(
+                files.store().records.members[files.store().records.index(schema)])[1])]),
+        "");
+    EXPECT_EQ(
+        files.text(files.store().record_members.initializer[files.store().record_members.index(
+            files.store().items(
+                files.store().records.members[files.store().records.index(schema)])[2])]),
+        "7");
+    EXPECT_EQ(files.store().records.comparison[files.store().records.index(schema)],
+              RecordComparison::three_way);
+    ASSERT_EQ(files.store().records.functions[files.store().records.index(schema)].size(), 2U);
+    EXPECT_TRUE(
+        files.store().functions.is_constexpr[files.store().functions.index(files.store().items(
+            files.store().records.functions[files.store().records.index(schema)])[0])]);
     auto const graph{lispb::schema::resolve_type_graph(manifest)};
-    auto const& record{std::get<lispb::schema::RecordType>(
-        graph.type(*graph.find_declared("records", "Value")).definition)};
-    EXPECT_FALSE(record.members[0].initializer.has_value());
-    EXPECT_EQ(record.members[1].initializer, "");
-    EXPECT_EQ(record.members[2].initializer, "7");
-    auto const output{render_modules(lower_modules(manifest)).front().content};
+    auto const& record{graph.definition(*find_test_type(graph, "records", "Value"))};
+    EXPECT_FALSE(graph.definitions()
+                     .record_members
+                     .initializer[graph.definitions().record_members.index(
+                         graph.definitions().records.members_of(record)[0])]
+                     .has_value());
+    EXPECT_EQ(
+        files.text(
+            graph.definitions().record_members.initializer[graph.definitions().record_members.index(
+                graph.definitions().records.members_of(record)[1])]),
+        "");
+    EXPECT_EQ(
+        files.text(
+            graph.definitions().record_members.initializer[graph.definitions().record_members.index(
+                graph.definitions().records.members_of(record)[2])]),
+        "7");
+    auto const output{files.render(manifest).front().content};
     for (auto const expected : {"int absent;",
                                 "int zero{};",
                                 "int explicit_value{7};",
@@ -107,7 +239,7 @@ TEST(SourceLoader, RecordRejectsStatementInitializersAndInvalidMethods) {
           R"((record Value (function read int :constexpr true)))",
           R"((record Value (function read int) (function read int)))"}) {
         files.write_root(std::string{"(module records :header \"Records.h\" "} + declaration + ")");
-        EXPECT_THROW(static_cast<void>(lower_modules(files.load())), std::exception) << declaration;
+        EXPECT_THROW(static_cast<void>(files.lower(files.load())), std::exception) << declaration;
     }
 }
 
@@ -120,39 +252,66 @@ TEST(SourceLoader, RecordMethodDeclarationsForwardDeclareLaterAndMutualTypes) {
         (function ref auto :trailing-return-type (type-ref B :suffix " const&"))
         (function pointer (type-ref B :suffix "*") :body ("return nullptr;")))
       (record B (function make A))))");
-    auto const manifest{files.load()};
+    auto manifest{files.load()};
     auto const graph{lispb::schema::resolve_type_graph(manifest)};
-    auto const a{*graph.find_declared("values", "A")};
-    auto const b{*graph.find_declared("values", "B")};
+    auto const a{*find_test_type(graph, "values", "A")};
+    auto const b{*find_test_type(graph, "values", "B")};
     EXPECT_NE(std::ranges::find(graph.dependencies_of(a), b), graph.dependencies_of(a).end());
     EXPECT_TRUE(std::ranges::any_of(graph.type_uses(), [&](auto const& use) {
-        return use.target.type == b && use.kind == TypeReferenceKind::function_declaration &&
-               use.target.physical.form == PhysicalTypeForm::value;
+        return graph.occurrences().type[graph.occurrences().index(graph.target(use))] == b &&
+               graph.kind(use) == TypeReferenceKind::function_declaration &&
+               graph.occurrences().physical_form[graph.occurrences().index(graph.target(use))] ==
+                   PhysicalTypeForm::value;
     }));
-    auto editable{std::get<NormalModuleSchema>(manifest.modules.front()).declarations.front()};
+    auto editable{
+        files.store()
+            .items(files.store().normal_modules.declarations[files.store().normal_modules.index(
+                manifest.modules.front())])
+            .front()};
     std::vector<std::pair<std::string, TypeReferenceKind>> const_uses;
-    visit_type_references(std::as_const(editable),
-                          [&](std::string const& role, TypeRef const&, TypeReferenceKind kind) {
-                              const_uses.emplace_back(role, kind);
+    visit_type_references(files.store(),
+                          std::as_const(editable),
+                          [&](TypeReferenceRole const& role, TypeRefId, TypeReferenceKind kind) {
+                              const_uses.emplace_back(
+                                  type_reference_role_text(files.context.storage.strings, role),
+                                  kind);
                           });
     std::vector<std::pair<std::string, TypeReferenceKind>> mutable_uses;
-    visit_type_references(editable,
-                          [&](std::string const& role, TypeRef& reference, TypeReferenceKind kind) {
-                              mutable_uses.emplace_back(role, kind);
-                              if (reference.name == "B") {
-                                  reference.name = "Renamed";
-                              }
-                          });
+    editable = rewrite_type_references(
+        files.store(),
+        editable,
+        [&](TypeReferenceRole const& role, TypeRefId id, TypeReferenceKind kind) {
+            mutable_uses.emplace_back(type_reference_role_text(files.context.storage.strings, role),
+                                      kind);
+            auto const reference{files.store().type_refs.clone(id)};
+            if (files.text(
+                    files.store().type_refs.name[files.store().type_refs.index(reference)]) !=
+                "B") {
+                return id;
+            }
+            files.store().type_refs.name[files.store().type_refs.index(reference)] =
+                files.context.storage.strings.intern("Renamed");
+            return reference;
+        });
     EXPECT_EQ(mutable_uses, const_uses);
-    EXPECT_EQ(std::get<RecordSchema>(editable).functions.front().return_type.name, "Renamed");
-    auto const output{render_modules(lower_modules(manifest)).front().content};
+    EXPECT_EQ(
+        files.text(files.store().type_refs.name[files.store().type_refs.index(
+            files.store().functions.return_type[files.store().functions.index(files.store().items(
+                files.store().records.functions[files.store().records.index(editable)])[0])])]),
+        "Renamed");
+    auto const output{files.render(manifest).front().content};
     EXPECT_LT(output.find("struct B;"), output.find("struct A {"));
     EXPECT_LT(output.find("struct A;"), output.find("struct B {"));
     EXPECT_LT(output.find("struct A {"), output.find("struct B {"));
     EXPECT_NE(output.find("auto ref() -> B const&;"), std::string::npos);
-    EXPECT_EQ(declaration_name(
-                  std::get<NormalModuleSchema>(manifest.modules.front()).declarations.front()),
-              "A");
+    EXPECT_EQ(
+        files.text(declaration_name(
+            files.store(),
+            files.store()
+                .items(files.store().normal_modules.declarations[files.store().normal_modules.index(
+                    manifest.modules.front())])
+                .front())),
+        "A");
 }
 
 TEST(SourceLoader, RecordMethodSignaturesOrderAliasesEnumsAndHeaderBodyValues) {
@@ -169,8 +328,8 @@ TEST(SourceLoader, RecordMethodSignaturesOrderAliasesEnumsAndHeaderBodyValues) {
       (enum Tag std::uint8_t (value Value))
       (integer-scalar Count :signed false :minimum 0 :maximum 255 :bit-width 8
         :cpp-emission alias :cpp-type std::uint8_t)))");
-    auto const manifest{files.load()};
-    auto const output{render_modules(lower_modules(manifest)).front().content};
+    auto manifest{files.load()};
+    auto const output{files.render(manifest).front().content};
     auto const consumer{output.find("struct Consumer {")};
     for (auto const definition :
          {"struct Provider {", "struct Argument {", "enum class Tag", "using Count ="}) {
@@ -178,9 +337,14 @@ TEST(SourceLoader, RecordMethodSignaturesOrderAliasesEnumsAndHeaderBodyValues) {
     }
     EXPECT_EQ(output.find("struct Tag;"), std::string::npos);
     EXPECT_EQ(output.find("struct Count;"), std::string::npos);
-    EXPECT_EQ(declaration_name(
-                  std::get<NormalModuleSchema>(manifest.modules.front()).declarations.front()),
-              "Consumer");
+    EXPECT_EQ(
+        files.text(declaration_name(
+            files.store(),
+            files.store()
+                .items(files.store().normal_modules.declarations[files.store().normal_modules.index(
+                    manifest.modules.front())])
+                .front())),
+        "Consumer");
 }
 
 TEST(SourceLoader, RecordMethodDeclarationsForwardDeclareCrossModuleTypes) {
@@ -192,7 +356,7 @@ TEST(SourceLoader, RecordMethodDeclarationsForwardDeclareCrossModuleTypes) {
         (function pointer auto :trailing-return-type (type-ref providers::Provider :suffix "*"))))
       (module providers :header "generated/Provider.h" :header-include "api/Provider.h"
         :namespace providers (record Provider)))");
-    auto const output{render_modules(lower_modules(files.load())).front().content};
+    auto const output{files.render(files.load()).front().content};
     EXPECT_EQ(output.find("#include \"api/Provider.h\""), std::string::npos);
     EXPECT_LT(output.find("namespace providers {"), output.find("struct Provider;"));
     EXPECT_LT(output.find("struct Provider;"), output.find("namespace consumers {"));
@@ -217,7 +381,7 @@ TEST(SourceLoader, RecordMethodDeclarationsForwardDeclareMutualCrossModuleTypes)
           (function make auto :trailing-return-type first::A)
           (function pointer (type-ref first::A :suffix "*"))
           (function ref auto :trailing-return-type (type-ref first::A :suffix " const&")))))");
-    auto const output{render_modules(lower_modules(files.load()))};
+    auto const output{files.render(files.load())};
     ASSERT_EQ(output.size(), 2U);
     EXPECT_EQ(output[0].content.find("#include \"Second.h\""), std::string::npos);
     EXPECT_EQ(output[1].content.find("#include \"First.h\""), std::string::npos);
@@ -244,33 +408,43 @@ TEST(SourceLoader, RecordParameterDefaultsRequireCompleteTypesWithoutChangingOth
           (record B)
           (record Result)
           (record C)))");
-        auto const manifest{files.load()};
+        auto manifest{files.load()};
         auto const graph{lispb::schema::resolve_type_graph(manifest)};
-        auto const b{*graph.find_declared("values", "B")};
-        auto const result{*graph.find_declared("values", "Result")};
-        auto const c{*graph.find_declared("values", "C")};
+        auto const b{*find_test_type(graph, "values", "B")};
+        auto const result{*find_test_type(graph, "values", "Result")};
+        auto const c{*find_test_type(graph, "values", "C")};
         for (auto const& use : graph.type_uses()) {
-            if (use.target.type == b) {
-                EXPECT_EQ(use.kind, TypeReferenceKind::complete_definition);
-            } else if (use.target.type == result || use.target.type == c) {
-                EXPECT_EQ(use.kind, TypeReferenceKind::function_declaration);
+            if (graph.occurrences().type[graph.occurrences().index(graph.target(use))] == b) {
+                EXPECT_EQ(graph.kind(use), TypeReferenceKind::complete_definition);
+            } else if (graph.occurrences().type[graph.occurrences().index(graph.target(use))] ==
+                           result ||
+                       graph.occurrences().type[graph.occurrences().index(graph.target(use))] ==
+                           c) {
+                EXPECT_EQ(graph.kind(use), TypeReferenceKind::function_declaration);
             }
         }
         auto declaration{
-            std::get<NormalModuleSchema>(manifest.modules.front()).declarations.front()};
+            files.store()
+                .items(files.store().normal_modules.declarations[files.store().normal_modules.index(
+                    manifest.modules.front())])
+                .front()};
         std::vector<TypeReferenceKind> const_kinds;
-        visit_type_references(std::as_const(declaration),
-                              [&](std::string const&, TypeRef const&, TypeReferenceKind kind) {
+        visit_type_references(files.store(),
+                              std::as_const(declaration),
+                              [&](TypeReferenceRole const&, TypeRefId, TypeReferenceKind kind) {
                                   const_kinds.push_back(kind);
                               });
         std::vector<TypeReferenceKind> mutable_kinds;
-        visit_type_references(declaration,
-                              [&](std::string const&, TypeRef&, TypeReferenceKind kind) {
-                                  mutable_kinds.push_back(kind);
-                              });
+        declaration = rewrite_type_references(
+            files.store(),
+            declaration,
+            [&](TypeReferenceRole const&, TypeRefId id, TypeReferenceKind kind) {
+                mutable_kinds.push_back(kind);
+                return id;
+            });
         EXPECT_EQ(mutable_kinds, const_kinds);
         EXPECT_EQ(std::ranges::count(mutable_kinds, TypeReferenceKind::complete_definition), 2);
-        auto const output{render_modules(lower_modules(manifest)).front().content};
+        auto const output{files.render(manifest).front().content};
         EXPECT_LT(output.find("struct B {"), output.find("struct A {"));
         EXPECT_EQ(output.find("struct B;"), std::string::npos);
         EXPECT_LT(output.find("struct Result;"), output.find("struct A {"));
@@ -291,7 +465,7 @@ TEST(SourceLoader, RecordParameterDefaultsRetainCrossModuleIncludes) {
                          parameter_type + " :default \"" + default_value + R"("))))
           (module second :header "generated/Second.h" :header-include "api/Second.h"
             :namespace second (record B)))");
-        auto const output{render_modules(lower_modules(files.load())).front().content};
+        auto const output{files.render(files.load()).front().content};
         EXPECT_NE(output.find("#include \"api/Second.h\""), std::string::npos);
         EXPECT_EQ(output.find("struct B;"), std::string::npos);
     }
@@ -311,7 +485,7 @@ TEST(SourceLoader, RecordParameterDefaultsRejectCompleteDefinitionCycles) {
                  (record B (function consume void (parameter value first::A :default "{}")))))"}) {
         files.write_root(schema);
         try {
-            static_cast<void>(lower_modules(files.load()));
+            static_cast<void>(files.lower(files.load()));
             FAIL();
         } catch (std::invalid_argument const& error) {
             EXPECT_TRUE(std::string{error.what()}.contains("complete-definition dependency cycle"))
@@ -335,7 +509,7 @@ TEST(SourceLoader, RecordMethodCrossModuleCompleteTypesRetainIncludes) {
       (module counts :header "Counts.h" :namespace providers
         (integer-scalar Count :signed false :minimum 0 :maximum 255 :bit-width 8
           :cpp-emission alias :cpp-type std::uint8_t)))");
-    auto const output{render_modules(lower_modules(files.load())).front().content};
+    auto const output{files.render(files.load()).front().content};
     for (auto const header : {"api/Provider.h", "Tags.h", "Counts.h"}) {
         EXPECT_NE(output.find(std::string{"#include \""} + header + "\""), std::string::npos);
     }
@@ -360,7 +534,7 @@ TEST(SourceLoader, RecordMethodCrossModuleForwardsRespectPhysicalOwnersAndExtern
     files.write("types.lispb", R"(
       (type external :spelling "external::Value" :header "External.h")
       (type registered :spelling "providers::Registered" :header "Providers.h"))");
-    auto const output{render_modules(lower_modules(files.load())).front().content};
+    auto const output{files.render(files.load()).front().content};
     EXPECT_NE(output.find("struct OwnedRows;"), std::string::npos);
     EXPECT_NE(output.find("providers::OwnedRows rows();"), std::string::npos);
     EXPECT_NE(output.find("struct Global;"), std::string::npos);
@@ -383,7 +557,7 @@ TEST(SourceLoader, RecordMethodSignaturesRejectLayoutOnlyTypesAndCompleteDefinit
                          signature + R"()
           (struct Layout :layout-only true (member xs array float))))");
         try {
-            static_cast<void>(lower_modules(files.load()));
+            static_cast<void>(files.lower(files.load()));
             FAIL() << signature;
         } catch (std::invalid_argument const& error) {
             EXPECT_TRUE(std::string{error.what()}.contains("has no C++ owner")) << error.what();
@@ -394,7 +568,7 @@ TEST(SourceLoader, RecordMethodSignaturesRejectLayoutOnlyTypesAndCompleteDefinit
       (module providers :header "Providers.h" :namespace providers :backend standard-library
         (struct Layout :layout-only true (member xs array float))))");
     try {
-        static_cast<void>(lower_modules(files.load()));
+        static_cast<void>(files.lower(files.load()));
         FAIL();
     } catch (std::invalid_argument const& error) {
         EXPECT_TRUE(std::string{error.what()}.contains("has no C++ owner")) << error.what();
@@ -403,7 +577,7 @@ TEST(SourceLoader, RecordMethodSignaturesRejectLayoutOnlyTypesAndCompleteDefinit
       (record A (function make B :body ("return {};")))
       (record B (function make A :body ("return {};")))))");
     try {
-        static_cast<void>(lower_modules(files.load()));
+        static_cast<void>(files.lower(files.load()));
         FAIL();
     } catch (std::invalid_argument const& error) {
         EXPECT_TRUE(std::string{error.what()}.contains("complete-definition dependency cycle"));
@@ -414,7 +588,7 @@ TEST(SourceLoader, RecordMethodSignaturesRejectLayoutOnlyTypesAndCompleteDefinit
       (module second :header "Second.h" :namespace second
         (record B (member a first::A))))");
     try {
-        static_cast<void>(lower_modules(files.load()));
+        static_cast<void>(files.lower(files.load()));
         FAIL();
     } catch (std::invalid_argument const& error) {
         EXPECT_TRUE(std::string{error.what()}.contains("complete-definition dependency cycle"));
@@ -430,11 +604,11 @@ TEST(SourceLoader, SoaStoragePolicySelectsRepresentations) {
         (single-allocation SingleRows))
       (struct BothRows :storage both (member values array int32)
         (single-allocation SingleBothRows))))");
-    auto const manifest{files.load()};
-    EXPECT_TRUE(schema_at<SoaSchema>(manifest, 0, 0).emits_vector_storage());
-    EXPECT_FALSE(schema_at<SoaSchema>(manifest, 0, 1).emits_vector_storage());
-    EXPECT_TRUE(schema_at<SoaSchema>(manifest, 0, 2).emits_vector_storage());
-    auto const output{render_modules(lower_modules(manifest)).front().content};
+    auto manifest{files.load()};
+    EXPECT_TRUE(files.store().soas.emits_vector_storage(schema_at(manifest, 0, 0)));
+    EXPECT_FALSE(files.store().soas.emits_vector_storage(schema_at(manifest, 0, 1)));
+    EXPECT_TRUE(files.store().soas.emits_vector_storage(schema_at(manifest, 0, 2)));
+    auto const output{files.render(manifest).front().content};
     EXPECT_NE(output.find("struct VectorRowsView"), std::string::npos);
     EXPECT_EQ(output.find("struct CompactRowsView"), std::string::npos);
     EXPECT_NE(output.find("struct BothRowsView"), std::string::npos);
@@ -444,7 +618,7 @@ TEST(SourceLoader, SoaStoragePolicySelectsRepresentations) {
             " (member values array int32)" +
             (std::string_view{invalid} == "vector" ? " (single-allocation SingleRows)" : "") +
             "))");
-        EXPECT_THROW(lower_modules(files.load()), std::exception);
+        EXPECT_THROW(files.lower(files.load()), std::exception);
     }
 }
 
@@ -464,36 +638,62 @@ TEST(SourceLoader, AliasEmissionKeepsSemanticIdentityAndDependencies) {
     files.write("types.lispb", R"(
       (type native_uint16 :spelling "std::uint16_t" :header "cstdint" :pass-by value)
       (type health :spelling "fixture::Health" :header "Vitals.h" :pass-by value))");
-    auto const manifest{files.load()};
-    auto const& scalar{schema_at<IntegerScalarSchema>(manifest, 0, 3)};
-    EXPECT_EQ(scalar.cpp_emission, IntegerScalarCppEmission::alias);
+    auto manifest{files.load()};
+    auto const& scalar{schema_at(manifest, 0, 3)};
+    EXPECT_EQ(
+        files.store().integer_scalars.cpp_emission[files.store().integer_scalars.index(scalar)],
+        IntegerScalarCppEmission::alias);
     auto const graph{lispb::schema::resolve_type_graph(manifest)};
-    auto const health{*graph.find_declared("vitals", "Health")};
-    auto const& semantic{std::get<lispb::schema::IntegerScalarType>(graph.type(health).definition)};
-    EXPECT_EQ(semantic.bit_width, 16);
-    EXPECT_EQ(semantic.maximum_value, PackedIntegerValue{65534});
-    ASSERT_TRUE(semantic.cpp_representation.has_value());
-    EXPECT_EQ(semantic.cpp_representation->cpp_type.spelling, "std::uint16_t");
-    ASSERT_TRUE(semantic.relationship.has_value());
-    EXPECT_EQ(semantic.named_codes.size(), 1);
-    EXPECT_EQ(graph.find_registered("health"), health);
-    auto const vessel{*graph.find_declared("vitals", "Vessel")};
-    auto const& record{std::get<lispb::schema::RecordType>(graph.type(vessel).definition)};
-    EXPECT_EQ(record.members[0].semantic_type.type, health);
-    auto const packed{*graph.find_declared("vitals", "PackedHealth")};
-    auto const& field{std::get<lispb::schema::PackedField>(
-        std::get<lispb::schema::PackedType>(graph.type(packed).definition).segments[0])};
-    EXPECT_EQ(field.semantic_type.type, health);
+    auto const health{*find_test_type(graph, "vitals", "Health")};
+    auto const& semantic{graph.definition(health)};
+    EXPECT_EQ(graph.definitions()
+                  .integer_scalars.bit_width[graph.definitions().integer_scalars.index(semantic)],
+              16);
+    EXPECT_EQ(
+        graph.definitions()
+            .integer_scalars.maximum_value[graph.definitions().integer_scalars.index(semantic)],
+        PackedIntegerValue{65534});
+    ASSERT_TRUE(lispb::schema::is_valid(
+        graph.definitions()
+            .integer_scalars
+            .cpp_representation[graph.definitions().integer_scalars.index(semantic)]));
+    EXPECT_EQ(files.text(
+                  graph.cpp_types().spelling(graph.occurrences().cpp_type[graph.occurrences().index(
+                      graph.definitions().integer_scalars.cpp_representation
+                          [graph.definitions().integer_scalars.index(semantic)])])),
+              "std::uint16_t");
+    ASSERT_TRUE(lispb::schema::is_valid(
+        graph.definitions()
+            .integer_scalars.relationship[graph.definitions().integer_scalars.index(semantic)]));
+    EXPECT_EQ(graph.definitions()
+                  .integer_scalars.named_codes[graph.definitions().integer_scalars.index(semantic)]
+                  .size(),
+              1);
+    EXPECT_EQ(graph.find_registered(graph.strings().find("health")), health);
+    auto const vessel{*find_test_type(graph, "vitals", "Vessel")};
+    auto const& record{graph.definition(vessel)};
+    EXPECT_EQ(graph.occurrences().type[graph.occurrences().index(
+                  graph.definitions()
+                      .record_members.semantic_type[graph.definitions().record_members.index(
+                          graph.definitions().records.members_of(record)[0])])],
+              health);
+    auto const packed{*find_test_type(graph, "vitals", "PackedHealth")};
+    auto const& field{graph.definitions().packed.segments_of(graph.definition(packed))[0]};
+    EXPECT_EQ(
+        graph.occurrences().type[graph.occurrences().index(
+            graph.definitions()
+                .packed_fields.semantic_type[graph.definitions().packed_fields.index(field)])],
+        health);
     for (auto const consumer : {vessel,
                                 packed,
-                                *graph.find_declared("vitals", "Fleet"),
-                                *graph.find_declared("consumers", "Other")}) {
+                                *find_test_type(graph, "vitals", "Fleet"),
+                                *find_test_type(graph, "consumers", "Other")}) {
         EXPECT_NE(std::ranges::find(graph.dependencies_of(consumer), health),
                   graph.dependencies_of(consumer).end());
         EXPECT_NE(std::ranges::find(graph.users_of(health), consumer),
                   graph.users_of(health).end());
     }
-    auto const generated{render_modules(lower_modules(manifest))};
+    auto const generated{files.render(manifest)};
     auto const& header{generated.front().content};
     EXPECT_NE(header.find("using Health = std::uint16_t;"), std::string::npos);
     EXPECT_NE(header.find("#include <cstdint>"), std::string::npos);
@@ -521,28 +721,56 @@ TEST(SourceLoader, ScalarEmissionOnlyEstablishesRepresentationForAliases) {
             "    (code Invalid :value 255 :sentinel true)\n"
             "    (relation references Context)))");
         files.write("types.lispb", R"((type byte :spelling "std::uint8_t" :header "cstdint"))");
-        auto const manifest{files.load()};
-        EXPECT_EQ(schema_at<IntegerScalarSchema>(manifest, 0, 1).cpp_emission, mode);
+        auto manifest{files.load()};
+        EXPECT_EQ(files.store().integer_scalars.cpp_emission[files.store().integer_scalars.index(
+                      schema_at(manifest, 0, 1))],
+                  mode);
         auto const graph{lispb::schema::resolve_type_graph(manifest)};
-        auto const reason{*graph.find_declared("reasons", "Reason")};
-        auto const context{*graph.find_declared("reasons", "Context")};
-        auto const byte{*graph.find_registered("byte")};
-        auto const& scalar{
-            std::get<lispb::schema::IntegerScalarType>(graph.type(reason).definition)};
+        auto const reason{*find_test_type(graph, "reasons", "Reason")};
+        auto const context{*find_test_type(graph, "reasons", "Context")};
+        auto const byte{*graph.find_registered(graph.strings().find("byte"))};
+        auto const& scalar{graph.definition(reason)};
         auto const alias{mode == IntegerScalarCppEmission::alias};
-        EXPECT_EQ(scalar.cpp_representation.has_value(), alias);
+        EXPECT_EQ(lispb::schema::is_valid(
+                      graph.definitions()
+                          .integer_scalars
+                          .cpp_representation[graph.definitions().integer_scalars.index(scalar)]),
+                  alias);
         if (alias) {
-            EXPECT_EQ(scalar.cpp_representation->type, byte);
+            EXPECT_EQ(graph.occurrences().type[graph.occurrences().index(
+                          graph.definitions().integer_scalars.cpp_representation
+                              [graph.definitions().integer_scalars.index(scalar)])],
+                      byte);
         }
-        EXPECT_EQ(scalar.bit_width, 8);
-        EXPECT_EQ(scalar.named_codes.size(), 2);
-        ASSERT_TRUE(scalar.relationship.has_value());
-        EXPECT_EQ(scalar.relationship->target.type, context);
-        auto const& related{
-            std::get<lispb::schema::IntegerScalarType>(graph.type(context).definition)};
-        EXPECT_FALSE(related.cpp_representation.has_value());
-        ASSERT_TRUE(related.relationship.has_value());
-        EXPECT_EQ(related.relationship->target.type, reason);
+        EXPECT_EQ(graph.definitions()
+                      .integer_scalars.bit_width[graph.definitions().integer_scalars.index(scalar)],
+                  8);
+        EXPECT_EQ(
+            graph.definitions()
+                .integer_scalars.named_codes[graph.definitions().integer_scalars.index(scalar)]
+                .size(),
+            2);
+        ASSERT_TRUE(lispb::schema::is_valid(
+            graph.definitions()
+                .integer_scalars.relationship[graph.definitions().integer_scalars.index(scalar)]));
+        EXPECT_EQ(graph.occurrences().type[graph.occurrences().index(
+                      graph.relationships().target[graph.relationships().index(
+                          graph.definitions().integer_scalars.relationship
+                              [graph.definitions().integer_scalars.index(scalar)])])],
+                  context);
+        auto const& related{graph.definition(context)};
+        EXPECT_FALSE(lispb::schema::is_valid(
+            graph.definitions()
+                .integer_scalars
+                .cpp_representation[graph.definitions().integer_scalars.index(related)]));
+        ASSERT_TRUE(lispb::schema::is_valid(
+            graph.definitions()
+                .integer_scalars.relationship[graph.definitions().integer_scalars.index(related)]));
+        EXPECT_EQ(graph.occurrences().type[graph.occurrences().index(
+                      graph.relationships().target[graph.relationships().index(
+                          graph.definitions().integer_scalars.relationship
+                              [graph.definitions().integer_scalars.index(related)])])],
+                  reason);
         EXPECT_EQ(std::ranges::find(graph.dependencies_of(reason), byte) !=
                       graph.dependencies_of(reason).end(),
                   alias);
@@ -556,7 +784,7 @@ TEST(SourceLoader, ScalarEmissionOnlyEstablishesRepresentationForAliases) {
                   graph.dependencies_of(context).end());
         EXPECT_NE(std::ranges::find(graph.users_of(reason), context), graph.users_of(reason).end());
 
-        auto const header{render_modules(lower_modules(manifest)).front().content};
+        auto const header{files.render(manifest).front().content};
         auto const constants{mode == IntegerScalarCppEmission::constants ||
                              mode == IntegerScalarCppEmission::constants_with_names};
         EXPECT_EQ(header.contains("using Reason = std::uint8_t;"), alias);
@@ -578,7 +806,7 @@ TEST(SourceLoader, ScalarAliasesShareCppTypeIncludeResolution) {
                          std::string{representation} + "))");
         files.write("types.lispb",
                     R"((type native_int32 :spelling "std::int32_t" :header "cstdint"))");
-        auto const header{render_modules(lower_modules(files.load())).front().content};
+        auto const header{files.render(files.load()).front().content};
         auto const standard{std::string_view{representation}.starts_with('@') ||
                             std::string_view{representation}.starts_with("std::")};
         auto const spelling{standard ? "std::int32_t" : representation};
@@ -603,21 +831,23 @@ TEST(SourceLoader, PackedDefaultsAreValidatedWithoutChangingImplicitSentinels) {
         (field task std::uint8_t :bits 1))
       (packed-value Invalid :storage std::uint8_t :invalid-value 255
         (field task std::uint8_t :bits 1))))");
-    auto const manifest{files.load()};
-    EXPECT_EQ(std::get<PackedFieldSchema>(schema_at<PackedValueSchema>(manifest, 0).segments[0])
-                  .default_value,
-              PackedIntegerValue{1});
+    auto manifest{files.load()};
+    EXPECT_EQ(
+        files.store()
+            .packed_fields.default_value[files.store().packed_fields.index(files.store().items(
+                files.store().packed_values.segments[files.store().packed_values.index(
+                    schema_at(manifest, 0))])[0])],
+        PackedIntegerValue{1});
     auto const graph{lispb::schema::resolve_type_graph(manifest)};
     auto default_raw = [&](char const* name) {
-        return std::get<lispb::schema::PackedType>(
-                   graph.type(*graph.find_declared("orders", name)).definition)
-            .default_raw_value;
+        return graph.definitions().packed.default_raw_value[graph.definitions().packed.index(
+            graph.definition(*find_test_type(graph, "orders", name)))];
     };
     EXPECT_EQ(default_raw("Order"), 1);
     EXPECT_EQ(default_raw("Partial"), std::nullopt);
     EXPECT_EQ(default_raw("Implicit"), 0);
     EXPECT_EQ(default_raw("Invalid"), 255);
-    auto const header{render_modules(lower_modules(manifest)).front().content};
+    auto const header{files.render(manifest).front().content};
     EXPECT_NE(header.find("Partial() noexcept = delete"), std::string::npos);
     EXPECT_NE(header.find("return Partial{RawTag{}, raw}"), std::string::npos);
 }
@@ -632,32 +862,65 @@ TEST(SourceLoader, IncludedExternalScalarsRetainExternalIdentityAndEnrichPlainRe
     files.write("common/scalars.lispb", R"(
       (type signed_byte :spelling "int8" (integer :signed true :bit-width 8))
       (type real :spelling "double" (floating-point :format ieee754-binary64)))");
-    auto const registry{load_type_registry(files.path("types.lispb"))};
+    auto const registry{load_type_registry(files.context.storage, files.path("types.lispb"))};
     ASSERT_EQ(registry.sources.size(), 3);
-    EXPECT_EQ(registry.declarations.at("signed_byte").source_file_index, 2);
-    auto const manifest{files.load()};
+    EXPECT_EQ(files.context.storage.syntax
+                  .span(registry.declarations.at(files.context.storage.strings.find("signed_byte")))
+                  .file,
+              registry.sources[2]);
+    auto manifest{files.load()};
     auto const graph{lispb::schema::resolve_type_graph(manifest)};
-    auto const registered{*graph.find_registered("signed_byte")};
-    EXPECT_EQ(graph.type(registered).identity.origin,
-              lispb::schema::TypeOrigin::registered_external);
-    auto const& record{std::get<lispb::schema::RecordType>(
-        graph.type(*graph.find_declared("example", "Values")).definition)};
-    auto const& floating{std::get<lispb::schema::ExternalType>(
-        graph.type(record.members[0].semantic_type.type).definition)};
-    EXPECT_EQ(std::get<FloatingPointFormat>(floating.semantics),
+    auto const registered{*graph.find_registered(graph.strings().find("signed_byte"))};
+    EXPECT_EQ(graph.origin(registered), lispb::schema::TypeOrigin::registered_external);
+    auto const& record{graph.definition(*find_test_type(graph, "example", "Values"))};
+    auto const& floating{graph.definition(graph.occurrences().type[graph.occurrences().index(
+        graph.definitions().record_members.semantic_type[graph.definitions().record_members.index(
+            graph.definitions().records.members_of(record)[0])])])};
+    EXPECT_EQ(graph.definitions()
+                  .externals.floating_semantics[graph.definitions().externals.index(floating)],
               FloatingPointFormat::ieee754_binary64);
-    for (std::size_t index{1}; index < record.members.size(); ++index) {
-        auto const& node{graph.type(record.members[index].semantic_type.type)};
-        EXPECT_TRUE(std::holds_alternative<lispb::schema::ExternalType>(node.definition));
-        auto const* scalar{lispb::schema::integer_domain(node)};
-        ASSERT_NE(scalar, nullptr);
-        EXPECT_TRUE(scalar->signedness);
-        EXPECT_EQ(scalar->bit_width, 8);
-        EXPECT_EQ(scalar->minimum_value, PackedIntegerValue{-128});
-        EXPECT_EQ(scalar->maximum_value, PackedIntegerValue{127});
+    for (std::size_t index{1}; index < graph.definitions().records.members_of(record).size();
+         ++index) {
+        auto const& node{graph.occurrences().type[graph.occurrences().index(
+            graph.definitions()
+                .record_members.semantic_type[graph.definitions().record_members.index(
+                    graph.definitions().records.members_of(record)[index])])]};
+        EXPECT_TRUE(
+            ((graph.definition(node)).kind() == lispb::schema::TypeDefinitionKind::external));
+        auto const scalar{lispb::schema::integer_domain(
+            graph,
+            graph.occurrences().type[graph.occurrences().index(
+                graph.definitions()
+                    .record_members.semantic_type[graph.definitions().record_members.index(
+                        graph.definitions().records.members_of(record)[index])])])};
+        ASSERT_TRUE(scalar.has_value());
+        EXPECT_TRUE(
+            graph.definitions()
+                .integer_scalars.signedness[graph.definitions().integer_scalars.index(*scalar)]);
+        EXPECT_EQ(
+            graph.definitions()
+                .integer_scalars.bit_width[graph.definitions().integer_scalars.index(*scalar)],
+            8);
+        EXPECT_EQ(
+            graph.definitions()
+                .integer_scalars.minimum_value[graph.definitions().integer_scalars.index(*scalar)],
+            PackedIntegerValue{-128});
+        EXPECT_EQ(
+            graph.definitions()
+                .integer_scalars.maximum_value[graph.definitions().integer_scalars.index(*scalar)],
+            PackedIntegerValue{127});
     }
     std::filesystem::path const modules[]{files.path("modules.lispb")};
-    auto const compiled{compile_sources(files.path("types.lispb"), modules)};
+    lispb::Compilation compiled;
+    lispb::schema::TypeGraph compile_graph{files.store(), files.context.storage.cpp_types};
+    compile_schema(files.context.storage,
+                   files.context.ir,
+                   manifest,
+                   compile_graph,
+                   compiled,
+                   files.path("types.lispb"),
+                   modules,
+                   true);
     EXPECT_NE(
         std::ranges::find(compiled.dependencies,
                           std::filesystem::weakly_canonical(files.path("common/scalars.lispb"))),
@@ -679,15 +942,18 @@ TEST(SourceLoader, ExternalIntegerDomainsDriveRepresentationsAndPackedWidths) {
       (type index :spelling "NativeIndex" (integer :signed false :bit-width 8 :maximum 254
         (code invalid :value 255 :sentinel true)))
       (type uint32 :spelling "uint32" (integer :signed false :bit-width 32)))");
-    auto const manifest{files.load()};
+    auto manifest{files.load()};
     auto const graph{lispb::schema::resolve_type_graph(manifest)};
-    auto const source{*graph.find_registered("index")};
+    auto const source{*graph.find_registered(graph.strings().find("index"))};
     EXPECT_EQ(graph.users_of(source).size(), 5);
-    auto const& packed{std::get<lispb::schema::PackedType>(
-        graph.type(*graph.find_declared("example", "Packed")).definition)};
-    EXPECT_EQ(std::get<lispb::schema::PackedField>(packed.segments[0]).bit_width, 8);
-    EXPECT_EQ(std::get<lispb::schema::PackedField>(packed.segments[1]).bit_width, 24);
-    auto const output{render_modules(lower_modules(manifest))};
+    auto const& packed{graph.definition(*find_test_type(graph, "example", "Packed"))};
+    EXPECT_EQ(graph.definitions().packed_fields.bit_width[graph.definitions().packed_fields.index(
+                  graph.definitions().packed.segments_of(packed)[0])],
+              8);
+    EXPECT_EQ(graph.definitions().packed_fields.bit_width[graph.definitions().packed_fields.index(
+                  graph.definitions().packed.segments_of(packed)[1])],
+              24);
+    auto const output{files.render(manifest)};
     ASSERT_EQ(output.size(), 1);
     EXPECT_EQ(output[0].content.find("struct NativeIndex"), std::string::npos);
     EXPECT_NE(output[0].content.find("std::uint8_t"), std::string::npos);
@@ -702,27 +968,34 @@ TEST(SourceLoader, ExternalMetadataPreservesExplicitWidthCppFieldEmission) {
         (reserved future :bits 16))
       (record Values (member x int8) (member y double))))");
     files.write("types.lispb", R"((type legacy :spelling "uint32"))");
-    auto const original{render_modules(lower_modules(files.load()))};
+    auto const original{files.render(files.load())};
     files.write("types.lispb", R"(
       (type legacy :spelling "uint32")
       (type integer :spelling "uint32" (integer :signed false :bit-width 32))
       (type byte :spelling "int8" (integer :signed true :bit-width 8))
       (type real :spelling "double" (floating-point :format ieee754-binary64)))");
-    auto const manifest{files.load()};
-    auto const enriched{render_modules(lower_modules(manifest))};
+    auto manifest{files.load()};
+    auto const enriched{files.render(manifest)};
     ASSERT_EQ(original.size(), 1);
     ASSERT_EQ(enriched.size(), 1);
     EXPECT_EQ(original[0].content, enriched[0].content);
 
     auto const graph{lispb::schema::resolve_type_graph(manifest)};
-    auto const& node{graph.type(*graph.find_registered("integer"))};
-    auto field{std::get<PackedFieldSchema>(schema_at<PackedValueSchema>(manifest, 0).segments[0])};
-    EXPECT_EQ(lispb::schema::packed_integer_domain(node, field), nullptr);
-    field.bits.reset();
-    EXPECT_NE(lispb::schema::packed_integer_domain(node, field), nullptr);
-    field.bits = 32;
-    field.type.name = "@integer";
-    EXPECT_EQ(lispb::schema::packed_integer_domain(node, field), nullptr);
+    auto const type{*graph.find_registered(graph.strings().find("integer"))};
+    auto field{files.store().items(
+        files.store()
+            .packed_values.segments[files.store().packed_values.index(schema_at(manifest, 0))])[0]};
+    EXPECT_FALSE(lispb::schema::packed_integer_domain(graph, type, field).has_value());
+    files.store().packed_fields.bits[files.store().packed_fields.index(field)].reset();
+    EXPECT_TRUE(lispb::schema::packed_integer_domain(graph, type, field).has_value());
+    files.store().packed_fields.bits[files.store().packed_fields.index(field)] = 32;
+    files.store().packed_fields.type[files.store().packed_fields.index(field)] = [&] {
+        auto const new_type_refs{files.store().type_refs.append()};
+        files.store().type_refs.name[files.store().type_refs.index(new_type_refs)] =
+            files.context.storage.strings.intern("@integer");
+        return new_type_refs;
+    }();
+    EXPECT_FALSE(lispb::schema::packed_integer_domain(graph, type, field).has_value());
 }
 
 TEST(SourceLoader, RejectsInvalidExternalDomainsAndIncludes) {
@@ -742,7 +1015,7 @@ TEST(SourceLoader, RejectsInvalidExternalDomainsAndIncludes) {
          R"((include "types.lispb"))"}) {
         SCOPED_TRACE(source);
         files.write("types.lispb", source);
-        EXPECT_THROW(lispb::schema::resolve_type_graph(files.load()), std::exception);
+        EXPECT_THROW(files.graph(), std::exception);
     }
 }
 
@@ -752,17 +1025,21 @@ TEST(SourceLoader, ExternalIntegerDefaultsCoverFull64BitDomains) {
     files.write("types.lispb", R"(
       (type signed64 :spelling "int64" (integer :signed true :bit-width 64))
       (type unsigned64 :spelling "uint64" (integer :signed false :bit-width 64)))");
-    auto const graph{lispb::schema::resolve_type_graph(files.load())};
-    auto const* signed_domain{
-        lispb::schema::integer_domain(graph.type(*graph.find_registered("signed64")))};
-    auto const* unsigned_domain{
-        lispb::schema::integer_domain(graph.type(*graph.find_registered("unsigned64")))};
-    ASSERT_NE(signed_domain, nullptr);
-    ASSERT_NE(unsigned_domain, nullptr);
-    EXPECT_EQ(signed_domain->minimum_value,
-              PackedIntegerValue::from_parts(true, std::uint64_t{1} << 63));
-    EXPECT_EQ(unsigned_domain->maximum_value,
-              PackedIntegerValue{(std::numeric_limits<std::uint64_t>::max)()});
+    auto const graph{files.graph()};
+    auto const signed_domain{lispb::schema::integer_domain(
+        graph, *graph.find_registered(graph.strings().find("signed64")))};
+    auto const unsigned_domain{lispb::schema::integer_domain(
+        graph, *graph.find_registered(graph.strings().find("unsigned64")))};
+    ASSERT_TRUE(signed_domain.has_value());
+    ASSERT_TRUE(unsigned_domain.has_value());
+    EXPECT_EQ(
+        graph.definitions().integer_scalars.minimum_value[graph.definitions().integer_scalars.index(
+            *signed_domain)],
+        PackedIntegerValue::from_parts(true, std::uint64_t{1} << 63));
+    EXPECT_EQ(
+        graph.definitions().integer_scalars.maximum_value[graph.definitions().integer_scalars.index(
+            *unsigned_domain)],
+        PackedIntegerValue{(std::numeric_limits<std::uint64_t>::max)()});
 }
 
 TEST(SourceLoader, ExternalRepresentationSourcesObeyIntegerDomainRules) {
@@ -784,7 +1061,7 @@ TEST(SourceLoader, ExternalRepresentationSourcesObeyIntegerDomainRules) {
         SCOPED_TRACE(declaration);
         files.write("modules.lispb",
                     "(module example :header \"Example.h\" " + std::string{declaration} + ")");
-        EXPECT_THROW(lispb::schema::resolve_type_graph(files.load()), std::exception);
+        EXPECT_THROW(files.graph(), std::exception);
     }
 }
 
@@ -812,24 +1089,59 @@ TEST(SourceLoader, NormalModuleKeepsMixedDeclarationOrderAndResolvesTypes) {
     (member health Health)))
 )");
 
-    auto const manifest{files.load()};
-    validate_manifest(manifest);
-    auto const& module{std::get<NormalModuleSchema>(manifest.modules.front())};
-    ASSERT_EQ(module.declarations.size(), 4);
-    EXPECT_EQ(declaration_name(module.declarations[0]), "State");
-    EXPECT_EQ(declaration_name(module.declarations[1]), "Health");
-    EXPECT_EQ(declaration_name(module.declarations[2]), "HealthQ7");
-    EXPECT_EQ(declaration_name(module.declarations[3]), "Snapshot");
+    auto manifest{files.load()};
+    lispb::schema::resolve_type_graph(manifest);
+    auto const& module{manifest.modules.front()};
+    ASSERT_EQ(files.store()
+                  .normal_modules.declarations[files.store().normal_modules.index(module)]
+                  .size(),
+              4);
+    EXPECT_EQ(
+        files.text(declaration_name(
+            files.store(),
+            files.store().items(
+                files.store()
+                    .normal_modules.declarations[files.store().normal_modules.index(module)])[0])),
+        "State");
+    EXPECT_EQ(
+        files.text(declaration_name(
+            files.store(),
+            files.store().items(
+                files.store()
+                    .normal_modules.declarations[files.store().normal_modules.index(module)])[1])),
+        "Health");
+    EXPECT_EQ(
+        files.text(declaration_name(
+            files.store(),
+            files.store().items(
+                files.store()
+                    .normal_modules.declarations[files.store().normal_modules.index(module)])[2])),
+        "HealthQ7");
+    EXPECT_EQ(
+        files.text(declaration_name(
+            files.store(),
+            files.store().items(
+                files.store()
+                    .normal_modules.declarations[files.store().normal_modules.index(module)])[3])),
+        "Snapshot");
 
     auto const graph{lispb::schema::resolve_type_graph(manifest)};
-    auto const snapshot{graph.find_declared("mixed", "Snapshot")};
+    auto const snapshot{find_test_type(graph, "mixed", "Snapshot")};
     ASSERT_TRUE(snapshot.has_value());
-    auto const& record{std::get<lispb::schema::RecordType>(graph.type(*snapshot).definition)};
-    ASSERT_EQ(record.members.size(), 2);
-    EXPECT_EQ(graph.type(record.members[0].semantic_type.type).identity.name, "State");
-    EXPECT_EQ(graph.type(record.members[1].semantic_type.type).identity.name, "Health");
+    auto const& record{graph.definition(*snapshot)};
+    ASSERT_EQ(graph.definitions().records.members_of(record).size(), 2);
+    EXPECT_EQ(files.text(graph.name(graph.occurrences().type[graph.occurrences().index(
+                  graph.definitions()
+                      .record_members.semantic_type[graph.definitions().record_members.index(
+                          graph.definitions().records.members_of(record)[0])])])),
+              "State");
+    EXPECT_EQ(files.text(graph.name(graph.occurrences().type[graph.occurrences().index(
+                  graph.definitions()
+                      .record_members.semantic_type[graph.definitions().record_members.index(
+                          graph.definitions().records.members_of(record)[1])])])),
+              "Health");
 
-    auto const generated{render_modules(lower_modules(manifest))};
+    auto const generated{files.render(manifest)};
     ASSERT_EQ(generated.size(), 1);
     auto const enum_position{generated.front().content.find("enum class State")};
     auto const record_position{generated.front().content.find("struct Snapshot")};
@@ -873,18 +1185,24 @@ TEST(SourceLoader, OrdersPhysicalDependenciesWithoutChangingDeclarationIndices) 
   (union Payload (alternative inner Inner))
   (record Inner (member value float (relation references Outer))))
 )");
-    auto const manifest{files.load()};
+    auto manifest{files.load()};
     auto const graph{lispb::schema::resolve_type_graph(manifest)};
-    ASSERT_TRUE(graph.find_declared("mixed", "Inner").has_value());
-    auto const files_out{render_modules(lower_modules(manifest))};
+    ASSERT_TRUE(find_test_type(graph, "mixed", "Inner").has_value());
+    auto const files_out{files.render(manifest)};
     auto const& header{files_out.front().content};
     EXPECT_LT(header.find("struct Inner"), header.find("union Payload"));
     EXPECT_LT(header.find("union Payload"), header.find("struct Outer"));
-    auto const& declarations{std::get<NormalModuleSchema>(manifest.modules.front()).declarations};
-    EXPECT_EQ(declaration_name(declarations[0]), "Outer");
-    EXPECT_EQ(declaration_name(declarations[1]), "Index");
-    EXPECT_EQ(declaration_name(declarations[2]), "Payload");
-    EXPECT_EQ(declaration_name(declarations[3]), "Inner");
+    auto const& declarations{
+        files.store().normal_modules.declarations[files.store().normal_modules.index(
+            manifest.modules.front())]};
+    EXPECT_EQ(files.text(declaration_name(files.store(), files.store().items(declarations)[0])),
+              "Outer");
+    EXPECT_EQ(files.text(declaration_name(files.store(), files.store().items(declarations)[1])),
+              "Index");
+    EXPECT_EQ(files.text(declaration_name(files.store(), files.store().items(declarations)[2])),
+              "Payload");
+    EXPECT_EQ(files.text(declaration_name(files.store(), files.store().items(declarations)[3])),
+              "Inner");
 }
 
 TEST(SourceLoader, NormalModuleRejectsCrossKindGeneratedCppNameCollision) {
@@ -898,7 +1216,7 @@ TEST(SourceLoader, NormalModuleRejectsCrossKindGeneratedCppNameCollision) {
     (member items array int32)))
 )");
 
-    EXPECT_THROW(validate_manifest(files.load()), std::invalid_argument);
+    EXPECT_THROW(lispb::schema::resolve_type_graph(files.load()), std::invalid_argument);
 }
 
 TEST(SourceLoader, ReadsCommentsAndTypedSoa) {
@@ -921,20 +1239,45 @@ TEST(SourceLoader, ReadsCommentsAndTypedSoa) {
     (member handles array @handle
       (relation offset_into FData :unit elements))))
 )");
-    auto const manifest{files.load()};
+    auto manifest{files.load()};
 
-    ASSERT_EQ(manifest.types.size(), 1);
-    EXPECT_EQ(manifest.types.at("handle").cpp_type.spelling, "FHandle");
-    EXPECT_EQ(manifest.types.at("handle").cpp_type.operation(TypeOperation::add_element), "add");
+    ASSERT_EQ(manifest.types.entries.size(), 1);
+    EXPECT_EQ(files.text(files.context.storage.cpp_types.spelling(
+                  manifest.types.registered
+                      .cpp_type[manifest.types.registered.index(*manifest.types.find("handle"))])),
+              "FHandle");
+    EXPECT_EQ(files.context.storage.cpp_types.operation(
+                  manifest.types.registered
+                      .cpp_type[manifest.types.registered.index(*manifest.types.find("handle"))],
+                  TypeOperation::add_element),
+              "add");
     ASSERT_EQ(manifest.modules.size(), 1);
-    auto const& schema{schema_at<SoaSchema>(manifest, 0)};
-    EXPECT_EQ(schema.operations, all_storage_operations());
-    auto const& member{schema.members.front()};
-    EXPECT_EQ(resolve_type(member.type, manifest.types).spelling, "FHandle");
-    ASSERT_TRUE(member.relationship.has_value());
-    EXPECT_EQ(member.relationship->kind, SemanticRelationKind::offset_into);
-    EXPECT_EQ(member.relationship->target.name, "FData");
-    EXPECT_EQ(member.relationship->unit, SemanticRelationUnit::elements);
+    auto const& schema{schema_at(manifest, 0)};
+    EXPECT_TRUE(std::ranges::equal(
+        files.store().items(files.store().soas.operations[files.store().soas.index(schema)]),
+        all_storage_operations()));
+    auto const& member{
+        files.store().items(files.store().soas.members[files.store().soas.index(schema)])[0]};
+    EXPECT_EQ(files.text(files.context.storage.cpp_types.spelling(resolve_type(
+                  files.store().soa_members.type[files.store().soa_members.index(member)],
+                  manifest.types))),
+              "FHandle");
+    ASSERT_TRUE(files.store()
+                    .soa_members.relationship[files.store().soa_members.index(member)]
+                    .has_value());
+    EXPECT_EQ(
+        files.store().semantic_relations.kind[files.store().semantic_relations.index(
+            *files.store().soa_members.relationship[files.store().soa_members.index(member)])],
+        SemanticRelationKind::offset_into);
+    EXPECT_EQ(files.text(files.store().type_refs.name[files.store().type_refs.index(
+                  files.store().semantic_relations.target[files.store().semantic_relations.index(
+                      *files.store()
+                           .soa_members.relationship[files.store().soa_members.index(member)])])]),
+              "FData");
+    EXPECT_EQ(
+        files.store().semantic_relations.unit[files.store().semantic_relations.index(
+            *files.store().soa_members.relationship[files.store().soa_members.index(member)])],
+        SemanticRelationUnit::elements);
 }
 
 TEST(SourceLoader, ReadsStandardLibrarySoaBackend) {
@@ -948,10 +1291,16 @@ TEST(SourceLoader, ReadsStandardLibrarySoaBackend) {
     (member values array int32)))
 )");
 
-    auto const manifest{files.load()};
-    auto const& module{std::get<NormalModuleSchema>(manifest.modules.front())};
-    EXPECT_EQ(module.soa_backend, SoaBackend::standard_library);
-    EXPECT_FALSE(module.settings.source.has_value());
+    auto manifest{files.load()};
+    auto const& module{manifest.modules.front()};
+    EXPECT_EQ(files.store().normal_modules.soa_backend[files.store().normal_modules.index(module)],
+              SoaBackend::standard_library);
+    EXPECT_FALSE(
+        files.store()
+            .module_settings_store
+            .source[files.store().module_settings_store.index(
+                files.store().normal_modules.settings[files.store().normal_modules.index(module)])]
+            .has_value());
 }
 
 TEST(SourceLoader, RejectsUnknownSoaBackend) {
@@ -981,19 +1330,44 @@ TEST(SourceLoader, ReadsSoaFieldMaskMetadata) {
       :mask-dimensions ((row_index "3") (column_index "4")))))
 )");
 
-    auto const manifest{files.load()};
-    auto const& schema{schema_at<SoaSchema>(manifest, 0)};
-    ASSERT_TRUE(schema.field_mask_name.has_value());
-    EXPECT_EQ(*schema.field_mask_name, "FFieldMask");
-    ASSERT_TRUE(schema.field_enum_name.has_value());
-    EXPECT_EQ(*schema.field_enum_name, "EField");
-    auto const& member{schema.members[1]};
-    EXPECT_TRUE(member.mask_field);
-    ASSERT_EQ(member.mask_dimensions.size(), 2);
-    EXPECT_EQ(member.mask_dimensions[0].index_name, "row_index");
-    EXPECT_EQ(member.mask_dimensions[0].extent, "3");
-    EXPECT_EQ(member.mask_dimensions[1].index_name, "column_index");
-    EXPECT_EQ(member.mask_dimensions[1].extent, "4");
+    auto manifest{files.load()};
+    auto const& schema{schema_at(manifest, 0)};
+    ASSERT_TRUE(files.store().soas.field_mask_name[files.store().soas.index(schema)].has_value());
+    EXPECT_EQ(files.text(*files.store().soas.field_mask_name[files.store().soas.index(schema)]),
+              "FFieldMask");
+    ASSERT_TRUE(files.store().soas.field_enum_name[files.store().soas.index(schema)].has_value());
+    EXPECT_EQ(files.text(*files.store().soas.field_enum_name[files.store().soas.index(schema)]),
+              "EField");
+    auto const& member{
+        files.store().items(files.store().soas.members[files.store().soas.index(schema)])[1]};
+    EXPECT_TRUE(files.store().soa_members.mask_field[files.store().soa_members.index(member)]);
+    ASSERT_EQ(
+        files.store().soa_members.mask_dimensions[files.store().soa_members.index(member)].size(),
+        2);
+    EXPECT_EQ(
+        files.text(
+            files.store().soa_mask_dimensions.index_name[files.store().soa_mask_dimensions.index(
+                files.store().items(files.store().soa_members.mask_dimensions
+                                        [files.store().soa_members.index(member)])[0])]),
+        "row_index");
+    EXPECT_EQ(
+        files.text(files.store().soa_mask_dimensions.extent[files.store().soa_mask_dimensions.index(
+            files.store().items(
+                files.store()
+                    .soa_members.mask_dimensions[files.store().soa_members.index(member)])[0])]),
+        "3");
+    EXPECT_EQ(
+        files.text(
+            files.store().soa_mask_dimensions.index_name[files.store().soa_mask_dimensions.index(
+                files.store().items(files.store().soa_members.mask_dimensions
+                                        [files.store().soa_members.index(member)])[1])]),
+        "column_index");
+    EXPECT_EQ(
+        files.text(files.store().soa_mask_dimensions.extent[files.store().soa_mask_dimensions.index(
+            files.store().items(
+                files.store()
+                    .soa_members.mask_dimensions[files.store().soa_members.index(member)])[1])]),
+        "4");
 }
 
 TEST(SourceLoader, ReadsPackedValueModule) {
@@ -1016,39 +1390,105 @@ TEST(SourceLoader, ReadsPackedValueModule) {
     (field state State :bits 8 :kind enum)))
 )");
 
-    auto const manifest{files.load()};
-    auto const& module{std::get<NormalModuleSchema>(manifest.modules.front())};
-    ASSERT_EQ(module.declarations.size(), 1);
-    auto const& value{schema_at<PackedValueSchema>(manifest, 0)};
-    EXPECT_EQ(value.name, "FighterState");
-    EXPECT_EQ(value.storage_type.name, "std::uint32_t");
-    EXPECT_EQ(value.byte_order, PackedByteOrder::big_endian);
-    EXPECT_EQ(value.bit_order, PackedBitOrder::most_significant_first);
-    EXPECT_EQ(value.invalid_value, std::uint64_t{0x7fffffff});
-    EXPECT_TRUE(value.mutable_value);
-    ASSERT_EQ(value.segments.size(), 3);
-    auto const& index{std::get<PackedFieldSchema>(value.segments[0])};
-    EXPECT_FALSE(index.bits.has_value());
-    EXPECT_EQ(index.kind, PackedFieldKind::unsigned_integer);
-    EXPECT_TRUE(index.range_helper);
-    EXPECT_EQ(index.minimum_value, 0U);
-    EXPECT_EQ(index.maximum_value, 1'000'000U);
-    ASSERT_EQ(index.named_codes.size(), 2U);
-    EXPECT_EQ(index.named_codes[0].name, "Player");
-    EXPECT_EQ(index.named_codes[0].value, 42U);
-    EXPECT_FALSE(index.named_codes[0].sentinel);
-    EXPECT_EQ(index.named_codes[1].name, "Invalid");
-    EXPECT_EQ(index.named_codes[1].value, 1'048'575U);
-    EXPECT_TRUE(index.named_codes[1].sentinel);
-    ASSERT_TRUE(index.relationship.has_value());
-    EXPECT_EQ(index.relationship->kind, SemanticRelationKind::index_into);
-    EXPECT_EQ(index.relationship->target.name, "FighterState");
-    auto const& reserved{std::get<PackedReservedBitsSchema>(value.segments[1])};
-    EXPECT_EQ(reserved.name, "future");
-    EXPECT_EQ(reserved.bits, 4);
-    auto const& state{std::get<PackedFieldSchema>(value.segments[2])};
-    EXPECT_EQ(state.bits, 8);
-    EXPECT_EQ(state.kind, PackedFieldKind::enumeration);
+    auto manifest{files.load()};
+    auto const& module{manifest.modules.front()};
+    ASSERT_EQ(files.store()
+                  .normal_modules.declarations[files.store().normal_modules.index(module)]
+                  .size(),
+              1);
+    auto const& value{schema_at(manifest, 0)};
+    EXPECT_EQ(
+        files.text(files.store().packed_values.name[files.store().packed_values.index(value)]),
+        "FighterState");
+    EXPECT_EQ(
+        files.text(files.store().type_refs.name[files.store().type_refs.index(
+            files.store().packed_values.storage_type[files.store().packed_values.index(value)])]),
+        "std::uint32_t");
+    EXPECT_EQ(files.store().packed_values.byte_order[files.store().packed_values.index(value)],
+              PackedByteOrder::big_endian);
+    EXPECT_EQ(files.store().packed_values.bit_order[files.store().packed_values.index(value)],
+              PackedBitOrder::most_significant_first);
+    EXPECT_EQ(files.store().packed_values.invalid_value[files.store().packed_values.index(value)],
+              std::uint64_t{0x7fffffff});
+    EXPECT_TRUE(
+        files.store().packed_values.mutable_value[files.store().packed_values.index(value)]);
+    ASSERT_EQ(files.store().packed_values.segments[files.store().packed_values.index(value)].size(),
+              3);
+    auto const& index{files.store().items(
+        files.store().packed_values.segments[files.store().packed_values.index(value)])[0]};
+    EXPECT_FALSE(
+        files.store().packed_fields.bits[files.store().packed_fields.index(index)].has_value());
+    EXPECT_EQ(files.store().packed_fields.kind[files.store().packed_fields.index(index)],
+              PackedFieldKind::unsigned_integer);
+    EXPECT_TRUE(files.store().packed_fields.range_helper[files.store().packed_fields.index(index)]);
+    EXPECT_EQ(files.store().packed_fields.minimum_value[files.store().packed_fields.index(index)],
+              0U);
+    EXPECT_EQ(files.store().packed_fields.maximum_value[files.store().packed_fields.index(index)],
+              1'000'000U);
+    ASSERT_EQ(
+        files.store().packed_fields.named_codes[files.store().packed_fields.index(index)].size(),
+        2U);
+    EXPECT_EQ(
+        files.text(files.store().packed_named_codes.name[files.store().packed_named_codes.index(
+            files.store().items(
+                files.store()
+                    .packed_fields.named_codes[files.store().packed_fields.index(index)])[0])]),
+        "Player");
+    EXPECT_EQ(
+        files.store()
+            .packed_named_codes.value[files.store().packed_named_codes.index(files.store().items(
+                files.store()
+                    .packed_fields.named_codes[files.store().packed_fields.index(index)])[0])],
+        42U);
+    EXPECT_FALSE(
+        files.store()
+            .packed_named_codes.sentinel[files.store().packed_named_codes.index(files.store().items(
+                files.store()
+                    .packed_fields.named_codes[files.store().packed_fields.index(index)])[0])]);
+    EXPECT_EQ(
+        files.text(files.store().packed_named_codes.name[files.store().packed_named_codes.index(
+            files.store().items(
+                files.store()
+                    .packed_fields.named_codes[files.store().packed_fields.index(index)])[1])]),
+        "Invalid");
+    EXPECT_EQ(
+        files.store()
+            .packed_named_codes.value[files.store().packed_named_codes.index(files.store().items(
+                files.store()
+                    .packed_fields.named_codes[files.store().packed_fields.index(index)])[1])],
+        1'048'575U);
+    EXPECT_TRUE(
+        files.store()
+            .packed_named_codes.sentinel[files.store().packed_named_codes.index(files.store().items(
+                files.store()
+                    .packed_fields.named_codes[files.store().packed_fields.index(index)])[1])]);
+    ASSERT_TRUE(files.store()
+                    .packed_fields.relationship[files.store().packed_fields.index(index)]
+                    .has_value());
+    EXPECT_EQ(
+        files.store().semantic_relations.kind[files.store().semantic_relations.index(
+            *files.store().packed_fields.relationship[files.store().packed_fields.index(index)])],
+        SemanticRelationKind::index_into);
+    EXPECT_EQ(
+        files.text(files.store().type_refs.name[files.store().type_refs.index(
+            files.store().semantic_relations.target[files.store().semantic_relations.index(
+                *files.store()
+                     .packed_fields.relationship[files.store().packed_fields.index(index)])])]),
+        "FighterState");
+    auto const& reserved{files.store().items(
+        files.store().packed_values.segments[files.store().packed_values.index(value)])[1]};
+    EXPECT_EQ(
+        files.text(files.store().packed_reserved_bits.name[files.store().packed_reserved_bits.index(
+            reserved)]),
+        "future");
+    EXPECT_EQ(
+        files.store().packed_reserved_bits.bits[files.store().packed_reserved_bits.index(reserved)],
+        4);
+    auto const& state{files.store().items(
+        files.store().packed_values.segments[files.store().packed_values.index(value)])[2]};
+    EXPECT_EQ(files.store().packed_fields.bits[files.store().packed_fields.index(state)], 8);
+    EXPECT_EQ(files.store().packed_fields.kind[files.store().packed_fields.index(state)],
+              PackedFieldKind::enumeration);
 }
 
 TEST(SourceLoader, ReadsSignedArbitraryWidthPackedField) {
@@ -1064,20 +1504,47 @@ TEST(SourceLoader, ReadsSignedArbitraryWidthPackedField) {
     (reserved future :bits 24)))
 )");
 
-    auto const manifest{files.load()};
-    auto const& value{schema_at<PackedValueSchema>(manifest, 0)};
-    EXPECT_FALSE(value.byte_order.has_value());
-    EXPECT_FALSE(value.bit_order.has_value());
-    auto const& delta{std::get<PackedFieldSchema>(value.segments.front())};
-    EXPECT_EQ(delta.type.name, "std::int32_t");
-    EXPECT_FALSE(delta.bits.has_value());
-    EXPECT_EQ(delta.kind, PackedFieldKind::signed_integer);
-    EXPECT_EQ(delta.minimum_value, PackedIntegerValue{-100});
-    EXPECT_EQ(delta.maximum_value, PackedIntegerValue{100});
-    ASSERT_EQ(delta.named_codes.size(), 2U);
-    EXPECT_EQ(delta.named_codes[0].value, PackedIntegerValue{0});
-    EXPECT_EQ(delta.named_codes[1].value, PackedIntegerValue{-128});
-    EXPECT_TRUE(delta.named_codes[1].sentinel);
+    auto manifest{files.load()};
+    auto const& value{schema_at(manifest, 0)};
+    EXPECT_FALSE(files.store()
+                     .packed_values.byte_order[files.store().packed_values.index(value)]
+                     .has_value());
+    EXPECT_FALSE(files.store()
+                     .packed_values.bit_order[files.store().packed_values.index(value)]
+                     .has_value());
+    auto const& delta{files.store().items(
+        files.store().packed_values.segments[files.store().packed_values.index(value)])[0]};
+    EXPECT_EQ(files.text(files.store().type_refs.name[files.store().type_refs.index(
+                  files.store().packed_fields.type[files.store().packed_fields.index(delta)])]),
+              "std::int32_t");
+    EXPECT_FALSE(
+        files.store().packed_fields.bits[files.store().packed_fields.index(delta)].has_value());
+    EXPECT_EQ(files.store().packed_fields.kind[files.store().packed_fields.index(delta)],
+              PackedFieldKind::signed_integer);
+    EXPECT_EQ(files.store().packed_fields.minimum_value[files.store().packed_fields.index(delta)],
+              PackedIntegerValue{-100});
+    EXPECT_EQ(files.store().packed_fields.maximum_value[files.store().packed_fields.index(delta)],
+              PackedIntegerValue{100});
+    ASSERT_EQ(
+        files.store().packed_fields.named_codes[files.store().packed_fields.index(delta)].size(),
+        2U);
+    EXPECT_EQ(
+        files.store()
+            .packed_named_codes.value[files.store().packed_named_codes.index(files.store().items(
+                files.store()
+                    .packed_fields.named_codes[files.store().packed_fields.index(delta)])[0])],
+        PackedIntegerValue{0});
+    EXPECT_EQ(
+        files.store()
+            .packed_named_codes.value[files.store().packed_named_codes.index(files.store().items(
+                files.store()
+                    .packed_fields.named_codes[files.store().packed_fields.index(delta)])[1])],
+        PackedIntegerValue{-128});
+    EXPECT_TRUE(
+        files.store()
+            .packed_named_codes.sentinel[files.store().packed_named_codes.index(files.store().items(
+                files.store()
+                    .packed_fields.named_codes[files.store().packed_fields.index(delta)])[1])]);
 }
 
 TEST(SourceLoader, ReadsLinearQuantizedPackedField) {
@@ -1108,12 +1575,17 @@ TEST(SourceLoader, ReadsLinearQuantizedPackedField) {
     (field state std::uint8_t :bits 8)))
 )");
 
-    auto const manifest{files.load()};
-    auto const& value{schema_at<PackedValueSchema>(manifest, manifest.modules.size() - 1)};
-    auto const& health{std::get<PackedFieldSchema>(value.segments.front())};
-    EXPECT_EQ(health.type.name, "project::HealthQ8");
-    EXPECT_FALSE(health.bits.has_value());
-    EXPECT_EQ(health.kind, PackedFieldKind::linear_quantized);
+    auto manifest{files.load()};
+    auto const& value{schema_at(manifest, manifest.modules.size() - 1)};
+    auto const& health{files.store().items(
+        files.store().packed_values.segments[files.store().packed_values.index(value)])[0]};
+    EXPECT_EQ(files.text(files.store().type_refs.name[files.store().type_refs.index(
+                  files.store().packed_fields.type[files.store().packed_fields.index(health)])]),
+              "project::HealthQ8");
+    EXPECT_FALSE(
+        files.store().packed_fields.bits[files.store().packed_fields.index(health)].has_value());
+    EXPECT_EQ(files.store().packed_fields.kind[files.store().packed_fields.index(health)],
+              PackedFieldKind::linear_quantized);
 }
 
 TEST(SourceLoader, ReadsFixedPointPackedField) {
@@ -1136,12 +1608,17 @@ TEST(SourceLoader, ReadsFixedPointPackedField) {
     (field state std::uint16_t :bits 16)))
 )");
 
-    auto const manifest{files.load()};
-    auto const& value{schema_at<PackedValueSchema>(manifest, manifest.modules.size() - 1)};
-    auto const& velocity{std::get<PackedFieldSchema>(value.segments.front())};
-    EXPECT_EQ(velocity.type.name, "project::VelocityQ12_4");
-    EXPECT_FALSE(velocity.bits.has_value());
-    EXPECT_EQ(velocity.kind, PackedFieldKind::fixed_point);
+    auto manifest{files.load()};
+    auto const& value{schema_at(manifest, manifest.modules.size() - 1)};
+    auto const& velocity{files.store().items(
+        files.store().packed_values.segments[files.store().packed_values.index(value)])[0]};
+    EXPECT_EQ(files.text(files.store().type_refs.name[files.store().type_refs.index(
+                  files.store().packed_fields.type[files.store().packed_fields.index(velocity)])]),
+              "project::VelocityQ12_4");
+    EXPECT_FALSE(
+        files.store().packed_fields.bits[files.store().packed_fields.index(velocity)].has_value());
+    EXPECT_EQ(files.store().packed_fields.kind[files.store().packed_fields.index(velocity)],
+              PackedFieldKind::fixed_point);
 }
 
 TEST(SourceLoader, ReadsMiniFloatPackedField) {
@@ -1164,12 +1641,17 @@ TEST(SourceLoader, ReadsMiniFloatPackedField) {
     (field state std::uint8_t :bits 4)))
 )");
 
-    auto const manifest{files.load()};
-    auto const& value{schema_at<PackedValueSchema>(manifest, manifest.modules.size() - 1)};
-    auto const& component{std::get<PackedFieldSchema>(value.segments.front())};
-    EXPECT_EQ(component.type.name, "project::PositionF12");
-    EXPECT_FALSE(component.bits.has_value());
-    EXPECT_EQ(component.kind, PackedFieldKind::mini_float);
+    auto manifest{files.load()};
+    auto const& value{schema_at(manifest, manifest.modules.size() - 1)};
+    auto const& component{files.store().items(
+        files.store().packed_values.segments[files.store().packed_values.index(value)])[0]};
+    EXPECT_EQ(files.text(files.store().type_refs.name[files.store().type_refs.index(
+                  files.store().packed_fields.type[files.store().packed_fields.index(component)])]),
+              "project::PositionF12");
+    EXPECT_FALSE(
+        files.store().packed_fields.bits[files.store().packed_fields.index(component)].has_value());
+    EXPECT_EQ(files.store().packed_fields.kind[files.store().packed_fields.index(component)],
+              PackedFieldKind::mini_float);
 }
 
 TEST(SourceLoader, RejectsUnknownPackedPhysicalOrdering) {
@@ -1224,29 +1706,83 @@ TEST(SourceLoader, ReadsStandaloneIntegerScalarDomain) {
     (relation offset_into EntityTable :unit bytes)))
 )");
 
-    auto const manifest{files.load()};
-    auto const& module{std::get<NormalModuleSchema>(manifest.modules.front())};
-    ASSERT_EQ(module.declarations.size(), 3U);
-    auto const& scalar{schema_at<IntegerScalarSchema>(manifest, 0)};
-    EXPECT_EQ(scalar.name, "DamageReason");
-    EXPECT_FALSE(scalar.signedness);
-    EXPECT_EQ(scalar.minimum_value, PackedIntegerValue{0});
-    EXPECT_EQ(scalar.maximum_value, PackedIntegerValue{10});
-    EXPECT_FALSE(scalar.bit_width.has_value());
-    EXPECT_EQ(scalar.cpp_emission, IntegerScalarCppEmission::constants_with_names);
-    ASSERT_TRUE(scalar.cpp_type.has_value());
-    EXPECT_EQ(scalar.cpp_type->name, "std::uint8_t");
-    ASSERT_EQ(scalar.named_codes.size(), 2U);
-    EXPECT_EQ(scalar.named_codes[1].value, PackedIntegerValue{15});
-    EXPECT_TRUE(scalar.named_codes[1].sentinel);
-    ASSERT_TRUE(scalar.relationship.has_value());
-    EXPECT_EQ(scalar.relationship->kind, SemanticRelationKind::index_into);
-    EXPECT_EQ(scalar.relationship->target.name, "EntityTable");
-    EXPECT_FALSE(scalar.relationship->unit.has_value());
-    auto const& offset{schema_at<IntegerScalarSchema>(manifest, 0, 2)};
-    ASSERT_TRUE(offset.relationship.has_value());
-    EXPECT_EQ(offset.relationship->kind, SemanticRelationKind::offset_into);
-    EXPECT_EQ(offset.relationship->unit, SemanticRelationUnit::bytes);
+    auto manifest{files.load()};
+    auto const& module{manifest.modules.front()};
+    ASSERT_EQ(files.store()
+                  .normal_modules.declarations[files.store().normal_modules.index(module)]
+                  .size(),
+              3U);
+    auto const& scalar{schema_at(manifest, 0)};
+    EXPECT_EQ(
+        files.text(files.store().integer_scalars.name[files.store().integer_scalars.index(scalar)]),
+        "DamageReason");
+    EXPECT_FALSE(
+        files.store().integer_scalars.signedness[files.store().integer_scalars.index(scalar)]);
+    EXPECT_EQ(
+        files.store().integer_scalars.minimum_value[files.store().integer_scalars.index(scalar)],
+        PackedIntegerValue{0});
+    EXPECT_EQ(
+        files.store().integer_scalars.maximum_value[files.store().integer_scalars.index(scalar)],
+        PackedIntegerValue{10});
+    EXPECT_FALSE(files.store()
+                     .integer_scalars.bit_width[files.store().integer_scalars.index(scalar)]
+                     .has_value());
+    EXPECT_EQ(
+        files.store().integer_scalars.cpp_emission[files.store().integer_scalars.index(scalar)],
+        IntegerScalarCppEmission::constants_with_names);
+    ASSERT_TRUE(files.store()
+                    .integer_scalars.cpp_type[files.store().integer_scalars.index(scalar)]
+                    .has_value());
+    EXPECT_EQ(
+        files.text(files.store().type_refs.name[files.store().type_refs.index(
+            *files.store().integer_scalars.cpp_type[files.store().integer_scalars.index(scalar)])]),
+        "std::uint8_t");
+    ASSERT_EQ(files.store()
+                  .integer_scalars.named_codes[files.store().integer_scalars.index(scalar)]
+                  .size(),
+              2U);
+    EXPECT_EQ(
+        files.store()
+            .packed_named_codes.value[files.store().packed_named_codes.index(files.store().items(
+                files.store()
+                    .integer_scalars.named_codes[files.store().integer_scalars.index(scalar)])[1])],
+        PackedIntegerValue{15});
+    EXPECT_TRUE(files.store().packed_named_codes.sentinel[files.store().packed_named_codes.index(
+        files.store().items(
+            files.store()
+                .integer_scalars.named_codes[files.store().integer_scalars.index(scalar)])[1])]);
+    ASSERT_TRUE(files.store()
+                    .integer_scalars.relationship[files.store().integer_scalars.index(scalar)]
+                    .has_value());
+    EXPECT_EQ(files.store().semantic_relations.kind[files.store().semantic_relations.index(
+                  *files.store()
+                       .integer_scalars.relationship[files.store().integer_scalars.index(scalar)])],
+              SemanticRelationKind::index_into);
+    EXPECT_EQ(
+        files.text(files.store().type_refs.name[files.store().type_refs.index(
+            files.store().semantic_relations.target[files.store().semantic_relations.index(
+                *files.store().integer_scalars.relationship[files.store().integer_scalars.index(
+                    scalar)])])]),
+        "EntityTable");
+    EXPECT_FALSE(
+        files.store()
+            .semantic_relations
+            .unit[files.store().semantic_relations.index(
+                *files.store()
+                     .integer_scalars.relationship[files.store().integer_scalars.index(scalar)])]
+            .has_value());
+    auto const& offset{schema_at(manifest, 0, 2)};
+    ASSERT_TRUE(files.store()
+                    .integer_scalars.relationship[files.store().integer_scalars.index(offset)]
+                    .has_value());
+    EXPECT_EQ(files.store().semantic_relations.kind[files.store().semantic_relations.index(
+                  *files.store()
+                       .integer_scalars.relationship[files.store().integer_scalars.index(offset)])],
+              SemanticRelationKind::offset_into);
+    EXPECT_EQ(files.store().semantic_relations.unit[files.store().semantic_relations.index(
+                  *files.store()
+                       .integer_scalars.relationship[files.store().integer_scalars.index(offset)])],
+              SemanticRelationUnit::bytes);
 }
 
 TEST(SourceLoader, ReadsPhysicalRepresentations) {
@@ -1291,41 +1827,101 @@ TEST(SourceLoader, ReadsPhysicalRepresentations) {
     :source project::Health))
 )");
 
-    auto const manifest{files.load()};
+    auto manifest{files.load()};
     ASSERT_EQ(manifest.modules.size(), 2U);
-    auto const& module{std::get<NormalModuleSchema>(manifest.modules[1])};
-    ASSERT_EQ(module.declarations.size(), 6U);
-    auto const& representation{schema_at<LinearQuantizedSchema>(manifest, 1, 0)};
-    EXPECT_EQ(representation.name, "HealthQ8");
-    EXPECT_EQ(representation.source.name, "project::Health");
-    EXPECT_EQ(representation.bit_width, 8U);
-    EXPECT_EQ(representation.reserved_codes, 1U);
-    EXPECT_EQ(representation.clipping, QuantizationClipping::clamp);
-    auto const& varint{schema_at<IntegerVarintSchema>(manifest, 1, 1)};
-    EXPECT_EQ(varint.name, "HealthVarint");
-    EXPECT_EQ(varint.source.name, "project::Health");
-    EXPECT_EQ(varint.encoding, IntegerVarintEncoding::unsigned_varint);
-    auto const& fixed_point{schema_at<FixedPointSchema>(manifest, 1, 2)};
-    EXPECT_EQ(fixed_point.name, "VelocityQ12_4");
-    EXPECT_TRUE(fixed_point.signedness);
-    EXPECT_EQ(fixed_point.total_bits, 16U);
-    EXPECT_EQ(fixed_point.fractional_bits, 4U);
-    EXPECT_EQ(fixed_point.rounding, FixedPointRounding::toward_zero);
-    EXPECT_EQ(fixed_point.minimum_value, "-2.5");
-    EXPECT_EQ(fixed_point.maximum_value, "3.75");
-    auto const& mini_float{schema_at<MiniFloatSchema>(manifest, 1, 3)};
-    EXPECT_EQ(mini_float.name, "CompactFloat");
-    EXPECT_EQ(mini_float.sign_bits, 1U);
-    EXPECT_EQ(mini_float.exponent_bits, 5U);
-    EXPECT_EQ(mini_float.significand_bits, 10U);
-    EXPECT_EQ(mini_float.exponent_bias, 15);
-    auto const& optional{schema_at<OptionalSentinelSchema>(manifest, 1, 4)};
-    EXPECT_EQ(optional.name, "OptionalHealth");
-    EXPECT_EQ(optional.source.name, "project::Health");
-    EXPECT_EQ(optional.sentinel, "Invalid");
-    auto const& presence{schema_at<OptionalPresenceBitSchema>(manifest, 1, 5)};
-    EXPECT_EQ(presence.name, "PresentHealth");
-    EXPECT_EQ(presence.source.name, "project::Health");
+    auto const& module{manifest.modules[1]};
+    ASSERT_EQ(files.store()
+                  .normal_modules.declarations[files.store().normal_modules.index(module)]
+                  .size(),
+              6U);
+    auto const& representation{schema_at(manifest, 1, 0)};
+    EXPECT_EQ(files.text(files.store().linear_quantizeds.name[files.store().linear_quantizeds.index(
+                  representation)]),
+              "HealthQ8");
+    EXPECT_EQ(
+        files.text(files.store().type_refs.name[files.store().type_refs.index(
+            files.store()
+                .linear_quantizeds.source[files.store().linear_quantizeds.index(representation)])]),
+        "project::Health");
+    EXPECT_EQ(
+        files.store()
+            .linear_quantizeds.bit_width[files.store().linear_quantizeds.index(representation)],
+        8U);
+    EXPECT_EQ(files.store().linear_quantizeds.reserved_codes[files.store().linear_quantizeds.index(
+                  representation)],
+              1U);
+    EXPECT_EQ(
+        files.store()
+            .linear_quantizeds.clipping[files.store().linear_quantizeds.index(representation)],
+        QuantizationClipping::clamp);
+    auto const& varint{schema_at(manifest, 1, 1)};
+    EXPECT_EQ(
+        files.text(files.store().integer_varints.name[files.store().integer_varints.index(varint)]),
+        "HealthVarint");
+    EXPECT_EQ(
+        files.text(files.store().type_refs.name[files.store().type_refs.index(
+            files.store().integer_varints.source[files.store().integer_varints.index(varint)])]),
+        "project::Health");
+    EXPECT_EQ(files.store().integer_varints.encoding[files.store().integer_varints.index(varint)],
+              IntegerVarintEncoding::unsigned_varint);
+    auto const& fixed_point{schema_at(manifest, 1, 2)};
+    EXPECT_EQ(
+        files.text(files.store().fixed_points.name[files.store().fixed_points.index(fixed_point)]),
+        "VelocityQ12_4");
+    EXPECT_TRUE(
+        files.store().fixed_points.signedness[files.store().fixed_points.index(fixed_point)]);
+    EXPECT_EQ(files.store().fixed_points.total_bits[files.store().fixed_points.index(fixed_point)],
+              16U);
+    EXPECT_EQ(
+        files.store().fixed_points.fractional_bits[files.store().fixed_points.index(fixed_point)],
+        4U);
+    EXPECT_EQ(files.store().fixed_points.rounding[files.store().fixed_points.index(fixed_point)],
+              FixedPointRounding::toward_zero);
+    EXPECT_EQ(
+        files.text(files.store()
+                       .fixed_points.minimum_value[files.store().fixed_points.index(fixed_point)]),
+        "-2.5");
+    EXPECT_EQ(
+        files.text(files.store()
+                       .fixed_points.maximum_value[files.store().fixed_points.index(fixed_point)]),
+        "3.75");
+    auto const& mini_float{schema_at(manifest, 1, 3)};
+    EXPECT_EQ(
+        files.text(files.store().mini_floats.name[files.store().mini_floats.index(mini_float)]),
+        "CompactFloat");
+    EXPECT_EQ(files.store().mini_floats.sign_bits[files.store().mini_floats.index(mini_float)], 1U);
+    EXPECT_EQ(files.store().mini_floats.exponent_bits[files.store().mini_floats.index(mini_float)],
+              5U);
+    EXPECT_EQ(
+        files.store().mini_floats.significand_bits[files.store().mini_floats.index(mini_float)],
+        10U);
+    EXPECT_EQ(files.store().mini_floats.exponent_bias[files.store().mini_floats.index(mini_float)],
+              15);
+    auto const& optional{schema_at(manifest, 1, 4)};
+    EXPECT_EQ(
+        files.text(files.store()
+                       .optional_sentinels.name[files.store().optional_sentinels.index(optional)]),
+        "OptionalHealth");
+    EXPECT_EQ(
+        files.text(files.store().type_refs.name[files.store().type_refs.index(
+            files.store()
+                .optional_sentinels.source[files.store().optional_sentinels.index(optional)])]),
+        "project::Health");
+    EXPECT_EQ(
+        files.text(files.store().optional_sentinels.sentinel[files.store().optional_sentinels.index(
+            optional)]),
+        "Invalid");
+    auto const& presence{schema_at(manifest, 1, 5)};
+    EXPECT_EQ(
+        files.text(
+            files.store()
+                .optional_presence_bits.name[files.store().optional_presence_bits.index(presence)]),
+        "PresentHealth");
+    EXPECT_EQ(
+        files.text(files.store().type_refs.name[files.store().type_refs.index(
+            files.store().optional_presence_bits.source[files.store().optional_presence_bits.index(
+                presence)])]),
+        "project::Health");
 }
 
 TEST(SourceLoader, RejectsInvalidMiniFloatWidthsAndBias) {
@@ -1364,11 +1960,14 @@ TEST(SourceLoader, ReadsExplicitEnumBitWidth) {
     (value Active :value "7")))
 )");
 
-    auto const manifest{files.load()};
-    auto const& schema{schema_at<EnumSchema>(manifest, 0)};
-    EXPECT_EQ(schema.bit_width, 3);
-    EXPECT_EQ(schema.signedness, false);
-    EXPECT_EQ(schema.helpers, (std::vector{NativeEnumHelper::to_string, NativeEnumHelper::traits}));
+    auto manifest{files.load()};
+    auto const& schema{schema_at(manifest, 0)};
+    EXPECT_EQ(files.store().enums.bit_width[files.store().enums.index(schema)], 3);
+    EXPECT_EQ(files.store().enums.signedness[files.store().enums.index(schema)],
+              schema::EnumSignedness::unsigned_);
+    EXPECT_TRUE(std::ranges::equal(
+        files.store().items(files.store().enums.helpers[files.store().enums.index(schema)]),
+        std::array{NativeEnumHelper::to_string, NativeEnumHelper::traits}));
     for (auto const options : {":native-api true :helpers (unknown)",
                                ":native-api true :helpers traits",
                                ":helpers (traits)"}) {
@@ -1391,11 +1990,13 @@ TEST(SourceLoader, ReadsEnumWithoutCppBackingType) {
     (value Active :value "7")))
 )");
 
-    auto const manifest{files.load()};
-    auto const& schema{schema_at<EnumSchema>(manifest, 0)};
-    EXPECT_FALSE(schema.underlying_type.has_value());
-    EXPECT_EQ(schema.bit_width, 3);
-    EXPECT_EQ(schema.signedness, false);
+    auto manifest{files.load()};
+    auto const& schema{schema_at(manifest, 0)};
+    EXPECT_FALSE(
+        files.store().enums.underlying_type[files.store().enums.index(schema)].has_value());
+    EXPECT_EQ(files.store().enums.bit_width[files.store().enums.index(schema)], 3);
+    EXPECT_EQ(files.store().enums.signedness[files.store().enums.index(schema)],
+              schema::EnumSignedness::unsigned_);
 }
 
 TEST(SourceLoader, ReadsExplicitSignedEnumDomain) {
@@ -1409,10 +2010,11 @@ TEST(SourceLoader, ReadsExplicitSignedEnumDomain) {
     (value Above :value "1")))
 )");
 
-    auto const manifest{files.load()};
-    auto const& schema{schema_at<EnumSchema>(manifest, 0)};
-    EXPECT_EQ(schema.signedness, true);
-    EXPECT_FALSE(schema.bit_width.has_value());
+    auto manifest{files.load()};
+    auto const& schema{schema_at(manifest, 0)};
+    EXPECT_EQ(files.store().enums.signedness[files.store().enums.index(schema)],
+              schema::EnumSignedness::signed_);
+    EXPECT_FALSE(files.store().enums.bit_width[files.store().enums.index(schema)].has_value());
 }
 
 TEST(SourceLoader, ReadsNamedEnumSentinels) {
@@ -1426,12 +2028,19 @@ TEST(SourceLoader, ReadsNamedEnumSentinels) {
     (value Pending :value "0xfe" :sentinel true)))
 )");
 
-    auto const manifest{files.load()};
-    auto const& values{schema_at<EnumSchema>(manifest, 0).values};
+    auto manifest{files.load()};
+    auto const& values{
+        files.store().enums.values[files.store().enums.index(schema_at(manifest, 0))]};
     ASSERT_EQ(values.size(), 3U);
-    EXPECT_FALSE(values[0].sentinel);
-    EXPECT_TRUE(values[1].sentinel);
-    EXPECT_TRUE(values[2].sentinel);
+    EXPECT_FALSE(
+        files.store()
+            .enumerators.sentinel[files.store().enumerators.index(files.store().items(values)[0])]);
+    EXPECT_TRUE(
+        files.store()
+            .enumerators.sentinel[files.store().enumerators.index(files.store().items(values)[1])]);
+    EXPECT_TRUE(
+        files.store()
+            .enumerators.sentinel[files.store().enumerators.index(files.store().items(values)[2])]);
 }
 
 TEST(SourceLoader, RejectsEnumBitWidthOutsideNativeAnalysisRange) {
@@ -1457,11 +2066,16 @@ TEST(SourceLoader, PreservesNumericAndOpaqueEnumInitializers) {
     (value High :value "0x7f")))
 )schema");
 
-    auto const manifest{files.load()};
-    auto const& values{schema_at<EnumSchema>(manifest, 0).values};
+    auto manifest{files.load()};
+    auto const& values{
+        files.store().enums.values[files.store().enums.index(schema_at(manifest, 0))]};
     ASSERT_EQ(values.size(), 2);
-    EXPECT_EQ(values[0].initializer, "0");
-    EXPECT_EQ(values[1].initializer, "0x7f");
+    EXPECT_EQ(files.text(files.store().enumerators.initializer[files.store().enumerators.index(
+                  files.store().items(values)[0])]),
+              "0");
+    EXPECT_EQ(files.text(files.store().enumerators.initializer[files.store().enumerators.index(
+                  files.store().items(values)[1])]),
+              "0x7f");
 
     files.write_root(R"schema(
 (module enums
@@ -1470,8 +2084,11 @@ TEST(SourceLoader, PreservesNumericAndOpaqueEnumInitializers) {
     (value Invalid :value -1)))
 )schema");
     auto const negative_manifest{files.load()};
-    auto const& negative_values{schema_at<EnumSchema>(negative_manifest, 0).values};
-    EXPECT_EQ(negative_values.front().initializer, "-1");
+    auto const& negative_values{
+        files.store().enums.values[files.store().enums.index(schema_at(negative_manifest, 0))]};
+    EXPECT_EQ(files.text(files.store().enumerators.initializer[files.store().enumerators.index(
+                  files.store().items(negative_values)[0])]),
+              "-1");
 
     files.write_root(R"schema(
 (module enums
@@ -1480,8 +2097,11 @@ TEST(SourceLoader, PreservesNumericAndOpaqueEnumInitializers) {
     (value Invalid :value "static_cast<uint8>(1)")))
 )schema");
     auto const opaque_manifest{files.load()};
-    auto const& opaque_values{schema_at<EnumSchema>(opaque_manifest, 0).values};
-    EXPECT_EQ(opaque_values.front().initializer, "static_cast<uint8>(1)");
+    auto const& opaque_values{
+        files.store().enums.values[files.store().enums.index(schema_at(opaque_manifest, 0))]};
+    EXPECT_EQ(files.text(files.store().enumerators.initializer[files.store().enumerators.index(
+                  files.store().items(opaque_values)[0])]),
+              "static_cast<uint8>(1)");
 }
 
 TEST(SourceLoader, ReadsRecordModuleAndFixedArrays) {
@@ -1499,20 +2119,52 @@ TEST(SourceLoader, ReadsRecordModuleAndFixedArrays) {
       (relation contains Position))))
 )");
 
-    auto const manifest{files.load()};
-    auto const& module{std::get<NormalModuleSchema>(manifest.modules.front())};
-    ASSERT_EQ(module.declarations.size(), 2U);
-    auto const& position{schema_at<RecordSchema>(manifest, 0, 0)};
-    auto const& trail{schema_at<RecordSchema>(manifest, 0, 1)};
-    EXPECT_EQ(position.name, "Position");
-    ASSERT_EQ(position.members.size(), 2U);
-    EXPECT_EQ(position.members[0].type.name, "float");
-    EXPECT_FALSE(position.members[0].count.has_value());
-    EXPECT_EQ(trail.export_specifier, "PROJECT_API");
-    EXPECT_EQ(trail.members[0].count, 4);
-    ASSERT_TRUE(trail.members[0].relationship.has_value());
-    EXPECT_EQ(trail.members[0].relationship->kind, SemanticRelationKind::contains);
-    EXPECT_EQ(trail.members[0].relationship->target.name, "Position");
+    auto manifest{files.load()};
+    auto const& module{manifest.modules.front()};
+    ASSERT_EQ(files.store()
+                  .normal_modules.declarations[files.store().normal_modules.index(module)]
+                  .size(),
+              2U);
+    auto const& position{schema_at(manifest, 0, 0)};
+    auto const& trail{schema_at(manifest, 0, 1)};
+    EXPECT_EQ(files.text(files.store().records.name[files.store().records.index(position)]),
+              "Position");
+    ASSERT_EQ(files.store().records.members[files.store().records.index(position)].size(), 2U);
+    EXPECT_EQ(
+        files.text(files.store().type_refs.name[files.store().type_refs.index(
+            files.store()
+                .record_members.type[files.store().record_members.index(files.store().items(
+                    files.store().records.members[files.store().records.index(position)])[0])])]),
+        "float");
+    EXPECT_FALSE(files.store()
+                     .record_members
+                     .count[files.store().record_members.index(files.store().items(
+                         files.store().records.members[files.store().records.index(position)])[0])]
+                     .has_value());
+    EXPECT_EQ(
+        files.text(files.store().records.export_specifier[files.store().records.index(trail)]),
+        "PROJECT_API");
+    EXPECT_EQ(
+        files.store().record_members.count[files.store().record_members.index(files.store().items(
+            files.store().records.members[files.store().records.index(trail)])[0])],
+        4);
+    ASSERT_TRUE(files.store()
+                    .record_members
+                    .relationship[files.store().record_members.index(files.store().items(
+                        files.store().records.members[files.store().records.index(trail)])[0])]
+                    .has_value());
+    EXPECT_EQ(files.store().semantic_relations.kind[files.store().semantic_relations.index(
+                  *files.store().record_members.relationship[files.store().record_members.index(
+                      files.store().items(
+                          files.store().records.members[files.store().records.index(trail)])[0])])],
+              SemanticRelationKind::contains);
+    EXPECT_EQ(
+        files.text(files.store().type_refs.name[files.store().type_refs.index(
+            files.store().semantic_relations.target[files.store().semantic_relations.index(
+                *files.store().record_members.relationship[files.store().record_members.index(
+                    files.store().items(files.store().records.members[files.store().records.index(
+                        trail)])[0])])])]),
+        "Position");
 }
 
 TEST(SourceLoader, ReadsRawUnionModuleAndFixedArrayAlternatives) {
@@ -1527,17 +2179,41 @@ TEST(SourceLoader, ReadsRawUnionModuleAndFixedArrayAlternatives) {
     (alternative bytes std::uint8_t :count 12)))
 )");
 
-    auto const manifest{files.load()};
-    auto const& module{std::get<NormalModuleSchema>(manifest.modules.front())};
-    ASSERT_EQ(module.declarations.size(), 1U);
-    auto const& payload{schema_at<UnionSchema>(manifest, 0)};
-    EXPECT_EQ(payload.name, "Payload");
-    EXPECT_EQ(payload.export_specifier, "PROJECT_API");
-    ASSERT_EQ(payload.alternatives.size(), 2U);
-    EXPECT_EQ(payload.alternatives[0].name, "identifier");
-    EXPECT_FALSE(payload.alternatives[0].count.has_value());
-    EXPECT_EQ(payload.alternatives[1].type.name, "std::uint8_t");
-    EXPECT_EQ(payload.alternatives[1].count, 12);
+    auto manifest{files.load()};
+    auto const& module{manifest.modules.front()};
+    ASSERT_EQ(files.store()
+                  .normal_modules.declarations[files.store().normal_modules.index(module)]
+                  .size(),
+              1U);
+    auto const& payload{schema_at(manifest, 0)};
+    EXPECT_EQ(files.text(files.store().unions.name[files.store().unions.index(payload)]),
+              "Payload");
+    EXPECT_EQ(
+        files.text(files.store().unions.export_specifier[files.store().unions.index(payload)]),
+        "PROJECT_API");
+    ASSERT_EQ(files.store().unions.alternatives[files.store().unions.index(payload)].size(), 2U);
+    EXPECT_EQ(
+        files.text(files.store().union_alternatives.name[files.store().union_alternatives.index(
+            files.store().items(
+                files.store().unions.alternatives[files.store().unions.index(payload)])[0])]),
+        "identifier");
+    EXPECT_FALSE(
+        files.store()
+            .union_alternatives
+            .count[files.store().union_alternatives.index(files.store().items(
+                files.store().unions.alternatives[files.store().unions.index(payload)])[0])]
+            .has_value());
+    EXPECT_EQ(
+        files.text(files.store().type_refs.name[files.store().type_refs.index(
+            files.store()
+                .union_alternatives.type[files.store().union_alternatives.index(files.store().items(
+                    files.store().unions.alternatives[files.store().unions.index(payload)])[1])])]),
+        "std::uint8_t");
+    EXPECT_EQ(
+        files.store()
+            .union_alternatives.count[files.store().union_alternatives.index(files.store().items(
+                files.store().unions.alternatives[files.store().unions.index(payload)])[1])],
+        12);
 }
 
 TEST(SourceLoader, RejectsInvalidRawUnionAlternatives) {
@@ -1548,7 +2224,7 @@ TEST(SourceLoader, RejectsInvalidRawUnionAlternatives) {
   (union Payload
     (alternative value std::uint32_t :count 0)))
 )");
-    EXPECT_THROW(validate_manifest(files.load()), std::invalid_argument);
+    EXPECT_THROW(lispb::schema::resolve_type_graph(files.load()), std::invalid_argument);
 
     files.write_root(R"(
 (module payloads
@@ -1557,7 +2233,7 @@ TEST(SourceLoader, RejectsInvalidRawUnionAlternatives) {
     (alternative value std::uint32_t)
     (alternative value std::uint16_t)))
 )");
-    EXPECT_THROW(validate_manifest(files.load()), std::invalid_argument);
+    EXPECT_THROW(lispb::schema::resolve_type_graph(files.load()), std::invalid_argument);
 }
 
 TEST(SourceLoader, ReadsTaggedUnionDiscriminantAndSymbolicMappings) {
@@ -1578,18 +2254,56 @@ TEST(SourceLoader, ReadsTaggedUnionDiscriminantAndSymbolicMappings) {
     (alternative damage std::uint16_t :count 4 :tag Damage)))
 )");
 
-    auto const manifest{files.load()};
-    auto const& module{std::get<NormalModuleSchema>(manifest.modules[1])};
-    ASSERT_EQ(module.declarations.size(), 1U);
-    auto const& tagged{schema_at<TaggedUnionSchema>(manifest, 1)};
-    EXPECT_EQ(tagged.name, "Event");
-    EXPECT_EQ(tagged.discriminant.name, "events::EventKind");
-    EXPECT_EQ(tagged.export_specifier, "PROJECT_API");
-    ASSERT_EQ(tagged.alternatives.size(), 2U);
-    EXPECT_EQ(tagged.alternatives[0].tag, "Spawn");
-    EXPECT_FALSE(tagged.alternatives[0].count.has_value());
-    EXPECT_EQ(tagged.alternatives[1].tag, "Damage");
-    EXPECT_EQ(tagged.alternatives[1].count, 4);
+    auto manifest{files.load()};
+    auto const& module{manifest.modules[1]};
+    ASSERT_EQ(files.store()
+                  .normal_modules.declarations[files.store().normal_modules.index(module)]
+                  .size(),
+              1U);
+    auto const& tagged{schema_at(manifest, 1)};
+    EXPECT_EQ(
+        files.text(files.store().tagged_unions.name[files.store().tagged_unions.index(tagged)]),
+        "Event");
+    EXPECT_EQ(
+        files.text(files.store().type_refs.name[files.store().type_refs.index(
+            files.store().tagged_unions.discriminant[files.store().tagged_unions.index(tagged)])]),
+        "events::EventKind");
+    EXPECT_EQ(
+        files.text(files.store()
+                       .tagged_unions.export_specifier[files.store().tagged_unions.index(tagged)]),
+        "PROJECT_API");
+    ASSERT_EQ(
+        files.store().tagged_unions.alternatives[files.store().tagged_unions.index(tagged)].size(),
+        2U);
+    EXPECT_EQ(
+        files.text(
+            files.store()
+                .tagged_union_alternatives
+                .tag[files.store().tagged_union_alternatives.index(files.store().items(
+                    files.store().tagged_unions.alternatives[files.store().tagged_unions.index(
+                        tagged)])[0])]),
+        "Spawn");
+    EXPECT_FALSE(
+        files.store()
+            .tagged_union_alternatives
+            .count[files.store().tagged_union_alternatives.index(files.store().items(
+                files.store()
+                    .tagged_unions.alternatives[files.store().tagged_unions.index(tagged)])[0])]
+            .has_value());
+    EXPECT_EQ(
+        files.text(
+            files.store()
+                .tagged_union_alternatives
+                .tag[files.store().tagged_union_alternatives.index(files.store().items(
+                    files.store().tagged_unions.alternatives[files.store().tagged_unions.index(
+                        tagged)])[1])]),
+        "Damage");
+    EXPECT_EQ(
+        files.store().tagged_union_alternatives.count[files.store().tagged_union_alternatives.index(
+            files.store().items(
+                files.store()
+                    .tagged_unions.alternatives[files.store().tagged_unions.index(tagged)])[1])],
+        4);
 }
 
 TEST(SourceLoader, RejectsDuplicateTaggedUnionNamesAndTags) {
@@ -1602,7 +2316,7 @@ TEST(SourceLoader, RejectsDuplicateTaggedUnionNamesAndTags) {
     (alternative value std::uint32_t :tag Value)
     (alternative value std::uint16_t :tag Other)))
 )");
-    EXPECT_THROW(validate_manifest(files.load()), std::invalid_argument);
+    EXPECT_THROW(lispb::schema::resolve_type_graph(files.load()), std::invalid_argument);
 
     files.write_root(R"(
 (module payloads
@@ -1612,7 +2326,7 @@ TEST(SourceLoader, RejectsDuplicateTaggedUnionNamesAndTags) {
     (alternative first std::uint32_t :tag Value)
     (alternative second std::uint16_t :tag Value)))
 )");
-    EXPECT_THROW(validate_manifest(files.load()), std::invalid_argument);
+    EXPECT_THROW(lispb::schema::resolve_type_graph(files.load()), std::invalid_argument);
 }
 
 TEST(SourceLoader, RejectsNonIntegerPackedFieldWidthWithSourceLocation) {
@@ -1697,13 +2411,24 @@ TEST(SourceLoader, LoadsStructuredTypeReferencesAndFacadeStorage) {
       (parameter index int32 :default "0"))))
 )");
 
-    auto const manifest{files.load()};
-    auto const& facade{schema_at<FacadeSchema>(manifest, 0)};
-    EXPECT_TRUE(facade.reference_target);
-    EXPECT_TRUE(facade.definitions_in_source);
-    EXPECT_EQ(facade.methods.front().return_type.suffix, " const&");
-    EXPECT_EQ(facade.methods.front().target_name, "get_value");
-    EXPECT_TRUE(facade.methods.front().is_const);
+    auto manifest{files.load()};
+    auto const& facade{schema_at(manifest, 0)};
+    EXPECT_TRUE(files.store().facades.reference_target[files.store().facades.index(facade)]);
+    EXPECT_TRUE(files.store().facades.definitions_in_source[files.store().facades.index(facade)]);
+    EXPECT_EQ(
+        files.text(files.store().type_refs.suffix[files.store().type_refs.index(
+            files.store()
+                .facade_methods.return_type[files.store().facade_methods.index(files.store().items(
+                    files.store().facades.methods[files.store().facades.index(facade)])[0])])]),
+        " const&");
+    EXPECT_EQ(
+        files.text(files.store().facade_methods.target_name[files.store().facade_methods.index(
+            files.store().items(
+                files.store().facades.methods[files.store().facades.index(facade)])[0])]),
+        "get_value");
+    EXPECT_TRUE(files.store()
+                    .facade_methods.is_const[files.store().facade_methods.index(files.store().items(
+                        files.store().facades.methods[files.store().facades.index(facade)])[0])]);
 }
 
 TEST(SourceLoader, LoadsOpaqueCppBlocksAndKeepsQuotedBodiesCompatible) {
@@ -1729,7 +2454,7 @@ TEST(SourceLoader, LoadsOpaqueCppBlocksAndKeepsQuotedBodiesCompatible) {
         "  (facade FFacade Target target\n"
         "    :validation #cpp{checkf(target != nullptr, TEXT(\"missing target\"));}cpp#))");
 
-    auto const manifest{files.load()};
+    auto manifest{files.load()};
     ASSERT_EQ(manifest.modules.size(), 2);
 #ifdef _WIN32
     auto const newline{std::string{"\r\n"}};
@@ -1737,21 +2462,53 @@ TEST(SourceLoader, LoadsOpaqueCppBlocksAndKeepsQuotedBodiesCompatible) {
     auto const newline{std::string{"\n"}};
 #endif
 
-    auto const& soa{std::get<NormalModuleSchema>(manifest.modules[0])};
-    ASSERT_EQ(soa.settings.prelude_lines.size(), 1);
-    EXPECT_EQ(soa.settings.prelude_lines[0],
-              "class FForward;" + newline + "#define GENERATED_PATH \"C:\\\\generated\"");
-    auto const& data{schema_at<SoaSchema>(manifest, 0)};
-    ASSERT_EQ(data.functions.size(), 2);
-    ASSERT_EQ(data.functions[0].body_lines.size(), 1);
-    EXPECT_EQ(data.functions[0].body_lines[0],
-              "if (dt <= 0.0f) {" + newline + "    return;" + newline + "}" + newline + newline +
-                  "values[0] += dt;");
-    EXPECT_EQ(data.functions[1].body_lines, (std::vector<std::string>{"values[0] = 0;"}));
+    auto const& soa{manifest.modules[0]};
+    ASSERT_EQ(
+        files.store()
+            .module_settings_store
+            .prelude_lines[files.store().module_settings_store.index(
+                files.store().normal_modules.settings[files.store().normal_modules.index(soa)])]
+            .size(),
+        1);
+    EXPECT_EQ(
+        files.text(files.store().items(
+            files.store()
+                .module_settings_store.prelude_lines[files.store().module_settings_store.index(
+                    files.store()
+                        .normal_modules.settings[files.store().normal_modules.index(soa)])])[0]),
+        "class FForward;" + newline + "#define GENERATED_PATH \"C:\\\\generated\"");
+    auto const& data{schema_at(manifest, 0)};
+    ASSERT_EQ(files.store().soas.functions[files.store().soas.index(data)].size(), 2);
+    ASSERT_EQ(files.store()
+                  .functions
+                  .body_lines[files.store().functions.index(files.store().items(
+                      files.store().soas.functions[files.store().soas.index(data)])[0])]
+                  .size(),
+              1);
+    EXPECT_EQ(
+        files.text(files.store().items(
+            files.store().functions.body_lines[files.store().functions.index(files.store().items(
+                files.store().soas.functions[files.store().soas.index(data)])[0])])[0]),
+        "if (dt <= 0.0f) {" + newline + "    return;" + newline + "}" + newline + newline +
+            "values[0] += dt;");
+    ASSERT_EQ(files.store()
+                  .functions
+                  .body_lines[files.store().functions.index(files.store().items(
+                      files.store().soas.functions[files.store().soas.index(data)])[1])]
+                  .size(),
+              1);
+    EXPECT_EQ(
+        files.text(files.store().items(
+            files.store().functions.body_lines[files.store().functions.index(files.store().items(
+                files.store().soas.functions[files.store().soas.index(data)])[1])])[0]),
+        "values[0] = 0;");
 
-    auto const& facade{schema_at<FacadeSchema>(manifest, 1)};
-    EXPECT_EQ(facade.validation_lines,
-              (std::vector<std::string>{"checkf(target != nullptr, TEXT(\"missing target\"));"}));
+    auto const& facade{schema_at(manifest, 1)};
+    ASSERT_EQ(files.store().facades.validation_lines[files.store().facades.index(facade)].size(),
+              1);
+    EXPECT_EQ(files.text(files.store().items(
+                  files.store().facades.validation_lines[files.store().facades.index(facade)])[0]),
+              "checkf(target != nullptr, TEXT(\"missing target\"));");
 }
 
 TEST(SourceLoader, AcceptsEmptyCppBodyAndRejectsWrongRawTag) {
@@ -1762,9 +2519,14 @@ TEST(SourceLoader, AcceptsEmptyCppBodyAndRejectsWrongRawTag) {
   (struct FData
     (function empty void :body #cpp{}cpp#)))
 )");
-    auto const manifest{files.load()};
-    auto const& function{schema_at<SoaSchema>(manifest, 0).functions[0]};
-    EXPECT_EQ(function.body_lines, std::vector<std::string>{""});
+    auto manifest{files.load()};
+    auto const& function{files.store().items(
+        files.store().soas.functions[files.store().soas.index(schema_at(manifest, 0))])[0]};
+    ASSERT_EQ(files.store().functions.body_lines[files.store().functions.index(function)].size(),
+              1);
+    EXPECT_EQ(files.text(files.store().items(
+                  files.store().functions.body_lines[files.store().functions.index(function)])[0]),
+              "");
 
     files.write_root(R"(
 (module example
@@ -1806,13 +2568,34 @@ TEST(SourceLoader, LoadsSettingsControls) {
     (control float-range :min 50 :max 100 :step 0.5)))
 )");
 
-    auto const manifest{files.load()};
-    auto const& module{std::get<SettingsModuleSchema>(manifest.modules.front())};
-    ASSERT_EQ(module.settings_list.size(), 1);
-    EXPECT_EQ(module.settings_list.front().apply_mode, SettingApplyMode::deferred);
-    EXPECT_EQ(module.settings_list.front().device, SettingDevice::keyboard_mouse);
-    EXPECT_EQ(module.settings_list.front().control.kind, SettingControlKind::float_range);
-    EXPECT_EQ(module.settings_list.front().control.step, 0.5);
+    auto manifest{files.load()};
+    auto const& module{manifest.modules.front()};
+    ASSERT_EQ(files.store()
+                  .settings_modules.settings_list[files.store().settings_modules.index(module)]
+                  .size(),
+              1);
+    EXPECT_EQ(
+        files.store().settings.apply_mode[files.store().settings.index(files.store().items(
+            files.store()
+                .settings_modules.settings_list[files.store().settings_modules.index(module)])[0])],
+        SettingApplyMode::deferred);
+    EXPECT_EQ(
+        files.store().settings.device[files.store().settings.index(files.store().items(
+            files.store()
+                .settings_modules.settings_list[files.store().settings_modules.index(module)])[0])],
+        SettingDevice::keyboard_mouse);
+    EXPECT_EQ(
+        files.store().setting_controls.kind[files.store().setting_controls.index(
+            files.store().settings.control[files.store().settings.index(files.store().items(
+                files.store().settings_modules.settings_list[files.store().settings_modules.index(
+                    module)])[0])])],
+        SettingControlKind::float_range);
+    EXPECT_EQ(
+        files.store().setting_controls.step[files.store().setting_controls.index(
+            files.store().settings.control[files.store().settings.index(files.store().items(
+                files.store().settings_modules.settings_list[files.store().settings_modules.index(
+                    module)])[0])])],
+        0.5);
 }
 
 TEST(SourceLoader, SettingsDeviceDefaultsToShared) {
@@ -1831,9 +2614,13 @@ TEST(SourceLoader, SettingsDeviceDefaultsToShared) {
     (control toggle)))
 )");
 
-    auto const manifest{files.load()};
-    auto const& module{std::get<SettingsModuleSchema>(manifest.modules.front())};
-    EXPECT_EQ(module.settings_list.front().device, SettingDevice::shared);
+    auto manifest{files.load()};
+    auto const& module{manifest.modules.front()};
+    EXPECT_EQ(
+        files.store().settings.device[files.store().settings.index(files.store().items(
+            files.store()
+                .settings_modules.settings_list[files.store().settings_modules.index(module)])[0])],
+        SettingDevice::shared);
 }
 
 TEST(SourceLoader, SingleOnlyLogicalApiIsPreserved) {
@@ -1850,13 +2637,15 @@ TEST(SourceLoader, SingleOnlyLogicalApiIsPreserved) {
     (mutable-view-function write void :body #cpp{$column(values)[0] = 1;}cpp#)
     (single-allocation Owner)))
 )");
-    auto const manifest{files.load()};
-    auto const& schema{schema_at<SoaSchema>(manifest, 0)};
-    EXPECT_EQ(schema.selected_storage(), SoaStorage::single_allocation);
-    ASSERT_EQ(schema.const_view_functions.size(), 1U);
-    EXPECT_TRUE(schema.const_view_functions.front().is_const);
-    ASSERT_EQ(schema.mutable_view_functions.size(), 1U);
-    auto const output{render_modules(lower_modules(manifest)).front().content};
+    auto manifest{files.load()};
+    auto const& schema{schema_at(manifest, 0)};
+    EXPECT_EQ(files.store().soas.selected_storage(schema), SoaStorage::single_allocation);
+    ASSERT_EQ(files.store().soas.const_view_functions[files.store().soas.index(schema)].size(), 1U);
+    EXPECT_TRUE(files.store().functions.is_const[files.store().functions.index(files.store().items(
+        files.store().soas.const_view_functions[files.store().soas.index(schema)])[0])]);
+    ASSERT_EQ(files.store().soas.mutable_view_functions[files.store().soas.index(schema)].size(),
+              1U);
+    auto const output{files.render(manifest).front().content};
     EXPECT_NE(output.find("struct API Owner"), std::string::npos);
     EXPECT_NE(output.find("std::pmr::memory_resource* resource"), std::string::npos);
     EXPECT_NE(output.find("return this->values()[0];"), std::string::npos);
@@ -1893,4 +2682,4 @@ TEST(SourceLoader, ReadOnlyViewFunctionRejectsMutableReceiver) {
 }
 
 } // namespace
-} // namespace codegen
+} // namespace lispb::codegen

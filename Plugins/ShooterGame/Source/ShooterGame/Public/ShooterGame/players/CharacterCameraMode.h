@@ -7,6 +7,8 @@
 
 #include "CoreMinimal.h"
 
+#include <cstddef>
+
 #include "CharacterCameraMode.generated.h"
 
 // Logical bit width: 1.
@@ -23,5 +25,4 @@ template <>
 [[nodiscard]] constexpr auto enum_count<::ECharacterCameraMode>() noexcept -> std::size_t {
     return 2;
 }
-
 } // namespace ml

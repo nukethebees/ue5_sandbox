@@ -1,52 +1,30 @@
 #pragma once
-#include <codegen/schema.h>
+#include <codegen/loaded_module_source.h>
+#include <codegen/loaded_type_registry.h>
 #include <codegen/schema/manifest.h>
-#include <codegen/schema/module_schema.h>
-#include <codegen/schema/registered_type_schema.h>
-#include <codegen/source_position_types.h>
+#include <codegen/sexpr/indices.h>
 
 #include <filesystem>
 #include <span>
 
-namespace codegen {
+namespace lispb {
+struct CompilerStorage;
+}
 
-struct RegistrySourceRange {
-    SourceFileIndex source_file_index{};
-    SourceOffset begin_offset{};
-    SourceOffset end_offset{};
-    LineNum line{1};
-    ColumnNum column{1};
-};
+namespace lispb::codegen {
 
-struct RegistryInclude {
-    RegistrySourceRange source_range;
-    std::filesystem::path target;
-};
+auto load_type_registry(CompilerStorage& storage, std::filesystem::path const& root)
+    -> LoadedTypeRegistry;
+auto parse_module_source(CompilerStorage& storage, sexpr::SourceFileId file) -> LoadedModuleSource;
 
-struct RegistrySourceFile {
-    std::filesystem::path path;
-    std::string text;
-    std::vector<RegistryInclude> includes;
-};
-
-struct LoadedTypeRegistry {
-    TypeRegistry types;
-    std::vector<RegistrySourceFile> sources;
-    std::map<std::string, RegistrySourceRange, std::less<>> declarations;
-};
-
-struct LoadedModuleSource {
-    // Editable source ownership must use the same bytes as semantic parsing.
-    std::string text;
-    std::vector<ModuleSchema> modules;
-};
-
-auto load_type_registry(std::filesystem::path const& root) -> LoadedTypeRegistry;
-auto load_module_source(std::filesystem::path const& path) -> LoadedModuleSource;
-auto load_sources(LoadedTypeRegistry const& registry,
+auto load_module_source(CompilerStorage& storage, std::filesystem::path const& path)
+    -> LoadedModuleSource;
+auto load_sources(CompilerStorage& storage,
+                  LoadedTypeRegistry const& registry,
                   std::span<std::filesystem::path const> module_paths) -> Manifest;
 
-auto load_sources(std::filesystem::path const& types_path,
+auto load_sources(CompilerStorage& storage,
+                  std::filesystem::path const& types_path,
                   std::span<std::filesystem::path const> module_paths) -> Manifest;
 
 namespace detail {
@@ -58,4 +36,4 @@ auto set_module_source_read_hook_for_testing(ModuleSourceReadHook hook) noexcept
 
 } // namespace detail
 
-} // namespace codegen
+} // namespace lispb::codegen

@@ -7,9 +7,14 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <cassert>
 #include <concepts>
+#include <cstddef>
+#include <cstdint>
 #include <limits>
 #include <span>
+#include <stdexcept>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <variant>

@@ -1,6 +1,10 @@
+#include "analyzer_test_fixtures.hpp"
 #include <ioj/layout/physical_facts.hpp>
 
 #include <codegen/source_loader.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/project_loader.h>
+#include <lispb/schema/type_graph.h>
 
 #include <gtest/gtest.h>
 #include <native_soa_types.h>
@@ -8,21 +12,24 @@
 #include <array>
 #include <cstddef>
 #include <filesystem>
+#include <optional>
+#include <string>
 #include <tuple>
 
 namespace ioj::layout {
 namespace {
 
-auto physical_fixture() -> lispb::schema::TypeGraph {
+auto physical_fixture(lispb::CompilerStorage& storage) -> lispb::schema::TypeGraph {
     auto const root{std::filesystem::path{IOJ_SOURCE_DIR} / "native/lispb/native_soa"};
-    auto const manifest{
-        codegen::load_sources(root / "types.lispb", std::array{root / "fixture.lispb"})};
+    auto manifest{lispb::codegen::load_sources(
+        storage, root / "types.lispb", std::array{root / "fixture.lispb"})};
     return lispb::schema::resolve_type_graph(manifest);
 }
 
 TEST(PhysicalFacts, GeneratedCppAgreesForPointersNestedRecordsAndAlignedExternalMembers) {
+    lispb::CompilerStorage storage;
     using namespace ml::native_soa_fixture;
-    auto const types{physical_fixture()};
+    auto const types{physical_fixture(storage)};
     auto profile{AbiProfile::host_common()};
     TypeFacts aligned{};
     aligned.size_bytes = sizeof(Aligned32);
@@ -37,19 +44,19 @@ TEST(PhysicalFacts, GeneratedCppAgreesForPointersNestedRecordsAndAlignedExternal
           std::tuple{"First", sizeof(First), alignof(First)},
           std::tuple{"Second", sizeof(Second), alignof(Second)},
           std::tuple{"Envelope", sizeof(Envelope), alignof(Envelope)}}) {
-        auto const facts{resolver.resolve(*types.find_declared("native_soa_fixture", name))};
+        auto const facts{resolver.resolve(*fixture_find(types, "native_soa_fixture", name))};
         ASSERT_TRUE(facts.facts.has_value()) << name;
         EXPECT_EQ(facts.facts->size_bytes, size) << name;
         EXPECT_EQ(facts.facts->alignment_bytes, alignment) << name;
         EXPECT_EQ(facts.facts->origin, FactOrigin::derived);
     }
     auto const envelope{
-        resolver.analyze_record(*types.find_declared("native_soa_fixture", "Envelope"))};
+        resolver.analyze_record(*fixture_find(types, "native_soa_fixture", "Envelope"))};
     EXPECT_EQ(envelope.members[0].offset_bytes, offsetof(Envelope, pairs));
     EXPECT_EQ(envelope.members[1].offset_bytes, offsetof(Envelope, node));
     EXPECT_EQ(envelope.members[2].offset_bytes, offsetof(Envelope, aligned));
     auto const rows{Analyzer::analyze_soa(
-        types, *types.find_declared("native_soa_fixture", "PairRows"), Variant{}, profile, 7)};
+        types, *fixture_find(types, "native_soa_fixture", "PairRows"), Variant{}, profile, 7)};
     PairRows generated;
     generated.set_num(7);
     EXPECT_EQ(rows.columns[0].total_bytes, generated.pairs.size() * sizeof(generated.pairs[0]));
@@ -57,8 +64,9 @@ TEST(PhysicalFacts, GeneratedCppAgreesForPointersNestedRecordsAndAlignedExternal
 }
 
 TEST(PhysicalFacts, SingleOnlySchemasUseOwnerFactsAndLayoutsHaveNoPhysicalObject) {
+    lispb::CompilerStorage storage;
     using namespace ml::native_soa_fixture;
-    auto const types{physical_fixture()};
+    auto const types{physical_fixture(storage)};
     auto profile{AbiProfile::host_common()};
     TypeFacts const owner_facts{.size_bytes = sizeof(ApiOwner),
                                 .alignment_bytes = alignof(ApiOwner),
@@ -68,12 +76,12 @@ TEST(PhysicalFacts, SingleOnlySchemasUseOwnerFactsAndLayoutsHaveNoPhysicalObject
                                 .origin = FactOrigin::compiler_probe};
     profile.set("ml::native_soa_fixture::ApiOwner", owner_facts);
     PhysicalFactsResolver resolver{types, profile};
-    auto const logical{types.find_declared("native_soa_fixture", "ApiRows")};
+    auto const logical{fixture_find(types, "native_soa_fixture", "ApiRows")};
     ASSERT_TRUE(logical);
     auto const facts{resolver.resolve(*logical)};
     ASSERT_TRUE(facts.facts);
     EXPECT_EQ(facts.facts->size_bytes, sizeof(ApiOwner));
-    auto const layout{types.find_declared("native_soa_fixture", "ApiCoordinates")};
+    auto const layout{fixture_find(types, "native_soa_fixture", "ApiCoordinates")};
     ASSERT_TRUE(layout);
     auto const absent{resolver.resolve(*layout)};
     EXPECT_FALSE(absent.facts);
@@ -82,7 +90,8 @@ TEST(PhysicalFacts, SingleOnlySchemasUseOwnerFactsAndLayoutsHaveNoPhysicalObject
 }
 
 TEST(PhysicalFacts, MissingPointeeFactsDoNotBlockPointersAndProfilesStaySeparate) {
-    auto const types{physical_fixture()};
+    lispb::CompilerStorage storage;
+    auto const types{physical_fixture(storage)};
     auto profile{AbiProfile::host_common()};
     PhysicalFactsResolver known{types, profile};
     EXPECT_TRUE(known.resolve_spelling("Opaque*").facts.has_value());
@@ -96,7 +105,8 @@ TEST(PhysicalFacts, MissingPointeeFactsDoNotBlockPointersAndProfilesStaySeparate
 }
 
 TEST(PhysicalFacts, UnsupportedUsesAndReferenceStorageRemainUnknown) {
-    auto const types{physical_fixture()};
+    lispb::CompilerStorage storage;
+    auto const types{physical_fixture(storage)};
     auto profile{AbiProfile::host_common()};
     PhysicalFactsResolver resolver{types, profile};
     for (auto const spelling : {"float[3]", "float(*)()", "float&", "float&&", "float Owner::*"}) {
@@ -113,7 +123,8 @@ TEST(PhysicalFacts, UnsupportedUsesAndReferenceStorageRemainUnknown) {
 }
 
 TEST(PhysicalFacts, PointerPolicyRetainsManualEvidence) {
-    auto const types{physical_fixture()};
+    lispb::CompilerStorage storage;
+    auto const types{physical_fixture(storage)};
     AbiProfile profile{"assumed target"};
     TypeFacts pointer{};
     pointer.size_bytes = 8;
@@ -129,13 +140,14 @@ TEST(PhysicalFacts, PointerPolicyRetainsManualEvidence) {
 }
 
 TEST(PhysicalFacts, SuppliedFactsCannotSilentlyReplaceGeneratedLayout) {
-    auto const types{physical_fixture()};
+    lispb::CompilerStorage storage;
+    auto const types{physical_fixture(storage)};
     auto profile{AbiProfile::host_common()};
     TypeFacts incorrect{};
     incorrect.size_bytes = 64;
     incorrect.alignment_bytes = 8;
     profile.set("ml::native_soa_fixture::Pair", incorrect);
-    auto const pair{*types.find_declared("native_soa_fixture", "Pair")};
+    auto const pair{*fixture_find(types, "native_soa_fixture", "Pair")};
     auto const result{PhysicalFactsResolver{types, profile}.resolve(pair)};
     EXPECT_FALSE(result.facts.has_value());
     ASSERT_FALSE(result.diagnostics.empty());

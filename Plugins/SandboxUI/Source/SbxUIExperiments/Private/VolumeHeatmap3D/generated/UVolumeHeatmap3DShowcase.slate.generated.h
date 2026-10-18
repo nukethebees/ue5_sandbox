@@ -5,9 +5,7 @@
 #pragma once
 
 #include <utility>
-
 namespace SlateGenerated {
-
 struct UVolumeHeatmap3DShowcaseBuilder {
     using ThisClass = ::UVolumeHeatmap3DShowcase;
 
@@ -176,5 +174,4 @@ struct UVolumeHeatmap3DShowcaseBuilder {
   private:
     ThisClass& self_;
 };
-
-}
+} // namespace SlateGenerated

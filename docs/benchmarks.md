@@ -121,41 +121,15 @@ If an export exceeds the event limit, narrow the filters or raise `--max-events`
 traces as local artifacts and inspect compact reports. Use a shared ticket for expensive
 offline exports; reserve exclusive tickets for measurements.
 
-## Kernel reports
-
-Build the executables and run their smoke/plot tests under a shared ticket:
-
-```powershell
-cmake --workflow --preset kernel-benchmark
-```
-
-Then run a report under an exclusive ticket:
-
-```powershell
-coj benchmark kernel-report --workload representative --skip-build
-```
-
-Choose `representative`, `vector-layout`, `full`, or `highway`. Adjust `--repetitions` and
-`--min-time` (seconds) to keep the campaign short. The first three default to seven repetitions
-and 0.05 seconds per case, writing results and plots to `out/benchmarks/kernel/`. Highway defaults
-to three repetitions and 0.02 seconds, writing `.local/benchmarks/highway/kernels.json`.
-All four workloads automatically write SVG charts to `plots/` beside their JSON results.
-
 ## Regenerate plots
 
 Plotting runs after measurement using the Rust tool's SVG renderer. A plotting failure warns
 without invalidating saved benchmark results. Regenerate charts without measuring again:
 
 ```powershell
-coj benchmark plot --kind kernel --input out/benchmarks/kernel/results.json --output-dir .local/benchmarks/kernel-plots
 coj benchmark plot --kind fighter --input <run>/results.json --output-dir <run>/plots
 coj benchmark plot --kind comparison --input <run>/comparison.json --output-dir <run>/plots
 ```
-
-Kernel charts include throughput, time per element with sample-deviation bars, backend and
-layout speedups, and alignment penalties where matching measurements exist. `--baseline`
-selects a kernel backend (default `scalar`, falling back to `autovec-avx2`). If both are absent,
-absolute charts remain available and backend speedup is omitted with a warning.
 
 Offline plotting returns failure for invalid input, incomparable results, or rendering errors.
 Only SVG output is supported; Python and Matplotlib are not needed for plotting.

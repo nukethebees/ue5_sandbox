@@ -7,6 +7,8 @@
 
 #include "CoreMinimal.h"
 
+#include <cstddef>
+
 #include "ReflectedEnums.generated.h"
 
 // Logical bit width: 1.
@@ -22,7 +24,6 @@ template <>
 [[nodiscard]] constexpr auto enum_count<::EReflectedFixture>() noexcept -> std::size_t {
     return 1;
 }
-
 } // namespace ml
 
 auto LexToString(EReflectedFixture const value) -> TCHAR const*;

@@ -1,18 +1,59 @@
+#include "compiler_test_context.h"
 #include "test_utilities.h"
 
+#include <codegen/ast/cpp_types.h>
+#include <codegen/ast/indices.h>
+#include <codegen/ast/parameter_passing.h>
+#include <codegen/ast/type_operation.h>
 #include <codegen/generator.h>
 #include <codegen/schema.h>
+#include <codegen/schema/declaration_handle.h>
+#include <codegen/schema/declarations.h>
+#include <codegen/schema/enum_conversion.h>
+#include <codegen/schema/enum_reflection.h>
+#include <codegen/schema/enum_schemas.h>
+#include <codegen/schema/enum_unreal_projections.h>
+#include <codegen/schema/enumerator_schemas.h>
+#include <codegen/schema/fixed_soa_schemas.h>
+#include <codegen/schema/function_schemas.h>
+#include <codegen/schema/indices.h>
+#include <codegen/schema/integer_scalar_cpp_emission.h>
+#include <codegen/schema/integer_scalar_schemas.h>
+#include <codegen/schema/manifest.h>
+#include <codegen/schema/module_settings_store.h>
+#include <codegen/schema/native_enum_helper.h>
+#include <codegen/schema/normal_module_schemas.h>
+#include <codegen/schema/packed_integer_value.h>
+#include <codegen/schema/packed_named_code_schemas.h>
 #include <codegen/schema/schema_version.h>
+#include <codegen/schema/setting_apply_mode.h>
+#include <codegen/schema/setting_category_schemas.h>
+#include <codegen/schema/setting_control_kind.h>
+#include <codegen/schema/setting_control_schemas.h>
+#include <codegen/schema/setting_device.h>
+#include <codegen/schema/setting_schemas.h>
+#include <codegen/schema/settings_module_schemas.h>
+#include <codegen/schema/soa_member_kind.h>
+#include <codegen/schema/soa_member_schemas.h>
+#include <codegen/schema/soa_schemas.h>
+#include <codegen/schema/storage_operation.h>
+#include <codegen/schema/type_refs.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/indices.h>
+#include <lispb/strings.h>
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <limits>
 #include <map>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
-namespace codegen {
+namespace lispb::codegen {
 namespace {
 
 struct RenderedModule {
@@ -20,57 +61,127 @@ struct RenderedModule {
     std::string source;
 };
 
-auto render_soa(SoaSchema schema, TypeRegistry types = {}) -> RenderedModule {
-    auto const files{render_modules(lower_modules(Manifest{
-        .schema_version = manifest_schema_version,
-        .types = std::move(types),
-        .modules = {NormalModuleSchema{.settings =
-                                           ModuleSettings{
-                                               .name = "test",
-                                               .header = "Generated.h",
-                                               .source = "Generated.cpp",
-                                               .header_include = "Project/Generated.h",
-                                           },
-                                       .declarations = {std::move(schema)}}},
-    }))};
+auto render_soa(CompilerTestContext& context,
+                DeclarationHandle schema,
+                std::vector<std::pair<std::string_view, CppTypeId>> registrations = {})
+    -> RenderedModule {
+    auto const files{render_test_manifest(
+        context,
+        Manifest{
+            manifest_schema_version,
+            make_test_registry(context, registrations),
+            context.storage.declarations,
+            {[&] {
+                auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+                context.storage.declarations.normal_modules
+                    .settings[context.storage.declarations.normal_modules.index(
+                        new_normal_modules)] = [&] {
+                    auto const new_module_settings_store{
+                        context.storage.declarations.module_settings_store.append()};
+                    context.storage.declarations.module_settings_store
+                        .name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.intern("test");
+                    context.storage.declarations.module_settings_store
+                        .header[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] =
+                        context.storage.strings.add("Generated.h");
+                    context.storage.declarations.module_settings_store
+                        .source[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] =
+                        context.storage.strings.add("Generated.cpp");
+                    context.storage.declarations.module_settings_store
+                        .header_include[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] =
+                        context.storage.strings.add("Project/Generated.h");
+                    return new_module_settings_store;
+                }();
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(
+                        new_normal_modules)] =
+                    context.storage.declarations.range<DeclarationHandle>({std::move(schema)});
+                return new_normal_modules;
+            }()}})};
     EXPECT_EQ(files.size(), 2);
     return RenderedModule{files[0].content, files[1].content};
 }
 
-auto render_enum(NormalModuleSchema module) -> RenderedModule {
-    auto const files{render_modules(lower_modules(Manifest{
-        .schema_version = manifest_schema_version,
-        .modules = {std::move(module)},
-    }))};
+auto render_enum(CompilerTestContext& context, ModuleHandle module) -> RenderedModule {
+    auto const files{render_test_manifest(context,
+                                          Manifest{manifest_schema_version,
+                                                   make_test_registry(context),
+                                                   context.storage.declarations,
+                                                   {std::move(module)}})};
     EXPECT_EQ(files.size(), 2);
     return RenderedModule{files[0].content, files[1].content};
 }
 
-auto render_settings(SettingsModuleSchema module) -> RenderedModule {
-    auto const files{render_modules(lower_modules(Manifest{
-        .schema_version = manifest_schema_version,
-        .modules = {std::move(module)},
-    }))};
+auto render_settings(CompilerTestContext& context, ModuleHandle module) -> RenderedModule {
+    auto const files{render_test_manifest(context,
+                                          Manifest{manifest_schema_version,
+                                                   make_test_registry(context),
+                                                   context.storage.declarations,
+                                                   {std::move(module)}})};
     EXPECT_EQ(files.size(), 2);
     return RenderedModule{files[0].content, files[1].content};
 }
 
-auto basic_schema() -> SoaSchema {
-    return SoaSchema{
-        .name = "FData",
-        .members =
-            {
-                SoaMemberSchema{"ids", SoaMemberKind::array, TypeRef{"int32"}},
-                SoaMemberSchema{"weights", SoaMemberKind::array, TypeRef{"float"}},
-            },
-    };
+auto basic_schema(CompilerTestContext& context) -> DeclarationHandle {
+    return [&] {
+        auto const new_soas{context.storage.declarations.soas.append()};
+        context.storage.declarations.soas.name[context.storage.declarations.soas.index(new_soas)] =
+            context.storage.strings.intern("FData");
+        context.storage.declarations.soas
+            .members[context.storage.declarations.soas.index(new_soas)] =
+            context.storage.declarations.range<SoaMemberId>(
+                {[&] {
+                     auto const new_soa_members{context.storage.declarations.soa_members.append()};
+                     context.storage.declarations.soa_members
+                         .name[context.storage.declarations.soa_members.index(new_soa_members)] =
+                         context.storage.strings.intern("ids");
+                     context.storage.declarations.soa_members
+                         .kind[context.storage.declarations.soa_members.index(new_soa_members)] =
+                         SoaMemberKind::array;
+                     context.storage.declarations.soa_members
+                         .type[context.storage.declarations.soa_members.index(
+                             new_soa_members)] = [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("int32");
+                         return new_type_refs;
+                     }();
+                     return new_soa_members;
+                 }(),
+                 [&] {
+                     auto const new_soa_members{context.storage.declarations.soa_members.append()};
+                     context.storage.declarations.soa_members
+                         .name[context.storage.declarations.soa_members.index(new_soa_members)] =
+                         context.storage.strings.intern("weights");
+                     context.storage.declarations.soa_members
+                         .kind[context.storage.declarations.soa_members.index(new_soa_members)] =
+                         SoaMemberKind::array;
+                     context.storage.declarations.soa_members
+                         .type[context.storage.declarations.soa_members.index(
+                             new_soa_members)] = [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("float");
+                         return new_type_refs;
+                     }();
+                     return new_soa_members;
+                 }()});
+        return new_soas;
+    }();
 }
 
 TEST(Lowering, EmitsOnlyRequestedStorageOperations) {
-    auto schema{basic_schema()};
-    schema.operations = all_storage_operations();
+    CompilerTestContext context;
+    auto schema{basic_schema(context)};
+    context.storage.declarations.soas.operations[context.storage.declarations.soas.index(schema)] =
+        context.storage.declarations.range<StorageOperation>(all_storage_operations());
 
-    auto const output{render_soa(std::move(schema))};
+    auto const output{render_soa(context, std::move(schema))};
 
     EXPECT_NE(output.source.find("void FData::reset()"), std::string::npos);
     EXPECT_NE(output.source.find("void FData::reserve(int32 const count)"), std::string::npos);
@@ -85,8 +196,8 @@ TEST(Lowering, EmitsOnlyRequestedStorageOperations) {
     EXPECT_NE(output.header.find("void copy_to_tail("), std::string::npos);
     EXPECT_NE(output.header.find("void append_from("), std::string::npos);
 
-    auto no_operations{basic_schema()};
-    auto const minimal{render_soa(std::move(no_operations))};
+    auto no_operations{basic_schema(context)};
+    auto const minimal{render_soa(context, std::move(no_operations))};
     EXPECT_EQ(minimal.header.find("void remove_at_swap("), std::string::npos);
     EXPECT_EQ(minimal.header.find("void copy_element("), std::string::npos);
     EXPECT_EQ(minimal.header.find("void append_from("), std::string::npos);
@@ -94,34 +205,116 @@ TEST(Lowering, EmitsOnlyRequestedStorageOperations) {
 }
 
 TEST(Lowering, EmitsStandaloneNativeEnumApi) {
-    auto const files{render_modules(lower_modules(Manifest{
-        .schema_version = manifest_schema_version,
-        .types = {{"native_uint8",
-                   RegisteredTypeSchema{.cpp_type = CppType{"std::uint8_t", "cstdint"}}}},
-        .modules = {NormalModuleSchema{
-            .settings = ModuleSettings{.name = "native_enum",
-                                       .header = "NativeEnum.h",
-                                       .namespace_name = "fixture"},
-            .declarations = {EnumSchema{
-                .name = "NativeState",
-                .underlying_type = TypeRef{"@native_uint8"},
-                .values = {EnumeratorSchema{.name = "Idle",
-                                            .initializer = "0",
-                                            .display_name = "Idle",
-                                            .serialized_name = "idle"},
-                           EnumeratorSchema{.name = "Active",
-                                            .initializer = "1",
-                                            .display_name = "Active",
-                                            .serialized_name = "active"}},
-                .native_api = true,
-                .helpers = {NativeEnumHelper::to_string,
-                            NativeEnumHelper::try_parse,
-                            NativeEnumHelper::to_display_string,
-                            NativeEnumHelper::to_serialized_string,
-                            NativeEnumHelper::try_parse_serialized,
-                            NativeEnumHelper::traits},
-            }}}},
-    }))};
+    CompilerTestContext context;
+    auto const files{render_test_manifest(
+        context,
+        Manifest{
+            manifest_schema_version,
+            make_test_registry(
+                context,
+                {{"native_uint8",
+                  context.storage.cpp_types.add(
+                      "std::uint8_t",
+                      {context.storage.cpp_types.dependency("std::uint8_t", "cstdint")})}}),
+            context.storage.declarations,
+            {[&] {
+                auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+                context.storage.declarations.normal_modules
+                    .settings[context.storage.declarations.normal_modules.index(
+                        new_normal_modules)] = [&] {
+                    auto const new_module_settings_store{
+                        context.storage.declarations.module_settings_store.append()};
+                    context.storage.declarations.module_settings_store
+                        .name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] =
+                        context.storage.strings.intern("native_enum");
+                    context.storage.declarations.module_settings_store
+                        .header[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] =
+                        context.storage.strings.add("NativeEnum.h");
+                    context.storage.declarations.module_settings_store
+                        .namespace_name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.intern("fixture");
+                    return new_module_settings_store;
+                }();
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(
+                        new_normal_modules)] =
+                    context.storage.declarations.range<DeclarationHandle>({[&] {
+                        auto const new_enums{context.storage.declarations.enums.append()};
+                        context.storage.declarations.enums
+                            .name[context.storage.declarations.enums.index(new_enums)] =
+                            context.storage.strings.intern("NativeState");
+                        context.storage.declarations.enums
+                            .underlying_type[context.storage.declarations.enums.index(
+                                new_enums)] = [&] {
+                            auto const new_type_refs{
+                                context.storage.declarations.type_refs.append()};
+                            context.storage.declarations.type_refs
+                                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                                context.storage.strings.intern("@native_uint8");
+                            return new_type_refs;
+                        }();
+                        context.storage.declarations.enums
+                            .values[context.storage.declarations.enums.index(new_enums)] =
+                            context.storage.declarations.range<EnumeratorId>(
+                                {[&] {
+                                     auto const new_enumerators{
+                                         context.storage.declarations.enumerators.append()};
+                                     context.storage.declarations.enumerators
+                                         .name[context.storage.declarations.enumerators.index(
+                                             new_enumerators)] =
+                                         context.storage.strings.intern("Idle");
+                                     context.storage.declarations.enumerators
+                                         .initializer[context.storage.declarations.enumerators
+                                                          .index(new_enumerators)] =
+                                         context.storage.strings.add("0");
+                                     context.storage.declarations.enumerators
+                                         .display_name[context.storage.declarations.enumerators
+                                                           .index(new_enumerators)] =
+                                         context.storage.strings.add("Idle");
+                                     context.storage.declarations.enumerators
+                                         .serialized_name[context.storage.declarations.enumerators
+                                                              .index(new_enumerators)] =
+                                         context.storage.strings.add("idle");
+                                     return new_enumerators;
+                                 }(),
+                                 [&] {
+                                     auto const new_enumerators{
+                                         context.storage.declarations.enumerators.append()};
+                                     context.storage.declarations.enumerators
+                                         .name[context.storage.declarations.enumerators.index(
+                                             new_enumerators)] =
+                                         context.storage.strings.intern("Active");
+                                     context.storage.declarations.enumerators
+                                         .initializer[context.storage.declarations.enumerators
+                                                          .index(new_enumerators)] =
+                                         context.storage.strings.add("1");
+                                     context.storage.declarations.enumerators
+                                         .display_name[context.storage.declarations.enumerators
+                                                           .index(new_enumerators)] =
+                                         context.storage.strings.add("Active");
+                                     context.storage.declarations.enumerators
+                                         .serialized_name[context.storage.declarations.enumerators
+                                                              .index(new_enumerators)] =
+                                         context.storage.strings.add("active");
+                                     return new_enumerators;
+                                 }()});
+                        context.storage.declarations.enums
+                            .native_api[context.storage.declarations.enums.index(new_enums)] = true;
+                        context.storage.declarations.enums
+                            .helpers[context.storage.declarations.enums.index(new_enums)] =
+                            context.storage.declarations.range<NativeEnumHelper>(
+                                {NativeEnumHelper::to_string,
+                                 NativeEnumHelper::try_parse,
+                                 NativeEnumHelper::to_display_string,
+                                 NativeEnumHelper::to_serialized_string,
+                                 NativeEnumHelper::try_parse_serialized,
+                                 NativeEnumHelper::traits});
+                        return new_enums;
+                    }()});
+                return new_normal_modules;
+            }()}})};
 
     ASSERT_EQ(files.size(), 1);
     auto const& header{files.front().content};
@@ -142,20 +335,70 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
     };
     for (auto const& [helper, spelling] : selections) {
         auto const selected{
-            render_modules(
-                lower_modules(Manifest{
-                    .schema_version = manifest_schema_version,
-                    .modules = {NormalModuleSchema{
-                        .settings = {.name = "selected", .header = "Selected.h"},
-                        .declarations = {EnumSchema{
-                            .name = "State",
-                            .values =
-                                {{.name = "Idle", .initializer = "0", .serialized_name = "idle"}},
-                            .enum_array = true,
-                            .native_api = true,
-                            .helpers = {helper},
-                        }}}},
-                }))
+            render_test_manifest(
+                context,
+                Manifest{
+                    manifest_schema_version,
+                    make_test_registry(context),
+                    context.storage.declarations,
+                    {[&] {
+                        auto const new_normal_modules{
+                            context.storage.declarations.normal_modules.append()};
+                        context.storage.declarations.normal_modules
+                            .settings[context.storage.declarations.normal_modules.index(
+                                new_normal_modules)] = [&] {
+                            auto const new_module_settings_store{
+                                context.storage.declarations.module_settings_store.append()};
+                            context.storage.declarations.module_settings_store
+                                .name[context.storage.declarations.module_settings_store.index(
+                                    new_module_settings_store)] =
+                                context.storage.strings.intern("selected");
+                            context.storage.declarations.module_settings_store
+                                .header[context.storage.declarations.module_settings_store.index(
+                                    new_module_settings_store)] =
+                                context.storage.strings.add("Selected.h");
+                            return new_module_settings_store;
+                        }();
+                        context.storage.declarations.normal_modules
+                            .declarations[context.storage.declarations.normal_modules.index(
+                                new_normal_modules)] =
+                            context.storage.declarations.range<DeclarationHandle>({[&] {
+                                auto const new_enums{context.storage.declarations.enums.append()};
+                                context.storage.declarations.enums
+                                    .name[context.storage.declarations.enums.index(new_enums)] =
+                                    context.storage.strings.intern("State");
+                                context.storage.declarations.enums
+                                    .values[context.storage.declarations.enums.index(new_enums)] =
+                                    context.storage.declarations.range<EnumeratorId>({[&] {
+                                        auto const new_enumerators{
+                                            context.storage.declarations.enumerators.append()};
+                                        context.storage.declarations.enumerators
+                                            .name[context.storage.declarations.enumerators.index(
+                                                new_enumerators)] =
+                                            context.storage.strings.intern("Idle");
+                                        context.storage.declarations.enumerators
+                                            .initializer[context.storage.declarations.enumerators
+                                                             .index(new_enumerators)] =
+                                            context.storage.strings.add("0");
+                                        context.storage.declarations.enumerators.serialized_name
+                                            [context.storage.declarations.enumerators.index(
+                                                new_enumerators)] =
+                                            context.storage.strings.add("idle");
+                                        return new_enumerators;
+                                    }()});
+                                context.storage.declarations.enums
+                                    .enum_array[context.storage.declarations.enums.index(
+                                        new_enums)] = true;
+                                context.storage.declarations.enums
+                                    .native_api[context.storage.declarations.enums.index(
+                                        new_enums)] = true;
+                                context.storage.declarations.enums
+                                    .helpers[context.storage.declarations.enums.index(new_enums)] =
+                                    context.storage.declarations.range<NativeEnumHelper>({helper});
+                                return new_enums;
+                            }()});
+                        return new_normal_modules;
+                    }()}})
                 .front()
                 .content};
         for (auto const& [candidate, candidate_spelling] : selections) {
@@ -172,22 +415,84 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
 }
 
 TEST(Lowering, DerivesNativeEnumBackingFromSemanticWidthAndSignedness) {
-    auto const files{render_modules(lower_modules(Manifest{
-        .schema_version = manifest_schema_version,
-        .modules = {NormalModuleSchema{
-            .settings = ModuleSettings{.name = "native_enum",
-                                       .header = "NativeEnum.h",
-                                       .namespace_name = "fixture"},
-            .declarations = {EnumSchema{
-                .name = "SignedState",
-                .underlying_type = std::nullopt,
-                .values = {EnumeratorSchema{.name = "Below", .initializer = "-1"},
-                           EnumeratorSchema{.name = "Above", .initializer = "1"}},
-                .bit_width = 12,
-                .signedness = true,
-                .native_api = true,
-            }}}},
-    }))};
+    CompilerTestContext context;
+    auto const files{render_test_manifest(
+        context,
+        Manifest{
+            manifest_schema_version,
+            make_test_registry(context),
+            context.storage.declarations,
+            {[&] {
+                auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+                context.storage.declarations.normal_modules
+                    .settings[context.storage.declarations.normal_modules.index(
+                        new_normal_modules)] = [&] {
+                    auto const new_module_settings_store{
+                        context.storage.declarations.module_settings_store.append()};
+                    context.storage.declarations.module_settings_store
+                        .name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] =
+                        context.storage.strings.intern("native_enum");
+                    context.storage.declarations.module_settings_store
+                        .header[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] =
+                        context.storage.strings.add("NativeEnum.h");
+                    context.storage.declarations.module_settings_store
+                        .namespace_name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.intern("fixture");
+                    return new_module_settings_store;
+                }();
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(
+                        new_normal_modules)] =
+                    context.storage.declarations.range<DeclarationHandle>({[&] {
+                        auto const new_enums{context.storage.declarations.enums.append()};
+                        context.storage.declarations.enums
+                            .name[context.storage.declarations.enums.index(new_enums)] =
+                            context.storage.strings.intern("SignedState");
+                        context.storage.declarations.enums
+                            .underlying_type[context.storage.declarations.enums.index(new_enums)] =
+                            std::nullopt;
+                        context.storage.declarations.enums
+                            .values[context.storage.declarations.enums.index(new_enums)] =
+                            context.storage.declarations.range<EnumeratorId>(
+                                {[&] {
+                                     auto const new_enumerators{
+                                         context.storage.declarations.enumerators.append()};
+                                     context.storage.declarations.enumerators
+                                         .name[context.storage.declarations.enumerators.index(
+                                             new_enumerators)] =
+                                         context.storage.strings.intern("Below");
+                                     context.storage.declarations.enumerators
+                                         .initializer[context.storage.declarations.enumerators
+                                                          .index(new_enumerators)] =
+                                         context.storage.strings.add("-1");
+                                     return new_enumerators;
+                                 }(),
+                                 [&] {
+                                     auto const new_enumerators{
+                                         context.storage.declarations.enumerators.append()};
+                                     context.storage.declarations.enumerators
+                                         .name[context.storage.declarations.enumerators.index(
+                                             new_enumerators)] =
+                                         context.storage.strings.intern("Above");
+                                     context.storage.declarations.enumerators
+                                         .initializer[context.storage.declarations.enumerators
+                                                          .index(new_enumerators)] =
+                                         context.storage.strings.add("1");
+                                     return new_enumerators;
+                                 }()});
+                        context.storage.declarations.enums
+                            .bit_width[context.storage.declarations.enums.index(new_enums)] = 12;
+                        context.storage.declarations.enums
+                            .signedness[context.storage.declarations.enums.index(new_enums)] =
+                            lispb::schema::EnumSignedness::signed_;
+                        context.storage.declarations.enums
+                            .native_api[context.storage.declarations.enums.index(new_enums)] = true;
+                        return new_enums;
+                    }()});
+                return new_normal_modules;
+            }()}})};
 
     ASSERT_EQ(files.size(), 1);
     auto const& header{files.front().content};
@@ -202,16 +507,68 @@ TEST(Lowering, DerivesNativeEnumBackingFromSemanticWidthAndSignedness) {
 }
 
 TEST(Lowering, DerivesUnrealStyleEnumBackingWithoutChangingSemanticWidth) {
-    auto const output{render_enum(NormalModuleSchema{
-        .settings = ModuleSettings{.name = "states", .header = "States.h", .source = "States.cpp"},
-        .declarations = {EnumSchema{
-            .name = "EState",
-            .underlying_type = std::nullopt,
-            .values = {EnumeratorSchema{.name = "Idle", .initializer = "0"},
-                       EnumeratorSchema{.name = "Maximum", .initializer = "4095"}},
-            .bit_width = 12,
-            .signedness = false,
-        }}})};
+    CompilerTestContext context;
+    auto const output{render_enum(context, [&] {
+        auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+        context.storage.declarations.normal_modules
+            .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] = [&] {
+            auto const new_module_settings_store{
+                context.storage.declarations.module_settings_store.append()};
+            context.storage.declarations.module_settings_store
+                .name[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.intern("states");
+            context.storage.declarations.module_settings_store
+                .header[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.add("States.h");
+            context.storage.declarations.module_settings_store
+                .source[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.add("States.cpp");
+            return new_module_settings_store;
+        }();
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+            context.storage.declarations.range<DeclarationHandle>({[&] {
+                auto const new_enums{context.storage.declarations.enums.append()};
+                context.storage.declarations.enums
+                    .name[context.storage.declarations.enums.index(new_enums)] =
+                    context.storage.strings.intern("EState");
+                context.storage.declarations.enums
+                    .underlying_type[context.storage.declarations.enums.index(new_enums)] =
+                    std::nullopt;
+                context.storage.declarations.enums
+                    .values[context.storage.declarations.enums.index(new_enums)] =
+                    context.storage.declarations.range<EnumeratorId>(
+                        {[&] {
+                             auto const new_enumerators{
+                                 context.storage.declarations.enumerators.append()};
+                             context.storage.declarations.enumerators
+                                 .name[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = context.storage.strings.intern("Idle");
+                             context.storage.declarations.enumerators
+                                 .initializer[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = context.storage.strings.add("0");
+                             return new_enumerators;
+                         }(),
+                         [&] {
+                             auto const new_enumerators{
+                                 context.storage.declarations.enumerators.append()};
+                             context.storage.declarations.enumerators
+                                 .name[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = context.storage.strings.intern("Maximum");
+                             context.storage.declarations.enumerators
+                                 .initializer[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = context.storage.strings.add("4095");
+                             return new_enumerators;
+                         }()});
+                context.storage.declarations.enums
+                    .bit_width[context.storage.declarations.enums.index(new_enums)] = 12;
+                context.storage.declarations.enums
+                    .signedness[context.storage.declarations.enums.index(new_enums)] =
+                    lispb::schema::EnumSignedness::unsigned_;
+                return new_enums;
+            }()});
+        return new_normal_modules;
+    }())};
 
     EXPECT_NE(output.header.find("#include \"CoreMinimal.h\""), std::string::npos);
     EXPECT_NE(output.header.find("using EStateUnderlying = uint16;"), std::string::npos);
@@ -219,66 +576,276 @@ TEST(Lowering, DerivesUnrealStyleEnumBackingWithoutChangingSemanticWidth) {
 }
 
 TEST(Lowering, EmitsRequestedNamedScalarConstantsWithoutInventingScalarTypes) {
-    auto const files{
-        render_modules(lower_modules(Manifest{
-            .schema_version = manifest_schema_version,
-            .types = {{"native_uint8",
-                       RegisteredTypeSchema{.cpp_type = CppType{"std::uint8_t", "cstdint"}}},
-                      {"native_int64",
-                       RegisteredTypeSchema{.cpp_type = CppType{"std::int64_t", "cstdint"}}},
-                      {"native_uint64",
-                       RegisteredTypeSchema{.cpp_type = CppType{"std::uint64_t", "cstdint"}}}},
-            .modules = {NormalModuleSchema{
-                .settings = ModuleSettings{.name = "semantic_values",
-                                           .header = "SemanticValues.h",
-                                           .namespace_name = "fixture"},
-                .declarations =
-                    {IntegerScalarSchema{
-                         .name = "NoOutput",
-                         .signedness = false,
-                         .minimum_value = 0,
-                         .maximum_value = 1,
-                         .bit_width = std::nullopt,
-                         .named_codes = {{.name = "Zero", .value = 0, .sentinel = false}},
-                     },
-                     IntegerScalarSchema{
-                         .name = "DamageReason",
-                         .signedness = false,
-                         .minimum_value = 0,
-                         .maximum_value = 10,
-                         .bit_width = std::nullopt,
-                         .named_codes = {{.name = "Unknown", .value = 0, .sentinel = false},
-                                         {.name = "Invalid", .value = 255, .sentinel = true}},
-                         .cpp_emission = IntegerScalarCppEmission::constants_with_names,
-                         .cpp_type = TypeRef{"@native_uint8"},
-                     },
-                     IntegerScalarSchema{
-                         .name = "SignedLimit",
-                         .signedness = true,
-                         .minimum_value =
-                             PackedIntegerValue::from_parts(true, std::uint64_t{1} << 63),
-                         .maximum_value = 0,
-                         .bit_width = 64,
-                         .named_codes = {{.name = "Minimum",
-                                          .value = PackedIntegerValue::from_parts(
-                                              true, std::uint64_t{1} << 63),
-                                          .sentinel = false}},
-                         .cpp_emission = IntegerScalarCppEmission::constants,
-                         .cpp_type = TypeRef{"@native_int64"},
-                     },
-                     IntegerScalarSchema{
-                         .name = "UnsignedLimit",
-                         .signedness = false,
-                         .minimum_value = 0,
-                         .maximum_value = (std::numeric_limits<std::uint64_t>::max)(),
-                         .bit_width = 64,
-                         .named_codes = {{.name = "Maximum",
-                                          .value = (std::numeric_limits<std::uint64_t>::max)(),
-                                          .sentinel = false}},
-                         .cpp_emission = IntegerScalarCppEmission::constants,
-                         .cpp_type = TypeRef{"@native_uint64"},
-                     }}}},
-        }))};
+    CompilerTestContext context;
+    auto const files{render_test_manifest(
+        context,
+        Manifest{
+            manifest_schema_version,
+            make_test_registry(
+                context,
+                {{"native_uint8",
+                  context.storage.cpp_types.add(
+                      "std::uint8_t",
+                      {context.storage.cpp_types.dependency("std::uint8_t", "cstdint")})},
+                 {"native_int64",
+                  context.storage.cpp_types.add(
+                      "std::int64_t",
+                      {context.storage.cpp_types.dependency("std::int64_t", "cstdint")})},
+                 {"native_uint64",
+                  context.storage.cpp_types.add(
+                      "std::uint64_t",
+                      {context.storage.cpp_types.dependency("std::uint64_t", "cstdint")})}}),
+            context.storage.declarations,
+            {[&] {
+                auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+                context.storage.declarations.normal_modules
+                    .settings[context.storage.declarations.normal_modules.index(
+                        new_normal_modules)] = [&] {
+                    auto const new_module_settings_store{
+                        context.storage.declarations.module_settings_store.append()};
+                    context.storage.declarations.module_settings_store
+                        .name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] =
+                        context.storage.strings.intern("semantic_values");
+                    context.storage.declarations.module_settings_store
+                        .header[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] =
+                        context.storage.strings.add("SemanticValues.h");
+                    context.storage.declarations.module_settings_store
+                        .namespace_name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.intern("fixture");
+                    return new_module_settings_store;
+                }();
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(
+                        new_normal_modules)] =
+                    context.storage.declarations.range<DeclarationHandle>(
+                        {[&] {
+                             auto const new_integer_scalars{
+                                 context.storage.declarations.integer_scalars.append()};
+                             context.storage.declarations.integer_scalars
+                                 .name[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] =
+                                 context.storage.strings.intern("NoOutput");
+                             context.storage.declarations.integer_scalars
+                                 .signedness[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] = false;
+                             context.storage.declarations.integer_scalars
+                                 .minimum_value[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] = 0;
+                             context.storage.declarations.integer_scalars
+                                 .maximum_value[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] = 1;
+                             context.storage.declarations.integer_scalars
+                                 .bit_width[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] = std::nullopt;
+                             context.storage.declarations.integer_scalars
+                                 .named_codes[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] =
+                                 context.storage.declarations.range<PackedNamedCodeId>({[&] {
+                                     auto const new_packed_named_codes{
+                                         context.storage.declarations.packed_named_codes.append()};
+                                     context.storage.declarations.packed_named_codes
+                                         .name[context.storage.declarations.packed_named_codes
+                                                   .index(new_packed_named_codes)] =
+                                         context.storage.strings.intern("Zero");
+                                     context.storage.declarations.packed_named_codes
+                                         .value[context.storage.declarations.packed_named_codes
+                                                    .index(new_packed_named_codes)] = 0;
+                                     context.storage.declarations.packed_named_codes
+                                         .sentinel[context.storage.declarations.packed_named_codes
+                                                       .index(new_packed_named_codes)] = false;
+                                     return new_packed_named_codes;
+                                 }()});
+                             return new_integer_scalars;
+                         }(),
+                         [&] {
+                             auto const new_integer_scalars{
+                                 context.storage.declarations.integer_scalars.append()};
+                             context.storage.declarations.integer_scalars
+                                 .name[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] =
+                                 context.storage.strings.intern("DamageReason");
+                             context.storage.declarations.integer_scalars
+                                 .signedness[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] = false;
+                             context.storage.declarations.integer_scalars
+                                 .minimum_value[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] = 0;
+                             context.storage.declarations.integer_scalars
+                                 .maximum_value[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] = 10;
+                             context.storage.declarations.integer_scalars
+                                 .bit_width[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] = std::nullopt;
+                             context.storage.declarations.integer_scalars
+                                 .named_codes[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] =
+                                 context.storage.declarations.range<PackedNamedCodeId>(
+                                     {[&] {
+                                          auto const new_packed_named_codes{
+                                              context.storage.declarations.packed_named_codes
+                                                  .append()};
+                                          context.storage.declarations.packed_named_codes
+                                              .name[context.storage.declarations.packed_named_codes
+                                                        .index(new_packed_named_codes)] =
+                                              context.storage.strings.intern("Unknown");
+                                          context.storage.declarations.packed_named_codes
+                                              .value[context.storage.declarations.packed_named_codes
+                                                         .index(new_packed_named_codes)] = 0;
+                                          context.storage.declarations.packed_named_codes
+                                              .sentinel[context.storage.declarations
+                                                            .packed_named_codes.index(
+                                                                new_packed_named_codes)] = false;
+                                          return new_packed_named_codes;
+                                      }(),
+                                      [&] {
+                                          auto const new_packed_named_codes{
+                                              context.storage.declarations.packed_named_codes
+                                                  .append()};
+                                          context.storage.declarations.packed_named_codes
+                                              .name[context.storage.declarations.packed_named_codes
+                                                        .index(new_packed_named_codes)] =
+                                              context.storage.strings.intern("Invalid");
+                                          context.storage.declarations.packed_named_codes
+                                              .value[context.storage.declarations.packed_named_codes
+                                                         .index(new_packed_named_codes)] = 255;
+                                          context.storage.declarations.packed_named_codes
+                                              .sentinel[context.storage.declarations
+                                                            .packed_named_codes.index(
+                                                                new_packed_named_codes)] = true;
+                                          return new_packed_named_codes;
+                                      }()});
+                             context.storage.declarations.integer_scalars
+                                 .cpp_emission[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] =
+                                 IntegerScalarCppEmission::constants_with_names;
+                             context.storage.declarations.integer_scalars
+                                 .cpp_type[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] = [&] {
+                                 auto const new_type_refs{
+                                     context.storage.declarations.type_refs.append()};
+                                 context.storage.declarations.type_refs
+                                     .name[context.storage.declarations.type_refs.index(
+                                         new_type_refs)] =
+                                     context.storage.strings.intern("@native_uint8");
+                                 return new_type_refs;
+                             }();
+                             return new_integer_scalars;
+                         }(),
+                         [&] {
+                             auto const new_integer_scalars{
+                                 context.storage.declarations.integer_scalars.append()};
+                             context.storage.declarations.integer_scalars
+                                 .name[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] =
+                                 context.storage.strings.intern("SignedLimit");
+                             context.storage.declarations.integer_scalars
+                                 .signedness[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] = true;
+                             context.storage.declarations.integer_scalars
+                                 .minimum_value[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] =
+                                 PackedIntegerValue::from_parts(true, std::uint64_t{1} << 63);
+                             context.storage.declarations.integer_scalars
+                                 .maximum_value[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] = 0;
+                             context.storage.declarations.integer_scalars
+                                 .bit_width[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] = 64;
+                             context.storage.declarations.integer_scalars
+                                 .named_codes[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] =
+                                 context.storage.declarations.range<PackedNamedCodeId>({[&] {
+                                     auto const new_packed_named_codes{
+                                         context.storage.declarations.packed_named_codes.append()};
+                                     context.storage.declarations.packed_named_codes
+                                         .name[context.storage.declarations.packed_named_codes
+                                                   .index(new_packed_named_codes)] =
+                                         context.storage.strings.intern("Minimum");
+                                     context.storage.declarations.packed_named_codes
+                                         .value[context.storage.declarations.packed_named_codes
+                                                    .index(new_packed_named_codes)] =
+                                         PackedIntegerValue::from_parts(true,
+                                                                        std::uint64_t{1} << 63);
+                                     context.storage.declarations.packed_named_codes
+                                         .sentinel[context.storage.declarations.packed_named_codes
+                                                       .index(new_packed_named_codes)] = false;
+                                     return new_packed_named_codes;
+                                 }()});
+                             context.storage.declarations.integer_scalars
+                                 .cpp_emission[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] = IntegerScalarCppEmission::constants;
+                             context.storage.declarations.integer_scalars
+                                 .cpp_type[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] = [&] {
+                                 auto const new_type_refs{
+                                     context.storage.declarations.type_refs.append()};
+                                 context.storage.declarations.type_refs
+                                     .name[context.storage.declarations.type_refs.index(
+                                         new_type_refs)] =
+                                     context.storage.strings.intern("@native_int64");
+                                 return new_type_refs;
+                             }();
+                             return new_integer_scalars;
+                         }(),
+                         [&] {
+                             auto const new_integer_scalars{
+                                 context.storage.declarations.integer_scalars.append()};
+                             context.storage.declarations.integer_scalars
+                                 .name[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] =
+                                 context.storage.strings.intern("UnsignedLimit");
+                             context.storage.declarations.integer_scalars
+                                 .signedness[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] = false;
+                             context.storage.declarations.integer_scalars
+                                 .minimum_value[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] = 0;
+                             context.storage.declarations.integer_scalars
+                                 .maximum_value[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] =
+                                 (std::numeric_limits<std::uint64_t>::max)();
+                             context.storage.declarations.integer_scalars
+                                 .bit_width[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] = 64;
+                             context.storage.declarations.integer_scalars
+                                 .named_codes[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] =
+                                 context.storage.declarations.range<PackedNamedCodeId>({[&] {
+                                     auto const new_packed_named_codes{
+                                         context.storage.declarations.packed_named_codes.append()};
+                                     context.storage.declarations.packed_named_codes
+                                         .name[context.storage.declarations.packed_named_codes
+                                                   .index(new_packed_named_codes)] =
+                                         context.storage.strings.intern("Maximum");
+                                     context.storage.declarations.packed_named_codes
+                                         .value[context.storage.declarations.packed_named_codes
+                                                    .index(new_packed_named_codes)] =
+                                         (std::numeric_limits<std::uint64_t>::max)();
+                                     context.storage.declarations.packed_named_codes
+                                         .sentinel[context.storage.declarations.packed_named_codes
+                                                       .index(new_packed_named_codes)] = false;
+                                     return new_packed_named_codes;
+                                 }()});
+                             context.storage.declarations.integer_scalars
+                                 .cpp_emission[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] = IntegerScalarCppEmission::constants;
+                             context.storage.declarations.integer_scalars
+                                 .cpp_type[context.storage.declarations.integer_scalars.index(
+                                     new_integer_scalars)] = [&] {
+                                 auto const new_type_refs{
+                                     context.storage.declarations.type_refs.append()};
+                                 context.storage.declarations.type_refs
+                                     .name[context.storage.declarations.type_refs.index(
+                                         new_type_refs)] =
+                                     context.storage.strings.intern("@native_uint64");
+                                 return new_type_refs;
+                             }();
+                             return new_integer_scalars;
+                         }()});
+                return new_normal_modules;
+            }()}})};
 
     ASSERT_EQ(files.size(), 1U);
     auto const& header{files.front().content};
@@ -301,35 +868,137 @@ TEST(Lowering, EmitsRequestedNamedScalarConstantsWithoutInventingScalarTypes) {
 }
 
 TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) {
-    auto const files{render_modules(lower_modules(Manifest{
-        .schema_version = manifest_schema_version,
-        .types = {{"native_uint8",
-                   RegisteredTypeSchema{.cpp_type = CppType{"std::uint8_t", "cstdint"}}}},
-        .modules = {NormalModuleSchema{
-            .settings = ModuleSettings{.name = "native_enum",
-                                       .header = "NativeEnum.h",
-                                       .namespace_name = "fixture"},
-            .declarations = {EnumSchema{
-                .name = "NativeState",
-                .underlying_type = TypeRef{"@native_uint8"},
-                .values = {EnumeratorSchema{
-                               .name = "Idle", .initializer = "0", .serialized_name = "idle"},
-                           EnumeratorSchema{
-                               .name = "Active", .initializer = "1", .serialized_name = "active"}},
-                .unreal_projection =
-                    EnumUnrealProjection{
-                        .name = "ENativeState",
-                        .header = "Project/NativeState.h",
-                        .header_include = "Project/NativeState.h",
-                        .conversion_header = "Project/NativeStateConversion.h",
-                        .native_header_include = "fixture/NativeEnum.h",
-                        .enum_array = true,
-                    },
-                .enum_array = false,
-                .native_api = true,
-                .helpers = {NativeEnumHelper::traits},
-            }}}},
-    }))};
+    CompilerTestContext context;
+    auto const files{render_test_manifest(
+        context,
+        Manifest{
+            manifest_schema_version,
+            make_test_registry(
+                context,
+                {{"native_uint8",
+                  context.storage.cpp_types.add(
+                      "std::uint8_t",
+                      {context.storage.cpp_types.dependency("std::uint8_t", "cstdint")})}}),
+            context.storage.declarations,
+            {[&] {
+                auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+                context.storage.declarations.normal_modules
+                    .settings[context.storage.declarations.normal_modules.index(
+                        new_normal_modules)] = [&] {
+                    auto const new_module_settings_store{
+                        context.storage.declarations.module_settings_store.append()};
+                    context.storage.declarations.module_settings_store
+                        .name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] =
+                        context.storage.strings.intern("native_enum");
+                    context.storage.declarations.module_settings_store
+                        .header[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] =
+                        context.storage.strings.add("NativeEnum.h");
+                    context.storage.declarations.module_settings_store
+                        .namespace_name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.intern("fixture");
+                    return new_module_settings_store;
+                }();
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(
+                        new_normal_modules)] =
+                    context.storage.declarations.range<DeclarationHandle>({[&] {
+                        auto const new_enums{context.storage.declarations.enums.append()};
+                        context.storage.declarations.enums
+                            .name[context.storage.declarations.enums.index(new_enums)] =
+                            context.storage.strings.intern("NativeState");
+                        context.storage.declarations.enums
+                            .underlying_type[context.storage.declarations.enums.index(
+                                new_enums)] = [&] {
+                            auto const new_type_refs{
+                                context.storage.declarations.type_refs.append()};
+                            context.storage.declarations.type_refs
+                                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                                context.storage.strings.intern("@native_uint8");
+                            return new_type_refs;
+                        }();
+                        context.storage.declarations.enums
+                            .values[context.storage.declarations.enums.index(new_enums)] =
+                            context.storage.declarations.range<EnumeratorId>(
+                                {[&] {
+                                     auto const new_enumerators{
+                                         context.storage.declarations.enumerators.append()};
+                                     context.storage.declarations.enumerators
+                                         .name[context.storage.declarations.enumerators.index(
+                                             new_enumerators)] =
+                                         context.storage.strings.intern("Idle");
+                                     context.storage.declarations.enumerators
+                                         .initializer[context.storage.declarations.enumerators
+                                                          .index(new_enumerators)] =
+                                         context.storage.strings.add("0");
+                                     context.storage.declarations.enumerators
+                                         .serialized_name[context.storage.declarations.enumerators
+                                                              .index(new_enumerators)] =
+                                         context.storage.strings.add("idle");
+                                     return new_enumerators;
+                                 }(),
+                                 [&] {
+                                     auto const new_enumerators{
+                                         context.storage.declarations.enumerators.append()};
+                                     context.storage.declarations.enumerators
+                                         .name[context.storage.declarations.enumerators.index(
+                                             new_enumerators)] =
+                                         context.storage.strings.intern("Active");
+                                     context.storage.declarations.enumerators
+                                         .initializer[context.storage.declarations.enumerators
+                                                          .index(new_enumerators)] =
+                                         context.storage.strings.add("1");
+                                     context.storage.declarations.enumerators
+                                         .serialized_name[context.storage.declarations.enumerators
+                                                              .index(new_enumerators)] =
+                                         context.storage.strings.add("active");
+                                     return new_enumerators;
+                                 }()});
+                        context.storage.declarations.enums
+                            .unreal_projection[context.storage.declarations.enums.index(
+                                new_enums)] = [&] {
+                            auto const new_enum_unreal_projections{
+                                context.storage.declarations.enum_unreal_projections.append()};
+                            context.storage.declarations.enum_unreal_projections
+                                .name[context.storage.declarations.enum_unreal_projections.index(
+                                    new_enum_unreal_projections)] =
+                                context.storage.strings.intern("ENativeState");
+                            context.storage.declarations.enum_unreal_projections
+                                .header[context.storage.declarations.enum_unreal_projections.index(
+                                    new_enum_unreal_projections)] =
+                                context.storage.strings.add("Project/NativeState.h");
+                            context.storage.declarations.enum_unreal_projections
+                                .header_include[context.storage.declarations.enum_unreal_projections
+                                                    .index(new_enum_unreal_projections)] =
+                                context.storage.strings.add("Project/NativeState.h");
+                            context.storage.declarations.enum_unreal_projections.conversion_header
+                                [context.storage.declarations.enum_unreal_projections.index(
+                                    new_enum_unreal_projections)] =
+                                context.storage.strings.add("Project/NativeStateConversion.h");
+                            context.storage.declarations.enum_unreal_projections
+                                .native_header_include[context.storage.declarations
+                                                           .enum_unreal_projections.index(
+                                                               new_enum_unreal_projections)] =
+                                context.storage.strings.add("fixture/NativeEnum.h");
+                            context.storage.declarations.enum_unreal_projections
+                                .enum_array[context.storage.declarations.enum_unreal_projections
+                                                .index(new_enum_unreal_projections)] = true;
+                            return new_enum_unreal_projections;
+                        }();
+                        context.storage.declarations.enums
+                            .enum_array[context.storage.declarations.enums.index(new_enums)] =
+                            false;
+                        context.storage.declarations.enums
+                            .native_api[context.storage.declarations.enums.index(new_enums)] = true;
+                        context.storage.declarations.enums
+                            .helpers[context.storage.declarations.enums.index(new_enums)] =
+                            context.storage.declarations.range<NativeEnumHelper>(
+                                {NativeEnumHelper::traits});
+                        return new_enums;
+                    }()});
+                return new_normal_modules;
+            }()}})};
 
     ASSERT_EQ(files.size(), 3);
     auto const& native_header{files[0].content};
@@ -360,35 +1029,127 @@ TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) 
 }
 
 TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
-    auto const output{render_enum(NormalModuleSchema{
-        .settings =
-            ModuleSettings{
-                .name = "modes",
-                .header = "Modes.h",
-                .source = "Modes.cpp",
-                .header_include = "Project/Modes.h",
-            },
-        .declarations = {EnumSchema{
-            .name = "EMode",
-            .underlying_type = TypeRef{"uint8"},
-            .values =
-                {
-                    EnumeratorSchema{"First", std::nullopt, std::nullopt, false, "first"},
-                    EnumeratorSchema{"Readable", "7", "Readable Value", false, "readable"},
-                    EnumeratorSchema{"COUNT", std::nullopt, std::nullopt, true, "count"},
-                },
-            .conversions =
-                {
-                    EnumConversion::lex_to_string,
-                    EnumConversion::string_view,
-                    EnumConversion::display_string_view,
-                    EnumConversion::lex_to_serialized_string,
-                    EnumConversion::try_parse_serialized,
-                },
-            .export_specifier = "PROJECT_API",
-            .reflection = EnumReflection::blueprint,
-        }},
-        .enum_helper_namespace = "project"})};
+    CompilerTestContext context;
+    auto const output{render_enum(context, [&] {
+        auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+        context.storage.declarations.normal_modules
+            .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] = [&] {
+            auto const new_module_settings_store{
+                context.storage.declarations.module_settings_store.append()};
+            context.storage.declarations.module_settings_store
+                .name[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.intern("modes");
+            context.storage.declarations.module_settings_store
+                .header[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.add("Modes.h");
+            context.storage.declarations.module_settings_store
+                .source[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.add("Modes.cpp");
+            context.storage.declarations.module_settings_store
+                .header_include[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.add("Project/Modes.h");
+            return new_module_settings_store;
+        }();
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+            context.storage.declarations.range<DeclarationHandle>({[&] {
+                auto const new_enums{context.storage.declarations.enums.append()};
+                context.storage.declarations.enums
+                    .name[context.storage.declarations.enums.index(new_enums)] =
+                    context.storage.strings.intern("EMode");
+                context.storage.declarations.enums
+                    .underlying_type[context.storage.declarations.enums.index(new_enums)] = [&] {
+                    auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                    context.storage.declarations.type_refs
+                        .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                        context.storage.strings.intern("uint8");
+                    return new_type_refs;
+                }();
+                context.storage.declarations.enums
+                    .values[context.storage.declarations.enums.index(new_enums)] =
+                    context.storage.declarations.range<EnumeratorId>(
+                        {[&] {
+                             auto const new_enumerators{
+                                 context.storage.declarations.enumerators.append()};
+                             context.storage.declarations.enumerators
+                                 .name[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = context.storage.strings.intern("First");
+                             context.storage.declarations.enumerators
+                                 .initializer[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = std::nullopt;
+                             context.storage.declarations.enumerators
+                                 .display_name[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = std::nullopt;
+                             context.storage.declarations.enumerators
+                                 .hidden[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = false;
+                             context.storage.declarations.enumerators
+                                 .serialized_name[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = context.storage.strings.add("first");
+                             return new_enumerators;
+                         }(),
+                         [&] {
+                             auto const new_enumerators{
+                                 context.storage.declarations.enumerators.append()};
+                             context.storage.declarations.enumerators
+                                 .name[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = context.storage.strings.intern("Readable");
+                             context.storage.declarations.enumerators
+                                 .initializer[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = context.storage.strings.add("7");
+                             context.storage.declarations.enumerators
+                                 .display_name[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] =
+                                 context.storage.strings.add("Readable Value");
+                             context.storage.declarations.enumerators
+                                 .hidden[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = false;
+                             context.storage.declarations.enumerators
+                                 .serialized_name[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = context.storage.strings.add("readable");
+                             return new_enumerators;
+                         }(),
+                         [&] {
+                             auto const new_enumerators{
+                                 context.storage.declarations.enumerators.append()};
+                             context.storage.declarations.enumerators
+                                 .name[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = context.storage.strings.intern("COUNT");
+                             context.storage.declarations.enumerators
+                                 .initializer[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = std::nullopt;
+                             context.storage.declarations.enumerators
+                                 .display_name[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = std::nullopt;
+                             context.storage.declarations.enumerators
+                                 .hidden[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = true;
+                             context.storage.declarations.enumerators
+                                 .serialized_name[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = context.storage.strings.add("count");
+                             return new_enumerators;
+                         }()});
+                context.storage.declarations.enums
+                    .conversions[context.storage.declarations.enums.index(new_enums)] =
+                    context.storage.declarations.range<EnumConversion>(
+                        {EnumConversion::lex_to_string,
+                         EnumConversion::string_view,
+                         EnumConversion::display_string_view,
+                         EnumConversion::lex_to_serialized_string,
+                         EnumConversion::try_parse_serialized});
+                context.storage.declarations.enums
+                    .export_specifier[context.storage.declarations.enums.index(new_enums)] =
+                    context.storage.strings.intern("PROJECT_API");
+                context.storage.declarations.enums
+                    .reflection[context.storage.declarations.enums.index(new_enums)] =
+                    EnumReflection::blueprint;
+                return new_enums;
+            }()});
+        context.storage.declarations.normal_modules
+            .enum_helper_namespace[context.storage.declarations.normal_modules.index(
+                new_normal_modules)] = context.storage.strings.intern("project");
+        return new_normal_modules;
+    }())};
 
     EXPECT_NE(output.header.find("#include \"Modes.generated.h\""), std::string::npos);
     EXPECT_NE(output.header.find("UENUM(BlueprintType)\nenum class EMode : uint8"),
@@ -422,19 +1183,57 @@ TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
 }
 
 TEST(Lowering, EmitsPlainEnumsInTheirNamespace) {
-    auto const output{render_enum(NormalModuleSchema{.settings =
-                                                         ModuleSettings{
-                                                             .name = "states",
-                                                             .header = "States.h",
-                                                             .source = "States.cpp",
-                                                             .namespace_name = "project::states",
-                                                         },
-                                                     .declarations = {EnumSchema{
-                                                         .name = "EState",
-                                                         .underlying_type = TypeRef{"int"},
-                                                         .values = {EnumeratorSchema{"Ready"}},
-                                                         .conversions = {EnumConversion::string},
-                                                     }}})};
+    CompilerTestContext context;
+    auto const output{render_enum(context, [&] {
+        auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+        context.storage.declarations.normal_modules
+            .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] = [&] {
+            auto const new_module_settings_store{
+                context.storage.declarations.module_settings_store.append()};
+            context.storage.declarations.module_settings_store
+                .name[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.intern("states");
+            context.storage.declarations.module_settings_store
+                .header[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.add("States.h");
+            context.storage.declarations.module_settings_store
+                .source[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.add("States.cpp");
+            context.storage.declarations.module_settings_store
+                .namespace_name[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.intern("project::states");
+            return new_module_settings_store;
+        }();
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+            context.storage.declarations.range<DeclarationHandle>({[&] {
+                auto const new_enums{context.storage.declarations.enums.append()};
+                context.storage.declarations.enums
+                    .name[context.storage.declarations.enums.index(new_enums)] =
+                    context.storage.strings.intern("EState");
+                context.storage.declarations.enums
+                    .underlying_type[context.storage.declarations.enums.index(new_enums)] = [&] {
+                    auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                    context.storage.declarations.type_refs
+                        .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                        context.storage.strings.intern("int");
+                    return new_type_refs;
+                }();
+                context.storage.declarations.enums.values[context.storage.declarations.enums.index(
+                    new_enums)] = context.storage.declarations.range<EnumeratorId>({[&] {
+                    auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                    context.storage.declarations.enumerators
+                        .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                        context.storage.strings.intern("Ready");
+                    return new_enumerators;
+                }()});
+                context.storage.declarations.enums
+                    .conversions[context.storage.declarations.enums.index(new_enums)] =
+                    context.storage.declarations.range<EnumConversion>({EnumConversion::string});
+                return new_enums;
+            }()});
+        return new_normal_modules;
+    }())};
 
     EXPECT_NE(output.header.find("namespace project::states {\nusing EStateUnderlying = int;\n\n"
                                  "// Logical bit width: 1.\nenum class EState : EStateUnderlying"),
@@ -447,19 +1246,64 @@ TEST(Lowering, EmitsPlainEnumsInTheirNamespace) {
 }
 
 TEST(Lowering, EmitsCountsForEnumArrays) {
-    auto const output{render_enum(
-        NormalModuleSchema{.settings =
-                               ModuleSettings{
-                                   .name = "modes",
-                                   .header = "Modes.h",
-                                   .source = "Modes.cpp",
-                               },
-                           .declarations = {EnumSchema{
-                               .name = "EMode",
-                               .underlying_type = TypeRef{"uint8"},
-                               .values = {EnumeratorSchema{"First"}, EnumeratorSchema{"Second"}},
-                               .enum_array = true,
-                           }}})};
+    CompilerTestContext context;
+    auto const output{render_enum(context, [&] {
+        auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+        context.storage.declarations.normal_modules
+            .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] = [&] {
+            auto const new_module_settings_store{
+                context.storage.declarations.module_settings_store.append()};
+            context.storage.declarations.module_settings_store
+                .name[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.intern("modes");
+            context.storage.declarations.module_settings_store
+                .header[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.add("Modes.h");
+            context.storage.declarations.module_settings_store
+                .source[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.add("Modes.cpp");
+            return new_module_settings_store;
+        }();
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+            context.storage.declarations.range<DeclarationHandle>({[&] {
+                auto const new_enums{context.storage.declarations.enums.append()};
+                context.storage.declarations.enums
+                    .name[context.storage.declarations.enums.index(new_enums)] =
+                    context.storage.strings.intern("EMode");
+                context.storage.declarations.enums
+                    .underlying_type[context.storage.declarations.enums.index(new_enums)] = [&] {
+                    auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                    context.storage.declarations.type_refs
+                        .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                        context.storage.strings.intern("uint8");
+                    return new_type_refs;
+                }();
+                context.storage.declarations.enums
+                    .values[context.storage.declarations.enums.index(new_enums)] =
+                    context.storage.declarations.range<EnumeratorId>(
+                        {[&] {
+                             auto const new_enumerators{
+                                 context.storage.declarations.enumerators.append()};
+                             context.storage.declarations.enumerators
+                                 .name[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = context.storage.strings.intern("First");
+                             return new_enumerators;
+                         }(),
+                         [&] {
+                             auto const new_enumerators{
+                                 context.storage.declarations.enumerators.append()};
+                             context.storage.declarations.enumerators
+                                 .name[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = context.storage.strings.intern("Second");
+                             return new_enumerators;
+                         }()});
+                context.storage.declarations.enums
+                    .enum_array[context.storage.declarations.enums.index(new_enums)] = true;
+                return new_enums;
+            }()});
+        return new_normal_modules;
+    }())};
 
     EXPECT_NE(output.header.find("#include \"ioj/enum_traits.h\""), std::string::npos);
     EXPECT_NE(
@@ -470,23 +1314,67 @@ TEST(Lowering, EmitsCountsForEnumArrays) {
 }
 
 TEST(Lowering, EmitsCountsForReflectedEnumArrays) {
-    auto const output{render_enum(NormalModuleSchema{.settings =
-                                                         ModuleSettings{
-                                                             .name = "modes",
-                                                             .header = "Modes.h",
-                                                             .source = "Modes.cpp",
-                                                         },
-                                                     .declarations = {EnumSchema{
-                                                         .name = "EMode",
-                                                         .underlying_type = TypeRef{"uint8"},
-                                                         .values =
-                                                             {
-                                                                 EnumeratorSchema{"First"},
-                                                                 EnumeratorSchema{"Second"},
-                                                             },
-                                                         .reflection = EnumReflection::uenum,
-                                                         .enum_array = true,
-                                                     }}})};
+    CompilerTestContext context;
+    auto const output{render_enum(context, [&] {
+        auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+        context.storage.declarations.normal_modules
+            .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] = [&] {
+            auto const new_module_settings_store{
+                context.storage.declarations.module_settings_store.append()};
+            context.storage.declarations.module_settings_store
+                .name[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.intern("modes");
+            context.storage.declarations.module_settings_store
+                .header[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.add("Modes.h");
+            context.storage.declarations.module_settings_store
+                .source[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.add("Modes.cpp");
+            return new_module_settings_store;
+        }();
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+            context.storage.declarations.range<DeclarationHandle>({[&] {
+                auto const new_enums{context.storage.declarations.enums.append()};
+                context.storage.declarations.enums
+                    .name[context.storage.declarations.enums.index(new_enums)] =
+                    context.storage.strings.intern("EMode");
+                context.storage.declarations.enums
+                    .underlying_type[context.storage.declarations.enums.index(new_enums)] = [&] {
+                    auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                    context.storage.declarations.type_refs
+                        .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                        context.storage.strings.intern("uint8");
+                    return new_type_refs;
+                }();
+                context.storage.declarations.enums
+                    .values[context.storage.declarations.enums.index(new_enums)] =
+                    context.storage.declarations.range<EnumeratorId>(
+                        {[&] {
+                             auto const new_enumerators{
+                                 context.storage.declarations.enumerators.append()};
+                             context.storage.declarations.enumerators
+                                 .name[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = context.storage.strings.intern("First");
+                             return new_enumerators;
+                         }(),
+                         [&] {
+                             auto const new_enumerators{
+                                 context.storage.declarations.enumerators.append()};
+                             context.storage.declarations.enumerators
+                                 .name[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = context.storage.strings.intern("Second");
+                             return new_enumerators;
+                         }()});
+                context.storage.declarations.enums
+                    .reflection[context.storage.declarations.enums.index(new_enums)] =
+                    EnumReflection::uenum;
+                context.storage.declarations.enums
+                    .enum_array[context.storage.declarations.enums.index(new_enums)] = true;
+                return new_enums;
+            }()});
+        return new_normal_modules;
+    }())};
 
     EXPECT_NE(output.header.find("#include \"ioj/enum_traits.h\""), std::string::npos);
     EXPECT_NE(
@@ -495,14 +1383,55 @@ TEST(Lowering, EmitsCountsForReflectedEnumArrays) {
 }
 
 TEST(Lowering, EnumDisplayLookupWithoutOverridesFallsBackDirectly) {
-    auto const output{render_enum(NormalModuleSchema{
-        .settings = {.name = "states", .header = "States.h", .source = "States.cpp"},
-        .declarations = {EnumSchema{
-            .name = "EState",
-            .underlying_type = TypeRef{"int"},
-            .values = {EnumeratorSchema{"Ready"}},
-            .conversions = {EnumConversion::display_string},
-        }}})};
+    CompilerTestContext context;
+    auto const output{render_enum(context, [&] {
+        auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+        context.storage.declarations.normal_modules
+            .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] = [&] {
+            auto const new_module_settings_store{
+                context.storage.declarations.module_settings_store.append()};
+            context.storage.declarations.module_settings_store
+                .name[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.intern("states");
+            context.storage.declarations.module_settings_store
+                .header[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.add("States.h");
+            context.storage.declarations.module_settings_store
+                .source[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.add("States.cpp");
+            return new_module_settings_store;
+        }();
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+            context.storage.declarations.range<DeclarationHandle>({[&] {
+                auto const new_enums{context.storage.declarations.enums.append()};
+                context.storage.declarations.enums
+                    .name[context.storage.declarations.enums.index(new_enums)] =
+                    context.storage.strings.intern("EState");
+                context.storage.declarations.enums
+                    .underlying_type[context.storage.declarations.enums.index(new_enums)] = [&] {
+                    auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                    context.storage.declarations.type_refs
+                        .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                        context.storage.strings.intern("int");
+                    return new_type_refs;
+                }();
+                context.storage.declarations.enums.values[context.storage.declarations.enums.index(
+                    new_enums)] = context.storage.declarations.range<EnumeratorId>({[&] {
+                    auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                    context.storage.declarations.enumerators
+                        .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                        context.storage.strings.intern("Ready");
+                    return new_enumerators;
+                }()});
+                context.storage.declarations.enums
+                    .conversions[context.storage.declarations.enums.index(new_enums)] =
+                    context.storage.declarations.range<EnumConversion>(
+                        {EnumConversion::display_string});
+                return new_enums;
+            }()});
+        return new_normal_modules;
+    }())};
 
     EXPECT_NE(
         output.source.find("auto get_state_display_name(EState const value) -> TCHAR const* {\n"
@@ -515,19 +1444,96 @@ TEST(Lowering, EnumDisplayLookupWithoutOverridesFallsBackDirectly) {
 }
 
 TEST(Lowering, EnumEscapingAndSparseDisplayCasesPreserveFallbacks) {
-    auto const output{render_enum(NormalModuleSchema{
-        .settings = {.name = "states", .header = "States.h", .source = "States.cpp"},
-        .declarations = {EnumSchema{
-            .name = "EState",
-            .underlying_type = TypeRef{"int"},
-            .values = {EnumeratorSchema{"Ready", std::nullopt, std::nullopt, false, "ready"},
-                       EnumeratorSchema{
-                           "Special", std::nullopt, "Quote\" Slash\\\n\t", false, "a\"b\\c\n"}},
-            .conversions = {EnumConversion::display_string,
-                            EnumConversion::lex_to_serialized_string,
-                            EnumConversion::try_parse_serialized},
-            .reflection = EnumReflection::uenum,
-        }}})};
+    CompilerTestContext context;
+    auto const output{render_enum(context, [&] {
+        auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+        context.storage.declarations.normal_modules
+            .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] = [&] {
+            auto const new_module_settings_store{
+                context.storage.declarations.module_settings_store.append()};
+            context.storage.declarations.module_settings_store
+                .name[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.intern("states");
+            context.storage.declarations.module_settings_store
+                .header[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.add("States.h");
+            context.storage.declarations.module_settings_store
+                .source[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.add("States.cpp");
+            return new_module_settings_store;
+        }();
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+            context.storage.declarations.range<DeclarationHandle>({[&] {
+                auto const new_enums{context.storage.declarations.enums.append()};
+                context.storage.declarations.enums
+                    .name[context.storage.declarations.enums.index(new_enums)] =
+                    context.storage.strings.intern("EState");
+                context.storage.declarations.enums
+                    .underlying_type[context.storage.declarations.enums.index(new_enums)] = [&] {
+                    auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                    context.storage.declarations.type_refs
+                        .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                        context.storage.strings.intern("int");
+                    return new_type_refs;
+                }();
+                context.storage.declarations.enums
+                    .values[context.storage.declarations.enums.index(new_enums)] =
+                    context.storage.declarations.range<EnumeratorId>(
+                        {[&] {
+                             auto const new_enumerators{
+                                 context.storage.declarations.enumerators.append()};
+                             context.storage.declarations.enumerators
+                                 .name[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = context.storage.strings.intern("Ready");
+                             context.storage.declarations.enumerators
+                                 .initializer[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = std::nullopt;
+                             context.storage.declarations.enumerators
+                                 .display_name[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = std::nullopt;
+                             context.storage.declarations.enumerators
+                                 .hidden[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = false;
+                             context.storage.declarations.enumerators
+                                 .serialized_name[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = context.storage.strings.add("ready");
+                             return new_enumerators;
+                         }(),
+                         [&] {
+                             auto const new_enumerators{
+                                 context.storage.declarations.enumerators.append()};
+                             context.storage.declarations.enumerators
+                                 .name[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = context.storage.strings.intern("Special");
+                             context.storage.declarations.enumerators
+                                 .initializer[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = std::nullopt;
+                             context.storage.declarations.enumerators
+                                 .display_name[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] =
+                                 context.storage.strings.add("Quote\" Slash\\\n\t");
+                             context.storage.declarations.enumerators
+                                 .hidden[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = false;
+                             context.storage.declarations.enumerators
+                                 .serialized_name[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = context.storage.strings.add("a\"b\\c\n");
+                             return new_enumerators;
+                         }()});
+                context.storage.declarations.enums
+                    .conversions[context.storage.declarations.enums.index(new_enums)] =
+                    context.storage.declarations.range<EnumConversion>(
+                        {EnumConversion::display_string,
+                         EnumConversion::lex_to_serialized_string,
+                         EnumConversion::try_parse_serialized});
+                context.storage.declarations.enums
+                    .reflection[context.storage.declarations.enums.index(new_enums)] =
+                    EnumReflection::uenum;
+                return new_enums;
+            }()});
+        return new_normal_modules;
+    }())};
 
     EXPECT_NE(output.header.find("UMETA(DisplayName = \"Quote\\\" Slash\\\\\\n\\t\")"),
               std::string::npos);
@@ -553,18 +1559,66 @@ TEST(Lowering, EnumEscapingAndSparseDisplayCasesPreserveFallbacks) {
 }
 
 TEST(Lowering, EnumCountsUseMlNamespaceForQualifiedHeaderOnlyEnums) {
-    auto const files{render_modules(lower_modules(Manifest{
-        .schema_version = manifest_schema_version,
-        .modules = {NormalModuleSchema{.settings = {.name = "states",
-                                                    .header = "States.h",
-                                                    .namespace_name = "project::states"},
-                                       .declarations = {EnumSchema{
-                                           .name = "EState",
-                                           .underlying_type = TypeRef{"int"},
-                                           .values = {EnumeratorSchema{"Ready"}},
-                                           .enum_array = true,
-                                       }}}},
-    }))};
+    CompilerTestContext context;
+    auto const files{render_test_manifest(
+        context,
+        Manifest{
+            manifest_schema_version,
+            make_test_registry(context),
+            context.storage.declarations,
+            {[&] {
+                auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+                context.storage.declarations.normal_modules
+                    .settings[context.storage.declarations.normal_modules.index(
+                        new_normal_modules)] = [&] {
+                    auto const new_module_settings_store{
+                        context.storage.declarations.module_settings_store.append()};
+                    context.storage.declarations.module_settings_store
+                        .name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.intern("states");
+                    context.storage.declarations.module_settings_store
+                        .header[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.add("States.h");
+                    context.storage.declarations.module_settings_store
+                        .namespace_name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] =
+                        context.storage.strings.intern("project::states");
+                    return new_module_settings_store;
+                }();
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(
+                        new_normal_modules)] =
+                    context.storage.declarations.range<DeclarationHandle>({[&] {
+                        auto const new_enums{context.storage.declarations.enums.append()};
+                        context.storage.declarations.enums
+                            .name[context.storage.declarations.enums.index(new_enums)] =
+                            context.storage.strings.intern("EState");
+                        context.storage.declarations.enums
+                            .underlying_type[context.storage.declarations.enums.index(
+                                new_enums)] = [&] {
+                            auto const new_type_refs{
+                                context.storage.declarations.type_refs.append()};
+                            context.storage.declarations.type_refs
+                                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                                context.storage.strings.intern("int");
+                            return new_type_refs;
+                        }();
+                        context.storage.declarations.enums
+                            .values[context.storage.declarations.enums.index(new_enums)] =
+                            context.storage.declarations.range<EnumeratorId>({[&] {
+                                auto const new_enumerators{
+                                    context.storage.declarations.enumerators.append()};
+                                context.storage.declarations.enumerators
+                                    .name[context.storage.declarations.enumerators.index(
+                                        new_enumerators)] = context.storage.strings.intern("Ready");
+                                return new_enumerators;
+                            }()});
+                        context.storage.declarations.enums
+                            .enum_array[context.storage.declarations.enums.index(new_enums)] = true;
+                        return new_enums;
+                    }()});
+                return new_normal_modules;
+            }()}})};
     ASSERT_EQ(files.size(), 1);
     EXPECT_NE(files.front().content.find("namespace ml {"), std::string::npos);
     EXPECT_NE(
@@ -574,9 +1628,11 @@ TEST(Lowering, EnumCountsUseMlNamespaceForQualifiedHeaderOnlyEnums) {
 }
 
 TEST(Lowering, AppliesEveryStorageOperationToEveryMember) {
-    auto schema{basic_schema()};
-    schema.operations = all_storage_operations();
-    auto const output{render_soa(std::move(schema))};
+    CompilerTestContext context;
+    auto schema{basic_schema(context)};
+    context.storage.declarations.soas.operations[context.storage.declarations.soas.index(schema)] =
+        context.storage.declarations.range<StorageOperation>(all_storage_operations());
+    auto const output{render_soa(context, std::move(schema))};
 
     std::vector<std::pair<std::string const*, std::string>> const expectations{
         {&output.source, "ml::soa_ops::reset(*this);"},
@@ -599,23 +1655,87 @@ TEST(Lowering, AppliesEveryStorageOperationToEveryMember) {
 }
 
 TEST(Lowering, PreservesCustomNestedRemovalOperation) {
-    CppType registered{"FRegistered", "Project/Registered.h"};
-    registered.member_operations.emplace(TypeOperation::remove_at_swap, "erase_swap");
-    auto schema{SoaSchema{
-        .name = "FData",
-        .members =
-            {
-                SoaMemberSchema{"values", SoaMemberKind::array, TypeRef{"int32"}},
-                SoaMemberSchema{"registered", SoaMemberKind::nested, TypeRef{"@registered"}},
-                SoaMemberSchema{"generic", SoaMemberKind::nested, TypeRef{"@generic"}},
-            },
-        .operations = {StorageOperation::remove_at_swap},
-    }};
+    CompilerTestContext context;
+    auto const registered{context.storage.cpp_types.add(
+        "FRegistered",
+        {context.storage.cpp_types.dependency("FRegistered", "Project/Registered.h")})};
+    context.storage.cpp_types.set_operation(
+        registered, TypeOperation::remove_at_swap, "erase_swap");
+    auto schema{[&] {
+        auto const new_soas{context.storage.declarations.soas.append()};
+        context.storage.declarations.soas.name[context.storage.declarations.soas.index(new_soas)] =
+            context.storage.strings.intern("FData");
+        context.storage.declarations.soas
+            .members[context.storage.declarations.soas.index(new_soas)] =
+            context.storage.declarations.range<SoaMemberId>(
+                {[&] {
+                     auto const new_soa_members{context.storage.declarations.soa_members.append()};
+                     context.storage.declarations.soa_members
+                         .name[context.storage.declarations.soa_members.index(new_soa_members)] =
+                         context.storage.strings.intern("values");
+                     context.storage.declarations.soa_members
+                         .kind[context.storage.declarations.soa_members.index(new_soa_members)] =
+                         SoaMemberKind::array;
+                     context.storage.declarations.soa_members
+                         .type[context.storage.declarations.soa_members.index(
+                             new_soa_members)] = [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("int32");
+                         return new_type_refs;
+                     }();
+                     return new_soa_members;
+                 }(),
+                 [&] {
+                     auto const new_soa_members{context.storage.declarations.soa_members.append()};
+                     context.storage.declarations.soa_members
+                         .name[context.storage.declarations.soa_members.index(new_soa_members)] =
+                         context.storage.strings.intern("registered");
+                     context.storage.declarations.soa_members
+                         .kind[context.storage.declarations.soa_members.index(new_soa_members)] =
+                         SoaMemberKind::nested;
+                     context.storage.declarations.soa_members
+                         .type[context.storage.declarations.soa_members.index(
+                             new_soa_members)] = [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("@registered");
+                         return new_type_refs;
+                     }();
+                     return new_soa_members;
+                 }(),
+                 [&] {
+                     auto const new_soa_members{context.storage.declarations.soa_members.append()};
+                     context.storage.declarations.soa_members
+                         .name[context.storage.declarations.soa_members.index(new_soa_members)] =
+                         context.storage.strings.intern("generic");
+                     context.storage.declarations.soa_members
+                         .kind[context.storage.declarations.soa_members.index(new_soa_members)] =
+                         SoaMemberKind::nested;
+                     context.storage.declarations.soa_members
+                         .type[context.storage.declarations.soa_members.index(
+                             new_soa_members)] = [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("@generic");
+                         return new_type_refs;
+                     }();
+                     return new_soa_members;
+                 }()});
+        context.storage.declarations.soas
+            .operations[context.storage.declarations.soas.index(new_soas)] =
+            context.storage.declarations.range<StorageOperation>(
+                {StorageOperation::remove_at_swap});
+        return new_soas;
+    }()};
 
-    auto const output{
-        render_soa(std::move(schema),
-                   {{"registered", RegisteredTypeSchema{.cpp_type = std::move(registered)}},
-                    {"generic", RegisteredTypeSchema{.cpp_type = CppType{"FGeneric"}}}})};
+    auto const output{render_soa(context,
+                                 std::move(schema),
+                                 {{"registered", std::move(registered)},
+                                  {"generic", context.storage.cpp_types.add("FGeneric")}})};
 
     auto const removal{output.header.find("void remove_at_swap(")};
     ASSERT_NE(removal, std::string::npos);
@@ -633,16 +1753,44 @@ TEST(Lowering, PreservesCustomNestedRemovalOperation) {
 }
 
 TEST(Lowering, CustomRemovalDoesNotRequireGenericContainerHelpers) {
-    CppType registered{"FRegistered", "Project/Registered.h"};
-    registered.member_operations.emplace(TypeOperation::remove_at_swap, "erase_swap");
-    auto schema{SoaSchema{
-        .name = "FData",
-        .members = {SoaMemberSchema{"registered", SoaMemberKind::nested, TypeRef{"@registered"}}},
-        .operations = {StorageOperation::remove_at_swap},
-    }};
+    CompilerTestContext context;
+    auto const registered{context.storage.cpp_types.add(
+        "FRegistered",
+        {context.storage.cpp_types.dependency("FRegistered", "Project/Registered.h")})};
+    context.storage.cpp_types.set_operation(
+        registered, TypeOperation::remove_at_swap, "erase_swap");
+    auto schema{[&] {
+        auto const new_soas{context.storage.declarations.soas.append()};
+        context.storage.declarations.soas.name[context.storage.declarations.soas.index(new_soas)] =
+            context.storage.strings.intern("FData");
+        context.storage.declarations.soas
+            .members[context.storage.declarations.soas.index(new_soas)] =
+            context.storage.declarations.range<SoaMemberId>({[&] {
+                auto const new_soa_members{context.storage.declarations.soa_members.append()};
+                context.storage.declarations.soa_members
+                    .name[context.storage.declarations.soa_members.index(new_soa_members)] =
+                    context.storage.strings.intern("registered");
+                context.storage.declarations.soa_members
+                    .kind[context.storage.declarations.soa_members.index(new_soa_members)] =
+                    SoaMemberKind::nested;
+                context.storage.declarations.soa_members
+                    .type[context.storage.declarations.soa_members.index(new_soa_members)] = [&] {
+                    auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                    context.storage.declarations.type_refs
+                        .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                        context.storage.strings.intern("@registered");
+                    return new_type_refs;
+                }();
+                return new_soa_members;
+            }()});
+        context.storage.declarations.soas
+            .operations[context.storage.declarations.soas.index(new_soas)] =
+            context.storage.declarations.range<StorageOperation>(
+                {StorageOperation::remove_at_swap});
+        return new_soas;
+    }()};
     auto const output{
-        render_soa(std::move(schema),
-                   {{"registered", RegisteredTypeSchema{.cpp_type = std::move(registered)}}})};
+        render_soa(context, std::move(schema), {{"registered", std::move(registered)}})};
     EXPECT_NE(output.header.find("#include \"Project/Registered.h\""), std::string::npos);
     EXPECT_NE(output.header.find("registered.erase_swap(index, count, allow_shrinking);"),
               std::string::npos);
@@ -650,15 +1798,42 @@ TEST(Lowering, CustomRemovalDoesNotRequireGenericContainerHelpers) {
 }
 
 TEST(Lowering, UsesSharedConventionalNestedRemovalOperation) {
-    CppType nested{"FNested", "Project/Nested.h"};
-    nested.member_operations.emplace(TypeOperation::remove_at_swap, "remove_at_swap");
-    auto schema{SoaSchema{
-        .name = "FData",
-        .members = {SoaMemberSchema{"nested", SoaMemberKind::nested, TypeRef{"@nested"}}},
-        .operations = {StorageOperation::remove_at_swap},
-    }};
-    auto const output{render_soa(
-        std::move(schema), {{"nested", RegisteredTypeSchema{.cpp_type = std::move(nested)}}})};
+    CompilerTestContext context;
+    auto const nested{context.storage.cpp_types.add(
+        "FNested", {context.storage.cpp_types.dependency("FNested", "Project/Nested.h")})};
+    context.storage.cpp_types.set_operation(
+        nested, TypeOperation::remove_at_swap, "remove_at_swap");
+    auto schema{[&] {
+        auto const new_soas{context.storage.declarations.soas.append()};
+        context.storage.declarations.soas.name[context.storage.declarations.soas.index(new_soas)] =
+            context.storage.strings.intern("FData");
+        context.storage.declarations.soas
+            .members[context.storage.declarations.soas.index(new_soas)] =
+            context.storage.declarations.range<SoaMemberId>({[&] {
+                auto const new_soa_members{context.storage.declarations.soa_members.append()};
+                context.storage.declarations.soa_members
+                    .name[context.storage.declarations.soa_members.index(new_soa_members)] =
+                    context.storage.strings.intern("nested");
+                context.storage.declarations.soa_members
+                    .kind[context.storage.declarations.soa_members.index(new_soa_members)] =
+                    SoaMemberKind::nested;
+                context.storage.declarations.soa_members
+                    .type[context.storage.declarations.soa_members.index(new_soa_members)] = [&] {
+                    auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                    context.storage.declarations.type_refs
+                        .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                        context.storage.strings.intern("@nested");
+                    return new_type_refs;
+                }();
+                return new_soa_members;
+            }()});
+        context.storage.declarations.soas
+            .operations[context.storage.declarations.soas.index(new_soas)] =
+            context.storage.declarations.range<StorageOperation>(
+                {StorageOperation::remove_at_swap});
+        return new_soas;
+    }()};
+    auto const output{render_soa(context, std::move(schema), {{"nested", std::move(nested)}})};
 
     EXPECT_NE(
         output.header.find("ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);"),
@@ -667,27 +1842,66 @@ TEST(Lowering, UsesSharedConventionalNestedRemovalOperation) {
 }
 
 TEST(Lowering, SourceOnlyStorageHelpersDoNotLeakIntoHeader) {
-    auto schema{basic_schema()};
-    schema.operations = {StorageOperation::reserve};
-    auto const output{render_soa(std::move(schema))};
+    CompilerTestContext context;
+    auto schema{basic_schema(context)};
+    context.storage.declarations.soas.operations[context.storage.declarations.soas.index(schema)] =
+        context.storage.declarations.range<StorageOperation>({StorageOperation::reserve});
+    auto const output{render_soa(context, std::move(schema))};
     EXPECT_EQ(output.header.find("SandboxCore/container_ops.h"), std::string::npos);
     EXPECT_EQ(occurrences(output.source, "#include \"SandboxCore/container_ops.h\""), 1);
     EXPECT_NE(output.source.find("ml::soa_ops::reserve(*this, count);"), std::string::npos);
 }
 
 TEST(Lowering, CustomSetAndAddStillSuppressGeneratedBodies) {
-    auto schema{basic_schema()};
-    schema.functions = {
-        FunctionSchema{.name = "set",
-                       .return_type = TypeRef{"void"},
-                       .body_lines = {"custom_set();"},
-                       .is_inline = true},
-        FunctionSchema{.name = "add",
-                       .return_type = TypeRef{"void"},
-                       .body_lines = {"custom_add();"},
-                       .is_inline = true},
-    };
-    auto const output{render_soa(std::move(schema))};
+    CompilerTestContext context;
+    auto schema{basic_schema(context)};
+    context.storage.declarations.soas.functions[context.storage.declarations.soas.index(schema)] =
+        context.storage.declarations.range<FunctionSchemaId>(
+            {[&] {
+                 auto const new_functions{context.storage.declarations.functions.append()};
+                 context.storage.declarations.functions
+                     .name[context.storage.declarations.functions.index(new_functions)] =
+                     context.storage.strings.intern("set");
+                 context.storage.declarations.functions
+                     .return_type[context.storage.declarations.functions.index(new_functions)] =
+                     [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("void");
+                         return new_type_refs;
+                     }();
+                 context.storage.declarations.functions
+                     .body_lines[context.storage.declarations.functions.index(new_functions)] =
+                     context.storage.declarations.range<StringId>(
+                         {context.storage.strings.add("custom_set();")});
+                 context.storage.declarations.functions
+                     .is_inline[context.storage.declarations.functions.index(new_functions)] = true;
+                 return new_functions;
+             }(),
+             [&] {
+                 auto const new_functions{context.storage.declarations.functions.append()};
+                 context.storage.declarations.functions
+                     .name[context.storage.declarations.functions.index(new_functions)] =
+                     context.storage.strings.intern("add");
+                 context.storage.declarations.functions
+                     .return_type[context.storage.declarations.functions.index(new_functions)] =
+                     [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("void");
+                         return new_type_refs;
+                     }();
+                 context.storage.declarations.functions
+                     .body_lines[context.storage.declarations.functions.index(new_functions)] =
+                     context.storage.declarations.range<StringId>(
+                         {context.storage.strings.add("custom_add();")});
+                 context.storage.declarations.functions
+                     .is_inline[context.storage.declarations.functions.index(new_functions)] = true;
+                 return new_functions;
+             }()});
+    auto const output{render_soa(context, std::move(schema))};
     EXPECT_EQ(occurrences(output.header, "custom_set();"), 1);
     EXPECT_EQ(occurrences(output.header, "custom_add();"), 1);
     EXPECT_EQ(output.header.find("ids[index] = new_ids;"), std::string::npos);
@@ -695,25 +1909,81 @@ TEST(Lowering, CustomSetAndAddStillSuppressGeneratedBodies) {
 }
 
 TEST(Lowering, EmitsLogicalElementSettersAndAddForArraysAndSupportedNestedMembers) {
-    CppType vectors{"FVectors3f", "Project/Vectors.h"};
-    vectors.member_operations.emplace(TypeOperation::add_element, "add");
-    vectors.member_operation_parameter_passing.emplace(TypeOperation::add_element,
-                                                       ParameterPassing::value);
-    vectors.member_operations.emplace(TypeOperation::set_element, "set");
-    vectors.member_operation_parameter_passing.emplace(TypeOperation::set_element,
-                                                       ParameterPassing::value);
-    auto schema{SoaSchema{
-        .name = "FData",
-        .members =
-            {
-                SoaMemberSchema{"locations", SoaMemberKind::nested, TypeRef{"@vectors"}},
-                SoaMemberSchema{"teams", SoaMemberKind::array, TypeRef{"ETeam"}},
-                SoaMemberSchema{"healths", SoaMemberKind::array, TypeRef{"int32"}},
-            },
-    }};
+    CompilerTestContext context;
+    auto const vectors{context.storage.cpp_types.add(
+        "FVectors3f", {context.storage.cpp_types.dependency("FVectors3f", "Project/Vectors.h")})};
+    context.storage.cpp_types.set_operation(
+        vectors, TypeOperation::add_element, "add", ParameterPassing::value);
+    context.storage.cpp_types.set_operation(
+        vectors, TypeOperation::set_element, "set", ParameterPassing::value);
+    auto schema{[&] {
+        auto const new_soas{context.storage.declarations.soas.append()};
+        context.storage.declarations.soas.name[context.storage.declarations.soas.index(new_soas)] =
+            context.storage.strings.intern("FData");
+        context.storage.declarations.soas
+            .members[context.storage.declarations.soas.index(new_soas)] =
+            context.storage.declarations.range<SoaMemberId>(
+                {[&] {
+                     auto const new_soa_members{context.storage.declarations.soa_members.append()};
+                     context.storage.declarations.soa_members
+                         .name[context.storage.declarations.soa_members.index(new_soa_members)] =
+                         context.storage.strings.intern("locations");
+                     context.storage.declarations.soa_members
+                         .kind[context.storage.declarations.soa_members.index(new_soa_members)] =
+                         SoaMemberKind::nested;
+                     context.storage.declarations.soa_members
+                         .type[context.storage.declarations.soa_members.index(
+                             new_soa_members)] = [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("@vectors");
+                         return new_type_refs;
+                     }();
+                     return new_soa_members;
+                 }(),
+                 [&] {
+                     auto const new_soa_members{context.storage.declarations.soa_members.append()};
+                     context.storage.declarations.soa_members
+                         .name[context.storage.declarations.soa_members.index(new_soa_members)] =
+                         context.storage.strings.intern("teams");
+                     context.storage.declarations.soa_members
+                         .kind[context.storage.declarations.soa_members.index(new_soa_members)] =
+                         SoaMemberKind::array;
+                     context.storage.declarations.soa_members
+                         .type[context.storage.declarations.soa_members.index(
+                             new_soa_members)] = [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("ETeam");
+                         return new_type_refs;
+                     }();
+                     return new_soa_members;
+                 }(),
+                 [&] {
+                     auto const new_soa_members{context.storage.declarations.soa_members.append()};
+                     context.storage.declarations.soa_members
+                         .name[context.storage.declarations.soa_members.index(new_soa_members)] =
+                         context.storage.strings.intern("healths");
+                     context.storage.declarations.soa_members
+                         .kind[context.storage.declarations.soa_members.index(new_soa_members)] =
+                         SoaMemberKind::array;
+                     context.storage.declarations.soa_members
+                         .type[context.storage.declarations.soa_members.index(
+                             new_soa_members)] = [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("int32");
+                         return new_type_refs;
+                     }();
+                     return new_soa_members;
+                 }()});
+        return new_soas;
+    }()};
 
-    auto const output{render_soa(
-        std::move(schema), {{"vectors", RegisteredTypeSchema{.cpp_type = std::move(vectors)}}})};
+    auto const output{render_soa(context, std::move(schema), {{"vectors", std::move(vectors)}})};
 
     EXPECT_EQ(occurrences(output.header,
                           "void set(int32 const index, FVectors3f::equivalent_type const "
@@ -733,28 +2003,71 @@ TEST(Lowering, EmitsLogicalElementSettersAndAddForArraysAndSupportedNestedMember
 }
 
 TEST(Lowering, OmitsLogicalElementSetterAndAddForUnsupportedNestedMembers) {
-    auto schema{SoaSchema{
-        .name = "FData",
-        .members =
-            {
-                SoaMemberSchema{"ids", SoaMemberKind::array, TypeRef{"int32"}},
-                SoaMemberSchema{"values", SoaMemberKind::nested, TypeRef{"@nested"}},
-            },
-    }};
+    CompilerTestContext context;
+    auto schema{[&] {
+        auto const new_soas{context.storage.declarations.soas.append()};
+        context.storage.declarations.soas.name[context.storage.declarations.soas.index(new_soas)] =
+            context.storage.strings.intern("FData");
+        context.storage.declarations.soas
+            .members[context.storage.declarations.soas.index(new_soas)] =
+            context.storage.declarations.range<SoaMemberId>(
+                {[&] {
+                     auto const new_soa_members{context.storage.declarations.soa_members.append()};
+                     context.storage.declarations.soa_members
+                         .name[context.storage.declarations.soa_members.index(new_soa_members)] =
+                         context.storage.strings.intern("ids");
+                     context.storage.declarations.soa_members
+                         .kind[context.storage.declarations.soa_members.index(new_soa_members)] =
+                         SoaMemberKind::array;
+                     context.storage.declarations.soa_members
+                         .type[context.storage.declarations.soa_members.index(
+                             new_soa_members)] = [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("int32");
+                         return new_type_refs;
+                     }();
+                     return new_soa_members;
+                 }(),
+                 [&] {
+                     auto const new_soa_members{context.storage.declarations.soa_members.append()};
+                     context.storage.declarations.soa_members
+                         .name[context.storage.declarations.soa_members.index(new_soa_members)] =
+                         context.storage.strings.intern("values");
+                     context.storage.declarations.soa_members
+                         .kind[context.storage.declarations.soa_members.index(new_soa_members)] =
+                         SoaMemberKind::nested;
+                     context.storage.declarations.soa_members
+                         .type[context.storage.declarations.soa_members.index(
+                             new_soa_members)] = [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("@nested");
+                         return new_type_refs;
+                     }();
+                     return new_soa_members;
+                 }()});
+        return new_soas;
+    }()};
 
     auto const output{render_soa(
-        std::move(schema), {{"nested", RegisteredTypeSchema{.cpp_type = CppType{"FNested"}}}})};
+        context, std::move(schema), {{"nested", context.storage.cpp_types.add("FNested")}})};
 
     EXPECT_EQ(output.header.find("void set("), std::string::npos);
     EXPECT_EQ(output.header.find("auto add("), std::string::npos);
 }
 
 TEST(Lowering, SupportsMemberwiseCopying) {
-    auto schema{basic_schema()};
-    schema.operations = {StorageOperation::copy_element};
-    schema.copy_element_memberwise = true;
+    CompilerTestContext context;
+    auto schema{basic_schema(context)};
+    context.storage.declarations.soas.operations[context.storage.declarations.soas.index(schema)] =
+        context.storage.declarations.range<StorageOperation>({StorageOperation::copy_element});
+    context.storage.declarations.soas
+        .copy_element_memberwise[context.storage.declarations.soas.index(schema)] = true;
 
-    auto const output{render_soa(std::move(schema))};
+    auto const output{render_soa(context, std::move(schema))};
 
     EXPECT_NE(output.header.find("ids[dst_i] = other.ids[src_i];"), std::string::npos);
     EXPECT_NE(output.header.find("weights[dst_i] = other.weights[src_i];"), std::string::npos);
@@ -768,29 +2081,75 @@ TEST(Lowering, SupportsMemberwiseCopying) {
 }
 
 TEST(Lowering, LowersCustomFunctionsToTheirRequestedFile) {
-    auto schema{basic_schema()};
-    schema.view_name = "FMutableRows";
-    schema.const_view_name = "FRows";
-    schema.using_declarations = {"Index = int32"};
-    schema.functions = {
-        FunctionSchema{
-            .name = "first",
-            .return_type = TypeRef{"int32"},
-            .body_lines = {"return ids[0];"},
-            .is_inline = true,
-        },
-        FunctionSchema{
-            .name = "sum",
-            .return_type = TypeRef{"int32"},
-            .body_lines = {"return helper(ids);"},
-            .dependencies = {"helper"},
-            .definition_in_source = true,
-        },
-    };
+    CompilerTestContext context;
+    auto schema{basic_schema(context)};
+    context.storage.declarations.soas.view_name[context.storage.declarations.soas.index(schema)] =
+        context.storage.strings.intern("FMutableRows");
+    context.storage.declarations.soas
+        .const_view_name[context.storage.declarations.soas.index(schema)] =
+        context.storage.strings.intern("FRows");
+    context.storage.declarations.soas
+        .using_declarations[context.storage.declarations.soas.index(schema)] =
+        context.storage.declarations.range<StringId>(
+            {context.storage.strings.add("Index = int32")});
+    context.storage.declarations.soas.functions[context.storage.declarations.soas.index(schema)] =
+        context.storage.declarations.range<FunctionSchemaId>(
+            {[&] {
+                 auto const new_functions{context.storage.declarations.functions.append()};
+                 context.storage.declarations.functions
+                     .name[context.storage.declarations.functions.index(new_functions)] =
+                     context.storage.strings.intern("first");
+                 context.storage.declarations.functions
+                     .return_type[context.storage.declarations.functions.index(new_functions)] =
+                     [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("int32");
+                         return new_type_refs;
+                     }();
+                 context.storage.declarations.functions
+                     .body_lines[context.storage.declarations.functions.index(new_functions)] =
+                     context.storage.declarations.range<StringId>(
+                         {context.storage.strings.add("return ids[0];")});
+                 context.storage.declarations.functions
+                     .is_inline[context.storage.declarations.functions.index(new_functions)] = true;
+                 return new_functions;
+             }(),
+             [&] {
+                 auto const new_functions{context.storage.declarations.functions.append()};
+                 context.storage.declarations.functions
+                     .name[context.storage.declarations.functions.index(new_functions)] =
+                     context.storage.strings.intern("sum");
+                 context.storage.declarations.functions
+                     .return_type[context.storage.declarations.functions.index(new_functions)] =
+                     [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("int32");
+                         return new_type_refs;
+                     }();
+                 context.storage.declarations.functions
+                     .body_lines[context.storage.declarations.functions.index(new_functions)] =
+                     context.storage.declarations.range<StringId>(
+                         {context.storage.strings.add("return helper(ids);")});
+                 context.storage.declarations.functions
+                     .dependencies[context.storage.declarations.functions.index(new_functions)] =
+                     context.storage.declarations.range<IdentifierId>(
+                         {context.storage.strings.intern("helper")});
+                 context.storage.declarations.functions
+                     .definition_in_source[context.storage.declarations.functions.index(
+                         new_functions)] = true;
+                 return new_functions;
+             }()});
 
     auto const output{render_soa(
+        context,
         std::move(schema),
-        {{"helper", RegisteredTypeSchema{.cpp_type = CppType{"helper", "Project/Helper.h"}}}})};
+        {{"helper",
+          context.storage.cpp_types.add(
+              "helper", {context.storage.cpp_types.dependency("helper", "Project/Helper.h")})}})};
 
     EXPECT_NE(output.header.find("using View = FMutableRows;"), std::string::npos);
     EXPECT_NE(output.header.find("using ConstView = FRows;"), std::string::npos);
@@ -803,7 +2162,8 @@ TEST(Lowering, LowersCustomFunctionsToTheirRequestedFile) {
 }
 
 TEST(Lowering, ValidatesSizesBeforePermutationAndSorting) {
-    auto const output{render_soa(basic_schema())};
+    CompilerTestContext context;
+    auto const output{render_soa(context, basic_schema(context))};
 
     EXPECT_NE(output.source.find("void FData::apply_permutation("), std::string::npos);
     EXPECT_NE(output.source.find("ml::soa_ops::apply_permutation(*this, indices);"),
@@ -816,10 +2176,21 @@ TEST(Lowering, ValidatesSizesBeforePermutationAndSorting) {
 }
 
 TEST(Lowering, FixedContainersOwnOneSizeAndImplementValueSemantics) {
-    auto schema{basic_schema()};
-    schema.fixed = FixedSoaSchema{"TDataStorage", {"TFixedData"}};
+    CompilerTestContext context;
+    auto schema{basic_schema(context)};
+    context.storage.declarations.soas.fixed[context.storage.declarations.soas.index(schema)] = [&] {
+        auto const new_fixed_soas{context.storage.declarations.fixed_soas.append()};
+        context.storage.declarations.fixed_soas
+            .storage_name[context.storage.declarations.fixed_soas.index(new_fixed_soas)] =
+            context.storage.strings.intern("TDataStorage");
+        context.storage.declarations.fixed_soas
+            .containers[context.storage.declarations.fixed_soas.index(new_fixed_soas)] =
+            context.storage.declarations.range<IdentifierId>(
+                {context.storage.strings.intern("TFixedData")});
+        return new_fixed_soas;
+    }();
 
-    auto const output{render_soa(std::move(schema))};
+    auto const output{render_soa(context, std::move(schema))};
 
     EXPECT_NE(output.header.find("struct TDataStorage"), std::string::npos);
     EXPECT_NE(output.header.find("struct TFixedData"), std::string::npos);
@@ -837,44 +2208,134 @@ TEST(Lowering, FixedContainersOwnOneSizeAndImplementValueSemantics) {
 }
 
 TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {
-    auto const output{render_settings(SettingsModuleSchema{
-        .settings =
-            ModuleSettings{
-                .name = "settings",
-                .header = "Settings.h",
-                .source = "Settings.cpp",
-                .namespace_name = "game",
-            },
-        .api_name = "TSettingsAccess",
-        .state_name = "FSettingsState",
-        .categories = {{"video", "Video"}},
-        .settings_list =
-            {
-                SettingSchema{
-                    .name = "vsync",
-                    .label = "VSync",
-                    .category = "video",
-                    .value_type = TypeRef{"bool"},
-                    .backend = "engine",
-                    .apply_mode = SettingApplyMode::deferred,
-                    .control = SettingControlSchema{.kind = SettingControlKind::toggle},
-                },
-                SettingSchema{
-                    .name = "frame_limit",
-                    .label = "Frame Limit",
-                    .category = "video",
-                    .value_type = TypeRef{"float"},
-                    .backend = "engine",
-                    .apply_mode = SettingApplyMode::immediate,
-                    .device = SettingDevice::controller,
-                    .control =
-                        SettingControlSchema{
-                            .kind = SettingControlKind::choice,
-                            .options_provider = "frame_limits",
-                        },
-                },
-            },
-    })};
+    CompilerTestContext context;
+    auto const output{render_settings(context, [&] {
+        auto const new_settings_modules{context.storage.declarations.settings_modules.append()};
+        context.storage.declarations.settings_modules
+            .settings[context.storage.declarations.settings_modules.index(new_settings_modules)] =
+            [&] {
+                auto const new_module_settings_store{
+                    context.storage.declarations.module_settings_store.append()};
+                context.storage.declarations.module_settings_store
+                    .name[context.storage.declarations.module_settings_store.index(
+                        new_module_settings_store)] = context.storage.strings.intern("settings");
+                context.storage.declarations.module_settings_store
+                    .header[context.storage.declarations.module_settings_store.index(
+                        new_module_settings_store)] = context.storage.strings.add("Settings.h");
+                context.storage.declarations.module_settings_store
+                    .source[context.storage.declarations.module_settings_store.index(
+                        new_module_settings_store)] = context.storage.strings.add("Settings.cpp");
+                context.storage.declarations.module_settings_store
+                    .namespace_name[context.storage.declarations.module_settings_store.index(
+                        new_module_settings_store)] = context.storage.strings.intern("game");
+                return new_module_settings_store;
+            }();
+        context.storage.declarations.settings_modules
+            .api_name[context.storage.declarations.settings_modules.index(new_settings_modules)] =
+            context.storage.strings.intern("TSettingsAccess");
+        context.storage.declarations.settings_modules
+            .state_name[context.storage.declarations.settings_modules.index(new_settings_modules)] =
+            context.storage.strings.intern("FSettingsState");
+        context.storage.declarations.settings_modules
+            .categories[context.storage.declarations.settings_modules.index(new_settings_modules)] =
+            context.storage.declarations.range<SettingCategoryId>({[&] {
+                auto const new_setting_categories{
+                    context.storage.declarations.setting_categories.append()};
+                context.storage.declarations.setting_categories
+                    .name[context.storage.declarations.setting_categories.index(
+                        new_setting_categories)] = context.storage.strings.intern("video");
+                context.storage.declarations.setting_categories
+                    .label[context.storage.declarations.setting_categories.index(
+                        new_setting_categories)] = context.storage.strings.add("Video");
+                return new_setting_categories;
+            }()});
+        context.storage.declarations.settings_modules
+            .settings_list[context.storage.declarations.settings_modules.index(
+                new_settings_modules)] =
+            context.storage.declarations.range<SettingId>(
+                {[&] {
+                     auto const new_settings{context.storage.declarations.settings.append()};
+                     context.storage.declarations.settings
+                         .name[context.storage.declarations.settings.index(new_settings)] =
+                         context.storage.strings.intern("vsync");
+                     context.storage.declarations.settings
+                         .label[context.storage.declarations.settings.index(new_settings)] =
+                         context.storage.strings.add("VSync");
+                     context.storage.declarations.settings
+                         .category[context.storage.declarations.settings.index(new_settings)] =
+                         context.storage.strings.intern("video");
+                     context.storage.declarations.settings
+                         .value_type[context.storage.declarations.settings.index(
+                             new_settings)] = [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("bool");
+                         return new_type_refs;
+                     }();
+                     context.storage.declarations.settings
+                         .backend[context.storage.declarations.settings.index(new_settings)] =
+                         context.storage.strings.intern("engine");
+                     context.storage.declarations.settings
+                         .apply_mode[context.storage.declarations.settings.index(new_settings)] =
+                         SettingApplyMode::deferred;
+                     context.storage.declarations.settings
+                         .control[context.storage.declarations.settings.index(new_settings)] = [&] {
+                         auto const new_setting_controls{
+                             context.storage.declarations.setting_controls.append()};
+                         context.storage.declarations.setting_controls
+                             .kind[context.storage.declarations.setting_controls.index(
+                                 new_setting_controls)] = SettingControlKind::toggle;
+                         return new_setting_controls;
+                     }();
+                     return new_settings;
+                 }(),
+                 [&] {
+                     auto const new_settings{context.storage.declarations.settings.append()};
+                     context.storage.declarations.settings
+                         .name[context.storage.declarations.settings.index(new_settings)] =
+                         context.storage.strings.intern("frame_limit");
+                     context.storage.declarations.settings
+                         .label[context.storage.declarations.settings.index(new_settings)] =
+                         context.storage.strings.add("Frame Limit");
+                     context.storage.declarations.settings
+                         .category[context.storage.declarations.settings.index(new_settings)] =
+                         context.storage.strings.intern("video");
+                     context.storage.declarations.settings
+                         .value_type[context.storage.declarations.settings.index(
+                             new_settings)] = [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("float");
+                         return new_type_refs;
+                     }();
+                     context.storage.declarations.settings
+                         .backend[context.storage.declarations.settings.index(new_settings)] =
+                         context.storage.strings.intern("engine");
+                     context.storage.declarations.settings
+                         .apply_mode[context.storage.declarations.settings.index(new_settings)] =
+                         SettingApplyMode::immediate;
+                     context.storage.declarations.settings
+                         .device[context.storage.declarations.settings.index(new_settings)] =
+                         SettingDevice::controller;
+                     context.storage.declarations.settings
+                         .control[context.storage.declarations.settings.index(new_settings)] = [&] {
+                         auto const new_setting_controls{
+                             context.storage.declarations.setting_controls.append()};
+                         context.storage.declarations.setting_controls
+                             .kind[context.storage.declarations.setting_controls.index(
+                                 new_setting_controls)] = SettingControlKind::choice;
+                         context.storage.declarations.setting_controls
+                             .options_provider[context.storage.declarations.setting_controls.index(
+                                 new_setting_controls)] =
+                             context.storage.strings.add("frame_limits");
+                         return new_setting_controls;
+                     }();
+                     return new_settings;
+                 }()});
+        return new_settings_modules;
+    }())};
 
     EXPECT_NE(output.header.find("enum class EGameSetting : uint8"), std::string::npos);
     EXPECT_NE(output.header.find("using FGameSettingValue = std::variant<bool, float>"),
@@ -890,4 +2351,4 @@ TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {
 }
 
 } // namespace
-} // namespace codegen
+} // namespace lispb::codegen

@@ -1,20 +1,32 @@
 #pragma once
 
-#include <lispb/compilation.h>
+#include <codegen/sexpr/indices.h>
+#include <lispb/kernel_profile.h>
 
-#include <filesystem>
-#include <vector>
+#include <span>
+
+namespace lispb {
+struct Compilation;
+}
+namespace lispb::codegen::sexpr {
+class Syntax;
+}
+namespace kernel_codegen::detail {
+struct Document;
+}
+
+namespace lispb::codegen {
+class CppIR;
+}
 
 namespace kernel_codegen {
 
-enum class Profile { unreal, standard, unreal_avx2_lab, native_x86_simd_lab };
-
-struct SourceOptions {
-    std::filesystem::path source_root;
-    std::vector<std::filesystem::path> inputs;
-    Profile profile{Profile::unreal};
-};
-
-auto compile_sources(SourceOptions const& options) -> lispb::Compilation;
+void compile(lispb::codegen::sexpr::Syntax& syntax,
+             detail::Document& document,
+             lispb::codegen::CppIR& cpp,
+             lispb::Compilation& output,
+             std::span<lispb::codegen::sexpr::SourceFileId const> inputs,
+             lispb::KernelProfile profile,
+             bool generate);
 
 }

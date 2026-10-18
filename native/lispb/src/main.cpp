@@ -1,8 +1,11 @@
+#include <exception>
+#include "lispb/compile_mode.h"
+#include <lispb/compiler.h>
 #include <lispb/output.h>
 #include <lispb/project.h>
-#include <lispb/target_compiler.h>
+#include <lispb/project_loader.h>
 
-#include <algorithm>
+#include <cstdint>
 #include <filesystem>
 #include <iostream>
 #include <optional>
@@ -16,7 +19,7 @@ namespace {
 
 namespace fs = std::filesystem;
 
-enum class Action { generate, check, validate, expand, dump_ir };
+enum class Action : std::uint8_t { generate, check, validate, expand, dump_ir };
 
 struct Arguments {
     Action action;
@@ -94,8 +97,9 @@ auto main(int const argc, char const* const* const argv) -> int {
             return 0;
         }
         auto const arguments{parse_arguments(argc, argv)};
-        auto const project{lispb::load_project(arguments.project)};
-        auto const targets{lispb::expand_target(project, arguments.target)};
+        lispb::Compiler compiler;
+        auto const project{lispb::load_project(compiler.storage().syntax, arguments.project)};
+        auto const targets{project.expand(arguments.target)};
         if ((arguments.action == Action::expand || arguments.action == Action::dump_ir) &&
             targets.size() != 1) {
             throw std::invalid_argument{"expand and dump-ir require a single target"};
@@ -108,16 +112,17 @@ auto main(int const argc, char const* const* const argv) -> int {
         }
 
         if (arguments.action == Action::expand) {
-            std::cout << lispb::expand_target_source(project.targets.at(targets.front()),
-                                                     project.root);
+            std::cout << compiler.expand(project, targets.front());
             return 0;
         }
 
-        for (auto const& name : targets) {
-            auto compiled{
-                lispb::compile_target(project.targets.at(name),
-                                      project.root,
-                                      fs::absolute(arguments.build_root).lexically_normal())};
+        for (auto const target : targets) {
+            auto& compiled{compiler.compile(project,
+                                            target,
+                                            fs::absolute(arguments.build_root).lexically_normal(),
+                                            arguments.action == Action::validate
+                                                ? lispb::CompileMode::validate
+                                                : lispb::CompileMode::generate)};
             compiled.compilation.dependencies.push_back(
                 fs::absolute(arguments.project).lexically_normal());
 

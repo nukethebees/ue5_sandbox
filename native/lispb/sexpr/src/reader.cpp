@@ -1,64 +1,74 @@
 #include <codegen/sexpr/reader.h>
 
+#include <codegen/sexpr/indices.h>
 #include <codegen/sexpr/lexer.h>
+#include <codegen/sexpr/source_error.h>
+#include <codegen/sexpr/syntax.h>
+#include <codegen/sexpr/token_kind.h>
+#include <codegen/sexpr/token_range.h>
 
-namespace codegen::sexpr {
+#include <cstddef>
+#include <cstdint>
+#include <span>
+#include <vector>
+
+namespace lispb::codegen::sexpr {
 namespace {
 
-[[noreturn]] void
-    fail(std::string_view const path, SourceSpan const& span, std::string const& message) {
-    throw SourceError{path, span, message};
-}
-
-}
-
-auto Form::is_list() const -> bool {
-    return token.kind == TokenKind::left_parenthesis;
-}
-
-auto Form::head() const -> std::string_view {
-    if (is_list() && !children.empty() && children.front().token.kind == TokenKind::atom) {
-        return children.front().token.text;
-    }
-    return {};
-}
-
-auto read_form(std::span<Token const> const tokens, std::size_t& index) -> Form {
-    if (index >= tokens.size()) {
-        fail({}, SourceSpan{}, "expected an expression");
+auto read_form(Syntax& syntax,
+               TokenRange const tokens,
+               std::size_t& index,
+               std::vector<FormId>& children) -> FormId {
+    if (index >= tokens.count) {
+        throw SourceError{syntax.sources(), {}, "expected an expression"};
     }
 
-    auto const& token{tokens[index++]};
-    if (token.kind == TokenKind::right_parenthesis || token.kind == TokenKind::end) {
-        fail(token.span.path, token.span, "expected an expression");
+    auto const token{TokenId{tokens.offset + static_cast<std::uint32_t>(index++)}};
+    if (syntax.kind(token) == TokenKind::right_parenthesis ||
+        syntax.kind(token) == TokenKind::end) {
+        throw SourceError{syntax.sources(), syntax.token_span(token), "expected an expression"};
+    }
+    if (syntax.kind(token) != TokenKind::left_parenthesis) {
+        return syntax.add_leaf(token);
     }
 
-    Form result{token, {}, token};
-    if (!result.is_list()) {
-        return result;
-    }
-
-    while (index < tokens.size() && tokens[index].kind != TokenKind::right_parenthesis) {
-        if (tokens[index].kind == TokenKind::end) {
-            fail(token.span.path, token.span, "expected ')' after expression");
+    auto const child_begin{children.size()};
+    while (index < tokens.count) {
+        auto const next{TokenId{tokens.offset + static_cast<std::uint32_t>(index)}};
+        if (syntax.kind(next) == TokenKind::right_parenthesis) {
+            ++index;
+            auto const result{syntax.add_list(
+                token, std::span{children}.subspan(child_begin), syntax.token_span(next))};
+            children.resize(child_begin);
+            return result;
         }
-        result.children.push_back(read_form(tokens, index));
+        if (syntax.kind(next) == TokenKind::end) {
+            break;
+        }
+        children.push_back(read_form(syntax, tokens, index, children));
     }
-    if (index >= tokens.size()) {
-        fail(token.span.path, token.span, "expected ')' after expression");
-    }
-    result.closing = tokens[index++];
-    return result;
+
+    throw SourceError{syntax.sources(), syntax.token_span(token), "expected ')' after expression"};
 }
 
-auto read_forms(std::string_view const path, std::string_view const source) -> std::vector<Form> {
-    auto const tokens{lex(path, source)};
-    std::vector<Form> result;
+} // namespace
+
+auto read_forms(Syntax& syntax, SourceFileId const file) -> HandleRange {
+    if (auto const cached{syntax.cached_forms(file)}; cached.has_value()) {
+        return *cached;
+    }
+
+    auto const tokens{lex(syntax, file)};
+    std::vector<FormId> roots;
+    std::vector<FormId> children;
     std::size_t index{};
-    while (tokens[index].kind != TokenKind::end) {
-        result.push_back(read_form(tokens, index));
+    while (syntax.kind(TokenId{tokens.offset + static_cast<std::uint32_t>(index)}) !=
+           TokenKind::end) {
+        roots.push_back(read_form(syntax, tokens, index, children));
     }
+    auto const result{syntax.range(roots)};
+    syntax.cache_forms(file, result);
     return result;
 }
 
-}
+} // namespace lispb::codegen::sexpr

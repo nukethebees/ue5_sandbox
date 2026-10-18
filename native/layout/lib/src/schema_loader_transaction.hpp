@@ -2,7 +2,11 @@
 
 #include <ioj/layout/schema_loader.hpp>
 
+#include <lispb/schema/editable_document.h>
+
+#include <filesystem>
 #include <functional>
+#include <string>
 
 namespace ioj::layout::detail {
 

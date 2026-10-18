@@ -37,6 +37,7 @@ struct FVectors2fConstView {
     }
 
     using value_type = float;
+
     using size_type = TArray<value_type>::SizeType;
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -74,12 +75,15 @@ struct FVectors2fView {
         return (*this)[index];
     }
 
-    using value_type = float;
-    using size_type = TArray<value_type>::SizeType;
-    void set(int32 const i, float const x, float const y) const {
-        xs[i] = x;
-        ys[i] = y;
+    void set(int32 const index, float const new_xs, float const new_ys) const {
+        xs[index] = new_xs;
+        ys[index] = new_ys;
     }
+
+    using value_type = float;
+
+    using size_type = TArray<value_type>::SizeType;
+
     void set(int32 const i, FVector2f const value) const { set(i, value.X, value.Y); }
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -116,38 +120,17 @@ struct FVectors2f {
         float* ys;
     };
 
+    auto get_data() -> Data { return Data{xs.GetData(), ys.GetData()}; }
     struct ConstData {
         float const* xs;
 
         float const* ys;
     };
 
-    using equivalent_type = FVector2f;
-
-    auto operator[](int32 const index) const -> FVector2f {
-        return {xs.GetData()[index], ys.GetData()[index]};
-    }
-    auto at(int32 const index) const -> FVector2f {
-        validate_array_sizes();
-        check(index >= 0);
-        check(index < num());
-        return (*this)[index];
-    }
-
+    auto get_data() const -> ConstData { return ConstData{xs.GetData(), ys.GetData()}; }
     using value_type = float;
     using size_type = TArray<value_type>::SizeType;
-    auto get_data() -> Data { return Data{xs.GetData(), ys.GetData()}; }
-    auto get_data() const -> ConstData { return ConstData{xs.GetData(), ys.GetData()}; }
-    auto add(value_type const x, value_type const y) -> size_type {
-        auto const index{xs.Add(x)};
-        ys.Add(y);
-        return index;
-    }
     auto add(FVector2f const& value) -> size_type { return add(value.X, value.Y); }
-    void set(int32 const i, value_type const x, value_type const y) {
-        xs[i] = x;
-        ys[i] = y;
-    }
     void set(int32 const i, FVector2f const value) { set(i, value.X, value.Y); }
     void empty() {
         xs.Empty();
@@ -161,6 +144,29 @@ struct FVectors2f {
         xs.AddZeroed(count);
         ys.AddZeroed(count);
     }
+    using equivalent_type = FVector2f;
+
+    auto operator[](int32 const index) const -> FVector2f {
+        return {xs.GetData()[index], ys.GetData()[index]};
+    }
+    auto at(int32 const index) const -> FVector2f {
+        validate_array_sizes();
+        check(index >= 0);
+        check(index < num());
+        return (*this)[index];
+    }
+    void set(int32 const index, float const new_xs, float const new_ys) {
+        xs[index] = new_xs;
+        ys[index] = new_ys;
+    }
+
+    auto add(float const new_xs, float const new_ys) -> int32 {
+        auto const index{num()};
+        xs.Add(new_xs);
+        ys.Add(new_ys);
+        return index;
+    }
+
     void reset();
 
     void reserve(int32 const count);

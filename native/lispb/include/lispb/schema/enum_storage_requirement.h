@@ -1,16 +1,19 @@
 #pragma once
 
+#include <lispb/schema/indices.h>
+
 #include <cstdint>
 #include <optional>
 
 namespace lispb::schema {
 struct EnumStorageRequirement {
     bool signedness{};
-    std::uint32_t bit_width{};
+    std::uint8_t bit_width{};
 };
 
-struct EnumDomain;
-auto derive_enum_storage_requirement(EnumDomain const& domain,
-                                     std::optional<std::uint32_t> declared_bit_width)
+struct EnumDomains;
+auto derive_enum_storage_requirement(EnumDomains const& domains,
+                                     EnumDomainId domain,
+                                     std::optional<std::uint8_t> declared_bit_width)
     -> std::optional<EnumStorageRequirement>;
 }

@@ -1,13 +1,15 @@
 add_library(kernel-codegen-lib
+  src/binary_operator.cpp
+  src/document.cpp
+  src/expressions.cpp
+  src/scalar_type.cpp
   src/compiler.cpp
   src/lowering.cpp
   src/parser.cpp
   src/reference_evaluator.cpp
   src/renderer.cpp
-  src/avx2_lab_renderer.cpp
-  src/standard_renderer.cpp
+  src/portable_renderer.cpp
   src/test_renderer.cpp
-  src/unreal_renderer.cpp
 )
 set_target_properties(kernel-codegen-lib PROPERTIES UNITY_BUILD OFF)
 target_include_directories(kernel-codegen-lib PUBLIC include)
@@ -15,8 +17,9 @@ target_link_libraries(kernel-codegen-lib
   PUBLIC
     sandbox::native_defaults
     lispb-output
-  PRIVATE
     lispb-syntax
+  PRIVATE
+    codegen-lib
     ioj::codegen_pch
 )
 ioj_enable_warnings(kernel-codegen-lib CODEGEN)
@@ -196,202 +199,6 @@ add_custom_target(check-generated-native-core-kernels
   COMMENT "Checking committed native-core kernels"
   USES_TERMINAL
   VERBATIM
-)
-
-set(KERNEL_NATIVE_SIMD_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/native-simd-generated")
-set(KERNEL_NATIVE_SIMD_HEADER
-  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/add_scaled_x86_simd_lab.h"
-)
-set(KERNEL_NATIVE_SIMD_AVX2_SOURCE
-  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/add_scaled_x86_simd_lab_avx2.cpp"
-)
-set(KERNEL_NATIVE_SIMD_AVX512_SOURCE
-  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/add_scaled_x86_simd_lab_avx512.cpp"
-)
-set(KERNEL_NATIVE_DOT_HEADER
-  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab.h"
-)
-set(KERNEL_NATIVE_DOT_AVX2_SOURCE
-  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab_avx2.cpp"
-)
-set(KERNEL_NATIVE_DOT_AVX512_SOURCE
-  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab_avx512.cpp"
-)
-set(KERNEL_NATIVE_DOT_RELAXED_AVX2_SOURCE
-  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab_relaxed_avx2.cpp"
-)
-set(KERNEL_NATIVE_DOT_RELAXED_AVX512_SOURCE
-  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab_relaxed_avx512.cpp"
-)
-set(KERNEL_NATIVE_DOT3_HEADER
-  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_3d_x86_simd_lab.h"
-)
-set(KERNEL_NATIVE_DOT3_AVX2_SOURCE
-  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_3d_x86_simd_lab_avx2.cpp"
-)
-set(KERNEL_NATIVE_DOT3_AVX512_SOURCE
-  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_3d_x86_simd_lab_avx512.cpp"
-)
-set(KERNEL_NATIVE_HIGHWAY_FILES
-  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/add_scaled_x86_simd_lab_highway.cpp"
-  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab_highway.cpp"
-  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_3d_x86_simd_lab_highway.cpp"
-)
-set(KERNEL_NATIVE_SIMD_FILES
-  ${KERNEL_NATIVE_HIGHWAY_FILES}
-  "${KERNEL_NATIVE_SIMD_HEADER}"
-  "${KERNEL_NATIVE_SIMD_AVX2_SOURCE}"
-  "${KERNEL_NATIVE_SIMD_AVX512_SOURCE}"
-  "${KERNEL_NATIVE_DOT_HEADER}"
-  "${KERNEL_NATIVE_DOT_AVX2_SOURCE}"
-  "${KERNEL_NATIVE_DOT_AVX512_SOURCE}"
-  "${KERNEL_NATIVE_DOT_RELAXED_AVX2_SOURCE}"
-  "${KERNEL_NATIVE_DOT_RELAXED_AVX512_SOURCE}"
-  "${KERNEL_NATIVE_DOT3_HEADER}"
-  "${KERNEL_NATIVE_DOT3_AVX2_SOURCE}"
-  "${KERNEL_NATIVE_DOT3_AVX512_SOURCE}"
-)
-add_custom_command(
-  OUTPUT ${KERNEL_NATIVE_SIMD_FILES}
-  COMMAND "$<TARGET_FILE:lispb>" generate
-    --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
-    --build-root "${CMAKE_BINARY_DIR}"
-    --target kernel-native-simd
-  DEPENDS
-    lispb
-    "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
-    "${KERNEL_CANDIDATE_DOCUMENT}"
-  COMMENT "Generating the native x86 SIMD kernel experiment"
-  VERBATIM
-)
-set(KERNEL_NATIVE_SIMD_CONVENIENCE_DIRECTORY
-  "${PROJECT_SOURCE_DIR}/out/benchmarks/kernel/generated"
-)
-add_custom_target(kernel-native-generated-sources
-  COMMAND "${CMAKE_COMMAND}" -E make_directory
-    "${KERNEL_NATIVE_SIMD_CONVENIENCE_DIRECTORY}"
-  COMMAND "${CMAKE_COMMAND}" -E copy_directory_if_different
-    "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated"
-    "${KERNEL_NATIVE_SIMD_CONVENIENCE_DIRECTORY}"
-  DEPENDS ${KERNEL_NATIVE_SIMD_FILES}
-  COMMENT "Updating the stable native SIMD generated-source mirror"
-  VERBATIM
-)
-
-add_library(kernel-native-simd-avx2 OBJECT
-  "${KERNEL_NATIVE_SIMD_AVX2_SOURCE}"
-  "${KERNEL_NATIVE_DOT_AVX2_SOURCE}"
-  "${KERNEL_NATIVE_DOT3_AVX2_SOURCE}"
-)
-add_library(kernel-native-simd-avx512 OBJECT
-  "${KERNEL_NATIVE_SIMD_AVX512_SOURCE}"
-  "${KERNEL_NATIVE_DOT_AVX512_SOURCE}"
-  "${KERNEL_NATIVE_DOT3_AVX512_SOURCE}"
-)
-add_library(kernel-native-dot-relaxed-avx2 OBJECT
-  "${KERNEL_NATIVE_DOT_RELAXED_AVX2_SOURCE}"
-)
-add_library(kernel-native-dot-relaxed-avx512 OBJECT
-  "${KERNEL_NATIVE_DOT_RELAXED_AVX512_SOURCE}"
-)
-foreach(TARGET IN ITEMS
-    kernel-native-simd-avx2
-    kernel-native-simd-avx512
-    kernel-native-dot-relaxed-avx2
-    kernel-native-dot-relaxed-avx512)
-  set_target_properties(${TARGET} PROPERTIES UNITY_BUILD OFF)
-  target_include_directories(${TARGET} PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
-  target_link_libraries(${TARGET} PRIVATE sandbox::native_defaults)
-  ioj_enable_warnings(${TARGET} CODEGEN)
-endforeach()
-target_link_libraries(kernel-native-simd-avx2 PRIVATE
-  ioj::arch_avx2
-  ioj::fp_strict
-)
-target_link_libraries(kernel-native-simd-avx512 PRIVATE
-  ioj::arch_avx512
-  ioj::fp_strict
-)
-target_link_libraries(kernel-native-dot-relaxed-avx2 PRIVATE
-  ioj::arch_avx2
-  ioj::fp_fast
-)
-target_link_libraries(kernel-native-dot-relaxed-avx512 PRIVATE
-  ioj::arch_avx512
-  ioj::fp_fast
-)
-
-foreach(isa IN ITEMS avx2 avx512)
-  add_library(kernel-native-highway-${isa} OBJECT ${KERNEL_NATIVE_HIGHWAY_FILES})
-  ioj_configure_highway_target(kernel-native-highway-${isa} ${isa})
-  target_link_libraries(kernel-native-highway-${isa} PRIVATE ioj::fp_strict)
-  target_include_directories(kernel-native-highway-${isa} PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
-endforeach()
-
-set(KERNEL_NATIVE_SIMD_OBJECTS
-  $<TARGET_OBJECTS:kernel-native-highway-avx2>
-  $<TARGET_OBJECTS:kernel-native-highway-avx512>
-  $<TARGET_OBJECTS:kernel-native-simd-avx2>
-  $<TARGET_OBJECTS:kernel-native-simd-avx512>
-  $<TARGET_OBJECTS:kernel-native-dot-relaxed-avx2>
-  $<TARGET_OBJECTS:kernel-native-dot-relaxed-avx512>
-)
-add_executable(kernel-native-simd-tests
-  tests/x86_simd_lab_tests.cpp
-  ${KERNEL_NATIVE_SIMD_OBJECTS}
-)
-add_dependencies(kernel-native-simd-tests kernel-native-generated-sources)
-target_include_directories(kernel-native-simd-tests PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
-target_link_libraries(kernel-native-simd-tests PRIVATE
-  hwy
-  CpuFeatures::cpu_features
-  GTest::gtest_main
-  ioj::arch_avx2
-  sandbox::native_defaults
-  ioj::fp_strict
-)
-ioj_enable_warnings(kernel-native-simd-tests CODEGEN)
-add_test(NAME kernel-native-simd-tests COMMAND kernel-native-simd-tests)
-set_tests_properties(kernel-native-simd-tests
-  PROPERTIES LABELS "unit;native-kernel-benchmark"
-)
-
-add_executable(kernel-native-benchmarks
-  benchmarks/add_scaled_benchmarks.cpp
-  benchmarks/dot_product_benchmarks.cpp
-  benchmarks/dot_product_3d_benchmarks.cpp
-  ${KERNEL_NATIVE_SIMD_OBJECTS}
-)
-set_target_properties(kernel-native-benchmarks PROPERTIES UNITY_BUILD OFF)
-add_dependencies(kernel-native-benchmarks kernel-native-generated-sources)
-target_include_directories(kernel-native-benchmarks PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
-target_link_libraries(kernel-native-benchmarks PRIVATE
-  hwy
-  benchmark::benchmark
-  benchmark::benchmark_main
-  CpuFeatures::cpu_features
-  ioj::arch_avx2
-  sandbox::native_defaults
-  ioj::fp_strict
-)
-ioj_enable_warnings(kernel-native-benchmarks CODEGEN)
-add_test(
-  NAME KernelNativeBenchmarkDryRun
-  COMMAND kernel-native-benchmarks --benchmark_dry_run
-)
-set_tests_properties(KernelNativeBenchmarkDryRun
-  PROPERTIES LABELS "native-kernel-benchmark"
-)
-
-add_test(
-  NAME KernelBenchmarkPlotTests
-  COMMAND "${IOJ_CARGO_EXECUTABLE}" test --locked --package benchmark-tools
-    --target-dir "${SANDBOX_RUST_TARGET_DIRECTORY}" plots::
-)
-set_tests_properties(KernelBenchmarkPlotTests PROPERTIES
-  LABELS "kernel-benchmark-plot"
-  WORKING_DIRECTORY "${SANDBOX_RUST_DIRECTORY}"
-  RESOURCE_LOCK rust-tools
 )
 
 add_dependencies(generate-code generate-kernel-code)

@@ -1,7 +1,7 @@
 #pragma once
 
-namespace codegen {
+namespace lispb::codegen {
 
 inline constexpr int manifest_schema_version{11};
 
-} // namespace codegen
+} // namespace lispb::codegen

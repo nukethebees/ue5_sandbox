@@ -1,6 +1,10 @@
 #include "SandboxEditor/material/MaterialEmitter.h"
 
+#include <lispb/indices.h>
+#include <material_gen/BlendMode.h>
 #include <material_gen/CompiledMaterial.h>
+#include <material_gen/MaterialDomain.h>
+#include <material_gen/MaterialIR.h>
 #include <material_gen/SourceHash.h>
 
 #include "Algo/Count.h"
@@ -26,7 +30,19 @@
 #include "Misc/Paths.h"
 #include "UObject/Package.h"
 
+#include <cstddef>
+#include <expected>
+#include <span>
+#include <string>
+
 namespace {
+
+auto material_text(material_synth::MaterialIR const& material, lispb::StringId const id)
+    -> FString {
+    auto const value{material.text(id)};
+    FUTF8ToTCHAR const converted{value.data(), static_cast<int32>(value.size())};
+    return FString{converted.Length(), converted.Get()};
+}
 
 auto load_compiled(TCHAR const* const filename)
     -> std::expected<material_synth::CompiledMaterial, std::string> {
@@ -67,8 +83,8 @@ TEST_CLASS(MaterialSynth, "SandboxEditor.MaterialSynth")
             return;
         }
 
-        auto const source_path{FString{UTF8_TO_TCHAR(compiled->source_path.c_str())}};
-        auto const source_hash{FString{UTF8_TO_TCHAR(compiled->source_hash.c_str())}};
+        auto const source_path{material_text(compiled->material, compiled->source_path)};
+        auto const source_hash{material_text(compiled->material, compiled->source_hash)};
         auto const first{material_synth::emit(compiled->material, source_path, source_hash)};
         if (!TestRunner->TestTrue(TEXT("First generation succeeds"),
                                   first.material != nullptr && first.errors.IsEmpty())) {
@@ -166,8 +182,8 @@ TEST_CLASS(MaterialSynth, "SandboxEditor.MaterialSynth")
 
         auto const emit_compiled{[](material_synth::CompiledMaterial const& compiled) {
             return material_synth::emit(compiled.material,
-                                        FString{UTF8_TO_TCHAR(compiled.source_path.c_str())},
-                                        FString{UTF8_TO_TCHAR(compiled.source_hash.c_str())});
+                                        material_text(compiled.material, compiled.source_path),
+                                        material_text(compiled.material, compiled.source_hash));
         }};
         auto const native_result{emit_compiled(*glowing_cross)};
         auto const hybrid_result{emit_compiled(*energy_shield)};
@@ -229,8 +245,8 @@ TEST_CLASS(MaterialSynth, "SandboxEditor.MaterialSynth")
             return;
         }
 
-        auto const source_path{FString{UTF8_TO_TCHAR(compiled->source_path.c_str())}};
-        auto const source_hash{FString{UTF8_TO_TCHAR(compiled->source_hash.c_str())}};
+        auto const source_path{material_text(compiled->material, compiled->source_path)};
+        auto const source_hash{material_text(compiled->material, compiled->source_hash)};
         auto const emitted{material_synth::emit(compiled->material, source_path, source_hash)};
         if (!TestRunner->TestTrue(TEXT("World material generation succeeds"),
                                   emitted.material != nullptr && emitted.errors.IsEmpty())) {

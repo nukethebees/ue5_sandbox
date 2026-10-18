@@ -8,9 +8,9 @@
 
 namespace ioj::layout_planner {
 
-void PlannerUi::export_external_probe(TypeNode const& node) {
+void PlannerUi::export_external_probe(TypeId const node) {
     auto const& types{analysis_session_.inputs.workspace.types()};
-    auto probe{external_probe_request(types, *types.find(node.identity))};
+    auto probe{external_probe_request(types, node)};
     if (external_probe_header_.front() != '\0') {
         probe.headers.emplace_back(external_probe_header_.data());
     }
@@ -83,7 +83,7 @@ void PlannerUi::discard_target_profile_edits() {
     }
 }
 
-void PlannerUi::draw_external_facts(TypeNode const& node) {
+void PlannerUi::draw_external_facts(TypeId const node) {
     auto const& analysis{analysis_session_.results().external_type};
     if (!analysis.has_value()) {
         ImGui::TextDisabled("External physical analysis is unavailable.");
@@ -111,8 +111,9 @@ void PlannerUi::draw_external_facts(TypeNode const& node) {
                            fact_origin_name(facts->origin).data(),
                            facts->provenance.c_str());
     }
-    if (external_facts_identity_ != node.identity || external_facts_source_ != facts) {
-        external_facts_identity_ = node.identity;
+    if (external_facts_identity_ != analysis_session_.inputs.workspace.types().identity(node) ||
+        external_facts_source_ != facts) {
+        external_facts_identity_ = analysis_session_.inputs.workspace.types().identity(node);
         external_facts_source_ = facts;
         auto const size{facts ? std::to_string(facts->size_bytes) : std::string{}};
         auto const alignment{facts ? std::to_string(facts->alignment_bytes) : std::string{}};
@@ -183,7 +184,7 @@ void PlannerUi::draw_external_facts(TypeNode const& node) {
     ImGui::TextWrapped("Analyses blocked by missing facts: %zu",
                        analysis->blocked_declarations.size());
     for (auto const& identity : analysis->blocked_declarations) {
-        auto const label{identity.module_name + "::" + identity.name};
+        auto const label{text(identity.module_name) + "::" + text(identity.name)};
         if (ImGui::Selectable(label.c_str())) {
             if (auto const target{analysis_session_.inputs.workspace.types().find(identity)}) {
                 select_type(*target);

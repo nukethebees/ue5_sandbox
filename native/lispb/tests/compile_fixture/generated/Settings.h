@@ -9,7 +9,6 @@
 #include <variant>
 
 namespace codegen_compile_fixture {
-
 enum class EGameSetting : uint8 {
     VSync,
     FrameLimit,
@@ -96,5 +95,4 @@ class TSettingsAccess {
     auto derived() -> Derived& { return static_cast<Derived&>(*this); }
     auto derived() const -> Derived const& { return static_cast<Derived const&>(*this); }
 };
-
 } // namespace codegen_compile_fixture

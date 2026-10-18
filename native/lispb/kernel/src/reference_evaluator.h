@@ -13,6 +13,7 @@ struct ReferenceFixture {
     std::vector<std::string> expected;
 };
 
-auto make_reference_fixture(ExpandedVariant const& expanded, std::size_t count) -> ReferenceFixture;
+auto make_reference_fixture(Document const& document, ExpandedVariantId const id, std::size_t count)
+    -> ReferenceFixture;
 
 }

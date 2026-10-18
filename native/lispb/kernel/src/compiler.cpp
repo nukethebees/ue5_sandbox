@@ -3,60 +3,45 @@
 #include "parser.h"
 #include "renderer.h"
 
-#include <codegen/sexpr/reader.h>
+#include <codegen/ast/cpp_ir.h>
+#include <codegen/sexpr/indices.h>
+#include <codegen/sexpr/syntax.h>
+#include <kernel_codegen/document.h>
+#include <lispb/compilation.h>
+#include <lispb/kernel_profile.h>
 
-#include <filesystem>
-#include <fstream>
-#include <iterator>
-#include <stdexcept>
+#include <cstdint>
+#include <span>
 #include <utility>
-#include <vector>
 
 namespace kernel_codegen {
-namespace {
 
-auto lower_profile(Profile const profile) -> detail::Profile {
-    switch (profile) {
-        case Profile::unreal:
-            return detail::Profile::unreal;
-        case Profile::standard:
-            return detail::Profile::standard;
-        case Profile::unreal_avx2_lab:
-            return detail::Profile::unreal_avx2_lab;
-        case Profile::native_x86_simd_lab:
-            return detail::Profile::native_x86_simd_lab;
+void compile(lispb::codegen::sexpr::Syntax& syntax,
+             detail::Document& document,
+             lispb::codegen::CppIR& cpp,
+             lispb::Compilation& output,
+             std::span<lispb::codegen::sexpr::SourceFileId const> const inputs,
+             lispb::KernelProfile const profile,
+             bool const generate) {
+    auto const first_module{document.modules.size()};
+    for (auto const input : inputs) {
+        detail::parse(syntax, document, input);
     }
-    throw std::invalid_argument{"Unknown kernel profile"};
-}
 
-auto read_file(std::filesystem::path const& path) -> std::string {
-    std::ifstream input{path, std::ios::binary};
-    if (!input) {
-        throw std::runtime_error{"Cannot open Kernel source: " + path.string()};
-    }
-    return std::string{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
-}
-
-}
-
-auto compile_sources(SourceOptions const& options) -> lispb::Compilation {
-    auto const source_root{std::filesystem::absolute(options.source_root).lexically_normal()};
-    auto const profile{lower_profile(options.profile)};
-    lispb::Compilation result;
-    for (auto const& input : options.inputs) {
-        auto const input_path{source_root / input};
-        result.dependencies.push_back(input_path.lexically_normal());
-        auto const source{read_file(input_path)};
-        auto const document{detail::parse(
-            input.generic_string(), codegen::sexpr::read_forms(input.generic_string(), source))};
-        for (auto const& module : document.modules) {
-            auto rendered{detail::render(module, profile)};
-            result.artifacts.insert(result.artifacts.end(),
-                                    std::make_move_iterator(rendered.begin()),
-                                    std::make_move_iterator(rendered.end()));
+    auto const module_count{document.modules.size()};
+    for (auto index{first_module}; index < module_count; ++index) {
+        if (!generate) {
+            detail::validate(
+                document, detail::ModuleId{static_cast<std::uint32_t>(index)}, profile);
+            continue;
+        }
+        auto rendered{detail::render(
+            cpp, document, detail::ModuleId{static_cast<std::uint32_t>(index)}, profile)};
+        for (auto& artifact : rendered) {
+            output.add_text(
+                std::move(artifact.path), std::move(artifact.content), artifact.format_generated);
         }
     }
-    return result;
 }
 
 }

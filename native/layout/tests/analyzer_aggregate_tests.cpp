@@ -1,18 +1,37 @@
 #include "analyzer_test_fixtures.hpp"
 
+#include <codegen/schema/integer_scalar_cpp_emission.h>
+#include <codegen/schema/record_member_schemas.h>
+#include <codegen/schema/record_schemas.h>
 #include <codegen/schema/schema_version.h>
+#include <codegen/schema/semantic_relation_kind.h>
+#include <codegen/schema/semantic_relation_schemas.h>
+#include <codegen/schema/union_schemas.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/schema/indices.h>
+#include <lispb/schema/integer_scalar_types.h>
+#include <lispb/schema/type_definitions.h>
+
+#include <array>
+#include <cstdint>
+#include <limits>
+#include <optional>
+#include <ranges>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace ioj::layout {
 namespace {
 
 TEST(RecordAnalyzer, PointerUseHasPointerFactsRatherThanPointeeFacts) {
-    codegen::RecordSchema record{};
-    record.name = "Record";
-    codegen::RecordMemberSchema member{};
-    member.name = "pointer";
-    member.type = {"float", "*", std::nullopt};
-    record.members.push_back(member);
-    auto const fixture{record_type({record})};
+    lispb::CompilerStorage storage;
+    auto const fixture{fixture_type(storage,
+                                    R"((module records :header "Records.h"
+            (record Record (member pointer (type-ref float :suffix "*")))))",
+                                    "records",
+                                    "Record")};
     auto const result{
         Analyzer::analyze_record(fixture.types, fixture.type, AbiProfile::host_common())};
     ASSERT_TRUE(result.members.front().element_facts.has_value());
@@ -21,93 +40,73 @@ TEST(RecordAnalyzer, PointerUseHasPointerFactsRatherThanPointeeFacts) {
 }
 
 TEST(RecordAnalyzer, IntegerScalarAliasUsesRepresentationWithoutLosingIdentity) {
-    codegen::IntegerScalarSchema scalar_schema{};
-    scalar_schema.name = "Health";
-    scalar_schema.maximum_value = 15;
-    scalar_schema.bit_width = 4;
-    scalar_schema.cpp_emission = codegen::IntegerScalarCppEmission::alias;
-    scalar_schema.cpp_type =
-        codegen::TypeRef{.name = "std::uint16_t", .suffix = {}, .nested = std::nullopt};
-    codegen::RecordSchema record_schema{};
-    record_schema.name = "Vessel";
-    record_schema.members = {record_member("health", "Health")};
-    codegen::SoaSchema soa_schema{};
-    soa_schema.name = "Fleet";
-    codegen::SoaMemberSchema column{};
-    column.name = "healths";
-    column.kind = codegen::SoaMemberKind::array;
-    column.type.name = "Health";
-    soa_schema.members.push_back(column);
-    codegen::NormalModuleSchema module{};
-    module.settings.name = "vitals";
-    module.settings.header = "Vitals.h";
-    module.soa_backend = codegen::SoaBackend::standard_library;
-    module.declarations = {scalar_schema, record_schema, soa_schema};
-    codegen::Manifest manifest{};
-    manifest.schema_version = codegen::manifest_schema_version;
-    manifest.modules.push_back(module);
-    auto const graph{lispb::schema::resolve_type_graph(manifest)};
-    auto const health{*graph.find_declared("vitals", "Health")};
+    lispb::CompilerStorage storage;
+    auto const graph{fixture_graph(storage, R"(
+        (module vitals :header "Vitals.h" :backend standard-library
+            (integer-scalar Health :signed false :minimum 0 :maximum 15 :bit-width 4
+                :cpp-emission alias :cpp-type std::uint16_t)
+            (record Vessel (member health Health))
+            (struct Fleet (member healths array Health))))")};
+    auto const health{*fixture_find(graph, "vitals", "Health")};
     EXPECT_TRUE(
-        std::holds_alternative<lispb::schema::IntegerScalarType>(graph.type(health).definition));
-    EXPECT_EQ(graph.type(health).identity.name, "Health");
+        ((graph.definition(health)).kind() == lispb::schema::TypeDefinitionKind::integer_scalar));
+    EXPECT_EQ(graph.strings().view(graph.name(health)), "Health");
     EXPECT_EQ(physical_type_spelling(graph, health), "std::uint16_t");
     auto const scalar{Analyzer::analyze_integer_scalar(graph, health)};
     EXPECT_EQ(scalar.effective_bit_width, 4);
     auto const record{Analyzer::analyze_record(
-        graph, *graph.find_declared("vitals", "Vessel"), AbiProfile::host_common())};
+        graph, *fixture_find(graph, "vitals", "Vessel"), AbiProfile::host_common())};
     EXPECT_EQ(record.size_bytes, 2);
     EXPECT_EQ(record.alignment_bytes, 2);
     auto const soa{Analyzer::analyze_soa(
-        graph, *graph.find_declared("vitals", "Fleet"), {}, AbiProfile::host_common(), 10)};
+        graph, *fixture_find(graph, "vitals", "Fleet"), {}, AbiProfile::host_common(), 10)};
     ASSERT_EQ(soa.columns.size(), 1);
     EXPECT_EQ(soa.columns[0].physical_type, "std::uint16_t");
     EXPECT_EQ(soa.columns[0].total_bytes, 20);
 }
 
 TEST(RecordAnalyzer, ScalarConstantsDoNotSupplyPhysicalLayout) {
-    for (auto const emission : {codegen::IntegerScalarCppEmission::none,
-                                codegen::IntegerScalarCppEmission::constants,
-                                codegen::IntegerScalarCppEmission::constants_with_names}) {
-        SCOPED_TRACE(codegen::integer_scalar_cpp_emission_name(emission));
-        codegen::IntegerScalarSchema scalar{};
-        scalar.name = "Reason";
-        scalar.maximum_value = 15;
-        scalar.bit_width = 4;
-        scalar.named_codes = {{.name = "Unknown", .value = 0}};
-        scalar.cpp_emission = emission;
-        if (emission != codegen::IntegerScalarCppEmission::none) {
-            scalar.cpp_type =
-                codegen::TypeRef{.name = "std::uint8_t", .suffix = {}, .nested = std::nullopt};
-        }
-        codegen::RecordSchema record{};
-        record.name = "Consumer";
-        record.members = {record_member("reason", "Reason")};
-        codegen::NormalModuleSchema module{};
-        module.settings.name = "reasons";
-        module.settings.header = "Reasons.h";
-        module.declarations = {scalar, record};
-        codegen::Manifest manifest{};
-        manifest.schema_version = codegen::manifest_schema_version;
-        manifest.modules.push_back(module);
-        auto const graph{lispb::schema::resolve_type_graph(manifest)};
-        auto const reason{*graph.find_declared("reasons", "Reason")};
+    lispb::CompilerStorage storage;
+    for (auto const emission : {lispb::codegen::IntegerScalarCppEmission::none,
+                                lispb::codegen::IntegerScalarCppEmission::constants,
+                                lispb::codegen::IntegerScalarCppEmission::constants_with_names}) {
+        SCOPED_TRACE(lispb::codegen::integer_scalar_cpp_emission_name(emission));
+        auto const representation{emission == lispb::codegen::IntegerScalarCppEmission::none
+                                      ? std::string{}
+                                      : std::string{" :cpp-type std::uint8_t"}};
+        auto const graph{fixture_graph(
+            storage,
+            "(module reasons :header \"Reasons.h\" (integer-scalar Reason :signed false"
+            " :minimum 0 :maximum 15 :bit-width 4 :cpp-emission " +
+                std::string{lispb::codegen::integer_scalar_cpp_emission_name(emission)} +
+                representation +
+                " (code Unknown :value 0)) (record Consumer (member reason Reason)))")};
+        auto const reason{*fixture_find(graph, "reasons", "Reason")};
         EXPECT_FALSE(physical_type_spelling(graph, reason).has_value());
         EXPECT_EQ(Analyzer::analyze_integer_scalar(graph, reason).effective_bit_width, 4);
         auto const layout{Analyzer::analyze_record(
-            graph, *graph.find_declared("reasons", "Consumer"), AbiProfile::host_common())};
+            graph, *fixture_find(graph, "reasons", "Consumer"), AbiProfile::host_common())};
         EXPECT_FALSE(layout.size_bytes.has_value());
         EXPECT_FALSE(layout.diagnostics.empty());
     }
 }
 
 TEST(RecordAnalyzer, ReportsOffsetsInternalAndTailPadding) {
-    auto const fixture{
-        record_type({codegen::RecordSchema{.name = "Record",
-                                           .members = {record_member("small", "std::uint8_t"),
-                                                       record_member("wide", "std::uint32_t"),
-                                                       record_member("medium", "std::uint16_t")},
-                                           .export_specifier = std::nullopt}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{record_type(
+        storage, {[&] {
+            auto const new_records{storage.declarations.records.append()};
+            storage.declarations.records.name[storage.declarations.records.index(new_records)] =
+                storage.strings.intern("Record");
+            storage.declarations.records.members[storage.declarations.records.index(new_records)] =
+                record_members(storage,
+                               {record_member(storage, "small", "std::uint8_t"),
+                                record_member(storage, "wide", "std::uint32_t"),
+                                record_member(storage, "medium", "std::uint16_t")});
+            storage.declarations.records
+                .export_specifier[storage.declarations.records.index(new_records)] = {};
+            return new_records;
+        }()})};
 
     auto const analysis{
         Analyzer::analyze_record(fixture.types, fixture.type, AbiProfile::host_common())};
@@ -135,12 +134,21 @@ TEST(RecordAnalyzer, ReportsOffsetsInternalAndTailPadding) {
 }
 
 TEST(RecordAnalyzer, ComparesPhysicalLayoutAcrossTargetProfiles) {
-    auto const fixture{
-        record_type({codegen::RecordSchema{.name = "Record",
-                                           .members = {record_member("small", "std::uint8_t"),
-                                                       record_member("wide", "std::uint32_t"),
-                                                       record_member("medium", "std::uint16_t")},
-                                           .export_specifier = std::nullopt}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{record_type(
+        storage, {[&] {
+            auto const new_records{storage.declarations.records.append()};
+            storage.declarations.records.name[storage.declarations.records.index(new_records)] =
+                storage.strings.intern("Record");
+            storage.declarations.records.members[storage.declarations.records.index(new_records)] =
+                record_members(storage,
+                               {record_member(storage, "small", "std::uint8_t"),
+                                record_member(storage, "wide", "std::uint32_t"),
+                                record_member(storage, "medium", "std::uint16_t")});
+            storage.declarations.records
+                .export_specifier[storage.declarations.records.index(new_records)] = {};
+            return new_records;
+        }()})};
     auto first_target{AbiProfile::host_common()};
     auto second_target{AbiProfile::host_common()};
     second_target.set("std::uint32_t",
@@ -198,10 +206,18 @@ TEST(RecordAnalyzer, ComparesPhysicalLayoutAcrossTargetProfiles) {
 }
 
 TEST(RecordAnalyzer, KeepsUnknownTargetFactsUnknownDuringComparison) {
-    auto const fixture{
-        record_type({codegen::RecordSchema{.name = "Record",
-                                           .members = {record_member("value", "std::uint32_t")},
-                                           .export_specifier = std::nullopt}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{record_type(
+        storage, {[&] {
+            auto const new_records{storage.declarations.records.append()};
+            storage.declarations.records.name[storage.declarations.records.index(new_records)] =
+                storage.strings.intern("Record");
+            storage.declarations.records.members[storage.declarations.records.index(new_records)] =
+                record_members(storage, {record_member(storage, "value", "std::uint32_t")});
+            storage.declarations.records
+                .export_specifier[storage.declarations.records.index(new_records)] = {};
+            return new_records;
+        }()})};
     auto const known{
         Analyzer::analyze_record(fixture.types, fixture.type, AbiProfile::host_common(), 10)};
     auto const unknown{
@@ -220,11 +236,20 @@ TEST(RecordAnalyzer, KeepsUnknownTargetFactsUnknownDuringComparison) {
 }
 
 TEST(RecordAnalyzer, RejectsMismatchedTargetComparisonInputs) {
-    auto const fixture{
-        record_type({codegen::RecordSchema{.name = "Record",
-                                           .members = {record_member("first", "std::uint32_t"),
-                                                       record_member("second", "std::uint16_t")},
-                                           .export_specifier = std::nullopt}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{record_type(
+        storage, {[&] {
+            auto const new_records{storage.declarations.records.append()};
+            storage.declarations.records.name[storage.declarations.records.index(new_records)] =
+                storage.strings.intern("Record");
+            storage.declarations.records.members[storage.declarations.records.index(new_records)] =
+                record_members(storage,
+                               {record_member(storage, "first", "std::uint32_t"),
+                                record_member(storage, "second", "std::uint16_t")});
+            storage.declarations.records
+                .export_specifier[storage.declarations.records.index(new_records)] = {};
+            return new_records;
+        }()})};
     auto const first{
         Analyzer::analyze_record(fixture.types, fixture.type, AbiProfile::host_common(), 10)};
     auto second{
@@ -253,12 +278,22 @@ TEST(RecordAnalyzer, RejectsMismatchedTargetComparisonInputs) {
 }
 
 TEST(UnionAnalyzer, ReportsMaximumExtentAlignmentAndAlternativeSlack) {
+    lispb::CompilerStorage storage;
     auto const fixture{union_type(
-        {codegen::UnionSchema{.name = "Union",
-                              .alternatives = {union_alternative("small", "std::uint8_t"),
-                                               union_alternative("wide", "std::uint32_t"),
-                                               union_alternative("bytes", "std::uint8_t", 6)},
-                              .export_specifier = std::nullopt}})};
+        storage, {[&] {
+            auto const new_unions{storage.declarations.unions.append()};
+            storage.declarations.unions.name[storage.declarations.unions.index(new_unions)] =
+                storage.strings.intern("Union");
+            storage.declarations.unions
+                .alternatives[storage.declarations.unions.index(new_unions)] =
+                union_alternatives(storage,
+                                   {union_alternative(storage, "small", "std::uint8_t"),
+                                    union_alternative(storage, "wide", "std::uint32_t"),
+                                    union_alternative(storage, "bytes", "std::uint8_t", 6)});
+            storage.declarations.unions
+                .export_specifier[storage.declarations.unions.index(new_unions)] = {};
+            return new_unions;
+        }()})};
 
     auto const analysis{
         Analyzer::analyze_union(fixture.types, fixture.type, AbiProfile::host_common(), 100)};
@@ -290,12 +325,22 @@ TEST(UnionAnalyzer, ReportsMaximumExtentAlignmentAndAlternativeSlack) {
 }
 
 TEST(UnionAnalyzer, ComparesPhysicalLayoutAcrossTargetProfiles) {
+    lispb::CompilerStorage storage;
     auto const fixture{union_type(
-        {codegen::UnionSchema{.name = "Union",
-                              .alternatives = {union_alternative("small", "std::uint8_t"),
-                                               union_alternative("wide", "std::uint32_t"),
-                                               union_alternative("bytes", "std::uint8_t", 10)},
-                              .export_specifier = std::nullopt}})};
+        storage, {[&] {
+            auto const new_unions{storage.declarations.unions.append()};
+            storage.declarations.unions.name[storage.declarations.unions.index(new_unions)] =
+                storage.strings.intern("Union");
+            storage.declarations.unions
+                .alternatives[storage.declarations.unions.index(new_unions)] =
+                union_alternatives(storage,
+                                   {union_alternative(storage, "small", "std::uint8_t"),
+                                    union_alternative(storage, "wide", "std::uint32_t"),
+                                    union_alternative(storage, "bytes", "std::uint8_t", 10)});
+            storage.declarations.unions
+                .export_specifier[storage.declarations.unions.index(new_unions)] = {};
+            return new_unions;
+        }()})};
     auto const first_profile{AbiProfile::host_common()};
     auto second_profile{first_profile};
     second_profile.set("std::uint32_t",
@@ -340,10 +385,19 @@ TEST(UnionAnalyzer, ComparesPhysicalLayoutAcrossTargetProfiles) {
 }
 
 TEST(UnionAnalyzer, PreservesUnknownAndOverflowedTargetFactsDuringComparison) {
+    lispb::CompilerStorage storage;
     auto const fixture{union_type(
-        {codegen::UnionSchema{.name = "Union",
-                              .alternatives = {union_alternative("value", "std::uint32_t")},
-                              .export_specifier = std::nullopt}})};
+        storage, {[&] {
+            auto const new_unions{storage.declarations.unions.append()};
+            storage.declarations.unions.name[storage.declarations.unions.index(new_unions)] =
+                storage.strings.intern("Union");
+            storage.declarations.unions
+                .alternatives[storage.declarations.unions.index(new_unions)] =
+                union_alternatives(storage, {union_alternative(storage, "value", "std::uint32_t")});
+            storage.declarations.unions
+                .export_specifier[storage.declarations.unions.index(new_unions)] = {};
+            return new_unions;
+        }()})};
     auto const known{
         Analyzer::analyze_union(fixture.types, fixture.type, AbiProfile::host_common(), 10)};
     auto const unknown{
@@ -374,11 +428,21 @@ TEST(UnionAnalyzer, PreservesUnknownAndOverflowedTargetFactsDuringComparison) {
 }
 
 TEST(UnionAnalyzer, RejectsMismatchedTargetComparisonInputsWithoutPartialAlternatives) {
+    lispb::CompilerStorage storage;
     auto const fixture{union_type(
-        {codegen::UnionSchema{.name = "Union",
-                              .alternatives = {union_alternative("first", "std::uint32_t"),
-                                               union_alternative("second", "std::uint16_t")},
-                              .export_specifier = std::nullopt}})};
+        storage, {[&] {
+            auto const new_unions{storage.declarations.unions.append()};
+            storage.declarations.unions.name[storage.declarations.unions.index(new_unions)] =
+                storage.strings.intern("Union");
+            storage.declarations.unions
+                .alternatives[storage.declarations.unions.index(new_unions)] =
+                union_alternatives(storage,
+                                   {union_alternative(storage, "first", "std::uint32_t"),
+                                    union_alternative(storage, "second", "std::uint16_t")});
+            storage.declarations.unions
+                .export_specifier[storage.declarations.unions.index(new_unions)] = {};
+            return new_unions;
+        }()})};
     auto const first{
         Analyzer::analyze_union(fixture.types, fixture.type, AbiProfile::host_common(), 10)};
     auto second{
@@ -412,10 +476,19 @@ TEST(UnionAnalyzer, RejectsMismatchedTargetComparisonInputsWithoutPartialAlterna
 }
 
 TEST(UnionAnalyzer, ReportsSelectedCountOverflowWithoutLosingPerObjectLayout) {
+    lispb::CompilerStorage storage;
     auto const fixture{union_type(
-        {codegen::UnionSchema{.name = "Union",
-                              .alternatives = {union_alternative("value", "std::uint64_t")},
-                              .export_specifier = std::nullopt}})};
+        storage, {[&] {
+            auto const new_unions{storage.declarations.unions.append()};
+            storage.declarations.unions.name[storage.declarations.unions.index(new_unions)] =
+                storage.strings.intern("Union");
+            storage.declarations.unions
+                .alternatives[storage.declarations.unions.index(new_unions)] =
+                union_alternatives(storage, {union_alternative(storage, "value", "std::uint64_t")});
+            storage.declarations.unions
+                .export_specifier[storage.declarations.unions.index(new_unions)] = {};
+            return new_unions;
+        }()})};
 
     auto const analysis{Analyzer::analyze_union(fixture.types,
                                                 fixture.type,
@@ -432,36 +505,14 @@ TEST(UnionAnalyzer, ReportsSelectedCountOverflowWithoutLosingPerObjectLayout) {
 }
 
 TEST(UnionAnalyzer, HandlesNestedAggregatesAndUnknownOrOverflowedAlternatives) {
-    codegen::NormalModuleSchema records{
-        .settings = codegen::ModuleSettings{.name = "records",
-                                            .header = "Records.h",
-                                            .source = std::nullopt,
-                                            .header_include = std::nullopt,
-                                            .namespace_name = "records",
-                                            .include_order = {},
-                                            .prelude_lines = {}},
-        .declarations = {codegen::RecordSchema{.name = "Record",
-                                               .members = {record_member("small", "std::uint8_t"),
-                                                           record_member("wide", "std::uint32_t")},
-                                               .export_specifier = std::nullopt}}};
-    codegen::NormalModuleSchema unions{
-        .settings = codegen::ModuleSettings{.name = "unions",
-                                            .header = "Unions.h",
-                                            .source = std::nullopt,
-                                            .header_include = std::nullopt,
-                                            .namespace_name = "unions",
-                                            .include_order = {},
-                                            .prelude_lines = {}},
-        .declarations = {
-            codegen::UnionSchema{.name = "Payload",
-                                 .alternatives = {union_alternative("record", "records::Record"),
-                                                  union_alternative("words", "std::uint16_t", 6)},
-                                 .export_specifier = std::nullopt}}};
-    codegen::Manifest manifest{.schema_version = codegen::manifest_schema_version,
-                               .types = {},
-                               .modules = {std::move(records), std::move(unions)}};
-    auto types{lispb::schema::resolve_type_graph(manifest)};
-    auto const payload{*types.find_declared("unions", "Payload")};
+    lispb::CompilerStorage storage;
+    auto types{fixture_graph(storage, R"(
+        (module records :header "Records.h" :namespace records
+            (record Record (member small std::uint8_t) (member wide std::uint32_t)))
+        (module unions :header "Unions.h" :namespace unions
+            (union Payload (alternative record records::Record)
+                (alternative words std::uint16_t :count 6))))")};
+    auto const payload{*fixture_find(types, "unions", "Payload")};
     auto analysis{Analyzer::analyze_union(types, payload, AbiProfile::host_common())};
     EXPECT_EQ(analysis.alternatives[0].element_facts->size_bytes, 8);
     EXPECT_EQ(analysis.size_bytes, 12);
@@ -469,18 +520,37 @@ TEST(UnionAnalyzer, HandlesNestedAggregatesAndUnknownOrOverflowedAlternatives) {
     EXPECT_TRUE(analysis.diagnostics.empty());
 
     auto const unknown{union_type(
-        {codegen::UnionSchema{.name = "Union",
-                              .alternatives = {union_alternative("value", "UnknownType")},
-                              .export_specifier = std::nullopt}})};
+        storage, {[&] {
+            auto const new_unions{storage.declarations.unions.append()};
+            storage.declarations.unions.name[storage.declarations.unions.index(new_unions)] =
+                storage.strings.intern("Union");
+            storage.declarations.unions
+                .alternatives[storage.declarations.unions.index(new_unions)] =
+                union_alternatives(storage, {union_alternative(storage, "value", "UnknownType")});
+            storage.declarations.unions
+                .export_specifier[storage.declarations.unions.index(new_unions)] = {};
+            return new_unions;
+        }()})};
     analysis = Analyzer::analyze_union(unknown.types, unknown.type, AbiProfile::host_common());
     EXPECT_FALSE(analysis.size_bytes.has_value());
     EXPECT_FALSE(analysis.diagnostics.empty());
 
-    auto const overflow{union_type({codegen::UnionSchema{
-        .name = "Union",
-        .alternatives = {union_alternative(
-            "values", "std::uint64_t", std::numeric_limits<std::uint64_t>::max())},
-        .export_specifier = std::nullopt}})};
+    auto const overflow{union_type(
+        storage, {[&] {
+            auto const new_unions{storage.declarations.unions.append()};
+            storage.declarations.unions.name[storage.declarations.unions.index(new_unions)] =
+                storage.strings.intern("Union");
+            storage.declarations.unions
+                .alternatives[storage.declarations.unions.index(new_unions)] =
+                union_alternatives(storage,
+                                   {union_alternative(storage,
+                                                      "values",
+                                                      "std::uint64_t",
+                                                      std::numeric_limits<std::uint64_t>::max())});
+            storage.declarations.unions
+                .export_specifier[storage.declarations.unions.index(new_unions)] = {};
+            return new_unions;
+        }()})};
     analysis = Analyzer::analyze_union(overflow.types, overflow.type, AbiProfile::host_common());
     EXPECT_FALSE(analysis.size_bytes.has_value());
     EXPECT_FALSE(analysis.alternatives[0].extent_bytes.has_value());
@@ -488,12 +558,22 @@ TEST(UnionAnalyzer, HandlesNestedAggregatesAndUnknownOrOverflowedAlternatives) {
 }
 
 TEST(UnionAnalyzer, AnalyzesExplicitAlternativeDistribution) {
+    lispb::CompilerStorage storage;
     auto const fixture{union_type(
-        {codegen::UnionSchema{.name = "Union",
-                              .alternatives = {union_alternative("small", "std::uint8_t"),
-                                               union_alternative("wide", "std::uint32_t"),
-                                               union_alternative("bytes", "std::uint8_t", 6)},
-                              .export_specifier = std::nullopt}})};
+        storage, {[&] {
+            auto const new_unions{storage.declarations.unions.append()};
+            storage.declarations.unions.name[storage.declarations.unions.index(new_unions)] =
+                storage.strings.intern("Union");
+            storage.declarations.unions
+                .alternatives[storage.declarations.unions.index(new_unions)] =
+                union_alternatives(storage,
+                                   {union_alternative(storage, "small", "std::uint8_t"),
+                                    union_alternative(storage, "wide", "std::uint32_t"),
+                                    union_alternative(storage, "bytes", "std::uint8_t", 6)});
+            storage.declarations.unions
+                .export_specifier[storage.declarations.unions.index(new_unions)] = {};
+            return new_unions;
+        }()})};
     auto const layout{
         Analyzer::analyze_union(fixture.types, fixture.type, AbiProfile::host_common(), 10)};
     constexpr std::array workload{UnionDistributionEntry{.alternative_name = "small", .weight = 2},
@@ -553,12 +633,22 @@ TEST(UnionAnalyzer, AnalyzesExplicitAlternativeDistribution) {
 }
 
 TEST(UnionAnalyzer, ComparesExplicitAlternativeDistributionAcrossTargetProfiles) {
+    lispb::CompilerStorage storage;
     auto const fixture{union_type(
-        {codegen::UnionSchema{.name = "Union",
-                              .alternatives = {union_alternative("small", "std::uint8_t"),
-                                               union_alternative("wide", "std::uint32_t"),
-                                               union_alternative("bytes", "std::uint8_t", 6)},
-                              .export_specifier = std::nullopt}})};
+        storage, {[&] {
+            auto const new_unions{storage.declarations.unions.append()};
+            storage.declarations.unions.name[storage.declarations.unions.index(new_unions)] =
+                storage.strings.intern("Union");
+            storage.declarations.unions
+                .alternatives[storage.declarations.unions.index(new_unions)] =
+                union_alternatives(storage,
+                                   {union_alternative(storage, "small", "std::uint8_t"),
+                                    union_alternative(storage, "wide", "std::uint32_t"),
+                                    union_alternative(storage, "bytes", "std::uint8_t", 6)});
+            storage.declarations.unions
+                .export_specifier[storage.declarations.unions.index(new_unions)] = {};
+            return new_unions;
+        }()})};
     auto const first_profile{AbiProfile::host_common()};
     auto second_profile{first_profile};
     second_profile.set("std::uint32_t",
@@ -637,65 +727,18 @@ TEST(UnionAnalyzer, ComparesExplicitAlternativeDistributionAcrossTargetProfiles)
 }
 
 TEST(TaggedUnionAnalyzer, LaysOutDiscriminantBeforeAlignedPayloadUnion) {
-    codegen::NormalModuleSchema enums{};
-    enums.settings.name = "events";
-    enums.settings.header = "Events.h";
-    enums.settings.namespace_name = "events";
-    codegen::EnumSchema kind{};
-    kind.name = "Kind";
-    kind.underlying_type =
-        codegen::TypeRef{.name = "std::uint8_t", .suffix = {}, .nested = std::nullopt};
-    codegen::EnumeratorSchema small_tag{};
-    small_tag.name = "Small";
-    codegen::EnumeratorSchema bytes_tag{};
-    bytes_tag.name = "Bytes";
-    codegen::EnumeratorSchema spare_tag{};
-    spare_tag.name = "Spare";
-    codegen::EnumeratorSchema invalid_tag{};
-    invalid_tag.name = "Invalid";
-    invalid_tag.sentinel = true;
-    codegen::EnumeratorSchema count_tag{};
-    count_tag.name = "COUNT";
-    kind.values = {std::move(small_tag),
-                   std::move(bytes_tag),
-                   std::move(spare_tag),
-                   std::move(invalid_tag),
-                   std::move(count_tag)};
-    kind.count = "COUNT";
-    enums.declarations.push_back(std::move(kind));
-
-    codegen::NormalModuleSchema unions{};
-    unions.settings.name = "payloads";
-    unions.settings.header = "Payloads.h";
-    unions.settings.namespace_name = "payloads";
-    codegen::TaggedUnionSchema event_schema{};
-    event_schema.name = "Event";
-    event_schema.discriminant.name = "events::Kind";
-    codegen::TaggedUnionAlternativeSchema small{};
-    small.name = "small";
-    small.type.name = "std::uint32_t";
-    small.tag = "Small";
-    codegen::TaggedUnionAlternativeSchema bytes{};
-    bytes.name = "bytes";
-    bytes.type.name = "std::uint8_t";
-    bytes.count = 6;
-    bytes.tag = "Bytes";
-    event_schema.alternatives = {std::move(small), std::move(bytes)};
-    unions.declarations.push_back(std::move(event_schema));
-
-    codegen::NormalModuleSchema records{};
-    records.settings.name = "records";
-    records.settings.header = "Records.h";
-    records.declarations = {
-        codegen::RecordSchema{.name = "Envelope",
-                              .members = {record_member("event", "payloads::Event"),
-                                          record_member("suffix", "std::uint8_t")},
-                              .export_specifier = std::nullopt}};
-    codegen::Manifest manifest{};
-    manifest.schema_version = codegen::manifest_schema_version;
-    manifest.modules = {std::move(enums), std::move(unions), std::move(records)};
-    auto const types{lispb::schema::resolve_type_graph(manifest)};
-    auto const event{*types.find_declared("payloads", "Event")};
+    lispb::CompilerStorage storage;
+    auto const types{fixture_graph(storage, R"(
+        (module events :header "Events.h" :namespace events
+            (enum Kind std::uint8_t :count COUNT (value Small) (value Bytes) (value Spare)
+                (value Invalid :sentinel true) (value COUNT)))
+        (module payloads :header "Payloads.h" :namespace payloads
+            (tagged-union Event :discriminant events::Kind
+                (alternative small std::uint32_t :tag Small)
+                (alternative bytes std::uint8_t :tag Bytes :count 6)))
+        (module records :header "Records.h"
+            (record Envelope (member event payloads::Event) (member suffix std::uint8_t))))")};
+    auto const event{*fixture_find(types, "payloads", "Event")};
     auto const analysis{
         Analyzer::analyze_tagged_union(types, event, AbiProfile::host_common(), 100)};
 
@@ -733,7 +776,7 @@ TEST(TaggedUnionAnalyzer, LaysOutDiscriminantBeforeAlignedPayloadUnion) {
     EXPECT_EQ(analysis.alternatives[1].total_payload_slack_bytes, 200);
     EXPECT_TRUE(analysis.diagnostics.empty());
 
-    auto const envelope{*types.find_declared("records", "Envelope")};
+    auto const envelope{*fixture_find(types, "records", "Envelope")};
     auto const record{Analyzer::analyze_record(types, envelope, AbiProfile::host_common())};
     EXPECT_EQ(record.members[0].element_facts->size_bytes, 12);
     EXPECT_EQ(record.size_bytes, 16);
@@ -816,7 +859,8 @@ TEST(TaggedUnionAnalyzer, LaysOutDiscriminantBeforeAlignedPayloadUnion) {
 }
 
 TEST(TaggedUnionAnalyzer, ComparesPhysicalLayoutAcrossTargetProfiles) {
-    auto const fixture{tagged_union_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{tagged_union_type(storage)};
     auto const first_profile{AbiProfile::host_common()};
     auto second_profile{first_profile};
     second_profile.set("std::uint8_t",
@@ -876,7 +920,8 @@ TEST(TaggedUnionAnalyzer, ComparesPhysicalLayoutAcrossTargetProfiles) {
 }
 
 TEST(TaggedUnionAnalyzer, PreservesUnknownAndOverflowedTargetFactsDuringComparison) {
-    auto const fixture{tagged_union_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{tagged_union_type(storage)};
     auto const known{
         Analyzer::analyze_tagged_union(fixture.types, fixture.type, AbiProfile::host_common(), 10)};
     auto const unknown{
@@ -905,7 +950,8 @@ TEST(TaggedUnionAnalyzer, PreservesUnknownAndOverflowedTargetFactsDuringComparis
 }
 
 TEST(TaggedUnionAnalyzer, RejectsMismatchedTargetComparisonWithoutPartialAlternatives) {
-    auto const fixture{tagged_union_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{tagged_union_type(storage)};
     auto const first{
         Analyzer::analyze_tagged_union(fixture.types, fixture.type, AbiProfile::host_common(), 10)};
     auto second{first};
@@ -945,7 +991,8 @@ TEST(TaggedUnionAnalyzer, RejectsMismatchedTargetComparisonWithoutPartialAlterna
 }
 
 TEST(TaggedUnionAnalyzer, ComparesExplicitDistributionAcrossTargetProfiles) {
-    auto const fixture{tagged_union_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{tagged_union_type(storage)};
     auto const first_profile{AbiProfile::host_common()};
     auto second_profile{first_profile};
     second_profile.set("std::uint8_t",
@@ -993,7 +1040,8 @@ TEST(TaggedUnionAnalyzer, ComparesExplicitDistributionAcrossTargetProfiles) {
 }
 
 TEST(TaggedUnionAnalyzer, RejectsMismatchedOrOverflowedDistributionComparison) {
-    auto const fixture{tagged_union_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{tagged_union_type(storage)};
     auto const layout{Analyzer::analyze_tagged_union(
         fixture.types, fixture.type, AbiProfile::host_common(), 100)};
     constexpr std::array distribution{TaggedUnionDistributionEntry{.tag = "Small", .weight = 3},
@@ -1029,16 +1077,34 @@ TEST(TaggedUnionAnalyzer, RejectsMismatchedOrOverflowedDistributionComparison) {
 }
 
 TEST(RecordAnalyzer, HandlesFixedArraysAndNestedRecords) {
+    lispb::CompilerStorage storage;
     auto const fixture{record_type(
-        {codegen::RecordSchema{.name = "Inner",
-                               .members = {record_member("tag", "std::uint8_t"),
-                                           record_member("value", "std::uint32_t")},
-                               .export_specifier = std::nullopt},
-         codegen::RecordSchema{.name = "Record",
-                               .members = {record_member("prefix", "std::uint8_t"),
-                                           record_member("inner", "Inner"),
-                                           record_member("samples", "std::uint16_t", 2)},
-                               .export_specifier = std::nullopt}},
+        storage,
+        {[&] {
+             auto const new_records{storage.declarations.records.append()};
+             storage.declarations.records.name[storage.declarations.records.index(new_records)] =
+                 storage.strings.intern("Inner");
+             storage.declarations.records.members[storage.declarations.records.index(new_records)] =
+                 record_members(storage,
+                                {record_member(storage, "tag", "std::uint8_t"),
+                                 record_member(storage, "value", "std::uint32_t")});
+             storage.declarations.records
+                 .export_specifier[storage.declarations.records.index(new_records)] = {};
+             return new_records;
+         }(),
+         [&] {
+             auto const new_records{storage.declarations.records.append()};
+             storage.declarations.records.name[storage.declarations.records.index(new_records)] =
+                 storage.strings.intern("Record");
+             storage.declarations.records.members[storage.declarations.records.index(new_records)] =
+                 record_members(storage,
+                                {record_member(storage, "prefix", "std::uint8_t"),
+                                 record_member(storage, "inner", "Inner"),
+                                 record_member(storage, "samples", "std::uint16_t", 2)});
+             storage.declarations.records
+                 .export_specifier[storage.declarations.records.index(new_records)] = {};
+             return new_records;
+         }()},
         "Record")};
 
     auto const analysis{
@@ -1058,23 +1124,51 @@ TEST(RecordAnalyzer, HandlesFixedArraysAndNestedRecords) {
     EXPECT_TRUE(analysis.diagnostics.empty());
 }
 
-TEST(RecordAnalyzer, KeepsSemanticRelationshipsOutOfAbiLayout) {
-    auto member{record_member("value", "std::uint32_t")};
-    auto related_member{member};
-    related_member.relationship = codegen::SemanticRelationSchema{
-        .kind = codegen::SemanticRelationKind::references,
-        .target = codegen::TypeRef{.name = "Target", .suffix = {}, .nested = std::nullopt},
-        .unit = std::nullopt};
-    auto records = [](codegen::RecordMemberSchema value_member) {
-        return std::vector{codegen::RecordSchema{.name = "Target",
-                                                 .members = {record_member("id", "std::uint64_t")},
-                                                 .export_specifier = std::nullopt},
-                           codegen::RecordSchema{.name = "Record",
-                                                 .members = {std::move(value_member)},
-                                                 .export_specifier = std::nullopt}};
+TEST(RecordAnalyzer, KeepsRelationshipIdsOutOfAbiLayout) {
+    lispb::CompilerStorage storage;
+    auto member{record_member(storage, "value", "std::uint32_t")};
+    auto const related_member{storage.declarations.record_members.clone(member)};
+    storage.declarations.record_members
+        .relationship[storage.declarations.record_members.index(related_member)] = [&] {
+        auto const new_semantic_relations{storage.declarations.semantic_relations.append()};
+        storage.declarations.semantic_relations
+            .kind[storage.declarations.semantic_relations.index(new_semantic_relations)] =
+            lispb::codegen::SemanticRelationKind::references;
+        storage.declarations.semantic_relations
+            .target[storage.declarations.semantic_relations.index(new_semantic_relations)] =
+            fixture_reference(storage, "Target");
+        storage.declarations.semantic_relations
+            .unit[storage.declarations.semantic_relations.index(new_semantic_relations)] =
+            std::nullopt;
+        return new_semantic_relations;
+    }();
+    auto records = [&](lispb::codegen::RecordMemberId value_member) {
+        return std::vector{
+            [&] {
+                auto const new_records{storage.declarations.records.append()};
+                storage.declarations.records.name[storage.declarations.records.index(new_records)] =
+                    storage.strings.intern("Target");
+                storage.declarations.records
+                    .members[storage.declarations.records.index(new_records)] =
+                    record_members(storage, {record_member(storage, "id", "std::uint64_t")});
+                storage.declarations.records
+                    .export_specifier[storage.declarations.records.index(new_records)] = {};
+                return new_records;
+            }(),
+            [&] {
+                auto const new_records{storage.declarations.records.append()};
+                storage.declarations.records.name[storage.declarations.records.index(new_records)] =
+                    storage.strings.intern("Record");
+                storage.declarations.records
+                    .members[storage.declarations.records.index(new_records)] =
+                    record_members(storage, {std::move(value_member)});
+                storage.declarations.records
+                    .export_specifier[storage.declarations.records.index(new_records)] = {};
+                return new_records;
+            }()};
     };
-    auto const plain{record_type(records(std::move(member)))};
-    auto const related{record_type(records(std::move(related_member)))};
+    auto const plain{record_type(storage, records(std::move(member)))};
+    auto const related{record_type(storage, records(std::move(related_member)))};
 
     auto const plain_analysis{
         Analyzer::analyze_record(plain.types, plain.type, AbiProfile::host_common(), 100)};
@@ -1093,20 +1187,38 @@ TEST(RecordAnalyzer, KeepsSemanticRelationshipsOutOfAbiLayout) {
 }
 
 TEST(RecordAnalyzer, KeepsUnknownAndOverflowedLayoutsUnknown) {
-    auto const unknown{
-        record_type({codegen::RecordSchema{.name = "Record",
-                                           .members = {record_member("value", "UnknownType")},
-                                           .export_specifier = std::nullopt}})};
+    lispb::CompilerStorage storage;
+    auto const unknown{record_type(
+        storage, {[&] {
+            auto const new_records{storage.declarations.records.append()};
+            storage.declarations.records.name[storage.declarations.records.index(new_records)] =
+                storage.strings.intern("Record");
+            storage.declarations.records.members[storage.declarations.records.index(new_records)] =
+                record_members(storage, {record_member(storage, "value", "UnknownType")});
+            storage.declarations.records
+                .export_specifier[storage.declarations.records.index(new_records)] = {};
+            return new_records;
+        }()})};
     auto const unknown_analysis{
         Analyzer::analyze_record(unknown.types, unknown.type, AbiProfile::host_common())};
     EXPECT_FALSE(unknown_analysis.size_bytes.has_value());
     EXPECT_FALSE(unknown_analysis.diagnostics.empty());
 
-    auto const overflow{record_type({codegen::RecordSchema{
-        .name = "Record",
-        .members = {record_member(
-            "values", "std::uint64_t", std::numeric_limits<std::uint64_t>::max())},
-        .export_specifier = std::nullopt}})};
+    auto const overflow{record_type(
+        storage, {[&] {
+            auto const new_records{storage.declarations.records.append()};
+            storage.declarations.records.name[storage.declarations.records.index(new_records)] =
+                storage.strings.intern("Record");
+            storage.declarations.records.members[storage.declarations.records.index(new_records)] =
+                record_members(storage,
+                               {record_member(storage,
+                                              "values",
+                                              "std::uint64_t",
+                                              std::numeric_limits<std::uint64_t>::max())});
+            storage.declarations.records
+                .export_specifier[storage.declarations.records.index(new_records)] = {};
+            return new_records;
+        }()})};
     auto const overflow_analysis{
         Analyzer::analyze_record(overflow.types, overflow.type, AbiProfile::host_common())};
     EXPECT_FALSE(overflow_analysis.size_bytes.has_value());
@@ -1115,10 +1227,20 @@ TEST(RecordAnalyzer, KeepsUnknownAndOverflowedLayoutsUnknown) {
 }
 
 TEST(RecordAnalyzer, ScalesAggregateWasteAndDiagnosesUnknownOrOverflowedTargetFacts) {
-    auto const fixture{record_type({codegen::RecordSchema{
-        .name = "Record",
-        .members = {record_member("small", "std::uint8_t"), record_member("wide", "std::uint32_t")},
-        .export_specifier = std::nullopt}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{record_type(
+        storage, {[&] {
+            auto const new_records{storage.declarations.records.append()};
+            storage.declarations.records.name[storage.declarations.records.index(new_records)] =
+                storage.strings.intern("Record");
+            storage.declarations.records.members[storage.declarations.records.index(new_records)] =
+                record_members(storage,
+                               {record_member(storage, "small", "std::uint8_t"),
+                                record_member(storage, "wide", "std::uint32_t")});
+            storage.declarations.records
+                .export_specifier[storage.declarations.records.index(new_records)] = {};
+            return new_records;
+        }()})};
 
     auto analysis{
         Analyzer::analyze_record(fixture.types, fixture.type, AbiProfile::host_common(), 100)};
@@ -1161,22 +1283,38 @@ TEST(RecordAnalyzer, ScalesAggregateWasteAndDiagnosesUnknownOrOverflowedTargetFa
 }
 
 TEST(RecordAnalyzer, CountsCacheLineAndPageStraddlingForAlignedContiguousArrays) {
-    auto const periodic{
-        record_type({codegen::RecordSchema{.name = "Record",
-                                           .members = {record_member("small", "std::uint8_t"),
-                                                       record_member("wide", "std::uint32_t"),
-                                                       record_member("medium", "std::uint16_t")},
-                                           .export_specifier = std::nullopt}})};
+    lispb::CompilerStorage storage;
+    auto const periodic{record_type(
+        storage, {[&] {
+            auto const new_records{storage.declarations.records.append()};
+            storage.declarations.records.name[storage.declarations.records.index(new_records)] =
+                storage.strings.intern("Record");
+            storage.declarations.records.members[storage.declarations.records.index(new_records)] =
+                record_members(storage,
+                               {record_member(storage, "small", "std::uint8_t"),
+                                record_member(storage, "wide", "std::uint32_t"),
+                                record_member(storage, "medium", "std::uint16_t")});
+            storage.declarations.records
+                .export_specifier[storage.declarations.records.index(new_records)] = {};
+            return new_records;
+        }()})};
     auto analysis{
         Analyzer::analyze_record(periodic.types, periodic.type, AbiProfile::host_common(), 100)};
     EXPECT_EQ(analysis.size_bytes, 12);
     EXPECT_EQ(analysis.aggregate.cache_line_straddling_elements, 12);
     EXPECT_EQ(analysis.aggregate.page_straddling_elements, 0);
 
-    auto const larger_than_line{
-        record_type({codegen::RecordSchema{.name = "Record",
-                                           .members = {record_member("bytes", "std::uint8_t", 65)},
-                                           .export_specifier = std::nullopt}})};
+    auto const larger_than_line{record_type(
+        storage, {[&] {
+            auto const new_records{storage.declarations.records.append()};
+            storage.declarations.records.name[storage.declarations.records.index(new_records)] =
+                storage.strings.intern("Record");
+            storage.declarations.records.members[storage.declarations.records.index(new_records)] =
+                record_members(storage, {record_member(storage, "bytes", "std::uint8_t", 65)});
+            storage.declarations.records
+                .export_specifier[storage.declarations.records.index(new_records)] = {};
+            return new_records;
+        }()})};
     analysis = Analyzer::analyze_record(
         larger_than_line.types, larger_than_line.type, AbiProfile::host_common(), 100);
     EXPECT_EQ(analysis.size_bytes, 65);
@@ -1185,12 +1323,21 @@ TEST(RecordAnalyzer, CountsCacheLineAndPageStraddlingForAlignedContiguousArrays)
 }
 
 TEST(RecordAnalyzer, ReportsExplicitSequentialMemberAccessTraffic) {
-    auto const fixture{
-        record_type({codegen::RecordSchema{.name = "Record",
-                                           .members = {record_member("small", "std::uint8_t"),
-                                                       record_member("wide", "std::uint32_t"),
-                                                       record_member("medium", "std::uint16_t")},
-                                           .export_specifier = std::nullopt}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{record_type(
+        storage, {[&] {
+            auto const new_records{storage.declarations.records.append()};
+            storage.declarations.records.name[storage.declarations.records.index(new_records)] =
+                storage.strings.intern("Record");
+            storage.declarations.records.members[storage.declarations.records.index(new_records)] =
+                record_members(storage,
+                               {record_member(storage, "small", "std::uint8_t"),
+                                record_member(storage, "wide", "std::uint32_t"),
+                                record_member(storage, "medium", "std::uint16_t")});
+            storage.declarations.records
+                .export_specifier[storage.declarations.records.index(new_records)] = {};
+            return new_records;
+        }()})};
     auto const record{
         Analyzer::analyze_record(fixture.types, fixture.type, AbiProfile::host_common(), 100)};
     auto access{Analyzer::analyze_record_member_access(record, "wide", AbiProfile::host_common())};
@@ -1247,12 +1394,21 @@ TEST(RecordAnalyzer, ReportsExplicitSequentialMemberAccessTraffic) {
 }
 
 TEST(RecordAnalyzer, UnionsMultipleSelectedMembersWithoutDoubleCounting) {
-    auto const fixture{
-        record_type({codegen::RecordSchema{.name = "Record",
-                                           .members = {record_member("small", "std::uint8_t"),
-                                                       record_member("wide", "std::uint32_t"),
-                                                       record_member("medium", "std::uint16_t")},
-                                           .export_specifier = std::nullopt}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{record_type(
+        storage, {[&] {
+            auto const new_records{storage.declarations.records.append()};
+            storage.declarations.records.name[storage.declarations.records.index(new_records)] =
+                storage.strings.intern("Record");
+            storage.declarations.records.members[storage.declarations.records.index(new_records)] =
+                record_members(storage,
+                               {record_member(storage, "small", "std::uint8_t"),
+                                record_member(storage, "wide", "std::uint32_t"),
+                                record_member(storage, "medium", "std::uint16_t")});
+            storage.declarations.records
+                .export_specifier[storage.declarations.records.index(new_records)] = {};
+            return new_records;
+        }()})};
     auto const record{
         Analyzer::analyze_record(fixture.types, fixture.type, AbiProfile::host_common(), 100)};
     std::vector<std::string> const members{"small", "medium", "small"};
@@ -1269,12 +1425,21 @@ TEST(RecordAnalyzer, UnionsMultipleSelectedMembersWithoutDoubleCounting) {
 }
 
 TEST(RecordAnalyzer, ClassifiesIndividualMemberAccessOperations) {
-    auto const fixture{
-        record_type({codegen::RecordSchema{.name = "Record",
-                                           .members = {record_member("small", "std::uint8_t"),
-                                                       record_member("wide", "std::uint32_t"),
-                                                       record_member("medium", "std::uint16_t")},
-                                           .export_specifier = std::nullopt}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{record_type(
+        storage, {[&] {
+            auto const new_records{storage.declarations.records.append()};
+            storage.declarations.records.name[storage.declarations.records.index(new_records)] =
+                storage.strings.intern("Record");
+            storage.declarations.records.members[storage.declarations.records.index(new_records)] =
+                record_members(storage,
+                               {record_member(storage, "small", "std::uint8_t"),
+                                record_member(storage, "wide", "std::uint32_t"),
+                                record_member(storage, "medium", "std::uint16_t")});
+            storage.declarations.records
+                .export_specifier[storage.declarations.records.index(new_records)] = {};
+            return new_records;
+        }()})};
     auto const abi{AbiProfile::host_common()};
     auto const record{Analyzer::analyze_record(fixture.types, fixture.type, abi, 100)};
     std::vector<AccessIntent> const accesses{
@@ -1309,12 +1474,21 @@ TEST(RecordAnalyzer, ClassifiesIndividualMemberAccessOperations) {
 }
 
 TEST(RecordAccessComparison, ReportsTargetLayoutAndRegionConsequencesForOneWorkload) {
-    auto const fixture{
-        record_type({codegen::RecordSchema{.name = "Record",
-                                           .members = {record_member("small", "std::uint8_t"),
-                                                       record_member("wide", "std::uint32_t"),
-                                                       record_member("medium", "std::uint16_t")},
-                                           .export_specifier = std::nullopt}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{record_type(
+        storage, {[&] {
+            auto const new_records{storage.declarations.records.append()};
+            storage.declarations.records.name[storage.declarations.records.index(new_records)] =
+                storage.strings.intern("Record");
+            storage.declarations.records.members[storage.declarations.records.index(new_records)] =
+                record_members(storage,
+                               {record_member(storage, "small", "std::uint8_t"),
+                                record_member(storage, "wide", "std::uint32_t"),
+                                record_member(storage, "medium", "std::uint16_t")});
+            storage.declarations.records
+                .export_specifier[storage.declarations.records.index(new_records)] = {};
+            return new_records;
+        }()})};
     auto first_target{AbiProfile::host_common()};
     first_target.set_memory_facts({.cache_line_bytes = 64,
                                    .page_bytes = 4'096,
@@ -1379,10 +1553,18 @@ TEST(RecordAccessComparison, ReportsTargetLayoutAndRegionConsequencesForOneWorkl
 }
 
 TEST(RecordAccessComparison, PreservesUnknownAndOverflowedTargetFacts) {
-    auto const fixture{
-        record_type({codegen::RecordSchema{.name = "Record",
-                                           .members = {record_member("value", "std::uint32_t")},
-                                           .export_specifier = std::nullopt}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{record_type(
+        storage, {[&] {
+            auto const new_records{storage.declarations.records.append()};
+            storage.declarations.records.name[storage.declarations.records.index(new_records)] =
+                storage.strings.intern("Record");
+            storage.declarations.records.members[storage.declarations.records.index(new_records)] =
+                record_members(storage, {record_member(storage, "value", "std::uint32_t")});
+            storage.declarations.records
+                .export_specifier[storage.declarations.records.index(new_records)] = {};
+            return new_records;
+        }()})};
     std::array const accesses{
         AccessIntent{.name = "value", .operation = AccessOperation::read_write}};
     auto const known_record{
@@ -1419,11 +1601,20 @@ TEST(RecordAccessComparison, PreservesUnknownAndOverflowedTargetFacts) {
 }
 
 TEST(RecordAccessComparison, RejectsMismatchedWorkloadsTransactionally) {
-    auto const fixture{
-        record_type({codegen::RecordSchema{.name = "Record",
-                                           .members = {record_member("first", "std::uint32_t"),
-                                                       record_member("second", "std::uint16_t")},
-                                           .export_specifier = std::nullopt}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{record_type(
+        storage, {[&] {
+            auto const new_records{storage.declarations.records.append()};
+            storage.declarations.records.name[storage.declarations.records.index(new_records)] =
+                storage.strings.intern("Record");
+            storage.declarations.records.members[storage.declarations.records.index(new_records)] =
+                record_members(storage,
+                               {record_member(storage, "first", "std::uint32_t"),
+                                record_member(storage, "second", "std::uint16_t")});
+            storage.declarations.records
+                .export_specifier[storage.declarations.records.index(new_records)] = {};
+            return new_records;
+        }()})};
     auto const record{
         Analyzer::analyze_record(fixture.types, fixture.type, AbiProfile::host_common(), 10)};
     std::array const accesses{AccessIntent{.name = "first", .operation = AccessOperation::read},
@@ -1461,11 +1652,20 @@ TEST(RecordAccessComparison, RejectsMismatchedWorkloadsTransactionally) {
 }
 
 TEST(RecordAnalyzer, MemberAccessHandlesSpanningMembersAndOverflow) {
-    auto const fixture{
-        record_type({codegen::RecordSchema{.name = "Record",
-                                           .members = {record_member("prefix", "std::uint8_t"),
-                                                       record_member("bytes", "std::uint8_t", 65)},
-                                           .export_specifier = std::nullopt}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{record_type(
+        storage, {[&] {
+            auto const new_records{storage.declarations.records.append()};
+            storage.declarations.records.name[storage.declarations.records.index(new_records)] =
+                storage.strings.intern("Record");
+            storage.declarations.records.members[storage.declarations.records.index(new_records)] =
+                record_members(storage,
+                               {record_member(storage, "prefix", "std::uint8_t"),
+                                record_member(storage, "bytes", "std::uint8_t", 65)});
+            storage.declarations.records
+                .export_specifier[storage.declarations.records.index(new_records)] = {};
+            return new_records;
+        }()})};
     auto record{
         Analyzer::analyze_record(fixture.types, fixture.type, AbiProfile::host_common(), 2)};
     auto access{Analyzer::analyze_record_member_access(record, "bytes", AbiProfile::host_common())};

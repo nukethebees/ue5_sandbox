@@ -1,24 +1,18 @@
 #pragma once
 
-#include <codegen/ast/cpp_type.h>
+#include <codegen/ast/indices.h>
+#include <codegen/schema/physical_type_form.h>
+#include <lispb/indices.h>
 
 #include <string>
-#include <string_view>
 
-namespace codegen {
+namespace lispb::codegen {
 
-enum class PhysicalTypeForm {
-    value,
-    object_pointer,
-    lvalue_reference,
-    rvalue_reference,
-    unsupported
-};
+class CppTypes;
 
 struct PhysicalTypeUse {
     PhysicalTypeForm form{PhysicalTypeForm::unsupported};
-    std::string object_spelling;
-    std::string diagnostic;
+    StringId object_spelling;
     bool names_semantic_type{};
     bool cv_qualified{};
 
@@ -27,11 +21,7 @@ struct PhysicalTypeUse {
     }
 };
 
-struct ResolvedCppTypeUse {
-    CppType cpp_type;
-    PhysicalTypeUse physical;
-};
+auto classify_physical_type_use(CppTypes& types, CppTypeId type) -> PhysicalTypeUse;
+auto physical_type_diagnostic(CppTypes const& types, CppTypeId type) -> std::string;
 
-auto classify_physical_type_use(std::string_view spelling) -> PhysicalTypeUse;
-
-} // namespace codegen
+} // namespace lispb::codegen

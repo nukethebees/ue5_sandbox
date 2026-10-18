@@ -1,11 +1,13 @@
 #pragma once
 
-namespace codegen {
+#include <cstdint>
 
-enum class TypeOperation {
+namespace lispb::codegen {
+
+enum class TypeOperation : std::uint8_t {
     add_element,
     remove_at_swap,
     set_element,
 };
 
-} // namespace codegen
+} // namespace lispb::codegen

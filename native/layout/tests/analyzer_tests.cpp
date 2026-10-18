@@ -1,15 +1,32 @@
 #include "analyzer_test_fixtures.hpp"
 
+#include <codegen/schema/fixed_point_rounding.h>
+#include <codegen/schema/integer_varint_encoding.h>
+#include <codegen/schema/packed_integer_value.h>
+#include <codegen/schema/quantization_clipping.h>
 #include <codegen/schema/schema_version.h>
+#include <codegen/schema/semantic_relation_kind.h>
+#include <codegen/schema/semantic_relation_unit.h>
+#include <lispb/compiler_storage.h>
+
+#include <array>
+#include <cstdint>
+#include <limits>
+#include <optional>
+#include <ranges>
+#include <span>
+#include <string>
 
 namespace ioj::layout {
 namespace {
 
 TEST(EnumAnalyzer, DerivesUnsignedImplicitValuesAndCountSentinelWidth) {
-    auto const fixture{enum_domain_type({enum_value("First", "0"),
-                                         enum_value("Second", std::nullopt),
-                                         enum_value("Seventh", "7"),
-                                         enum_value("Count", std::nullopt)},
+    lispb::CompilerStorage storage;
+    auto const fixture{enum_domain_type(storage,
+                                        {enum_value(storage, "First", "0"),
+                                         enum_value(storage, "Second", std::nullopt),
+                                         enum_value(storage, "Seventh", "7"),
+                                         enum_value(storage, "Count", std::nullopt)},
                                         "Count")};
 
     auto const analysis{
@@ -43,8 +60,13 @@ TEST(EnumAnalyzer, DerivesUnsignedImplicitValuesAndCountSentinelWidth) {
 }
 
 TEST(EnumAnalyzer, ReportsExplicitSemanticWidthSeparatelyFromPhysicalBacking) {
-    auto const fixture{enum_domain_type(
-        {enum_value("Zero", "0"), enum_value("Seven", "7")}, std::nullopt, "std::uint8_t", 4)};
+    lispb::CompilerStorage storage;
+    auto const fixture{
+        enum_domain_type(storage,
+                         {enum_value(storage, "Zero", "0"), enum_value(storage, "Seven", "7")},
+                         std::nullopt,
+                         "std::uint8_t",
+                         4)};
 
     auto const analysis{
         Analyzer::analyze_enum(fixture.types, fixture.type, AbiProfile::host_common())};
@@ -59,11 +81,14 @@ TEST(EnumAnalyzer, ReportsExplicitSemanticWidthSeparatelyFromPhysicalBacking) {
 }
 
 TEST(EnumAnalyzer, ReportsDerivedCppBackingSeparatelyFromSemanticWidth) {
-    auto const fixture{enum_domain_type({enum_value("Zero", "0"), enum_value("Maximum", "4095")},
-                                        std::nullopt,
-                                        std::nullopt,
-                                        12,
-                                        false)};
+    lispb::CompilerStorage storage;
+    auto const fixture{
+        enum_domain_type(storage,
+                         {enum_value(storage, "Zero", "0"), enum_value(storage, "Maximum", "4095")},
+                         std::nullopt,
+                         std::nullopt,
+                         12,
+                         lispb::schema::EnumSignedness::unsigned_)};
 
     auto const analysis{
         Analyzer::analyze_enum(fixture.types, fixture.type, AbiProfile::host_common())};
@@ -77,10 +102,12 @@ TEST(EnumAnalyzer, ReportsDerivedCppBackingSeparatelyFromSemanticWidth) {
 }
 
 TEST(EnumAnalyzer, SeparatesNamedSentinelsFromCountSentinel) {
-    auto const fixture{enum_domain_type({enum_value("Ready", "0"),
-                                         enum_value("Invalid", "14", true),
-                                         enum_value("Pending", "15", true),
-                                         enum_value("Count", "16")},
+    lispb::CompilerStorage storage;
+    auto const fixture{enum_domain_type(storage,
+                                        {enum_value(storage, "Ready", "0"),
+                                         enum_value(storage, "Invalid", "14", true),
+                                         enum_value(storage, "Pending", "15", true),
+                                         enum_value(storage, "Count", "16")},
                                         "Count")};
 
     auto const analysis{
@@ -99,8 +126,12 @@ TEST(EnumAnalyzer, SeparatesNamedSentinelsFromCountSentinel) {
 }
 
 TEST(EnumAnalyzer, DerivesSignedTwosComplementWidth) {
-    auto const fixture{enum_domain_type(
-        {enum_value("Low", "-4"), enum_value("High", "+3")}, std::nullopt, "std::int8_t")};
+    lispb::CompilerStorage storage;
+    auto const fixture{
+        enum_domain_type(storage,
+                         {enum_value(storage, "Low", "-4"), enum_value(storage, "High", "+3")},
+                         std::nullopt,
+                         "std::int8_t")};
 
     auto const analysis{
         Analyzer::analyze_enum(fixture.types, fixture.type, AbiProfile::host_common())};
@@ -116,11 +147,14 @@ TEST(EnumAnalyzer, DerivesSignedTwosComplementWidth) {
 }
 
 TEST(EnumAnalyzer, ExplicitSignednessConstrainsSemanticWidth) {
-    auto const signed_fixture{enum_domain_type({enum_value("Zero", "0"), enum_value("Seven", "7")},
-                                               std::nullopt,
-                                               "std::uint8_t",
-                                               std::nullopt,
-                                               true)};
+    lispb::CompilerStorage storage;
+    auto const signed_fixture{
+        enum_domain_type(storage,
+                         {enum_value(storage, "Zero", "0"), enum_value(storage, "Seven", "7")},
+                         std::nullopt,
+                         "std::uint8_t",
+                         std::nullopt,
+                         lispb::schema::EnumSignedness::signed_)};
     auto const signed_analysis{Analyzer::analyze_enum(
         signed_fixture.types, signed_fixture.type, AbiProfile::host_common())};
 
@@ -130,8 +164,10 @@ TEST(EnumAnalyzer, ExplicitSignednessConstrainsSemanticWidth) {
 }
 
 TEST(EnumAnalyzer, KeepsExpressionAndDependentImplicitValuesUnknown) {
-    auto const fixture{
-        enum_domain_type({enum_value("Mask", "1 << 3"), enum_value("Next", std::nullopt)})};
+    lispb::CompilerStorage storage;
+    auto const fixture{enum_domain_type(
+        storage,
+        {enum_value(storage, "Mask", "1 << 3"), enum_value(storage, "Next", std::nullopt)})};
 
     auto const analysis{
         Analyzer::analyze_enum(fixture.types, fixture.type, AbiProfile::host_common())};
@@ -144,10 +180,12 @@ TEST(EnumAnalyzer, KeepsExpressionAndDependentImplicitValuesUnknown) {
 }
 
 TEST(EnumAnalyzer, AcceptsFullUnsignedWidthAndDiagnosesImplicitOverflow) {
-    auto const fixture{enum_domain_type(
-        {enum_value("Maximum", "0xffffffffffffffffULL"), enum_value("Overflow", std::nullopt)},
-        std::nullopt,
-        "std::uint64_t")};
+    lispb::CompilerStorage storage;
+    auto const fixture{enum_domain_type(storage,
+                                        {enum_value(storage, "Maximum", "0xffffffffffffffffULL"),
+                                         enum_value(storage, "Overflow", std::nullopt)},
+                                        std::nullopt,
+                                        "std::uint64_t")};
 
     auto const analysis{
         Analyzer::analyze_enum(fixture.types, fixture.type, AbiProfile::host_common())};
@@ -161,6 +199,7 @@ TEST(EnumAnalyzer, AcceptsFullUnsignedWidthAndDiagnosesImplicitOverflow) {
 }
 
 TEST(EnumAnalyzer, DiagnosesDomainsThatDoNotFitBackingSignedness) {
+    lispb::CompilerStorage storage;
     auto target{AbiProfile{"Narrow enum target"}};
     target.set("NarrowSigned",
                TypeFacts{.size_bytes = 1,
@@ -175,8 +214,8 @@ TEST(EnumAnalyzer, DiagnosesDomainsThatDoNotFitBackingSignedness) {
                          .unsigned_value_bits = 8,
                          .provenance = "Test target"});
 
-    auto const signed_fixture{
-        enum_domain_type({enum_value("Value", "200")}, std::nullopt, "NarrowSigned")};
+    auto const signed_fixture{enum_domain_type(
+        storage, {enum_value(storage, "Value", "200")}, std::nullopt, "NarrowSigned")};
     auto const signed_analysis{
         Analyzer::analyze_enum(signed_fixture.types, signed_fixture.type, target)};
 
@@ -184,8 +223,8 @@ TEST(EnumAnalyzer, DiagnosesDomainsThatDoNotFitBackingSignedness) {
     EXPECT_EQ(signed_analysis.backing_can_represent_domain, false);
     EXPECT_FALSE(signed_analysis.diagnostics.empty());
 
-    auto const unsigned_fixture{
-        enum_domain_type({enum_value("Value", "-1")}, std::nullopt, "NarrowUnsigned")};
+    auto const unsigned_fixture{enum_domain_type(
+        storage, {enum_value(storage, "Value", "-1")}, std::nullopt, "NarrowUnsigned")};
     auto const unsigned_analysis{
         Analyzer::analyze_enum(unsigned_fixture.types, unsigned_fixture.type, target)};
 
@@ -195,8 +234,13 @@ TEST(EnumAnalyzer, DiagnosesDomainsThatDoNotFitBackingSignedness) {
 }
 
 TEST(EnumAnalyzer, ComparesExplicitBackingAcrossTargetsWithoutChangingSemanticWidth) {
-    auto const fixture{enum_domain_type(
-        {enum_value("Zero", "0"), enum_value("Seven", "7")}, std::nullopt, "std::uint8_t", 4)};
+    lispb::CompilerStorage storage;
+    auto const fixture{
+        enum_domain_type(storage,
+                         {enum_value(storage, "Zero", "0"), enum_value(storage, "Seven", "7")},
+                         std::nullopt,
+                         "std::uint8_t",
+                         4)};
     auto wider_target{AbiProfile::host_common()};
     wider_target.set("std::uint8_t",
                      TypeFacts{.size_bytes = 2,
@@ -254,11 +298,14 @@ TEST(EnumAnalyzer, ComparesExplicitBackingAcrossTargetsWithoutChangingSemanticWi
 }
 
 TEST(EnumAnalyzer, ComparesDerivedBackingStorageSeparatelyFromValueCapacity) {
-    auto const fixture{enum_domain_type({enum_value("Zero", "0"), enum_value("Maximum", "4095")},
-                                        std::nullopt,
-                                        std::nullopt,
-                                        12,
-                                        false)};
+    lispb::CompilerStorage storage;
+    auto const fixture{
+        enum_domain_type(storage,
+                         {enum_value(storage, "Zero", "0"), enum_value(storage, "Maximum", "4095")},
+                         std::nullopt,
+                         std::nullopt,
+                         12,
+                         lispb::schema::EnumSignedness::unsigned_)};
     auto padded_target{AbiProfile::host_common()};
     padded_target.set("std::uint16_t",
                       TypeFacts{.size_bytes = 4,
@@ -293,8 +340,13 @@ TEST(EnumAnalyzer, ComparesDerivedBackingStorageSeparatelyFromValueCapacity) {
 }
 
 TEST(EnumAnalyzer, KeepsUnknownTargetBackingFactsUnknownInComparison) {
-    auto const fixture{enum_domain_type(
-        {enum_value("Zero", "0"), enum_value("Seven", "7")}, std::nullopt, "std::uint8_t", 4)};
+    lispb::CompilerStorage storage;
+    auto const fixture{
+        enum_domain_type(storage,
+                         {enum_value(storage, "Zero", "0"), enum_value(storage, "Seven", "7")},
+                         std::nullopt,
+                         "std::uint8_t",
+                         4)};
     auto const known{
         Analyzer::analyze_enum(fixture.types, fixture.type, AbiProfile::host_common())};
     auto const unknown{
@@ -317,8 +369,13 @@ TEST(EnumAnalyzer, KeepsUnknownTargetBackingFactsUnknownInComparison) {
 }
 
 TEST(EnumAnalyzer, RejectsMismatchedSemanticEnumAnalysesTransactionally) {
-    auto const fixture{enum_domain_type(
-        {enum_value("Zero", "0"), enum_value("Seven", "7")}, std::nullopt, "std::uint8_t", 4)};
+    lispb::CompilerStorage storage;
+    auto const fixture{
+        enum_domain_type(storage,
+                         {enum_value(storage, "Zero", "0"), enum_value(storage, "Seven", "7")},
+                         std::nullopt,
+                         "std::uint8_t",
+                         4)};
     auto const first{
         Analyzer::analyze_enum(fixture.types, fixture.type, AbiProfile::host_common())};
     auto second{first};
@@ -348,11 +405,14 @@ TEST(EnumAnalyzer, RejectsMismatchedSemanticEnumAnalysesTransactionally) {
 }
 
 TEST(EnumAnalyzer, KeepsStandaloneBackingAggregateOverflowUnknown) {
-    auto const fixture{enum_domain_type({enum_value("Zero", "0"), enum_value("Maximum", "4095")},
-                                        std::nullopt,
-                                        "std::uint16_t",
-                                        12,
-                                        false)};
+    lispb::CompilerStorage storage;
+    auto const fixture{
+        enum_domain_type(storage,
+                         {enum_value(storage, "Zero", "0"), enum_value(storage, "Maximum", "4095")},
+                         std::nullopt,
+                         "std::uint16_t",
+                         12,
+                         lispb::schema::EnumSignedness::unsigned_)};
 
     auto const analysis{Analyzer::analyze_enum(fixture.types,
                                                fixture.type,
@@ -369,13 +429,14 @@ TEST(EnumAnalyzer, KeepsStandaloneBackingAggregateOverflowUnknown) {
 }
 
 TEST(IntegerScalarAnalyzer, ReportsDomainSentinelAndDerivedWidthWithoutPhysicalFacts) {
-    auto const fixture{integer_scalar_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{integer_scalar_type(storage)};
 
     auto const analysis{Analyzer::analyze_integer_scalar(fixture.types, fixture.type)};
 
     EXPECT_FALSE(analysis.signedness);
-    EXPECT_EQ(analysis.minimum_value, codegen::PackedIntegerValue{0});
-    EXPECT_EQ(analysis.maximum_value, codegen::PackedIntegerValue{10});
+    EXPECT_EQ(analysis.minimum_value, lispb::codegen::PackedIntegerValue{0});
+    EXPECT_EQ(analysis.maximum_value, lispb::codegen::PackedIntegerValue{10});
     EXPECT_EQ(analysis.live_value_count, 11U);
     EXPECT_EQ(analysis.sentinel_code_count, 1U);
     EXPECT_EQ(analysis.required_code_count, 12U);
@@ -388,34 +449,20 @@ TEST(IntegerScalarAnalyzer, ReportsDomainSentinelAndDerivedWidthWithoutPhysicalF
 }
 
 TEST(IntegerScalarAnalyzer, ReportsZeroUnusedCodesForFullSixtyFourBitDomains) {
-    auto make_fixture = [](bool const signedness) {
-        codegen::Manifest manifest{
-            .schema_version = codegen::manifest_schema_version,
-            .types = {},
-            .modules = {codegen::NormalModuleSchema{
-                .settings = codegen::ModuleSettings{.name = "full_domain",
-                                                    .header = "FullDomain.h",
-                                                    .source = std::nullopt,
-                                                    .header_include = std::nullopt,
-                                                    .namespace_name = std::nullopt,
-                                                    .include_order = {},
-                                                    .prelude_lines = {}},
-                .declarations = {codegen::IntegerScalarSchema{
-                    .name = "FullDomain",
-                    .signedness = signedness,
-                    .minimum_value = signedness ? codegen::PackedIntegerValue{(
-                                                      std::numeric_limits<std::int64_t>::min)()}
-                                                : codegen::PackedIntegerValue{0},
-                    .maximum_value = signedness ? codegen::PackedIntegerValue{(
-                                                      std::numeric_limits<std::int64_t>::max)()}
-                                                : codegen::PackedIntegerValue{(
-                                                      std::numeric_limits<std::uint64_t>::max)()},
-                    .bit_width = std::nullopt,
-                    .named_codes = {},
-                    .relationship = std::nullopt}}}}};
-        auto types{lispb::schema::resolve_type_graph(manifest)};
-        auto const type{*types.find_declared("full_domain", "FullDomain")};
-        return TypeFixture{std::move(types), type};
+    lispb::CompilerStorage storage;
+    auto make_fixture = [&storage](bool const signedness) {
+        std::string source{R"((module full_domain :header "FullDomain.h" )"};
+        source += scalar_source(
+            "FullDomain",
+            signedness,
+            signedness
+                ? lispb::codegen::PackedIntegerValue{(std::numeric_limits<std::int64_t>::min)()}
+                : lispb::codegen::PackedIntegerValue{0},
+            signedness
+                ? lispb::codegen::PackedIntegerValue{(std::numeric_limits<std::int64_t>::max)()}
+                : lispb::codegen::PackedIntegerValue{(std::numeric_limits<std::uint64_t>::max)()});
+        source += "))";
+        return fixture_type(storage, source, "full_domain", "FullDomain");
     };
 
     for (auto const signedness : {false, true}) {
@@ -431,13 +478,14 @@ TEST(IntegerScalarAnalyzer, ReportsZeroUnusedCodesForFullSixtyFourBitDomains) {
 }
 
 TEST(IntegerScalarAnalyzer, DerivesLinkedIndexCapacityWithSentinel) {
+    lispb::CompilerStorage storage;
     auto const fixture{relationship_capacity_scalar_type(
-        codegen::SemanticRelationKind::index_into, 12, 4'094, 4'095)};
+        storage, lispb::codegen::SemanticRelationKind::index_into, 12, 4'094, 4'095)};
     std::array capacity{RelationshipTargetFacts{
         .target = fixture.target, .element_capacity = 4'000, .byte_extent = std::nullopt}};
 
     auto const fits{Analyzer::analyze_integer_scalar(fixture.types, fixture.packed, capacity)};
-    EXPECT_EQ(fits.relationship_kind, codegen::SemanticRelationKind::index_into);
+    EXPECT_EQ(fits.relationship_kind, lispb::codegen::SemanticRelationKind::index_into);
     EXPECT_EQ(fits.relationship_target, "Entities");
     EXPECT_EQ(fits.relationship_target_extent, 4'000);
     EXPECT_EQ(fits.relationship_live_value_count,
@@ -467,8 +515,9 @@ TEST(IntegerScalarAnalyzer, DerivesLinkedIndexCapacityWithSentinel) {
 }
 
 TEST(IntegerScalarAnalyzer, ComparesLinkedCapacityAcrossWidthThreshold) {
+    lispb::CompilerStorage storage;
     auto const fixture{relationship_capacity_scalar_type(
-        codegen::SemanticRelationKind::index_into, 12, 4'094, 4'095)};
+        storage, lispb::codegen::SemanticRelationKind::index_into, 12, 4'094, 4'095)};
     std::array const first_capacity{RelationshipTargetFacts{
         .target = fixture.target, .element_capacity = 4'000, .byte_extent = std::nullopt}};
     std::array const second_capacity{RelationshipTargetFacts{
@@ -515,29 +564,32 @@ TEST(IntegerScalarAnalyzer, ComparesLinkedCapacityAcrossWidthThreshold) {
 }
 
 TEST(IntegerScalarAnalyzer, DerivesElementAndByteOffsetExtents) {
-    auto const elements{
-        relationship_capacity_scalar_type(codegen::SemanticRelationKind::offset_into, 12, 4'095)};
+    lispb::CompilerStorage storage;
+    auto const elements{relationship_capacity_scalar_type(
+        storage, lispb::codegen::SemanticRelationKind::offset_into, 12, 4'095)};
     std::array const element_facts{RelationshipTargetFacts{
         .target = elements.target, .element_capacity = 4'000, .byte_extent = 8'192}};
     auto const element_analysis{
         Analyzer::analyze_integer_scalar(elements.types, elements.packed, element_facts)};
-    EXPECT_EQ(element_analysis.relationship_unit, codegen::SemanticRelationUnit::elements);
+    EXPECT_EQ(element_analysis.relationship_unit, lispb::codegen::SemanticRelationUnit::elements);
     EXPECT_EQ(element_analysis.relationship_target_extent, 4'000);
     EXPECT_EQ(element_analysis.relationship_live_value_count,
               (ExactCodeCount{.value = 4'000, .two_to_64 = false}));
     EXPECT_EQ(element_analysis.relationship_minimum_required_bits, 12);
     EXPECT_EQ(element_analysis.relationship_width_sufficient, true);
 
-    auto const bytes{relationship_capacity_scalar_type(codegen::SemanticRelationKind::offset_into,
-                                                       12,
-                                                       4'095,
-                                                       std::nullopt,
-                                                       codegen::SemanticRelationUnit::bytes)};
+    auto const bytes{
+        relationship_capacity_scalar_type(storage,
+                                          lispb::codegen::SemanticRelationKind::offset_into,
+                                          12,
+                                          4'095,
+                                          std::nullopt,
+                                          lispb::codegen::SemanticRelationUnit::bytes)};
     std::array const byte_facts{RelationshipTargetFacts{
         .target = bytes.target, .element_capacity = 4'000, .byte_extent = 8'192}};
     auto const byte_analysis{
         Analyzer::analyze_integer_scalar(bytes.types, bytes.packed, byte_facts)};
-    EXPECT_EQ(byte_analysis.relationship_unit, codegen::SemanticRelationUnit::bytes);
+    EXPECT_EQ(byte_analysis.relationship_unit, lispb::codegen::SemanticRelationUnit::bytes);
     EXPECT_EQ(byte_analysis.relationship_target_extent, 8'192);
     EXPECT_EQ(byte_analysis.relationship_live_value_count,
               (ExactCodeCount{.value = 8'192, .two_to_64 = false}));
@@ -552,11 +604,14 @@ TEST(IntegerScalarAnalyzer, DerivesElementAndByteOffsetExtents) {
 }
 
 TEST(IntegerScalarAnalyzer, ComparesByteOffsetWidthThreshold) {
-    auto const fixture{relationship_capacity_scalar_type(codegen::SemanticRelationKind::offset_into,
-                                                         12,
-                                                         4'095,
-                                                         std::nullopt,
-                                                         codegen::SemanticRelationUnit::bytes)};
+    lispb::CompilerStorage storage;
+    auto const fixture{
+        relationship_capacity_scalar_type(storage,
+                                          lispb::codegen::SemanticRelationKind::offset_into,
+                                          12,
+                                          4'095,
+                                          std::nullopt,
+                                          lispb::codegen::SemanticRelationUnit::bytes)};
     std::array const first{RelationshipTargetFacts{
         .target = fixture.target, .element_capacity = 1'000, .byte_extent = 4'096}};
     std::array const second{RelationshipTargetFacts{
@@ -575,8 +630,12 @@ TEST(IntegerScalarAnalyzer, ComparesByteOffsetWidthThreshold) {
 }
 
 TEST(IntegerScalarAnalyzer, HandlesLinkedCountExactAndBeyondTwoTo64) {
-    auto const full{relationship_capacity_scalar_type(
-        codegen::SemanticRelationKind::count_of, 64, (std::numeric_limits<std::uint64_t>::max)())};
+    lispb::CompilerStorage storage;
+    auto const full{
+        relationship_capacity_scalar_type(storage,
+                                          lispb::codegen::SemanticRelationKind::count_of,
+                                          64,
+                                          (std::numeric_limits<std::uint64_t>::max)())};
     std::array const capacity{
         RelationshipTargetFacts{.target = full.target,
                                 .element_capacity = (std::numeric_limits<std::uint64_t>::max)(),
@@ -601,7 +660,8 @@ TEST(IntegerScalarAnalyzer, HandlesLinkedCountExactAndBeyondTwoTo64) {
     EXPECT_TRUE(exact.diagnostics.empty());
 
     auto const with_sentinel{
-        relationship_capacity_scalar_type(codegen::SemanticRelationKind::count_of,
+        relationship_capacity_scalar_type(storage,
+                                          lispb::codegen::SemanticRelationKind::count_of,
                                           64,
                                           (std::numeric_limits<std::uint64_t>::max)() - 1,
                                           (std::numeric_limits<std::uint64_t>::max)())};
@@ -630,8 +690,9 @@ TEST(IntegerScalarAnalyzer, HandlesLinkedCountExactAndBeyondTwoTo64) {
 }
 
 TEST(IntegerScalarAnalyzer, SeparatesSemanticSentinelAndCodeSpaceCapacityLimits) {
-    auto const fixture{
-        relationship_capacity_scalar_type(codegen::SemanticRelationKind::index_into, 12, 100, 200)};
+    lispb::CompilerStorage storage;
+    auto const fixture{relationship_capacity_scalar_type(
+        storage, lispb::codegen::SemanticRelationKind::index_into, 12, 100, 200)};
     std::array const capacity{RelationshipTargetFacts{
         .target = fixture.target, .element_capacity = 50, .byte_extent = std::nullopt}};
 
@@ -647,15 +708,16 @@ TEST(IntegerScalarAnalyzer, SeparatesSemanticSentinelAndCodeSpaceCapacityLimits)
 }
 
 TEST(OptionalSentinelAnalyzer, ReportsCodeSpaceAndScaledPayloadWithoutAbiFacts) {
-    auto const fixture{optional_sentinel_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{optional_sentinel_type(storage)};
 
     auto const analysis{Analyzer::analyze_optional_sentinel(fixture.types, fixture.type, 100)};
 
     EXPECT_EQ(analysis.sentinel_name, "Invalid");
-    EXPECT_EQ(analysis.sentinel_value, codegen::PackedIntegerValue{15});
+    EXPECT_EQ(analysis.sentinel_value, lispb::codegen::PackedIntegerValue{15});
     EXPECT_FALSE(analysis.source_signedness);
-    EXPECT_EQ(analysis.source_minimum, codegen::PackedIntegerValue{0});
-    EXPECT_EQ(analysis.source_maximum, codegen::PackedIntegerValue{10});
+    EXPECT_EQ(analysis.source_minimum, lispb::codegen::PackedIntegerValue{0});
+    EXPECT_EQ(analysis.source_maximum, lispb::codegen::PackedIntegerValue{10});
     EXPECT_EQ(analysis.present_value_count, 11U);
     EXPECT_EQ(analysis.absence_code_count, 1U);
     EXPECT_EQ(analysis.other_sentinel_code_count, 1U);
@@ -674,13 +736,14 @@ TEST(OptionalSentinelAnalyzer, ReportsCodeSpaceAndScaledPayloadWithoutAbiFacts) 
 }
 
 TEST(OptionalPresenceBitAnalyzer, ReportsCanonicalAbsenceAndScaledPayloadWithoutAbiFacts) {
-    auto const fixture{optional_presence_bit_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{optional_presence_bit_type(storage)};
 
     auto const analysis{Analyzer::analyze_optional_presence_bit(fixture.types, fixture.type, 100)};
 
     EXPECT_FALSE(analysis.source_signedness);
-    EXPECT_EQ(analysis.source_minimum, codegen::PackedIntegerValue{0});
-    EXPECT_EQ(analysis.source_maximum, codegen::PackedIntegerValue{10});
+    EXPECT_EQ(analysis.source_minimum, lispb::codegen::PackedIntegerValue{0});
+    EXPECT_EQ(analysis.source_maximum, lispb::codegen::PackedIntegerValue{10});
     EXPECT_EQ(analysis.present_value_count, 11U);
     EXPECT_EQ(analysis.canonical_absence_state_count, 1U);
     EXPECT_EQ(analysis.source_sentinel_code_count, 2U);
@@ -701,7 +764,8 @@ TEST(OptionalPresenceBitAnalyzer, ReportsCanonicalAbsenceAndScaledPayloadWithout
 }
 
 TEST(OptionalPresenceBitAnalyzer, PreservesHonest65BitEncodingForFullWidthSource) {
-    auto const fixture{optional_presence_bit_type(64)};
+    lispb::CompilerStorage storage;
+    auto const fixture{optional_presence_bit_type(storage, 64)};
 
     auto const analysis{Analyzer::analyze_optional_presence_bit(fixture.types, fixture.type)};
 
@@ -716,7 +780,8 @@ TEST(OptionalPresenceBitAnalyzer, PreservesHonest65BitEncodingForFullWidthSource
 }
 
 TEST(OptionalEncodingComparison, ReportsPolicyAndScaledBitConsequences) {
-    auto const fixture{optional_comparison_types()};
+    lispb::CompilerStorage storage;
+    auto const fixture{optional_comparison_types(storage)};
 
     auto const comparison{Analyzer::compare_optional_encodings(
         fixture.types, fixture.sentinel, fixture.presence, 100)};
@@ -754,7 +819,8 @@ TEST(OptionalEncodingComparison, ReportsPolicyAndScaledBitConsequences) {
 }
 
 TEST(OptionalEncodingComparison, SupportsSiblingSentinelPolicies) {
-    auto const fixture{optional_comparison_types()};
+    lispb::CompilerStorage storage;
+    auto const fixture{optional_comparison_types(storage)};
 
     auto const comparison{Analyzer::compare_optional_encodings(
         fixture.types, fixture.sentinel, fixture.second_sentinel, 100)};
@@ -771,7 +837,8 @@ TEST(OptionalEncodingComparison, SupportsSiblingSentinelPolicies) {
 }
 
 TEST(OptionalEncodingComparison, Preserves64To65BitBoundaryAndOverflow) {
-    auto const fixture{optional_comparison_types(true)};
+    lispb::CompilerStorage storage;
+    auto const fixture{optional_comparison_types(storage, true)};
 
     auto const comparison{
         Analyzer::compare_optional_encodings(fixture.types, fixture.sentinel, fixture.presence)};
@@ -797,7 +864,8 @@ TEST(OptionalEncodingComparison, Preserves64To65BitBoundaryAndOverflow) {
 }
 
 TEST(OptionalEncodingComparison, RejectsDifferentSourcesAndNonOptionalTypes) {
-    auto const fixture{optional_comparison_types()};
+    lispb::CompilerStorage storage;
+    auto const fixture{optional_comparison_types(storage)};
 
     auto const incompatible{Analyzer::compare_optional_encodings(
         fixture.types, fixture.sentinel, fixture.other_presence)};
@@ -815,7 +883,8 @@ TEST(OptionalEncodingComparison, RejectsDifferentSourcesAndNonOptionalTypes) {
 }
 
 TEST(LinearQuantizedAnalyzer, ReportsCapacityResolutionAndEndpointFacts) {
-    auto const fixture{linear_quantized_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{linear_quantized_type(storage)};
 
     auto const analysis{Analyzer::analyze_linear_quantized(fixture.types, fixture.type)};
 
@@ -828,17 +897,18 @@ TEST(LinearQuantizedAnalyzer, ReportsCapacityResolutionAndEndpointFacts) {
     EXPECT_NEAR(static_cast<double>(analysis.maximum_rounding_error), 500.0 / 254.0, 1e-12);
     EXPECT_TRUE(analysis.minimum_endpoint_exact);
     EXPECT_TRUE(analysis.maximum_endpoint_exact);
-    EXPECT_EQ(analysis.clipping, codegen::QuantizationClipping::clamp);
+    EXPECT_EQ(analysis.clipping, lispb::codegen::QuantizationClipping::clamp);
 }
 
 TEST(LinearQuantizedAnalyzer, PreservesHonestExactCapacityAt64Bits) {
-    auto const full_fixture{linear_quantized_type(64, 0)};
+    lispb::CompilerStorage storage;
+    auto const full_fixture{linear_quantized_type(storage, 64, 0)};
     auto const full{Analyzer::analyze_linear_quantized(full_fixture.types, full_fixture.type)};
     EXPECT_EQ(full.total_code_count, (ExactCodeCount{.value = 0, .two_to_64 = true}));
     EXPECT_EQ(full.usable_code_count, (ExactCodeCount{.value = 0, .two_to_64 = true}));
     EXPECT_GT(full.resolution, 0.0L);
 
-    auto const reserved_fixture{linear_quantized_type(64, 1)};
+    auto const reserved_fixture{linear_quantized_type(storage, 64, 1)};
     auto const reserved{
         Analyzer::analyze_linear_quantized(reserved_fixture.types, reserved_fixture.type)};
     EXPECT_EQ(reserved.total_code_count, (ExactCodeCount{.value = 0, .two_to_64 = true}));
@@ -849,11 +919,12 @@ TEST(LinearQuantizedAnalyzer, PreservesHonestExactCapacityAt64Bits) {
 }
 
 TEST(LinearQuantizedAnalyzer, HandlesCrossZeroAndWhollyNegativeSignedDomains) {
-    auto const crossing_fixture{linear_quantized_type(8, 1, true, -100, 100)};
+    lispb::CompilerStorage storage;
+    auto const crossing_fixture{linear_quantized_type(storage, 8, 1, true, -100, 100)};
     auto const crossing{
         Analyzer::analyze_linear_quantized(crossing_fixture.types, crossing_fixture.type)};
-    EXPECT_EQ(crossing.source_minimum, codegen::PackedIntegerValue{-100});
-    EXPECT_EQ(crossing.source_maximum, codegen::PackedIntegerValue{100});
+    EXPECT_EQ(crossing.source_minimum, lispb::codegen::PackedIntegerValue{-100});
+    EXPECT_EQ(crossing.source_maximum, lispb::codegen::PackedIntegerValue{100});
     EXPECT_EQ(crossing.source_span, 200U);
     EXPECT_EQ(crossing.usable_code_count, (ExactCodeCount{.value = 255, .two_to_64 = false}));
     EXPECT_NEAR(static_cast<double>(crossing.resolution), 200.0 / 254.0, 1e-12);
@@ -861,11 +932,11 @@ TEST(LinearQuantizedAnalyzer, HandlesCrossZeroAndWhollyNegativeSignedDomains) {
     EXPECT_TRUE(crossing.minimum_endpoint_exact);
     EXPECT_TRUE(crossing.maximum_endpoint_exact);
 
-    auto const negative_fixture{linear_quantized_type(10, 2, true, -1000, -1)};
+    auto const negative_fixture{linear_quantized_type(storage, 10, 2, true, -1000, -1)};
     auto const negative{
         Analyzer::analyze_linear_quantized(negative_fixture.types, negative_fixture.type)};
-    EXPECT_EQ(negative.source_minimum, codegen::PackedIntegerValue{-1000});
-    EXPECT_EQ(negative.source_maximum, codegen::PackedIntegerValue{-1});
+    EXPECT_EQ(negative.source_minimum, lispb::codegen::PackedIntegerValue{-1000});
+    EXPECT_EQ(negative.source_maximum, lispb::codegen::PackedIntegerValue{-1});
     EXPECT_EQ(negative.source_span, 999U);
     EXPECT_EQ(negative.usable_code_count, (ExactCodeCount{.value = 1022, .two_to_64 = false}));
     EXPECT_NEAR(static_cast<double>(negative.resolution), 999.0 / 1021.0, 1e-12);
@@ -873,12 +944,14 @@ TEST(LinearQuantizedAnalyzer, HandlesCrossZeroAndWhollyNegativeSignedDomains) {
 }
 
 TEST(LinearQuantizedAnalyzer, PreservesFullSigned64BitSpanWithoutOverflow) {
+    lispb::CompilerStorage storage;
     auto const fixture{linear_quantized_type(
+        storage,
         64,
         0,
         true,
-        codegen::PackedIntegerValue::from_parts(true, std::uint64_t{1} << 63),
-        codegen::PackedIntegerValue{(std::numeric_limits<std::int64_t>::max)()})};
+        lispb::codegen::PackedIntegerValue::from_parts(true, std::uint64_t{1} << 63),
+        lispb::codegen::PackedIntegerValue{(std::numeric_limits<std::int64_t>::max)()})};
 
     auto const analysis{Analyzer::analyze_linear_quantized(fixture.types, fixture.type)};
 
@@ -890,7 +963,8 @@ TEST(LinearQuantizedAnalyzer, PreservesFullSigned64BitSpanWithoutOverflow) {
 }
 
 TEST(LinearQuantizedComparison, ReportsPrecisionAndScaledPayloadConsequences) {
-    auto const fixture{linear_quantized_pair()};
+    lispb::CompilerStorage storage;
+    auto const fixture{linear_quantized_pair(storage)};
 
     auto const comparison{
         Analyzer::compare_linear_quantized(fixture.types, fixture.first, fixture.second, 1'000)};
@@ -919,7 +993,8 @@ TEST(LinearQuantizedComparison, ReportsPrecisionAndScaledPayloadConsequences) {
 }
 
 TEST(LinearQuantizedComparison, PreservesExactTwoTo64CapacityDelta) {
-    auto const fixture{linear_quantized_pair(true, 8, 64)};
+    lispb::CompilerStorage storage;
+    auto const fixture{linear_quantized_pair(storage, true, 8, 64)};
 
     auto const comparison{
         Analyzer::compare_linear_quantized(fixture.types, fixture.first, fixture.second)};
@@ -931,14 +1006,15 @@ TEST(LinearQuantizedComparison, PreservesExactTwoTo64CapacityDelta) {
 }
 
 TEST(LinearQuantizedComparison, ComparesRepresentationsOfOneSignedDomain) {
-    auto const fixture{linear_quantized_pair(true, 8, 10, true, -100, 100)};
+    lispb::CompilerStorage storage;
+    auto const fixture{linear_quantized_pair(storage, true, 8, 10, true, -100, 100)};
 
     auto const comparison{
         Analyzer::compare_linear_quantized(fixture.types, fixture.first, fixture.second, 10'000)};
 
     EXPECT_TRUE(comparison.compatible_source);
-    EXPECT_EQ(comparison.first.source_minimum, codegen::PackedIntegerValue{-100});
-    EXPECT_EQ(comparison.second.source_maximum, codegen::PackedIntegerValue{100});
+    EXPECT_EQ(comparison.first.source_minimum, lispb::codegen::PackedIntegerValue{-100});
+    EXPECT_EQ(comparison.second.source_maximum, lispb::codegen::PackedIntegerValue{100});
     EXPECT_EQ(comparison.first.source_span, 200U);
     EXPECT_EQ(comparison.second.source_span, 200U);
     ASSERT_TRUE(comparison.resolution_delta.has_value());
@@ -951,7 +1027,8 @@ TEST(LinearQuantizedComparison, ComparesRepresentationsOfOneSignedDomain) {
 }
 
 TEST(LinearQuantizedComparison, RejectsDifferentSemanticSources) {
-    auto const fixture{linear_quantized_pair(false)};
+    lispb::CompilerStorage storage;
+    auto const fixture{linear_quantized_pair(storage, false)};
 
     auto const comparison{
         Analyzer::compare_linear_quantized(fixture.types, fixture.first, fixture.second)};
@@ -964,7 +1041,8 @@ TEST(LinearQuantizedComparison, RejectsDifferentSemanticSources) {
 }
 
 TEST(LinearQuantizedComparison, ReportsScaledPayloadOverflowWithoutInventingStorage) {
-    auto const fixture{linear_quantized_pair()};
+    lispb::CompilerStorage storage;
+    auto const fixture{linear_quantized_pair(storage)};
 
     auto const comparison{Analyzer::compare_linear_quantized(
         fixture.types, fixture.first, fixture.second, (std::numeric_limits<std::uint64_t>::max)())};
@@ -976,7 +1054,8 @@ TEST(LinearQuantizedComparison, ReportsScaledPayloadOverflowWithoutInventingStor
 }
 
 TEST(FixedPointAnalyzer, ReportsSignedRangeResolutionAndRounding) {
-    auto const fixture{fixed_point_type(true, 16, 4)};
+    lispb::CompilerStorage storage;
+    auto const fixture{fixed_point_type(storage, true, 16, 4)};
 
     auto const analysis{Analyzer::analyze_fixed_point(fixture.types, fixture.type, 1'000)};
 
@@ -984,40 +1063,43 @@ TEST(FixedPointAnalyzer, ReportsSignedRangeResolutionAndRounding) {
     EXPECT_EQ(analysis.total_bits, 16U);
     EXPECT_EQ(analysis.fractional_bits, 4U);
     EXPECT_EQ(analysis.whole_bits, 11U);
-    EXPECT_EQ(analysis.minimum_raw_value, codegen::PackedIntegerValue{-32'768});
-    EXPECT_EQ(analysis.maximum_raw_value, codegen::PackedIntegerValue{32'767});
+    EXPECT_EQ(analysis.minimum_raw_value, lispb::codegen::PackedIntegerValue{-32'768});
+    EXPECT_EQ(analysis.maximum_raw_value, lispb::codegen::PackedIntegerValue{32'767});
     EXPECT_DOUBLE_EQ(static_cast<double>(analysis.scale), 16.0);
     EXPECT_DOUBLE_EQ(static_cast<double>(analysis.resolution), 0.0625);
     EXPECT_DOUBLE_EQ(static_cast<double>(analysis.minimum_value), -2'048.0);
     EXPECT_DOUBLE_EQ(static_cast<double>(analysis.maximum_value), 2'047.9375);
     EXPECT_DOUBLE_EQ(static_cast<double>(analysis.maximum_rounding_error), 0.03125);
-    EXPECT_EQ(analysis.rounding, codegen::FixedPointRounding::nearest_even);
+    EXPECT_EQ(analysis.rounding, lispb::codegen::FixedPointRounding::nearest_even);
     EXPECT_EQ(analysis.total_encoded_bits, 16'000U);
     EXPECT_TRUE(analysis.diagnostics.empty());
 }
 
 TEST(FixedPointAnalyzer, SupportsUnsignedFractionOnlyAndTowardZeroRounding) {
-    auto const fixture{fixed_point_type(false, 8, 8, codegen::FixedPointRounding::toward_zero)};
+    lispb::CompilerStorage storage;
+    auto const fixture{
+        fixed_point_type(storage, false, 8, 8, lispb::codegen::FixedPointRounding::toward_zero)};
 
     auto const analysis{Analyzer::analyze_fixed_point(fixture.types, fixture.type)};
 
     EXPECT_FALSE(analysis.signedness);
     EXPECT_EQ(analysis.whole_bits, 0U);
-    EXPECT_EQ(analysis.minimum_raw_value, codegen::PackedIntegerValue{0});
-    EXPECT_EQ(analysis.maximum_raw_value, codegen::PackedIntegerValue{255});
+    EXPECT_EQ(analysis.minimum_raw_value, lispb::codegen::PackedIntegerValue{0});
+    EXPECT_EQ(analysis.maximum_raw_value, lispb::codegen::PackedIntegerValue{255});
     EXPECT_DOUBLE_EQ(static_cast<double>(analysis.minimum_value), 0.0);
     EXPECT_DOUBLE_EQ(static_cast<double>(analysis.maximum_value), 255.0 / 256.0);
     EXPECT_DOUBLE_EQ(static_cast<double>(analysis.maximum_rounding_error), 1.0 / 256.0);
 }
 
 TEST(FixedPointAnalyzer, PreservesFullWidthRawRangeAndReportsScaledOverflow) {
-    auto const fixture{fixed_point_type(false, 64, 64)};
+    lispb::CompilerStorage storage;
+    auto const fixture{fixed_point_type(storage, false, 64, 64)};
 
     auto const analysis{Analyzer::analyze_fixed_point(
         fixture.types, fixture.type, (std::numeric_limits<std::uint64_t>::max)())};
 
     EXPECT_EQ(analysis.maximum_raw_value,
-              codegen::PackedIntegerValue{(std::numeric_limits<std::uint64_t>::max)()});
+              lispb::codegen::PackedIntegerValue{(std::numeric_limits<std::uint64_t>::max)()});
     EXPECT_GT(analysis.resolution, 0.0L);
     EXPECT_FALSE(analysis.total_encoded_bits.has_value());
     ASSERT_EQ(analysis.diagnostics.size(), 1U);
@@ -1025,7 +1107,8 @@ TEST(FixedPointAnalyzer, PreservesFullWidthRawRangeAndReportsScaledOverflow) {
 }
 
 TEST(MiniFloatAnalyzer, ReportsBinary16StyleCodeRolesAndNumericalRange) {
-    auto const fixture{mini_float_type(1, 5, 10, 15)};
+    lispb::CompilerStorage storage;
+    auto const fixture{mini_float_type(storage, 1, 5, 10, 15)};
 
     auto const analysis{Analyzer::analyze_mini_float(fixture.types, fixture.type, 1'000)};
 
@@ -1061,7 +1144,8 @@ TEST(MiniFloatAnalyzer, ReportsBinary16StyleCodeRolesAndNumericalRange) {
 }
 
 TEST(MiniFloatAnalyzer, SupportsUnsignedFormatsWithoutFractionPayloads) {
-    auto const fixture{mini_float_type(0, 3, 0, 3)};
+    lispb::CompilerStorage storage;
+    auto const fixture{mini_float_type(storage, 0, 3, 0, 3)};
 
     auto const analysis{Analyzer::analyze_mini_float(fixture.types, fixture.type)};
 
@@ -1081,7 +1165,8 @@ TEST(MiniFloatAnalyzer, SupportsUnsignedFormatsWithoutFractionPayloads) {
 }
 
 TEST(MiniFloatAnalyzer, PreservesTwoTo64CodeSpaceAndReportsScaledOverflow) {
-    auto const fixture{mini_float_type(1, 2, 61, 1)};
+    lispb::CompilerStorage storage;
+    auto const fixture{mini_float_type(storage, 1, 2, 61, 1)};
 
     auto const analysis{Analyzer::analyze_mini_float(
         fixture.types, fixture.type, (std::numeric_limits<std::uint64_t>::max)())};
@@ -1096,7 +1181,8 @@ TEST(MiniFloatAnalyzer, PreservesTwoTo64CodeSpaceAndReportsScaledOverflow) {
 }
 
 TEST(MiniFloatAnalyzer, KeepsExactExponentFactsWhenHostNumericsOverflow) {
-    auto const fixture{mini_float_type(1, 5, 10, -32'768)};
+    lispb::CompilerStorage storage;
+    auto const fixture{mini_float_type(storage, 1, 5, 10, -32'768)};
 
     auto const analysis{Analyzer::analyze_mini_float(fixture.types, fixture.type)};
 
@@ -1114,8 +1200,9 @@ TEST(MiniFloatAnalyzer, KeepsExactExponentFactsWhenHostNumericsOverflow) {
 }
 
 TEST(IntegerVarintAnalyzer, ReportsUnsignedEncodedByteRangeAndScaledBounds) {
-    auto const fixture{
-        integer_varint_type(false, 0, 16'384, codegen::IntegerVarintEncoding::unsigned_varint)};
+    lispb::CompilerStorage storage;
+    auto const fixture{integer_varint_type(
+        storage, false, 0, 16'384, lispb::codegen::IntegerVarintEncoding::unsigned_varint)};
 
     auto const analysis{Analyzer::analyze_integer_varint(fixture.types, fixture.type, 100)};
 
@@ -1127,10 +1214,12 @@ TEST(IntegerVarintAnalyzer, ReportsUnsignedEncodedByteRangeAndScaledBounds) {
 }
 
 TEST(IntegerVarintAnalyzer, IncludesSourceSentinelsInEncodedByteRange) {
-    auto const fixture{integer_varint_type(false,
+    lispb::CompilerStorage storage;
+    auto const fixture{integer_varint_type(storage,
+                                           false,
                                            0,
                                            100,
-                                           codegen::IntegerVarintEncoding::unsigned_varint,
+                                           lispb::codegen::IntegerVarintEncoding::unsigned_varint,
                                            (std::numeric_limits<std::uint64_t>::max)())};
 
     auto const analysis{Analyzer::analyze_integer_varint(fixture.types, fixture.type)};
@@ -1140,8 +1229,9 @@ TEST(IntegerVarintAnalyzer, IncludesSourceSentinelsInEncodedByteRange) {
 }
 
 TEST(IntegerVarintAnalyzer, ReportsSignedLeb128RangeAcrossZero) {
-    auto const fixture{
-        integer_varint_type(true, -65, 64, codegen::IntegerVarintEncoding::signed_varint)};
+    lispb::CompilerStorage storage;
+    auto const fixture{integer_varint_type(
+        storage, true, -65, 64, lispb::codegen::IntegerVarintEncoding::signed_varint)};
 
     auto const analysis{Analyzer::analyze_integer_varint(fixture.types, fixture.type)};
 
@@ -1150,10 +1240,12 @@ TEST(IntegerVarintAnalyzer, ReportsSignedLeb128RangeAcrossZero) {
 }
 
 TEST(IntegerVarintAnalyzer, HandlesFullSignedZigzagRangeAndAggregateOverflow) {
-    auto const fixture{integer_varint_type(true,
+    lispb::CompilerStorage storage;
+    auto const fixture{integer_varint_type(storage,
+                                           true,
                                            (std::numeric_limits<std::int64_t>::min)(),
                                            (std::numeric_limits<std::int64_t>::max)(),
-                                           codegen::IntegerVarintEncoding::zigzag_varint)};
+                                           lispb::codegen::IntegerVarintEncoding::zigzag_varint)};
 
     auto const analysis{Analyzer::analyze_integer_varint(
         fixture.types, fixture.type, (std::numeric_limits<std::uint64_t>::max)())};
@@ -1166,14 +1258,15 @@ TEST(IntegerVarintAnalyzer, HandlesFullSignedZigzagRangeAndAggregateOverflow) {
 }
 
 TEST(IntegerVarintComparison, ComparesSameSourceEncodingBounds) {
-    auto const fixture{integer_varint_pair()};
+    lispb::CompilerStorage storage;
+    auto const fixture{integer_varint_pair(storage)};
 
     auto const comparison{
         Analyzer::compare_integer_varint(fixture.types, fixture.first, fixture.second, 1'000)};
 
     EXPECT_TRUE(comparison.compatible_source);
-    EXPECT_EQ(comparison.first.encoding, codegen::IntegerVarintEncoding::signed_varint);
-    EXPECT_EQ(comparison.second.encoding, codegen::IntegerVarintEncoding::zigzag_varint);
+    EXPECT_EQ(comparison.first.encoding, lispb::codegen::IntegerVarintEncoding::signed_varint);
+    EXPECT_EQ(comparison.second.encoding, lispb::codegen::IntegerVarintEncoding::zigzag_varint);
     ASSERT_TRUE(comparison.minimum_encoded_byte_delta.has_value());
     EXPECT_EQ(comparison.minimum_encoded_byte_delta->direction, NumericDeltaDirection::unchanged);
     ASSERT_TRUE(comparison.maximum_encoded_byte_delta.has_value());
@@ -1186,7 +1279,8 @@ TEST(IntegerVarintComparison, ComparesSameSourceEncodingBounds) {
 }
 
 TEST(IntegerVarintComparison, RejectsDifferentSemanticSources) {
-    auto const fixture{integer_varint_pair(false)};
+    lispb::CompilerStorage storage;
+    auto const fixture{integer_varint_pair(storage, false)};
 
     auto const comparison{
         Analyzer::compare_integer_varint(fixture.types, fixture.first, fixture.second)};
@@ -1198,8 +1292,9 @@ TEST(IntegerVarintComparison, RejectsDifferentSemanticSources) {
 }
 
 TEST(IntegerVarintDistribution, ComputesWeightedExpectedSizeFromExplicitValues) {
-    auto const fixture{
-        integer_varint_type(false, 0, 16'384, codegen::IntegerVarintEncoding::unsigned_varint)};
+    lispb::CompilerStorage storage;
+    auto const fixture{integer_varint_type(
+        storage, false, 0, 16'384, lispb::codegen::IntegerVarintEncoding::unsigned_varint)};
     std::array const entries{IntegerVarintDistributionEntry{.value = 0, .weight = 1},
                              IntegerVarintDistributionEntry{.value = 128, .weight = 3},
                              IntegerVarintDistributionEntry{.value = 16'384, .weight = 1}};
@@ -1225,8 +1320,9 @@ TEST(IntegerVarintDistribution, ComputesWeightedExpectedSizeFromExplicitValues) 
 }
 
 TEST(IntegerVarintDistribution, ComputesSignedAndZigZagWeightedSizes) {
-    auto const signed_fixture{
-        integer_varint_type(true, -65, 64, codegen::IntegerVarintEncoding::signed_varint)};
+    lispb::CompilerStorage storage;
+    auto const signed_fixture{integer_varint_type(
+        storage, true, -65, 64, lispb::codegen::IntegerVarintEncoding::signed_varint)};
     std::array const entries{IntegerVarintDistributionEntry{.value = -64, .weight = 2},
                              IntegerVarintDistributionEntry{.value = 64, .weight = 1}};
 
@@ -1240,8 +1336,8 @@ TEST(IntegerVarintDistribution, ComputesSignedAndZigZagWeightedSizes) {
     ASSERT_TRUE(signed_analysis.expected_selected_bytes.has_value());
     EXPECT_NEAR(static_cast<double>(*signed_analysis.expected_selected_bytes), 4.0, 1e-12);
 
-    auto const zigzag_fixture{
-        integer_varint_type(true, -65, 64, codegen::IntegerVarintEncoding::zigzag_varint)};
+    auto const zigzag_fixture{integer_varint_type(
+        storage, true, -65, 64, lispb::codegen::IntegerVarintEncoding::zigzag_varint)};
     auto const zigzag_analysis{Analyzer::analyze_integer_varint_distribution(
         zigzag_fixture.types, zigzag_fixture.type, entries, 3)};
 
@@ -1253,8 +1349,9 @@ TEST(IntegerVarintDistribution, ComputesSignedAndZigZagWeightedSizes) {
 }
 
 TEST(IntegerVarintDistribution, EmptyInputKeepsExpectedSizeUnknown) {
-    auto const fixture{
-        integer_varint_type(false, 0, 100, codegen::IntegerVarintEncoding::unsigned_varint)};
+    lispb::CompilerStorage storage;
+    auto const fixture{integer_varint_type(
+        storage, false, 0, 100, lispb::codegen::IntegerVarintEncoding::unsigned_varint)};
 
     auto const analysis{Analyzer::analyze_integer_varint_distribution(
         fixture.types, fixture.type, std::span<IntegerVarintDistributionEntry const>{})};
@@ -1268,10 +1365,12 @@ TEST(IntegerVarintDistribution, EmptyInputKeepsExpectedSizeUnknown) {
 }
 
 TEST(IntegerVarintDistribution, AcceptsSentinelsAndDuplicateEntries) {
-    auto const fixture{integer_varint_type(false,
+    lispb::CompilerStorage storage;
+    auto const fixture{integer_varint_type(storage,
+                                           false,
                                            0,
                                            100,
-                                           codegen::IntegerVarintEncoding::unsigned_varint,
+                                           lispb::codegen::IntegerVarintEncoding::unsigned_varint,
                                            (std::numeric_limits<std::uint64_t>::max)())};
     std::array const entries{
         IntegerVarintDistributionEntry{.value = 0, .weight = 2},
@@ -1290,8 +1389,9 @@ TEST(IntegerVarintDistribution, AcceptsSentinelsAndDuplicateEntries) {
 }
 
 TEST(IntegerVarintDistribution, RejectsOutOfDomainAndZeroWeightOnlyInput) {
-    auto const fixture{
-        integer_varint_type(false, 0, 100, codegen::IntegerVarintEncoding::unsigned_varint)};
+    lispb::CompilerStorage storage;
+    auto const fixture{integer_varint_type(
+        storage, false, 0, 100, lispb::codegen::IntegerVarintEncoding::unsigned_varint)};
     std::array const entries{IntegerVarintDistributionEntry{.value = 50, .weight = 0},
                              IntegerVarintDistributionEntry{.value = 101, .weight = 4}};
 
@@ -1308,10 +1408,12 @@ TEST(IntegerVarintDistribution, RejectsOutOfDomainAndZeroWeightOnlyInput) {
 }
 
 TEST(IntegerVarintDistribution, KeepsNumericalExpectationWhenExactTotalsOverflow) {
-    auto const fixture{integer_varint_type(true,
+    lispb::CompilerStorage storage;
+    auto const fixture{integer_varint_type(storage,
+                                           true,
                                            (std::numeric_limits<std::int64_t>::min)(),
                                            (std::numeric_limits<std::int64_t>::max)(),
-                                           codegen::IntegerVarintEncoding::zigzag_varint)};
+                                           lispb::codegen::IntegerVarintEncoding::zigzag_varint)};
     std::array const entries{IntegerVarintDistributionEntry{
                                  .value = 0, .weight = (std::numeric_limits<std::uint64_t>::max)()},
                              IntegerVarintDistributionEntry{.value = 1, .weight = 1}};
@@ -1327,8 +1429,9 @@ TEST(IntegerVarintDistribution, KeepsNumericalExpectationWhenExactTotalsOverflow
 }
 
 TEST(IntegerVarintDistribution, RetainsEntryFactsWhenWeightedBytesOverflow) {
-    auto const fixture{
-        integer_varint_type(true, -64, 64, codegen::IntegerVarintEncoding::zigzag_varint)};
+    lispb::CompilerStorage storage;
+    auto const fixture{integer_varint_type(
+        storage, true, -64, 64, lispb::codegen::IntegerVarintEncoding::zigzag_varint)};
     std::array const entries{IntegerVarintDistributionEntry{
         .value = 64, .weight = (std::numeric_limits<std::uint64_t>::max)()}};
 
@@ -1346,7 +1449,8 @@ TEST(IntegerVarintDistribution, RetainsEntryFactsWhenWeightedBytesOverflow) {
 }
 
 TEST(IntegerVarintDistributionComparison, AppliesOneDistributionToBothEncodings) {
-    auto const fixture{integer_varint_pair()};
+    lispb::CompilerStorage storage;
+    auto const fixture{integer_varint_pair(storage)};
     std::array const entries{IntegerVarintDistributionEntry{.value = -64, .weight = 2},
                              IntegerVarintDistributionEntry{.value = 64, .weight = 1}};
 
@@ -1368,7 +1472,8 @@ TEST(IntegerVarintDistributionComparison, AppliesOneDistributionToBothEncodings)
 }
 
 TEST(IntegerVarintDistributionComparison, RejectsDifferentSemanticSources) {
-    auto const fixture{integer_varint_pair(false)};
+    lispb::CompilerStorage storage;
+    auto const fixture{integer_varint_pair(storage, false)};
     std::array const entries{IntegerVarintDistributionEntry{.value = 0, .weight = 1}};
 
     auto const comparison{Analyzer::compare_integer_varint_distribution(

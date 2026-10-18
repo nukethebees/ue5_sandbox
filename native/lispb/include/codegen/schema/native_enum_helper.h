@@ -1,10 +1,11 @@
 #pragma once
 
+#include <cstdint>
 #include <string_view>
 
-namespace codegen {
+namespace lispb::codegen {
 
-enum class NativeEnumHelper {
+enum class NativeEnumHelper : std::uint8_t {
     to_string,
     try_parse,
     to_display_string,
@@ -31,4 +32,4 @@ constexpr auto native_enum_helper_name(NativeEnumHelper const helper) -> std::st
     return {};
 }
 
-} // namespace codegen
+} // namespace lispb::codegen

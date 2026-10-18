@@ -2,16 +2,37 @@
 #include <ioj/layout/analyzer.hpp>
 #include <ioj/layout/physical_facts.hpp>
 
+#include <codegen/ast/cpp_types.h>
 #include <codegen/schema.h>
+#include <codegen/schema/declarations.h>
+#include <codegen/schema/indices.h>
+#include <codegen/schema/integer_varint_encoding.h>
+#include <codegen/schema/packed_integer_value.h>
+#include <codegen/schema/packed_named_code_schemas.h>
+#include <codegen/schema/schema_range.h>
+#include <codegen/schema/semantic_relation_kind.h>
+#include <codegen/schema/semantic_relation_unit.h>
+#include <lispb/schema/enum_domains.h>
 #include <lispb/schema/enum_storage_requirement.h>
+#include <lispb/schema/enum_types.h>
+#include <lispb/schema/indices.h>
+#include <lispb/schema/packed_fields.h>
+#include <lispb/schema/packed_types.h>
+#include <lispb/schema/soa_columns.h>
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <limits>
 #include <numeric>
+#include <optional>
+#include <ranges>
 #include <set>
+#include <span>
+#include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace ioj::layout {
 namespace {
@@ -143,15 +164,15 @@ inline auto relationship_code_space_extent_limit(std::uint32_t const width,
 }
 
 inline auto relationship_semantic_extent_limit(
-    codegen::SemanticRelationKind const kind,
-    std::optional<codegen::PackedIntegerValue> const minimum_value,
-    std::optional<codegen::PackedIntegerValue> const maximum_value)
+    lispb::codegen::SemanticRelationKind const kind,
+    std::optional<lispb::codegen::PackedIntegerValue> const minimum_value,
+    std::optional<lispb::codegen::PackedIntegerValue> const maximum_value)
     -> std::optional<std::uint64_t> {
     if (!minimum_value.has_value() || !maximum_value.has_value() || minimum_value->negative ||
         minimum_value->magnitude != 0 || maximum_value->negative) {
         return std::nullopt;
     }
-    if (kind == codegen::SemanticRelationKind::count_of) {
+    if (kind == lispb::codegen::SemanticRelationKind::count_of) {
         return maximum_value->magnitude;
     }
     if (maximum_value->magnitude == (std::numeric_limits<std::uint64_t>::max)()) {
@@ -161,21 +182,31 @@ inline auto relationship_semantic_extent_limit(
 }
 
 inline auto relationship_sentinel_extent_limit(
-    codegen::SemanticRelationKind const kind,
-    std::span<lispb::schema::PackedNamedCode const> const named_codes)
+    lispb::codegen::Declarations const& declarations,
+    lispb::codegen::SemanticRelationKind const kind,
+    lispb::codegen::SchemaRange<lispb::codegen::PackedNamedCodeId> const named_codes)
     -> std::optional<std::uint64_t> {
     auto limit{(std::numeric_limits<std::uint64_t>::max)()};
-    for (auto const& code : named_codes) {
-        if (!code.sentinel) {
+    for (auto const code_id : declarations.items(named_codes)) {
+        auto const code{code_id};
+        if (!declarations.packed_named_codes
+                 .sentinel[declarations.packed_named_codes.index(code)]) {
             continue;
         }
-        if (code.value.negative ||
-            (kind == codegen::SemanticRelationKind::count_of && code.value.magnitude == 0)) {
+        if (declarations.packed_named_codes.value[declarations.packed_named_codes.index(code)]
+                .negative ||
+            (kind == lispb::codegen::SemanticRelationKind::count_of &&
+             declarations.packed_named_codes.value[declarations.packed_named_codes.index(code)]
+                     .magnitude == 0)) {
             return std::nullopt;
         }
-        auto const candidate{kind == codegen::SemanticRelationKind::count_of
-                                 ? code.value.magnitude - 1
-                                 : code.value.magnitude};
+        auto const candidate{
+            kind == lispb::codegen::SemanticRelationKind::count_of
+                ? declarations.packed_named_codes.value[declarations.packed_named_codes.index(code)]
+                          .magnitude -
+                      1
+                : declarations.packed_named_codes.value[declarations.packed_named_codes.index(code)]
+                      .magnitude};
         limit = std::min(limit, candidate);
     }
     return limit;
@@ -197,23 +228,28 @@ struct RelationshipExtentAnalysis {
 };
 
 inline auto analyze_unsigned_relationship_extent(
+    lispb::codegen::Declarations const& declarations,
     std::string_view const context,
-    codegen::SemanticRelationKind const kind,
+    lispb::codegen::SemanticRelationKind const kind,
     std::uint64_t const target_extent,
-    std::span<lispb::schema::PackedNamedCode const> const named_codes,
+    lispb::codegen::SchemaRange<lispb::codegen::PackedNamedCodeId> const named_codes,
     std::uint32_t const width,
-    std::optional<codegen::PackedIntegerValue> const minimum_value,
-    std::optional<codegen::PackedIntegerValue> const maximum_value) -> RelationshipExtentAnalysis {
-    auto const includes_terminal_count{kind == codegen::SemanticRelationKind::count_of};
+    std::optional<lispb::codegen::PackedIntegerValue> const minimum_value,
+    std::optional<lispb::codegen::PackedIntegerValue> const maximum_value)
+    -> RelationshipExtentAnalysis {
+    auto const includes_terminal_count{kind == lispb::codegen::SemanticRelationKind::count_of};
     auto const sentinel_count{static_cast<std::uint64_t>(
-        std::ranges::count(named_codes, true, &lispb::schema::PackedNamedCode::sentinel))};
+        std::ranges::count_if(declarations.items(named_codes), [&](auto id) {
+            return declarations.packed_named_codes
+                .sentinel[declarations.packed_named_codes.index(id)];
+        }))};
     auto const requirement{
         relationship_extent_requirement(target_extent, includes_terminal_count, sentinel_count)};
     auto const capacity_limit{
         relationship_code_space_extent_limit(width, includes_terminal_count, sentinel_count)};
     auto const semantic_limit{
         relationship_semantic_extent_limit(kind, minimum_value, maximum_value)};
-    auto const sentinel_limit{relationship_sentinel_extent_limit(kind, named_codes)};
+    auto const sentinel_limit{relationship_sentinel_extent_limit(declarations, kind, named_codes)};
     auto effective_limit{std::optional<std::uint64_t>{}};
     if (capacity_limit.has_value() && semantic_limit.has_value() && sentinel_limit.has_value()) {
         effective_limit = std::min({*capacity_limit, *semantic_limit, *sentinel_limit});
@@ -236,29 +272,45 @@ inline auto analyze_unsigned_relationship_extent(
         includes_terminal_count ? target_extent
                                 : (target_extent == 0 ? std::uint64_t{0} : target_extent - 1)};
     auto maximum_encoded_value{maximum_live_value};
-    for (auto const& code : named_codes) {
-        if (!code.sentinel) {
+    for (auto const code_id : declarations.items(named_codes)) {
+        auto const code{code_id};
+        if (!declarations.packed_named_codes
+                 .sentinel[declarations.packed_named_codes.index(code)]) {
             continue;
         }
-        maximum_encoded_value = std::max(maximum_encoded_value, code.value.magnitude);
-        auto const collides{!code.value.negative && has_live_value &&
-                            (includes_terminal_count ? code.value.magnitude <= target_extent
-                                                     : code.value.magnitude < target_extent)};
+        maximum_encoded_value = std::max(
+            maximum_encoded_value,
+            declarations.packed_named_codes.value[declarations.packed_named_codes.index(code)]
+                .magnitude);
+        auto const collides{
+            !declarations.packed_named_codes.value[declarations.packed_named_codes.index(code)]
+                 .negative &&
+            has_live_value &&
+            (includes_terminal_count ? declarations.packed_named_codes
+                                               .value[declarations.packed_named_codes.index(code)]
+                                               .magnitude <= target_extent
+                                     : declarations.packed_named_codes
+                                               .value[declarations.packed_named_codes.index(code)]
+                                               .magnitude < target_extent)};
         if (collides) {
             result.diagnostics.push_back(
                 {DiagnosticSeverity::error,
-                 std::string{context} + " sentinel code '" + code.name +
+                 std::string{context} + " sentinel code '" +
+                     std::string{declarations.strings().view(
+                         declarations.packed_named_codes
+                             .name[declarations.packed_named_codes.index(code)])} +
                      "' collides with the live values required by its '" +
-                     std::string{codegen::semantic_relation_kind_name(kind)} + "' target extent."});
+                     std::string{lispb::codegen::semantic_relation_kind_name(kind)} +
+                     "' target extent."});
         }
     }
 
     auto numeric_bits{std::uint32_t{1}};
     if (has_live_value || sentinel_count != 0) {
-        auto const numeric_requirement{
-            codegen::minimum_packed_integer_bits(codegen::PackedIntegerValue{0},
-                                                 codegen::PackedIntegerValue{maximum_encoded_value},
-                                                 false)};
+        auto const numeric_requirement{lispb::codegen::minimum_packed_integer_bits(
+            lispb::codegen::PackedIntegerValue{0},
+            lispb::codegen::PackedIntegerValue{maximum_encoded_value},
+            false)};
         numeric_bits = numeric_requirement.value_or(65);
     }
     result.minimum_required_bits = std::max(requirement.minimum_code_count_bits, numeric_bits);
@@ -273,12 +325,12 @@ inline auto analyze_unsigned_relationship_extent(
         result.effective_capacity_headroom = *result.effective_capacity_limit - target_extent;
     }
     if (!result.width_sufficient) {
-        result.diagnostics.push_back({DiagnosticSeverity::error,
-                                      std::string{context} + " uses " + std::to_string(width) +
-                                          " bits but its '" +
-                                          std::string{codegen::semantic_relation_kind_name(kind)} +
-                                          "' target extent requires at least " +
-                                          std::to_string(result.minimum_required_bits) + " bits."});
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             std::string{context} + " uses " + std::to_string(width) + " bits but its '" +
+                 std::string{lispb::codegen::semantic_relation_kind_name(kind)} +
+                 "' target extent requires at least " +
+                 std::to_string(result.minimum_required_bits) + " bits."});
     }
     if (has_live_value && minimum_value.has_value() && maximum_value.has_value() &&
         (minimum_value->negative || minimum_value->magnitude != 0 || maximum_value->negative ||
@@ -287,31 +339,37 @@ inline auto analyze_unsigned_relationship_extent(
             {DiagnosticSeverity::error,
              std::string{context} +
                  " semantic range does not cover the live values required by its '" +
-                 std::string{codegen::semantic_relation_kind_name(kind)} + "' target extent."});
+                 std::string{lispb::codegen::semantic_relation_kind_name(kind)} +
+                 "' target extent."});
     }
     return result;
 }
 
-inline auto relationship_target_extent(lispb::schema::SemanticRelationship const& relationship,
+inline auto relationship_target_extent(lispb::schema::TypeGraph const& types,
+                                       lispb::schema::RelationshipId const relationship,
                                        RelationshipTargetFacts const& target_facts)
     -> std::optional<std::uint64_t> {
-    if (relationship.kind == codegen::SemanticRelationKind::index_into ||
-        relationship.kind == codegen::SemanticRelationKind::count_of) {
+    if (types.relationships().kind[types.relationships().index(relationship)] ==
+            lispb::codegen::SemanticRelationKind::index_into ||
+        types.relationships().kind[types.relationships().index(relationship)] ==
+            lispb::codegen::SemanticRelationKind::count_of) {
         return target_facts.element_capacity;
     }
-    if (relationship.kind != codegen::SemanticRelationKind::offset_into ||
-        !relationship.unit.has_value()) {
+    if (types.relationships().kind[types.relationships().index(relationship)] !=
+            lispb::codegen::SemanticRelationKind::offset_into ||
+        !types.relationships().unit[types.relationships().index(relationship)].has_value()) {
         return std::nullopt;
     }
-    return *relationship.unit == codegen::SemanticRelationUnit::elements
+    return *types.relationships().unit[types.relationships().index(relationship)] ==
+                   lispb::codegen::SemanticRelationUnit::elements
              ? target_facts.element_capacity
              : target_facts.byte_extent;
 }
 
-inline auto packed_range_count(codegen::PackedIntegerValue const minimum,
-                               codegen::PackedIntegerValue const maximum)
+inline auto packed_range_count(lispb::codegen::PackedIntegerValue const minimum,
+                               lispb::codegen::PackedIntegerValue const maximum)
     -> std::optional<std::uint64_t> {
-    if (codegen::packed_integer_less(maximum, minimum)) {
+    if (lispb::codegen::packed_integer_less(maximum, minimum)) {
         return std::nullopt;
     }
     if (minimum.negative && maximum.negative) {
@@ -324,10 +382,10 @@ inline auto packed_range_count(codegen::PackedIntegerValue const minimum,
     return through_zero.has_value() ? checked_add(*through_zero, 1) : std::nullopt;
 }
 
-inline auto packed_range_span(codegen::PackedIntegerValue const minimum,
-                              codegen::PackedIntegerValue const maximum)
+inline auto packed_range_span(lispb::codegen::PackedIntegerValue const minimum,
+                              lispb::codegen::PackedIntegerValue const maximum)
     -> std::optional<std::uint64_t> {
-    if (codegen::packed_integer_less(maximum, minimum)) {
+    if (lispb::codegen::packed_integer_less(maximum, minimum)) {
         return std::nullopt;
     }
     if (minimum.negative && maximum.negative) {
@@ -339,7 +397,8 @@ inline auto packed_range_span(codegen::PackedIntegerValue const minimum,
     return checked_add(minimum.magnitude, maximum.magnitude);
 }
 
-inline auto packed_integer_as_long_double(codegen::PackedIntegerValue const value) -> long double {
+inline auto packed_integer_as_long_double(lispb::codegen::PackedIntegerValue const value)
+    -> long double {
     auto const magnitude{static_cast<long double>(value.magnitude)};
     return value.negative ? -magnitude : magnitude;
 }
@@ -388,37 +447,58 @@ inline auto enum_domain_fits_backing(EnumCodeValue const minimum,
     return minimum_fits && maximum_fits;
 }
 
-inline auto effective_field_width(lispb::schema::TypeId const type,
-                                  lispb::schema::PackedField const& field,
+inline auto effective_field_width(lispb::schema::TypeGraph const& types,
+                                  lispb::schema::TypeId const type,
+                                  lispb::schema::PackedSegmentId const& field,
                                   Variant const& variant) -> std::uint32_t {
-    auto const found{variant.overrides.packed_field_widths.find(
-        FieldOverrideId{.type = type, .field_name = field.name})};
-    return found == variant.overrides.packed_field_widths.end() ? field.bit_width : found->second;
+    auto const found{variant.overrides.packed_field_widths.find(FieldOverrideId{
+        .type = type,
+        .field_name = std::string{types.strings().view(
+            types.definitions()
+                .packed_fields.name[types.definitions().packed_fields.index(field)])}})};
+    return found == variant.overrides.packed_field_widths.end()
+             ? types.definitions()
+                   .packed_fields.bit_width[types.definitions().packed_fields.index(field)]
+             : found->second;
 }
 
 inline auto effective_storage_type(lispb::schema::TypeGraph const& types,
                                    lispb::schema::TypeId const type,
-                                   lispb::schema::PackedType const& packed,
+                                   lispb::schema::TypeDefinitionId const& packed,
                                    Variant const& variant) -> std::string {
     auto const found{variant.overrides.packed_storage_types.find(type)};
     if (found != variant.overrides.packed_storage_types.end()) {
         return found->second;
     }
-    return physical_type_spelling(types, packed.storage_type)
-        .value_or(packed.storage_type.cpp_type.spelling);
+    return physical_type_spelling(
+               types,
+               types.definitions().packed.storage_type[types.definitions().packed.index(packed)])
+        .value_or(std::string{
+            types.cpp_types().spelling(types.occurrences().cpp_type[types.occurrences().index(
+                types.definitions()
+                    .packed.storage_type[types.definitions().packed.index(packed)])])});
 }
 
 inline auto effective_column_type(lispb::schema::TypeGraph const& types,
                                   lispb::schema::TypeId const type,
-                                  lispb::schema::SoaColumn const& column,
+                                  lispb::schema::SoaColumnId const& column,
                                   Variant const& variant) -> std::string {
-    auto const found{variant.overrides.soa_column_types.find(
-        FieldOverrideId{.type = type, .field_name = column.name})};
+    auto const found{variant.overrides.soa_column_types.find(FieldOverrideId{
+        .type = type,
+        .field_name = std::string{types.strings().view(
+            types.definitions()
+                .soa_columns.name[types.definitions().soa_columns.index(column)])}})};
     if (found != variant.overrides.soa_column_types.end()) {
         return found->second;
     }
-    return physical_type_spelling(types, column.semantic_type)
-        .value_or(column.semantic_type.cpp_type.spelling);
+    return physical_type_spelling(
+               types,
+               types.definitions()
+                   .soa_columns.semantic_type[types.definitions().soa_columns.index(column)])
+        .value_or(std::string{
+            types.cpp_types().spelling(types.occurrences().cpp_type[types.occurrences().index(
+                types.definitions()
+                    .soa_columns.semantic_type[types.definitions().soa_columns.index(column)])])});
 }
 
 inline auto minimum_regions(std::uint64_t const bytes, std::uint64_t const region_bytes)
@@ -673,23 +753,16 @@ inline auto cache_line_tiling(std::uint64_t const element_bytes,
             .minimum_cache_lines_per_element = minimum_regions(element_bytes, cache_line_bytes)};
 }
 
-inline auto resolved_enum_domain(lispb::schema::EnumType const& enumeration)
-    -> lispb::schema::EnumDomain {
-    std::vector<lispb::schema::EnumDomainInput> values;
-    values.reserve(enumeration.enumerators.size());
-    for (auto const& enumerator : enumeration.enumerators) {
-        values.push_back({.name = enumerator.name,
-                          .explicit_value = enumerator.explicit_value,
-                          .reserved = enumerator.sentinel || enumerator.count_sentinel});
-    }
-    return lispb::schema::analyze_enum_domain(values, enumeration.signedness);
-}
-
-inline auto derived_enum_backing_type(lispb::schema::EnumType const& enumeration)
+inline auto derived_enum_backing_type(lispb::schema::TypeGraph const& types,
+                                      lispb::schema::TypeDefinitionId const& enumeration)
     -> std::optional<std::string> {
-    auto const domain{resolved_enum_domain(enumeration)};
-    auto const requirement{
-        lispb::schema::derive_enum_storage_requirement(domain, enumeration.bit_width)};
+    auto const& domains{types.enum_domains()};
+    auto const domain{
+        types.definitions().enums.domain[types.definitions().enums.index(enumeration)]};
+    auto const requirement{lispb::schema::derive_enum_storage_requirement(
+        domains,
+        domain,
+        types.definitions().enums.bit_width[types.definitions().enums.index(enumeration)])};
     if (!requirement.has_value()) {
         return std::nullopt;
     }
@@ -741,7 +814,7 @@ inline auto unsigned_varint_bytes(std::uint64_t value) -> std::uint32_t {
     return bytes;
 }
 
-inline auto signed_integer_value(codegen::PackedIntegerValue const value) -> std::int64_t {
+inline auto signed_integer_value(lispb::codegen::PackedIntegerValue const value) -> std::int64_t {
     if (!value.negative) {
         return static_cast<std::int64_t>(value.magnitude);
     }
@@ -764,18 +837,19 @@ inline auto signed_varint_bytes(std::int64_t value) -> std::uint32_t {
     }
 }
 
-inline auto zigzag_value(codegen::PackedIntegerValue const value) -> std::uint64_t {
+inline auto zigzag_value(lispb::codegen::PackedIntegerValue const value) -> std::uint64_t {
     return value.negative ? value.magnitude * 2 - 1 : value.magnitude * 2;
 }
 
-inline auto integer_varint_bytes(codegen::PackedIntegerValue const value,
-                                 codegen::IntegerVarintEncoding const encoding) -> std::uint32_t {
+inline auto integer_varint_bytes(lispb::codegen::PackedIntegerValue const value,
+                                 lispb::codegen::IntegerVarintEncoding const encoding)
+    -> std::uint32_t {
     switch (encoding) {
-        case codegen::IntegerVarintEncoding::unsigned_varint:
+        case lispb::codegen::IntegerVarintEncoding::unsigned_varint:
             return unsigned_varint_bytes(value.magnitude);
-        case codegen::IntegerVarintEncoding::signed_varint:
+        case lispb::codegen::IntegerVarintEncoding::signed_varint:
             return signed_varint_bytes(signed_integer_value(value));
-        case codegen::IntegerVarintEncoding::zigzag_varint:
+        case lispb::codegen::IntegerVarintEncoding::zigzag_varint:
             return unsigned_varint_bytes(zigzag_value(value));
     }
     return 0;

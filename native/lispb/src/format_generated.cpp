@@ -2,8 +2,14 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstddef>
+#include <filesystem>
 #include <fstream>
+#include <ios>
+#include <iterator>
 #include <stdexcept>
+#include <string>
+#include <system_error>
 
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
@@ -16,7 +22,7 @@
 #include <cerrno>
 #endif
 
-namespace codegen::detail {
+namespace lispb::codegen::detail {
 namespace {
 
 class FormatTemporary {

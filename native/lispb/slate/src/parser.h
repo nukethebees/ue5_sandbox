@@ -1,14 +1,16 @@
 #pragma once
 
-#include "syntax.h"
-
 #include <codegen/sexpr/reader.h>
+#include <codegen/sexpr/syntax.h>
+#include <slate_codegen/document.h>
 
 #include <string_view>
 #include <vector>
 
 namespace slate_codegen::detail {
 
-auto parse(std::string_view path, std::vector<codegen::sexpr::Form> const& forms) -> Document;
+void parse(lispb::codegen::sexpr::Syntax& syntax,
+           lispb::codegen::sexpr::HandleRange forms,
+           Document& document);
 
 }

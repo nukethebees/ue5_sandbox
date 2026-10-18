@@ -4,7 +4,17 @@
 #include <ioj/layout/diagnostic.hpp>
 #include <ioj/layout/workspace.hpp>
 
-#include <lispb/schema/enum_domain.h>
+#include <codegen/schema/fixed_point_rounding.h>
+#include <codegen/schema/integer_varint_encoding.h>
+#include <codegen/schema/packed_bit_order.h>
+#include <codegen/schema/packed_byte_order.h>
+#include <codegen/schema/packed_field_kind.h>
+#include <codegen/schema/packed_integer_value.h>
+#include <codegen/schema/quantization_clipping.h>
+#include <codegen/schema/semantic_relation_kind.h>
+#include <codegen/schema/semantic_relation_unit.h>
+#include <lispb/schema/enum_code.h>
+#include <lispb/schema/indices.h>
 #include <lispb/schema/type_graph.h>
 
 #include <cstdint>
@@ -106,7 +116,7 @@ struct EnumTargetComparison {
 
 struct PackedNamedCodeAnalysis {
     std::string name;
-    codegen::PackedIntegerValue value;
+    lispb::codegen::PackedIntegerValue value;
     bool sentinel{};
 };
 
@@ -120,8 +130,8 @@ struct ExactCodeCount {
 struct IntegerScalarAnalysis {
     lispb::schema::TypeId type;
     bool signedness{};
-    codegen::PackedIntegerValue minimum_value;
-    codegen::PackedIntegerValue maximum_value;
+    lispb::codegen::PackedIntegerValue minimum_value;
+    lispb::codegen::PackedIntegerValue maximum_value;
     std::optional<std::uint64_t> live_value_count;
     std::uint64_t sentinel_code_count{};
     std::optional<std::uint64_t> required_code_count;
@@ -130,8 +140,8 @@ struct IntegerScalarAnalysis {
     std::uint32_t effective_bit_width{};
     std::optional<std::uint64_t> unused_codes;
     std::vector<PackedNamedCodeAnalysis> named_codes;
-    std::optional<codegen::SemanticRelationKind> relationship_kind;
-    std::optional<codegen::SemanticRelationUnit> relationship_unit;
+    std::optional<lispb::codegen::SemanticRelationKind> relationship_kind;
+    std::optional<lispb::codegen::SemanticRelationUnit> relationship_unit;
     std::optional<std::string> relationship_target;
     std::optional<std::uint64_t> relationship_target_extent;
     std::optional<ExactCodeCount> relationship_live_value_count;
@@ -165,10 +175,10 @@ struct OptionalSentinelAnalysis {
     lispb::schema::TypeId type;
     lispb::schema::TypeId source_type;
     std::string sentinel_name;
-    codegen::PackedIntegerValue sentinel_value;
+    lispb::codegen::PackedIntegerValue sentinel_value;
     bool source_signedness{};
-    codegen::PackedIntegerValue source_minimum;
-    codegen::PackedIntegerValue source_maximum;
+    lispb::codegen::PackedIntegerValue source_minimum;
+    lispb::codegen::PackedIntegerValue source_maximum;
     std::optional<std::uint64_t> present_value_count;
     std::uint64_t absence_code_count{1};
     std::uint64_t other_sentinel_code_count{};
@@ -184,8 +194,8 @@ struct OptionalPresenceBitAnalysis {
     lispb::schema::TypeId type;
     lispb::schema::TypeId source_type;
     bool source_signedness{};
-    codegen::PackedIntegerValue source_minimum;
-    codegen::PackedIntegerValue source_maximum;
+    lispb::codegen::PackedIntegerValue source_minimum;
+    lispb::codegen::PackedIntegerValue source_maximum;
     std::optional<std::uint64_t> present_value_count;
     std::uint64_t canonical_absence_state_count{1};
     std::uint64_t source_sentinel_code_count{};
@@ -231,8 +241,8 @@ struct OptionalEncodingComparison {
 struct LinearQuantizedAnalysis {
     lispb::schema::TypeId type;
     lispb::schema::TypeId source_type;
-    codegen::PackedIntegerValue source_minimum;
-    codegen::PackedIntegerValue source_maximum;
+    lispb::codegen::PackedIntegerValue source_minimum;
+    lispb::codegen::PackedIntegerValue source_maximum;
     std::optional<std::uint64_t> source_span;
     std::uint32_t encoded_storage_bits{};
     ExactCodeCount total_code_count;
@@ -242,7 +252,7 @@ struct LinearQuantizedAnalysis {
     long double maximum_rounding_error{};
     bool minimum_endpoint_exact{};
     bool maximum_endpoint_exact{};
-    codegen::QuantizationClipping clipping{codegen::QuantizationClipping::reject};
+    lispb::codegen::QuantizationClipping clipping{lispb::codegen::QuantizationClipping::reject};
 };
 
 struct LinearQuantizedComparison {
@@ -269,10 +279,10 @@ struct FixedPointAnalysis {
     std::uint32_t total_bits{};
     std::uint32_t fractional_bits{};
     std::uint32_t whole_bits{};
-    codegen::PackedIntegerValue minimum_raw_value;
-    codegen::PackedIntegerValue maximum_raw_value;
-    codegen::PackedIntegerValue minimum_allowed_raw_value;
-    codegen::PackedIntegerValue maximum_allowed_raw_value;
+    lispb::codegen::PackedIntegerValue minimum_raw_value;
+    lispb::codegen::PackedIntegerValue maximum_raw_value;
+    lispb::codegen::PackedIntegerValue minimum_allowed_raw_value;
+    lispb::codegen::PackedIntegerValue maximum_allowed_raw_value;
     long double scale{};
     long double resolution{};
     long double minimum_value{};
@@ -280,7 +290,7 @@ struct FixedPointAnalysis {
     long double minimum_allowed_value{};
     long double maximum_allowed_value{};
     long double maximum_rounding_error{};
-    codegen::FixedPointRounding rounding{codegen::FixedPointRounding::nearest_even};
+    lispb::codegen::FixedPointRounding rounding{lispb::codegen::FixedPointRounding::nearest_even};
     std::uint64_t element_count{1};
     std::optional<std::uint64_t> total_encoded_bits;
     std::vector<Diagnostic> diagnostics;
@@ -316,7 +326,8 @@ struct MiniFloatAnalysis {
 struct IntegerVarintAnalysis {
     lispb::schema::TypeId type;
     lispb::schema::TypeId source_type;
-    codegen::IntegerVarintEncoding encoding{codegen::IntegerVarintEncoding::unsigned_varint};
+    lispb::codegen::IntegerVarintEncoding encoding{
+        lispb::codegen::IntegerVarintEncoding::unsigned_varint};
     std::uint32_t minimum_encoded_bytes{};
     std::uint32_t maximum_encoded_bytes{};
     std::uint64_t element_count{1};
@@ -337,12 +348,12 @@ struct IntegerVarintComparison {
 };
 
 struct IntegerVarintDistributionEntry {
-    codegen::PackedIntegerValue value;
+    lispb::codegen::PackedIntegerValue value;
     std::uint64_t weight{};
 };
 
 struct IntegerVarintDistributionEntryAnalysis {
-    codegen::PackedIntegerValue value;
+    lispb::codegen::PackedIntegerValue value;
     std::uint64_t weight{};
     std::uint32_t encoded_bytes{};
     std::optional<std::uint64_t> weighted_encoded_bytes;
@@ -374,7 +385,7 @@ struct PackedFieldAnalysis {
     std::string name;
     std::optional<lispb::schema::TypeId> semantic_type;
     std::string logical_type;
-    codegen::PackedFieldKind kind{codegen::PackedFieldKind::unsigned_integer};
+    lispb::codegen::PackedFieldKind kind{lispb::codegen::PackedFieldKind::unsigned_integer};
     bool reserved{};
     std::uint32_t schema_bit_width{};
     bool schema_bit_width_auto{};
@@ -385,8 +396,8 @@ struct PackedFieldAnalysis {
     std::optional<std::uint64_t> maximum_unsigned_value;
     std::optional<std::int64_t> minimum_signed_value;
     std::optional<std::int64_t> maximum_signed_value;
-    std::optional<codegen::PackedIntegerValue> minimum_semantic_value;
-    std::optional<codegen::PackedIntegerValue> maximum_semantic_value;
+    std::optional<lispb::codegen::PackedIntegerValue> minimum_semantic_value;
+    std::optional<lispb::codegen::PackedIntegerValue> maximum_semantic_value;
     std::optional<std::uint64_t> semantic_value_count;
     std::uint64_t sentinel_code_count{};
     std::optional<std::uint64_t> required_code_count;
@@ -396,8 +407,8 @@ struct PackedFieldAnalysis {
     std::optional<LinearQuantizedAnalysis> linear_quantized;
     std::optional<FixedPointAnalysis> fixed_point;
     std::optional<MiniFloatAnalysis> mini_float;
-    std::optional<codegen::SemanticRelationKind> relationship_kind;
-    std::optional<codegen::SemanticRelationUnit> relationship_unit;
+    std::optional<lispb::codegen::SemanticRelationKind> relationship_kind;
+    std::optional<lispb::codegen::SemanticRelationUnit> relationship_unit;
     std::optional<std::string> relationship_target;
     std::optional<std::uint64_t> relationship_target_extent;
     std::optional<ExactCodeCount> relationship_live_value_count;
@@ -440,8 +451,9 @@ struct PackedAnalysis {
     std::string schema_storage_type;
     std::string storage_type;
     bool storage_overridden{};
-    std::optional<codegen::PackedByteOrder> byte_order;
-    codegen::PackedBitOrder bit_order{codegen::PackedBitOrder::least_significant_first};
+    std::optional<lispb::codegen::PackedByteOrder> byte_order;
+    lispb::codegen::PackedBitOrder bit_order{
+        lispb::codegen::PackedBitOrder::least_significant_first};
     std::optional<TypeFacts> storage_facts;
     std::optional<std::uint64_t> storage_bits;
     std::optional<std::uint64_t> bits_used;
@@ -1459,7 +1471,7 @@ class Analyzer {
 auto physical_type_spelling(lispb::schema::TypeGraph const& types, lispb::schema::TypeId type)
     -> std::optional<std::string>;
 auto physical_type_spelling(lispb::schema::TypeGraph const& types,
-                            lispb::schema::ResolvedTypeRef const& use)
+                            lispb::schema::ResolvedOccurrenceId const use)
     -> std::optional<std::string>;
 
 } // namespace ioj::layout

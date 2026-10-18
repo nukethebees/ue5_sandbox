@@ -1,5 +1,14 @@
 #include "planner_ui_comparison_common.hpp"
 
+#include <codegen/schema/semantic_relation_kind.h>
+#include <codegen/schema/soa_backend.h>
+#include <lispb/schema/type_definitions.h>
+
+#include <cstddef>
+#include <cstdint>
+#include <optional>
+#include <string>
+
 namespace ioj::layout_planner {
 
 void PlannerUi::draw_comparison_panel() {
@@ -16,7 +25,7 @@ void PlannerUi::draw_comparison_panel() {
 
     auto const selected_type{analysis_session_.inputs.selection.type};
     if (!selected_type.has_value() ||
-        !declaration_capabilities(analysis_session_.inputs.workspace.types().type(*selected_type))
+        !declaration_capabilities(analysis_session_.inputs.workspace.types(), *selected_type)
              .physical_analysis_available) {
         ImGui::TextWrapped("Physical comparison is unavailable for this selection.");
         ImGui::End();
@@ -24,75 +33,115 @@ void PlannerUi::draw_comparison_panel() {
     }
 
     if (analysis_session_.inputs.selection.type.has_value()) {
-        auto const& selected_node{analysis_session_.inputs.workspace.types().type(
-            *analysis_session_.inputs.selection.type)};
-        if (std::holds_alternative<EnumType>(selected_node.definition)) {
+        auto const& selected_node{*analysis_session_.inputs.selection.type};
+        if (((analysis_session_.inputs.workspace.types().definition(selected_node)).kind() ==
+             lispb::schema::TypeDefinitionKind::enumeration)) {
             draw_enum_target_comparison();
             ImGui::End();
             return;
         }
 
-        if (std::holds_alternative<RecordType>(selected_node.definition)) {
+        if (((analysis_session_.inputs.workspace.types().definition(selected_node)).kind() ==
+             lispb::schema::TypeDefinitionKind::record)) {
             if (draw_record_target_comparison()) {
                 ImGui::End();
                 return;
             }
         }
 
-        if (std::holds_alternative<UnionType>(selected_node.definition)) {
+        if (((analysis_session_.inputs.workspace.types().definition(selected_node)).kind() ==
+             lispb::schema::TypeDefinitionKind::union_type)) {
             draw_union_target_comparison();
             ImGui::End();
             return;
         }
 
-        if (std::holds_alternative<TaggedUnionType>(selected_node.definition)) {
+        if (((analysis_session_.inputs.workspace.types().definition(selected_node)).kind() ==
+             lispb::schema::TypeDefinitionKind::tagged_union)) {
             draw_tagged_union_target_comparison();
             ImGui::End();
             return;
         }
 
-        if (std::holds_alternative<PackedType>(selected_node.definition)) {
+        if (((analysis_session_.inputs.workspace.types().definition(selected_node)).kind() ==
+             lispb::schema::TypeDefinitionKind::packed)) {
             if (draw_packed_target_comparison()) {
                 ImGui::End();
                 return;
             }
         }
 
-        auto const* selected_soa{std::get_if<SoaType>(&selected_node.definition)};
-        if (selected_soa != nullptr &&
-            selected_soa->backend == codegen::SoaBackend::standard_library &&
+        auto const selected_soa{
+            ((analysis_session_.inputs.workspace.types().definition(selected_node)).kind() ==
+                     lispb::schema::TypeDefinitionKind::soa
+                 ? std::optional{analysis_session_.inputs.workspace.types().definition(
+                       selected_node)}
+                 : std::nullopt)};
+        if (static_cast<bool>(selected_soa) &&
+            analysis_session_.inputs.workspace.types()
+                    .definitions()
+                    .soas
+                    .backend[analysis_session_.inputs.workspace.types().definitions().soas.index(
+                        *selected_soa)] == lispb::codegen::SoaBackend::standard_library &&
             draw_soa_target_comparison()) {
             ImGui::End();
             return;
         }
 
-        auto const* selected_quantized{std::get_if<LinearQuantizedType>(&selected_node.definition)};
-        if (selected_quantized != nullptr) {
+        auto const selected_quantized{
+            ((analysis_session_.inputs.workspace.types().definition(selected_node)).kind() ==
+                     lispb::schema::TypeDefinitionKind::linear_quantized
+                 ? std::optional{analysis_session_.inputs.workspace.types().definition(
+                       selected_node)}
+                 : std::nullopt)};
+        if (static_cast<bool>(selected_quantized)) {
             auto comparison_type{analysis_session_.inputs.quantized_comparison_type.has_value()
                                      ? analysis_session_.inputs.workspace.types().find(
                                            *analysis_session_.inputs.quantized_comparison_type)
                                      : std::nullopt};
             auto const comparison_label{
                 comparison_type.has_value()
-                    ? type_label(analysis_session_.inputs.workspace.types().type(*comparison_type))
+                    ? type_label(analysis_session_.inputs.workspace.types(), *comparison_type)
                     : std::string{"No same-source representation"}};
-            ImGui::Text("A: %s", type_label(selected_node).c_str());
+            ImGui::Text(
+                "A: %s",
+                type_label(analysis_session_.inputs.workspace.types(), selected_node).c_str());
             ImGui::SetNextItemWidth(-1.0F);
             if (ImGui::BeginCombo("B##quantized-comparison", comparison_label.c_str())) {
                 auto const types{analysis_session_.inputs.workspace.types().types()};
                 for (std::size_t index{}; index < types.size(); ++index) {
                     auto const candidate{TypeId{static_cast<std::uint32_t>(index)}};
-                    auto const* quantized{
-                        std::get_if<LinearQuantizedType>(&types[index].definition)};
-                    if (candidate == *analysis_session_.inputs.selection.type ||
-                        quantized == nullptr ||
-                        quantized->source.type != selected_quantized->source.type) {
+                    auto const quantized{
+                        ((analysis_session_.inputs.workspace.types().definition(types[index]))
+                                     .kind() == lispb::schema::TypeDefinitionKind::linear_quantized
+                             ? std::optional{analysis_session_.inputs.workspace.types().definition(
+                                   types[index])}
+                             : std::nullopt)};
+                    if (candidate == *analysis_session_.inputs.selection.type || !quantized ||
+                        analysis_session_.inputs.workspace.types().occurrences().type
+                                [analysis_session_.inputs.workspace.types().occurrences().index(
+                                    analysis_session_.inputs.workspace.types()
+                                        .definitions()
+                                        .linear_quantized
+                                        .source[analysis_session_.inputs.workspace.types()
+                                                    .definitions()
+                                                    .linear_quantized.index(*quantized)])] !=
+                            analysis_session_.inputs.workspace.types().occurrences().type
+                                [analysis_session_.inputs.workspace.types().occurrences().index(
+                                    analysis_session_.inputs.workspace.types()
+                                        .definitions()
+                                        .linear_quantized.source
+                                            [analysis_session_.inputs.workspace.types()
+                                                 .definitions()
+                                                 .linear_quantized.index(*selected_quantized)])]) {
                         continue;
                     }
                     auto const is_selected{comparison_type == candidate};
-                    auto const label{type_label(types[index])};
+                    auto const label{
+                        type_label(analysis_session_.inputs.workspace.types(), types[index])};
                     if (ImGui::Selectable(label.c_str(), is_selected)) {
-                        analysis_session_.inputs.quantized_comparison_type = types[index].identity;
+                        analysis_session_.inputs.quantized_comparison_type =
+                            analysis_session_.inputs.workspace.types().identity(types[index]);
                         refresh_analysis();
                         comparison_type = candidate;
                     }
@@ -118,24 +167,24 @@ void PlannerUi::draw_comparison_panel() {
                 }
 
                 auto const& comparison{*analysis_session_.results().linear_quantized_comparison};
-                auto const& second_node{
-                    analysis_session_.inputs.workspace.types().type(comparison.second.type)};
+                auto const& second_node{comparison.second.type};
                 if (ImGui::BeginTable("linear-quantized-comparison",
                                       4,
                                       ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                                           ImGuiTableFlags_Resizable)) {
                     ImGui::TableSetupColumn("Fact");
-                    ImGui::TableSetupColumn(selected_node.identity.name.c_str());
-                    ImGui::TableSetupColumn(second_node.identity.name.c_str());
+                    ImGui::TableSetupColumn(
+                        text(analysis_session_.inputs.workspace.types().name(selected_node))
+                            .c_str());
+                    ImGui::TableSetupColumn(
+                        text(analysis_session_.inputs.workspace.types().name(second_node)).c_str());
                     ImGui::TableSetupColumn("Difference (B - A)");
                     ImGui::TableHeadersRow();
                     comparison_row("Semantic source",
-                                   analysis_session_.inputs.workspace.types()
-                                       .type(comparison.first.source_type)
-                                       .identity.name,
-                                   analysis_session_.inputs.workspace.types()
-                                       .type(comparison.second.source_type)
-                                       .identity.name);
+                                   text(analysis_session_.inputs.workspace.types().name(
+                                       comparison.first.source_type)),
+                                   text(analysis_session_.inputs.workspace.types().name(
+                                       comparison.second.source_type)));
                     comparison_row(
                         "Encoded width",
                         std::to_string(comparison.first.encoded_storage_bits) + " bits",
@@ -154,11 +203,11 @@ void PlannerUi::draw_comparison_panel() {
                                    detail::format_code_count(comparison.first.usable_code_count),
                                    detail::format_code_count(comparison.second.usable_code_count),
                                    detail::format_delta_number(comparison.usable_code_count_delta));
-                    comparison_row(
-                        "Clipping",
-                        std::string{codegen::quantization_clipping_name(comparison.first.clipping)},
-                        std::string{
-                            codegen::quantization_clipping_name(comparison.second.clipping)});
+                    comparison_row("Clipping",
+                                   std::string{lispb::codegen::quantization_clipping_name(
+                                       comparison.first.clipping)},
+                                   std::string{lispb::codegen::quantization_clipping_name(
+                                       comparison.second.clipping)});
                     comparison_row("Resolution",
                                    format_decimal(comparison.first.resolution),
                                    format_decimal(comparison.second.resolution),
@@ -207,7 +256,9 @@ void PlannerUi::draw_comparison_panel() {
             }
         }
 
-        auto const selected_optional_source{optional_source(selected_node.definition)};
+        auto const selected_optional_source{
+            optional_source(analysis_session_.inputs.workspace.types(),
+                            analysis_session_.inputs.workspace.types().definition(selected_node))};
         if (selected_optional_source.has_value()) {
             auto comparison_type{analysis_session_.inputs.optional_comparison_type.has_value()
                                      ? analysis_session_.inputs.workspace.types().find(
@@ -215,23 +266,29 @@ void PlannerUi::draw_comparison_panel() {
                                      : std::nullopt};
             auto const comparison_label{
                 comparison_type.has_value()
-                    ? type_label(analysis_session_.inputs.workspace.types().type(*comparison_type))
+                    ? type_label(analysis_session_.inputs.workspace.types(), *comparison_type)
                     : std::string{"No same-source representation"}};
-            ImGui::Text("A: %s", type_label(selected_node).c_str());
+            ImGui::Text(
+                "A: %s",
+                type_label(analysis_session_.inputs.workspace.types(), selected_node).c_str());
             ImGui::SetNextItemWidth(-1.0F);
             if (ImGui::BeginCombo("B##optional-comparison", comparison_label.c_str())) {
                 auto const types{analysis_session_.inputs.workspace.types().types()};
                 for (std::size_t index{}; index < types.size(); ++index) {
                     auto const candidate{TypeId{static_cast<std::uint32_t>(index)}};
-                    auto const candidate_source{optional_source(types[index].definition)};
+                    auto const candidate_source{optional_source(
+                        analysis_session_.inputs.workspace.types(),
+                        analysis_session_.inputs.workspace.types().definition(types[index]))};
                     if (candidate == *analysis_session_.inputs.selection.type ||
                         candidate_source != selected_optional_source) {
                         continue;
                     }
                     auto const is_selected{comparison_type == candidate};
-                    auto const label{type_label(types[index])};
+                    auto const label{
+                        type_label(analysis_session_.inputs.workspace.types(), types[index])};
                     if (ImGui::Selectable(label.c_str(), is_selected)) {
-                        analysis_session_.inputs.optional_comparison_type = types[index].identity;
+                        analysis_session_.inputs.optional_comparison_type =
+                            analysis_session_.inputs.workspace.types().identity(types[index]);
                         refresh_analysis();
                         comparison_type = candidate;
                     }
@@ -257,24 +314,24 @@ void PlannerUi::draw_comparison_panel() {
                 }
 
                 auto const& comparison{*analysis_session_.results().optional_encoding_comparison};
-                auto const& second_node{
-                    analysis_session_.inputs.workspace.types().type(comparison.second.type)};
+                auto const& second_node{comparison.second.type};
                 if (ImGui::BeginTable("optional-encoding-comparison",
                                       4,
                                       ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                                           ImGuiTableFlags_Resizable)) {
                     ImGui::TableSetupColumn("Fact");
-                    ImGui::TableSetupColumn(selected_node.identity.name.c_str());
-                    ImGui::TableSetupColumn(second_node.identity.name.c_str());
+                    ImGui::TableSetupColumn(
+                        text(analysis_session_.inputs.workspace.types().name(selected_node))
+                            .c_str());
+                    ImGui::TableSetupColumn(
+                        text(analysis_session_.inputs.workspace.types().name(second_node)).c_str());
                     ImGui::TableSetupColumn("Difference (B - A)");
                     ImGui::TableHeadersRow();
                     comparison_row("Semantic source",
-                                   analysis_session_.inputs.workspace.types()
-                                       .type(comparison.first.source_type)
-                                       .identity.name,
-                                   analysis_session_.inputs.workspace.types()
-                                       .type(comparison.second.source_type)
-                                       .identity.name);
+                                   text(analysis_session_.inputs.workspace.types().name(
+                                       comparison.first.source_type)),
+                                   text(analysis_session_.inputs.workspace.types().name(
+                                       comparison.second.source_type)));
                     comparison_row("Encoding policy",
                                    optional_encoding_label(comparison.first.kind),
                                    optional_encoding_label(comparison.second.kind));
@@ -345,31 +402,60 @@ void PlannerUi::draw_comparison_panel() {
             }
         }
 
-        auto const* selected_varint{std::get_if<IntegerVarintType>(&selected_node.definition)};
-        if (selected_varint != nullptr) {
+        auto const selected_varint{
+            ((analysis_session_.inputs.workspace.types().definition(selected_node)).kind() ==
+                     lispb::schema::TypeDefinitionKind::integer_varint
+                 ? std::optional{analysis_session_.inputs.workspace.types().definition(
+                       selected_node)}
+                 : std::nullopt)};
+        if (static_cast<bool>(selected_varint)) {
             auto comparison_type{analysis_session_.inputs.varint_comparison_type.has_value()
                                      ? analysis_session_.inputs.workspace.types().find(
                                            *analysis_session_.inputs.varint_comparison_type)
                                      : std::nullopt};
             auto const comparison_label{
                 comparison_type.has_value()
-                    ? type_label(analysis_session_.inputs.workspace.types().type(*comparison_type))
+                    ? type_label(analysis_session_.inputs.workspace.types(), *comparison_type)
                     : std::string{"No same-source representation"}};
-            ImGui::Text("A: %s", type_label(selected_node).c_str());
+            ImGui::Text(
+                "A: %s",
+                type_label(analysis_session_.inputs.workspace.types(), selected_node).c_str());
             ImGui::SetNextItemWidth(-1.0F);
             if (ImGui::BeginCombo("B##varint-comparison", comparison_label.c_str())) {
                 auto const types{analysis_session_.inputs.workspace.types().types()};
                 for (std::size_t index{}; index < types.size(); ++index) {
                     auto const candidate{TypeId{static_cast<std::uint32_t>(index)}};
-                    auto const* varint{std::get_if<IntegerVarintType>(&types[index].definition)};
-                    if (candidate == *analysis_session_.inputs.selection.type ||
-                        varint == nullptr || varint->source.type != selected_varint->source.type) {
+                    auto const varint{
+                        ((analysis_session_.inputs.workspace.types().definition(types[index]))
+                                     .kind() == lispb::schema::TypeDefinitionKind::integer_varint
+                             ? std::optional{analysis_session_.inputs.workspace.types().definition(
+                                   types[index])}
+                             : std::nullopt)};
+                    if (candidate == *analysis_session_.inputs.selection.type || !varint ||
+                        analysis_session_.inputs.workspace.types().occurrences().type
+                                [analysis_session_.inputs.workspace.types().occurrences().index(
+                                    analysis_session_.inputs.workspace.types()
+                                        .definitions()
+                                        .integer_varints
+                                        .source[analysis_session_.inputs.workspace.types()
+                                                    .definitions()
+                                                    .integer_varints.index(*varint)])] !=
+                            analysis_session_.inputs.workspace.types().occurrences().type
+                                [analysis_session_.inputs.workspace.types().occurrences().index(
+                                    analysis_session_.inputs.workspace.types()
+                                        .definitions()
+                                        .integer_varints
+                                        .source[analysis_session_.inputs.workspace.types()
+                                                    .definitions()
+                                                    .integer_varints.index(*selected_varint)])]) {
                         continue;
                     }
                     auto const is_selected{comparison_type == candidate};
-                    auto const label{type_label(types[index])};
+                    auto const label{
+                        type_label(analysis_session_.inputs.workspace.types(), types[index])};
                     if (ImGui::Selectable(label.c_str(), is_selected)) {
-                        analysis_session_.inputs.varint_comparison_type = types[index].identity;
+                        analysis_session_.inputs.varint_comparison_type =
+                            analysis_session_.inputs.workspace.types().identity(types[index]);
                         refresh_analysis();
                         comparison_type = candidate;
                     }
@@ -395,14 +481,13 @@ void PlannerUi::draw_comparison_panel() {
                 }
 
                 auto const& comparison{*analysis_session_.results().integer_varint_comparison};
-                auto const& second_node{
-                    analysis_session_.inputs.workspace.types().type(comparison.second.type)};
-                auto const& source_node{
-                    analysis_session_.inputs.workspace.types().type(comparison.first.source_type)};
+                auto const& second_node{comparison.second.type};
+                auto const& source_node{comparison.first.source_type};
                 auto const& distribution_comparison{
                     analysis_session_.results().integer_varint_distribution_comparison};
                 auto invalid_distribution_literals{std::size_t{}};
-                if (auto const rows{varint_distributions_.find(source_node.identity)};
+                if (auto const rows{varint_distributions_.find(
+                        analysis_session_.inputs.workspace.types().identity(source_node))};
                     rows != varint_distributions_.end() && !rows->second.empty()) {
                     for (auto const& row : rows->second) {
                         if (!detail::parse_packed_integer(row.value.data()).has_value()) {
@@ -415,21 +500,22 @@ void PlannerUi::draw_comparison_panel() {
                                       ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                                           ImGuiTableFlags_Resizable)) {
                     ImGui::TableSetupColumn("Fact");
-                    ImGui::TableSetupColumn(selected_node.identity.name.c_str());
-                    ImGui::TableSetupColumn(second_node.identity.name.c_str());
+                    ImGui::TableSetupColumn(
+                        text(analysis_session_.inputs.workspace.types().name(selected_node))
+                            .c_str());
+                    ImGui::TableSetupColumn(
+                        text(analysis_session_.inputs.workspace.types().name(second_node)).c_str());
                     ImGui::TableSetupColumn("Difference (B - A)");
                     ImGui::TableHeadersRow();
                     comparison_row("Semantic source",
-                                   analysis_session_.inputs.workspace.types()
-                                       .type(comparison.first.source_type)
-                                       .identity.name,
-                                   analysis_session_.inputs.workspace.types()
-                                       .type(comparison.second.source_type)
-                                       .identity.name);
+                                   text(analysis_session_.inputs.workspace.types().name(
+                                       comparison.first.source_type)),
+                                   text(analysis_session_.inputs.workspace.types().name(
+                                       comparison.second.source_type)));
                     comparison_row("Encoding",
-                                   std::string{codegen::integer_varint_encoding_name(
+                                   std::string{lispb::codegen::integer_varint_encoding_name(
                                        comparison.first.encoding)},
-                                   std::string{codegen::integer_varint_encoding_name(
+                                   std::string{lispb::codegen::integer_varint_encoding_name(
                                        comparison.second.encoding)});
                     comparison_row(
                         "Minimum bytes / value",
@@ -490,8 +576,14 @@ void PlannerUi::draw_comparison_panel() {
                                           ImGuiTableFlags_Resizable)) {
                     ImGui::TableSetupColumn("Value");
                     ImGui::TableSetupColumn("Weight");
-                    ImGui::TableSetupColumn((selected_node.identity.name + " bytes").c_str());
-                    ImGui::TableSetupColumn((second_node.identity.name + " bytes").c_str());
+                    ImGui::TableSetupColumn(
+                        (text(analysis_session_.inputs.workspace.types().name(selected_node)) +
+                         " bytes")
+                            .c_str());
+                    ImGui::TableSetupColumn(
+                        (text(analysis_session_.inputs.workspace.types().name(second_node)) +
+                         " bytes")
+                            .c_str());
                     ImGui::TableSetupColumn("Difference (B - A)");
                     ImGui::TableHeadersRow();
                     auto const entry_count{
@@ -503,7 +595,7 @@ void PlannerUi::draw_comparison_panel() {
                         ImGui::TableNextRow();
                         ImGui::TableNextColumn();
                         ImGui::TextUnformatted(
-                            codegen::format_packed_integer(first_entry.value).c_str());
+                            lispb::codegen::format_packed_integer(first_entry.value).c_str());
                         ImGui::TableNextColumn();
                         ImGui::Text("%llu", static_cast<unsigned long long>(first_entry.weight));
                         ImGui::TableNextColumn();
@@ -790,10 +882,12 @@ auto PlannerUi::draw_record_target_comparison() -> bool {
                         ImGui::TableSetupColumn("Difference (B - A)");
                         ImGui::TableHeadersRow();
                         comparison_row("Semantic type",
-                                       type_label(analysis_session_.inputs.workspace.types().type(
-                                           member.first.semantic_type)),
-                                       type_label(analysis_session_.inputs.workspace.types().type(
-                                           member.second.semantic_type)));
+                                       type_label(analysis_session_.inputs.workspace.types(),
+
+                                                  member.first.semantic_type),
+                                       type_label(analysis_session_.inputs.workspace.types(),
+
+                                                  member.second.semantic_type));
                         comparison_row("Element count",
                                        std::to_string(member.first.element_count),
                                        std::to_string(member.second.element_count));
@@ -1416,10 +1510,11 @@ void PlannerUi::draw_integer_scalar_variant_comparison(layout::Variant const& co
         if (!analysis.relationship_kind.has_value() || !analysis.relationship_target.has_value()) {
             return std::string{"None"};
         }
-        auto result{std::string{codegen::semantic_relation_kind_name(*analysis.relationship_kind)}};
+        auto result{
+            std::string{lispb::codegen::semantic_relation_kind_name(*analysis.relationship_kind)}};
         if (analysis.relationship_unit.has_value()) {
             result += " (";
-            result += codegen::semantic_relation_unit_name(*analysis.relationship_unit);
+            result += lispb::codegen::semantic_relation_unit_name(*analysis.relationship_unit);
             result += ')';
         }
         return result + " -> " + *analysis.relationship_target;
@@ -1446,7 +1541,7 @@ void PlannerUi::draw_integer_scalar_variant_comparison(layout::Variant const& co
         }
     }
     auto const relationship_kind{
-        first.relationship_kind.value_or(codegen::SemanticRelationKind::references)};
+        first.relationship_kind.value_or(lispb::codegen::SemanticRelationKind::references)};
     auto const extent_term{detail::relationship_extent_term(relationship_kind)};
     auto const extent_unit{
         detail::relationship_extent_unit(relationship_kind, first.relationship_unit)};
@@ -1707,8 +1802,8 @@ void PlannerUi::draw_packed_variant_comparison(layout::Variant const& comparison
                            detail::format_number(active->maximum_unsigned_value));
             if (baseline.relationship_target_extent.has_value() ||
                 active->relationship_target_extent.has_value()) {
-                auto const relationship_kind{
-                    baseline.relationship_kind.value_or(codegen::SemanticRelationKind::references)};
+                auto const relationship_kind{baseline.relationship_kind.value_or(
+                    lispb::codegen::SemanticRelationKind::references)};
                 auto const extent_term{detail::relationship_extent_term(relationship_kind)};
                 auto const extent_unit{detail::relationship_extent_unit(
                     relationship_kind, baseline.relationship_unit)};

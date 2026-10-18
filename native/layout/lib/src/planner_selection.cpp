@@ -1,36 +1,63 @@
 #include <ioj/layout/planner_selection.hpp>
 
+#include <codegen/schema/soa_backend.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/schema/editable_document.h>
+#include <lispb/schema/editor_declarations.h>
+#include <lispb/schema/indices.h>
+#include <lispb/schema/packed_fields.h>
+#include <lispb/schema/packed_reserved_segments.h>
+#include <lispb/schema/packed_types.h>
+#include <lispb/schema/record_members.h>
+#include <lispb/schema/record_types.h>
+#include <lispb/schema/soa_columns.h>
+#include <lispb/schema/soa_types.h>
+#include <lispb/schema/tagged_union_alternatives.h>
+#include <lispb/schema/tagged_union_types.h>
+#include <lispb/schema/type_identity.h>
+#include <lispb/schema/union_alternatives.h>
+#include <lispb/schema/union_types.h>
+#include <lispb/strings.h>
+
 #include <algorithm>
+#include <cassert>
+#include <optional>
+#include <ranges>
+#include <string>
 
 namespace ioj::layout {
 namespace {
 
 auto declaration_kind(lispb::schema::EditableSchemaDocument const& document,
-                      lispb::schema::DeclarationInfo const& info) -> DeclarationKind {
-    auto const& module{
-        std::get<codegen::NormalModuleSchema>(document.manifest().modules[info.module_index])};
-    return declaration_capabilities(module.declarations[info.declaration_index]).kind;
+                      lispb::schema::DeclarationId const info) -> DeclarationKind {
+    auto const handle{document.declaration_handle(info)};
+    assert(handle);
+    return declaration_capabilities(*handle).kind;
 }
 
 } // namespace
 
 auto PlannerSelection::select_type(lispb::schema::TypeGraph const& types,
                                    std::optional<lispb::schema::TypeId> next) -> bool {
-    if (next.has_value() && (!next->valid() || next->value >= types.types().size())) {
+    if (next.has_value() &&
+        (!lispb::schema::is_valid(*next) || next->value >= types.types().size())) {
         next.reset();
     }
-    auto const next_identity{next.has_value() ? std::optional{types.type(*next).identity}
+    auto const next_identity{next.has_value() ? std::optional{types.identity(*next)}
                                               : std::optional<lispb::schema::TypeIdentity>{}};
     auto const next_kind{next.has_value()
-                             ? std::optional{declaration_capabilities(types.type(*next)).kind}
+                             ? std::optional{declaration_capabilities(types, *next).kind}
                              : std::nullopt};
+    auto const retained{next_identity ? retain_identity(types.strings(), next_identity)
+                                      : std::nullopt};
     if (type == next && !declaration.has_value() && identity_ == next_identity &&
-        kind_ == next_kind) {
+        retained_identity_ == retained && kind_ == next_kind) {
         return false;
     }
     type = next;
     declaration.reset();
     identity_ = next_identity;
+    retained_identity_ = retained;
     kind_ = next_kind;
     clear_type_local_state();
     return true;
@@ -38,22 +65,28 @@ auto PlannerSelection::select_type(lispb::schema::TypeGraph const& types,
 
 auto PlannerSelection::select_declaration(lispb::schema::EditableSchemaDocument const& document,
                                           lispb::schema::DeclarationId const next) -> bool {
-    auto const* info{document.declaration(next)};
-    if (info == nullptr) {
+    auto const info{document.declarations().find(next)};
+    if (!info.has_value()) {
         return false;
     }
-    if (auto const semantic{document.types().find(info->identity)}) {
+    if (auto const semantic{document.types().find(
+            document.declarations().identity[document.declarations().index(*info)])}) {
         return select_type(document.types(), *semantic);
     }
     auto const next_kind{declaration_kind(document, *info)};
-    if (declaration == next && !type.has_value() && identity_ == info->identity &&
-        kind_ == next_kind) {
+    auto const retained{
+        retain_identity(document.storage().strings,
+                        document.declarations().identity[document.declarations().index(*info)])};
+    if (declaration == next && !type.has_value() &&
+        identity_ == document.declarations().identity[document.declarations().index(*info)] &&
+        retained_identity_ == retained && kind_ == next_kind) {
         return false;
     }
 
     type.reset();
     declaration = next;
-    identity_ = info->identity;
+    identity_ = document.declarations().identity[document.declarations().index(*info)];
+    retained_identity_ = retained;
     kind_ = next_kind;
     clear_type_local_state();
     return true;
@@ -66,21 +99,26 @@ auto PlannerSelection::identity() const -> std::optional<lispb::schema::TypeIden
 void PlannerSelection::reconcile(lispb::schema::TypeGraph const& types,
                                  std::optional<lispb::schema::TypeIdentity> selected_identity,
                                  lispb::schema::EditableSchemaDocument const* const document) {
-    auto const target_identity{selected_identity.has_value() ? std::move(selected_identity)
-                               : declaration.has_value()     ? identity_
-                                                             : std::nullopt};
+    if (types.types().empty() && document == nullptr) {
+        select_type(types, std::nullopt);
+        return;
+    }
+
+    auto const target_identity{selected_identity.has_value() ? selected_identity
+                                                             : restore_identity(types.strings())};
     auto const next_type{target_identity.has_value() ? types.find(*target_identity)
                                                      : std::optional<lispb::schema::TypeId>{}};
     auto const next_declaration{target_identity.has_value() && !next_type.has_value() &&
                                         document != nullptr
                                     ? document->find_declaration(*target_identity)
                                     : std::optional<lispb::schema::DeclarationId>{}};
-    auto const next_kind{
-        next_type.has_value() ? std::optional{declaration_capabilities(types.type(*next_type)).kind}
-        : next_declaration.has_value()
-            ? std::optional{declaration_kind(*document, *document->declaration(*next_declaration))}
-            : std::nullopt};
-    if (target_identity != identity_ || next_kind != kind_ ||
+    auto const next_kind{next_type.has_value()
+                             ? std::optional{declaration_capabilities(types, *next_type).kind}
+                         : next_declaration.has_value()
+                             ? std::optional{declaration_kind(*document, *next_declaration)}
+                             : std::nullopt};
+    auto const retained{retain_identity(types.strings(), target_identity)};
+    if (retained != retained_identity_ || next_kind != kind_ ||
         type.has_value() != next_type.has_value() ||
         declaration.has_value() != next_declaration.has_value()) {
         clear_type_local_state();
@@ -90,10 +128,37 @@ void PlannerSelection::reconcile(lispb::schema::TypeGraph const& types,
     declaration = next_declaration;
     identity_ =
         next_type.has_value() || next_declaration.has_value() ? target_identity : std::nullopt;
+    retained_identity_ = identity_.has_value() ? retained : std::nullopt;
     kind_ = next_kind;
     if (type.has_value()) {
         prune_members(types);
     }
+}
+
+auto PlannerSelection::retain_identity(lispb::Strings const& strings,
+                                       std::optional<lispb::schema::TypeIdentity> identity)
+    -> std::optional<lispb::schema::TypeIdentity> {
+    if (identity) {
+        for (auto* part : {&identity->module_name, &identity->namespace_name, &identity->name}) {
+            *part = identity_strings_.intern(strings.view(*part));
+        }
+    }
+    return identity;
+}
+
+auto PlannerSelection::restore_identity(lispb::Strings const& strings) const
+    -> std::optional<lispb::schema::TypeIdentity> {
+    auto identity{retained_identity_};
+    if (identity) {
+        for (auto* part : {&identity->module_name, &identity->namespace_name, &identity->name}) {
+            auto const spelling{identity_strings_.view(*part)};
+            *part = strings.find(spelling);
+            if (!spelling.empty() && part->value == 0) {
+                return std::nullopt;
+            }
+        }
+    }
+    return identity;
 }
 
 void PlannerSelection::clear_type_local_state() {
@@ -111,31 +176,77 @@ void PlannerSelection::prune_members(lispb::schema::TypeGraph const& types) {
         clear_type_local_state();
         return;
     }
-    auto const& definition{types.type(*type).definition};
+    auto const& definition{types.definition(*type)};
     auto valid_name = [&](std::string const& name) {
-        if (auto const* packed{std::get_if<lispb::schema::PackedType>(&definition)}) {
-            return std::ranges::any_of(packed->segments, [&](auto const& segment) {
-                return std::visit([&](auto const& value) { return value.name == name; }, segment);
-            });
+        if (auto const packed{((definition).kind() == lispb::schema::TypeDefinitionKind::packed
+                                   ? std::optional{definition}
+                                   : std::nullopt)}) {
+            return std::ranges::any_of(
+                types.definitions().packed.segments_of(*packed), [&](auto const& segment) {
+                    auto const value{((segment).kind() == lispb::schema::PackedSegmentKind::field
+                                          ? std::optional{segment}
+                                          : std::nullopt)};
+                    auto const identifier{
+                        value ? types.definitions()
+                                    .packed_fields
+                                    .name[types.definitions().packed_fields.index(*value)]
+                              : types.definitions()
+                                    .packed_reserved_bits
+                                    .name[types.definitions().packed_reserved_bits.index(segment)]};
+                    return types.strings().view(identifier) == name;
+                });
         }
-        if (auto const* record{std::get_if<lispb::schema::RecordType>(&definition)}) {
-            return std::ranges::any_of(record->members,
-                                       [&](auto const& member) { return member.name == name; });
+        if (auto const record{((definition).kind() == lispb::schema::TypeDefinitionKind::record
+                                   ? std::optional{definition}
+                                   : std::nullopt)}) {
+            return std::ranges::any_of(
+                types.definitions().records.members_of(*record), [&](auto const& member) {
+                    return types.strings().view(
+                               types.definitions()
+                                   .record_members
+                                   .name[types.definitions().record_members.index(member)]) == name;
+                });
         }
-        if (auto const* union_type{std::get_if<lispb::schema::UnionType>(&definition)}) {
-            return std::ranges::any_of(union_type->alternatives, [&](auto const& alternative) {
-                return alternative.name == name;
-            });
+        if (auto const union_type{
+                ((definition).kind() == lispb::schema::TypeDefinitionKind::union_type
+                     ? std::optional{definition}
+                     : std::nullopt)}) {
+            return std::ranges::any_of(
+                types.definitions().unions.alternatives_of(*union_type),
+                [&](auto const& alternative) {
+                    return types.strings().view(
+                               types.definitions().union_alternatives.name
+                                   [types.definitions().union_alternatives.index(alternative)]) ==
+                           name;
+                });
         }
-        if (auto const* tagged{std::get_if<lispb::schema::TaggedUnionType>(&definition)}) {
-            return std::ranges::any_of(tagged->alternatives, [&](auto const& alternative) {
-                return alternative.name == name;
-            });
+        if (auto const tagged{
+                ((definition).kind() == lispb::schema::TypeDefinitionKind::tagged_union
+                     ? std::optional{definition}
+                     : std::nullopt)}) {
+            return std::ranges::any_of(
+                types.definitions().tagged_unions.alternatives_of(*tagged),
+                [&](auto const& alternative) {
+                    return types.strings().view(
+                               types.definitions()
+                                   .tagged_union_alternatives
+                                   .name[types.definitions().tagged_union_alternatives.index(
+                                       alternative)]) == name;
+                });
         }
-        if (auto const* soa{std::get_if<lispb::schema::SoaType>(&definition)}) {
-            return soa->backend == codegen::SoaBackend::standard_library &&
-                   std::ranges::any_of(soa->columns,
-                                       [&](auto const& column) { return column.name == name; });
+        if (auto const soa{((definition).kind() == lispb::schema::TypeDefinitionKind::soa
+                                ? std::optional{definition}
+                                : std::nullopt)}) {
+            return types.definitions().soas.backend[types.definitions().soas.index(*soa)] ==
+                       lispb::codegen::SoaBackend::standard_library &&
+                   std::ranges::any_of(
+                       types.definitions().soas.columns_of(*soa), [&](auto const& column) {
+                           return types.strings().view(
+                                      types.definitions()
+                                          .soa_columns
+                                          .name[types.definitions().soa_columns.index(column)]) ==
+                                  name;
+                       });
         }
         return false;
     };
@@ -150,24 +261,52 @@ void PlannerSelection::prune_members(lispb::schema::TypeGraph const& types) {
             explicit_selection = false;
         }
     };
-    auto const* packed{std::get_if<lispb::schema::PackedType>(&definition)};
+    auto const packed{((definition).kind() == lispb::schema::TypeDefinitionKind::packed
+                           ? std::optional{definition}
+                           : std::nullopt)};
     prune(packed_access_fields, packed_access_set_explicit, [&](auto const& name) {
-        return packed != nullptr && std::ranges::any_of(packed->segments, [&](auto const& segment) {
-                   auto const* value{std::get_if<lispb::schema::PackedField>(&segment)};
-                   return value != nullptr && value->name == name;
-               });
+        return static_cast<bool>(packed) &&
+               std::ranges::any_of(
+                   types.definitions().packed.segments_of(*packed), [&](auto const& segment) {
+                       auto const value{((segment).kind() == lispb::schema::PackedSegmentKind::field
+                                             ? std::optional{segment}
+                                             : std::nullopt)};
+                       return value &&
+                              types.strings().view(
+                                  types.definitions()
+                                      .packed_fields
+                                      .name[types.definitions().packed_fields.index(*value)]) ==
+                                  name;
+                   });
     });
-    auto const* record{std::get_if<lispb::schema::RecordType>(&definition)};
+    auto const record{((definition).kind() == lispb::schema::TypeDefinitionKind::record
+                           ? std::optional{definition}
+                           : std::nullopt)};
     prune(record_access_members, record_access_set_explicit, [&](auto const& name) {
-        return record != nullptr && std::ranges::any_of(record->members, [&](auto const& member) {
-                   return member.name == name;
-               });
+        return static_cast<bool>(record) &&
+               std::ranges::any_of(
+                   types.definitions().records.members_of(*record), [&](auto const& member) {
+                       return types.strings().view(
+                                  types.definitions()
+                                      .record_members
+                                      .name[types.definitions().record_members.index(member)]) ==
+                              name;
+                   });
     });
-    auto const* soa{std::get_if<lispb::schema::SoaType>(&definition)};
+    auto const soa{((definition).kind() == lispb::schema::TypeDefinitionKind::soa
+                        ? std::optional{definition}
+                        : std::nullopt)};
     prune(soa_access_columns, soa_access_set_explicit, [&](auto const& name) {
-        return soa != nullptr && soa->backend == codegen::SoaBackend::standard_library &&
-               std::ranges::any_of(soa->columns,
-                                   [&](auto const& column) { return column.name == name; });
+        return static_cast<bool>(soa) &&
+               types.definitions().soas.backend[types.definitions().soas.index(*soa)] ==
+                   lispb::codegen::SoaBackend::standard_library &&
+               std::ranges::any_of(
+                   types.definitions().soas.columns_of(*soa), [&](auto const& column) {
+                       return types.strings().view(
+                                  types.definitions()
+                                      .soa_columns
+                                      .name[types.definitions().soa_columns.index(column)]) == name;
+                   });
     });
 }
 

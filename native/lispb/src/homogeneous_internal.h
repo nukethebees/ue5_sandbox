@@ -1,13 +1,20 @@
 #pragma once
 
 #include "lowering.h"
+#include "lowering_context.h"
 
-namespace codegen::detail {
+#include <codegen/ast/indices.h>
+#include <codegen/ast/node_id.h>
+#include <codegen/ast/nodes.h>
+#include <codegen/schema/homogeneous_layout_schemas.h>
+#include <codegen/schema/homogeneous_value_schemas.h>
 
-auto homogeneous_view_nodes(HomogeneousLayoutSchema const& layout, TypeRegistry const& types)
-    -> Nodes;
-auto homogeneous_storage_node(HomogeneousLayoutSchema const& layout,
-                              HomogeneousValueSchema const& value,
-                              TypeRegistry const& types) -> Node;
+namespace lispb::codegen::detail {
 
-} // namespace codegen::detail
+auto homogeneous_view_nodes(LoweringContext& context, DeclarationHandle layout) -> Nodes;
+auto homogeneous_storage_node(LoweringContext& context,
+                              DeclarationHandle layout,
+                              HomogeneousValueId value,
+                              FunctionId permutation) -> NodeId;
+
+} // namespace lispb::codegen::detail

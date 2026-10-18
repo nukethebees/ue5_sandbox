@@ -4,9 +4,7 @@
 #pragma once
 
 #include <utility>
-
 namespace SlateGenerated::ioj {
-
 struct SGameOptionsViewBuilder {
     using ThisClass = ::ioj::SGameOptionsView;
 
@@ -43,5 +41,4 @@ struct SGameOptionsViewBuilder {
   private:
     ThisClass& self_;
 };
-
-}
+} // namespace SlateGenerated::ioj

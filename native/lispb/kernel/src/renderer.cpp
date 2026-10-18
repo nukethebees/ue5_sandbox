@@ -1,98 +1,135 @@
 #include "renderer.h"
 
-#include "avx2_lab_renderer.h"
 #include "lowering.h"
-#include "standard_renderer.h"
+#include "portable_renderer.h"
 #include "test_renderer.h"
-#include "unreal_renderer.h"
+
+#include <codegen/ast/cpp_files.h>
+#include <codegen/ast/cpp_ir.h>
+#include <codegen/ast/indices.h>
+#include <codegen/ast/modules.h>
+#include <kernel_codegen/document.h>
+#include <kernel_codegen/indices.h>
+#include <kernel_codegen/operation_kind.h>
+#include <kernel_codegen/scalar_type.h>
+#include <kernel_codegen/storage_kind.h>
+#include <kernel_codegen/variant_kind.h>
+#include <lispb/indices.h>
+#include <lispb/kernel_profile.h>
+#include <lispb/strings.h>
+#include <lispb/text_artifact.h>
 
 #include <algorithm>
+#include <compare>
+#include <cstddef>
+#include <cstdint>
+#include <filesystem>
+#include <set>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
 namespace kernel_codegen::detail {
 namespace {
 
-auto selected_variant(std::vector<ExpandedVariant> const& variants, Emission const& emission)
-    -> ExpandedVariant const& {
-    auto const& selection{*emission.selection};
-    auto const found{std::ranges::find_if(variants, [&](auto const& candidate) {
-        return candidate.operation->name == selection.operation &&
-               candidate.type == selection.type && candidate.storage == selection.storage &&
-               candidate.variant->kind == selection.variant;
+enum class ParameterShape : std::uint8_t { scalar, read_view, write_view, owning_array };
+
+struct SignatureKey {
+    lispb::IdentifierId name;
+    ScalarType type;
+    std::vector<ParameterShape> parameters;
+    auto operator<=>(SignatureKey const&) const = default;
+};
+
+void validate_portable_signatures(Document const& document,
+                                  ModuleId const module,
+                                  bool const standard) {
+    auto const& expanded{document.expanded_variants};
+    std::set<SignatureKey> signatures;
+    auto const range{document.modules.expanded_variants(module)};
+    auto const end{range.offset + range.count};
+    for (auto variant_index{range.offset}; variant_index < end; ++variant_index) {
+        auto const id{ExpandedVariantId{variant_index}};
+        auto const operation{expanded.operation(id)};
+        auto const overload_count{
+            !standard && document.variants.kind(expanded.variant(id)) == VariantKind::in_place ? 2
+                                                                                               : 1};
+        for (int overload{}; overload < overload_count; ++overload) {
+            SignatureKey signature{
+                document.variants.name(expanded.variant(id)), expanded.type(id), {}};
+            auto const operand_count{document.operations.operands(operation).size()};
+            for (std::size_t index{}; index < operand_count; ++index) {
+                auto const shape{expanded.storage(id)[index] == StorageKind::scalar
+                                     ? ParameterShape::scalar
+                                 : !is_target(document, id, index) ? ParameterShape::read_view
+                                 : overload != 0                   ? ParameterShape::owning_array
+                                                                   : ParameterShape::write_view};
+                auto const count{
+                    document.operands.is_component(document.operations.operands(operation)[index])
+                        ? document.operations.components(operation).size()
+                        : 1};
+                signature.parameters.insert(signature.parameters.end(), count, shape);
+            }
+            if (document.variants.kind(expanded.variant(id)) == VariantKind::out_of_place) {
+                auto const count{operation.kind() == OperationKind::component_map
+                                     ? document.operations.components(operation).size()
+                                     : 1};
+                signature.parameters.insert(
+                    signature.parameters.end(), count, ParameterShape::write_view);
+            }
+            if (!signatures.insert(std::move(signature)).second) {
+                throw std::invalid_argument{
+                    "Duplicate generated kernel signature: " +
+                    document.text(document.variants.name(expanded.variant(id)))};
+            }
+        }
+    }
+}
+
+}
+
+void validate(Document const& document, ModuleId const module, lispb::KernelProfile const profile) {
+    auto const emissions{document.modules.emissions(module)};
+    auto const emission{std::ranges::find_if(emissions, [&](auto const candidate) {
+        return document.emissions.profile(candidate) == profile;
     })};
-    if (found == variants.end()) {
-        throw std::invalid_argument{"SIMD lab selection did not match a generated variant"};
+    if (emission == emissions.end()) {
+        return;
     }
-    return *found;
+    validate_portable_signatures(document, module, profile == lispb::KernelProfile::standard);
 }
 
-auto formatted(std::vector<lispb::TextArtifact> artifacts) -> std::vector<lispb::TextArtifact> {
-    for (auto& artifact : artifacts) {
-        artifact.format_generated = true;
-    }
-    return artifacts;
-}
-
-}
-
-auto render(KernelModule const& module, Profile const profile) -> std::vector<lispb::TextArtifact> {
-    auto const emission{std::ranges::find_if(
-        module.emissions, [&](auto const& candidate) { return candidate.profile == profile; })};
-    if (emission == module.emissions.end()) {
+auto render(lispb::codegen::CppIR& cpp,
+            Document const& document,
+            ModuleId const module,
+            lispb::KernelProfile const profile) -> std::vector<lispb::TextArtifact> {
+    auto const emissions{document.modules.emissions(module)};
+    auto const emission{std::ranges::find_if(emissions, [&](auto const candidate) {
+        return document.emissions.profile(candidate) == profile;
+    })};
+    if (emission == emissions.end()) {
         return {};
     }
 
-    auto const variants{expand(module)};
-    if (profile == Profile::unreal_avx2_lab) {
-        auto const& selected{selected_variant(variants, *emission)};
-        return formatted(
-            {lispb::TextArtifact{emission->header, render_avx2_lab_header(*emission, selected)},
-             lispb::TextArtifact{emission->source, render_avx2_lab_source(*emission, selected)}});
+    validate_portable_signatures(document, module, profile == lispb::KernelProfile::standard);
+    auto const generated{lower_portable(cpp, module, *emission, document)};
+    auto const generated_index{cpp.modules.index(generated)};
+    std::vector<lispb::codegen::CppFileId> files{cpp.modules.header[generated_index],
+                                                 cpp.modules.source[generated_index]};
+    auto const tests{document.emissions.tests(*emission)};
+    if (tests) {
+        files.push_back(lower_standard_tests(cpp, *emission, module, document));
     }
-    if (profile == Profile::native_x86_simd_lab) {
-        auto const& selected{selected_variant(variants, *emission)};
-        std::vector<lispb::TextArtifact> result{
-            lispb::TextArtifact{emission->header,
-                                render_native_simd_lab_header(*emission, selected)},
-            lispb::TextArtifact{emission->source,
-                                render_native_avx2_lab_source(*emission, selected)},
-            lispb::TextArtifact{*emission->avx512_source,
-                                render_native_avx512_lab_source(*emission, selected)}};
-        if (emission->highway_source) {
-            result.push_back(lispb::TextArtifact{
-                *emission->highway_source, render_native_highway_source(*emission, selected)});
-        }
-        if (emission->dispatch_source) {
-            result.push_back(
-                lispb::TextArtifact{*emission->dispatch_source,
-                                    render_native_simd_dispatch_source(*emission, selected)});
-        }
-        if (emission->relaxed_avx2_source) {
-            result.push_back(lispb::TextArtifact{
-                *emission->relaxed_avx2_source,
-                render_native_relaxed_autovec_source(*emission, selected, "avx2")});
-            result.push_back(lispb::TextArtifact{
-                *emission->relaxed_avx512_source,
-                render_native_relaxed_autovec_source(*emission, selected, "avx512")});
-        }
-        return formatted(std::move(result));
+    std::vector<lispb::TextArtifact> result;
+    result.reserve(files.size());
+    for (auto const file : files) {
+        auto const index{cpp.files.index(file)};
+        result.push_back(
+            lispb::TextArtifact{std::filesystem::path{cpp.strings.view(cpp.files.path[index])},
+                                cpp.render(file),
+                                cpp.files.flags[index].format_generated()});
     }
-    if (profile == Profile::standard) {
-        std::vector<lispb::TextArtifact> result{
-            lispb::TextArtifact{emission->header, render_standard_header(*emission, variants)},
-            lispb::TextArtifact{emission->source,
-                                render_standard_source(module, *emission, variants)}};
-        if (emission->tests) {
-            result.push_back(lispb::TextArtifact{
-                *emission->tests, render_standard_tests(*emission, module, variants)});
-        }
-        return formatted(std::move(result));
-    }
-
-    return formatted(
-        {lispb::TextArtifact{emission->header, render_unreal_header(*emission, variants)},
-         lispb::TextArtifact{emission->source, render_unreal_source(module, *emission, variants)}});
+    return result;
 }
 
 }

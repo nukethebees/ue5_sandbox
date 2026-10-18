@@ -5,6 +5,7 @@
 
 #include "ioj/enum_traits.h"
 
+#include <cstddef>
 #include <cstdint>
 namespace ioj::sim::fighters {
 using NavigationRiskTierUnderlying = std::uint8_t;
@@ -29,5 +30,4 @@ template <>
     -> std::size_t {
     return 4;
 }
-
 } // namespace ml

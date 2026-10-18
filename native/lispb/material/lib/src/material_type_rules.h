@@ -1,6 +1,7 @@
 #pragma once
 
 #include <material_gen/MaterialIR.h>
+#include <material_gen/ValueType.h>
 
 #include <string_view>
 

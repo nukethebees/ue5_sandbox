@@ -35,6 +35,7 @@ struct FVectors1fConstView {
     }
 
     using value_type = float;
+
     using size_type = TArray<value_type>::SizeType;
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -69,9 +70,12 @@ struct FVectors1fView {
         return (*this)[index];
     }
 
+    void set(int32 const index, float const new_xs) const { xs[index] = new_xs; }
+
     using value_type = float;
+
     using size_type = TArray<value_type>::SizeType;
-    void set(int32 const i, float const x) const { xs[i] = x; }
+
     void set(int32 const i, FScalar1f const value) const { set(i, value.X); }
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
@@ -105,10 +109,19 @@ struct FVectors1f {
         float* xs;
     };
 
+    auto get_data() -> Data { return Data{xs.GetData()}; }
     struct ConstData {
         float const* xs;
     };
 
+    auto get_data() const -> ConstData { return ConstData{xs.GetData()}; }
+    using value_type = float;
+    using size_type = TArray<value_type>::SizeType;
+    auto add(FScalar1f const& value) -> size_type { return add(value.X); }
+    void set(int32 const i, FScalar1f const value) { set(i, value.X); }
+    void empty() { xs.Empty(); }
+    void set_num_uninitialised(size_type const count) { xs.SetNumUninitialized(count); }
+    void add_zeroed(size_type const count) { xs.AddZeroed(count); }
     using equivalent_type = FScalar1f;
 
     auto operator[](int32 const index) const -> FScalar1f { return {xs.GetData()[index]}; }
@@ -118,21 +131,14 @@ struct FVectors1f {
         check(index < num());
         return (*this)[index];
     }
+    void set(int32 const index, float const new_xs) { xs[index] = new_xs; }
 
-    using value_type = float;
-    using size_type = TArray<value_type>::SizeType;
-    auto get_data() -> Data { return Data{xs.GetData()}; }
-    auto get_data() const -> ConstData { return ConstData{xs.GetData()}; }
-    auto add(value_type const x) -> size_type {
-        auto const index{xs.Add(x)};
+    auto add(float const new_xs) -> int32 {
+        auto const index{num()};
+        xs.Add(new_xs);
         return index;
     }
-    auto add(FScalar1f const& value) -> size_type { return add(value.X); }
-    void set(int32 const i, value_type const x) { xs[i] = x; }
-    void set(int32 const i, FScalar1f const value) { set(i, value.X); }
-    void empty() { xs.Empty(); }
-    void set_num_uninitialised(size_type const count) { xs.SetNumUninitialized(count); }
-    void add_zeroed(size_type const count) { xs.AddZeroed(count); }
+
     void reset();
 
     void reserve(int32 const count);

@@ -1,5 +1,9 @@
 #include <material_gen/SourceHash.h>
 
+#include <cstddef>
+#include <cstdint>
+#include <span>
+#include <string>
 #include <vector>
 
 namespace material_synth {

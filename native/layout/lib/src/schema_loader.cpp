@@ -2,17 +2,29 @@
 
 #include "schema_loader_transaction.hpp"
 
+#include <codegen/sexpr/indices.h>
+#include <codegen/sexpr/source_file_kind.h>
+#include <lispb/compiler_storage.h>
 #include <lispb/project.h>
+#include <lispb/project_loader.h>
 #include <lispb/schema/editable_document.h>
+#include <lispb/schema/schema_source_update.h>
+#include <lispb/target_kind.h>
 
 #include <algorithm>
 #include <cctype>
+#include <cstddef>
 #include <exception>
+#include <filesystem>
 #include <fstream>
 #include <map>
 #include <ranges>
 #include <sstream>
+#include <stdexcept>
+#include <string>
+#include <string_view>
 #include <utility>
+#include <vector>
 
 namespace ioj::layout {
 namespace {
@@ -120,15 +132,14 @@ auto load_lispb_schema(std::filesystem::path const& project_path, std::string co
     try {
         auto project_document{lispb::load_editable_project_document(result.project_path)};
         auto const& project{project_document.project()};
-        auto const target_found{project.targets.find(target_name)};
-        if (target_found == project.targets.end()) {
+        auto const target{project.find_target(target_name)};
+        if (!target) {
             result.diagnostics.push_back(
                 {DiagnosticSeverity::error,
                  "LispB project has no target named '" + target_name + "'."});
             return result;
         }
-        auto const* target{std::get_if<lispb::CppSchemaTarget>(&target_found->second)};
-        if (target == nullptr) {
+        if (target->kind() != lispb::TargetKind::cpp_schema) {
             result.diagnostics.push_back(
                 {DiagnosticSeverity::error,
                  "LispB target '" + target_name + "' is not a C++ schema target."});
@@ -136,12 +147,13 @@ auto load_lispb_schema(std::filesystem::path const& project_path, std::string co
         }
 
         std::vector<std::filesystem::path> sources;
-        sources.reserve(target->sources.size());
-        for (auto const& source : target->sources) {
+        auto const target_sources{project.sources(*target)};
+        sources.reserve(target_sources.size());
+        for (auto const& source : target_sources) {
             sources.push_back(project.root / source);
         }
-        result.document =
-            lispb::schema::load_editable_schema_document(project.root / target->types, sources);
+        result.document = lispb::schema::load_editable_schema_document(
+            project.root / project.types(*target), sources);
         result.project_document = std::move(project_document);
         result.loaded = true;
     } catch (std::exception const& error) {
@@ -231,33 +243,47 @@ auto detail::clone_lispb_schema_with_opener(lispb::schema::EditableSchemaDocumen
             throw std::runtime_error{"Clone source directory already exists"};
         }
         source_directory_created = true;
-        auto source_text{[&](lispb::schema::SchemaSourceFile const& source) -> std::string const& {
-            auto const update{
-                std::ranges::find(*updates, source.path, &lispb::schema::SchemaSourceUpdate::path)};
-            return update == updates->end() ? source.text : update->updated;
+        auto source_text{[&](lispb::codegen::sexpr::SourceFileId const source) -> std::string_view {
+            auto const update{std::ranges::find(*updates,
+                                                document.storage().sources.filesystem_path(source),
+                                                &lispb::schema::SchemaSourceUpdate::path)};
+            return update == updates->end() ? document.storage().sources.text(source)
+                                            : update->updated;
         }};
 
         auto const types_name{std::filesystem::path{"types.lispb"}};
         std::map<std::filesystem::path, std::filesystem::path> cloned_paths;
         for (std::size_t index{}; index < sources.size(); ++index) {
             cloned_paths.emplace(
-                std::filesystem::weakly_canonical(sources[index].path),
-                index == 0 ? types_name
-                           : std::filesystem::path{safe_filename(sources[index].path, index)});
+                std::filesystem::weakly_canonical(
+                    document.storage().sources.filesystem_path(sources[index])),
+                index == 0
+                    ? types_name
+                    : std::filesystem::path{safe_filename(
+                          document.storage().sources.filesystem_path(sources[index]), index)});
         }
         std::vector<std::filesystem::path> module_names;
         for (auto const& source : sources) {
-            auto const& name{cloned_paths.at(std::filesystem::weakly_canonical(source.path))};
-            auto content{source_text(source)};
-            for (auto const& include : source.includes | std::views::reverse) {
-                auto const& range{include.source_range};
-                content.replace(range.begin_offset,
-                                range.end_offset - range.begin_offset,
+            auto const& name{cloned_paths.at(std::filesystem::weakly_canonical(
+                document.storage().sources.filesystem_path(source)))};
+            auto content{std::string{source_text(source)}};
+            auto const targets{document.storage().sources.include_targets(source)};
+            auto const spans{document.storage().sources.include_spans(source)};
+            for (auto index{targets.size()}; index > 0; --index) {
+                auto const range{spans[index - 1]};
+                content.replace(range.offset,
+                                range.end_offset - range.offset,
                                 "(include " +
-                                    quote(cloned_paths.at(include.target).generic_string()) + ")");
+                                    quote(cloned_paths
+                                              .at(std::filesystem::weakly_canonical(
+                                                  document.storage().sources.filesystem_path(
+                                                      targets[index - 1])))
+                                              .generic_string()) +
+                                    ")");
             }
             write_file(source_directory / name, content);
-            if (source.kind == lispb::schema::SchemaSourceKind::module) {
+            if (document.storage().sources.kind(source) ==
+                lispb::codegen::sexpr::SourceFileKind::module) {
                 module_names.push_back(name);
             }
         }

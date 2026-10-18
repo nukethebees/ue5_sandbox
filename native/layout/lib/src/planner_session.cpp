@@ -1,13 +1,42 @@
 #include <ioj/layout/planner_session.hpp>
 
 #include <codegen/schema.h>
+#include <codegen/schema/tagged_union_alternative_schemas.h>
+#include <codegen/schema/tagged_union_schemas.h>
+#include <codegen/schema/union_alternative_schemas.h>
+#include <codegen/schema/union_schemas.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/schema/editable_document.h>
+#include <lispb/schema/enum_types.h>
+#include <lispb/schema/external_types.h>
+#include <lispb/schema/indices.h>
+#include <lispb/schema/integer_varint_types.h>
+#include <lispb/schema/linear_quantized_types.h>
+#include <lispb/schema/optional_presence_bit_types.h>
+#include <lispb/schema/optional_sentinel_types.h>
+#include <lispb/schema/packed_types.h>
+#include <lispb/schema/record_types.h>
+#include <lispb/schema/soa_types.h>
+#include <lispb/schema/tagged_union_types.h>
+#include <lispb/schema/type_definitions.h>
+#include <lispb/schema/type_graph.h>
+#include <lispb/schema/type_identity.h>
+#include <lispb/schema/union_types.h>
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <expected>
 #include <iterator>
 #include <limits>
+#include <map>
+#include <optional>
 #include <ranges>
 #include <set>
+#include <span>
+#include <string>
 #include <utility>
+#include <vector>
 
 namespace ioj::layout {
 using namespace lispb::schema;
@@ -22,7 +51,7 @@ auto same_profile(AbiProfile const& first, AbiProfile const& second) -> bool {
 }
 
 auto reconcile_weight_keys(std::map<std::string, std::uint64_t>& weights,
-                           std::vector<std::string> const& previous_keys,
+                           std::span<std::string const> previous_keys,
                            std::vector<std::string> const& current_keys) -> bool {
     std::set<std::string, std::less<>> previous{previous_keys.begin(), previous_keys.end()};
     std::set<std::string, std::less<>> current{current_keys.begin(), current_keys.end()};
@@ -77,8 +106,8 @@ auto set_distribution_weight(PlannerAnalysisSession::DistributionTable& distribu
 
 } // namespace
 
-PlannerAnalysisSession::PlannerAnalysisSession(TypeGraph types) {
-    inputs.workspace = LayoutWorkspace{std::move(types)};
+PlannerAnalysisSession::PlannerAnalysisSession(TypeGraph const& types) {
+    inputs.workspace = LayoutWorkspace{types};
 }
 
 auto PlannerAnalysisSession::primary_abi() const -> AbiProfile const& {
@@ -87,8 +116,9 @@ auto PlannerAnalysisSession::primary_abi() const -> AbiProfile const& {
 
 auto PlannerAnalysisSession::set_external_type_facts(TypeId const type, TypeFacts facts)
     -> std::expected<bool, std::string> {
-    auto const& node{inputs.workspace.types().type(type)};
-    if (!std::holds_alternative<ExternalType>(node.definition)) {
+    auto const& node{type};
+    if (!((inputs.workspace.types().definition(node)).kind() ==
+          lispb::schema::TypeDefinitionKind::external)) {
         return std::unexpected{"Manual facts can only be supplied for external types."};
     }
     if (auto const valid{validate_type_facts(facts)}; !valid) {
@@ -99,7 +129,9 @@ auto PlannerAnalysisSession::set_external_type_facts(TypeId const type, TypeFact
         facts.provenance = "Entered in Memory Layout Planner";
     }
     auto profile{primary_abi_};
-    profile.set(codegen::native_spelling(node.cpp_spelling), facts);
+    profile.set(lispb::codegen::native_spelling(std::string{inputs.workspace.types().strings().view(
+                    inputs.workspace.types().cpp_spelling(node))}),
+                facts);
     return set_primary_abi(std::move(profile));
 }
 
@@ -219,30 +251,32 @@ void PlannerAnalysisSession::replace_types(EditableSchemaDocument const& documen
                                            std::optional<TypeIdentity> selection) {
     auto raw_weights_changed{false};
     for (auto entry = union_distributions_.begin(); entry != union_distributions_.end();) {
-        auto const* declaration{document.declaration(entry->first)};
-        auto const* schema{document.union_schema(entry->first)};
-        if (declaration == nullptr || schema == nullptr) {
+        auto const declaration{document.declarations().find(entry->first)};
+        auto const schema{
+            document.declaration_handle(entry->first, lispb::codegen::DeclarationKind::union_type)};
+        if (!declaration.has_value() || !schema) {
             entry = union_distributions_.erase(entry);
             raw_weights_changed = true;
             continue;
         }
 
-        std::vector<std::string> previous_keys;
-        if (auto const previous_type{inputs.workspace.types().find(declaration->identity)};
-            previous_type.has_value()) {
-            auto const* previous_union{
-                std::get_if<UnionType>(&inputs.workspace.types().type(*previous_type).definition)};
-            if (previous_union != nullptr) {
-                previous_keys.reserve(previous_union->alternatives.size());
-                for (auto const& alternative : previous_union->alternatives) {
-                    previous_keys.push_back(alternative.name);
-                }
-            }
-        }
+        auto const previous_keys{inputs.workspace.previous_alternative_keys(
+            document.storage().strings,
+            document.declarations().identity[document.declarations().index(*declaration)])};
         std::vector<std::string> current_keys;
-        current_keys.reserve(schema->alternatives.size());
-        for (auto const& alternative : schema->alternatives) {
-            current_keys.push_back(alternative.name);
+        current_keys.reserve(
+            document.storage()
+                .declarations.unions
+                .alternatives[document.storage().declarations.unions.index(*schema)]
+                .size());
+        for (auto const alternative : document.storage().declarations.items(
+                 document.storage()
+                     .declarations.unions
+                     .alternatives[document.storage().declarations.unions.index(*schema)])) {
+            current_keys.emplace_back(document.storage().strings.view(
+                document.storage()
+                    .declarations.union_alternatives
+                    .name[document.storage().declarations.union_alternatives.index(alternative)]));
         }
         raw_weights_changed |= reconcile_weight_keys(entry->second, previous_keys, current_keys);
         ++entry;
@@ -254,30 +288,33 @@ void PlannerAnalysisSession::replace_types(EditableSchemaDocument const& documen
     auto tagged_weights_changed{false};
     for (auto entry = tagged_union_distributions_.begin();
          entry != tagged_union_distributions_.end();) {
-        auto const* declaration{document.declaration(entry->first)};
-        auto const* schema{document.tagged_union_schema(entry->first)};
-        if (declaration == nullptr || schema == nullptr) {
+        auto const declaration{document.declarations().find(entry->first)};
+        auto const schema{document.declaration_handle(
+            entry->first, lispb::codegen::DeclarationKind::tagged_union)};
+        if (!declaration.has_value() || !schema) {
             entry = tagged_union_distributions_.erase(entry);
             tagged_weights_changed = true;
             continue;
         }
 
-        std::vector<std::string> previous_keys;
-        if (auto const previous_type{inputs.workspace.types().find(declaration->identity)};
-            previous_type.has_value()) {
-            auto const* previous_union{std::get_if<TaggedUnionType>(
-                &inputs.workspace.types().type(*previous_type).definition)};
-            if (previous_union != nullptr) {
-                previous_keys.reserve(previous_union->alternatives.size());
-                for (auto const& alternative : previous_union->alternatives) {
-                    previous_keys.push_back(alternative.tag);
-                }
-            }
-        }
+        auto const previous_keys{inputs.workspace.previous_alternative_keys(
+            document.storage().strings,
+            document.declarations().identity[document.declarations().index(*declaration)])};
         std::vector<std::string> current_keys;
-        current_keys.reserve(schema->alternatives.size());
-        for (auto const& alternative : schema->alternatives) {
-            current_keys.push_back(alternative.tag);
+        current_keys.reserve(
+            document.storage()
+                .declarations.tagged_unions
+                .alternatives[document.storage().declarations.tagged_unions.index(*schema)]
+                .size());
+        for (auto const alternative : document.storage().declarations.items(
+                 document.storage()
+                     .declarations.tagged_unions
+                     .alternatives[document.storage().declarations.tagged_unions.index(*schema)])) {
+            current_keys.emplace_back(document.storage().strings.view(
+                document.storage()
+                    .declarations.tagged_union_alternatives
+                    .tag[document.storage().declarations.tagged_union_alternatives.index(
+                        alternative)]));
         }
         tagged_weights_changed |= reconcile_weight_keys(entry->second, previous_keys, current_keys);
         ++entry;
@@ -340,17 +377,36 @@ auto PlannerAnalysisSession::refresh(EditableSchemaDocument const* document) -> 
     validate_comparison_variants();
 
     if (inputs.selection.type.has_value()) {
-        auto const* selected_quantized{std::get_if<LinearQuantizedType>(
-            &inputs.workspace.types().type(*inputs.selection.type).definition)};
-        if (selected_quantized != nullptr) {
+        auto const selected_quantized{
+            ((inputs.workspace.types().definition(*inputs.selection.type)).kind() ==
+                     lispb::schema::TypeDefinitionKind::linear_quantized
+                 ? std::optional{inputs.workspace.types().definition(*inputs.selection.type)}
+                 : std::nullopt)};
+        if (static_cast<bool>(selected_quantized)) {
             auto valid_comparison_type = [&](TypeId const candidate) {
                 if (candidate == *inputs.selection.type) {
                     return false;
                 }
-                auto const* candidate_quantized{std::get_if<LinearQuantizedType>(
-                    &inputs.workspace.types().type(candidate).definition)};
-                return candidate_quantized != nullptr &&
-                       candidate_quantized->source.type == selected_quantized->source.type;
+                auto const candidate_quantized{
+                    ((inputs.workspace.types().definition(candidate)).kind() ==
+                             lispb::schema::TypeDefinitionKind::linear_quantized
+                         ? std::optional{inputs.workspace.types().definition(candidate)}
+                         : std::nullopt)};
+                return static_cast<bool>(candidate_quantized) &&
+                       inputs.workspace.types()
+                               .occurrences()
+                               .type[inputs.workspace.types().occurrences().index(
+                                   inputs.workspace.types().definitions().linear_quantized.source
+                                       [inputs.workspace.types()
+                                            .definitions()
+                                            .linear_quantized.index(*candidate_quantized)])] ==
+                           inputs.workspace.types()
+                               .occurrences()
+                               .type[inputs.workspace.types().occurrences().index(
+                                   inputs.workspace.types().definitions().linear_quantized.source
+                                       [inputs.workspace.types()
+                                            .definitions()
+                                            .linear_quantized.index(*selected_quantized)])];
             };
 
             std::optional<TypeId> comparison_id;
@@ -363,7 +419,8 @@ auto PlannerAnalysisSession::refresh(EditableSchemaDocument const* document) -> 
                 for (std::size_t index{}; index < types.size(); ++index) {
                     auto const candidate{TypeId{static_cast<std::uint32_t>(index)}};
                     if (valid_comparison_type(candidate)) {
-                        inputs.quantized_comparison_type = types[index].identity;
+                        inputs.quantized_comparison_type =
+                            inputs.workspace.types().identity(types[index]);
                         break;
                     }
                 }
@@ -376,17 +433,36 @@ auto PlannerAnalysisSession::refresh(EditableSchemaDocument const* document) -> 
     }
 
     if (inputs.selection.type.has_value()) {
-        auto const* selected_varint{std::get_if<IntegerVarintType>(
-            &inputs.workspace.types().type(*inputs.selection.type).definition)};
-        if (selected_varint != nullptr) {
+        auto const selected_varint{
+            ((inputs.workspace.types().definition(*inputs.selection.type)).kind() ==
+                     lispb::schema::TypeDefinitionKind::integer_varint
+                 ? std::optional{inputs.workspace.types().definition(*inputs.selection.type)}
+                 : std::nullopt)};
+        if (static_cast<bool>(selected_varint)) {
             auto valid_comparison_type = [&](TypeId const candidate) {
                 if (candidate == *inputs.selection.type) {
                     return false;
                 }
-                auto const* candidate_varint{std::get_if<IntegerVarintType>(
-                    &inputs.workspace.types().type(candidate).definition)};
-                return candidate_varint != nullptr &&
-                       candidate_varint->source.type == selected_varint->source.type;
+                auto const candidate_varint{
+                    ((inputs.workspace.types().definition(candidate)).kind() ==
+                             lispb::schema::TypeDefinitionKind::integer_varint
+                         ? std::optional{inputs.workspace.types().definition(candidate)}
+                         : std::nullopt)};
+                return static_cast<bool>(candidate_varint) &&
+                       inputs.workspace.types()
+                               .occurrences()
+                               .type[inputs.workspace.types().occurrences().index(
+                                   inputs.workspace.types().definitions().integer_varints.source
+                                       [inputs.workspace.types()
+                                            .definitions()
+                                            .integer_varints.index(*candidate_varint)])] ==
+                           inputs.workspace.types()
+                               .occurrences()
+                               .type[inputs.workspace.types().occurrences().index(
+                                   inputs.workspace.types().definitions().integer_varints.source
+                                       [inputs.workspace.types()
+                                            .definitions()
+                                            .integer_varints.index(*selected_varint)])];
             };
 
             std::optional<TypeId> comparison_id;
@@ -399,7 +475,8 @@ auto PlannerAnalysisSession::refresh(EditableSchemaDocument const* document) -> 
                 for (std::size_t index{}; index < types.size(); ++index) {
                     auto const candidate{TypeId{static_cast<std::uint32_t>(index)}};
                     if (valid_comparison_type(candidate)) {
-                        inputs.varint_comparison_type = types[index].identity;
+                        inputs.varint_comparison_type =
+                            inputs.workspace.types().identity(types[index]);
                         break;
                     }
                 }
@@ -412,12 +489,28 @@ auto PlannerAnalysisSession::refresh(EditableSchemaDocument const* document) -> 
     }
 
     auto optional_source = [&](TypeId const type) -> std::optional<TypeId> {
-        auto const& definition{inputs.workspace.types().type(type).definition};
-        if (auto const* sentinel{std::get_if<OptionalSentinelType>(&definition)}) {
-            return sentinel->source.type;
+        auto const& definition{inputs.workspace.types().definition(type)};
+        if (auto const sentinel{
+                ((definition).kind() == lispb::schema::TypeDefinitionKind::optional_sentinel
+                     ? std::optional{definition}
+                     : std::nullopt)}) {
+            return inputs.workspace.types()
+                .occurrences()
+                .type[inputs.workspace.types().occurrences().index(
+                    inputs.workspace.types().definitions().optional_sentinels.source
+                        [inputs.workspace.types().definitions().optional_sentinels.index(
+                            *sentinel)])];
         }
-        if (auto const* presence{std::get_if<OptionalPresenceBitType>(&definition)}) {
-            return presence->source.type;
+        if (auto const presence{
+                ((definition).kind() == lispb::schema::TypeDefinitionKind::optional_presence_bit
+                     ? std::optional{definition}
+                     : std::nullopt)}) {
+            return inputs.workspace.types()
+                .occurrences()
+                .type[inputs.workspace.types().occurrences().index(
+                    inputs.workspace.types().definitions().optional_presence_bits.source
+                        [inputs.workspace.types().definitions().optional_presence_bits.index(
+                            *presence)])];
         }
         return std::nullopt;
     };
@@ -439,7 +532,8 @@ auto PlannerAnalysisSession::refresh(EditableSchemaDocument const* document) -> 
                 for (std::size_t index{}; index < types.size(); ++index) {
                     auto const candidate{TypeId{static_cast<std::uint32_t>(index)}};
                     if (valid_comparison_type(candidate)) {
-                        inputs.optional_comparison_type = types[index].identity;
+                        inputs.optional_comparison_type =
+                            inputs.workspace.types().identity(types[index]);
                         break;
                     }
                 }
@@ -469,27 +563,31 @@ auto PlannerAnalysisSession::refresh(EditableSchemaDocument const* document) -> 
     auto const same_variants{cached_comparison_a_variant_id_ == inputs.comparison_a_variant_id &&
                              cached_comparison_b_variant_id_ == inputs.comparison_b_variant_id};
     if (same_declaration && inputs.selection.type.has_value()) {
-        auto const& definition{inputs.workspace.types().type(*inputs.selection.type).definition};
-        if (std::holds_alternative<EnumType>(definition) && same_targets) {
+        auto const& definition{inputs.workspace.types().definition(*inputs.selection.type)};
+        if (((definition).kind() == lispb::schema::TypeDefinitionKind::enumeration) &&
+            same_targets) {
             return false;
         }
-        if (std::holds_alternative<RecordType>(definition) && same_targets && same_access) {
+        if (((definition).kind() == lispb::schema::TypeDefinitionKind::record) && same_targets &&
+            same_access) {
             return false;
         }
-        if (std::holds_alternative<UnionType>(definition) && same_targets &&
-            cached_union_distribution_revision_ == union_distribution_revision_) {
+        if (((definition).kind() == lispb::schema::TypeDefinitionKind::union_type) &&
+            same_targets && cached_union_distribution_revision_ == union_distribution_revision_) {
             return false;
         }
-        if (std::holds_alternative<TaggedUnionType>(definition) && same_targets &&
-            cached_tagged_distribution_revision_ == tagged_distribution_revision_) {
+        if (((definition).kind() == lispb::schema::TypeDefinitionKind::tagged_union) &&
+            same_targets && cached_tagged_distribution_revision_ == tagged_distribution_revision_) {
             return false;
         }
-        if (std::holds_alternative<PackedType>(definition) && same_targets && same_access &&
-            same_variants && cached_soa_allocation_strategy_ == inputs.soa_allocation_strategy) {
+        if (((definition).kind() == lispb::schema::TypeDefinitionKind::packed) && same_targets &&
+            same_access && same_variants &&
+            cached_soa_allocation_strategy_ == inputs.soa_allocation_strategy) {
             return false;
         }
-        if (std::holds_alternative<SoaType>(definition) && same_targets && same_access &&
-            same_variants && cached_soa_allocation_strategy_ == inputs.soa_allocation_strategy) {
+        if (((definition).kind() == lispb::schema::TypeDefinitionKind::soa) && same_targets &&
+            same_access && same_variants &&
+            cached_soa_allocation_strategy_ == inputs.soa_allocation_strategy) {
             return false;
         }
     }

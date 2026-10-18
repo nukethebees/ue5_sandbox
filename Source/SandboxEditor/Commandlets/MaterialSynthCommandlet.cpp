@@ -10,6 +10,10 @@
 #include "Misc/Paths.h"
 #include "RHIGlobals.h"
 
+#include <cstddef>
+#include <span>
+#include <string_view>
+
 namespace {
 
 void print_result(bool const success,
@@ -25,8 +29,13 @@ void print_result(bool const success,
            error_count);
 }
 
+auto material_text(std::string_view const value) -> FString {
+    FUTF8ToTCHAR const converted{value.data(), static_cast<int32>(value.size())};
+    return FString{converted.Length(), converted.Get()};
+}
+
 auto texture_object_path(std::string_view const source_path) -> FString {
-    auto path{FString{UTF8_TO_TCHAR(source_path.data())}};
+    auto path{material_text(source_path)};
     if (!path.Contains(TEXT("."))) {
         auto leaf{path};
         int32 slash{};
@@ -109,11 +118,11 @@ int32 UMaterialSynthCommandlet::Main(FString const& parameters) {
     }
 
     auto const& material{compiled->material};
-    auto const asset{FString{UTF8_TO_TCHAR(material.settings.package_path.c_str())} + TEXT(".") +
-                     UTF8_TO_TCHAR(material.settings.name.c_str())};
+    auto const asset{material_text(material.text(material.settings.package_path)) + TEXT(".") +
+                     material_text(material.text(material.settings.name))};
     int32 dependency_errors{};
     for (auto const& dependency : material.texture_dependencies) {
-        auto const path{texture_object_path(dependency)};
+        auto const path{texture_object_path(material.text(dependency))};
         if (LoadObject<UTexture>(nullptr, *path, nullptr, LOAD_NoWarn) == nullptr) {
             UE_LOG(LogTemp,
                    Error,
@@ -136,8 +145,8 @@ int32 UMaterialSynthCommandlet::Main(FString const& parameters) {
         return 1;
     }
 
-    auto const source_path{FString{UTF8_TO_TCHAR(compiled->source_path.c_str())}};
-    auto const source_hash{FString{UTF8_TO_TCHAR(compiled->source_hash.c_str())}};
+    auto const source_path{material_text(material.text(compiled->source_path))};
+    auto const source_hash{material_text(material.text(compiled->source_hash))};
     auto const emitted{material_synth::emit(material, source_path, source_hash)};
     for (auto const& error : emitted.errors) {
         UE_LOG(LogTemp, Error, TEXT("%s"), *error);

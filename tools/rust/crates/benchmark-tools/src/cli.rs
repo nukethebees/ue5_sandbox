@@ -13,8 +13,6 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Command {
-    /// Run kernel measurements and generate SVG charts.
-    KernelReport(KernelOptions),
     /// Run an authored native simulation level.
     NativeSimulation(SimulationOptions),
     /// Measure stable fighter populations and generate charts.
@@ -76,7 +74,6 @@ fn switch(text: &str) -> Result<bool, String> {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
 pub enum PlotKind {
-    Kernel,
     Fighter,
     Comparison,
 }
@@ -89,31 +86,6 @@ pub struct PlotOptions {
     pub input: PathBuf,
     #[arg(long)]
     pub output_dir: PathBuf,
-    /// Kernel backend (default: scalar, falling back to autovec-avx2).
-    #[arg(long)]
-    pub baseline: Option<String>,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
-pub enum KernelWorkload {
-    Representative,
-    VectorLayout,
-    Full,
-    Highway,
-}
-
-#[derive(Args)]
-pub struct KernelOptions {
-    #[arg(long, value_enum, default_value = "representative")]
-    pub workload: KernelWorkload,
-    /// Defaults to 7 (3 for Highway).
-    #[arg(long, value_parser = clap::value_parser!(u32).range(1..=1000))]
-    pub repetitions: Option<u32>,
-    /// Seconds per case; defaults to 0.05 (0.02 for Highway).
-    #[arg(long, value_parser = finite(0.001, 180.0))]
-    pub min_time: Option<f64>,
-    #[arg(long)]
-    pub skip_build: bool,
 }
 
 #[derive(Clone, Debug, Parser)]

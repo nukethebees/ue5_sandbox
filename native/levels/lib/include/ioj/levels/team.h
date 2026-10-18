@@ -94,19 +94,16 @@ enum class Team : TeamUnderlying {
 namespace ml {
 template <>
 struct EnumTraits<::ioj::Team> {
-    inline static constexpr std::array values{
-        ::ioj::Team::White,
-        ::ioj::Team::Red,
-        ::ioj::Team::Green,
-        ::ioj::Team::Blue,
-        ::ioj::Team::Orange,
-        ::ioj::Team::Yellow,
-    };
+    inline static constexpr std::array values{::ioj::Team::White,
+                                              ::ioj::Team::Red,
+                                              ::ioj::Team::Green,
+                                              ::ioj::Team::Blue,
+                                              ::ioj::Team::Orange,
+                                              ::ioj::Team::Yellow};
 };
 
 template <>
 [[nodiscard]] constexpr auto enum_count<::ioj::Team>() noexcept -> std::size_t {
     return 6;
 }
-
 } // namespace ml

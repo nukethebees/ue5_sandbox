@@ -1,10 +1,30 @@
 #include "analyzer_test_fixtures.hpp"
 
+#include <codegen/schema/fixed_point_rounding.h>
+#include <codegen/schema/packed_bit_order.h>
+#include <codegen/schema/packed_byte_order.h>
+#include <codegen/schema/packed_field_kind.h>
+#include <codegen/schema/packed_integer_value.h>
+#include <codegen/schema/quantization_clipping.h>
+#include <codegen/schema/semantic_relation_kind.h>
+#include <codegen/schema/semantic_relation_unit.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/schema/indices.h>
+
+#include <array>
+#include <cstdint>
+#include <limits>
+#include <optional>
+#include <ranges>
+#include <string>
+#include <vector>
+
 namespace ioj::layout {
 namespace {
 
 TEST(PackedAnalyzer, ReportsEntityUniqueIdLayout) {
-    auto const fixture{entity_id_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage)};
     auto const analysis{Analyzer::analyze_packed(
         fixture.types, fixture.type, Variant{}, AbiProfile::host_common())};
 
@@ -25,8 +45,12 @@ TEST(PackedAnalyzer, ReportsEntityUniqueIdLayout) {
 }
 
 TEST(PackedAnalyzer, ComparesPhysicalLayoutAcrossTargetProfiles) {
-    auto const fixture{entity_id_type(
-        false, false, std::nullopt, codegen::PackedBitOrder::most_significant_first)};
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage,
+                                      false,
+                                      false,
+                                      std::nullopt,
+                                      lispb::codegen::PackedBitOrder::most_significant_first)};
     auto first_target{AbiProfile::host_common()};
     auto second_target{AbiProfile::host_common()};
     second_target.set("std::uint32_t",
@@ -72,7 +96,8 @@ TEST(PackedAnalyzer, ComparesPhysicalLayoutAcrossTargetProfiles) {
 }
 
 TEST(PackedAnalyzer, PreservesUnknownAndOverflowAcrossTargetComparison) {
-    auto const fixture{entity_id_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage)};
     auto const known{Analyzer::analyze_packed(
         fixture.types, fixture.type, Variant{}, AbiProfile::host_common(), 10)};
     auto const unknown{Analyzer::analyze_packed(
@@ -111,7 +136,8 @@ TEST(PackedAnalyzer, PreservesUnknownAndOverflowAcrossTargetComparison) {
 }
 
 TEST(PackedAnalyzer, RejectsMismatchedTargetComparisonInputsWithoutPartialFields) {
-    auto const fixture{entity_id_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage)};
     auto const first{Analyzer::analyze_packed(
         fixture.types, fixture.type, Variant{}, AbiProfile::host_common(), 10)};
     auto second{first};
@@ -142,7 +168,8 @@ TEST(PackedAnalyzer, RejectsMismatchedTargetComparisonInputsWithoutPartialFields
 }
 
 TEST(PackedAnalyzer, SeparatesReservedPayloadAndTrailingUnusedBits) {
-    auto const fixture{entity_id_type(true)};
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage, true)};
     auto const analysis{Analyzer::analyze_packed(
         fixture.types, fixture.type, Variant{}, AbiProfile::host_common(), 100)};
 
@@ -165,15 +192,17 @@ TEST(PackedAnalyzer, SeparatesReservedPayloadAndTrailingUnusedBits) {
 }
 
 TEST(PackedAnalyzer, ReportsExplicitByteOrderAndMostSignificantFirstRanges) {
-    auto const fixture{entity_id_type(true,
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage,
+                                      true,
                                       false,
-                                      codegen::PackedByteOrder::big_endian,
-                                      codegen::PackedBitOrder::most_significant_first)};
+                                      lispb::codegen::PackedByteOrder::big_endian,
+                                      lispb::codegen::PackedBitOrder::most_significant_first)};
     auto const analysis{Analyzer::analyze_packed(
         fixture.types, fixture.type, Variant{}, AbiProfile::host_common())};
 
-    EXPECT_EQ(analysis.byte_order, codegen::PackedByteOrder::big_endian);
-    EXPECT_EQ(analysis.bit_order, codegen::PackedBitOrder::most_significant_first);
+    EXPECT_EQ(analysis.byte_order, lispb::codegen::PackedByteOrder::big_endian);
+    EXPECT_EQ(analysis.bit_order, lispb::codegen::PackedBitOrder::most_significant_first);
     ASSERT_EQ(analysis.fields.size(), 3U);
     EXPECT_EQ(analysis.fields[0].least_significant_bit, 12U);
     EXPECT_EQ(analysis.fields[0].most_significant_bit, 31U);
@@ -182,10 +211,11 @@ TEST(PackedAnalyzer, ReportsExplicitByteOrderAndMostSignificantFirstRanges) {
     EXPECT_EQ(analysis.fields[2].least_significant_bit, 0U);
     EXPECT_EQ(analysis.fields[2].most_significant_bit, 7U);
 
-    auto compact_fixture{entity_id_type(false,
+    auto compact_fixture{entity_id_type(storage,
                                         false,
-                                        codegen::PackedByteOrder::little_endian,
-                                        codegen::PackedBitOrder::most_significant_first)};
+                                        false,
+                                        lispb::codegen::PackedByteOrder::little_endian,
+                                        lispb::codegen::PackedBitOrder::most_significant_first)};
     Variant variant;
     variant.overrides.packed_field_widths[{.type = compact_fixture.type, .field_name = "index"}] =
         20;
@@ -208,7 +238,8 @@ TEST(PackedAnalyzer, ReportsExplicitByteOrderAndMostSignificantFirstRanges) {
 }
 
 TEST(PackedAnalyzer, ReportsPackedFieldSemanticRangeCodeSpace) {
-    auto const fixture{entity_id_type(true, true)};
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage, true, true)};
     auto const analysis{Analyzer::analyze_packed(
         fixture.types, fixture.type, Variant{}, AbiProfile::host_common())};
 
@@ -225,7 +256,7 @@ TEST(PackedAnalyzer, ReportsPackedFieldSemanticRangeCodeSpace) {
     ASSERT_EQ(index.named_codes.size(), 3U);
     EXPECT_EQ(index.named_codes[1].name, "Invalid");
     EXPECT_TRUE(index.named_codes[1].sentinel);
-    EXPECT_EQ(index.relationship_kind, codegen::SemanticRelationKind::index_into);
+    EXPECT_EQ(index.relationship_kind, lispb::codegen::SemanticRelationKind::index_into);
     EXPECT_EQ(index.relationship_target, "EntityType");
 
     Variant variant;
@@ -237,7 +268,8 @@ TEST(PackedAnalyzer, ReportsPackedFieldSemanticRangeCodeSpace) {
 }
 
 TEST(PackedAnalyzer, ReportsSharedIntegerScalarFieldDomain) {
-    auto const fixture{packed_integer_scalar_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{packed_integer_scalar_type(storage)};
     auto const analysis{Analyzer::analyze_packed(
         fixture.types, fixture.type, Variant{}, AbiProfile::host_common())};
 
@@ -260,13 +292,14 @@ TEST(PackedAnalyzer, ReportsSharedIntegerScalarFieldDomain) {
 }
 
 TEST(PackedAnalyzer, ReportsPlacedLinearQuantizationFacts) {
-    auto const fixture{packed_linear_quantized_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{packed_linear_quantized_type(storage)};
     auto const analysis{Analyzer::analyze_packed(
         fixture.types, fixture.type, Variant{}, AbiProfile::host_common())};
 
     ASSERT_EQ(analysis.fields.size(), 2U);
     auto const& field{analysis.fields.front()};
-    EXPECT_EQ(field.kind, codegen::PackedFieldKind::linear_quantized);
+    EXPECT_EQ(field.kind, lispb::codegen::PackedFieldKind::linear_quantized);
     EXPECT_EQ(field.schema_bit_width, 8U);
     EXPECT_TRUE(field.schema_bit_width_auto);
     ASSERT_TRUE(field.linear_quantized.has_value());
@@ -277,7 +310,7 @@ TEST(PackedAnalyzer, ReportsPlacedLinearQuantizationFacts) {
               (ExactCodeCount{.value = 254, .two_to_64 = false}));
     EXPECT_EQ(field.linear_quantized->reserved_code_count, 2U);
     EXPECT_NEAR(static_cast<double>(field.linear_quantized->resolution), 1000.0 / 253.0, 1e-12);
-    EXPECT_EQ(field.linear_quantized->clipping, codegen::QuantizationClipping::clamp);
+    EXPECT_EQ(field.linear_quantized->clipping, lispb::codegen::QuantizationClipping::clamp);
     EXPECT_TRUE(analysis.diagnostics.empty());
 
     Variant overridden;
@@ -291,13 +324,14 @@ TEST(PackedAnalyzer, ReportsPlacedLinearQuantizationFacts) {
 }
 
 TEST(PackedAnalyzer, ReportsPlacedFixedPointFacts) {
-    auto const fixture{packed_fixed_point_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{packed_fixed_point_type(storage)};
     auto const analysis{Analyzer::analyze_packed(
         fixture.types, fixture.type, Variant{}, AbiProfile::host_common())};
 
     ASSERT_EQ(analysis.fields.size(), 2U);
     auto const& field{analysis.fields.front()};
-    EXPECT_EQ(field.kind, codegen::PackedFieldKind::fixed_point);
+    EXPECT_EQ(field.kind, lispb::codegen::PackedFieldKind::fixed_point);
     EXPECT_EQ(field.schema_bit_width, 12U);
     EXPECT_TRUE(field.schema_bit_width_auto);
     ASSERT_TRUE(field.fixed_point.has_value());
@@ -305,12 +339,12 @@ TEST(PackedAnalyzer, ReportsPlacedFixedPointFacts) {
     EXPECT_EQ(field.fixed_point->total_bits, 12U);
     EXPECT_EQ(field.fixed_point->whole_bits, 7U);
     EXPECT_EQ(field.fixed_point->fractional_bits, 4U);
-    EXPECT_EQ(field.fixed_point->minimum_raw_value, codegen::PackedIntegerValue{-2048});
-    EXPECT_EQ(field.fixed_point->maximum_raw_value, codegen::PackedIntegerValue{2047});
+    EXPECT_EQ(field.fixed_point->minimum_raw_value, lispb::codegen::PackedIntegerValue{-2048});
+    EXPECT_EQ(field.fixed_point->maximum_raw_value, lispb::codegen::PackedIntegerValue{2047});
     EXPECT_EQ(field.fixed_point->minimum_value, -128.0L);
     EXPECT_EQ(field.fixed_point->maximum_value, 127.9375L);
     EXPECT_EQ(field.fixed_point->resolution, 0.0625L);
-    EXPECT_EQ(field.fixed_point->rounding, codegen::FixedPointRounding::toward_zero);
+    EXPECT_EQ(field.fixed_point->rounding, lispb::codegen::FixedPointRounding::toward_zero);
     EXPECT_TRUE(analysis.diagnostics.empty());
 
     Variant overridden;
@@ -324,8 +358,9 @@ TEST(PackedAnalyzer, ReportsPlacedFixedPointFacts) {
 }
 
 TEST(PackedAnalyzer, DerivesIndexCapacityWidthWithSentinel) {
-    auto const fixture{
-        relationship_capacity_type(codegen::SemanticRelationKind::index_into, 12, 4'095)};
+    lispb::CompilerStorage storage;
+    auto const fixture{relationship_capacity_type(
+        storage, lispb::codegen::SemanticRelationKind::index_into, 12, 4'095)};
     std::array const capacity{RelationshipTargetFacts{
         .target = fixture.target, .element_capacity = 4'000, .byte_extent = std::nullopt}};
 
@@ -363,8 +398,9 @@ TEST(PackedAnalyzer, DerivesIndexCapacityWidthWithSentinel) {
 }
 
 TEST(PackedAnalyzer, DistinguishesCountCapacityAndExactTwoTo64) {
-    auto const fixture{
-        relationship_capacity_type(codegen::SemanticRelationKind::count_of, 12, 4'095)};
+    lispb::CompilerStorage storage;
+    auto const fixture{relationship_capacity_type(
+        storage, lispb::codegen::SemanticRelationKind::count_of, 12, 4'095)};
     std::array capacity{RelationshipTargetFacts{
         .target = fixture.target, .element_capacity = 4'094, .byte_extent = std::nullopt}};
 
@@ -385,7 +421,7 @@ TEST(PackedAnalyzer, DistinguishesCountCapacityAndExactTwoTo64) {
     EXPECT_TRUE(fits.diagnostics.empty());
 
     auto const full_fixture{
-        relationship_capacity_type(codegen::SemanticRelationKind::count_of, 64)};
+        relationship_capacity_type(storage, lispb::codegen::SemanticRelationKind::count_of, 64)};
     std::array const full_capacity{
         RelationshipTargetFacts{.target = full_fixture.target,
                                 .element_capacity = (std::numeric_limits<std::uint64_t>::max)(),
@@ -414,7 +450,9 @@ TEST(PackedAnalyzer, DistinguishesCountCapacityAndExactTwoTo64) {
 }
 
 TEST(PackedAnalyzer, KeepsMissingRelationshipTargetFactsUnknown) {
-    auto const index{relationship_capacity_type(codegen::SemanticRelationKind::index_into, 1)};
+    lispb::CompilerStorage storage;
+    auto const index{
+        relationship_capacity_type(storage, lispb::codegen::SemanticRelationKind::index_into, 1)};
     auto const missing{
         Analyzer::analyze_packed(index.types, index.packed, Variant{}, AbiProfile::host_common())};
     EXPECT_FALSE(missing.fields.front().relationship_target_extent.has_value());
@@ -437,7 +475,8 @@ TEST(PackedAnalyzer, KeepsMissingRelationshipTargetFactsUnknown) {
               (std::numeric_limits<std::uint64_t>::max)());
     EXPECT_FALSE(zero.fields.front().relationship_effective_capacity_limit.has_value());
 
-    auto const offset{relationship_capacity_type(codegen::SemanticRelationKind::offset_into, 12)};
+    auto const offset{
+        relationship_capacity_type(storage, lispb::codegen::SemanticRelationKind::offset_into, 12)};
     std::array const offset_facts{RelationshipTargetFacts{
         .target = offset.target, .element_capacity = std::nullopt, .byte_extent = 1'000}};
     auto const missing_element_extent{Analyzer::analyze_packed(
@@ -448,11 +487,13 @@ TEST(PackedAnalyzer, KeepsMissingRelationshipTargetFactsUnknown) {
 }
 
 TEST(PackedAnalyzer, DerivesByteOffsetExtentAndWidth) {
-    auto const fixture{relationship_capacity_type(codegen::SemanticRelationKind::offset_into,
+    lispb::CompilerStorage storage;
+    auto const fixture{relationship_capacity_type(storage,
+                                                  lispb::codegen::SemanticRelationKind::offset_into,
                                                   13,
                                                   std::nullopt,
                                                   std::nullopt,
-                                                  codegen::SemanticRelationUnit::bytes)};
+                                                  lispb::codegen::SemanticRelationUnit::bytes)};
     auto const target{Analyzer::analyze_soa(fixture.types,
                                             fixture.target,
                                             Variant{},
@@ -469,7 +510,7 @@ TEST(PackedAnalyzer, DerivesByteOffsetExtentAndWidth) {
 
     ASSERT_EQ(analysis.fields.size(), 1);
     auto const& field{analysis.fields.front()};
-    EXPECT_EQ(field.relationship_unit, codegen::SemanticRelationUnit::bytes);
+    EXPECT_EQ(field.relationship_unit, lispb::codegen::SemanticRelationUnit::bytes);
     EXPECT_EQ(field.relationship_target_extent, 8'192);
     EXPECT_EQ(field.relationship_live_value_count,
               (ExactCodeCount{.value = 8'192, .two_to_64 = false}));
@@ -481,8 +522,9 @@ TEST(PackedAnalyzer, DerivesByteOffsetExtentAndWidth) {
 }
 
 TEST(PackedAnalyzer, AccountsForMultipleSentinelsInCapacityHeadroom) {
-    auto const fixture{
-        relationship_capacity_type(codegen::SemanticRelationKind::index_into, 3, 6, 7)};
+    lispb::CompilerStorage storage;
+    auto const fixture{relationship_capacity_type(
+        storage, lispb::codegen::SemanticRelationKind::index_into, 3, 6, 7)};
     std::array const capacity{RelationshipTargetFacts{
         .target = fixture.target, .element_capacity = 4, .byte_extent = std::nullopt}};
 
@@ -501,8 +543,11 @@ TEST(PackedAnalyzer, AccountsForMultipleSentinelsInCapacityHeadroom) {
 }
 
 TEST(PackedAnalyzer, DiagnosesRelationshipRequirementBeyond64Bits) {
-    auto const fixture{relationship_capacity_type(
-        codegen::SemanticRelationKind::count_of, 64, (std::numeric_limits<std::uint64_t>::max)())};
+    lispb::CompilerStorage storage;
+    auto const fixture{relationship_capacity_type(storage,
+                                                  lispb::codegen::SemanticRelationKind::count_of,
+                                                  64,
+                                                  (std::numeric_limits<std::uint64_t>::max)())};
     std::array const capacity{
         RelationshipTargetFacts{.target = fixture.target,
                                 .element_capacity = (std::numeric_limits<std::uint64_t>::max)(),
@@ -530,7 +575,8 @@ TEST(PackedAnalyzer, DiagnosesRelationshipRequirementBeyond64Bits) {
 }
 
 TEST(PackedAnalyzer, ReportsUnusedAndExcessBits) {
-    auto const fixture{entity_id_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage)};
     Variant variant;
     variant.overrides.packed_field_widths[{.type = fixture.type, .field_name = "index"}] = 20;
     auto analysis{Analyzer::analyze_packed(
@@ -548,7 +594,8 @@ TEST(PackedAnalyzer, ReportsUnusedAndExcessBits) {
 }
 
 TEST(PackedAnalyzer, ReportsSchemaAndOverrideProvenance) {
-    auto const fixture{entity_id_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage)};
     Variant variant;
     variant.overrides.packed_storage_types[fixture.type] = "std::uint64_t";
     variant.overrides.packed_field_widths[{.type = fixture.type, .field_name = "index"}] = 20;
@@ -566,7 +613,8 @@ TEST(PackedAnalyzer, ReportsSchemaAndOverrideProvenance) {
 }
 
 TEST(PackedAnalyzer, DiagnosesZeroWidthFields) {
-    auto const fixture{entity_id_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage)};
     Variant variant;
     variant.overrides.packed_field_widths[{.type = fixture.type, .field_name = "index"}] = 0;
     auto const analysis{
@@ -579,7 +627,8 @@ TEST(PackedAnalyzer, DiagnosesZeroWidthFields) {
 }
 
 TEST(PackedAnalyzer, AppliesExplicitVariantOverrides) {
-    auto const fixture{entity_id_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage)};
     Variant variant;
     variant.overrides.packed_storage_types[fixture.type] = "std::uint64_t";
     variant.overrides.packed_field_widths[{.type = fixture.type, .field_name = "index"}] = 40;
@@ -594,7 +643,8 @@ TEST(PackedAnalyzer, AppliesExplicitVariantOverrides) {
 }
 
 TEST(PackedAnalyzer, ReportsOverflowSafeAggregateMemoryAtSelectedScale) {
-    auto const fixture{entity_id_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage)};
     auto const analysis{Analyzer::analyze_packed(
         fixture.types, fixture.type, Variant{}, AbiProfile::host_common(), 1'000)};
 
@@ -613,7 +663,8 @@ TEST(PackedAnalyzer, ReportsOverflowSafeAggregateMemoryAtSelectedScale) {
 }
 
 TEST(PackedAnalyzer, ReportsAlignedContiguousBoundaryStraddling) {
-    auto const fixture{entity_id_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage)};
     auto abi{AbiProfile::host_common()};
     abi.set("uint24",
             {.size_bytes = 3,
@@ -660,7 +711,8 @@ TEST(PackedAnalyzer, ReportsAlignedContiguousBoundaryStraddling) {
 }
 
 TEST(PackedAnalyzer, KeepsUnknownTargetMemoryFactsUnknown) {
-    auto const fixture{entity_id_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage)};
     AbiProfile abi{"unknown memory"};
     abi.set("std::uint32_t",
             {.size_bytes = 4,
@@ -682,13 +734,14 @@ TEST(PackedAnalyzer, KeepsUnknownTargetMemoryFactsUnknown) {
 }
 
 TEST(PackedAnalyzer, ReportsSignedArbitraryWidthRange) {
-    auto const fixture{signed_delta_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{signed_delta_type(storage)};
 
     auto const analysis{Analyzer::analyze_packed(
         fixture.types, fixture.type, Variant{}, AbiProfile::host_common())};
 
     ASSERT_EQ(analysis.fields.size(), 2U);
-    EXPECT_EQ(analysis.fields[0].kind, codegen::PackedFieldKind::signed_integer);
+    EXPECT_EQ(analysis.fields[0].kind, lispb::codegen::PackedFieldKind::signed_integer);
     EXPECT_EQ(analysis.fields[0].bit_width, 17U);
     EXPECT_EQ(analysis.fields[0].minimum_signed_value, -65'536);
     EXPECT_EQ(analysis.fields[0].maximum_signed_value, 65'535);
@@ -697,7 +750,8 @@ TEST(PackedAnalyzer, ReportsSignedArbitraryWidthRange) {
 }
 
 TEST(PackedAnalyzer, ReportsSignedSemanticRangeSentinelAndDerivedWidth) {
-    auto const fixture{signed_delta_type(true)};
+    lispb::CompilerStorage storage;
+    auto const fixture{signed_delta_type(storage, true)};
 
     auto const analysis{Analyzer::analyze_packed(
         fixture.types, fixture.type, Variant{}, AbiProfile::host_common())};
@@ -706,20 +760,21 @@ TEST(PackedAnalyzer, ReportsSignedSemanticRangeSentinelAndDerivedWidth) {
     auto const& delta{analysis.fields[0]};
     EXPECT_TRUE(delta.schema_bit_width_auto);
     EXPECT_EQ(delta.bit_width, 8U);
-    EXPECT_EQ(delta.minimum_semantic_value, codegen::PackedIntegerValue{-100});
-    EXPECT_EQ(delta.maximum_semantic_value, codegen::PackedIntegerValue{100});
+    EXPECT_EQ(delta.minimum_semantic_value, lispb::codegen::PackedIntegerValue{-100});
+    EXPECT_EQ(delta.maximum_semantic_value, lispb::codegen::PackedIntegerValue{100});
     EXPECT_EQ(delta.semantic_value_count, 201U);
     EXPECT_EQ(delta.sentinel_code_count, 1U);
     EXPECT_EQ(delta.required_code_count, 202U);
     EXPECT_EQ(delta.minimum_required_bits, 8U);
     EXPECT_EQ(delta.unused_codes, 54U);
     ASSERT_EQ(delta.named_codes.size(), 1U);
-    EXPECT_EQ(delta.named_codes[0].value, codegen::PackedIntegerValue{-128});
+    EXPECT_EQ(delta.named_codes[0].value, lispb::codegen::PackedIntegerValue{-128});
     EXPECT_TRUE(analysis.diagnostics.empty());
 }
 
 TEST(PackedAnalyzer, ReportsKnownZeroWasteForFullSigned64BitDomain) {
-    auto const fixture{signed_delta_type(false, true)};
+    lispb::CompilerStorage storage;
+    auto const fixture{signed_delta_type(storage, false, true)};
 
     auto const analysis{Analyzer::analyze_packed(
         fixture.types, fixture.type, Variant{}, AbiProfile::host_common())};
@@ -736,7 +791,8 @@ TEST(PackedAnalyzer, ReportsKnownZeroWasteForFullSigned64BitDomain) {
 }
 
 TEST(PackedAnalyzer, DiagnosesAggregateOverflow) {
-    auto const fixture{entity_id_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage)};
     auto const analysis{Analyzer::analyze_packed(fixture.types,
                                                  fixture.type,
                                                  Variant{},
@@ -753,7 +809,8 @@ TEST(PackedAnalyzer, DiagnosesAggregateOverflow) {
 }
 
 TEST(PackedAccessAnalyzer, SeparatesSelectedBitsFromWholeStorageAndRegionFootprints) {
-    auto const fixture{entity_id_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage)};
     auto const abi{AbiProfile::host_common()};
     auto const packed{Analyzer::analyze_packed(fixture.types, fixture.type, Variant{}, abi, 100)};
     std::array const accesses{
@@ -806,7 +863,8 @@ TEST(PackedAccessAnalyzer, SeparatesSelectedBitsFromWholeStorageAndRegionFootpri
 }
 
 TEST(PackedAccessAnalyzer, ReportsUnselectedAndUnusedStorageBitsAsNonUseful) {
-    auto const fixture{entity_id_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage)};
     auto const abi{AbiProfile::host_common()};
     Variant variant;
     variant.overrides.packed_field_widths[{.type = fixture.type, .field_name = "index"}] = 20;
@@ -831,7 +889,8 @@ TEST(PackedAccessAnalyzer, ReportsUnselectedAndUnusedStorageBitsAsNonUseful) {
 }
 
 TEST(PackedAccessAnalyzer, RejectsReservedMissingAndConflictingSelections) {
-    auto const fixture{entity_id_type(true)};
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage, true)};
     auto const abi{AbiProfile::host_common()};
     auto const packed{Analyzer::analyze_packed(fixture.types, fixture.type, Variant{}, abi, 2)};
     std::array const accesses{AccessIntent{.name = "future", .operation = AccessOperation::read},
@@ -854,7 +913,8 @@ TEST(PackedAccessAnalyzer, RejectsReservedMissingAndConflictingSelections) {
 }
 
 TEST(PackedAccessAnalyzer, KeepsUnknownMemoryFactsUnknown) {
-    auto const fixture{entity_id_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage)};
     AbiProfile abi{"unknown memory"};
     abi.set("std::uint32_t",
             {.size_bytes = 4,
@@ -881,7 +941,8 @@ TEST(PackedAccessAnalyzer, KeepsUnknownMemoryFactsUnknown) {
 }
 
 TEST(PackedAccessAnalyzer, DiagnosesZeroMultiplicityAndCheckedOverflow) {
-    auto const fixture{entity_id_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage)};
     auto const abi{AbiProfile::host_common()};
     auto const packed{Analyzer::analyze_packed(
         fixture.types, fixture.type, Variant{}, abi, (std::numeric_limits<std::uint64_t>::max)())};
@@ -904,7 +965,8 @@ TEST(PackedAccessAnalyzer, DiagnosesZeroMultiplicityAndCheckedOverflow) {
 }
 
 TEST(PackedAccessComparison, ReportsWidthAndStorageConsequencesForOneWorkload) {
-    auto const fixture{entity_id_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage)};
     auto const abi{AbiProfile::host_common()};
     std::array const accesses{AccessIntent{.name = "index", .operation = AccessOperation::read}};
 
@@ -973,7 +1035,8 @@ TEST(PackedAccessComparison, ReportsWidthAndStorageConsequencesForOneWorkload) {
 }
 
 TEST(PackedAccessComparison, ReportsTargetStorageAndRegionConsequencesForOneWorkload) {
-    auto const fixture{entity_id_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage)};
     auto first_target{AbiProfile::host_common()};
     first_target.set_memory_facts({.cache_line_bytes = 64,
                                    .page_bytes = 4'096,
@@ -1041,7 +1104,8 @@ TEST(PackedAccessComparison, ReportsTargetStorageAndRegionConsequencesForOneWork
 }
 
 TEST(PackedAccessComparison, MatchesFieldDetailsIndependentOfIntentOrder) {
-    auto const fixture{entity_id_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage)};
     auto const abi{AbiProfile::host_common()};
     auto const packed{Analyzer::analyze_packed(fixture.types, fixture.type, Variant{}, abi, 10)};
     std::array const first_accesses{
@@ -1065,7 +1129,8 @@ TEST(PackedAccessComparison, MatchesFieldDetailsIndependentOfIntentOrder) {
 }
 
 TEST(PackedAccessComparison, DiagnosesMissingFieldDetails) {
-    auto const fixture{entity_id_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage)};
     auto const abi{AbiProfile::host_common()};
     auto const packed{Analyzer::analyze_packed(fixture.types, fixture.type, Variant{}, abi, 10)};
     std::array const accesses{AccessIntent{.name = "index", .operation = AccessOperation::read}};
@@ -1116,7 +1181,8 @@ TEST(PackedAccessComparison, RejectsMismatchedWorkloads) {
 }
 
 TEST(PackedAccessComparison, KeepsUnknownPhysicalDeltasUnknown) {
-    auto const fixture{entity_id_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage)};
     AbiProfile abi{"unknown memory"};
     abi.set("std::uint32_t",
             {.size_bytes = 4,
@@ -1141,7 +1207,8 @@ TEST(PackedAccessComparison, KeepsUnknownPhysicalDeltasUnknown) {
 }
 
 TEST(PackedAccessComparison, KeepsOverflowedDeltasUnknown) {
-    auto const fixture{entity_id_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{entity_id_type(storage)};
     auto const abi{AbiProfile::host_common()};
     std::array const accesses{AccessIntent{.name = "index", .operation = AccessOperation::read}};
     auto const packed{Analyzer::analyze_packed(

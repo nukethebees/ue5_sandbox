@@ -1,312 +1,438 @@
 #include "packed_value_internal.h"
 
+#include <codegen/ast/cpp_types.h>
+#include <codegen/schema/declarations.h>
+#include <codegen/schema/enum_schemas.h>
+#include <codegen/schema/fixed_point_schemas.h>
 #include <codegen/schema/fixed_point_value.h>
-#include <lispb/schema/enum_domain.h>
+#include <codegen/schema/indices.h>
+#include <codegen/schema/integer_scalar_schemas.h>
+#include <codegen/schema/linear_quantized_schemas.h>
+#include <codegen/schema/manifest.h>
+#include <codegen/schema/mini_float_schemas.h>
+#include <codegen/schema/module_handle.h>
+#include <codegen/schema/packed_bit_order.h>
+#include <codegen/schema/packed_field_kind.h>
+#include <codegen/schema/packed_field_schemas.h>
+#include <codegen/schema/packed_integer_value.h>
+#include <codegen/schema/packed_named_code_schemas.h>
+#include <codegen/schema/packed_reserved_bits_schemas.h>
+#include <codegen/schema/packed_value_schemas.h>
+#include <codegen/schema/type_refs.h>
+#include <lispb/schema/enum_domains.h>
+#include <lispb/schema/external_types.h>
+#include <lispb/schema/integer_domain.h>
+#include <lispb/schema/integer_scalar_types.h>
+#include <lispb/schema/type_graph.h>
+#include <lispb/strings.h>
 
 #include <algorithm>
+#include <array>
+#include <cstdint>
 #include <limits>
+#include <optional>
 #include <stdexcept>
+#include <string>
+#include <string_view>
+#include <utility>
 
-namespace codegen::detail {
+namespace lispb::codegen::detail {
 namespace {
-
-template <typename Schema>
-auto find_normal(std::string const& spelling,
-                 std::vector<ModuleSchema> const& modules,
-                 std::string_view const module_name = {}) -> Schema const* {
-    if (!module_name.empty()) {
-        for (auto const& candidate : modules) {
-            auto const* module{std::get_if<NormalModuleSchema>(&candidate)};
-            if (module == nullptr || module->settings.name != module_name) {
-                continue;
-            }
-            for (auto const& declaration : module->declarations) {
-                auto const* schema{std::get_if<Schema>(&declaration)};
-                if (schema != nullptr && schema->name == spelling) {
-                    return schema;
-                }
-            }
-        }
-    }
-    for (auto const& candidate : modules) {
-        auto const* module{std::get_if<NormalModuleSchema>(&candidate)};
-        if (module == nullptr) {
-            continue;
-        }
-        for (auto const& declaration : module->declarations) {
-            auto const* schema{std::get_if<Schema>(&declaration)};
-            if (schema == nullptr) {
-                continue;
-            }
-            auto const qualified{module->settings.namespace_name.has_value()
-                                     ? *module->settings.namespace_name + "::" + schema->name
-                                     : schema->name};
-            if (qualified == spelling) {
-                return schema;
-            }
-        }
-    }
-    return nullptr;
+auto referenced_declaration(TypeRefId reference,
+                            lispb::schema::TypeGraph const& graph,
+                            ModuleHandle module,
+                            DeclarationKind kind) -> std::optional<DeclarationHandle> {
+    auto const occurrence{graph.resolved(module, reference)};
+    auto const& occurrences{graph.occurrences()};
+    auto const source{graph.source_declaration(occurrences.type[occurrences.index(occurrence)])};
+    return source.value != 0 && source.kind() == kind ? std::optional{source} : std::nullopt;
 }
-
 } // namespace
 
 auto packed_unsigned_width(std::string_view const spelling) -> std::optional<int> {
-    static std::map<std::string_view, int> const widths{
-        {"uint8", 8},
-        {"uint16", 16},
-        {"uint32", 32},
-        {"uint64", 64},
-        {"std::uint8_t", 8},
-        {"std::uint16_t", 16},
-        {"std::uint32_t", 32},
-        {"std::uint64_t", 64},
-    };
-    auto const found{widths.find(spelling)};
-    return found == widths.end() ? std::nullopt : std::optional<int>{found->second};
+    constexpr std::array values{std::pair{"uint8", 8},
+                                std::pair{"uint16", 16},
+                                std::pair{"uint32", 32},
+                                std::pair{"uint64", 64},
+                                std::pair{"std::uint8_t", 8},
+                                std::pair{"std::uint16_t", 16},
+                                std::pair{"std::uint32_t", 32},
+                                std::pair{"std::uint64_t", 64}};
+    for (auto const& [name, width] : values) {
+        if (spelling == name) {
+            return width;
+        }
+    }
+    return std::nullopt;
 }
-
 auto packed_signed_width(std::string_view const spelling) -> std::optional<int> {
-    static std::map<std::string_view, int> const widths{
-        {"int8", 8},
-        {"int16", 16},
-        {"int32", 32},
-        {"int64", 64},
-        {"std::int8_t", 8},
-        {"std::int16_t", 16},
-        {"std::int32_t", 32},
-        {"std::int64_t", 64},
-    };
-    auto const found{widths.find(spelling)};
-    return found == widths.end() ? std::nullopt : std::optional<int>{found->second};
-}
-
-auto find_packed_enum(TypeRef const& type,
-                      TypeRegistry const& types,
-                      std::vector<ModuleSchema> const& modules) -> EnumSchema const* {
-    return find_normal<EnumSchema>(resolve_type(type, types).spelling, modules);
-}
-
-auto find_integer_domain(TypeRef const& type,
-                         TypeRegistry const& types,
-                         std::vector<ModuleSchema> const& modules,
-                         std::string_view const module_name) -> std::optional<IntegerDomainView> {
-    if (!type.suffix.empty() || type.nested.has_value()) {
-        return std::nullopt;
-    }
-    auto const spelling{resolve_type(type, types).spelling};
-    if (auto const* scalar{find_normal<IntegerScalarSchema>(spelling, modules, module_name)}) {
-        return integer_domain(*scalar);
-    }
-    if (auto const* semantics{external_scalar_schema(types, spelling)}) {
-        if (auto const* scalar{std::get_if<ExternalIntegerSchema>(semantics)}) {
-            return integer_domain(*scalar);
+    constexpr std::array values{std::pair{"int8", 8},
+                                std::pair{"int16", 16},
+                                std::pair{"int32", 32},
+                                std::pair{"int64", 64},
+                                std::pair{"std::int8_t", 8},
+                                std::pair{"std::int16_t", 16},
+                                std::pair{"std::int32_t", 32},
+                                std::pair{"std::int64_t", 64}};
+    for (auto const& [name, width] : values) {
+        if (spelling == name) {
+            return width;
         }
     }
     return std::nullopt;
 }
 
-auto find_linear_quantized(TypeRef const& type,
-                           TypeRegistry const& types,
-                           std::vector<ModuleSchema> const& modules)
-    -> LinearQuantizedSchema const* {
-    return find_normal<LinearQuantizedSchema>(resolve_type(type, types).spelling, modules);
+auto find_packed_enum(TypeRefId reference,
+                      lispb::schema::TypeGraph const& graph,
+                      ModuleHandle module) -> std::optional<lispb::codegen::DeclarationHandle> {
+    return referenced_declaration(reference, graph, module, DeclarationKind::enumeration);
 }
 
-auto find_packed_integer_domain(PackedFieldSchema const& field,
-                                TypeRegistry const& types,
-                                std::vector<ModuleSchema> const& modules,
-                                std::string_view const module_name)
-    -> std::optional<IntegerDomainView> {
-    if (field.bits.has_value() &&
-        find_normal<IntegerScalarSchema>(
-            resolve_type(field.type, types).spelling, modules, module_name) == nullptr) {
-        // Explicit widths on plain C++ fields describe a field-local subset of the type's values.
+auto find_linear_quantized(TypeRefId reference,
+                           lispb::schema::TypeGraph const& graph,
+                           ModuleHandle module)
+    -> std::optional<lispb::codegen::DeclarationHandle> {
+    return referenced_declaration(reference, graph, module, DeclarationKind::linear_quantized);
+}
+
+auto find_fixed_point(TypeRefId reference,
+                      lispb::schema::TypeGraph const& graph,
+                      ModuleHandle module) -> std::optional<lispb::codegen::DeclarationHandle> {
+    return referenced_declaration(reference, graph, module, DeclarationKind::fixed_point);
+}
+
+auto find_mini_float(TypeRefId reference,
+                     lispb::schema::TypeGraph const& graph,
+                     ModuleHandle module) -> std::optional<lispb::codegen::DeclarationHandle> {
+    return referenced_declaration(reference, graph, module, DeclarationKind::mini_float);
+}
+
+auto find_integer_domain(TypeRefId const reference,
+                         lispb::schema::TypeGraph const& graph,
+                         ModuleHandle const module) -> std::optional<schema::TypeDefinitionId> {
+    auto const& declarations{graph.declarations()};
+    auto const& references{declarations.type_refs};
+    auto const row{references.index(reference)};
+    if (!declarations.strings().view(references.suffix[row]).empty() || references.nested[row]) {
         return std::nullopt;
     }
-    return find_integer_domain(field.type, types, modules, module_name);
+    auto const occurrence{graph.resolved(module, reference)};
+    auto const& occurrences{graph.occurrences()};
+    return schema::integer_domain(graph, occurrences.type[occurrences.index(occurrence)]);
 }
 
-auto find_fixed_point(TypeRef const& type,
-                      TypeRegistry const& types,
-                      std::vector<ModuleSchema> const& modules) -> FixedPointSchema const* {
-    return find_normal<FixedPointSchema>(resolve_type(type, types).spelling, modules);
+auto find_packed_integer_domain(PackedSegmentId const field,
+                                lispb::schema::TypeGraph const& graph,
+                                ModuleHandle const module)
+    -> std::optional<schema::TypeDefinitionId> {
+    auto const& declarations{graph.declarations()};
+    auto const& fields{declarations.packed_fields};
+    auto const reference{fields.type[fields.index(field)]};
+    auto const& references{declarations.type_refs};
+    auto const row{references.index(reference)};
+    if (!declarations.strings().view(references.suffix[row]).empty() || references.nested[row]) {
+        return std::nullopt;
+    }
+    auto const occurrence{graph.resolved(module, reference)};
+    auto const& occurrences{graph.occurrences()};
+    return schema::packed_integer_domain(
+        graph, occurrences.type[occurrences.index(occurrence)], field);
 }
 
-auto find_mini_float(TypeRef const& type,
-                     TypeRegistry const& types,
-                     std::vector<ModuleSchema> const& modules) -> MiniFloatSchema const* {
-    return find_normal<MiniFloatSchema>(resolve_type(type, types).spelling, modules);
-}
-
-auto derive_integer_scalar_width(IntegerDomainView const& scalar) -> std::optional<int> {
-    if (scalar.bit_width.has_value()) {
-        return static_cast<int>(*scalar.bit_width);
+auto derive_packed_field_width(lispb::codegen::PackedSegmentId field,
+                               Manifest const& manifest,
+                               lispb::schema::TypeGraph const& graph,
+                               ModuleHandle module) -> std::optional<int> {
+    if (manifest.declarations.packed_fields.bits[manifest.declarations.packed_fields.index(field)]
+            .has_value()) {
+        return manifest.declarations.packed_fields
+            .bits[manifest.declarations.packed_fields.index(field)];
     }
-
-    auto minimum_code{scalar.minimum_value};
-    auto maximum_code{scalar.maximum_value};
-    for (auto const& code : scalar.named_codes) {
-        if (packed_integer_less(code.value, minimum_code)) {
-            minimum_code = code.value;
-        }
-        if (packed_integer_less(maximum_code, code.value)) {
-            maximum_code = code.value;
-        }
+    if (auto const scalar{
+            find_integer_domain(manifest.declarations.packed_fields
+                                    .type[manifest.declarations.packed_fields.index(field)],
+                                graph,
+                                module)}) {
+        auto const& scalars{graph.definitions().integer_scalars};
+        return static_cast<int>(scalars.bit_width[scalars.index(*scalar)]);
     }
-    auto const bits{minimum_packed_integer_bits(minimum_code, maximum_code, scalar.signedness)};
-    return bits.has_value() ? std::optional<int>{static_cast<int>(*bits)} : std::nullopt;
-}
-
-auto derive_packed_field_width(PackedFieldSchema const& field,
-                               TypeRegistry const& types,
-                               std::vector<ModuleSchema> const& modules) -> std::optional<int> {
-    if (field.bits.has_value()) {
-        return field.bits;
-    }
-    if (auto const scalar{find_integer_domain(field.type, types, modules)}) {
-        return derive_integer_scalar_width(*scalar);
-    }
-    if (field.kind == PackedFieldKind::linear_quantized) {
-        auto const* quantized{find_linear_quantized(field.type, types, modules)};
-        return quantized != nullptr ? std::optional<int>{static_cast<int>(quantized->bit_width)}
-                                    : std::nullopt;
-    }
-    if (field.kind == PackedFieldKind::fixed_point) {
-        auto const* fixed{find_fixed_point(field.type, types, modules)};
-        return fixed != nullptr ? std::optional<int>{static_cast<int>(fixed->total_bits)}
-                                : std::nullopt;
-    }
-    if (field.kind == PackedFieldKind::mini_float) {
-        auto const* mini{find_mini_float(field.type, types, modules)};
-        return mini != nullptr
-                 ? std::optional<int>{static_cast<int>(mini->sign_bits + mini->exponent_bits +
-                                                       mini->significand_bits)}
+    if (manifest.declarations.packed_fields
+            .kind[manifest.declarations.packed_fields.index(field)] ==
+        PackedFieldKind::linear_quantized) {
+        auto const quantized{
+            find_linear_quantized(manifest.declarations.packed_fields
+                                      .type[manifest.declarations.packed_fields.index(field)],
+                                  graph,
+                                  module)};
+        return quantized.has_value()
+                 ? std::optional<int>{static_cast<int>(
+                       manifest.declarations.linear_quantizeds
+                           .bit_width[manifest.declarations.linear_quantizeds.index(*quantized)])}
                  : std::nullopt;
     }
-    if (field.kind == PackedFieldKind::enumeration) {
-        auto const* enumeration{find_packed_enum(field.type, types, modules)};
-        if (enumeration == nullptr) {
+    if (manifest.declarations.packed_fields
+            .kind[manifest.declarations.packed_fields.index(field)] ==
+        PackedFieldKind::fixed_point) {
+        auto const fixed{
+            find_fixed_point(manifest.declarations.packed_fields
+                                 .type[manifest.declarations.packed_fields.index(field)],
+                             graph,
+                             module)};
+        return fixed.has_value()
+                 ? std::optional<int>{static_cast<int>(
+                       manifest.declarations.fixed_points
+                           .total_bits[manifest.declarations.fixed_points.index(*fixed)])}
+                 : std::nullopt;
+    }
+    if (manifest.declarations.packed_fields
+            .kind[manifest.declarations.packed_fields.index(field)] ==
+        PackedFieldKind::mini_float) {
+        auto const mini{find_mini_float(manifest.declarations.packed_fields
+                                            .type[manifest.declarations.packed_fields.index(field)],
+                                        graph,
+                                        module)};
+        return mini.has_value()
+                 ? std::optional<int>{static_cast<int>(
+                       manifest.declarations.mini_floats
+                           .sign_bits[manifest.declarations.mini_floats.index(*mini)] +
+                       manifest.declarations.mini_floats
+                           .exponent_bits[manifest.declarations.mini_floats.index(*mini)] +
+                       manifest.declarations.mini_floats
+                           .significand_bits[manifest.declarations.mini_floats.index(*mini)])}
+                 : std::nullopt;
+    }
+    if (manifest.declarations.packed_fields
+            .kind[manifest.declarations.packed_fields.index(field)] ==
+        PackedFieldKind::enumeration) {
+        auto const enumeration{
+            find_packed_enum(manifest.declarations.packed_fields
+                                 .type[manifest.declarations.packed_fields.index(field)],
+                             graph,
+                             module)};
+        if (!enumeration.has_value()) {
             return std::nullopt;
         }
-        if (enumeration->bit_width.has_value()) {
-            return static_cast<int>(*enumeration->bit_width);
+        if (manifest.declarations.enums.bit_width[manifest.declarations.enums.index(*enumeration)]
+                .has_value()) {
+            return static_cast<int>(
+                *manifest.declarations.enums
+                     .bit_width[manifest.declarations.enums.index(*enumeration)]);
         }
-        std::vector<lispb::schema::EnumDomainInput> values;
-        values.reserve(enumeration->values.size());
-        for (auto const& value : enumeration->values) {
-            values.push_back({.name = value.name,
-                              .explicit_value = value.initializer,
-                              .reserved = value.sentinel || (enumeration->count.has_value() &&
-                                                             value.name == *enumeration->count)});
-        }
-        auto const domain{lispb::schema::analyze_enum_domain(values, enumeration->signedness)};
-        return domain.minimum_required_bits.has_value()
-                 ? std::optional<int>{static_cast<int>(*domain.minimum_required_bits)}
-                 : std::nullopt;
+        auto const& domains{graph.enum_domains()};
+        auto const domain{domains.find(*enumeration)};
+        auto const bits{domains.minimum_required_bits[domains.index(domain)]};
+        return bits ? std::optional<int>{static_cast<int>(*bits)} : std::nullopt;
     }
-    if (!field.minimum_value.has_value() || !field.maximum_value.has_value()) {
+    if (!manifest.declarations.packed_fields
+             .minimum_value[manifest.declarations.packed_fields.index(field)]
+             .has_value() ||
+        !manifest.declarations.packed_fields
+             .maximum_value[manifest.declarations.packed_fields.index(field)]
+             .has_value()) {
         return std::nullopt;
     }
 
-    auto minimum_code{*field.minimum_value};
-    auto maximum_code{*field.maximum_value};
-    for (auto const& code : field.named_codes) {
-        if (packed_integer_less(code.value, minimum_code)) {
-            minimum_code = code.value;
+    auto minimum_code{*manifest.declarations.packed_fields
+                           .minimum_value[manifest.declarations.packed_fields.index(field)]};
+    auto maximum_code{*manifest.declarations.packed_fields
+                           .maximum_value[manifest.declarations.packed_fields.index(field)]};
+    for (auto const id : manifest.declarations.items(
+             manifest.declarations.packed_fields
+                 .named_codes[manifest.declarations.packed_fields.index(field)])) {
+        auto const code{id};
+        if (packed_integer_less(manifest.declarations.packed_named_codes
+                                    .value[manifest.declarations.packed_named_codes.index(code)],
+                                minimum_code)) {
+            minimum_code = manifest.declarations.packed_named_codes
+                               .value[manifest.declarations.packed_named_codes.index(code)];
         }
-        if (packed_integer_less(maximum_code, code.value)) {
-            maximum_code = code.value;
+        if (packed_integer_less(maximum_code,
+                                manifest.declarations.packed_named_codes
+                                    .value[manifest.declarations.packed_named_codes.index(code)])) {
+            maximum_code = manifest.declarations.packed_named_codes
+                               .value[manifest.declarations.packed_named_codes.index(code)];
         }
     }
     auto const bits{minimum_packed_integer_bits(
-        minimum_code, maximum_code, field.kind == PackedFieldKind::signed_integer)};
+        minimum_code,
+        maximum_code,
+        manifest.declarations.packed_fields
+                .kind[manifest.declarations.packed_fields.index(field)] ==
+            PackedFieldKind::signed_integer)};
     return bits.has_value() ? std::optional<int>{static_cast<int>(*bits)} : std::nullopt;
 }
 
-auto packed_default_value(PackedValueSchema const& schema,
-                          TypeRegistry const& types,
-                          std::vector<ModuleSchema> const& modules)
-    -> std::optional<std::uint64_t> {
+auto packed_default_value(lispb::codegen::DeclarationHandle schema,
+                          Manifest const& manifest,
+                          lispb::schema::TypeGraph const& graph,
+                          ModuleHandle module) -> std::optional<std::uint64_t> {
+    auto const& integer_scalars{graph.definitions().integer_scalars};
+    auto const storage{
+        graph.resolved(module,
+                       manifest.declarations.packed_values
+                           .storage_type[manifest.declarations.packed_values.index(schema)])};
+    auto const& occurrences{graph.occurrences()};
     auto const storage_bits{
-        packed_unsigned_width(resolve_type(schema.storage_type, types).spelling).value()};
-    auto const most_significant_first{schema.bit_order == PackedBitOrder::most_significant_first};
+        packed_unsigned_width(
+            graph.cpp_types().spelling(occurrences.cpp_type[occurrences.index(storage)]))
+            .value()};
+    auto const most_significant_first{
+        manifest.declarations.packed_values
+            .bit_order[manifest.declarations.packed_values.index(schema)] ==
+        PackedBitOrder::most_significant_first};
     auto used_bits{0};
     auto any_default{false};
     auto complete{true};
     std::uint64_t raw{};
 
-    for (auto const& segment : schema.segments) {
-        auto const* field{std::get_if<PackedFieldSchema>(&segment)};
-        auto const bits{field != nullptr ? derive_packed_field_width(*field, types, modules).value()
-                                         : std::get<PackedReservedBitsSchema>(segment).bits};
+    for (auto const segment : manifest.declarations.items(
+             manifest.declarations.packed_values
+                 .segments[manifest.declarations.packed_values.index(schema)])) {
+        auto const field{((segment).kind() == lispb::codegen::PackedSegmentKind::field
+                              ? std::optional{segment}
+                              : std::nullopt)};
+        auto const bits{field.has_value()
+                            ? derive_packed_field_width(*field, manifest, graph, module).value()
+                            : manifest.declarations.packed_reserved_bits
+                                  .bits[manifest.declarations.packed_reserved_bits.index(segment)]};
         auto const offset{most_significant_first ? storage_bits - used_bits - bits : used_bits};
         used_bits += bits;
-        if (field == nullptr) {
+        if (!field.has_value()) {
             continue;
         }
-        if (!field->default_value.has_value()) {
+        if (!manifest.declarations.packed_fields
+                 .default_value[manifest.declarations.packed_fields.index(*field)]
+                 .has_value()) {
             complete = false;
             continue;
         }
 
         any_default = true;
-        auto const value{*field->default_value};
-        auto const scalar{find_packed_integer_domain(*field, types, modules)};
-        auto const* fixed{find_fixed_point(field->type, types, modules)};
-        auto const signedness{fixed != nullptr ? fixed->signedness
-                              : scalar.has_value()
-                                  ? scalar->signedness
-                                  : field->kind == PackedFieldKind::signed_integer};
+        auto const value{*manifest.declarations.packed_fields
+                              .default_value[manifest.declarations.packed_fields.index(*field)]};
+        auto const scalar{find_packed_integer_domain(*field, graph, module)};
+        auto const fixed{
+            find_fixed_point(manifest.declarations.packed_fields
+                                 .type[manifest.declarations.packed_fields.index(*field)],
+                             graph,
+                             module)};
+        auto const signedness{
+            fixed.has_value() ? manifest.declarations.fixed_points
+                                    .signedness[manifest.declarations.fixed_points.index(*fixed)]
+            : scalar.has_value()
+                ? integer_scalars.signedness[integer_scalars.index(*scalar)]
+                : manifest.declarations.packed_fields
+                          .kind[manifest.declarations.packed_fields.index(*field)] ==
+                      PackedFieldKind::signed_integer};
         auto valid{signedness
                        ? packed_integer_fits_signed(value, static_cast<std::uint32_t>(bits))
                        : packed_integer_fits_unsigned(value, static_cast<std::uint32_t>(bits))};
-        auto const minimum{scalar.has_value() ? std::optional{scalar->minimum_value}
-                                              : field->minimum_value};
-        auto const maximum{scalar.has_value() ? std::optional{scalar->maximum_value}
-                                              : field->maximum_value};
+        auto const minimum{
+            scalar.has_value()
+                ? std::optional{integer_scalars.minimum_value[integer_scalars.index(*scalar)]}
+                : manifest.declarations.packed_fields
+                      .minimum_value[manifest.declarations.packed_fields.index(*field)]};
+        auto const maximum{
+            scalar.has_value()
+                ? std::optional{integer_scalars.maximum_value[integer_scalars.index(*scalar)]}
+                : manifest.declarations.packed_fields
+                      .maximum_value[manifest.declarations.packed_fields.index(*field)]};
         auto const codes{scalar.has_value()
-                             ? scalar->named_codes
-                             : std::span<PackedNamedCodeSchema const>{field->named_codes}};
+                             ? integer_scalars.named_codes[integer_scalars.index(*scalar)]
+                             : manifest.declarations.packed_fields
+                                   .named_codes[manifest.declarations.packed_fields.index(*field)]};
         if (minimum.has_value() && maximum.has_value()) {
-            auto const sentinel{std::ranges::any_of(
-                codes, [&](auto const& code) { return code.sentinel && code.value == value; })};
+            auto const sentinel{
+                std::ranges::any_of(manifest.declarations.items(codes), [&](auto const id) {
+                    auto const code{id};
+                    return manifest.declarations.packed_named_codes
+                               .sentinel[manifest.declarations.packed_named_codes.index(code)] &&
+                           manifest.declarations.packed_named_codes
+                                   .value[manifest.declarations.packed_named_codes.index(code)] ==
+                               value;
+                })};
             valid = valid && (sentinel || (packed_integer_less_equal(*minimum, value) &&
                                            packed_integer_less_equal(value, *maximum)));
         }
-        if (field->kind == PackedFieldKind::enumeration) {
-            auto const* enumeration{find_packed_enum(field->type, types, modules)};
-            if (enumeration == nullptr) {
+        if (manifest.declarations.packed_fields
+                .kind[manifest.declarations.packed_fields.index(*field)] ==
+            PackedFieldKind::enumeration) {
+            auto const enumeration{
+                find_packed_enum(manifest.declarations.packed_fields
+                                     .type[manifest.declarations.packed_fields.index(*field)],
+                                 graph,
+                                 module)};
+            if (!enumeration.has_value()) {
                 valid = false;
             } else {
-                auto const domain{lispb::schema::analyze_enum_domain(*enumeration)};
-                valid = valid && std::ranges::any_of(domain.values, [&](auto const& enumerator) {
-                            return !enumerator.reserved && enumerator.code.has_value() &&
-                                   enumerator.code->negative == value.negative &&
-                                   enumerator.code->magnitude == value.magnitude;
-                        });
+                auto const& domains{graph.enum_domains()};
+                auto const domain{domains.find(*enumeration)};
+                auto const values{domains.values(domain)};
+                auto const count{manifest.declarations.enums
+                                     .count[manifest.declarations.enums.index(*enumeration)]};
+                auto const& enumerators{manifest.declarations.enumerators};
+                bool known_live_value{};
+                auto const size{values.size()};
+                for (std::size_t ordinal{}; ordinal < size; ++ordinal) {
+                    auto const row{enumerators.index(values[ordinal])};
+                    auto const code{domains.code(domain, ordinal)};
+                    if (!enumerators.sentinel[row] && count != enumerators.name[row] && code &&
+                        code->negative == value.negative && code->magnitude == value.magnitude) {
+                        known_live_value = true;
+                        break;
+                    }
+                }
+                valid = valid && known_live_value;
             }
         }
-        if (auto const* quantized{find_linear_quantized(field->type, types, modules)}) {
+        if (auto const quantized{
+                find_linear_quantized(manifest.declarations.packed_fields
+                                          .type[manifest.declarations.packed_fields.index(*field)],
+                                      graph,
+                                      module)}) {
             auto const mask{bits == 64 ? (std::numeric_limits<std::uint64_t>::max)()
                                        : (std::uint64_t{1} << bits) - 1};
-            valid = valid && !value.negative && value.magnitude <= mask - quantized->reserved_codes;
+            valid = valid && !value.negative &&
+                    value.magnitude <=
+                        mask - manifest.declarations.linear_quantizeds
+                                   .reserved_codes[manifest.declarations.linear_quantizeds.index(
+                                       *quantized)];
         }
-        if (fixed != nullptr) {
-            if (fixed->minimum_value.has_value()) {
-                auto const bound{
-                    parse_fixed_point_value(*fixed->minimum_value, fixed->fractional_bits)};
+        if (fixed.has_value()) {
+            if (manifest.declarations.fixed_points
+                    .minimum_value[manifest.declarations.fixed_points.index(*fixed)]
+                    .has_value()) {
+                auto const bound{parse_fixed_point_value(
+                    manifest.declarations.strings().view(
+                        *manifest.declarations.fixed_points
+                             .minimum_value[manifest.declarations.fixed_points.index(*fixed)]),
+                    manifest.declarations.fixed_points
+                        .fractional_bits[manifest.declarations.fixed_points.index(*fixed)])};
                 valid = valid && bound.has_value() && packed_integer_less_equal(*bound, value);
             }
-            if (fixed->maximum_value.has_value()) {
-                auto const bound{
-                    parse_fixed_point_value(*fixed->maximum_value, fixed->fractional_bits)};
+            if (manifest.declarations.fixed_points
+                    .maximum_value[manifest.declarations.fixed_points.index(*fixed)]
+                    .has_value()) {
+                auto const bound{parse_fixed_point_value(
+                    manifest.declarations.strings().view(
+                        *manifest.declarations.fixed_points
+                             .maximum_value[manifest.declarations.fixed_points.index(*fixed)]),
+                    manifest.declarations.fixed_points
+                        .fractional_bits[manifest.declarations.fixed_points.index(*fixed)])};
                 valid = valid && bound.has_value() && packed_integer_less_equal(value, *bound);
             }
         }
         if (!valid) {
-            throw std::invalid_argument{"Packed value '" + schema.name + "' field '" + field->name +
-                                        "' default is outside its representable semantic domain"};
+            throw std::invalid_argument{
+                "Packed value '" +
+                std::string{manifest.declarations.strings().view(
+                    manifest.declarations.packed_values
+                        .name[manifest.declarations.packed_values.index(schema)])} +
+                "' field '" +
+                std::string{manifest.declarations.strings().view(
+                    manifest.declarations.packed_fields
+                        .name[manifest.declarations.packed_fields.index(*field)])} +
+                "' default is outside its representable semantic domain"};
         }
         auto const mask{bits == 64 ? (std::numeric_limits<std::uint64_t>::max)()
                                    : (std::uint64_t{1} << bits) - 1};
@@ -315,16 +441,23 @@ auto packed_default_value(PackedValueSchema const& schema,
     }
 
     if (!any_default) {
-        return schema.invalid_value.value_or(0);
+        return manifest.declarations.packed_values
+            .invalid_value[manifest.declarations.packed_values.index(schema)]
+            .value_or(0);
     }
     if (!complete) {
         return std::nullopt;
     }
-    if (schema.invalid_value == raw) {
-        throw std::invalid_argument{"Packed value '" + schema.name +
-                                    "' defaults produce its invalid value"};
+    if (manifest.declarations.packed_values
+            .invalid_value[manifest.declarations.packed_values.index(schema)] == raw) {
+        throw std::invalid_argument{
+            "Packed value '" +
+            std::string{manifest.declarations.strings().view(
+                manifest.declarations.packed_values
+                    .name[manifest.declarations.packed_values.index(schema)])} +
+            "' defaults produce its invalid value"};
     }
     return raw;
 }
 
-} // namespace codegen::detail
+} // namespace lispb::codegen::detail

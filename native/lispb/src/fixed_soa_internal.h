@@ -1,27 +1,35 @@
 #pragma once
 
-#include "fixed_layout.h"
-#include "soa_internal.h"
+#include <codegen/ast/indices.h>
+#include <codegen/ast/node_id.h>
+#include <codegen/lowering/indices.h>
+#include <codegen/schema/declaration_handle.h>
+#include <lispb/indices.h>
 
+#include <map>
 #include <set>
+#include <string>
 
-namespace codegen::detail {
+namespace lispb::codegen::detail {
 
-auto build_soa_layout(SoaSchema const& schema,
-                      std::map<std::string, SoaSchema const*> const& schemas,
-                      TypeRegistry const& types,
+struct LoweringContext;
+
+auto build_soa_layout(LoweringContext& context,
+                      DeclarationHandle schema,
+                      std::map<IdentifierId, DeclarationHandle> const& schemas,
                       bool fixed,
-                      std::vector<std::string> const& prefix = {},
-                      std::set<std::string> ancestors = {}) -> FixedLayout;
+                      LoweringPathId prefix = {},
+                      std::set<IdentifierId> ancestors = {}) -> FixedLayoutId;
 
-auto build_fixed_layout(SoaSchema const& schema,
-                        std::map<std::string, SoaSchema const*> const& schemas,
-                        TypeRegistry const& types,
-                        std::vector<std::string> const& prefix = {},
-                        std::set<std::string> ancestors = {}) -> FixedLayout;
-auto fixed_leaf_argument(FixedLeaf const& leaf) -> std::string;
-auto fixed_storage_node(FixedLayout const& layout) -> Node;
-auto fixed_container_node(FixedLayout const& layout,
+auto build_fixed_layout(LoweringContext& context,
+                        DeclarationHandle schema,
+                        std::map<IdentifierId, DeclarationHandle> const& schemas,
+                        LoweringPathId prefix = {},
+                        std::set<IdentifierId> ancestors = {}) -> FixedLayoutId;
+auto fixed_leaf_argument(LoweringContext& context, FixedLeafId leaf) -> std::string;
+auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeId;
+auto fixed_container_node(LoweringContext& context,
+                          FixedLayoutId layout,
                           std::string const& name,
-                          TypeRegistry const& types) -> Node;
-} // namespace codegen::detail
+                          CppTypeId equivalent_set_type = {}) -> NodeId;
+} // namespace lispb::codegen::detail

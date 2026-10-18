@@ -1,8 +1,10 @@
 #pragma once
 
-namespace codegen {
+#include <cstdint>
 
-enum class StorageOperation {
+namespace lispb::codegen {
+
+enum class StorageOperation : std::uint8_t {
     reset,
     reserve,
     add_uninitialised,
@@ -13,4 +15,4 @@ enum class StorageOperation {
     append_from,
 };
 
-} // namespace codegen
+} // namespace lispb::codegen

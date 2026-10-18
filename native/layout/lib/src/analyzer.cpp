@@ -1,6 +1,17 @@
 #include "analyzer_internal.hpp"
 
 #include <codegen/schema.h>
+#include <lispb/schema/enum_types.h>
+#include <lispb/schema/external_types.h>
+#include <lispb/schema/indices.h>
+#include <lispb/schema/integer_scalar_types.h>
+#include <lispb/schema/packed_types.h>
+
+#include <cstdint>
+#include <optional>
+#include <ranges>
+#include <string>
+#include <vector>
 
 namespace ioj::layout {
 
@@ -8,35 +19,78 @@ auto physical_type_spelling(lispb::schema::TypeGraph const& types, lispb::schema
     -> std::optional<std::string> {
     std::vector<lispb::schema::TypeId> visited;
     auto current{type};
-    while (current.valid() && std::ranges::find(visited, current) == visited.end()) {
+    while (lispb::schema::is_valid(current) &&
+           std::ranges::find(visited, current) == visited.end()) {
         visited.push_back(current);
-        auto const& node{types.type(current)};
-        if (auto const* external{std::get_if<lispb::schema::ExternalType>(&node.definition)}) {
-            return codegen::native_spelling(external->cpp_type.spelling);
+        auto const& node{current};
+        if (auto const external{
+                ((types.definition(node)).kind() == lispb::schema::TypeDefinitionKind::external
+                     ? std::optional{types.definition(node)}
+                     : std::nullopt)}) {
+            return lispb::codegen::native_spelling(std::string{types.cpp_types().spelling(
+                types.definitions()
+                    .externals.cpp_type[types.definitions().externals.index(*external)])});
         }
-        if (auto const* enumeration{std::get_if<lispb::schema::EnumType>(&node.definition)}) {
-            if (enumeration->underlying_type.has_value()) {
-                if (!enumeration->underlying_type->physical.contains_value()) {
-                    return enumeration->underlying_type->cpp_type.spelling;
+        if (auto const enumeration{
+                ((types.definition(node)).kind() == lispb::schema::TypeDefinitionKind::enumeration
+                     ? std::optional{types.definition(node)}
+                     : std::nullopt)}) {
+            if (lispb::schema::is_valid(
+                    types.definitions()
+                        .enums.underlying_type[types.definitions().enums.index(*enumeration)])) {
+                if (!types.occurrences().contains_value(
+                        types.definitions().enums.underlying_type[types.definitions().enums.index(
+                            *enumeration)])) {
+                    return std::string{types.cpp_types().spelling(
+                        types.occurrences().cpp_type[types.occurrences().index(
+                            types.definitions().enums.underlying_type
+                                [types.definitions().enums.index(*enumeration)])])};
                 }
-                current = enumeration->underlying_type->type;
+                current = types.occurrences().type[types.occurrences().index(
+                    types.definitions()
+                        .enums.underlying_type[types.definitions().enums.index(*enumeration)])];
                 continue;
             }
-            return derived_enum_backing_type(*enumeration);
+            return derived_enum_backing_type(types, *enumeration);
         }
-        if (auto const* packed{std::get_if<lispb::schema::PackedType>(&node.definition)}) {
-            if (!packed->storage_type.physical.contains_value()) {
-                return packed->storage_type.cpp_type.spelling;
+        if (auto const packed{
+                ((types.definition(node)).kind() == lispb::schema::TypeDefinitionKind::packed
+                     ? std::optional{types.definition(node)}
+                     : std::nullopt)}) {
+            if (!types.occurrences().contains_value(
+                    types.definitions()
+                        .packed.storage_type[types.definitions().packed.index(*packed)])) {
+                return std::string{types.cpp_types().spelling(
+                    types.occurrences().cpp_type[types.occurrences().index(
+                        types.definitions()
+                            .packed.storage_type[types.definitions().packed.index(*packed)])])};
             }
-            current = packed->storage_type.type;
+            current = types.occurrences().type[types.occurrences().index(
+                types.definitions()
+                    .packed.storage_type[types.definitions().packed.index(*packed)])];
             continue;
         }
-        if (auto const* scalar{std::get_if<lispb::schema::IntegerScalarType>(&node.definition)};
-            scalar != nullptr && scalar->cpp_representation.has_value()) {
-            if (!scalar->cpp_representation->physical.contains_value()) {
-                return scalar->cpp_representation->cpp_type.spelling;
+        if (auto const scalar{((types.definition(node)).kind() ==
+                                       lispb::schema::TypeDefinitionKind::integer_scalar
+                                   ? std::optional{types.definition(node)}
+                                   : std::nullopt)};
+            static_cast<bool>(scalar) &&
+            lispb::schema::is_valid(
+                types.definitions()
+                    .integer_scalars
+                    .cpp_representation[types.definitions().integer_scalars.index(*scalar)])) {
+            if (!types.occurrences().contains_value(
+                    types.definitions()
+                        .integer_scalars
+                        .cpp_representation[types.definitions().integer_scalars.index(*scalar)])) {
+                return std::string{types.cpp_types().spelling(
+                    types.occurrences().cpp_type[types.occurrences().index(
+                        types.definitions().integer_scalars.cpp_representation
+                            [types.definitions().integer_scalars.index(*scalar)])])};
             }
-            current = scalar->cpp_representation->type;
+            current = types.occurrences().type[types.occurrences().index(
+                types.definitions().integer_scalars.cpp_representation
+                    [types.definitions().integer_scalars.index(*scalar)])];
             continue;
         }
         return std::nullopt;
@@ -45,10 +99,13 @@ auto physical_type_spelling(lispb::schema::TypeGraph const& types, lispb::schema
 }
 
 auto physical_type_spelling(lispb::schema::TypeGraph const& types,
-                            lispb::schema::ResolvedTypeRef const& use)
+                            lispb::schema::ResolvedOccurrenceId const use)
     -> std::optional<std::string> {
-    return use.physical.contains_value() ? physical_type_spelling(types, use.type)
-                                         : std::optional{use.cpp_type.spelling};
+    return types.occurrences().contains_value(use)
+             ? physical_type_spelling(types,
+                                      types.occurrences().type[types.occurrences().index(use)])
+             : std::optional{std::string{types.cpp_types().spelling(
+                   types.occurrences().cpp_type[types.occurrences().index(use)])}};
 }
 
 auto numeric_delta(std::optional<std::uint64_t> const baseline,

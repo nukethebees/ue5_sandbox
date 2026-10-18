@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 namespace lispb::schema {
-enum class EnumDomainIssueSeverity { warning, error };
+enum class EnumDomainIssueSeverity : std::uint8_t { warning, error };
 }

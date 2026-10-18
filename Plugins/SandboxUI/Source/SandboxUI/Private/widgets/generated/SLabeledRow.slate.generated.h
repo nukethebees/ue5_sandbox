@@ -4,9 +4,7 @@
 #pragma once
 
 #include <utility>
-
 namespace SlateGenerated {
-
 struct SLabeledRowBuilder {
     using ThisClass = ::SLabeledRow;
 
@@ -50,5 +48,4 @@ struct SLabeledRowBuilder {
   private:
     ThisClass& self_;
 };
-
-}
+} // namespace SlateGenerated

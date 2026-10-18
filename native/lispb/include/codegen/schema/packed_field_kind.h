@@ -1,8 +1,10 @@
 #pragma once
 
-namespace codegen {
+#include <cstdint>
 
-enum class PackedFieldKind {
+namespace lispb::codegen {
+
+enum class PackedFieldKind : std::uint8_t {
     unsigned_integer,
     signed_integer,
     enumeration,
@@ -11,4 +13,4 @@ enum class PackedFieldKind {
     mini_float,
 };
 
-} // namespace codegen
+} // namespace lispb::codegen

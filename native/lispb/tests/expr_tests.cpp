@@ -1,213 +1,296 @@
-#include <codegen/ast.h>
+#include "compiler_test_context.h"
+#include "test_utilities.h"
+
+#include <codegen/ast/binary_operator.h>
+#include <codegen/ast/cpp_files.h>
+#include <codegen/ast/cpp_ir.h>
+#include <codegen/ast/cpp_types.h>
+#include <codegen/ast/expr.h>
+#include <codegen/ast/expr_kind.h>
+#include <codegen/ast/function_body_layout.h>
+#include <codegen/ast/function_receiver.h>
+#include <codegen/ast/indices.h>
+#include <codegen/ast/node_id.h>
+#include <codegen/ast/node_list_builder.h>
+#include <codegen/ast/return_syntax.h>
+#include <codegen/ast/unary_operator.h>
 #include <codegen/cpp_string.h>
+#include <codegen/schema/declarations.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/indices.h>
+#include <lispb/strings.h>
 
 #include <gtest/gtest.h>
 
+#include <cassert>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <string_view>
 #include <type_traits>
+#include <vector>
 
-namespace codegen {
+namespace lispb::codegen {
 namespace {
 
 TEST(Expr, RequiresExplicitRawAndSupportsIndependentCopies) {
+    CompilerTestContext context;
+    [[maybe_unused]] auto& ir{context.ir};
+    [[maybe_unused]] auto& types{context.storage.cpp_types};
     static_assert(!std::is_convertible_v<std::string, Expr>);
     static_assert(!std::is_convertible_v<char const*, Expr>);
-    auto original{call(named("lookup"), {named("value")})};
+    auto original{ir.call(ir.named("lookup"), {ir.named("value")})};
     auto copy{original};
-    original = literal("false");
+    original = ir.literal("false");
 
-    EXPECT_EQ(render(copy), "lookup(value)");
-    EXPECT_EQ(render(original), "false");
-    EXPECT_TRUE(std::holds_alternative<CallExpr>(copy.value()));
+    EXPECT_EQ(ir.render(copy), "lookup(value)");
+    EXPECT_EQ(ir.render(original), "false");
+    EXPECT_EQ(copy.kind(), ExprKind::call);
 }
 
 TEST(Expr, RendersCallsCastsAndInitializerLists) {
-    auto const lookup{call(named("get_name"), {named("project::Mode::Ready")})};
-    EXPECT_EQ(render(init_list({lookup}, CppType{"FString"})),
+    CompilerTestContext context;
+    [[maybe_unused]] auto& ir{context.ir};
+    [[maybe_unused]] auto& types{context.storage.cpp_types};
+    auto const lookup{ir.call(ir.named("get_name"), {ir.named("project::Mode::Ready")})};
+    EXPECT_EQ(ir.render(ir.init_list({lookup}, types.intern("FString"))),
               "FString{get_name(project::Mode::Ready)}");
-    EXPECT_EQ(render(init_list({literal("1"), literal("2")})), "{1, 2}");
-    EXPECT_EQ(render(init_list({}, CppType{"FString"})), "FString{}");
-    EXPECT_EQ(render(init_list({})), "{}");
-    EXPECT_EQ(render(static_cast_expr("int32", named("Mode::COUNT"))),
+    EXPECT_EQ(ir.render(ir.init_list({ir.literal("1"), ir.literal("2")})), "{1, 2}");
+    EXPECT_EQ(ir.render(ir.init_list({}, types.intern("FString"))), "FString{}");
+    EXPECT_EQ(ir.render(ir.init_list({})), "{}");
+    EXPECT_EQ(ir.render(ir.static_cast_expr(types.intern("int32"), ir.named("Mode::COUNT"))),
               "static_cast<int32>(Mode::COUNT)");
-    EXPECT_EQ(render(call(call(named("factory")), {literal("42")})), "factory()(42)");
+    EXPECT_EQ(ir.render(ir.call(ir.call(ir.named("factory")), {ir.literal("42")})),
+              "factory()(42)");
 }
 
 TEST(Expr, PreservesBinaryGroupingAndPostfixBinding) {
-    auto const inner{binary(BinaryOperator::equal, named("a"), named("b"))};
-    EXPECT_EQ(render(binary(BinaryOperator::equal, inner, named("c"))), "a == b == c");
-    EXPECT_EQ(render(binary(BinaryOperator::equal, named("c"), inner)), "c == (a == b)");
-    EXPECT_EQ(render(call(inner)), "(a == b)()");
-    EXPECT_EQ(render(call(named("f"), {inner})), "f(a == b)");
-    EXPECT_EQ(render(static_cast_expr("bool", inner)), "static_cast<bool>(a == b)");
+    CompilerTestContext context;
+    [[maybe_unused]] auto& ir{context.ir};
+    [[maybe_unused]] auto& types{context.storage.cpp_types};
+    auto const inner{ir.binary(BinaryOperator::equal, ir.named("a"), ir.named("b"))};
+    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::equal, inner, ir.named("c"))), "a == b == c");
+    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::equal, ir.named("c"), inner)), "c == (a == b)");
+    EXPECT_EQ(ir.render(ir.call(inner)), "(a == b)()");
+    EXPECT_EQ(ir.render(ir.call(ir.named("f"), {inner})), "f(a == b)");
+    EXPECT_EQ(ir.render(ir.static_cast_expr(types.intern("bool"), inner)),
+              "static_cast<bool>(a == b)");
 }
 
 TEST(Expr, RendersUnaryPointerAccessAndLogicalPrecedence) {
-    auto const pointer{named("state")};
-    auto const data{pointer_member_access(pointer, "data")};
-    auto const missing{binary(BinaryOperator::logical_or,
-                              unary(UnaryOperator::logical_not, pointer),
-                              unary(UnaryOperator::logical_not, data))};
-    EXPECT_EQ(render(missing), "!state || !state->data");
-    EXPECT_EQ(render(unary(UnaryOperator::logical_not, missing)), "!(!state || !state->data)");
-    EXPECT_EQ(render(call(named("test"), {missing})), "test(!state || !state->data)");
-    EXPECT_EQ(render(binary(BinaryOperator::equal, missing, literal("false"))),
+    CompilerTestContext context;
+    [[maybe_unused]] auto& ir{context.ir};
+    [[maybe_unused]] auto& types{context.storage.cpp_types};
+    auto const pointer{ir.named("state")};
+    auto const data{ir.pointer_member_access(pointer, "data")};
+    auto const missing{ir.binary(BinaryOperator::logical_or,
+                                 ir.unary(UnaryOperator::logical_not, pointer),
+                                 ir.unary(UnaryOperator::logical_not, data))};
+    EXPECT_EQ(ir.render(missing), "!state || !state->data");
+    EXPECT_EQ(ir.render(ir.unary(UnaryOperator::logical_not, missing)),
+              "!(!state || !state->data)");
+    EXPECT_EQ(ir.render(ir.call(ir.named("test"), {missing})), "test(!state || !state->data)");
+    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::equal, missing, ir.literal("false"))),
               "(!state || !state->data) == false");
-    EXPECT_EQ(render(member_access(unary(UnaryOperator::dereference, pointer), "data")),
+    EXPECT_EQ(ir.render(ir.member_access(ir.unary(UnaryOperator::dereference, pointer), "data")),
               "(*state).data");
-    EXPECT_EQ(render(unary(UnaryOperator::address_of, unary(UnaryOperator::address_of, pointer))),
+    EXPECT_EQ(ir.render(ir.unary(UnaryOperator::address_of,
+                                 ir.unary(UnaryOperator::address_of, pointer))),
               "&(&state)");
-    EXPECT_EQ(render(binary(BinaryOperator::not_equal,
-                            named("this"),
-                            unary(UnaryOperator::address_of, named("other")))),
+    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::not_equal,
+                                  ir.named("this"),
+                                  ir.unary(UnaryOperator::address_of, ir.named("other")))),
               "this != &other");
-    EXPECT_EQ(render(binary(BinaryOperator::divide,
-                            named("a"),
-                            binary(BinaryOperator::multiply, named("b"), named("c")))),
-              "a / (b * c)");
+    EXPECT_EQ(
+        ir.render(ir.binary(BinaryOperator::divide,
+                            ir.named("a"),
+                            ir.binary(BinaryOperator::multiply, ir.named("b"), ir.named("c")))),
+        "a / (b * c)");
     auto const expression{
-        unary(UnaryOperator::logical_not,
-              pointer_member_access(named("state", {{"state", "State.h", {}}}), "data"))};
-    auto const deps{dependencies(expression)};
+        ir.unary(UnaryOperator::logical_not,
+                 ir.pointer_member_access(ir.named("state", {types.dependency("state", "State.h")}),
+                                          "data"))};
+    auto const deps{collected_dependencies(ir, expression)};
     ASSERT_EQ(deps.size(), 1);
-    EXPECT_EQ(deps.front().header, "State.h");
+    EXPECT_EQ(types.dependency_header(deps.front()), "State.h");
 }
 
 TEST(Ast, RendersRefQualifiedMethodsAndInlineOutOfLineConstructors) {
-    FunctionSpec spec{
-        .name = "view",
-        .return_type = "auto",
-        .qualifiers = {.trailing_return_type = CppType{"View"},
-                       .is_const = true,
-                       .is_noexcept = true,
-                       .ref_qualifier = RefQualifier::lvalue},
-    };
-    EXPECT_EQ(render(declaration(spec)), "auto view() const & noexcept -> View;");
-    spec.qualifiers.ref_qualifier = RefQualifier::rvalue;
-    spec.qualifiers.disposition = FunctionDisposition::deleted;
-    EXPECT_EQ(render(Function{spec}), "auto view() const && noexcept -> View = delete;");
-    spec.qualifiers.is_static = true;
-    spec.qualifiers.is_const = false;
-    EXPECT_THROW(render(Function{spec}), std::invalid_argument);
-    Function const constructor{
-        FunctionSpec{
-            .name = "View",
-            .qualifiers = {.is_inline = true},
-            .define_in_header = true,
-            .formatting = {.body_layout = FunctionFormatting::BodyLayout::compact},
-        },
-        "View",
-        false,
-        true};
-    EXPECT_EQ(render(constructor), "inline View::View() {  }");
+    CompilerTestContext context;
+    [[maybe_unused]] auto& ir{context.ir};
+    [[maybe_unused]] auto& types{context.storage.cpp_types};
+    auto spec{[&] {
+        auto const created_function{ir.function(ir.strings.intern("view"), types.intern("auto"))};
+        ir.set_function_return_type(created_function, types.intern("View"), ReturnSyntax::trailing);
+        ir.set_function_receiver(created_function, FunctionReceiver::const_lvalue);
+        ir.set_function_noexcept(created_function);
+        return created_function;
+    }()};
+    EXPECT_EQ(ir.render(ir.declaration(spec)), "auto view() const & noexcept -> View;");
+    ir.set_function_receiver(spec, FunctionReceiver::const_rvalue);
+    ir.set_function_deleted(spec);
+    EXPECT_EQ(ir.render(ir.definition(spec)), "auto view() const && noexcept -> View = delete;");
+    auto const constructor{ir.definition(
+        [&] {
+            auto const created_function{ir.constructor(ir.strings.intern("View"))};
+            ir.function_flags(created_function).set_is_inline(true);
+            ir.function_flags(created_function).set_define_in_header(true);
+            ir.function_formatting(created_function) = {.body_layout = FunctionBodyLayout::compact};
+            return created_function;
+        }(),
+        ir.store_text("View"),
+        {},
+        true)};
+    EXPECT_EQ(ir.render(constructor), "inline View::View() {  }");
 }
 
 TEST(Expr, RendersSizeofAndPreservesArithmeticGrouping) {
-    auto const a{named("a")};
-    auto const b{named("b")};
-    auto const c{named("c")};
-    auto const sum{binary(BinaryOperator::add, a, b)};
-    auto const product{binary(BinaryOperator::multiply, b, c)};
-    EXPECT_EQ(render(binary(BinaryOperator::multiply, sum, c)), "(a + b) * c");
-    EXPECT_EQ(render(binary(BinaryOperator::add, a, product)), "a + b * c");
-    EXPECT_EQ(render(binary(BinaryOperator::multiply, a, product)), "a * (b * c)");
-    EXPECT_EQ(render(binary(BinaryOperator::add, a, binary(BinaryOperator::subtract, b, c))),
-              "a + (b - c)");
-    EXPECT_EQ(render(binary(BinaryOperator::multiply, named("count"), sizeof_type("Element"))),
+    CompilerTestContext context;
+    [[maybe_unused]] auto& ir{context.ir};
+    [[maybe_unused]] auto& types{context.storage.cpp_types};
+    auto const a{ir.named("a")};
+    auto const b{ir.named("b")};
+    auto const c{ir.named("c")};
+    auto const sum{ir.binary(BinaryOperator::add, a, b)};
+    auto const product{ir.binary(BinaryOperator::multiply, b, c)};
+    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::multiply, sum, c)), "(a + b) * c");
+    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::add, a, product)), "a + b * c");
+    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::multiply, a, product)), "a * (b * c)");
+    EXPECT_EQ(
+        ir.render(ir.binary(BinaryOperator::add, a, ir.binary(BinaryOperator::subtract, b, c))),
+        "a + (b - c)");
+    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::multiply,
+                                  ir.named("count"),
+                                  ir.sizeof_type(types.intern("Element")))),
               "count * sizeof(Element)");
-    EXPECT_EQ(render(static_cast_expr("int", sizeof_type("Element"))),
+    EXPECT_EQ(ir.render(ir.static_cast_expr(types.intern("int"),
+                                            ir.sizeof_type(types.intern("Element")))),
               "static_cast<int>(sizeof(Element))");
 }
 
 TEST(Expr, CollectsSizeofTypeDependenciesThroughArithmetic) {
-    CppFile const file{
-        .path = "Example.h",
-        .nodes = {
-            IncludeDependencies{},
-            Function{FunctionSpec{
-                .name = "bytes",
-                .return_type = "auto",
-                .body = {ReturnStmt{binary(BinaryOperator::multiply,
-                                           literal("2"),
-                                           sizeof_type(CppType{"Element", "Project/Element.h"}))}},
-            }}}};
-    auto const output{render(file)};
+    CompilerTestContext context;
+    [[maybe_unused]] auto& ir{context.ir};
+    [[maybe_unused]] auto& types{context.storage.cpp_types};
+    auto const file{ir.files.append(
+        ir.strings.add("Example.h"),
+        {ir.include_dependencies(),
+         ir.definition(
+             [&] {
+                 auto const created_function{
+                     ir.function(ir.strings.intern("bytes"), types.intern("auto"))};
+                 ir.set_function_body(
+                     created_function,
+                     {ir.return_statement(ir.binary(
+                         BinaryOperator::multiply,
+                         ir.literal("2"),
+                         ir.sizeof_type(types.intern(
+                             "Element", {types.dependency("Element", "Project/Element.h")}))))});
+                 return created_function;
+             }(),
+             {})})};
+    auto const output{ir.render(file)};
     EXPECT_NE(output.find("#include \"Project/Element.h\""), std::string::npos);
     EXPECT_NE(output.find("return 2 * sizeof(Element);"), std::string::npos);
 }
 
 TEST(Expr, KeepsRawVerbatimAndProtectsNestedRawOperands) {
-    Expr const raw_expression{RawExpr{"left, right"}};
-    EXPECT_EQ(render(raw_expression), "left, right");
-    EXPECT_EQ(render(Node{ReturnStmt{raw_expression}}), "return left, right;");
-    EXPECT_EQ(render(call(named("f"), {raw_expression})), "f((left, right))");
-    EXPECT_EQ(render(call(RawExpr{"*function_pointer"})), "(*function_pointer)()");
-    EXPECT_EQ(render(binary(BinaryOperator::equal, raw_expression, literal("0"))),
+    CompilerTestContext context;
+    [[maybe_unused]] auto& ir{context.ir};
+    [[maybe_unused]] auto& types{context.storage.cpp_types};
+    Expr const raw_expression{ir.raw_expression("left, right")};
+    EXPECT_EQ(ir.render(raw_expression), "left, right");
+    EXPECT_EQ(ir.render(ir.return_statement(raw_expression)), "return left, right;");
+    EXPECT_EQ(ir.render(ir.call(ir.named("f"), {raw_expression})), "f((left, right))");
+    EXPECT_EQ(ir.render(ir.call(ir.raw_expression("*function_pointer"))), "(*function_pointer)()");
+    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::equal, raw_expression, ir.literal("0"))),
               "(left, right) == 0");
-    EXPECT_EQ(render(binary(BinaryOperator::equal, literal("0"), raw_expression)),
+    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::equal, ir.literal("0"), raw_expression)),
               "0 == (left, right)");
-    EXPECT_EQ(render(static_cast_expr("int", raw_expression)), "static_cast<int>((left, right))");
-    EXPECT_EQ(render(init_list({raw_expression})), "{(left, right)}");
+    EXPECT_EQ(ir.render(ir.static_cast_expr(types.intern("int"), raw_expression)),
+              "static_cast<int>((left, right))");
+    EXPECT_EQ(ir.render(ir.init_list({raw_expression})), "{(left, right)}");
 }
 
 TEST(Expr, RendersMemberAccessAndSubscriptsWithPostfixBinding) {
-    auto const other_values{member_access(named("other"), "values")};
-    auto const element{subscript(other_values, named("index"))};
-    EXPECT_EQ(render(element), "other.values[index]");
-    EXPECT_EQ(render(call(member_access(element, "size"))), "other.values[index].size()");
-    EXPECT_EQ(render(subscript(call(named("get_values")), named("index"))), "get_values()[index]");
-    EXPECT_EQ(render(call(member_access(named("values"), "set"), {named("index"), literal("42")})),
+    CompilerTestContext context;
+    [[maybe_unused]] auto& ir{context.ir};
+    [[maybe_unused]] auto& types{context.storage.cpp_types};
+    auto const other_values{ir.member_access(ir.named("other"), "values")};
+    auto const element{ir.subscript(other_values, ir.named("index"))};
+    EXPECT_EQ(ir.render(element), "other.values[index]");
+    EXPECT_EQ(ir.render(ir.call(ir.member_access(element, "size"))), "other.values[index].size()");
+    EXPECT_EQ(ir.render(ir.subscript(ir.call(ir.named("get_values")), ir.named("index"))),
+              "get_values()[index]");
+    EXPECT_EQ(ir.render(ir.call(ir.member_access(ir.named("values"), "set"),
+                                {ir.named("index"), ir.literal("42")})),
               "values.set(index, 42)");
-    auto const difference{binary(BinaryOperator::subtract, named("end"), named("count"))};
-    EXPECT_EQ(render(subscript(other_values, difference)), "other.values[end - count]");
-    EXPECT_EQ(render(subscript(difference, named("index"))), "(end - count)[index]");
-    EXPECT_EQ(render(member_access(difference, "value")), "(end - count).value");
-    EXPECT_EQ(render(member_access(RawExpr{"*pointer"}, "value")), "(*pointer).value");
-    EXPECT_EQ(render(subscript(RawExpr{"*pointer"}, RawExpr{"first, last"})),
-              "(*pointer)[(first, last)]");
+    auto const difference{ir.binary(BinaryOperator::subtract, ir.named("end"), ir.named("count"))};
+    EXPECT_EQ(ir.render(ir.subscript(other_values, difference)), "other.values[end - count]");
+    EXPECT_EQ(ir.render(ir.subscript(difference, ir.named("index"))), "(end - count)[index]");
+    EXPECT_EQ(ir.render(ir.member_access(difference, "value")), "(end - count).value");
+    EXPECT_EQ(ir.render(ir.member_access(ir.raw_expression("*pointer"), "value")),
+              "(*pointer).value");
+    EXPECT_EQ(
+        ir.render(ir.subscript(ir.raw_expression("*pointer"), ir.raw_expression("first, last"))),
+        "(*pointer)[(first, last)]");
 }
 
 TEST(Expr, PreservesSubtractionAndComparisonPrecedence) {
-    auto const a{named("a")};
-    auto const b{named("b")};
-    auto const c{named("c")};
-    auto const subtraction{binary(BinaryOperator::subtract, a, b)};
-    auto const comparison{binary(BinaryOperator::greater_equal, a, b)};
-    auto const equality{binary(BinaryOperator::equal, a, b)};
+    CompilerTestContext context;
+    [[maybe_unused]] auto& ir{context.ir};
+    [[maybe_unused]] auto& types{context.storage.cpp_types};
+    auto const a{ir.named("a")};
+    auto const b{ir.named("b")};
+    auto const c{ir.named("c")};
+    auto const subtraction{ir.binary(BinaryOperator::subtract, a, b)};
+    auto const comparison{ir.binary(BinaryOperator::greater_equal, a, b)};
+    auto const equality{ir.binary(BinaryOperator::equal, a, b)};
 
-    EXPECT_EQ(render(binary(BinaryOperator::subtract, subtraction, c)), "a - b - c");
-    EXPECT_EQ(render(binary(BinaryOperator::subtract, c, subtraction)), "c - (a - b)");
-    EXPECT_EQ(render(binary(BinaryOperator::greater_equal, subtraction, c)), "a - b >= c");
-    EXPECT_EQ(render(binary(BinaryOperator::subtract, comparison, c)), "(a >= b) - c");
-    EXPECT_EQ(render(binary(BinaryOperator::subtract, c, comparison)), "c - (a >= b)");
-    EXPECT_EQ(render(binary(BinaryOperator::equal, comparison, c)), "a >= b == c");
-    EXPECT_EQ(render(binary(BinaryOperator::greater_equal, equality, c)), "(a == b) >= c");
-    EXPECT_EQ(render(binary(BinaryOperator::greater_equal, c, comparison)), "c >= (a >= b)");
-    EXPECT_EQ(render(binary(BinaryOperator::greater, subtraction, c)), "a - b > c");
-    EXPECT_EQ(render(binary(BinaryOperator::greater, equality, c)), "(a == b) > c");
-    EXPECT_EQ(render(binary(BinaryOperator::greater, a, binary(BinaryOperator::greater, b, c))),
-              "a > (b > c)");
-    EXPECT_EQ(render(binary(BinaryOperator::subtract, c, RawExpr{"a - b"})), "c - (a - b)");
+    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::subtract, subtraction, c)), "a - b - c");
+    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::subtract, c, subtraction)), "c - (a - b)");
+    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::greater_equal, subtraction, c)), "a - b >= c");
+    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::subtract, comparison, c)), "(a >= b) - c");
+    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::subtract, c, comparison)), "c - (a >= b)");
+    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::equal, comparison, c)), "a >= b == c");
+    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::greater_equal, equality, c)), "(a == b) >= c");
+    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::greater_equal, c, comparison)), "c >= (a >= b)");
+    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::greater, subtraction, c)), "a - b > c");
+    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::greater, equality, c)), "(a == b) > c");
+    EXPECT_EQ(
+        ir.render(ir.binary(BinaryOperator::greater, a, ir.binary(BinaryOperator::greater, b, c))),
+        "a > (b > c)");
+    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::subtract, c, ir.raw_expression("a - b"))),
+              "c - (a - b)");
 }
 
 TEST(Expr, CollectsMemberObjectAndSubscriptIndexDependencies) {
-    TypeDependency const object{"get_rows", "Project/Rows.h", {}};
-    TypeDependency const index{"get_index", "Project/Index.h", {}};
-    auto const expression{subscript(member_access(call(named("get_rows", {object})), "values"),
-                                    call(named("get_index", {index})))};
-    EXPECT_EQ(dependencies(expression), (std::vector<TypeDependency>{object, index}));
-    EXPECT_EQ(dependencies(Node{AssignmentStmt{expression, literal("42")}}),
-              (std::vector<TypeDependency>{object, index}));
+    CompilerTestContext context;
+    [[maybe_unused]] auto& ir{context.ir};
+    [[maybe_unused]] auto& types{context.storage.cpp_types};
+    auto const object{types.dependency("get_rows", "Project/Rows.h")};
+    auto const index{types.dependency("get_index", "Project/Index.h")};
+    auto const expression{
+        ir.subscript(ir.member_access(ir.call(ir.named("get_rows", {object})), "values"),
+                     ir.call(ir.named("get_index", {index})))};
+    EXPECT_EQ(collected_dependencies(ir, expression),
+              (std::vector<TypeDependencyId>{object, index}));
+    EXPECT_EQ(collected_dependencies(ir, ir.assignment(expression, ir.literal("42"))),
+              (std::vector<TypeDependencyId>{object, index}));
 }
 
 TEST(Expr, EscapesStringContentsWithoutConsumingFollowingDigits) {
-    EXPECT_EQ(render(string_literal("")), "\"\"");
-    EXPECT_EQ(render(string_literal("a\"b\\c\n\r\t")), "\"a\\\"b\\\\c\\n\\r\\t\"");
-    EXPECT_EQ(render(string_literal(std::string_view{"\0"
-                                                     "7\001"
-                                                     "f\177",
-                                                     5})),
+    CompilerTestContext context;
+    [[maybe_unused]] auto& ir{context.ir};
+    [[maybe_unused]] auto& types{context.storage.cpp_types};
+    EXPECT_EQ(ir.render(ir.string_literal("")), "\"\"");
+    EXPECT_EQ(ir.render(ir.string_literal("a\"b\\c\n\r\t")), "\"a\\\"b\\\\c\\n\\r\\t\"");
+    EXPECT_EQ(ir.render(ir.string_literal(std::string_view{"\0"
+                                                           "7\001"
+                                                           "f\177",
+                                                           5})),
               "\"\\0007\\001f\\177\"");
-    EXPECT_EQ(render(string_literal("caf\xc3\xa9")), "\"caf\xc3\xa9\"");
+    EXPECT_EQ(ir.render(ir.string_literal("caf\xc3\xa9")), "\"caf\xc3\xa9\"");
     EXPECT_EQ(escape_cpp_string(std::string_view{"\0"
                                                  "7\001"
                                                  "f\177",
@@ -216,60 +299,87 @@ TEST(Expr, EscapesStringContentsWithoutConsumingFollowingDigits) {
 }
 
 TEST(Expr, CollectsDependenciesFromEveryOperandAndType) {
-    TypeDependency const callee{"make", "Project/Make.h", {}};
-    TypeDependency const left{"left", "Project/Left.h", {}};
-    TypeDependency const right{"right", "Project/Right.h", {}};
-    TypeDependency const cast_type{"Count", "Project/Count.h", {}};
-    TypeDependency const list_type{"Value", "Project/Value.h", {}};
-    TypeDependency const raw_dependency{"macro", "Project/Macro.h", {}};
-    auto const expression{init_list(
-        {call(
-            named("make", {callee}),
-            {binary(BinaryOperator::equal, named("left", {left}), named("right", {right})),
-             static_cast_expr(CppType{"Count", {cast_type}}, RawExpr{"MACRO", {raw_dependency}})})},
-        CppType{"Value", {list_type}})};
+    CompilerTestContext context;
+    [[maybe_unused]] auto& ir{context.ir};
+    [[maybe_unused]] auto& types{context.storage.cpp_types};
+    auto const callee{types.dependency("make", "Project/Make.h")};
+    auto const left{types.dependency("left", "Project/Left.h")};
+    auto const right{types.dependency("right", "Project/Right.h")};
+    auto const cast_type{types.dependency("Count", "Project/Count.h")};
+    auto const list_type{types.dependency("Value", "Project/Value.h")};
+    auto const raw_dependency{types.dependency("macro", "Project/Macro.h")};
+    auto const expression{ir.init_list(
+        {ir.call(
+            ir.named("make", {callee}),
+            {ir.binary(BinaryOperator::equal, ir.named("left", {left}), ir.named("right", {right})),
+             ir.static_cast_expr(types.intern("Count", {cast_type}),
+                                 ir.raw_expression("MACRO", {raw_dependency}))})},
+        types.intern("Value", {list_type}))};
 
     EXPECT_EQ(
-        dependencies(expression),
-        (std::vector<TypeDependency>{list_type, callee, left, right, cast_type, raw_dependency}));
+        collected_dependencies(ir, expression),
+        (std::vector<TypeDependencyId>{list_type, callee, left, right, cast_type, raw_dependency}));
 }
 
 TEST(Expr, StmtsCollectInitializersAndAssignmentOperands) {
-    TypeDependency const make{"make", "Project/Make.h", {}};
-    TypeDependency const target{"target", "Project/Target.h", {}};
-    auto const expression{call(named("make", {make}))};
-    EXPECT_EQ(dependencies(Node{ExpressionStmt{expression}}), std::vector<TypeDependency>{make});
-    EXPECT_EQ(dependencies(Node{ReturnStmt{expression}}), std::vector<TypeDependency>{make});
-    EXPECT_EQ(dependencies(Node{Member{"auto", "value", expression}}),
-              std::vector<TypeDependency>{make});
-    EXPECT_EQ(dependencies(Node{VariableDeclarationStmt{"auto", "value", expression}}),
-              std::vector<TypeDependency>{make});
-    EXPECT_EQ(dependencies(Node{AssignmentStmt{named("target", {target}), expression}}),
-              (std::vector<TypeDependency>{target, make}));
+    CompilerTestContext context;
+    [[maybe_unused]] auto& ir{context.ir};
+    [[maybe_unused]] auto& types{context.storage.cpp_types};
+    auto const make{types.dependency("make", "Project/Make.h")};
+    auto const target{types.dependency("target", "Project/Target.h")};
+    auto const expression{ir.call(ir.named("make", {make}))};
+    EXPECT_EQ(collected_dependencies(ir, ir.expression_statement(expression)),
+              std::vector<TypeDependencyId>{make});
+    EXPECT_EQ(collected_dependencies(ir, ir.return_statement(expression)),
+              std::vector<TypeDependencyId>{make});
+    EXPECT_EQ(
+        collected_dependencies(
+            ir, ir.instance_member(types.intern("auto"), ir.strings.intern("value"), expression)),
+        std::vector<TypeDependencyId>{make});
+    EXPECT_EQ(collected_dependencies(
+                  ir, ir.variable(types.intern("auto"), ir.strings.intern("value"), expression)),
+              std::vector<TypeDependencyId>{make});
+    EXPECT_EQ(collected_dependencies(ir, ir.assignment(ir.named("target", {target}), expression)),
+              (std::vector<TypeDependencyId>{target, make}));
 }
 
 TEST(Expr, PreservesAbsentEmptyAndStructuredInitializers) {
-    EXPECT_EQ(render(Node{Member{"int", "value"}}), "int value;");
-    EXPECT_EQ(render(Node{Member{"int", "value", RawExpr{""}}}), "int value{};");
-    EXPECT_EQ(render(Node{Member{"int", "value", literal("42")}}), "int value{42};");
-    EXPECT_EQ(render(Node{VariableDeclarationStmt{"int", "value", RawExpr{""}}}), "int value{};");
-    EXPECT_EQ(render(Node{VariableDeclarationStmt{"auto const", "value", call(named("f"))}}),
+    CompilerTestContext context;
+    [[maybe_unused]] auto& ir{context.ir};
+    [[maybe_unused]] auto& types{context.storage.cpp_types};
+    EXPECT_EQ(ir.render(ir.instance_member(types.intern("int"), ir.strings.intern("value"))),
+              "int value;");
+    EXPECT_EQ(ir.render(ir.instance_member(
+                  types.intern("int"), ir.strings.intern("value"), ir.raw_expression(""))),
+              "int value{};");
+    EXPECT_EQ(ir.render(ir.instance_member(
+                  types.intern("int"), ir.strings.intern("value"), ir.literal("42"))),
+              "int value{42};");
+    EXPECT_EQ(ir.render(ir.variable(
+                  types.intern("int"), ir.strings.intern("value"), ir.raw_expression(""))),
+              "int value{};");
+    EXPECT_EQ(ir.render(ir.variable(
+                  types.intern("auto const"), ir.strings.intern("value"), ir.call(ir.named("f")))),
               "auto const value{f()};");
-    EXPECT_EQ(render(Node{ReturnStmt{}}), "return;");
+    EXPECT_EQ(ir.render(ir.return_statement()), "return;");
 }
 
 TEST(Ast, RendersNestedControlFlowWithExplicitBreaksAndSpacing) {
-    NodeListBuilder body;
-    body.add(IfStmt{named("ready"),
-                    Block{{ReturnStmt{literal("true")}}},
-                    Block{{ExpressionStmt{call(named("retry"))}}}},
+    CompilerTestContext context;
+    [[maybe_unused]] auto& ir{context.ir};
+    [[maybe_unused]] auto& types{context.storage.cpp_types};
+    NodeListBuilder body{ir};
+    body.add(ir.if_statement(ir.named("ready"),
+                             ir.block({ir.return_statement(ir.literal("true"))}),
+                             ir.block({ir.expression_statement(ir.call(ir.named("retry")))})),
              2)
-        .add(BreakStmt{});
-    Node const statement{SwitchStmt{named("mode"),
-                                    {{named("Mode::Ready"), Block{body.build()}},
-                                     {std::nullopt, Block{{ReturnStmt{literal("false")}}}}}}};
+        .add(ir.break_statement());
+    NodeId const statement{ir.switch_statement(
+        ir.named("mode"),
+        {ir.switch_case(ir.named("Mode::Ready"), ir.block(body.build())),
+         ir.switch_case(std::nullopt, ir.block({ir.return_statement(ir.literal("false"))}))})};
 
-    EXPECT_EQ(render(statement, {.indent_level = 1}),
+    EXPECT_EQ(ir.render(statement, {.indent_level = 1}),
               "    switch (mode) {\n"
               "    case Mode::Ready: {\n"
               "        if (ready) {\n"
@@ -287,50 +397,66 @@ TEST(Ast, RendersNestedControlFlowWithExplicitBreaksAndSpacing) {
 }
 
 TEST(Ast, RendersEmptyControlFlowAndStandaloneBlocks) {
-    EXPECT_EQ(render(Node{Block{}}), "{\n\n}");
-    EXPECT_EQ(render(Node{Block{{ReturnStmt{}}}}), "{\n    return;\n}");
-    EXPECT_EQ(render(Node{IfStmt{named("ready"), Block{}}}), "if (ready) {\n\n}");
-    EXPECT_EQ(render(Node{SwitchStmt{named("mode"), {}}}), "switch (mode) {\n}");
-    EXPECT_EQ(render(Node{SwitchStmt{named("mode"), {{std::nullopt, Block{}}}}}),
+    CompilerTestContext context;
+    [[maybe_unused]] auto& ir{context.ir};
+    [[maybe_unused]] auto& types{context.storage.cpp_types};
+    EXPECT_EQ(ir.render(ir.block({})), "{\n\n}");
+    EXPECT_EQ(ir.render(ir.block({ir.return_statement()})), "{\n    return;\n}");
+    EXPECT_EQ(ir.render(ir.if_statement(ir.named("ready"), ir.block({}))), "if (ready) {\n\n}");
+    EXPECT_EQ(ir.render(ir.switch_statement(ir.named("mode"), {})), "switch (mode) {\n}");
+    EXPECT_EQ(ir.render(ir.switch_statement(ir.named("mode"),
+                                            {ir.switch_case(std::nullopt, ir.block({}))})),
               "switch (mode) {\ndefault: {\n\n}\n}");
 }
 
 TEST(Ast, VisitsBothBranchesAndAllSwitchBodiesInOrder) {
-    Node const branches{IfStmt{named("ready"), Block{{raw("then")}}, Block{{raw("else")}}}};
-    Node const cases{SwitchStmt{named("mode"),
-                                {{literal("1"), Block{{raw("one")}}},
-                                 {literal("2"), Block{{raw("two")}}},
-                                 {std::nullopt, Block{{raw("default")}}}}}};
+    CompilerTestContext context;
+    [[maybe_unused]] auto& ir{context.ir};
+    [[maybe_unused]] auto& types{context.storage.cpp_types};
+    NodeId const branches{
+        ir.if_statement(ir.named("ready"), ir.block({ir.raw("then")}), ir.block({ir.raw("else")}))};
+    NodeId const cases{
+        ir.switch_statement(ir.named("mode"),
+                            {ir.switch_case(ir.literal("1"), ir.block({ir.raw("one")})),
+                             ir.switch_case(ir.literal("2"), ir.block({ir.raw("two")})),
+                             ir.switch_case(std::nullopt, ir.block({ir.raw("default")}))})};
     std::vector<std::string> visited;
-    auto visit = [&](Node const& node) { visited.push_back(node.get_if<Raw>()->text); };
-    for_each_child(branches, visit);
-    for_each_child(cases, visit);
+    auto visit = [&](NodeId const& node) { visited.push_back(ir.render(node)); };
+    ir.for_each_child(branches, visit);
+    ir.for_each_child(cases, visit);
     EXPECT_EQ(visited, (std::vector<std::string>{"then", "else", "one", "two", "default"}));
 }
 
 TEST(Ast, CollectsDeepControlFlowDependenciesOnlyForDefinitions) {
-    auto symbol = [](std::string const& name) {
+    CompilerTestContext context;
+    [[maybe_unused]] auto& ir{context.ir};
+    [[maybe_unused]] auto& types{context.storage.cpp_types};
+    auto symbol = [&](std::string const& name) {
         auto const header{"Project/" + name + ".h"};
-        return named(name, {TypeDependency{name, header, {}}});
+        return ir.named(name, {types.dependency(name, header)});
     };
-    auto const body_call{call(symbol("body_only"), {symbol("argument_only")})};
-    SwitchStmt const selection{
+    auto const body_call{ir.call(symbol("body_only"), {symbol("argument_only")})};
+    auto const selection{ir.switch_statement(
         symbol("switch_only"),
-        {{symbol("case_only"), Block{{ExpressionStmt{body_call}}}},
-         {std::nullopt, Block{{Block{{ExpressionStmt{call(symbol("default_only"))}}}}}}},
-    };
-    FunctionSpec const spec{
-        .name = "f",
-        .return_type = "void",
-        .body = {IfStmt{call(symbol("condition_only")),
-                        Block{{selection}},
-                        Block{{ReturnStmt{call(symbol("else_only"))}}}}},
-    };
-    CppFile file{.path = "Example.h", .nodes = {IncludeDependencies{}, declaration(spec)}};
-    EXPECT_EQ(render(file).find("Project/"), std::string::npos);
+        {ir.switch_case(symbol("case_only"), ir.block({ir.expression_statement(body_call)})),
+         ir.switch_case(
+             std::nullopt,
+             ir.block({ir.block({ir.expression_statement(ir.call(symbol("default_only")))})}))})};
+    auto const spec{[&] {
+        auto const created_function{ir.function(ir.strings.intern("f"), types.intern("void"))};
+        ir.set_function_body(
+            created_function,
+            {ir.if_statement(ir.call(symbol("condition_only")),
+                             ir.block({selection}),
+                             ir.block({ir.return_statement(ir.call(symbol("else_only")))}))});
+        return created_function;
+    }()};
+    auto const file{ir.files.append(ir.strings.add("Example.h"),
+                                    {ir.include_dependencies(), ir.declaration(spec)})};
+    EXPECT_EQ(ir.render(file).find("Project/"), std::string::npos);
 
-    file.nodes.back() = Function{spec};
-    auto const output{render(file)};
+    ir.files.set_nodes(file, {ir.files.nodes(file).front(), ir.definition(spec)});
+    auto const output{ir.render(file)};
     for (auto const* name : {"condition_only",
                              "switch_only",
                              "case_only",
@@ -345,19 +471,25 @@ TEST(Ast, CollectsDeepControlFlowDependenciesOnlyForDefinitions) {
 }
 
 TEST(Ast, DeduplicatesSharedSymbolDependenciesAndTheirNestedHeaders) {
-    TypeDependency const symbol{"make", "Project/Make.h", {{"Value", "Project/Value.h", {}}}};
-    auto const expression{call(named("make", {symbol}))};
-    CppFile const file{
-        .path = "Example.h",
-        .nodes = {IncludeDependencies{},
-                  Member{"auto", "value", expression},
-                  Function{FunctionSpec{
-                      .name = "f",
-                      .return_type = "auto",
-                      .body = {ReturnStmt{expression}},
-                  }}},
-    };
-    auto const output{render(file)};
+    CompilerTestContext context;
+    [[maybe_unused]] auto& ir{context.ir};
+    [[maybe_unused]] auto& types{context.storage.cpp_types};
+    auto const symbol{types.dependency("make", "Project/Make.h")};
+    auto const value{types.dependency("Value", "Project/Value.h")};
+    auto const expression{ir.call(ir.named("make", {symbol, value}))};
+    auto const file{ir.files.append(
+        ir.strings.add("Example.h"),
+        {ir.include_dependencies(),
+         ir.instance_member(types.intern("auto"), ir.strings.intern("value"), expression),
+         ir.definition(
+             [&] {
+                 auto const created_function{
+                     ir.function(ir.strings.intern("f"), types.intern("auto"))};
+                 ir.set_function_body(created_function, {ir.return_statement(expression)});
+                 return created_function;
+             }(),
+             {})})};
+    auto const output{ir.render(file)};
     for (auto const* header : {"Project/Make.h", "Project/Value.h"}) {
         EXPECT_NE(output.find(header), std::string::npos);
         EXPECT_EQ(output.find(header), output.rfind(header));
@@ -365,4 +497,4 @@ TEST(Ast, DeduplicatesSharedSymbolDependenciesAndTheirNestedHeaders) {
 }
 
 } // namespace
-} // namespace codegen
+} // namespace lispb::codegen

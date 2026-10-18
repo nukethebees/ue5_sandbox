@@ -5,20 +5,6 @@
     (tests "standard/candidate_math_kernels_tests.cpp")
     (header-include "standard/candidate_math_kernels.h")
     (namespace ml::kernel_lab))
-  (emit native-x86-simd-lab
-    (header "native/generated/add_scaled_x86_simd_lab.h")
-    (source "native/generated/add_scaled_x86_simd_lab_avx2.cpp")
-    (avx512-source "native/generated/add_scaled_x86_simd_lab_avx512.cpp")
-    (highway-source "native/generated/add_scaled_x86_simd_lab_highway.cpp")
-    (header-include "native/generated/add_scaled_x86_simd_lab.h")
-    (namespace ml::kernel_benchmark)
-    (soaos 16)
-    (select
-      (operation add_scaled)
-      (type float)
-      (storage array array scalar)
-      (variant out-of-place)))
-
   (type-set numeric int32 uint32 float double)
   (type-set floating float double)
 
@@ -100,66 +86,5 @@
     (operand bz array)
     (output out)
     (expression (+ (+ (* ax bx) (* ay by)) (* az bz)))
-    (variants
-      (out-of-place dot_product_3d))))
-
-(kernel-module dot_product_benchmark
-  (emit native-x86-simd-lab
-    (header "native/generated/dot_product_x86_simd_lab.h")
-    (source "native/generated/dot_product_x86_simd_lab_avx2.cpp")
-    (avx512-source "native/generated/dot_product_x86_simd_lab_avx512.cpp")
-    (highway-source "native/generated/dot_product_x86_simd_lab_highway.cpp")
-    (relaxed-avx2-source "native/generated/dot_product_x86_simd_lab_relaxed_avx2.cpp")
-    (relaxed-avx512-source "native/generated/dot_product_x86_simd_lab_relaxed_avx512.cpp")
-    (header-include "native/generated/dot_product_x86_simd_lab.h")
-    (namespace ml::kernel_benchmark::dot_product_lab)
-    (soaos 16)
-    (select
-      (operation dot_product)
-      (type float)
-      (storage array array)
-      (variant sum)))
-
-  (type-set floating float)
-
-  (sum dot_product
-    (types floating)
-    (operand lhs array)
-    (operand rhs array)
-    (aliasing pairwise-disjoint)
-    (floating-point-modes strict relaxed)
-    (expression (* lhs rhs))))
-
-(kernel-module dot_product_3d_benchmark
-  (emit native-x86-simd-lab
-    (header "native/generated/dot_product_3d_x86_simd_lab.h")
-    (source "native/generated/dot_product_3d_x86_simd_lab_avx2.cpp")
-    (avx512-source "native/generated/dot_product_3d_x86_simd_lab_avx512.cpp")
-    (highway-source "native/generated/dot_product_3d_x86_simd_lab_highway.cpp")
-    (header-include "native/generated/dot_product_3d_x86_simd_lab.h")
-    (namespace ml::kernel_benchmark::dot_product_3d_lab)
-    (soaos 16)
-    (vector3-groups
-      (lhs lhs_x lhs_y lhs_z)
-      (rhs rhs_x rhs_y rhs_z))
-    (select
-      (operation dot_product_3d)
-      (type float)
-      (storage array array array array array array)
-      (variant out-of-place)))
-
-  (type-set floating float)
-
-  (map dot_product_3d
-    (types floating)
-    (operand lhs_x array)
-    (operand lhs_y array)
-    (operand lhs_z array)
-    (operand rhs_x array)
-    (operand rhs_y array)
-    (operand rhs_z array)
-    (output out)
-    (aliasing pairwise-disjoint)
-    (expression (+ (+ (* lhs_x rhs_x) (* lhs_y rhs_y)) (* lhs_z rhs_z)))
     (variants
       (out-of-place dot_product_3d))))

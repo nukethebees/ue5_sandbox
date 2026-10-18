@@ -7,7 +7,7 @@ fn configured(root: &Path) -> std::path::PathBuf {
     fs::write(root.join("CMakeLists.txt"), r#"
 cmake_minimum_required(VERSION 3.25)
 project(Operations NONE)
-foreach(target IN ITEMS editor compile-space-dust-material generate-native-soa-fixture kernel-native-generated-sources)
+foreach(target IN ITEMS editor compile-space-dust-material generate-native-soa-fixture)
   add_custom_target(${target} COMMAND "${CMAKE_COMMAND}" -E touch "${CMAKE_BINARY_DIR}/${target}.stamp")
 endforeach()
 "#).unwrap();
@@ -109,7 +109,7 @@ assert args[args.index('-j')+1]=='3'
 assert pathlib.Path.cwd().name=='native'
 assert re.search(args[-1],str(pathlib.Path.cwd()/'lispb/src/a.cpp'))
 assert not re.search(args[-1],str(pathlib.Path.cwd()/'third_party/a.cpp'))
-for name in ('generate-native-soa-fixture','kernel-native-generated-sources'):
+for name in ('generate-native-soa-fixture',):
     assert (build/(name+'.stamp')).exists()
 print('runner log')
 raise SystemExit(23)

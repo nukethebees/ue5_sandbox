@@ -1,15 +1,24 @@
+#include "compiler_test_context.h"
 #include "test_utilities.h"
 
+#include <codegen/ast/cpp_types.h>
+#include <codegen/ast/indices.h>
 #include <codegen/generator.h>
+#include <codegen/schema/declarations.h>
 #include <codegen/schema/schema_version.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/indices.h>
+#include <lispb/strings.h>
 
 #include <gtest/gtest.h>
 
 #include <map>
 #include <string>
+#include <string_view>
 #include <utility>
+#include <vector>
 
-namespace codegen {
+namespace lispb::codegen {
 namespace {
 
 struct RenderedHomogeneousModule {
@@ -17,36 +26,25 @@ struct RenderedHomogeneousModule {
     std::string source;
 };
 
-auto render_homogeneous(NormalModuleSchema module, TypeRegistry types = {})
+auto render_homogeneous(
+    CompilerTestContext& context,
+    std::string_view const layouts = R"((layout Values :components (xs ys)
+        :export-specifier PROJECT_API (value-type float f)))",
+    std::string_view const settings = {},
+    std::vector<std::pair<std::string_view, CppTypeId>> const& registrations = {})
     -> RenderedHomogeneousModule {
-    auto const files{render_modules(lower_modules(Manifest{
-        .schema_version = manifest_schema_version,
-        .types = std::move(types),
-        .modules = {std::move(module)},
-    }))};
+    auto const source{R"((module values :header "Values.h" :source "Values.cpp"
+        :header-include "Project/Values.h" )" +
+                      std::string{settings} + " " + std::string{layouts} + ")"};
+    auto const files{
+        render_test_manifest(context, parse_test_manifest(context, source, registrations))};
     EXPECT_EQ(files.size(), 2);
-    return RenderedHomogeneousModule{files[0].content, files[1].content};
-}
-
-auto homogeneous_module(std::vector<HomogeneousValueSchema> value_types = {
-                            HomogeneousValueSchema{TypeRef{"float"}, "f"}}) -> NormalModuleSchema {
-    return NormalModuleSchema{.settings =
-                                  ModuleSettings{
-                                      .name = "values",
-                                      .header = "Values.h",
-                                      .source = "Values.cpp",
-                                      .header_include = "Project/Values.h",
-                                  },
-                              .declarations = {HomogeneousLayoutSchema{
-                                  .name = "Values",
-                                  .components = {"xs", "ys"},
-                                  .value_types = std::move(value_types),
-                                  .export_specifier = "PROJECT_API",
-                              }}};
+    return {files[0].content, files[1].content};
 }
 
 TEST(HomogeneousLowering, EmitsCompleteViewAndStorageApisForEveryComponent) {
-    auto const output{render_homogeneous(homogeneous_module())};
+    CompilerTestContext context;
+    auto const output{render_homogeneous(context)};
 
     EXPECT_NE(output.header.find("template <typename T>\nstruct TValuesView"), std::string::npos);
     EXPECT_NE(output.header.find("TArrayView<T> xs;"), std::string::npos);
@@ -77,18 +75,21 @@ TEST(HomogeneousLowering, EmitsCompleteViewAndStorageApisForEveryComponent) {
 }
 
 TEST(HomogeneousLowering, EmitsEquivalentAndInputTypeApis) {
-    auto module{homogeneous_module({HomogeneousValueSchema{
-        .type = TypeRef{"float"},
-        .suffix = "f",
-        .equivalent_type = TypeRef{"@vector"},
-        .input_types = {TypeRef{"@vector"}, TypeRef{"@point"}},
-    }})};
-    std::get<codegen::HomogeneousLayoutSchema>(module.declarations.front()).input_members = {"U",
-                                                                                             "V"};
+    CompilerTestContext context;
     auto const output{render_homogeneous(
-        std::move(module),
-        {{"vector", RegisteredTypeSchema{.cpp_type = CppType{"FVector2f", "Project/Vector.h"}}},
-         {"point", RegisteredTypeSchema{.cpp_type = CppType{"FPoint2f", "Project/Point.h"}}}})};
+        context,
+        R"(
+        (layout Values :components (xs ys) :input-members (U V) :export-specifier PROJECT_API
+            (value-type float f :equivalent-type @vector :input-types (@vector @point))))",
+        {},
+        {{"vector",
+          context.storage.cpp_types.add(
+              "FVector2f",
+              {context.storage.cpp_types.dependency("FVector2f", "Project/Vector.h")})},
+         {"point",
+          context.storage.cpp_types.add(
+              "FPoint2f",
+              {context.storage.cpp_types.dependency("FPoint2f", "Project/Point.h")})}})};
 
     EXPECT_NE(output.header.find("template <typename T>\nstruct TValuesEquivalentType;"),
               std::string::npos);
@@ -124,15 +125,11 @@ TEST(HomogeneousLowering, EmitsEquivalentAndInputTypeApis) {
 }
 
 TEST(HomogeneousLowering, EmitsEveryLayoutAndValueTypeExactlyOnce) {
-    auto module{homogeneous_module({HomogeneousValueSchema{TypeRef{"float"}, "f"},
-                                    HomogeneousValueSchema{TypeRef{"double"}, "d"}})};
-    module.declarations.push_back(HomogeneousLayoutSchema{
-        .name = "Scalars",
-        .components = {"values"},
-        .value_types = {HomogeneousValueSchema{TypeRef{"int32"}, "i32"}},
-    });
-
-    auto const output{render_homogeneous(std::move(module))};
+    CompilerTestContext context;
+    auto const output{render_homogeneous(context, R"(
+        (layout Values :components (xs ys) :export-specifier PROJECT_API
+            (value-type float f) (value-type double d))
+        (layout Scalars :components (values) (value-type int32 i32)))")};
 
     EXPECT_EQ(occurrences(output.header, "struct TValuesView"), 1);
     EXPECT_EQ(occurrences(output.header, "struct TScalarsView"), 1);
@@ -145,12 +142,11 @@ TEST(HomogeneousLowering, EmitsEveryLayoutAndValueTypeExactlyOnce) {
 }
 
 TEST(HomogeneousLowering, AppliesPreludeNamespaceAndIncludeOrdering) {
-    auto module{homogeneous_module()};
-    module.settings.namespace_name = "project::generated";
-    module.settings.prelude_lines = {"class FForward;"};
-    module.settings.include_order = {"Project/"};
-
-    auto const output{render_homogeneous(std::move(module))};
+    CompilerTestContext context;
+    auto const output{render_homogeneous(
+        context,
+        R"((layout Values :components (xs ys) :export-specifier PROJECT_API (value-type float f)))",
+        R"(:namespace project::generated :prelude ("class FForward;") :include-order ("Project/"))")};
 
     EXPECT_NE(output.header.find("class FForward;"), std::string::npos);
     EXPECT_NE(output.header.find("namespace project::generated {"), std::string::npos);
@@ -160,4 +156,4 @@ TEST(HomogeneousLowering, AppliesPreludeNamespaceAndIncludeOrdering) {
 }
 
 } // namespace
-} // namespace codegen
+} // namespace lispb::codegen

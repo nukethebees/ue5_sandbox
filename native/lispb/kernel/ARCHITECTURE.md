@@ -4,23 +4,16 @@ A kernel module declares operation semantics, operand storage, concrete type set
 aliasing contracts, and named emission profiles. The DSL deliberately excludes arbitrary C++ bodies,
 ABI spelling, and runtime evaluation so generated kernels remain explicit and reviewable.
 
-Emission profiles select standard or Unreal output and optional isolated SIMD laboratory outputs.
-They declare headers, sources, tests, includes, namespaces, and dispatch artefacts as appropriate.
-Maps and sums expand the declared type sets into concrete generated operations; validation rejects
+The compiler-owned document stores modules, operations, operands, variants, emissions, and type sets
+in separate columns addressed by typed IDs. Child lists occupy flat ranges, and names and paths refer
+to the shared string store. Parsing resolves operand and type-set IDs once. Concrete variants share
+storage combinations across scalar types and remain in the document for all emission profiles.
+
+Emission profiles select standard or Unreal output. They declare headers, sources, tests, includes,
+and namespaces. Maps expand the declared type sets into concrete generated operations; validation rejects
 ambiguous names, unsupported combinations, and output collisions before writing files.
 
 Generated implementations preserve per-type operations instead of hiding column work behind
-variadic abstractions. Native SIMD experiments are separate profiles and do not change the portable
-or Unreal contract without generated-source review.
+variadic abstractions. Component maps bind each operand's columns to the same scalar expression.
 
 See [README.md](README.md) for the DSL entry point.
-
-The native SIMD profile accepts an optional `highway-source` output. It emits direct Highway
-operations using the same loop, unrolling, and layout rules as the intrinsic backends. CMake
-compiles that source separately for AVX2 and AVX-512; target and lane assertions prevent silent
-fallback. These backends are experimental and do not change production dispatch.
-
-Build `native-core-ismc-benchmark-report` with the `native-benchmark` configuration for packing comparisons.
-Run `coj benchmark kernel-report --workload highway` for focused kernel comparisons. JSON results go to
-`.local/benchmarks/highway/`. Compare like-named intrinsic and Highway rows using median real time
-and repetition variability; unsupported Highway targets are reported as skipped.

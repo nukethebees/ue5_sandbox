@@ -11,7 +11,6 @@
 #include <variant>
 
 namespace ioj {
-
 enum class EGameSetting : uint8 {
     Resolution,
     WindowMode,
@@ -410,5 +409,4 @@ class TGameSettingsAccess {
     auto derived() -> Derived& { return static_cast<Derived&>(*this); }
     auto derived() const -> Derived const& { return static_cast<Derived const&>(*this); }
 };
-
 } // namespace ioj

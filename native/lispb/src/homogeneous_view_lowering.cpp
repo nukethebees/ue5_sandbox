@@ -1,267 +1,433 @@
 #include "homogeneous_internal.h"
+#include "lowering_context.h"
 #include "lowering_utils.h"
 
+#include <codegen/ast/cpp_ir.h>
+#include <codegen/ast/cpp_types.h>
+#include <codegen/ast/expr.h>
+#include <codegen/ast/function_body_layout.h>
+#include <codegen/ast/function_flags.h>
+#include <codegen/ast/function_formatting.h>
+#include <codegen/ast/function_receiver.h>
+#include <codegen/ast/function_template_placement.h>
+#include <codegen/ast/indices.h>
+#include <codegen/ast/node_id.h>
+#include <codegen/ast/node_list_builder.h>
+#include <codegen/ast/nodes.h>
+#include <codegen/ast/return_syntax.h>
+#include <codegen/ast/template_id.h>
+#include <codegen/ast/unary_operator.h>
+#include <codegen/schema/declarations.h>
+#include <codegen/schema/homogeneous_layout_schemas.h>
+#include <codegen/schema/homogeneous_value_schemas.h>
+#include <lispb/indices.h>
+#include <lispb/strings.h>
+
+#include <cstddef>
+#include <string>
+#include <string_view>
 #include <utility>
+#include <vector>
 
-namespace codegen::detail {
+namespace lispb::codegen::detail {
 namespace {
-
-TypeDependency const std_forward{"std::forward", "utility", {}};
-TypeDependency const std_remove_const{"std::remove_const_t", "type_traits", {}};
-TypeDependency const std_is_const{"std::is_const_v", "type_traits", {}};
-TypeDependency const tarray_view{"TArrayView", "Containers/ArrayView.h", {}};
-TypeDependency const check_dependency{"check", "CoreMinimal.h", {}};
 
 auto compact_function_formatting() -> FunctionFormatting {
     return FunctionFormatting{
-        .body_layout = FunctionFormatting::BodyLayout::compact,
-        .template_placement = FunctionFormatting::TemplatePlacement::same_line,
+        .body_layout = FunctionBodyLayout::compact,
+        .template_placement = FunctionTemplatePlacement::same_line,
     };
 }
 
-auto homogeneous_function(std::string name,
-                          CppType return_type,
-                          std::vector<FunctionParameter> parameters,
+auto homogeneous_function(LoweringContext& context,
+                          std::string_view name,
+                          CppTypeId return_type,
+                          std::vector<FunctionParameterId> parameters,
                           std::string body,
-                          FunctionQualifiers qualifiers = {},
-                          std::optional<std::string> function_template = std::nullopt,
+                          FunctionReceiver receiver = FunctionReceiver::unqualified,
+                          ReturnSyntax return_syntax = ReturnSyntax::direct,
+                          TemplateId function_template = {},
                           FunctionFormatting formatting = {},
-                          std::vector<TypeDependency> dependencies = {},
-                          std::optional<std::string> requires_clause = std::nullopt) -> Node {
-    qualifiers.is_inline = true;
-    return header_function(FunctionSpec{
-        .name = std::move(name),
-        .return_type = std::move(return_type),
-        .parameters = std::move(parameters),
-        .body = {raw(std::move(body), std::move(dependencies))},
-        .qualifiers = std::move(qualifiers),
-        .define_in_header = true,
-        .template_parameters = std::move(function_template),
-        .requires_clause = std::move(requires_clause),
-        .formatting = formatting,
-    });
+                          std::vector<TypeDependencyId> dependencies = {},
+                          Expr requires_clause = {}) -> NodeId {
+    auto& ir{context.ir};
+    auto const created_function{ir.function(ir.strings.intern(name), return_type)};
+    ir.set_function_return_type(created_function, return_type, return_syntax);
+    ir.set_function_receiver(created_function, receiver);
+    ir.set_function_parameters(created_function, parameters);
+    ir.set_function_body(created_function, {ir.raw(body, dependencies)});
+    ir.function_flags(created_function).set_is_inline(true);
+    ir.function_flags(created_function).set_define_in_header(true);
+    ir.set_function_template(created_function, function_template);
+    ir.set_function_requires_clause(created_function, requires_clause);
+    ir.function_formatting(created_function) = formatting;
+    return ir.header_function(created_function);
 }
 
 } // namespace
 
-auto homogeneous_view_node(HomogeneousLayoutSchema const& layout, bool const has_equivalent_type)
-    -> Node {
-    auto const view_name{"T" + layout.name + "View"};
-    auto const components{join(layout.components, ", ")};
+auto homogeneous_view_node(LoweringContext& context,
+                           DeclarationHandle layout,
+                           bool const has_equivalent_type) -> NodeId {
+    auto& ir{context.ir};
+    auto const mutable_elements{ir.parenthesized(
+        ir.unary(UnaryOperator::logical_not,
+                 ir.template_id(ir.named("std::is_const_v",
+                                         {ir.types.dependency("std::is_const_v", "type_traits")}),
+                                {ir.type_reference(ir.types.intern("T"))})))};
+    auto const view_name{
+        "T" +
+        context.text(context.declarations.homogeneous_layouts
+                         .name[context.declarations.homogeneous_layouts.index(layout)]) +
+        "View"};
+    auto const components{
+        join(context,
+             context.declarations.homogeneous_layouts
+                 .components[context.declarations.homogeneous_layouts.index(layout)],
+             ", ")};
     auto slice_values = [&](std::string const& operation) {
         std::vector<std::string> values;
-        for (auto const& component : layout.components) {
+        for (auto const component_id : context.declarations.items(
+                 context.declarations.homogeneous_layouts
+                     .components[context.declarations.homogeneous_layouts.index(layout)])) {
+            auto const component{context.text(component_id)};
             values.push_back(component + "." + operation);
         }
         return join(values, ", ");
     };
-    NodeListBuilder children;
-    children.add(UsingDeclaration{"size_type", CppType{"TArrayView<T>::SizeType"}}, 1)
-        .add(UsingDeclaration{"value_type", CppType{"std::remove_const_t<T>"}}, 1)
-        .add(UsingDeclaration{"View", CppType{view_name + "<T>"}}, 1)
-        .add(UsingDeclaration{"ConstView", CppType{view_name + "<value_type const>"}},
+    NodeListBuilder children{ir};
+    children
+        .add(ir.using_declaration(ir.strings.intern("size_type"),
+                                  ir.types.intern("TArrayView<T>::SizeType")),
+             1)
+        .add(ir.using_declaration(ir.strings.intern("value_type"),
+                                  ir.types.intern("std::remove_const_t<T>")),
+             1)
+        .add(ir.using_declaration(ir.strings.intern("View"), ir.types.intern(view_name + "<T>")), 1)
+        .add(ir.using_declaration(ir.strings.intern("ConstView"),
+                                  ir.types.intern(view_name + "<value_type const>")),
              has_equivalent_type ? 1 : 2);
     if (has_equivalent_type) {
-        children.add(UsingDeclaration{"equivalent_type",
-                                      CppType{"typename T" + layout.name +
-                                              "EquivalentType<value_type>::type"}},
-                     2);
+        children.add(
+            ir.using_declaration(
+                ir.strings.intern("equivalent_type"),
+                ir.types.intern(
+                    "typename T" +
+                    context.text(
+                        context.declarations.homogeneous_layouts
+                            .name[context.declarations.homogeneous_layouts.index(layout)]) +
+                    "EquivalentType<value_type>::type")),
+            2);
     }
-    for (std::size_t index{0}; index < layout.components.size(); ++index) {
-        children.add(Member{CppType{"TArrayView<T>"}, layout.components[index]},
-                     index + 1 < layout.components.size() ? 1 : 2);
+    for (std::size_t index{0};
+         index < context.declarations.homogeneous_layouts
+                     .components[context.declarations.homogeneous_layouts.index(layout)]
+                     .size();
+         ++index) {
+        children.add(
+            ir.instance_member(ir.types.intern("TArrayView<T>"),
+                               context.declarations.items(
+                                   context.declarations.homogeneous_layouts
+                                       .components[context.declarations.homogeneous_layouts.index(
+                                           layout)])[index]),
+            index + 1 < context.declarations.homogeneous_layouts
+                            .components[context.declarations.homogeneous_layouts.index(layout)]
+                            .size()
+                ? 1
+                : 2);
     }
     children
-        .add(homogeneous_function("get_view",
-                                  "auto",
+        .add(homogeneous_function(context,
+                                  "get_view",
+                                  ir.types.intern("View"),
                                   {},
                                   "return View{" + components + "};",
-                                  {.trailing_return_type = CppType{"View"}},
-                                  std::nullopt,
-                                  compact_function_formatting()),
-             1)
-        .add(homogeneous_function("get_view",
-                                  "auto",
-                                  {FunctionParameter{"size_type const", "offset"},
-                                   FunctionParameter{"size_type const", "count"}},
-                                  "return get_view().slice(offset, count);",
-                                  {.trailing_return_type = CppType{"View"}}),
-             1)
-        .add(homogeneous_function("get_view",
-                                  "auto",
+                                  FunctionReceiver::unqualified,
+                                  ReturnSyntax::trailing,
                                   {},
-                                  "return ConstView{" + components + "};",
-                                  {.trailing_return_type = CppType{"ConstView"}, .is_const = true},
-                                  std::nullopt,
                                   compact_function_formatting()),
-             1)
-        .add(homogeneous_function("get_view",
-                                  "auto",
-                                  {FunctionParameter{"size_type const", "offset"},
-                                   FunctionParameter{"size_type const", "count"}},
-                                  "return get_view().slice(offset, count);",
-                                  {.trailing_return_type = CppType{"ConstView"}, .is_const = true}),
-             1)
-        .add(homogeneous_function("get_const_view",
-                                  "auto",
-                                  {},
-                                  "return ConstView{" + components + "};",
-                                  {.trailing_return_type = CppType{"ConstView"}, .is_const = true},
-                                  std::nullopt,
-                                  compact_function_formatting()),
-             1)
-        .add(homogeneous_function("get_const_view",
-                                  "auto",
-                                  {FunctionParameter{"size_type const", "offset"},
-                                   FunctionParameter{"size_type const", "count"}},
-                                  "return get_const_view().slice(offset, count);",
-                                  {.trailing_return_type = CppType{"ConstView"}, .is_const = true}),
-             1)
-        .add(homogeneous_function("apply_arrays",
-                                  "auto",
-                                  {FunctionParameter{"TFunc&&", "func"}},
-                                  "return std::forward<TFunc>(func)(" + components + ");",
-                                  {.trailing_return_type = CppType{"decltype(auto)"}},
-                                  "typename TFunc",
-                                  {},
-                                  {std_forward}),
              1)
         .add(homogeneous_function(
-                 "apply_arrays",
-                 "auto",
-                 {FunctionParameter{"TFunc&&", "func"}},
-                 "return std::forward<TFunc>(func)(" + components + ");",
-                 {.trailing_return_type = CppType{"decltype(auto)"}, .is_const = true},
-                 "typename TFunc",
-                 {},
-                 {std_forward}),
+                 context,
+                 "get_view",
+                 ir.types.intern("View"),
+                 {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("offset")),
+                  ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))},
+                 "return get_view().slice(offset, count);",
+                 FunctionReceiver::unqualified,
+                 ReturnSyntax::trailing),
              1)
-        .add(homogeneous_function("num",
-                                  "auto",
+        .add(homogeneous_function(context,
+                                  "get_view",
+                                  ir.types.intern("ConstView"),
                                   {},
-                                  "return " + layout.components.front() + ".Num();",
-                                  {.trailing_return_type = CppType{"size_type"}, .is_const = true},
-                                  std::nullopt,
+                                  "return ConstView{" + components + "};",
+                                  FunctionReceiver::const_,
+                                  ReturnSyntax::trailing,
+                                  {},
                                   compact_function_formatting()),
              1)
-        .add(homogeneous_function("is_empty",
-                                  "auto",
+        .add(homogeneous_function(
+                 context,
+                 "get_view",
+                 ir.types.intern("ConstView"),
+                 {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("offset")),
+                  ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))},
+                 "return get_view().slice(offset, count);",
+                 FunctionReceiver::const_,
+                 ReturnSyntax::trailing),
+             1)
+        .add(homogeneous_function(context,
+                                  "get_const_view",
+                                  ir.types.intern("ConstView"),
+                                  {},
+                                  "return ConstView{" + components + "};",
+                                  FunctionReceiver::const_,
+                                  ReturnSyntax::trailing,
+                                  {},
+                                  compact_function_formatting()),
+             1)
+        .add(homogeneous_function(
+                 context,
+                 "get_const_view",
+                 ir.types.intern("ConstView"),
+                 {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("offset")),
+                  ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))},
+                 "return get_const_view().slice(offset, count);",
+                 FunctionReceiver::const_,
+                 ReturnSyntax::trailing),
+             1)
+        .add(homogeneous_function(
+                 context,
+                 "apply_arrays",
+                 ir.types.intern("decltype(auto)"),
+                 {ir.parameter(ir.types.intern("TFunc&&"), ir.strings.intern("func"))},
+                 "return std::forward<TFunc>(func)(" + components + ");",
+                 FunctionReceiver::unqualified,
+                 ReturnSyntax::trailing,
+                 ir.template_declaration({ir.type_template_parameter(ir.strings.intern("TFunc"))}),
+                 {},
+                 {ir.types.dependency("std::forward", "utility")}),
+             1)
+        .add(homogeneous_function(
+                 context,
+                 "apply_arrays",
+                 ir.types.intern("decltype(auto)"),
+                 {ir.parameter(ir.types.intern("TFunc&&"), ir.strings.intern("func"))},
+                 "return std::forward<TFunc>(func)(" + components + ");",
+                 FunctionReceiver::const_,
+                 ReturnSyntax::trailing,
+                 ir.template_declaration({ir.type_template_parameter(ir.strings.intern("TFunc"))}),
+                 {},
+                 {ir.types.dependency("std::forward", "utility")}),
+             1)
+        .add(homogeneous_function(
+                 context,
+                 "num",
+                 ir.types.intern("size_type"),
+                 {},
+                 "return " +
+                     context.text(
+                         context.declarations
+                             .items(context.declarations.homogeneous_layouts.components
+                                        [context.declarations.homogeneous_layouts.index(layout)])
+                             .front()) +
+                     ".Num();",
+                 FunctionReceiver::const_,
+                 ReturnSyntax::trailing,
+                 {},
+                 compact_function_formatting()),
+             1)
+        .add(homogeneous_function(context,
+                                  "is_empty",
+                                  ir.types.intern("bool"),
                                   {},
                                   "return num() == 0;",
-                                  {.trailing_return_type = CppType{"bool"}, .is_const = true},
-                                  std::nullopt,
+                                  FunctionReceiver::const_,
+                                  ReturnSyntax::trailing,
+                                  {},
                                   compact_function_formatting()),
              1)
-        .add(homogeneous_function("slice",
-                                  "auto",
-                                  {FunctionParameter{"size_type const", "offset"},
-                                   FunctionParameter{"size_type const", "count"}},
-                                  "return " + view_name + "{" +
-                                      slice_values("Slice(offset, count)") + "};",
-                                  {.trailing_return_type = CppType{view_name}, .is_const = true}),
+        .add(homogeneous_function(
+                 context,
+                 "slice",
+                 ir.types.intern(view_name),
+                 {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("offset")),
+                  ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))},
+                 "return " + view_name + "{" + slice_values("Slice(offset, count)") + "};",
+                 FunctionReceiver::const_,
+                 ReturnSyntax::trailing),
              1)
-        .add(homogeneous_function("left",
-                                  "auto",
-                                  {FunctionParameter{"size_type const", "count"}},
-                                  "return " + view_name + "{" + slice_values("Left(count)") + "};",
-                                  {.trailing_return_type = CppType{view_name}, .is_const = true}),
+        .add(homogeneous_function(
+                 context,
+                 "left",
+                 ir.types.intern(view_name),
+                 {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))},
+                 "return " + view_name + "{" + slice_values("Left(count)") + "};",
+                 FunctionReceiver::const_,
+                 ReturnSyntax::trailing),
              1)
-        .add(homogeneous_function("right",
-                                  "auto",
-                                  {FunctionParameter{"size_type const", "count"}},
-                                  "return " + view_name + "{" + slice_values("Right(count)") + "};",
-                                  {.trailing_return_type = CppType{view_name}, .is_const = true}));
-    std::vector<FunctionParameter> component_parameters{
-        FunctionParameter{"size_type const", "index"}};
+        .add(homogeneous_function(
+            context,
+            "right",
+            ir.types.intern(view_name),
+            {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))},
+            "return " + view_name + "{" + slice_values("Right(count)") + "};",
+            FunctionReceiver::const_,
+            ReturnSyntax::trailing));
+    std::vector<FunctionParameterId> component_parameters{
+        ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("index"))};
     std::vector<std::string> assignments;
-    for (auto const& component : layout.components) {
-        component_parameters.emplace_back("value_type const", std::string{component.front()});
+    for (auto const component_id : context.declarations.items(
+             context.declarations.homogeneous_layouts
+                 .components[context.declarations.homogeneous_layouts.index(layout)])) {
+        auto const component{context.text(component_id)};
+        component_parameters.push_back(
+            ir.parameter(ir.types.intern("value_type const"),
+                         ir.strings.intern(std::string{component.front()})));
         assignments.push_back(component + "[index] = " + component.front() + ";");
     }
-    children.new_lines().add(homogeneous_function("set",
-                                                  "void",
+    children.new_lines().add(homogeneous_function(context,
+                                                  "set",
+                                                  ir.types.intern("void"),
                                                   std::move(component_parameters),
                                                   join_lines(assignments),
-                                                  {.is_const = true},
-                                                  std::nullopt,
+                                                  FunctionReceiver::const_,
+                                                  ReturnSyntax::direct,
                                                   {},
-                                                  {std_is_const},
-                                                  "(!std::is_const_v<T>)"));
+                                                  {},
+                                                  {},
+                                                  mutable_elements));
     if (has_equivalent_type) {
         static std::vector<std::string> const default_input_members{"X", "Y", "Z"};
-        auto const& input_members{layout.input_members.empty() ? default_input_members
-                                                               : layout.input_members};
+        auto const input_member = [&](std::size_t index) {
+            return context.declarations.homogeneous_layouts
+                           .input_members[context.declarations.homogeneous_layouts.index(layout)]
+                           .empty()
+                     ? default_input_members[index]
+                     : context.text(context.declarations.items(
+                           context.declarations.homogeneous_layouts
+                               .input_members[context.declarations.homogeneous_layouts.index(
+                                   layout)])[index]);
+        };
         std::vector<std::string> arguments;
-        for (std::size_t index{0}; index < layout.components.size(); ++index) {
-            arguments.push_back("value." + input_members[index]);
+        for (std::size_t index{0};
+             index < context.declarations.homogeneous_layouts
+                         .components[context.declarations.homogeneous_layouts.index(layout)]
+                         .size();
+             ++index) {
+            arguments.push_back("value." + input_member(index));
         }
-        children.new_lines().add(
-            homogeneous_function("set",
-                                 "void",
-                                 {FunctionParameter{"size_type const", "index"},
-                                  FunctionParameter{"equivalent_type const&", "value"}},
-                                 "set(index, " + join(arguments, ", ") + ");",
-                                 {.is_const = true},
-                                 std::nullopt,
-                                 {},
-                                 {std_is_const},
-                                 "(!std::is_const_v<T>)"));
+        children.new_lines().add(homogeneous_function(
+            context,
+            "set",
+            ir.types.intern("void"),
+            {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("index")),
+             ir.parameter(ir.types.intern("equivalent_type const&"), ir.strings.intern("value"))},
+            "set(index, " + join(arguments, ", ") + ");",
+            FunctionReceiver::const_,
+            ReturnSyntax::direct,
+            {},
+            {},
+            {},
+            mutable_elements));
         std::vector<std::string> values;
-        for (auto const& component : layout.components) {
+        for (auto const component_id : context.declarations.items(
+                 context.declarations.homogeneous_layouts
+                     .components[context.declarations.homogeneous_layouts.index(layout)])) {
+            auto const component{context.text(component_id)};
             values.push_back(component + ".GetData()[index]");
         }
         children.new_lines()
             .add(homogeneous_function(
+                     context,
                      "operator[]",
-                     "auto",
-                     {FunctionParameter{"size_type const", "index"}},
+                     ir.types.intern("equivalent_type"),
+                     {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("index"))},
                      "return {" + join(values, ", ") + "};",
-                     {.trailing_return_type = CppType{"equivalent_type"}, .is_const = true}),
+                     FunctionReceiver::const_,
+                     ReturnSyntax::trailing),
                  1)
             .add(homogeneous_function(
+                context,
                 "at",
-                "auto",
-                {FunctionParameter{"size_type const", "index"}},
+                ir.types.intern("equivalent_type"),
+                {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("index"))},
                 "check(index >= 0);\ncheck(index < num());\n"
                 "return (*this)[index];",
-                {.trailing_return_type = CppType{"equivalent_type"}, .is_const = true},
-                std::nullopt,
+                FunctionReceiver::const_,
+                ReturnSyntax::trailing,
                 {},
-                {check_dependency}));
+                {},
+                {ir.types.dependency("check", "CoreMinimal.h")}));
     }
-    auto dependencies{std::vector<TypeDependency>{tarray_view, std_remove_const, std_forward}};
+    auto dependencies{
+        std::vector<TypeDependencyId>{ir.types.dependency("TArrayView", "Containers/ArrayView.h"),
+                                      ir.types.dependency("std::remove_const_t", "type_traits"),
+                                      ir.types.dependency("std::forward", "utility")}};
     if (has_equivalent_type) {
-        dependencies.push_back(check_dependency);
+        dependencies.push_back(ir.types.dependency("check", "CoreMinimal.h"));
     }
-    return Struct{
-        .name = view_name,
-        .children = children.build(),
-        .template_parameters = "typename T",
-        .dependencies = std::move(dependencies),
-    };
+    auto const created_record{
+        ir.record(ir.strings.intern(view_name), children.build(), RecordKind::struct_)};
+    ir.set_record_template(
+        created_record,
+        ir.template_declaration({ir.type_template_parameter(ir.strings.intern("T"))}));
+    ir.set_record_dependencies(created_record, std::move(dependencies));
+    return created_record;
 }
 
 namespace {
 
-auto equivalent_type_nodes(HomogeneousLayoutSchema const& layout, TypeRegistry const& types)
-    -> Nodes {
-    if (!layout.value_types.front().equivalent_type.has_value()) {
+auto equivalent_type_nodes(LoweringContext& context, DeclarationHandle layout) -> Nodes {
+    auto& ir{context.ir};
+    if (!context.declarations.homogeneous_values
+             .equivalent_type[context.declarations.homogeneous_values.index(
+                 context.declarations
+                     .items(
+                         context.declarations.homogeneous_layouts
+                             .value_types[context.declarations.homogeneous_layouts.index(layout)])
+                     .front())]
+             .has_value()) {
         return {};
     }
 
-    auto const trait_name{"T" + layout.name + "EquivalentType"};
-    NodeListBuilder result;
-    result.add(raw("template <typename T>\nstruct " + trait_name + ";"), 2);
-    for (std::size_t index{0}; index < layout.value_types.size(); ++index) {
-        auto const& value{layout.value_types[index]};
-        auto const value_type{resolve_type(value.type, types)};
-        auto const equivalent_type{resolve_type(*value.equivalent_type, types)};
-        result.add(Struct{
-            .name = trait_name + "<" + value_type.spelling + ">",
-            .children = {UsingDeclaration{"type", equivalent_type}},
-            .template_parameters = "",
-        });
-        if (index + 1 < layout.value_types.size()) {
+    auto const trait_name{
+        "T" +
+        context.text(context.declarations.homogeneous_layouts
+                         .name[context.declarations.homogeneous_layouts.index(layout)]) +
+        "EquivalentType"};
+    NodeListBuilder result{ir};
+    result.add(ir.forward_declaration(
+                   ir.strings.intern(trait_name),
+                   RecordKind::struct_,
+                   ir.template_declaration({ir.type_template_parameter(ir.strings.intern("T"))})),
+               2);
+    for (std::size_t index{0};
+         index < context.declarations.homogeneous_layouts
+                     .value_types[context.declarations.homogeneous_layouts.index(layout)]
+                     .size();
+         ++index) {
+        auto const& value{context.declarations.items(
+            context.declarations.homogeneous_layouts
+                .value_types[context.declarations.homogeneous_layouts.index(layout)])[index]};
+        auto const value_type{
+            context.resolve(context.declarations.homogeneous_values
+                                .type[context.declarations.homogeneous_values.index(value)])};
+        auto const equivalent_type{context.resolve(
+            *context.declarations.homogeneous_values
+                 .equivalent_type[context.declarations.homogeneous_values.index(value)])};
+        result.add([&] {
+            auto const created_record{
+                ir.record(ir.template_id(ir.named(trait_name), {ir.type_reference(value_type)}),
+                          {ir.using_declaration(ir.strings.intern("type"), equivalent_type)},
+                          RecordKind::struct_)};
+            ir.set_record_template(created_record, ir.template_specialization());
+            return created_record;
+        }());
+        if (index + 1 < context.declarations.homogeneous_layouts
+                            .value_types[context.declarations.homogeneous_layouts.index(layout)]
+                            .size()) {
             result.new_lines(2);
         }
     }
@@ -270,15 +436,22 @@ auto equivalent_type_nodes(HomogeneousLayoutSchema const& layout, TypeRegistry c
 
 } // namespace
 
-auto homogeneous_view_nodes(HomogeneousLayoutSchema const& layout, TypeRegistry const& types)
-    -> Nodes {
-    auto const has_equivalent_type{layout.value_types.front().equivalent_type.has_value()};
-    NodeListBuilder result;
-    result.append(equivalent_type_nodes(layout, types));
+auto homogeneous_view_nodes(LoweringContext& context, DeclarationHandle layout) -> Nodes {
+    auto& ir{context.ir};
+    auto const has_equivalent_type{
+        context.declarations.homogeneous_values
+            .equivalent_type[context.declarations.homogeneous_values.index(
+                context.declarations
+                    .items(context.declarations.homogeneous_layouts
+                               .value_types[context.declarations.homogeneous_layouts.index(layout)])
+                    .front())]
+            .has_value()};
+    NodeListBuilder result{ir};
+    result.append(equivalent_type_nodes(context, layout));
     if (has_equivalent_type) {
         result.new_lines(2);
     }
-    return result.add(homogeneous_view_node(layout, has_equivalent_type)).build();
+    return result.add(homogeneous_view_node(context, layout, has_equivalent_type)).build();
 }
 
-} // namespace codegen::detail
+} // namespace lispb::codegen::detail

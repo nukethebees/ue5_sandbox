@@ -1,11 +1,17 @@
 #include <codegen/schema/fixed_point_value.h>
 
+#include <codegen/schema/packed_integer_value.h>
+
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
+#include <expected>
 #include <limits>
+#include <string>
+#include <string_view>
 #include <vector>
 
-namespace codegen {
+namespace lispb::codegen {
 
 auto parse_fixed_point_value(std::string_view const text, std::uint32_t const fractional_bits)
     -> std::expected<PackedIntegerValue, std::string> {
@@ -66,4 +72,4 @@ auto parse_fixed_point_value(std::string_view const text, std::uint32_t const fr
     return PackedIntegerValue::from_parts(negative, magnitude);
 }
 
-} // namespace codegen
+} // namespace lispb::codegen

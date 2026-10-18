@@ -1,174 +1,77 @@
 #pragma once
 
-#include <cstdint>
-#include <expected>
+#include <codegen/sexpr/handle_range.h>
+#include <lispb/indices.h>
+#include <lispb/kernel_profile.h>
+#include <lispb/rooted_path.h>
+#include <lispb/target_columns.h>
+#include <lispb/target_groups.h>
+#include <lispb/target_id.h>
+
 #include <filesystem>
 #include <map>
 #include <optional>
+#include <span>
 #include <string>
-#include <variant>
+#include <string_view>
 #include <vector>
-
 namespace lispb {
+class Strings;
 
-enum class PathBase { project, build };
-
-struct RootedPath {
-    PathBase base{PathBase::project};
-    std::filesystem::path path;
-};
-
-struct CppSchemaTarget {
-    std::string name;
-    std::filesystem::path types;
-    std::vector<std::filesystem::path> sources;
-    RootedPath output_root;
-};
-
-struct SlateTarget {
-    std::string name;
-    std::vector<std::filesystem::path> sources;
-    std::vector<std::filesystem::path> include_directories;
-    RootedPath output_root;
-};
-
-enum class KernelProfile { unreal, standard, unreal_avx2_lab, native_x86_simd_lab };
-
-struct KernelTarget {
-    std::string name;
-    std::vector<std::filesystem::path> sources;
-    KernelProfile profile{KernelProfile::unreal};
-    RootedPath output_root;
-};
-
-struct MaterialTarget {
-    std::string name;
-    std::filesystem::path source;
-    RootedPath artifact;
-};
-
-using Target = std::variant<CppSchemaTarget, SlateTarget, KernelTarget, MaterialTarget>;
-
-struct Project {
-    std::filesystem::path root;
-    std::map<std::string, Target, std::less<>> targets;
-    std::map<std::string, std::vector<std::string>, std::less<>> groups;
-};
-
-struct ProjectEditError {
-    std::string message;
-};
-
-struct AddCppSchemaSource {
-    std::string target_name;
-    std::filesystem::path source;
-};
-
-struct RemoveCppSchemaSource {
-    std::string target_name;
-    std::filesystem::path source;
-};
-
-struct RenameCppSchemaSource {
-    std::string target_name;
-    std::filesystem::path source;
-    std::filesystem::path destination;
-};
-
-struct CreateCppSchemaSource {
-    std::string target_name;
-    std::filesystem::path source;
-    std::string contents;
-};
-
-struct DeletePendingCppSchemaSource {
-    std::string target_name;
-    std::filesystem::path source;
-};
-
-using ProjectEditCommand = std::variant<AddCppSchemaSource,
-                                        RemoveCppSchemaSource,
-                                        RenameCppSchemaSource,
-                                        CreateCppSchemaSource,
-                                        DeletePendingCppSchemaSource>;
-
-struct ProjectSourceUpdate {
-    std::filesystem::path path;
-    std::string original;
-    std::string updated;
-};
-
-class EditableProjectDocument {
+class Project {
   public:
-    [[nodiscard]] auto project() const -> Project const& { return project_; }
-    [[nodiscard]] auto path() const -> std::filesystem::path const& { return path_; }
-    [[nodiscard]] auto source_text() const -> std::string const& { return source_; }
-    [[nodiscard]] auto dirty() const -> bool {
-        return history_position_ != saved_history_position_;
-    }
-    [[nodiscard]] auto can_undo() const -> bool { return history_position_ != 0; }
-    [[nodiscard]] auto can_redo() const -> bool { return history_position_ < history_.size(); }
-    [[nodiscard]] auto revision() const -> std::uint64_t { return revision_; }
-    [[nodiscard]] auto source_is_pending(std::filesystem::path const& source) const -> bool {
-        return pending_sources_.contains(source.lexically_normal());
-    }
-    [[nodiscard]] auto renamed_source_original(std::filesystem::path const& source) const
-        -> std::optional<std::filesystem::path> {
-        auto const found{pending_renames_.find(source.lexically_normal())};
-        return found == pending_renames_.end() ? std::nullopt : std::optional{found->second};
-    }
+    explicit Project(Strings& strings)
+        : strings_{&strings} {}
+    Project(Project const&) = delete;
+    auto operator=(Project const&) -> Project& = delete;
+    Project(Project&&) noexcept = default;
+    auto operator=(Project&&) noexcept -> Project& = default;
 
-    auto apply(ProjectEditCommand const& command) -> std::expected<bool, ProjectEditError>;
-    auto undo() -> std::expected<bool, ProjectEditError>;
-    auto redo() -> std::expected<bool, ProjectEditError>;
-    void discard_redo_history();
-    [[nodiscard]] auto preview_source_updates() const
-        -> std::expected<std::vector<ProjectSourceUpdate>, ProjectEditError>;
-    auto save() -> std::expected<bool, ProjectEditError>;
+    std::filesystem::path root;
+    [[nodiscard]] auto strings() const -> Strings& { return *strings_; }
+    [[nodiscard]] auto find_target(std::string_view name) const -> std::optional<TargetId>;
+    [[nodiscard]] auto target_ids() const -> std::span<TargetId const> { return order_; }
+    [[nodiscard]] auto target_name(TargetId target) const -> std::string_view;
+    [[nodiscard]] auto sources(TargetId target) const -> std::vector<std::filesystem::path>;
+    [[nodiscard]] auto source_range(TargetId target) const -> codegen::sexpr::HandleRange;
+    [[nodiscard]] auto sources(codegen::sexpr::HandleRange range) const
+        -> std::vector<std::filesystem::path>;
+    [[nodiscard]] auto source_files(TargetId target) const -> std::vector<std::filesystem::path>;
+    [[nodiscard]] auto types(TargetId target) const -> std::filesystem::path;
+    [[nodiscard]] auto include_directories(TargetId target) const
+        -> std::vector<std::filesystem::path>;
+    [[nodiscard]] auto profile(TargetId target) const -> KernelProfile;
+    [[nodiscard]] auto output_path(TargetId target) const -> RootedPath;
+    [[nodiscard]] auto expand(std::string_view name) const -> std::vector<TargetId>;
+    auto append(TargetKind kind, IdentifierId name) -> TargetId;
+    auto append_paths(std::span<StringId const> paths) -> codegen::sexpr::HandleRange;
+    void set_sources(TargetId target, codegen::sexpr::HandleRange sources);
+    void set_types(TargetId target, StringId types);
+    void set_includes(TargetId target, codegen::sexpr::HandleRange includes);
+    void set_profile(TargetId target, KernelProfile profile);
+    void set_output(TargetId target, PathBase base, StringId path);
+    void add_group(IdentifierId name, std::span<IdentifierId const> members);
+    void resolve_groups();
+    void replace_sources(TargetId target, std::span<std::filesystem::path const> sources);
   private:
-    struct SourceListItem {
-        std::filesystem::path source;
-        std::size_t begin_offset{};
-        std::size_t end_offset{};
-    };
-
-    struct SourceListRange {
-        std::size_t begin_offset{};
-        std::size_t end_offset{};
-        std::size_t closing_offset{};
-        std::size_t item_indentation{};
-        std::vector<std::filesystem::path> original_sources;
-        std::vector<SourceListItem> original_items;
-    };
-
-    struct PendingSource {
-        std::string target_name;
-        std::string contents;
-    };
-
-    friend auto load_editable_project_document(std::filesystem::path const& path)
-        -> EditableProjectDocument;
-    auto apply_internal(ProjectEditCommand const& command)
-        -> std::expected<ProjectEditCommand, ProjectEditError>;
-
-    std::filesystem::path path_;
-    std::string source_;
-    Project project_;
-    std::map<std::string, SourceListRange, std::less<>> source_lists_;
-    std::map<std::filesystem::path, PendingSource> pending_sources_;
-    std::map<std::filesystem::path, std::filesystem::path> pending_renames_;
-    std::vector<ProjectEditCommand> history_;
-    std::size_t history_position_{};
-    std::size_t saved_history_position_{};
-    std::uint64_t revision_{};
+    TargetColumns cpp_schema_, slate_, kernel_, material_;
+    TargetGroups groups_;
+    [[nodiscard]] auto columns(TargetId target) const -> TargetColumns const&;
+    [[nodiscard]] auto columns(TargetId target) -> TargetColumns&;
+    [[nodiscard]] auto store_paths(std::span<std::filesystem::path const> paths)
+        -> codegen::sexpr::HandleRange;
+    [[nodiscard]] auto paths(codegen::sexpr::HandleRange range) const
+        -> std::vector<std::filesystem::path>;
+    void
+        expand(TargetId target, std::vector<TargetId>& active, std::vector<TargetId>& result) const;
+    Strings* strings_;
+    std::map<IdentifierId, TargetId> names_;
+    std::vector<TargetId> order_;
+    std::vector<StringId> paths_;
+    std::vector<StringId> cpp_types_;
+    std::vector<codegen::sexpr::HandleRange> slate_includes_;
+    std::vector<KernelProfile> kernel_profiles_;
+    std::vector<IdentifierId> unresolved_group_members_;
 };
 
-auto load_project(std::filesystem::path const& path) -> Project;
-auto load_editable_project_document(std::filesystem::path const& path) -> EditableProjectDocument;
-auto source_files(Target const& target) -> std::vector<std::filesystem::path>;
-auto resolve(RootedPath const& path,
-             std::filesystem::path const& project_root,
-             std::filesystem::path const& build_root) -> std::filesystem::path;
-auto expand_target(Project const& project, std::string const& name) -> std::vector<std::string>;
-
-} // namespace lispb
+}

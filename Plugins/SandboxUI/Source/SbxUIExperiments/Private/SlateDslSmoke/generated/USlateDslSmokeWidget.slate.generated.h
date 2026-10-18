@@ -4,9 +4,7 @@
 #pragma once
 
 #include <utility>
-
 namespace SlateGenerated {
-
 struct USlateDslSmokeWidgetBuilder {
     using ThisClass = ::USlateDslSmokeWidget;
 
@@ -39,5 +37,4 @@ struct USlateDslSmokeWidgetBuilder {
   private:
     ThisClass& self_;
 };
-
-}
+} // namespace SlateGenerated

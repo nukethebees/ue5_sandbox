@@ -1,15 +1,59 @@
 #include <material_gen/CompiledMaterial.h>
 
+#include <lispb/indices.h>
+#include <lispb/strings.h>
+#include <material_gen/BlendMode.h>
+#include <material_gen/CustomInputs.h>
+#include <material_gen/Indices.h>
+#include <material_gen/MaterialDomain.h>
+#include <material_gen/MaterialIR.h>
+#include <material_gen/NamedNodes.h>
+#include <material_gen/NodeKind.h>
+#include <material_gen/Nodes.h>
+#include <material_gen/Parameters.h>
+#include <material_gen/PositionSpace.h>
+#include <material_gen/SceneTexture.h>
+#include <material_gen/ShadingModel.h>
+#include <material_gen/SourceSpan.h>
+#include <material_gen/TextureSamplerType.h>
+#include <material_gen/ValueType.h>
+
 #include <algorithm>
 #include <array>
 #include <bit>
 #include <cctype>
+#include <cstddef>
 #include <cstdint>
+#include <expected>
 #include <limits>
+#include <span>
+#include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace material_synth {
+
+CompiledMaterial::CompiledMaterial()
+    : material{strings} {}
+
+CompiledMaterial::CompiledMaterial(CompiledMaterial&& other) noexcept
+    : strings{std::move(other.strings)}
+    , source_path{other.source_path}
+    , source_hash{other.source_hash}
+    , material{std::move(other.material)} {
+    material.strings = &strings;
+}
+
+auto CompiledMaterial::operator=(CompiledMaterial&& other) noexcept -> CompiledMaterial& {
+    strings = std::move(other.strings);
+    source_path = other.source_path;
+    source_hash = other.source_hash;
+    material = std::move(other.material);
+    material.strings = &strings;
+    return *this;
+}
+
 namespace {
 
 inline constexpr std::array<std::uint8_t, 8> artifact_magic{'S', 'B', 'X', 'M', 'A', 'T', 'I', 'R'};
@@ -18,6 +62,8 @@ inline constexpr std::size_t maximum_collection_size{1024 * 1024};
 
 class Writer {
   public:
+    explicit Writer(lispb::Strings const& strings)
+        : strings_{strings} {}
     void write_u8(std::uint8_t const value) { bytes_.push_back(value); }
     void write_u32(std::uint32_t const value) {
         for (unsigned shift{}; shift < 32; shift += 8) {
@@ -35,22 +81,25 @@ class Writer {
         write_size(value.size());
         bytes_.insert(bytes_.end(), value.begin(), value.end());
     }
+    void write_string(lispb::StringId id) { write_string(strings_.view(id)); }
     void write_span(SourceSpan const& span) {
         write_size(span.line);
         write_size(span.column);
         write_string(span.path);
         write_string(span.expansion);
     }
-    void write_handle(NodeHandle const handle) { write_size(handle.index); }
+    void write_handle(NodeHandle const handle) { write_size(handle.value); }
     auto finish() && -> std::vector<std::uint8_t> { return std::move(bytes_); }
   private:
+    lispb::Strings const& strings_;
     std::vector<std::uint8_t> bytes_;
 };
 
 class Reader {
   public:
-    explicit Reader(std::span<std::uint8_t const> const bytes)
-        : bytes_{bytes} {}
+    explicit Reader(std::span<std::uint8_t const> const bytes, MaterialIR& material)
+        : bytes_{bytes}
+        , material_{material} {}
 
     auto read_u8() -> std::expected<std::uint8_t, std::string> {
         if (offset_ == bytes_.size()) {
@@ -98,7 +147,7 @@ class Reader {
         }
         return std::bit_cast<double>(*value);
     }
-    auto read_string() -> std::expected<std::string, std::string> {
+    auto read_string(bool const reusable = true) -> std::expected<lispb::StringId, std::string> {
         auto const size{read_size(maximum_string_size)};
         if (!size) {
             return std::unexpected{size.error()};
@@ -108,28 +157,33 @@ class Reader {
         }
         auto const* const begin{reinterpret_cast<char const*>(bytes_.data() + offset_)};
         offset_ += *size;
-        return std::string{begin, *size};
+        auto const value{std::string_view{begin, *size}};
+        return reusable ? material_.intern(value) : material_.strings->add(value);
     }
     auto read_span() -> std::expected<SourceSpan, std::string> {
-        auto const line{read_size()};
-        auto const column{read_size()};
+        auto const line{read_size(std::numeric_limits<std::uint32_t>::max())};
+        auto const column{read_size(std::numeric_limits<std::uint32_t>::max())};
         auto path{read_string()};
         auto expansion{read_string()};
         if (!line || !column || !path || !expansion) {
             return std::unexpected{"malformed source span"};
         }
-        return SourceSpan{*line, *column, std::move(*path), std::move(*expansion)};
+        return SourceSpan{static_cast<std::uint32_t>(*line),
+                          static_cast<std::uint32_t>(*column),
+                          *path,
+                          *expansion};
     }
     auto read_handle() -> std::expected<NodeHandle, std::string> {
-        auto const index{read_size()};
+        auto const index{read_size(invalid_node_index)};
         if (!index) {
             return std::unexpected{index.error()};
         }
-        return NodeHandle{*index};
+        return NodeHandle{static_cast<std::uint32_t>(*index)};
     }
     auto remaining() const -> std::size_t { return bytes_.size() - offset_; }
   private:
     std::span<std::uint8_t const> bytes_;
+    MaterialIR& material_;
     std::size_t offset_{};
 };
 
@@ -139,37 +193,55 @@ auto valid_source_hash(std::string_view const hash) -> bool {
            });
 }
 
-void write_node(Writer& writer, Node const& node) {
-    writer.write_u8(static_cast<std::uint8_t>(node.kind));
-    writer.write_u8(static_cast<std::uint8_t>(node.type));
-    writer.write_size(node.inputs.size());
-    for (auto const input : node.inputs) {
+void write_node(Writer& writer, Nodes const& nodes, NodeHandle node) {
+    auto const kind{nodes.kind(node)};
+    auto const custom_inputs{kind == NodeKind::custom || kind == NodeKind::shader_call
+                                 ? nodes.custom_inputs(node)
+                                 : std::span<CustomInputId const>{}};
+    writer.write_u8(static_cast<std::uint8_t>(kind));
+    writer.write_u8(static_cast<std::uint8_t>(nodes.type(node)));
+    writer.write_size(nodes.inputs(node).size());
+    for (auto const input : nodes.inputs(node)) {
         writer.write_handle(input);
     }
-    writer.write_span(node.span);
-    for (double const value : node.constant) {
-        writer.write_double(value);
+    writer.write_span(nodes.span(node));
+    for (std::size_t component{}; component < 4; ++component) {
+        writer.write_double(kind == NodeKind::constant ? nodes.constant(node, component) : 0.0);
     }
-    writer.write_size(node.component_count);
-    writer.write_size(node.parameter_index);
-    writer.write_u32(node.coordinate_index);
-    writer.write_u32(node.instance_data_index);
-    writer.write_u8(static_cast<std::uint8_t>(node.texture_sampler_type));
-    writer.write_string(node.description);
-    writer.write_string(node.code);
-    writer.write_size(node.custom_inputs.size());
-    for (auto const& input : node.custom_inputs) {
-        writer.write_string(input.name);
-        writer.write_u8(static_cast<std::uint8_t>(input.type));
-        writer.write_handle(input.node);
+    writer.write_size((kind == NodeKind::constant ? nodes.component_count(node) : 0));
+    writer.write_size((kind == NodeKind::parameter ? nodes.parameter(node).value : 0));
+    writer.write_u32((kind == NodeKind::texture_coordinate ? nodes.coordinate_index(node) : 0));
+    writer.write_u32(
+        (kind == NodeKind::per_instance_custom_data ? nodes.instance_data_index(node) : 0));
+    writer.write_u8(static_cast<std::uint8_t>(
+        (kind == NodeKind::parameter || kind == NodeKind::sample || kind == NodeKind::texture_object
+             ? nodes.texture_sampler_type(node)
+             : TextureSamplerType::linear_color)));
+    writer.write_string((kind == NodeKind::custom ? nodes.description(node) : lispb::StringId{}));
+    writer.write_string((kind == NodeKind::custom ? nodes.code(node) : lispb::StringId{}));
+    writer.write_size(custom_inputs.size());
+    for (std::size_t index{}; index < custom_inputs.size(); ++index) {
+        auto const& input{custom_inputs[index]};
+        writer.write_string(nodes.input_declarations.name[input.value]);
+        writer.write_u8(static_cast<std::uint8_t>(nodes.input_declarations.type[input.value]));
+        writer.write_handle(nodes.inputs(node)[index]);
     }
-    writer.write_string(node.texture_path);
-    writer.write_string(node.component_mask);
-    writer.write_u8(static_cast<std::uint8_t>(node.source_space));
-    writer.write_u8(static_cast<std::uint8_t>(node.destination_space));
-    writer.write_u8(static_cast<std::uint8_t>(node.scene_texture));
-    writer.write_string(node.shader_path);
-    writer.write_string(node.shader_function);
+    writer.write_string(
+        (kind == NodeKind::texture_object ? nodes.texture_path(node) : lispb::StringId{}));
+    writer.write_string(
+        (kind == NodeKind::component_mask ? nodes.component_mask(node) : lispb::StringId{}));
+    writer.write_u8(static_cast<std::uint8_t>(
+        (kind == NodeKind::transform_position ? nodes.source_space(node) : PositionSpace::world)));
+    writer.write_u8(static_cast<std::uint8_t>((kind == NodeKind::transform_position
+                                                   ? nodes.destination_space(node)
+                                                   : PositionSpace::local)));
+    writer.write_u8(static_cast<std::uint8_t>((kind == NodeKind::scene_texture
+                                                   ? nodes.scene_texture(node)
+                                                   : SceneTexture::post_process_input0)));
+    writer.write_string(
+        (kind == NodeKind::shader_call ? nodes.shader_path(node) : lispb::StringId{}));
+    writer.write_string(
+        (kind == NodeKind::shader_call ? nodes.shader_function(node) : lispb::StringId{}));
 }
 
 auto read_value_type(Reader& reader) -> std::expected<ValueType, std::string> {
@@ -189,7 +261,7 @@ auto read_texture_sampler_type(Reader& reader) -> std::expected<TextureSamplerTy
     return static_cast<TextureSamplerType>(*value);
 }
 
-auto read_node(Reader& reader) -> std::expected<Node, std::string> {
+auto read_node(Reader& reader, Nodes& nodes) -> std::expected<void, std::string> {
     auto const kind{reader.read_u8()};
     auto const type{read_value_type(reader)};
     auto const input_count{reader.read_size(maximum_collection_size)};
@@ -198,21 +270,21 @@ auto read_node(Reader& reader) -> std::expected<Node, std::string> {
         return std::unexpected{"invalid material node header"};
     }
 
-    Node node{.kind = static_cast<NodeKind>(*kind), .type = *type};
-    node.inputs.reserve(*input_count);
+    std::vector<NodeHandle> inputs;
+    inputs.reserve(*input_count);
     for (std::size_t index{}; index < *input_count; ++index) {
         auto const input{reader.read_handle()};
         if (!input) {
             return std::unexpected{input.error()};
         }
-        node.inputs.push_back(*input);
+        inputs.push_back(*input);
     }
     auto span{reader.read_span()};
     if (!span) {
         return std::unexpected{span.error()};
     }
-    node.span = std::move(*span);
-    for (double& value : node.constant) {
+    std::array<double, 4> values{};
+    for (double& value : values) {
         auto const stored{reader.read_double()};
         if (!stored) {
             return std::unexpected{stored.error()};
@@ -224,29 +296,24 @@ auto read_node(Reader& reader) -> std::expected<Node, std::string> {
     auto const coordinate{reader.read_u32()};
     auto const instance_data{reader.read_u32()};
     auto const texture_sampler{read_texture_sampler_type(reader)};
-    auto description{reader.read_string()};
-    auto code{reader.read_string()};
+    auto description{reader.read_string(false)};
+    auto code{reader.read_string(false)};
     auto const custom_input_count{reader.read_size(maximum_collection_size)};
     if (!components || !parameter || !coordinate || !instance_data || !texture_sampler ||
         !description || !code || !custom_input_count) {
         return std::unexpected{"malformed material node payload"};
     }
-    node.component_count = *components;
-    node.parameter_index = *parameter;
-    node.coordinate_index = *coordinate;
-    node.instance_data_index = *instance_data;
-    node.texture_sampler_type = *texture_sampler;
-    node.description = std::move(*description);
-    node.code = std::move(*code);
-    node.custom_inputs.reserve(*custom_input_count);
+    std::vector<CustomInputId> custom_inputs;
+    custom_inputs.reserve(*custom_input_count);
     for (std::size_t index{}; index < *custom_input_count; ++index) {
         auto name{reader.read_string()};
         auto const input_type{read_value_type(reader)};
         auto const input_node{reader.read_handle()};
-        if (!name || !input_type || !input_node) {
+        if (!name || !input_type || !input_node || index >= inputs.size() ||
+            *input_node != inputs[index]) {
             return std::unexpected{"malformed custom input"};
         }
-        node.custom_inputs.push_back({std::move(*name), *input_type, *input_node});
+        custom_inputs.push_back(nodes.input_declarations.append(*name, *input_type));
     }
     auto texture_path{reader.read_string()};
     auto component_mask{reader.read_string()};
@@ -262,93 +329,133 @@ auto read_node(Reader& reader) -> std::expected<Node, std::string> {
         *scene_texture > static_cast<std::uint8_t>(SceneTexture::scene_depth)) {
         return std::unexpected{"malformed extended material node payload"};
     }
-    node.texture_path = std::move(*texture_path);
-    node.component_mask = std::move(*component_mask);
-    node.source_space = static_cast<PositionSpace>(*source_space);
-    node.destination_space = static_cast<PositionSpace>(*destination_space);
-    node.scene_texture = static_cast<SceneTexture>(*scene_texture);
-    node.shader_path = std::move(*shader_path);
-    node.shader_function = std::move(*shader_function);
-    return node;
+    // Consume the fixed wire payload, then retain only the active kind's columns.
+    switch (static_cast<NodeKind>(*kind)) {
+        case NodeKind::constant:
+            nodes.add_constant(*type, *span, inputs, std::span{values}.first(*components));
+            break;
+        case NodeKind::parameter:
+            nodes.add_parameter(*type,
+                                *span,
+                                inputs,
+                                ParameterId{static_cast<std::uint32_t>(*parameter)},
+                                *texture_sampler);
+            break;
+        case NodeKind::texture_coordinate:
+            nodes.add_texture_coordinate(*type, *span, inputs, *coordinate);
+            break;
+        case NodeKind::per_instance_custom_data:
+            nodes.add_per_instance_custom_data(*type, *span, inputs, *instance_data);
+            break;
+        case NodeKind::sample:
+            nodes.add_sample(*type, *span, inputs, *texture_sampler);
+            break;
+        case NodeKind::custom:
+            nodes.add_custom(*type, *span, inputs, *description, *code, custom_inputs);
+            break;
+        case NodeKind::texture_object:
+            nodes.add_texture_object(*type, *span, inputs, *texture_path, *texture_sampler);
+            break;
+        case NodeKind::component_mask:
+            nodes.add_component_mask(*type, *span, inputs, *component_mask);
+            break;
+        case NodeKind::transform_position:
+            nodes.add_transform_position(*type,
+                                         *span,
+                                         inputs,
+                                         static_cast<PositionSpace>(*source_space),
+                                         static_cast<PositionSpace>(*destination_space));
+            break;
+        case NodeKind::scene_texture:
+            nodes.add_scene_texture(
+                *type, *span, inputs, static_cast<SceneTexture>(*scene_texture));
+            break;
+        case NodeKind::shader_call:
+            nodes.add_shader_call(
+                *type, *span, inputs, *shader_path, *shader_function, custom_inputs);
+            break;
+        default:
+            nodes.add(static_cast<NodeKind>(*kind), *type, *span, inputs);
+            break;
+    }
+    return {};
 }
 
-void write_named_node(Writer& writer, NamedNode const& named) {
-    writer.write_string(named.name);
-    writer.write_handle(named.node);
-    writer.write_span(named.span);
+void write_named_node(Writer& writer, NamedNodes const& nodes, NamedNodeId named) {
+    writer.write_string(nodes.name[named.value]);
+    writer.write_handle(nodes.node[named.value]);
+    writer.write_span(nodes.span[named.value]);
 }
 
-auto read_named_node(Reader& reader) -> std::expected<NamedNode, std::string> {
+auto read_named_node(Reader& reader, NamedNodes& nodes) -> std::expected<void, std::string> {
     auto name{reader.read_string()};
     auto const node{reader.read_handle()};
     auto span{reader.read_span()};
     if (!name || !node || !span) {
         return std::unexpected{"malformed named node"};
     }
-    return NamedNode{std::move(*name), *node, std::move(*span)};
+    nodes.append(*name, *node, *span);
+    return {};
 }
 
 }
 
-auto serialize(CompiledMaterial const& compiled)
+auto serialize(MaterialIR const& material,
+               std::string_view const source_path,
+               std::string_view const source_hash)
     -> std::expected<std::vector<std::uint8_t>, std::string> {
-    if (compiled.source_path.empty()) {
+    if (source_path.empty()) {
         return std::unexpected{"compiled material source path is empty"};
     }
-    if (!valid_source_hash(compiled.source_hash)) {
+    if (!valid_source_hash(source_hash)) {
         return std::unexpected{"compiled material source hash must be a 64-digit SHA-256 hash"};
     }
-    auto const diagnostics{validate(compiled.material)};
-    if (!diagnostics.empty()) {
-        return std::unexpected{"cannot serialize invalid material IR: " +
-                               diagnostics.front().message};
-    }
-
-    Writer writer;
+    Writer writer{*material.strings};
     for (auto const byte : artifact_magic) {
         writer.write_u8(byte);
     }
     writer.write_u32(compiled_material_version);
-    writer.write_string(compiled.source_path);
-    writer.write_string(compiled.source_hash);
-    writer.write_string(compiled.material.settings.name);
-    writer.write_string(compiled.material.settings.package_path);
-    writer.write_u8(static_cast<std::uint8_t>(compiled.material.settings.domain));
-    writer.write_u8(static_cast<std::uint8_t>(compiled.material.settings.blend_mode));
-    writer.write_u8(static_cast<std::uint8_t>(compiled.material.settings.shading_model));
-    writer.write_u8(compiled.material.settings.two_sided ? 1 : 0);
-    writer.write_u8(compiled.material.settings.disable_depth_test ? 1 : 0);
-    writer.write_u8(compiled.material.settings.used_with_instanced_static_meshes ? 1 : 0);
-    writer.write_u8(compiled.material.settings.used_with_particle_sprites ? 1 : 0);
-    writer.write_u8(compiled.material.settings.adopt_existing ? 1 : 0);
-    writer.write_double(compiled.material.settings.opacity_mask_clip_value);
+    writer.write_string(source_path);
+    writer.write_string(source_hash);
+    writer.write_string(material.settings.name);
+    writer.write_string(material.settings.package_path);
+    writer.write_u8(static_cast<std::uint8_t>(material.settings.domain));
+    writer.write_u8(static_cast<std::uint8_t>(material.settings.blend_mode));
+    writer.write_u8(static_cast<std::uint8_t>(material.settings.shading_model));
+    writer.write_u8(material.settings.two_sided ? 1 : 0);
+    writer.write_u8(material.settings.disable_depth_test ? 1 : 0);
+    writer.write_u8(material.settings.used_with_instanced_static_meshes ? 1 : 0);
+    writer.write_u8(material.settings.used_with_particle_sprites ? 1 : 0);
+    writer.write_u8(material.settings.adopt_existing ? 1 : 0);
+    writer.write_double(material.settings.opacity_mask_clip_value);
 
-    writer.write_size(compiled.material.parameters.size());
-    for (auto const& parameter : compiled.material.parameters) {
-        writer.write_string(parameter.name);
-        writer.write_u8(static_cast<std::uint8_t>(parameter.type));
-        writer.write_u8(static_cast<std::uint8_t>(parameter.texture_sampler_type));
-        for (double const value : parameter.default_value) {
-            writer.write_double(value);
+    writer.write_size(material.parameters.size());
+    for (auto const parameter : material.parameters.handles()) {
+        writer.write_string(material.parameters.name[parameter.value]);
+        writer.write_u8(static_cast<std::uint8_t>(material.parameters.type[parameter.value]));
+        writer.write_u8(
+            static_cast<std::uint8_t>(material.parameters.texture_sampler_type[parameter.value]));
+        for (std::size_t component{}; component < 4; ++component) {
+            writer.write_double(material.parameters.default_values[component][parameter.value]);
         }
-        writer.write_string(parameter.texture_path);
-        writer.write_handle(parameter.node);
-        writer.write_span(parameter.span);
+        writer.write_string(material.parameters.texture_path[parameter.value]);
+        writer.write_handle(material.parameters.node[parameter.value]);
+        writer.write_span(material.parameters.span[parameter.value]);
     }
-    writer.write_size(compiled.material.nodes.size());
-    for (auto const& node : compiled.material.nodes) {
-        write_node(writer, node);
+    writer.write_size(material.nodes.size());
+    for (auto const node : material.nodes.handles()) {
+        write_node(writer, material.nodes, node);
     }
-    writer.write_size(compiled.material.bindings.size());
-    for (auto const& binding : compiled.material.bindings) {
-        write_named_node(writer, binding);
+    writer.write_size(material.bindings.size());
+    for (auto const binding : material.bindings.handles()) {
+        write_named_node(writer, material.bindings, binding);
     }
-    writer.write_size(compiled.material.outputs.size());
-    for (auto const& output : compiled.material.outputs) {
-        write_named_node(writer, output);
+    writer.write_size(material.outputs.size());
+    for (auto const output : material.outputs.handles()) {
+        write_named_node(writer, material.outputs, output);
     }
-    writer.write_size(compiled.material.texture_dependencies.size());
-    for (auto const& dependency : compiled.material.texture_dependencies) {
+    writer.write_size(material.texture_dependencies.size());
+    for (auto const& dependency : material.texture_dependencies) {
         writer.write_string(dependency);
     }
     return std::move(writer).finish();
@@ -356,7 +463,8 @@ auto serialize(CompiledMaterial const& compiled)
 
 auto deserialize(std::span<std::uint8_t const> const bytes)
     -> std::expected<CompiledMaterial, std::string> {
-    Reader reader{bytes};
+    CompiledMaterial compiled;
+    Reader reader{bytes, compiled.material};
     for (auto const expected : artifact_magic) {
         auto const actual{reader.read_u8()};
         if (!actual || *actual != expected) {
@@ -368,7 +476,6 @@ auto deserialize(std::span<std::uint8_t const> const bytes)
         return std::unexpected{"unsupported MaterialGen artifact version"};
     }
 
-    CompiledMaterial compiled;
     auto source_path{reader.read_string()};
     auto source_hash{reader.read_string()};
     auto name{reader.read_string()};
@@ -392,8 +499,8 @@ auto deserialize(std::span<std::uint8_t const> const bytes)
         *adopt_existing > 1) {
         return std::unexpected{"malformed compiled material settings"};
     }
-    compiled.source_path = std::move(*source_path);
-    compiled.source_hash = std::move(*source_hash);
+    compiled.source_path = *source_path;
+    compiled.source_hash = *source_hash;
     compiled.material.settings = {.name = std::move(*name),
                                   .package_path = std::move(*package_path),
                                   .domain = static_cast<MaterialDomain>(*domain),
@@ -405,7 +512,8 @@ auto deserialize(std::span<std::uint8_t const> const bytes)
                                   .used_with_particle_sprites = *used_with_particle_sprites != 0,
                                   .adopt_existing = *adopt_existing != 0,
                                   .opacity_mask_clip_value = *opacity_mask_clip_value};
-    if (compiled.source_path.empty() || !valid_source_hash(compiled.source_hash)) {
+    if (compiled.material.text(compiled.source_path).empty() ||
+        !valid_source_hash(compiled.material.text(compiled.source_hash))) {
         return std::unexpected{"invalid compiled material source metadata"};
     }
 
@@ -413,7 +521,6 @@ auto deserialize(std::span<std::uint8_t const> const bytes)
     if (!parameter_count) {
         return std::unexpected{parameter_count.error()};
     }
-    compiled.material.parameters.reserve(*parameter_count);
     for (std::size_t index{}; index < *parameter_count; ++index) {
         auto parameter_name{reader.read_string()};
         auto const type{read_value_type(reader)};
@@ -421,10 +528,8 @@ auto deserialize(std::span<std::uint8_t const> const bytes)
         if (!parameter_name || !type || !texture_sampler) {
             return std::unexpected{"malformed material parameter"};
         }
-        Parameter parameter{.name = std::move(*parameter_name),
-                            .type = *type,
-                            .texture_sampler_type = *texture_sampler};
-        for (double& value : parameter.default_value) {
+        std::array<double, 4> parameter_defaults{};
+        for (double& value : parameter_defaults) {
             auto const stored{reader.read_double()};
             if (!stored) {
                 return std::unexpected{stored.error()};
@@ -437,37 +542,36 @@ auto deserialize(std::span<std::uint8_t const> const bytes)
         if (!texture_path || !node || !span) {
             return std::unexpected{"malformed material parameter payload"};
         }
-        parameter.texture_path = std::move(*texture_path);
-        parameter.node = *node;
-        parameter.span = std::move(*span);
-        compiled.material.parameters.push_back(std::move(parameter));
+        compiled.material.parameters.append(*parameter_name,
+                                            *type,
+                                            *texture_path,
+                                            *texture_sampler,
+                                            *node,
+                                            *span,
+                                            parameter_defaults);
     }
 
     auto const node_count{reader.read_size(maximum_collection_size)};
     if (!node_count) {
         return std::unexpected{node_count.error()};
     }
-    compiled.material.nodes.reserve(*node_count);
     for (std::size_t index{}; index < *node_count; ++index) {
-        auto node{read_node(reader)};
+        auto node{read_node(reader, compiled.material.nodes)};
         if (!node) {
             return std::unexpected{node.error()};
         }
-        compiled.material.nodes.push_back(std::move(*node));
     }
 
-    auto read_named_nodes{[&](std::vector<NamedNode>& nodes) -> std::expected<void, std::string> {
+    auto read_named_nodes{[&](NamedNodes& nodes) -> std::expected<void, std::string> {
         auto const count{reader.read_size(maximum_collection_size)};
         if (!count) {
             return std::unexpected{count.error()};
         }
-        nodes.reserve(*count);
         for (std::size_t index{}; index < *count; ++index) {
-            auto node{read_named_node(reader)};
+            auto node{read_named_node(reader, nodes)};
             if (!node) {
                 return std::unexpected{node.error()};
             }
-            nodes.push_back(std::move(*node));
         }
         return {};
     }};

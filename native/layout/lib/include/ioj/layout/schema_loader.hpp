@@ -2,6 +2,7 @@
 
 #include <ioj/layout/diagnostic.hpp>
 
+#include <lispb/editable_project_document.h>
 #include <lispb/project.h>
 #include <lispb/schema/editable_document.h>
 

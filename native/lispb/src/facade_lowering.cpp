@@ -1,120 +1,220 @@
+#include "declaration_emission.h"
 #include "lowering.h"
+#include "lowering_context.h"
 #include "lowering_utils.h"
 
-#include <stdexcept>
-#include <utility>
+#include <codegen/ast/access.h>
+#include <codegen/ast/access_indentation.h>
+#include <codegen/ast/cpp_ir.h>
+#include <codegen/ast/cpp_types.h>
+#include <codegen/ast/expr.h>
+#include <codegen/ast/function_receiver.h>
+#include <codegen/ast/indices.h>
+#include <codegen/ast/node_id.h>
+#include <codegen/ast/node_list_builder.h>
+#include <codegen/ast/nodes.h>
+#include <codegen/ast/record_kind.h>
+#include <codegen/schema/declarations.h>
+#include <codegen/schema/facade_method_schemas.h>
+#include <codegen/schema/facade_schemas.h>
+#include <codegen/schema/parameter_schemas.h>
+#include <codegen/schema/type_registry.h>
+#include <lispb/indices.h>
+#include <lispb/strings.h>
 
-namespace codegen::detail {
+#include <string>
+#include <utility>
+#include <vector>
+
+namespace lispb::codegen::detail {
 namespace {
 
-auto lower_facade_impl(FacadeSchema const& facade, TypeRegistry const& types)
-    -> DeclarationEmission {
-    auto target_type{resolve_type(facade.target_type, types)};
-    auto const definitions_in_source{facade.definitions_in_source};
-    auto binding{FunctionSpec{
-        .name = facade.reference_target ? facade.name : "bind",
-        .return_type = facade.reference_target ? "" : "void",
-        .parameters = {FunctionParameter{qualify(target_type, "&"), "new_target"}},
-        .body = facade.reference_target ? Nodes{raw("")}
-                                        : Nodes{AssignmentStmt{RawExpr{facade.target_member_name},
-                                                               RawExpr{"&new_target"}}},
-        .qualifiers = {.is_inline = !definitions_in_source},
-        .define_in_header = !definitions_in_source,
-        .member_initializers =
-            facade.reference_target
-                ? std::vector<std::pair<std::string, std::string>>{{facade.target_member_name,
-                                                                    "new_target"}}
-                : std::vector<std::pair<std::string, std::string>>{},
-    }};
-    std::vector<FunctionSpec> methods;
-    for (auto const& method : facade.methods) {
-        std::vector<FunctionParameter> parameters;
-        std::vector<std::string> arguments;
-        for (auto const& parameter : method.parameters) {
-            auto type{resolve_type(parameter.type, types)};
-            if (parameter.default_value.has_value()) {
-                parameters.emplace_back(std::move(type), parameter.name, *parameter.default_value);
+auto lower_facade_impl(LoweringContext& context, DeclarationHandle facade) -> DeclarationEmission {
+    auto& ir{context.ir};
+    auto const& declarations{context.declarations};
+    auto target_type{context.resolve(
+        context.declarations.facades.target_type[context.declarations.facades.index(facade)])};
+    auto const definitions_in_source{
+        context.declarations.facades
+            .definitions_in_source[context.declarations.facades.index(facade)]};
+    auto const reference_target{
+        declarations.facades.reference_target[declarations.facades.index(facade)]};
+    auto const binding{
+        reference_target
+            ? ir.constructor(declarations.facades.name[declarations.facades.index(facade)])
+            : ir.function(ir.strings.intern("bind"), ir.types.intern("void"))};
+    ir.set_function_parameters(
+        binding, {ir.parameter(qualify(ir, target_type, "&"), ir.strings.intern("new_target"))});
+    ir.function_flags(binding).set_is_inline(!definitions_in_source);
+    ir.function_flags(binding).set_define_in_header(!definitions_in_source);
+    if (reference_target) {
+        ir.set_function_body(
+            binding,
+            {},
+            {ir.member_initializer(
+                declarations.facades.target_member_name[declarations.facades.index(facade)],
+                ir.strings.add("new_target"))});
+    } else {
+        ir.set_function_body(
+            binding,
+            {ir.assignment(
+                ir.named(
+                    declarations.facades.target_member_name[declarations.facades.index(facade)]),
+                ir.raw_expression("&new_target"))});
+    }
+    std::vector<FunctionId> methods;
+    for (auto const method_id : declarations.items(
+             context.declarations.facades.methods[context.declarations.facades.index(facade)])) {
+        auto const method{method_id};
+        std::vector<FunctionParameterId> parameters;
+        std::vector<Expr> arguments;
+        for (auto const parameter_id :
+             declarations.items(declarations.facade_methods
+                                    .parameters[declarations.facade_methods.index(method)])) {
+            auto const parameter{parameter_id};
+            auto type{context.resolve(
+                declarations.parameters.type[declarations.parameters.index(parameter)])};
+            if (declarations.parameters.default_value[declarations.parameters.index(parameter)]
+                    .has_value()) {
+                parameters.push_back(ir.parameter(
+                    type,
+                    declarations.parameters.name[declarations.parameters.index(parameter)],
+                    *declarations.parameters
+                         .default_value[declarations.parameters.index(parameter)]));
             } else {
-                parameters.emplace_back(std::move(type), parameter.name);
+                parameters.push_back(ir.parameter(
+                    type, declarations.parameters.name[declarations.parameters.index(parameter)]));
             }
-            arguments.push_back(parameter.name);
+            arguments.push_back(
+                ir.named(declarations.parameters.name[declarations.parameters.index(parameter)]));
         }
-        std::vector<TypeDependency> validation_dependencies;
-        for (auto const& key : facade.validation_dependencies) {
-            validation_dependencies.push_back(dependency_for_key(key, types));
+        std::vector<TypeDependencyId> validation_dependencies;
+        for (auto const key : declarations.items(
+                 context.declarations.facades
+                     .validation_dependencies[context.declarations.facades.index(facade)])) {
+            append_type_dependencies(validation_dependencies, context.text(key), context.types);
         }
-        NodeListBuilder body;
-        if (!facade.validation_lines.empty()) {
-            body.add(raw(join_lines(facade.validation_lines)));
+        NodeListBuilder body{ir};
+        if (!context.declarations.facades
+                 .validation_lines[context.declarations.facades.index(facade)]
+                 .empty()) {
+            body.add(ir.raw_lines(declarations.items(
+                context.declarations.facades
+                    .validation_lines[context.declarations.facades.index(facade)])));
         }
-        auto call{facade.target_member_name + (facade.reference_target ? "." : "->") +
-                  method.target_name.value_or(method.name) + "(" + join(arguments, ", ") + ")"};
-        auto const return_type{resolve_type(method.return_type, types)};
-        if (return_type.spelling == "void") {
-            body.add(ExpressionStmt{RawExpr{std::move(call)}, std::move(validation_dependencies)});
+        auto const target{
+            ir.named(context.declarations.facades
+                         .target_member_name[context.declarations.facades.index(facade)])};
+        auto const member{
+            context.declarations.facades
+                    .reference_target[context.declarations.facades.index(facade)]
+                ? ir.member_access(
+                      target,
+                      declarations.facade_methods
+                          .target_name[declarations.facade_methods.index(method)]
+                          .value_or(declarations.facade_methods
+                                        .name[declarations.facade_methods.index(method)]))
+                : ir.pointer_member_access(
+                      target,
+                      declarations.facade_methods
+                          .target_name[declarations.facade_methods.index(method)]
+                          .value_or(declarations.facade_methods
+                                        .name[declarations.facade_methods.index(method)]))};
+        auto const call{ir.call(member, std::move(arguments))};
+        auto const return_type{context.resolve(
+            declarations.facade_methods.return_type[declarations.facade_methods.index(method)])};
+        if (ir.types.spelling(return_type) == "void") {
+            body.add(ir.expression_statement(call, std::move(validation_dependencies)));
         } else {
-            body.add(ReturnStmt{RawExpr{std::move(call)}, std::move(validation_dependencies)});
+            body.add(ir.return_statement(call, std::move(validation_dependencies)));
         }
-        methods.push_back(FunctionSpec{
-            .name = method.name,
-            .return_type = return_type,
-            .parameters = std::move(parameters),
-            .body = body.build(),
-            .qualifiers = {.is_const = method.is_const,
-                           .is_noexcept = method.is_noexcept,
-                           .is_inline = !definitions_in_source},
-            .define_in_header = !definitions_in_source,
-        });
+        methods.push_back([&] {
+            auto const created_function{ir.function(
+                declarations.facade_methods.name[declarations.facade_methods.index(method)],
+                return_type)};
+            ir.set_function_parameters(created_function, std::move(parameters));
+            ir.set_function_body(created_function, body.build());
+            ir.set_function_receiver(
+                created_function,
+                declarations.facade_methods.is_const[declarations.facade_methods.index(method)]
+                    ? FunctionReceiver::const_
+                    : FunctionReceiver::unqualified);
+            if (declarations.facade_methods
+                    .is_noexcept[declarations.facade_methods.index(method)]) {
+                ir.set_function_noexcept(created_function);
+            }
+            ir.function_flags(created_function).set_is_inline(!definitions_in_source);
+            ir.function_flags(created_function).set_define_in_header(!definitions_in_source);
+            return created_function;
+        }());
     }
 
-    NodeListBuilder public_nodes;
-    NodeListBuilder private_nodes;
+    NodeListBuilder public_nodes{ir};
+    NodeListBuilder private_nodes{ir};
     bool has_public_nodes{};
-    auto add_method = [&](std::string const& access, FunctionSpec const& spec) {
-        auto& destination{access == "public" ? public_nodes : private_nodes};
-        destination.add(spec.define_in_header ? header_function(spec) : declaration(spec), 2);
-        has_public_nodes = has_public_nodes || access == "public";
+    auto add_method = [&](Access access, FunctionId spec) {
+        auto& destination{access == Access::public_ ? public_nodes : private_nodes};
+        destination.add(ir.header_function(spec), 2);
+        has_public_nodes = has_public_nodes || access == Access::public_;
     };
-    add_method(facade.bind_access, binding);
+    add_method(context.declarations.facades.bind_access[context.declarations.facades.index(facade)],
+               binding);
     for (auto const& method : methods) {
-        add_method(facade.method_access, method);
+        add_method(
+            context.declarations.facades.method_access[context.declarations.facades.index(facade)],
+            method);
     }
-    for (auto const& friend_name : facade.friends) {
-        private_nodes.add(FriendDeclaration{friend_name,
-                                            facade.friend_kind == "class" ? RecordKind::class_
-                                                                          : RecordKind::struct_},
-                          1);
+    for (auto const friend_name : declarations.items(
+             context.declarations.facades.friends[context.declarations.facades.index(facade)])) {
+        private_nodes.add(
+            ir.friend_declaration(ir.strings.intern(context.text(friend_name)),
+                                  context.declarations.facades
+                                      .friend_kind[context.declarations.facades.index(facade)]),
+            1);
     }
     private_nodes.add(
-        facade.reference_target
-            ? Member{qualify(target_type, "&"), facade.target_member_name}
-            : Member{qualify(target_type, "*"), facade.target_member_name, RawExpr{"nullptr"}});
+        context.declarations.facades.reference_target[context.declarations.facades.index(facade)]
+            ? ir.instance_member(
+                  qualify(ir, target_type, "&"),
+                  context.declarations.facades
+                      .target_member_name[context.declarations.facades.index(facade)])
+            : ir.instance_member(
+                  qualify(ir, target_type, "*"),
+                  context.declarations.facades
+                      .target_member_name[context.declarations.facades.index(facade)],
+                  ir.raw_expression("nullptr")));
 
-    NodeListBuilder class_nodes;
+    NodeListBuilder class_nodes{ir};
     if (has_public_nodes) {
-        class_nodes
-            .add(AccessSpecifier{AccessSpecifier::Access::public_,
-                                 AccessSpecifier::Indentation::normal},
-                 1)
+        class_nodes.add(ir.access(Access::public_, AccessIndentation::normal), 1)
             .append(public_nodes.build());
     }
-    class_nodes
-        .add(AccessSpecifier{AccessSpecifier::Access::private_,
-                             AccessSpecifier::Indentation::normal},
-             1)
+    class_nodes.add(ir.access(Access::private_, AccessIndentation::normal), 1)
         .append(private_nodes.build());
 
-    Node declaration_node{Struct{
-        .name = facade.name,
-        .children = class_nodes.build(),
-        .export_specifier = facade.export_specifier,
-        .record_kind = RecordKind::class_,
-    }};
-    NodeListBuilder definitions;
-    if (facade.definitions_in_source) {
-        definitions.add(definition(binding, facade.name));
+    auto const declaration_node{[&] {
+        auto const created_record{
+            ir.record(context.declarations.facades.name[context.declarations.facades.index(facade)],
+                      class_nodes.build(),
+                      RecordKind::class_)};
+        ir.set_record_export_specifier(
+            created_record,
+            context.declarations.facades
+                .export_specifier[context.declarations.facades.index(facade)]);
+        return created_record;
+    }()};
+    NodeListBuilder definitions{ir};
+    if (context.declarations.facades
+            .definitions_in_source[context.declarations.facades.index(facade)]) {
+        definitions.add(ir.definition(
+            binding,
+            string_id(
+                context.declarations.facades.name[context.declarations.facades.index(facade)])));
         for (auto const& method : methods) {
-            definitions.new_lines(2).add(definition(method, facade.name));
+            definitions.new_lines(2).add(
+                ir.definition(method,
+                              string_id(context.declarations.facades
+                                            .name[context.declarations.facades.index(facade)])));
         }
     }
     return {.header = {std::move(declaration_node)}, .source = definitions.build()};
@@ -122,8 +222,8 @@ auto lower_facade_impl(FacadeSchema const& facade, TypeRegistry const& types)
 
 } // namespace
 
-auto lower_facade(FacadeSchema const& schema, TypeRegistry const& types) -> DeclarationEmission {
-    return lower_facade_impl(schema, types);
+auto lower_facade(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission {
+    return lower_facade_impl(context, schema);
 }
 
-} // namespace codegen::detail
+} // namespace lispb::codegen::detail

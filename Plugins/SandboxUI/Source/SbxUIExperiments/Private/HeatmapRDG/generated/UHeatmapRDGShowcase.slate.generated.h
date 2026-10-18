@@ -4,9 +4,7 @@
 #pragma once
 
 #include <utility>
-
 namespace SlateGenerated {
-
 struct UHeatmapRDGShowcaseBuilder {
     using ThisClass = ::UHeatmapRDGShowcase;
 
@@ -99,5 +97,4 @@ struct UHeatmapRDGShowcaseBuilder {
   private:
     ThisClass& self_;
 };
-
-}
+} // namespace SlateGenerated

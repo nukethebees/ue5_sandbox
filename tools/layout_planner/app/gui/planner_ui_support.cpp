@@ -1,13 +1,24 @@
 #include "planner_ui_support.hpp"
 
+#include <codegen/schema/packed_integer_value.h>
+#include <codegen/schema/semantic_relation_kind.h>
+#include <codegen/schema/semantic_relation_unit.h>
+
 #include <imgui_internal.h>
 
 #include <algorithm>
 #include <array>
 #include <cctype>
 #include <charconv>
+#include <cstddef>
+#include <cstdint>
 #include <cstdio>
+#include <optional>
 #include <ranges>
+#include <span>
+#include <string>
+#include <string_view>
+#include <vector>
 
 namespace ioj::layout_planner::detail {
 
@@ -295,15 +306,15 @@ auto format_delta_number(std::optional<layout::NumericDelta> const delta) -> std
                         [](std::uint64_t const magnitude) { return std::to_string(magnitude); });
 }
 
-auto relationship_extent_term(codegen::SemanticRelationKind const kind) -> std::string_view {
-    return kind == codegen::SemanticRelationKind::offset_into ? "extent" : "capacity";
+auto relationship_extent_term(lispb::codegen::SemanticRelationKind const kind) -> std::string_view {
+    return kind == lispb::codegen::SemanticRelationKind::offset_into ? "extent" : "capacity";
 }
 
-auto relationship_extent_unit(codegen::SemanticRelationKind const kind,
-                              std::optional<codegen::SemanticRelationUnit> const unit)
+auto relationship_extent_unit(lispb::codegen::SemanticRelationKind const kind,
+                              std::optional<lispb::codegen::SemanticRelationUnit> const unit)
     -> std::string_view {
-    if (kind == codegen::SemanticRelationKind::offset_into && unit.has_value()) {
-        return codegen::semantic_relation_unit_name(*unit);
+    if (kind == lispb::codegen::SemanticRelationKind::offset_into && unit.has_value()) {
+        return lispb::codegen::semantic_relation_unit_name(*unit);
     }
     return "elements";
 }
@@ -323,7 +334,8 @@ auto parse_unsigned(std::string_view text) -> std::optional<std::uint64_t> {
                                                                     : std::nullopt;
 }
 
-auto parse_packed_integer(std::string_view text) -> std::optional<codegen::PackedIntegerValue> {
+auto parse_packed_integer(std::string_view text)
+    -> std::optional<lispb::codegen::PackedIntegerValue> {
     auto negative{false};
     if (!text.empty() && (text.front() == '-' || text.front() == '+')) {
         negative = text.front() == '-';
@@ -331,7 +343,7 @@ auto parse_packed_integer(std::string_view text) -> std::optional<codegen::Packe
     }
     auto const magnitude{parse_unsigned(text)};
     return magnitude.has_value()
-             ? std::optional{codegen::PackedIntegerValue::from_parts(negative, *magnitude)}
+             ? std::optional{lispb::codegen::PackedIntegerValue::from_parts(negative, *magnitude)}
              : std::nullopt;
 }
 
@@ -345,23 +357,6 @@ auto diagnostic_color(layout::DiagnosticSeverity const severity) -> ImVec4 {
             return {0.95F, 0.35F, 0.3F, 1.0F};
     }
     return {1.0F, 1.0F, 1.0F, 1.0F};
-}
-
-auto packed_field(lispb::schema::PackedType const& packed, std::string const& name)
-    -> lispb::schema::PackedField const* {
-    for (auto const& segment : packed.segments) {
-        if (auto const* field{std::get_if<lispb::schema::PackedField>(&segment)};
-            field != nullptr && field->name == name) {
-            return field;
-        }
-    }
-    return nullptr;
-}
-
-auto soa_column(lispb::schema::SoaType const& soa, std::string const& name)
-    -> lispb::schema::SoaColumn const* {
-    auto const found{std::ranges::find(soa.columns, name, &lispb::schema::SoaColumn::name)};
-    return found == soa.columns.end() ? nullptr : &*found;
 }
 
 auto has_error(std::vector<layout::Diagnostic> const& diagnostics) -> bool {

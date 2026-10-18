@@ -1,10 +1,31 @@
 #include "gui/planner_ui.hpp"
 #include "gui/planner_ui_support.hpp"
 
+#include <codegen/schema/declaration_handle.h>
+#include <codegen/schema/indices.h>
+#include <codegen/schema/manifest.h>
+#include <codegen/schema/module_settings_store.h>
+#include <codegen/schema/normal_module_schemas.h>
+#include <codegen/schema/record_member_schemas.h>
+#include <codegen/schema/record_schemas.h>
 #include <codegen/schema/schema_version.h>
+#include <codegen/schema/type_refs.h>
+#include <codegen/schema/type_registry.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/project_loader.h>
+#include <lispb/schema/editable_document.h>
+#include <lispb/schema/indices.h>
 
 #include <gtest/gtest.h>
 #include <imgui_internal.h>
+
+#include <filesystem>
+#include <memory>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 namespace ioj::layout_planner {
 
@@ -24,7 +45,7 @@ struct PlannerUiTestAccess {
     }
     static void graph(PlannerUi& ui) { ui.draw_graph_panel(); }
     static void external(PlannerUi& ui, lispb::schema::TypeId type) {
-        ui.draw_external_facts(session(ui).inputs.workspace.types().type(type));
+        ui.draw_external_facts(type);
     }
     static auto focus(PlannerUi const& ui) { return ui.graph_focus_; }
     static auto scope(PlannerUi const& ui) { return ui.graph_scope_; }
@@ -45,24 +66,62 @@ struct PlannerUiTestAccess {
 };
 
 namespace {
+auto find_declared_type(lispb::schema::TypeGraph const& types,
+                        std::string_view module,
+                        std::string_view name) -> std::optional<lispb::schema::TypeId> {
+    for (auto const node : types.types()) {
+        if (types.strings().view(types.module_name(node)) == module &&
+            types.strings().view(types.name(node)) == name) {
+            return types.find(types.identity(node));
+        }
+    }
+    return std::nullopt;
+}
+
 auto ui_fixture() -> layout::SchemaLoadResult {
-    codegen::Manifest manifest{};
-    manifest.schema_version = codegen::manifest_schema_version;
+    auto storage{std::make_unique<lispb::CompilerStorage>()};
+    auto& declarations{storage->declarations};
+    auto& strings{storage->strings};
+    lispb::codegen::Manifest manifest{lispb::codegen::manifest_schema_version,
+                                      lispb::codegen::TypeRegistry{storage->registered_types},
+                                      declarations,
+                                      {}};
     for (auto const name : {"first", "second"}) {
-        codegen::NormalModuleSchema module{};
-        module.settings.name = name;
-        module.settings.header = std::string{name} + ".h";
-        codegen::RecordSchema record{};
-        record.name = std::string{name} + "Record";
-        codegen::RecordMemberSchema member{};
-        member.name = "value";
-        member.type.name = "OpaqueVector";
-        record.members.push_back(member);
-        module.declarations.push_back(record);
-        manifest.modules.emplace_back(module);
+        auto const module{declarations.normal_modules.append()};
+
+        declarations.normal_modules.settings[declarations.normal_modules.index(module)] = [&] {
+            auto const new_module_settings_store{declarations.module_settings_store.append()};
+            declarations.module_settings_store
+                .name[declarations.module_settings_store.index(new_module_settings_store)] =
+                strings.intern(name);
+            declarations.module_settings_store
+                .header[declarations.module_settings_store.index(new_module_settings_store)] =
+                strings.add(std::string{name} + ".h");
+            return new_module_settings_store;
+        }();
+        auto const record{declarations.records.append()};
+
+        declarations.records.name[declarations.records.index(record)] =
+            strings.intern(std::string{name} + "Record");
+        auto const member{declarations.record_members.append()};
+
+        declarations.record_members.name[declarations.record_members.index(member)] =
+            strings.intern("value");
+        declarations.record_members.type[declarations.record_members.index(member)] = [&] {
+            auto const new_type_refs{declarations.type_refs.append()};
+            declarations.type_refs.name[declarations.type_refs.index(new_type_refs)] =
+                strings.intern("OpaqueVector");
+            return new_type_refs;
+        }();
+        declarations.records.members[declarations.records.index(record)] =
+            declarations.range<lispb::codegen::RecordMemberId>({member});
+        declarations.normal_modules.declarations[declarations.normal_modules.index(module)] =
+            declarations.range<lispb::codegen::DeclarationHandle>({record});
+        manifest.modules.push_back(module);
     }
     layout::SchemaLoadResult loaded{};
-    loaded.document = lispb::schema::EditableSchemaDocument::from_manifest(std::move(manifest));
+    loaded.document = lispb::schema::EditableSchemaDocument::from_manifest(std::move(storage),
+                                                                           std::move(manifest));
     loaded.loaded = true;
     return loaded;
 }
@@ -117,23 +176,24 @@ TEST_F(PlannerActions, ProjectChooserLoadsSelectedProductionSchemas) {
     EXPECT_EQ(PlannerUiTestAccess::target_name(ui), "sandbox-code");
     EXPECT_EQ(PlannerUiTestAccess::project_path(ui).lexically_normal(), project.lexically_normal());
     auto const& types{PlannerUiTestAccess::session(ui).inputs.workspace.types()};
-    EXPECT_TRUE(types.find_declared("native_sim_state", "OrchestratorState").has_value());
-    EXPECT_TRUE(types.find_declared("native_simulation_phase", "SimulationPhase").has_value());
+    EXPECT_TRUE(find_declared_type(types, "native_sim_state", "OrchestratorState").has_value());
+    EXPECT_TRUE(
+        find_declared_type(types, "native_simulation_phase", "SimulationPhase").has_value());
 }
 
 TEST_F(PlannerActions, GraphButtonsSeparateFocusSelectionAndStableModuleScope) {
     PlannerUi ui{ui_fixture()};
     auto& session{PlannerUiTestAccess::session(ui)};
     auto const& types{session.inputs.workspace.types()};
-    auto const first{*types.find_declared("first", "firstRecord")};
-    auto const second{*types.find_declared("second", "secondRecord")};
+    auto const first{*find_declared_type(types, "first", "firstRecord")};
+    auto const second{*find_declared_type(types, "second", "secondRecord")};
     session.inputs.selection.select_type(types, first);
     frame(ui);
     frame(ui);
     EXPECT_FALSE(PlannerUiTestAccess::focus(ui));
     activate("Graph", "Focus selection");
     frame(ui);
-    EXPECT_EQ(PlannerUiTestAccess::focus(ui), types.type(first).identity);
+    EXPECT_EQ(PlannerUiTestAccess::focus(ui), types.identity(first));
     activate("Graph", "View selected module");
     frame(ui);
     EXPECT_EQ(PlannerUiTestAccess::scope(ui).module, "first");
@@ -141,7 +201,7 @@ TEST_F(PlannerActions, GraphButtonsSeparateFocusSelectionAndStableModuleScope) {
     session.inputs.selection.select_type(types, second);
     frame(ui);
     EXPECT_EQ(PlannerUiTestAccess::scope(ui).module, "first");
-    EXPECT_EQ(PlannerUiTestAccess::focus(ui), types.type(first).identity);
+    EXPECT_EQ(PlannerUiTestAccess::focus(ui), types.identity(first));
     activate("Graph", "Clear focus");
     frame(ui);
     EXPECT_FALSE(PlannerUiTestAccess::focus(ui));

@@ -74,10 +74,8 @@ struct FighterOrder {
 static_assert(ml::valid_packed_value_layout<FighterOrder>());
 } // namespace ioj::sim
 namespace ml {
-
 template <>
 [[nodiscard]] constexpr auto enum_count<::ioj::sim::FighterTask>() noexcept -> std::size_t {
     return 3;
 }
-
 } // namespace ml

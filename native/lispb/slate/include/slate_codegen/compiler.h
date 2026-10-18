@@ -1,20 +1,31 @@
 #pragma once
 
-#include <lispb/compilation.h>
-
-#include <filesystem>
 #include <string>
-#include <vector>
+
+namespace lispb {
+struct Compilation;
+}
+namespace lispb::codegen {
+class CppIR;
+}
+namespace lispb::codegen::sexpr {
+class Syntax;
+}
+namespace slate_codegen::detail {
+struct Document;
+}
 
 namespace slate_codegen {
 
-struct SourceOptions {
-    std::filesystem::path source_root;
-    std::vector<std::filesystem::path> inputs;
-    std::vector<std::filesystem::path> include_directories;
-};
+struct SourceOptions;
 
-auto compile_sources(SourceOptions const& options) -> lispb::Compilation;
-auto expand_sources(SourceOptions const& options) -> std::string;
+void compile_sources(lispb::codegen::sexpr::Syntax& syntax,
+                     detail::Document& document,
+                     lispb::codegen::CppIR& ir,
+                     lispb::Compilation& result,
+                     SourceOptions const& options,
+                     bool emit);
+auto expand_sources(lispb::codegen::sexpr::Syntax& syntax, SourceOptions const& options)
+    -> std::string;
 
 }

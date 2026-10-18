@@ -1,17 +1,31 @@
-#include "syntax.h"
-
+#include <codegen/ast/cpp_ir.h>
+#include <codegen/ast/cpp_types.h>
+#include <codegen/sexpr/indices.h>
 #include <codegen/sexpr/lexer.h>
+#include <codegen/sexpr/source_error.h>
+#include <codegen/sexpr/sources.h>
+#include <codegen/sexpr/syntax.h>
+#include <lispb/compilation.h>
 #include <lispb/output.h>
+#include <lispb/publication_options.h>
+#include <lispb/strings.h>
 #include <slate_codegen/compiler.h>
+#include <slate_codegen/document.h>
+#include <slate_codegen/source_options.h>
 
 #include <gtest/gtest.h>
 
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 namespace slate_codegen {
 namespace {
@@ -63,10 +77,21 @@ auto compile(TemporaryProject const& project,
              std::vector<std::filesystem::path> include_directories = {},
              bool const check = false) -> int {
     auto const root{project.path({})};
-    auto const compilation{
-        compile_sources({.source_root = root,
-                         .inputs = std::move(inputs),
-                         .include_directories = std::move(include_directories)})};
+    lispb::Strings strings;
+    lispb::codegen::sexpr::Sources sources{strings};
+    lispb::codegen::sexpr::Syntax syntax{strings, sources};
+    detail::Document document;
+    lispb::codegen::CppTypes types{strings};
+    lispb::codegen::CppIR ir{strings, types};
+    lispb::Compilation compilation;
+    compile_sources(syntax,
+                    document,
+                    ir,
+                    compilation,
+                    {.source_root = root,
+                     .inputs = std::move(inputs),
+                     .include_directories = std::move(include_directories)},
+                    true);
     return lispb::publish(
         compilation,
         {.path_base = root / "generated", .output_root = root / "generated", .check_only = check});
@@ -75,7 +100,11 @@ auto compile(TemporaryProject const& project,
 auto expand(TemporaryProject const& project,
             std::vector<std::filesystem::path> inputs,
             std::vector<std::filesystem::path> include_directories = {}) -> std::string {
-    return expand_sources({.source_root = project.path({}),
+    lispb::Strings strings;
+    lispb::codegen::sexpr::Sources sources{strings};
+    lispb::codegen::sexpr::Syntax syntax{strings, sources};
+    return expand_sources(syntax,
+                          {.source_root = project.path({}),
                            .inputs = std::move(inputs),
                            .include_directories = std::move(include_directories)});
 }
@@ -138,7 +167,7 @@ TEST(SlateCompiler, RejectsDuplicateOwnersAcrossInputs) {
     try {
         static_cast<void>(compile(project, {"first.lispb", "second.lispb"}));
         FAIL() << "Expected duplicate owner to be rejected";
-    } catch (detail::SourceError const& error) {
+    } catch (lispb::codegen::sexpr::SourceError const& error) {
         EXPECT_TRUE(std::string{error.what()}.contains("duplicate widget declaration 'SPanel'"));
     }
 }
@@ -355,13 +384,22 @@ TEST(SlateCompiler, ExpansionPreservesStringsKeywordsAndSourceOrder) {
     project.write("first.lispb", first);
     project.write("second.lispb", second);
     auto const expanded{expand(project, {"first.lispb", "second.lispb"})};
-    auto const expected{codegen::sexpr::lex("expected", first + second)};
-    auto const actual{codegen::sexpr::lex("expanded", expanded)};
-    ASSERT_EQ(actual.size(), expected.size());
-    auto const count{expected.size()};
+    lispb::Strings strings;
+    lispb::codegen::sexpr::Sources sources{strings};
+    lispb::codegen::sexpr::Syntax syntax{strings, sources};
+    auto const expected_file{sources.add("expected", first + second)};
+    auto const actual_file{sources.add("expanded", expanded)};
+    auto const expected{lispb::codegen::sexpr::lex(syntax, expected_file)};
+    auto const actual{lispb::codegen::sexpr::lex(syntax, actual_file)};
+    ASSERT_EQ(actual.count, expected.count);
+    auto const count{expected.count};
     for (std::size_t index{}; index < count; ++index) {
-        EXPECT_EQ(actual[index].kind, expected[index].kind);
-        EXPECT_EQ(actual[index].text, expected[index].text);
+        auto const actual_token{
+            lispb::codegen::sexpr::TokenId{actual.offset + static_cast<std::uint32_t>(index)}};
+        auto const expected_token{
+            lispb::codegen::sexpr::TokenId{expected.offset + static_cast<std::uint32_t>(index)}};
+        EXPECT_EQ(syntax.kind(actual_token), syntax.kind(expected_token));
+        EXPECT_EQ(syntax.text(actual_token), syntax.text(expected_token));
     }
 }
 

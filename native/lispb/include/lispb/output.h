@@ -1,14 +1,12 @@
 #pragma once
 
-#include <lispb/compilation.h>
-#include <lispb/publication_options.h>
-
 #include <filesystem>
 
 namespace lispb {
+struct Compilation;
+struct PublicationOptions;
 
-[[nodiscard]] auto publish(Compilation const& compilation, PublicationOptions const& options)
-    -> int;
+[[nodiscard]] auto publish(Compilation& compilation, PublicationOptions const& options) -> int;
 void write_depfile(std::filesystem::path const& path,
                    Compilation const& compilation,
                    PublicationOptions const& options);

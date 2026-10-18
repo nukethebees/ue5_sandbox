@@ -1,5 +1,30 @@
 #include "analyzer_internal.hpp"
 
+#include <codegen/schema/packed_bit_order.h>
+#include <codegen/schema/packed_field_kind.h>
+#include <codegen/schema/packed_integer_value.h>
+#include <codegen/schema/packed_named_code_schemas.h>
+#include <codegen/schema/semantic_relation_kind.h>
+#include <lispb/project_loader.h>
+#include <lispb/schema/fixed_point_types.h>
+#include <lispb/schema/indices.h>
+#include <lispb/schema/linear_quantized_types.h>
+#include <lispb/schema/mini_float_types.h>
+#include <lispb/schema/packed_fields.h>
+#include <lispb/schema/packed_reserved_segments.h>
+#include <lispb/schema/packed_types.h>
+#include <lispb/schema/type_definitions.h>
+
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <optional>
+#include <ranges>
+#include <set>
+#include <span>
+#include <string>
+#include <utility>
+
 namespace ioj::layout {
 
 auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
@@ -9,40 +34,48 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
                               std::uint64_t const element_count,
                               std::span<RelationshipTargetFacts const> const relationship_targets)
     -> PackedAnalysis {
-    auto const& packed{std::get<lispb::schema::PackedType>(types.type(type).definition)};
-    auto const schema_storage{physical_type_spelling(types, packed.storage_type)
-                                  .value_or(packed.storage_type.cpp_type.spelling)};
-    PackedAnalysis result{.type = type,
-                          .schema_storage_type = schema_storage,
-                          .storage_type = effective_storage_type(types, type, packed, variant),
-                          .storage_overridden =
-                              variant.overrides.packed_storage_types.contains(type),
-                          .byte_order = packed.byte_order,
-                          .bit_order = packed.bit_order,
-                          .storage_facts = std::nullopt,
-                          .storage_bits = std::nullopt,
-                          .bits_used = std::nullopt,
-                          .payload_bits = std::nullopt,
-                          .reserved_bits = std::nullopt,
-                          .unused_bits = std::nullopt,
-                          .overflow_bits = std::nullopt,
-                          .invalid_raw_value = packed.invalid_raw_value,
-                          .fields = {},
-                          .diagnostics = {},
-                          .aggregate = {.element_count = element_count,
-                                        .total_storage_bytes = std::nullopt,
-                                        .total_payload_bits = std::nullopt,
-                                        .total_reserved_bits = std::nullopt,
-                                        .total_unused_bits = std::nullopt,
-                                        .cache_line_bytes = std::nullopt,
-                                        .minimum_cache_lines = std::nullopt,
-                                        .complete_elements_per_cache_line = std::nullopt,
-                                        .cache_line_straddling_elements = std::nullopt,
-                                        .page_bytes = std::nullopt,
-                                        .minimum_pages = std::nullopt,
-                                        .complete_elements_per_page = std::nullopt,
-                                        .page_straddling_elements = std::nullopt,
-                                        .cache_capacity = {}}};
+    auto const& packed{types.definition(type)};
+    auto const schema_storage{
+        physical_type_spelling(
+            types,
+            types.definitions().packed.storage_type[types.definitions().packed.index(packed)])
+            .value_or(std::string{
+                types.cpp_types().spelling(types.occurrences().cpp_type[types.occurrences().index(
+                    types.definitions()
+                        .packed.storage_type[types.definitions().packed.index(packed)])])})};
+    PackedAnalysis result{
+        .type = type,
+        .schema_storage_type = schema_storage,
+        .storage_type = effective_storage_type(types, type, packed, variant),
+        .storage_overridden = variant.overrides.packed_storage_types.contains(type),
+        .byte_order =
+            types.definitions().packed.byte_order[types.definitions().packed.index(packed)],
+        .bit_order = types.definitions().packed.bit_order[types.definitions().packed.index(packed)],
+        .storage_facts = std::nullopt,
+        .storage_bits = std::nullopt,
+        .bits_used = std::nullopt,
+        .payload_bits = std::nullopt,
+        .reserved_bits = std::nullopt,
+        .unused_bits = std::nullopt,
+        .overflow_bits = std::nullopt,
+        .invalid_raw_value =
+            types.definitions().packed.invalid_raw_value[types.definitions().packed.index(packed)],
+        .fields = {},
+        .diagnostics = {},
+        .aggregate = {.element_count = element_count,
+                      .total_storage_bytes = std::nullopt,
+                      .total_payload_bits = std::nullopt,
+                      .total_reserved_bits = std::nullopt,
+                      .total_unused_bits = std::nullopt,
+                      .cache_line_bytes = std::nullopt,
+                      .minimum_cache_lines = std::nullopt,
+                      .complete_elements_per_cache_line = std::nullopt,
+                      .cache_line_straddling_elements = std::nullopt,
+                      .page_bytes = std::nullopt,
+                      .minimum_pages = std::nullopt,
+                      .complete_elements_per_page = std::nullopt,
+                      .page_straddling_elements = std::nullopt,
+                      .cache_capacity = {}}};
     auto physical{PhysicalFactsResolver{types, abi, &variant}.resolve(type)};
     result.storage_facts = physical.facts;
     result.diagnostics = std::move(physical.diagnostics);
@@ -68,24 +101,45 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
     std::uint64_t payload_bits{};
     std::uint64_t reserved_bits{};
     bool width_overflow{};
-    result.fields.reserve(packed.segments.size());
-    for (auto const& segment : packed.segments) {
-        auto const* field{std::get_if<lispb::schema::PackedField>(&segment)};
-        auto const* reserved{std::get_if<lispb::schema::PackedReservedBits>(&segment)};
-        auto const field_override{field != nullptr &&
-                                  variant.overrides.packed_field_widths.contains(
-                                      FieldOverrideId{.type = type, .field_name = field->name})};
+    result.fields.reserve(types.definitions().packed.segments_of(packed).size());
+    for (auto const& segment : types.definitions().packed.segments_of(packed)) {
+        auto const field{((segment).kind() == lispb::schema::PackedSegmentKind::field
+                              ? std::optional{segment}
+                              : std::nullopt)};
+        auto const reserved{((segment).kind() == lispb::schema::PackedSegmentKind::reserved
+                                 ? std::optional{segment}
+                                 : std::nullopt)};
+        auto const field_override{
+            field.has_value() &&
+            variant.overrides.packed_field_widths.contains(FieldOverrideId{
+                .type = type,
+                .field_name = std::string{types.strings().view(
+                    types.definitions()
+                        .packed_fields.name[types.definitions().packed_fields.index(*field)])}})};
         auto const representation_owned_width{
-            field != nullptr && (field->kind == codegen::PackedFieldKind::linear_quantized ||
-                                 field->kind == codegen::PackedFieldKind::fixed_point ||
-                                 field->kind == codegen::PackedFieldKind::mini_float)};
-        auto const width{field != nullptr && !representation_owned_width
-                             ? effective_field_width(type, *field, variant)
-                         : field != nullptr ? field->bit_width
-                                            : reserved->bit_width};
+            field.has_value() &&
+            (types.definitions()
+                     .packed_fields.kind[types.definitions().packed_fields.index(*field)] ==
+                 lispb::codegen::PackedFieldKind::linear_quantized ||
+             types.definitions()
+                     .packed_fields.kind[types.definitions().packed_fields.index(*field)] ==
+                 lispb::codegen::PackedFieldKind::fixed_point ||
+             types.definitions()
+                     .packed_fields.kind[types.definitions().packed_fields.index(*field)] ==
+                 lispb::codegen::PackedFieldKind::mini_float)};
+        auto const width{
+            field.has_value() && !representation_owned_width
+                ? effective_field_width(types, type, *field, variant)
+            : field.has_value()
+                ? types.definitions()
+                      .packed_fields.bit_width[types.definitions().packed_fields.index(*field)]
+                : types.definitions()
+                      .packed_reserved_bits
+                      .bit_width[types.definitions().packed_reserved_bits.index(*reserved)]};
         auto const next_offset{checked_add(offset, width)};
         auto least_significant_bit{offset};
-        if (packed.bit_order == codegen::PackedBitOrder::most_significant_first) {
+        if (types.definitions().packed.bit_order[types.definitions().packed.index(packed)] ==
+            lispb::codegen::PackedBitOrder::most_significant_first) {
             least_significant_bit = 0;
             if (result.storage_bits.has_value() && next_offset.has_value() &&
                 *next_offset <= *result.storage_bits) {
@@ -93,32 +147,78 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
             }
         }
         PackedFieldAnalysis field_result{
-            .name = field != nullptr ? field->name : reserved->name,
-            .semantic_type = field != nullptr
-                               ? std::optional<lispb::schema::TypeId>{field->semantic_type.type}
-                               : std::nullopt,
-            .logical_type = field != nullptr ? types.type(field->semantic_type.type).cpp_spelling
-                                             : "Reserved bits",
-            .kind = field != nullptr ? field->kind : codegen::PackedFieldKind::unsigned_integer,
-            .reserved = reserved != nullptr,
-            .schema_bit_width = field != nullptr ? field->bit_width : reserved->bit_width,
-            .schema_bit_width_auto = field != nullptr && field->bit_width_auto,
+            .name =
+                field.has_value()
+                    ? std::string{types.strings().view(
+                          types.definitions()
+                              .packed_fields.name[types.definitions().packed_fields.index(*field)])}
+                    : std::string{types.strings().view(
+                          types.definitions()
+                              .packed_reserved_bits
+                              .name[types.definitions().packed_reserved_bits.index(*reserved)])},
+            .semantic_type =
+                field.has_value()
+                    ? std::optional<
+                          lispb::schema::TypeId>{types.occurrences().type[types.occurrences().index(
+                          types.definitions().packed_fields.semantic_type
+                              [types.definitions().packed_fields.index(*field)])]}
+                    : std::nullopt,
+            .logical_type = field.has_value()
+                              ? std::string{types.strings().view(types.cpp_spelling(
+                                    types.occurrences().type[types.occurrences().index(
+                                        types.definitions().packed_fields.semantic_type
+                                            [types.definitions().packed_fields.index(*field)])]))}
+                              : "Reserved bits",
+            .kind = field.has_value()
+                      ? types.definitions()
+                            .packed_fields.kind[types.definitions().packed_fields.index(*field)]
+                      : lispb::codegen::PackedFieldKind::unsigned_integer,
+            .reserved = reserved.has_value(),
+            .schema_bit_width =
+                field.has_value()
+                    ? types.definitions()
+                          .packed_fields.bit_width[types.definitions().packed_fields.index(*field)]
+                    : types.definitions()
+                          .packed_reserved_bits
+                          .bit_width[types.definitions().packed_reserved_bits.index(*reserved)],
+            .schema_bit_width_auto =
+                field.has_value() &&
+                types.definitions()
+                    .packed_fields.bit_width_auto[types.definitions().packed_fields.index(*field)],
             .bit_width = width,
             .overridden = field_override && !representation_owned_width,
             .least_significant_bit = least_significant_bit,
             .most_significant_bit = std::nullopt,
             .maximum_unsigned_value =
-                field != nullptr ? maximum_unsigned_value(width) : std::nullopt,
+                field.has_value() ? maximum_unsigned_value(width) : std::nullopt,
             .minimum_signed_value =
-                field != nullptr && field->kind == codegen::PackedFieldKind::signed_integer
+                field.has_value() &&
+                        types.definitions()
+                                .packed_fields
+                                .kind[types.definitions().packed_fields.index(*field)] ==
+                            lispb::codegen::PackedFieldKind::signed_integer
                     ? minimum_signed_value(width)
                     : std::nullopt,
             .maximum_signed_value =
-                field != nullptr && field->kind == codegen::PackedFieldKind::signed_integer
+                field.has_value() &&
+                        types.definitions()
+                                .packed_fields
+                                .kind[types.definitions().packed_fields.index(*field)] ==
+                            lispb::codegen::PackedFieldKind::signed_integer
                     ? maximum_signed_value(width)
                     : std::nullopt,
-            .minimum_semantic_value = field != nullptr ? field->minimum_value : std::nullopt,
-            .maximum_semantic_value = field != nullptr ? field->maximum_value : std::nullopt,
+            .minimum_semantic_value =
+                field.has_value()
+                    ? types.definitions()
+                          .packed_fields
+                          .minimum_value[types.definitions().packed_fields.index(*field)]
+                    : std::nullopt,
+            .maximum_semantic_value =
+                field.has_value()
+                    ? types.definitions()
+                          .packed_fields
+                          .maximum_value[types.definitions().packed_fields.index(*field)]
+                    : std::nullopt,
             .semantic_value_count = std::nullopt,
             .sentinel_code_count = 0,
             .required_code_count = std::nullopt,
@@ -128,15 +228,37 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
             .linear_quantized = std::nullopt,
             .fixed_point = std::nullopt,
             .mini_float = std::nullopt,
-            .relationship_kind = field != nullptr && field->relationship.has_value()
-                                   ? std::optional{field->relationship->kind}
-                                   : std::nullopt,
-            .relationship_unit = field != nullptr && field->relationship.has_value()
-                                   ? field->relationship->unit
-                                   : std::nullopt,
+            .relationship_kind =
+                field.has_value() &&
+                        lispb::schema::is_valid(
+                            types.definitions()
+                                .packed_fields
+                                .relationship[types.definitions().packed_fields.index(*field)])
+                    ? std::optional{types.relationships().kind[types.relationships().index(
+                          types.definitions().packed_fields.relationship
+                              [types.definitions().packed_fields.index(*field)])]}
+                    : std::nullopt,
+            .relationship_unit =
+                field.has_value() &&
+                        lispb::schema::is_valid(
+                            types.definitions()
+                                .packed_fields
+                                .relationship[types.definitions().packed_fields.index(*field)])
+                    ? types.relationships().unit[types.relationships().index(
+                          types.definitions().packed_fields.relationship
+                              [types.definitions().packed_fields.index(*field)])]
+                    : std::nullopt,
             .relationship_target =
-                field != nullptr && field->relationship.has_value()
-                    ? std::optional{types.type(field->relationship->target.type).identity.name}
+                field.has_value() &&
+                        lispb::schema::is_valid(
+                            types.definitions()
+                                .packed_fields
+                                .relationship[types.definitions().packed_fields.index(*field)])
+                    ? std::optional{std::string{types.strings().view(
+                          types.name(types.occurrences().type[types.occurrences().index(
+                              types.relationships().target[types.relationships().index(
+                                  types.definitions().packed_fields.relationship
+                                      [types.definitions().packed_fields.index(*field)])])]))}}
                     : std::nullopt,
             .relationship_target_extent = std::nullopt,
             .relationship_live_value_count = std::nullopt,
@@ -157,48 +279,113 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
         if (field_override && representation_owned_width) {
             result.diagnostics.push_back(
                 {DiagnosticSeverity::warning,
-                 "Packed field '" + field->name +
+                 "Packed field '" +
+                     std::string{types.strings().view(
+                         types.definitions()
+                             .packed_fields
+                             .name[types.definitions().packed_fields.index(*field)])} +
                      "' ignores a session width override because its " +
-                     std::string{field->kind == codegen::PackedFieldKind::linear_quantized
-                                     ? "linear-quantized"
-                                 : field->kind == codegen::PackedFieldKind::fixed_point
-                                     ? "fixed-point"
-                                     : "mini-float"} +
+                     std::string{
+                         types.definitions().packed_fields.kind[types.definitions()
+                                                                    .packed_fields.index(*field)] ==
+                                 lispb::codegen::PackedFieldKind::linear_quantized
+                             ? "linear-quantized"
+                         : types.definitions()
+                                     .packed_fields
+                                     .kind[types.definitions().packed_fields.index(*field)] ==
+                                 lispb::codegen::PackedFieldKind::fixed_point
+                             ? "fixed-point"
+                             : "mini-float"} +
                      " representation owns the exact encoded width."});
         }
-        if (field != nullptr && !field_result.maximum_unsigned_value.has_value()) {
+        if (field.has_value() && !field_result.maximum_unsigned_value.has_value()) {
             result.diagnostics.push_back(
                 {DiagnosticSeverity::error,
-                 "Packed field '" + field->name + "' exceeds the 64-bit V1 range limit."});
+                 "Packed field '" +
+                     std::string{types.strings().view(
+                         types.definitions()
+                             .packed_fields
+                             .name[types.definitions().packed_fields.index(*field)])} +
+                     "' exceeds the 64-bit V1 range limit."});
         }
-        std::optional<codegen::PackedIntegerValue> minimum_required_code;
-        std::optional<codegen::PackedIntegerValue> maximum_required_code;
-        if (field != nullptr) {
-            if (std::holds_alternative<lispb::schema::LinearQuantizedType>(
-                    types.type(field->semantic_type.type).definition)) {
-                field_result.linear_quantized =
-                    analyze_linear_quantized(types, field->semantic_type.type);
-            } else if (std::holds_alternative<lispb::schema::FixedPointType>(
-                           types.type(field->semantic_type.type).definition)) {
-                field_result.fixed_point = analyze_fixed_point(types, field->semantic_type.type);
-            } else if (std::holds_alternative<lispb::schema::MiniFloatType>(
-                           types.type(field->semantic_type.type).definition)) {
-                field_result.mini_float = analyze_mini_float(types, field->semantic_type.type);
+        std::optional<lispb::codegen::PackedIntegerValue> minimum_required_code;
+        std::optional<lispb::codegen::PackedIntegerValue> maximum_required_code;
+        if (field.has_value()) {
+            if (((types.definition(types.occurrences().type[types.occurrences().index(
+                      types.definitions().packed_fields.semantic_type
+                          [types.definitions().packed_fields.index(*field)])]))
+                     .kind() == lispb::schema::TypeDefinitionKind::linear_quantized)) {
+                field_result.linear_quantized = analyze_linear_quantized(
+                    types,
+                    types.occurrences().type[types.occurrences().index(
+                        types.definitions().packed_fields.semantic_type
+                            [types.definitions().packed_fields.index(*field)])]);
+            } else if (((types.definition(types.occurrences().type[types.occurrences().index(
+                             types.definitions().packed_fields.semantic_type
+                                 [types.definitions().packed_fields.index(*field)])]))
+                            .kind() == lispb::schema::TypeDefinitionKind::fixed_point)) {
+                field_result.fixed_point = analyze_fixed_point(
+                    types,
+                    types.occurrences().type[types.occurrences().index(
+                        types.definitions().packed_fields.semantic_type
+                            [types.definitions().packed_fields.index(*field)])]);
+            } else if (((types.definition(types.occurrences().type[types.occurrences().index(
+                             types.definitions().packed_fields.semantic_type
+                                 [types.definitions().packed_fields.index(*field)])]))
+                            .kind() == lispb::schema::TypeDefinitionKind::mini_float)) {
+                field_result.mini_float =
+                    analyze_mini_float(types,
+                                       types.occurrences().type[types.occurrences().index(
+                                           types.definitions().packed_fields.semantic_type
+                                               [types.definitions().packed_fields.index(*field)])]);
             }
-            field_result.named_codes.reserve(field->named_codes.size());
-            for (auto const& code : field->named_codes) {
+            field_result.named_codes.reserve(
+                types.definitions()
+                    .packed_fields.named_codes[types.definitions().packed_fields.index(*field)]
+                    .size());
+            for (auto const code_id : types.declarations().items(
+                     types.definitions()
+                         .packed_fields
+                         .named_codes[types.definitions().packed_fields.index(*field)])) {
+                auto const code{code_id};
                 field_result.named_codes.push_back(
-                    {.name = code.name, .value = code.value, .sentinel = code.sentinel});
-                if (code.sentinel) {
+                    {.name = std::string{types.strings().view(
+                         types.declarations()
+                             .packed_named_codes
+                             .name[types.declarations().packed_named_codes.index(code)])},
+                     .value = types.declarations()
+                                  .packed_named_codes
+                                  .value[types.declarations().packed_named_codes.index(code)],
+                     .sentinel =
+                         types.declarations()
+                             .packed_named_codes
+                             .sentinel[types.declarations().packed_named_codes.index(code)] != 0});
+                if (types.declarations()
+                        .packed_named_codes
+                        .sentinel[types.declarations().packed_named_codes.index(code)]) {
                     ++field_result.sentinel_code_count;
                 }
                 if (!minimum_required_code.has_value() ||
-                    codegen::packed_integer_less(code.value, *minimum_required_code)) {
-                    minimum_required_code = code.value;
+                    lispb::codegen::packed_integer_less(
+                        types.declarations()
+                            .packed_named_codes
+                            .value[types.declarations().packed_named_codes.index(code)],
+                        *minimum_required_code)) {
+                    minimum_required_code =
+                        types.declarations()
+                            .packed_named_codes
+                            .value[types.declarations().packed_named_codes.index(code)];
                 }
                 if (!maximum_required_code.has_value() ||
-                    codegen::packed_integer_less(*maximum_required_code, code.value)) {
-                    maximum_required_code = code.value;
+                    lispb::codegen::packed_integer_less(
+                        *maximum_required_code,
+                        types.declarations()
+                            .packed_named_codes
+                            .value[types.declarations().packed_named_codes.index(code)])) {
+                    maximum_required_code =
+                        types.declarations()
+                            .packed_named_codes
+                            .value[types.declarations().packed_named_codes.index(code)];
                 }
             }
         }
@@ -208,29 +395,38 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
             auto const maximum{*field_result.maximum_semantic_value};
             field_result.semantic_value_count = packed_range_count(minimum, maximum);
             if (!minimum_required_code.has_value() ||
-                codegen::packed_integer_less(minimum, *minimum_required_code)) {
+                lispb::codegen::packed_integer_less(minimum, *minimum_required_code)) {
                 minimum_required_code = minimum;
             }
             if (!maximum_required_code.has_value() ||
-                codegen::packed_integer_less(*maximum_required_code, maximum)) {
+                lispb::codegen::packed_integer_less(*maximum_required_code, maximum)) {
                 maximum_required_code = maximum;
             }
             if (field_result.semantic_value_count.has_value()) {
                 field_result.required_code_count = checked_add(*field_result.semantic_value_count,
                                                                field_result.sentinel_code_count);
             }
-            auto const signed_domain{field->kind == codegen::PackedFieldKind::signed_integer};
+            auto const signed_domain{
+                types.definitions()
+                    .packed_fields.kind[types.definitions().packed_fields.index(*field)] ==
+                lispb::codegen::PackedFieldKind::signed_integer};
             auto const domain_fits{
                 minimum_required_code.has_value() && maximum_required_code.has_value() &&
                 (signed_domain
-                     ? codegen::packed_integer_fits_signed(*minimum_required_code, width) &&
-                           codegen::packed_integer_fits_signed(*maximum_required_code, width)
-                     : codegen::packed_integer_fits_unsigned(*minimum_required_code, width) &&
-                           codegen::packed_integer_fits_unsigned(*maximum_required_code, width))};
+                     ? lispb::codegen::packed_integer_fits_signed(*minimum_required_code, width) &&
+                           lispb::codegen::packed_integer_fits_signed(*maximum_required_code, width)
+                     : lispb::codegen::packed_integer_fits_unsigned(*minimum_required_code,
+                                                                    width) &&
+                           lispb::codegen::packed_integer_fits_unsigned(*maximum_required_code,
+                                                                        width))};
             if (!domain_fits) {
                 result.diagnostics.push_back(
                     {DiagnosticSeverity::error,
-                     "Packed field '" + field->name +
+                     "Packed field '" +
+                         std::string{types.strings().view(
+                             types.definitions()
+                                 .packed_fields
+                                 .name[types.definitions().packed_fields.index(*field)])} +
                          "' semantic range or sentinel codes do not fit its planned width."});
             } else if (width == 64 && field_result.required_code_count.has_value()) {
                 field_result.unused_codes = std::numeric_limits<std::uint64_t>::max() -
@@ -254,30 +450,67 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
             }
         }
         if (minimum_required_code.has_value() && maximum_required_code.has_value()) {
-            field_result.minimum_required_bits = codegen::minimum_packed_integer_bits(
+            field_result.minimum_required_bits = lispb::codegen::minimum_packed_integer_bits(
                 *minimum_required_code,
                 *maximum_required_code,
-                field != nullptr && field->kind == codegen::PackedFieldKind::signed_integer);
+                field.has_value() &&
+                    types.definitions()
+                            .packed_fields.kind[types.definitions().packed_fields.index(*field)] ==
+                        lispb::codegen::PackedFieldKind::signed_integer);
         }
-        if (field != nullptr && field->relationship.has_value() &&
-            (field->relationship->kind == codegen::SemanticRelationKind::index_into ||
-             field->relationship->kind == codegen::SemanticRelationKind::count_of ||
-             field->relationship->kind == codegen::SemanticRelationKind::offset_into)) {
-            auto const target_facts{std::ranges::find(relationship_targets,
-                                                      field->relationship->target.type,
-                                                      &RelationshipTargetFacts::target)};
+        if (field.has_value() &&
+            lispb::schema::is_valid(
+                types.definitions()
+                    .packed_fields.relationship[types.definitions().packed_fields.index(*field)]) &&
+            (types.relationships().kind[types.relationships().index(
+                 types.definitions().packed_fields.relationship
+                     [types.definitions().packed_fields.index(*field)])] ==
+                 lispb::codegen::SemanticRelationKind::index_into ||
+             types.relationships().kind[types.relationships().index(
+                 types.definitions().packed_fields.relationship
+                     [types.definitions().packed_fields.index(*field)])] ==
+                 lispb::codegen::SemanticRelationKind::count_of ||
+             types.relationships().kind[types.relationships().index(
+                 types.definitions().packed_fields.relationship
+                     [types.definitions().packed_fields.index(*field)])] ==
+                 lispb::codegen::SemanticRelationKind::offset_into)) {
+            auto const target_facts{
+                std::ranges::find(relationship_targets,
+                                  types.occurrences().type[types.occurrences().index(
+                                      types.relationships().target[types.relationships().index(
+                                          types.definitions().packed_fields.relationship
+                                              [types.definitions().packed_fields.index(*field)])])],
+                                  &RelationshipTargetFacts::target)};
             if (target_facts != relationship_targets.end()) {
-                auto const target_extent{
-                    relationship_target_extent(*field->relationship, *target_facts)};
+                auto const target_extent{relationship_target_extent(
+                    types,
+                    types.definitions()
+                        .packed_fields
+                        .relationship[types.definitions().packed_fields.index(*field)],
+                    *target_facts)};
                 if (target_extent.has_value()) {
-                    auto const extent_analysis{
-                        analyze_unsigned_relationship_extent("Packed field '" + field->name + "'",
-                                                             field->relationship->kind,
-                                                             *target_extent,
-                                                             field->named_codes,
-                                                             width,
-                                                             field->minimum_value,
-                                                             field->maximum_value)};
+                    auto const extent_analysis{analyze_unsigned_relationship_extent(
+                        types.declarations(),
+                        "Packed field '" +
+                            std::string{types.strings().view(
+                                types.definitions()
+                                    .packed_fields
+                                    .name[types.definitions().packed_fields.index(*field)])} +
+                            "'",
+                        types.relationships().kind[types.relationships().index(
+                            types.definitions().packed_fields.relationship
+                                [types.definitions().packed_fields.index(*field)])],
+                        *target_extent,
+                        types.definitions()
+                            .packed_fields
+                            .named_codes[types.definitions().packed_fields.index(*field)],
+                        width,
+                        types.definitions()
+                            .packed_fields
+                            .minimum_value[types.definitions().packed_fields.index(*field)],
+                        types.definitions()
+                            .packed_fields
+                            .maximum_value[types.definitions().packed_fields.index(*field)])};
                     field_result.relationship_target_extent = extent_analysis.target_extent;
                     field_result.relationship_live_value_count = extent_analysis.live_values;
                     field_result.relationship_required_code_count = extent_analysis.required_codes;
@@ -303,7 +536,8 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
         }
         if (next_offset.has_value()) {
             auto const positioned{
-                packed.bit_order == codegen::PackedBitOrder::least_significant_first ||
+                types.definitions().packed.bit_order[types.definitions().packed.index(packed)] ==
+                    lispb::codegen::PackedBitOrder::least_significant_first ||
                 (result.storage_bits.has_value() && *next_offset <= *result.storage_bits)};
             if (width != 0 && positioned) {
                 field_result.most_significant_bit = least_significant_bit + width - 1;
@@ -315,10 +549,10 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
                 {DiagnosticSeverity::error, "Packed segment bit offsets overflow uint64."});
         }
         auto const next_category_bits{
-            checked_add(field != nullptr ? payload_bits : reserved_bits, width)};
+            checked_add(field.has_value() ? payload_bits : reserved_bits, width)};
         if (!next_category_bits.has_value()) {
             width_overflow = true;
-        } else if (field != nullptr) {
+        } else if (field.has_value()) {
             payload_bits = *next_category_bits;
         } else {
             reserved_bits = *next_category_bits;
@@ -342,11 +576,16 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
         }
     }
 
-    if (packed.invalid_raw_value.has_value() && result.storage_bits.has_value() &&
-        *result.storage_bits < 64) {
+    if (types.definitions()
+            .packed.invalid_raw_value[types.definitions().packed.index(packed)]
+            .has_value() &&
+        result.storage_bits.has_value() && *result.storage_bits < 64) {
         auto const storage_max{
             maximum_unsigned_value(static_cast<std::uint32_t>(*result.storage_bits))};
-        if (storage_max.has_value() && *packed.invalid_raw_value > *storage_max) {
+        if (storage_max.has_value() &&
+            *types.definitions()
+                    .packed.invalid_raw_value[types.definitions().packed.index(packed)] >
+                *storage_max) {
             result.diagnostics.push_back(
                 {DiagnosticSeverity::error,
                  "The invalid raw value does not fit the selected packed storage type."});

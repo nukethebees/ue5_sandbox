@@ -1,7 +1,5 @@
-mod kernel;
 mod native;
 
-pub use kernel::plot_kernel;
 pub use native::{plot_comparison, plot_fighters};
 
 use crate::cli::{PlotKind, PlotOptions};
@@ -26,15 +24,9 @@ const COLORS: [RGBColor; 10] = [
 ];
 
 pub fn run(args: &PlotOptions) -> Result<()> {
-    if args.kind != PlotKind::Kernel && args.baseline.is_some() {
-        return Err("--baseline is only supported for kernel plots.".into());
-    }
     let input: Value = read_json(&args.input)?;
     let output = &args.output_dir;
     let paths = match args.kind {
-        PlotKind::Kernel => {
-            plot_kernel(&input, output, args.baseline.as_deref().unwrap_or("scalar"))?
-        }
         PlotKind::Fighter => plot_fighters(&input, output)?,
         PlotKind::Comparison => {
             if input["schemaVersion"] != 1 {
@@ -72,7 +64,6 @@ pub fn automatic(render: impl FnOnce() -> Result<Vec<PathBuf>>) -> Vec<PathBuf> 
 struct Point {
     x: f64,
     y: f64,
-    deviation: f64,
 }
 
 struct Series {
@@ -83,7 +74,6 @@ struct Series {
 struct Panel {
     label: String,
     series: Vec<Series>,
-    reference: Option<f64>,
 }
 
 // Keep explicit tick positions on floating axes; Plotters' WithKeyPoints<f64>
@@ -148,7 +138,6 @@ fn line_plot(
     path: &Path,
     title: &str,
     x_label: &str,
-    logarithmic: bool,
     panels: &[Panel],
 ) -> Result<()> {
     let mut svg = String::new();
@@ -165,12 +154,10 @@ fn line_plot(
         root.fill(&WHITE)?;
         let root = root.titled(title, ("sans-serif", 23))?;
         for (area, panel) in root.split_evenly((panels.len(), 1)).into_iter().zip(panels) {
-            // Transform positions while keeping tick labels at measured counts.
-            let transform = |x: f64| if logarithmic { x.log2() } else { x };
             let mut ticks: Vec<_> = panel
                 .series
                 .iter()
-                .flat_map(|s| s.points.iter().map(|p| transform(p.x)))
+                .flat_map(|s| s.points.iter().map(|p| p.x))
                 .collect();
             ticks.sort_by(f64::total_cmp);
             ticks.dedup();
@@ -180,18 +167,13 @@ fn line_plot(
                 panel
                     .series
                     .iter()
-                    .flat_map(|s| s.points.iter().map(|p| transform(p.x))),
+                    .flat_map(|s| s.points.iter().map(|p| p.x)),
             )?;
             let y_range = range(
                 panel
                     .series
                     .iter()
-                    .flat_map(|s| {
-                        s.points
-                            .iter()
-                            .flat_map(|p| [p.y - p.deviation, p.y + p.deviation])
-                    })
-                    .chain(panel.reference),
+                    .flat_map(|s| s.points.iter().map(|p| p.y)),
             )?;
             let (plot_area, legend) = area.split_vertically(330);
             let mut chart = ChartBuilder::on(&plot_area)
@@ -199,13 +181,7 @@ fn line_plot(
                 .x_label_area_size(45)
                 .y_label_area_size(90)
                 .build_cartesian_2d(TickAxis::new(x_range, ticks), y_range)?;
-            let format_x = |x: &f64| {
-                if logarithmic {
-                    format!("{:.0}", 2.0_f64.powf(*x))
-                } else {
-                    format!("{x:.0}")
-                }
-            };
+            let format_x = |x: &f64| format!("{x:.0}");
             chart
                 .configure_mesh()
                 .x_desc(x_label)
@@ -214,34 +190,17 @@ fn line_plot(
                 .x_labels(8)
                 .light_line_style(RGBColor(230, 230, 230))
                 .draw()?;
-            if let Some(reference) = panel.reference {
-                let x = chart.as_coord_spec().get_x_range();
-                chart.draw_series(LineSeries::new(
-                    [(x.start, reference), (x.end, reference)],
-                    BLACK.mix(0.4),
-                ))?;
-            }
             for (index, series) in panel.series.iter().enumerate() {
                 let color = COLORS[index % COLORS.len()];
                 chart.draw_series(LineSeries::new(
-                    series.points.iter().map(|p| (transform(p.x), p.y)),
+                    series.points.iter().map(|p| (p.x, p.y)),
                     color.stroke_width(2),
                 ))?;
-                chart.draw_series(series.points.iter().filter(|p| p.deviation > 0.0).map(|p| {
-                    ErrorBar::new_vertical(
-                        transform(p.x),
-                        p.y - p.deviation,
-                        p.y,
-                        p.y + p.deviation,
-                        color,
-                        6,
-                    )
-                }))?;
                 chart.draw_series(
                     series
                         .points
                         .iter()
-                        .map(|p| Circle::new((transform(p.x), p.y), 3, color.filled())),
+                        .map(|p| Circle::new((p.x, p.y), 3, color.filled())),
                 )?;
                 let x = 25 + (index % 3) as i32 * 395;
                 let y = 15 + (index / 3) as i32 * 24;

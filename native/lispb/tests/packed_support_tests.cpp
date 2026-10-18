@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cassert>
 #include <cstdint>
 #include <limits>
 #include <type_traits>

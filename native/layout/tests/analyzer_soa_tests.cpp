@@ -1,12 +1,27 @@
 #include "analyzer_test_fixtures.hpp"
 
+#include <codegen/schema/record_schemas.h>
 #include <codegen/schema/schema_version.h>
+#include <lispb/compiler_storage.h>
+
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <optional>
+#include <ranges>
+#include <span>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace ioj::layout {
 namespace {
 
 TEST(SoaAnalyzer, UnknownMiddleColumnInvalidatesOnlyDependentOffsets) {
-    auto const fixture{soa_type({{"first", "float"}, {"unknown", "Opaque"}, {"last", "double"}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{
+        soa_type(storage, {{"first", "float"}, {"unknown", "Opaque"}, {"last", "double"}})};
     auto const result{Analyzer::analyze_soa(fixture.types,
                                             fixture.type,
                                             Variant{},
@@ -23,39 +38,20 @@ TEST(SoaAnalyzer, UnknownMiddleColumnInvalidatesOnlyDependentOffsets) {
 }
 
 TEST(SoaAnalyzer, DerivesGeneratedRecordColumnFacts) {
-    codegen::NormalModuleSchema module{};
-    module.settings.name = "records";
-    module.settings.header = "Records.h";
-    module.soa_backend = codegen::SoaBackend::standard_library;
-    codegen::RecordSchema pair{};
-    pair.name = "Pair";
-    codegen::RecordMemberSchema coordinate{};
-    coordinate.type.name = "float";
-    coordinate.name = "x";
-    pair.members.push_back(coordinate);
-    coordinate.name = "y";
-    pair.members.push_back(coordinate);
-    module.declarations.emplace_back(pair);
-    codegen::SoaSchema rows{};
-    rows.name = "Rows";
-    codegen::SoaMemberSchema member{};
-    member.name = "pairs";
-    member.kind = codegen::SoaMemberKind::array;
-    member.type.name = "Pair";
-    rows.members.push_back(member);
-    module.declarations.emplace_back(rows);
-    codegen::Manifest manifest{};
-    manifest.schema_version = codegen::manifest_schema_version;
-    manifest.modules.push_back(module);
-    auto const types{lispb::schema::resolve_type_graph(manifest)};
+    lispb::CompilerStorage storage;
+    auto const types{fixture_graph(storage, R"(
+        (module records :header "Records.h" :backend standard-library
+            (record Pair (member x float) (member y float))
+            (struct Rows (member pairs array Pair))))")};
     auto const result{Analyzer::analyze_soa(
-        types, *types.find_declared("records", "Rows"), Variant{}, AbiProfile::host_common(), 3)};
+        types, *fixture_find(types, "records", "Rows"), Variant{}, AbiProfile::host_common(), 3)};
     EXPECT_EQ(result.total_payload_bytes, 24);
     ASSERT_TRUE(result.columns.front().type_facts.has_value());
     EXPECT_EQ(result.columns.front().type_facts->alignment_bytes, alignof(float));
 }
 
 TEST(SoaAnalyzer, PreservesKnownPrefixesForUnknownAndOverflowAtEveryPosition) {
+    lispb::CompilerStorage storage;
     for (auto const overflow : {false, true}) {
         for (std::size_t uncertain{}; uncertain < 3; ++uncertain) {
             SCOPED_TRACE(uncertain);
@@ -63,7 +59,7 @@ TEST(SoaAnalyzer, PreservesKnownPrefixesForUnknownAndOverflowAtEveryPosition) {
             std::vector<std::pair<std::string, std::string>> columns{
                 {"first", "float"}, {"middle", "float"}, {"last", "float"}};
             columns[uncertain].second = "Uncertain";
-            auto const fixture{soa_type(columns)};
+            auto const fixture{soa_type(storage, columns)};
             auto profile{AbiProfile::host_common()};
             if (overflow) {
                 TypeFacts facts{};
@@ -95,7 +91,9 @@ TEST(SoaAnalyzer, PreservesKnownPrefixesForUnknownAndOverflowAtEveryPosition) {
 }
 
 TEST(SoaAnalyzer, CursorAdditionOverflowDoesNotInventFollowingOffsets) {
-    auto const fixture{soa_type({{"huge", "Huge"}, {"overflow", "double"}, {"last", "float"}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{
+        soa_type(storage, {{"huge", "Huge"}, {"overflow", "double"}, {"last", "float"}})};
     auto profile{AbiProfile::host_common()};
     TypeFacts facts{};
     facts.size_bytes = std::numeric_limits<std::uint64_t>::max() - 7;
@@ -115,7 +113,8 @@ TEST(SoaAnalyzer, CursorAdditionOverflowDoesNotInventFollowingOffsets) {
 }
 
 TEST(SoaAnalyzer, ReportsSixFloatPayloadAcrossCapacities) {
-    auto const fixture{soa_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{soa_type(storage)};
     auto const abi{AbiProfile::host_common()};
     for (auto const capacity : {std::uint64_t{0},
                                 std::uint64_t{1},
@@ -140,7 +139,8 @@ TEST(SoaAnalyzer, ReportsSixFloatPayloadAcrossCapacities) {
 }
 
 TEST(SoaAnalyzer, ComparesPhysicalLayoutAcrossTargetProfiles) {
-    auto const fixture{soa_type({{"small", "std::uint8_t"}, {"wide", "std::uint32_t"}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{soa_type(storage, {{"small", "std::uint8_t"}, {"wide", "std::uint32_t"}})};
     auto const first_profile{AbiProfile::host_common()};
     auto second_profile{first_profile};
     second_profile.set("std::uint32_t",
@@ -195,7 +195,8 @@ TEST(SoaAnalyzer, ComparesPhysicalLayoutAcrossTargetProfiles) {
 }
 
 TEST(SoaAnalyzer, PreservesUnknownTargetFactsAndSideDiagnostics) {
-    auto const fixture{soa_type({{"small", "std::uint8_t"}, {"wide", "std::uint32_t"}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{soa_type(storage, {{"small", "std::uint8_t"}, {"wide", "std::uint32_t"}})};
     auto const known{Analyzer::analyze_soa(fixture.types,
                                            fixture.type,
                                            Variant{},
@@ -222,7 +223,8 @@ TEST(SoaAnalyzer, PreservesUnknownTargetFactsAndSideDiagnostics) {
 }
 
 TEST(SoaAnalyzer, RejectsMismatchedTargetComparisonInputsWithoutPartialColumns) {
-    auto const fixture{soa_type({{"small", "std::uint8_t"}, {"wide", "std::uint32_t"}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{soa_type(storage, {{"small", "std::uint8_t"}, {"wide", "std::uint32_t"}})};
     auto const analysis{Analyzer::analyze_soa(fixture.types,
                                               fixture.type,
                                               Variant{},
@@ -256,7 +258,8 @@ TEST(SoaAnalyzer, RejectsMismatchedTargetComparisonInputsWithoutPartialColumns) 
 }
 
 TEST(SoaAnalyzer, AppliesCapacityAndColumnTypeOverrides) {
-    auto const fixture{soa_type()};
+    lispb::CompilerStorage storage;
+    auto const fixture{soa_type(storage)};
     Variant variant;
     variant.overrides.capacities[fixture.type] = 4'096;
     variant.overrides.soa_column_types[{.type = fixture.type, .field_name = "min_xs"}] = "double";
@@ -273,7 +276,9 @@ TEST(SoaAnalyzer, AppliesCapacityAndColumnTypeOverrides) {
 }
 
 TEST(SoaAnalyzer, ModelsSeparateAndAlignedContiguousAllocations) {
+    lispb::CompilerStorage storage;
     auto const fixture{soa_type(
+        storage,
         {{"small", "std::uint8_t"}, {"wide", "std::uint32_t"}, {"medium", "std::uint16_t"}})};
     auto const abi{AbiProfile::host_common()};
 
@@ -314,7 +319,8 @@ TEST(SoaAnalyzer, ModelsSeparateAndAlignedContiguousAllocations) {
 }
 
 TEST(SoaAnalyzer, DerivesRelationshipTargetFactsPerVariantAndAllocationStrategy) {
-    auto const fixture{soa_type({{"small", "std::uint8_t"}, {"wide", "std::uint64_t"}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{soa_type(storage, {{"small", "std::uint8_t"}, {"wide", "std::uint64_t"}})};
     auto variant{Variant{}};
     variant.overrides.capacities[fixture.type] = 3;
 
@@ -342,7 +348,8 @@ TEST(SoaAnalyzer, DerivesRelationshipTargetFactsPerVariantAndAllocationStrategy)
 }
 
 TEST(SoaAnalyzer, KeepsUnknownRelationshipTargetByteExtentUnknown) {
-    auto const fixture{soa_type({{"values", "std::uint8_t"}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{soa_type(storage, {{"values", "std::uint8_t"}})};
     auto const facts{Analyzer::derive_relationship_target_facts(
         fixture.types, Variant{}, AbiProfile{"unknown physical facts"}, 64)};
 
@@ -353,7 +360,8 @@ TEST(SoaAnalyzer, KeepsUnknownRelationshipTargetByteExtentUnknown) {
 }
 
 TEST(SoaAnalyzer, KeepsIncompleteContiguousAllocationUnknown) {
-    auto const fixture{soa_type({{"unknown", "UnknownUserType"}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{soa_type(storage, {{"unknown", "UnknownUserType"}})};
     auto const abi{AbiProfile::host_common()};
     auto const unknown{Analyzer::analyze_soa(
         fixture.types, fixture.type, Variant{}, abi, 3, SoaAllocationStrategy::aligned_contiguous)};
@@ -362,7 +370,7 @@ TEST(SoaAnalyzer, KeepsIncompleteContiguousAllocationUnknown) {
     EXPECT_FALSE(unknown.allocation_alignment_bytes.has_value());
     EXPECT_FALSE(unknown.diagnostics.empty());
 
-    auto const overflow{soa_type({{"wide", "std::uint64_t"}})};
+    auto const overflow{soa_type(storage, {{"wide", "std::uint64_t"}})};
     auto const overflowed{Analyzer::analyze_soa(overflow.types,
                                                 overflow.type,
                                                 Variant{},
@@ -374,7 +382,8 @@ TEST(SoaAnalyzer, KeepsIncompleteContiguousAllocationUnknown) {
 }
 
 TEST(SoaAnalyzer, ReportsCacheLineTilingForNonDivisibleAndOversizedElements) {
-    auto const fixture{soa_type({{"three", "three_bytes"}, {"wide_values", "wide"}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{soa_type(storage, {{"three", "three_bytes"}, {"wide_values", "wide"}})};
     AbiProfile abi{"test"};
     abi.set("three_bytes",
             {.size_bytes = 3,
@@ -413,7 +422,8 @@ TEST(SoaAnalyzer, ReportsCacheLineTilingForNonDivisibleAndOversizedElements) {
 }
 
 TEST(SoaAnalyzer, LeavesCacheStatisticsUnknownWithoutTargetFact) {
-    auto const fixture{soa_type({{"values", "four"}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{soa_type(storage, {{"values", "four"}})};
     AbiProfile abi{"unknown memory"};
     abi.set("four",
             {.size_bytes = 4,
@@ -433,7 +443,8 @@ TEST(SoaAnalyzer, LeavesCacheStatisticsUnknownWithoutTargetFact) {
 }
 
 TEST(SoaAnalyzer, UnknownTypesRemainUnknown) {
-    auto const fixture{soa_type({{"unknown", "UnknownUserType"}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{soa_type(storage, {{"unknown", "UnknownUserType"}})};
     auto const analysis{Analyzer::analyze_soa(
         fixture.types, fixture.type, Variant{}, AbiProfile::host_common(), 10)};
 
@@ -443,7 +454,8 @@ TEST(SoaAnalyzer, UnknownTypesRemainUnknown) {
 }
 
 TEST(SoaAnalyzer, ReportsIntegerOverflow) {
-    auto const fixture{soa_type({{"values", "huge"}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{soa_type(storage, {{"values", "huge"}})};
     AbiProfile abi{"test"};
     abi.set("huge",
             {.size_bytes = std::numeric_limits<std::uint64_t>::max(),
@@ -460,7 +472,9 @@ TEST(SoaAnalyzer, ReportsIntegerOverflow) {
 }
 
 TEST(SoaAnalyzer, ReportsSelectedColumnAccessFootprints) {
+    lispb::CompilerStorage storage;
     auto const fixture{soa_type(
+        storage,
         {{"small", "std::uint8_t"}, {"medium", "std::uint32_t"}, {"wide", "std::uint64_t"}})};
     auto const abi{AbiProfile::host_common()};
     auto const soa{Analyzer::analyze_soa(fixture.types, fixture.type, Variant{}, abi, 1'000)};
@@ -524,7 +538,8 @@ TEST(SoaAnalyzer, ReportsSelectedColumnAccessFootprints) {
 }
 
 TEST(SoaAnalyzer, ReportsAlignedSelectedColumnBoundaryCrossings) {
-    auto const fixture{soa_type({{"even", "even"}, {"odd", "odd"}, {"wide", "wide"}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{soa_type(storage, {{"even", "even"}, {"odd", "odd"}, {"wide", "wide"}})};
     auto abi{AbiProfile::host_common()};
     abi.set("even",
             {.size_bytes = 2,
@@ -583,7 +598,8 @@ TEST(SoaAnalyzer, ReportsAlignedSelectedColumnBoundaryCrossings) {
 }
 
 TEST(SoaAnalyzer, ComparesAlignedSelectedColumnBoundaryCrossingsAcrossVariants) {
-    auto const fixture{soa_type({{"value", "odd"}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{soa_type(storage, {{"value", "odd"}})};
     auto abi{AbiProfile::host_common()};
     abi.set("odd",
             {.size_bytes = 3,
@@ -628,7 +644,9 @@ TEST(SoaAnalyzer, ComparesAlignedSelectedColumnBoundaryCrossingsAcrossVariants) 
 }
 
 TEST(SoaAnalyzer, KeepsIncompleteSelectedColumnAccessUnknown) {
-    auto const fixture{soa_type({{"known", "std::uint32_t"}, {"unknown", "UnknownUserType"}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{
+        soa_type(storage, {{"known", "std::uint32_t"}, {"unknown", "UnknownUserType"}})};
     AbiProfile abi{"partial"};
     abi.set("std::uint32_t",
             {.size_bytes = 4,
@@ -665,7 +683,8 @@ TEST(SoaAnalyzer, KeepsIncompleteSelectedColumnAccessUnknown) {
 }
 
 TEST(SoaAnalyzer, DiagnosesSelectedColumnAccessOverflowAndExcessCapacity) {
-    auto const fixture{soa_type({{"huge", "huge"}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{soa_type(storage, {{"huge", "huge"}})};
     auto abi{AbiProfile::host_common()};
     abi.set("huge",
             {.size_bytes = std::numeric_limits<std::uint64_t>::max(),
@@ -694,7 +713,8 @@ TEST(SoaAnalyzer, DiagnosesSelectedColumnAccessOverflowAndExcessCapacity) {
 }
 
 TEST(SoaAnalyzer, ScalesLogicalAccessMultiplicityWithoutChangingFootprint) {
-    auto const fixture{soa_type({{"wide", "std::uint64_t"}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{soa_type(storage, {{"wide", "std::uint64_t"}})};
     auto const abi{AbiProfile::host_common()};
     auto const soa{Analyzer::analyze_soa(fixture.types, fixture.type, Variant{}, abi, 100)};
     std::vector<std::string> const columns{"wide"};
@@ -726,7 +746,9 @@ TEST(SoaAnalyzer, ScalesLogicalAccessMultiplicityWithoutChangingFootprint) {
 }
 
 TEST(SoaAnalyzer, ClassifiesIndividualColumnAccessOperations) {
+    lispb::CompilerStorage storage;
     auto const fixture{soa_type(
+        storage,
         {{"wide", "std::uint64_t"}, {"small", "std::uint8_t"}, {"medium", "std::uint32_t"}})};
     auto const abi{AbiProfile::host_common()};
     auto const soa{Analyzer::analyze_soa(fixture.types, fixture.type, Variant{}, abi, 100)};
@@ -779,7 +801,9 @@ TEST(SoaAnalyzer, ClassifiesIndividualColumnAccessOperations) {
 }
 
 TEST(SoaAnalyzer, UnionsSelectedAccessInAlignedContiguousBlock) {
+    lispb::CompilerStorage storage;
     auto const fixture{soa_type(
+        storage,
         {{"small", "std::uint8_t"}, {"wide", "std::uint64_t"}, {"medium", "std::uint32_t"}})};
     auto const abi{AbiProfile::host_common()};
     auto const soa{Analyzer::analyze_soa(fixture.types,
@@ -834,7 +858,8 @@ TEST(SoaAnalyzer, UnionsSelectedAccessInAlignedContiguousBlock) {
 }
 
 TEST(SoaAnalyzer, UsesContiguousColumnOffsetsForBoundaryCrossings) {
-    auto const fixture{soa_type({{"lead", "Lead"}, {"odd", "Odd"}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{soa_type(storage, {{"lead", "Lead"}, {"odd", "Odd"}})};
     auto abi{AbiProfile{"Offset target"}};
     abi.set("Lead",
             TypeFacts{.size_bytes = 8,
@@ -872,14 +897,25 @@ TEST(SoaAnalyzer, UsesContiguousColumnOffsetsForBoundaryCrossings) {
 }
 
 TEST(SoaAnalyzer, ComparesEquivalentRecordAndSoaAccessFacts) {
-    auto const record_fixture{
-        record_type({codegen::RecordSchema{.name = "Row",
-                                           .members = {record_member("small", "std::uint8_t"),
-                                                       record_member("medium", "std::uint32_t"),
-                                                       record_member("wide", "std::uint64_t")},
-                                           .export_specifier = std::nullopt}},
-                    "Row")};
+    lispb::CompilerStorage storage;
+    auto const record_fixture{record_type(
+        storage,
+        {[&] {
+            auto const new_records{storage.declarations.records.append()};
+            storage.declarations.records.name[storage.declarations.records.index(new_records)] =
+                storage.strings.intern("Row");
+            storage.declarations.records.members[storage.declarations.records.index(new_records)] =
+                record_members(storage,
+                               {record_member(storage, "small", "std::uint8_t"),
+                                record_member(storage, "medium", "std::uint32_t"),
+                                record_member(storage, "wide", "std::uint64_t")});
+            storage.declarations.records
+                .export_specifier[storage.declarations.records.index(new_records)] = {};
+            return new_records;
+        }()},
+        "Row")};
     auto const soa_fixture{soa_type(
+        storage,
         {{"small", "std::uint8_t"}, {"medium", "std::uint32_t"}, {"wide", "std::uint64_t"}})};
     auto abi{AbiProfile::host_common()};
     abi.set_memory_facts({.cache_line_bytes = 64,
@@ -1007,7 +1043,9 @@ TEST(SoaAnalyzer, RejectsIncompatibleRecordAndSoaAccessSets) {
 }
 
 TEST(SoaAnalyzer, ComparesSelectedAccessAcrossPhysicalVariants) {
+    lispb::CompilerStorage storage;
     auto const fixture{soa_type(
+        storage,
         {{"small", "std::uint8_t"}, {"medium", "std::uint32_t"}, {"wide", "std::uint64_t"}})};
     auto abi{AbiProfile::host_common()};
     abi.set_memory_facts({.cache_line_bytes = 64,
@@ -1117,7 +1155,8 @@ TEST(SoaAnalyzer, ComparesSelectedAccessAcrossPhysicalVariants) {
 }
 
 TEST(SoaAnalyzer, ComparesSelectedAccessAcrossTargetProfiles) {
-    auto const fixture{soa_type({{"small", "std::uint8_t"}, {"wide", "std::uint32_t"}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{soa_type(storage, {{"small", "std::uint8_t"}, {"wide", "std::uint32_t"}})};
     auto const first_profile{AbiProfile::host_common()};
     auto second_profile{first_profile};
     second_profile.set("std::uint32_t",

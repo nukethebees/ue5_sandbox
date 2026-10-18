@@ -2,6 +2,11 @@
   :language-version 1
   :project-root ".."
 
+  (cpp-schema compiler-ir
+    :types "native/lispb/schema/compiler_types.lispb"
+    :sources ("native/lispb/schema/compiler_ir.lispb")
+    :output-root (project-path "native/lispb/include/codegen/ast"))
+
   (cpp-schema sandbox-code
     :types "lispb/schema/types.lispb"
     :sources (
@@ -106,10 +111,8 @@
       :output-root (project-path "Plugins/SandboxCore/Source/SandboxCore"))
     (emission kernel-standard
       :profile standard
-      :output-root (build-path "native/lispb/kernel/standard-generated"))
-    (emission kernel-native-simd
-      :profile native-x86-simd-lab
-      :output-root (build-path "native/lispb/kernel/native-simd-generated")))
+      :output-root (build-path "native/lispb/kernel/standard-generated")))
+
   (kernel native-core-kernels
     :sources (
       "Plugins/SandboxCore/Source/SandboxCore/Kernels/array_math.lispb"
@@ -177,7 +180,7 @@
       slate-game-options
       slate-level-select))
   (group committed-code
-    :targets (sandbox-code sandbox-core-test-fixture slate-production kernel-unreal kernel-native-core))
+    :targets (compiler-ir sandbox-code sandbox-core-test-fixture slate-production kernel-unreal kernel-native-core))
   (group materials
     :targets (
       ui-glow-material

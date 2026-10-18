@@ -1,29 +1,43 @@
+#include "analyzer_test_fixtures.hpp"
 #include <ioj/layout/physical_facts.hpp>
 #include <ioj/layout/planner_type.hpp>
 #include <ioj/layout/profile_probe.hpp>
 
+#include <codegen/ast/indices.h>
+#include <codegen/schema/indices.h>
+#include <codegen/schema/manifest.h>
+#include <codegen/schema/record_member_schemas.h>
+#include <codegen/schema/record_schemas.h>
 #include <codegen/schema/schema_version.h>
+#include <codegen/schema/type_registry.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/schema/external_types.h>
+#include <lispb/schema/type_graph.h>
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
+#include <ranges>
+#include <string>
+#include <vector>
 
 namespace ioj::layout {
 namespace {
 
 TEST(ProfileProbe, CollectsExactExternalUsesWithoutLosingCvOrUnsupportedDiagnostics) {
-    codegen::Manifest manifest{};
-    manifest.schema_version = codegen::manifest_schema_version;
-    codegen::RegisteredTypeSchema registered{};
-    registered.cpp_type = codegen::CppType{"sdk::ExternalValue"};
-    manifest.types.emplace("external", registered);
-    manifest.types.emplace("external_alias", registered);
-    codegen::NormalModuleSchema module{};
-    module.settings.name = "uses";
-    module.settings.header = "uses.h";
-    codegen::RecordSchema record{};
-    record.name = "Uses";
+    lispb::CompilerStorage storage;
+    lispb::codegen::Manifest manifest{lispb::codegen::manifest_schema_version,
+                                      lispb::codegen::TypeRegistry{storage.registered_types},
+                                      storage.declarations,
+                                      {}};
+    manifest.schema_version = lispb::codegen::manifest_schema_version;
+    lispb::codegen::CppTypeId registered{};
+    registered = storage.cpp_types.intern("sdk::ExternalValue");
+    manifest.types.add("external", registered);
+    manifest.types.add("external_alias", registered);
+    std::vector<lispb::codegen::RecordMemberId> members;
     for (auto const suffix : {"",
                               "*",
                               "**",
@@ -36,23 +50,48 @@ TEST(ProfileProbe, CollectsExactExternalUsesWithoutLosingCvOrUnsupportedDiagnost
                               " Owner::*",
                               "[3]",
                               "*[]"}) {
-        codegen::RecordMemberSchema member{};
-        member.name = "value" + std::to_string(record.members.size());
-        member.type = codegen::TypeRef{"@external", suffix, std::nullopt};
-        record.members.push_back(member);
+        members.push_back([&] {
+            auto const new_record_members{storage.declarations.record_members.append()};
+            storage.declarations.record_members
+                .name[storage.declarations.record_members.index(new_record_members)] =
+                storage.strings.intern("value" + std::to_string(members.size()));
+            storage.declarations.record_members
+                .type[storage.declarations.record_members.index(new_record_members)] =
+                fixture_reference(storage, "@external", suffix);
+            return new_record_members;
+        }());
     }
-    codegen::RecordMemberSchema unrelated{};
-    unrelated.name = "unrelated";
-    unrelated.type = codegen::TypeRef{"Other", "*", std::nullopt};
-    record.members.push_back(unrelated);
-    codegen::RecordMemberSchema alias{};
-    alias.name = "alias";
-    alias.type = codegen::TypeRef{"@external_alias", "***", std::nullopt};
-    record.members.push_back(alias);
-    module.declarations.emplace_back(record);
-    manifest.modules.emplace_back(module);
+    members.push_back([&] {
+        auto const new_record_members{storage.declarations.record_members.append()};
+        storage.declarations.record_members
+            .name[storage.declarations.record_members.index(new_record_members)] =
+            storage.strings.intern("unrelated");
+        storage.declarations.record_members
+            .type[storage.declarations.record_members.index(new_record_members)] =
+            fixture_reference(storage, "Other", "*");
+        return new_record_members;
+    }());
+    members.push_back([&] {
+        auto const new_record_members{storage.declarations.record_members.append()};
+        storage.declarations.record_members
+            .name[storage.declarations.record_members.index(new_record_members)] =
+            storage.strings.intern("alias");
+        storage.declarations.record_members
+            .type[storage.declarations.record_members.index(new_record_members)] =
+            fixture_reference(storage, "@external_alias", "***");
+        return new_record_members;
+    }());
+    manifest.modules.push_back(fixture_module(
+        storage, "uses", {[&] {
+            auto const new_records{storage.declarations.records.append()};
+            storage.declarations.records.name[storage.declarations.records.index(new_records)] =
+                storage.strings.intern("Uses");
+            storage.declarations.records.members[storage.declarations.records.index(new_records)] =
+                storage.declarations.range(members);
+            return new_records;
+        }()}));
     auto const types{lispb::schema::resolve_type_graph(manifest)};
-    auto const selected{*types.find_registered("external")};
+    auto const selected{*types.find_registered(storage.strings.find("external"))};
     auto const probe{external_probe_request(types, selected)};
     EXPECT_EQ(probe.spellings,
               (std::vector<std::string>{"sdk::ExternalValue",
@@ -92,39 +131,59 @@ TEST(ProfileProbe, UnsupportedCompleteObjectSubjectsAreRejectedBeforeExport) {
     }
 }
 
-TEST(ProfileProbe, UnionsHeadersAcrossAlternateRegistrationsAndNestedDependencies) {
-    codegen::Manifest manifest{};
-    manifest.schema_version = codegen::manifest_schema_version;
-    codegen::RegisteredTypeSchema registered{};
-    registered.cpp_type = codegen::CppType{"sdk::ExternalValue"};
-    manifest.types.emplace("external_a", registered);
-    registered.cpp_type.dependencies = {
-        {"sdk::ExternalValue",
-         "sdk/external_value.hpp",
-         {{"support", std::nullopt, {{"config", "sdk/config.hpp", {}}}},
-          {"duplicate", "sdk/external_value.hpp", {}}}}};
-    manifest.types.emplace("external_b", registered);
-    registered.cpp_type.dependencies = {{"extra", "sdk/Extra Detail.hpp", {}}};
-    manifest.types.emplace("external_unused", registered);
-    registered.cpp_type = codegen::CppType{"sdk::Unrelated", "unrelated.hpp"};
-    manifest.types.emplace("unrelated", registered);
-    codegen::NormalModuleSchema module{};
-    module.settings.name = "probe";
-    module.settings.header = "probe.h";
-    codegen::RecordSchema record{};
-    record.name = "Uses";
-    codegen::RecordMemberSchema member{};
-    member.name = "pointer";
-    member.type = codegen::TypeRef{"@external_b", "*", std::nullopt};
-    record.members.push_back(member);
-    module.declarations.push_back(record);
-    manifest.modules.emplace_back(module);
+TEST(ProfileProbe, UnionsHeadersAcrossAlternateRegistrationsAndSharedDependencies) {
+    lispb::CompilerStorage storage;
+    lispb::codegen::Manifest manifest{lispb::codegen::manifest_schema_version,
+                                      lispb::codegen::TypeRegistry{storage.registered_types},
+                                      storage.declarations,
+                                      {}};
+    manifest.schema_version = lispb::codegen::manifest_schema_version;
+    lispb::codegen::CppTypeId registered{};
+    registered = storage.cpp_types.intern("sdk::ExternalValue");
+    manifest.types.add("external_a", registered);
+    registered = storage.cpp_types.intern(
+        "sdk::ExternalValue",
+        {storage.cpp_types.dependency("sdk::ExternalValue", "sdk/external_value.hpp"),
+         storage.cpp_types.dependency("config", "sdk/config.hpp"),
+         storage.cpp_types.dependency("duplicate", "sdk/external_value.hpp")});
+    manifest.types.add("external_b", registered);
+    registered = storage.cpp_types.intern(
+        "sdk::ExternalValue", {storage.cpp_types.dependency("extra", "sdk/Extra Detail.hpp")});
+    manifest.types.add("external_unused", registered);
+    registered = storage.cpp_types.intern(
+        "sdk::Unrelated", {storage.cpp_types.dependency("sdk::Unrelated", "unrelated.hpp")});
+    manifest.types.add("unrelated", registered);
+    auto const member{[&] {
+        auto const new_record_members{storage.declarations.record_members.append()};
+        storage.declarations.record_members
+            .name[storage.declarations.record_members.index(new_record_members)] =
+            storage.strings.intern("pointer");
+        storage.declarations.record_members
+            .type[storage.declarations.record_members.index(new_record_members)] =
+            fixture_reference(storage, "@external_b", "*");
+        return new_record_members;
+    }()};
+    manifest.modules.push_back(fixture_module(
+        storage, "probe", {[&] {
+            auto const new_records{storage.declarations.records.append()};
+            storage.declarations.records.name[storage.declarations.records.index(new_records)] =
+                storage.strings.intern("Uses");
+            storage.declarations.records.members[storage.declarations.records.index(new_records)] =
+                storage.declarations.range<lispb::codegen::RecordMemberId>({member});
+            return new_records;
+        }()}));
     auto const types{lispb::schema::resolve_type_graph(manifest)};
-    auto const selected{*types.find_registered("external_a")};
-    EXPECT_TRUE(std::get<lispb::schema::ExternalType>(types.type(selected).definition)
-                    .cpp_type.dependencies.empty());
+    auto const selected{*types.find_registered(storage.strings.find("external_a"))};
+    EXPECT_TRUE(storage.cpp_types
+                    .dependencies(
+                        types.definitions().externals.cpp_type[types.definitions().externals.index(
+                            types.definition(selected))])
+                    .empty());
     ASSERT_EQ(types.type_uses().size(), 1);
-    EXPECT_FALSE(types.type_uses().front().target.cpp_type.dependencies.empty());
+    EXPECT_FALSE(storage.cpp_types
+                     .dependencies(types.occurrences().cpp_type[types.occurrences().index(
+                         types.target(types.type_uses().front()))])
+                     .empty());
     auto const request{external_probe_request(types, selected)};
     EXPECT_EQ(request.spellings,
               (std::vector<std::string>{"sdk::ExternalValue", "sdk::ExternalValue*"}));
@@ -133,7 +192,8 @@ TEST(ProfileProbe, UnionsHeadersAcrossAlternateRegistrationsAndNestedDependencie
                   "sdk/Extra Detail.hpp", "sdk/config.hpp", "sdk/external_value.hpp"}));
     EXPECT_TRUE(request.diagnostics.empty());
     for (auto const name : {"external_a", "external_b", "external_unused"}) {
-        auto const repeated{external_probe_request(types, *types.find_registered(name))};
+        auto const repeated{
+            external_probe_request(types, *types.find_registered(storage.strings.find(name)))};
         EXPECT_EQ(repeated.spellings, request.spellings);
         EXPECT_EQ(repeated.headers, request.headers);
         EXPECT_EQ(repeated.diagnostics, request.diagnostics);
@@ -151,25 +211,46 @@ TEST(ProfileProbe, UnionsHeadersAcrossAlternateRegistrationsAndNestedDependencie
 }
 
 TEST(ProfileProbe, IncludesHeadersIntroducedByResolvedUses) {
-    codegen::Manifest manifest{};
-    manifest.schema_version = codegen::manifest_schema_version;
-    codegen::NormalModuleSchema module{};
-    module.settings.name = "probe";
-    module.settings.header = "probe.h";
-    codegen::RecordSchema record{};
-    record.name = "Uses";
-    codegen::RecordMemberSchema member{};
-    member.name = "pointer";
-    member.type = codegen::TypeRef{"std::uint16_t", "*", std::nullopt};
-    record.members.push_back(member);
-    module.declarations.push_back(record);
-    manifest.modules.emplace_back(module);
+    lispb::CompilerStorage storage;
+    lispb::codegen::Manifest manifest{lispb::codegen::manifest_schema_version,
+                                      lispb::codegen::TypeRegistry{storage.registered_types},
+                                      storage.declarations,
+                                      {}};
+    manifest.schema_version = lispb::codegen::manifest_schema_version;
+    auto const member{[&] {
+        auto const new_record_members{storage.declarations.record_members.append()};
+        storage.declarations.record_members
+            .name[storage.declarations.record_members.index(new_record_members)] =
+            storage.strings.intern("pointer");
+        storage.declarations.record_members
+            .type[storage.declarations.record_members.index(new_record_members)] =
+            fixture_reference(storage, "std::uint16_t", "*");
+        return new_record_members;
+    }()};
+    manifest.modules.push_back(fixture_module(
+        storage, "probe", {[&] {
+            auto const new_records{storage.declarations.records.append()};
+            storage.declarations.records.name[storage.declarations.records.index(new_records)] =
+                storage.strings.intern("Uses");
+            storage.declarations.records.members[storage.declarations.records.index(new_records)] =
+                storage.declarations.range<lispb::codegen::RecordMemberId>({member});
+            return new_records;
+        }()}));
     auto const types{lispb::schema::resolve_type_graph(manifest)};
     auto const& use{types.type_uses().front()};
-    EXPECT_TRUE(std::get<lispb::schema::ExternalType>(types.type(use.target.type).definition)
-                    .cpp_type.dependencies.empty());
-    ASSERT_FALSE(use.target.cpp_type.dependencies.empty());
-    auto const request{external_probe_request(types, use.target.type)};
+    EXPECT_TRUE(
+        storage.cpp_types
+            .dependencies(
+                types.definitions()
+                    .externals.cpp_type[types.definitions().externals.index(types.definition(
+                        types.occurrences().type[types.occurrences().index(types.target(use))]))])
+            .empty());
+    ASSERT_FALSE(storage.cpp_types
+                     .dependencies(
+                         types.occurrences().cpp_type[types.occurrences().index(types.target(use))])
+                     .empty());
+    auto const request{external_probe_request(
+        types, types.occurrences().type[types.occurrences().index(types.target(use))])};
     EXPECT_EQ(request.headers, (std::vector<std::string>{"cstdint"}));
     EXPECT_EQ(request.spellings, (std::vector<std::string>{"std::uint16_t", "std::uint16_t*"}));
 }
@@ -192,7 +273,8 @@ type "void*" 8 8 non-integer unknown "generic target representation" compiler-pr
 )")};
     ASSERT_TRUE(profile);
     ASSERT_FALSE(profile->object_pointer_representation());
-    lispb::schema::TypeGraph const types;
+    lispb::CompilerStorage storage;
+    lispb::schema::TypeGraph const types{storage.declarations, storage.cpp_types};
     auto const exact{PhysicalFactsResolver{types, *profile}.resolve_spelling("Opaque*")};
     ASSERT_TRUE(exact.facts);
     EXPECT_EQ(exact.facts->size_bytes, 16);

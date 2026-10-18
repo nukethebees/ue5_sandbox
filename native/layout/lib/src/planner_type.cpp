@@ -3,10 +3,49 @@
 #include <ioj/layout/analyzer.hpp>
 
 #include <codegen/schema.h>
+#include <codegen/schema/declaration_handle.h>
+#include <codegen/schema/declaration_kind.h>
+#include <codegen/schema/declaration_schema.h>
+#include <codegen/schema/declarations.h>
+#include <codegen/schema/module_settings_store.h>
+#include <codegen/schema/soa_backend.h>
+#include <lispb/indices.h>
+#include <lispb/schema/enum_types.h>
+#include <lispb/schema/external_types.h>
+#include <lispb/schema/facade_types.h>
+#include <lispb/schema/fixed_point_types.h>
+#include <lispb/schema/homogeneous_storage_types.h>
+#include <lispb/schema/indices.h>
+#include <lispb/schema/integer_domain.h>
+#include <lispb/schema/integer_scalar_types.h>
+#include <lispb/schema/integer_varint_types.h>
+#include <lispb/schema/linear_quantized_types.h>
+#include <lispb/schema/mini_float_types.h>
+#include <lispb/schema/optional_presence_bit_types.h>
+#include <lispb/schema/optional_sentinel_types.h>
+#include <lispb/schema/packed_types.h>
+#include <lispb/schema/record_types.h>
+#include <lispb/schema/soa_source_kind.h>
+#include <lispb/schema/soa_types.h>
+#include <lispb/schema/static_table_types.h>
+#include <lispb/schema/tagged_union_types.h>
+#include <lispb/schema/type_definitions.h>
+#include <lispb/schema/type_graph.h>
+#include <lispb/schema/type_identity.h>
+#include <lispb/schema/type_origin.h>
+#include <lispb/schema/union_types.h>
+#include <lispb/strings.h>
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <map>
+#include <ranges>
+#include <span>
+#include <string>
 #include <type_traits>
-#include <variant>
+#include <utility>
+#include <vector>
 
 namespace ioj::layout {
 
@@ -20,42 +59,76 @@ auto external_dependencies(lispb::schema::TypeGraph const& types, AbiProfile con
     };
     for (std::size_t index{}; index < types.types().size(); ++index) {
         auto const& node{types.types()[index]};
-        auto const* external{std::get_if<lispb::schema::ExternalType>(&node.definition)};
-        if (external == nullptr) {
+        auto const external{
+            ((types.definition(node)).kind() == lispb::schema::TypeDefinitionKind::external
+                 ? std::optional{types.definition(node)}
+                 : std::nullopt)};
+        if (!external) {
             continue;
         }
-        if (node.cpp_spelling == "void" || node.cpp_spelling == "auto" ||
-            node.cpp_spelling == "decltype(auto)") {
+        if (std::string{types.strings().view(types.cpp_spelling(node))} == "void" ||
+            std::string{types.strings().view(types.cpp_spelling(node))} == "auto" ||
+            std::string{types.strings().view(types.cpp_spelling(node))} == "decltype(auto)") {
             continue;
         }
-        auto& entry{grouped[codegen::native_spelling(node.cpp_spelling)]};
-        entry.cpp_spelling = codegen::native_spelling(node.cpp_spelling);
+        auto& entry{grouped[lispb::codegen::native_spelling(
+            std::string{types.strings().view(types.cpp_spelling(node))})]};
+        entry.cpp_spelling = lispb::codegen::native_spelling(
+            std::string{types.strings().view(types.cpp_spelling(node))});
         entry.types.push_back(lispb::schema::TypeId{static_cast<std::uint32_t>(index)});
         if (abi != nullptr) {
             entry.physical_facts =
                 PhysicalFactsResolver{types, *abi}.resolve(entry.types.back()).facts;
         }
         entry.semantics_known =
-            entry.semantics_known || !std::holds_alternative<std::monostate>(external->semantics);
-        for (auto const& name : external->registered_names) {
-            append_unique(entry.registered_names, name);
+            entry.semantics_known ||
+            (types.definitions()
+                 .externals.integer_semantics[types.definitions().externals.index(*external)]
+                 .has_value() ||
+             types.definitions()
+                 .externals.floating_semantics[types.definitions().externals.index(*external)]
+                 .has_value());
+        for (auto const& name : types.definitions().externals.registered_names_of(*external)) {
+            append_unique(entry.registered_names, std::string{types.strings().view(name)});
         }
     }
     for (std::size_t index{}; index < types.type_uses().size(); ++index) {
         auto const& use{types.type_uses()[index]};
-        auto const& node{types.type(use.target.type)};
-        if (!std::holds_alternative<lispb::schema::ExternalType>(node.definition)) {
+        auto const& node{types.occurrences().type[types.occurrences().index(types.target(use))]};
+        if (!((types.definition(node)).kind() == lispb::schema::TypeDefinitionKind::external)) {
             continue;
         }
-        auto const found{grouped.find(codegen::native_spelling(node.cpp_spelling))};
+        auto const found{grouped.find(lispb::codegen::native_spelling(
+            std::string{types.strings().view(types.cpp_spelling(node))}))};
         if (found == grouped.end()) {
             continue;
         }
         auto& entry{found->second};
-        entry.uses.push_back(index);
-        append_unique(entry.modules, use.module_name);
-        if (use.declaration.has_value()) {
-            append_unique(entry.declarations, *use.declaration);
+        entry.uses.push_back(use);
+        append_unique(
+            entry.modules,
+            std::string{types.strings().view(
+                types.declarations()
+                    .module_settings_store.name[types.declarations().module_settings_store.index(
+                        types.declarations().module_settings(types.module(use)))])});
+        if (types.declaration(use).value != 0) {
+            auto const settings{types.declarations().module_settings(types.module(use))};
+            append_unique(
+                entry.declarations,
+                lispb::schema::TypeIdentity{
+                    .origin = lispb::schema::TypeOrigin::declaration,
+                    .module_name =
+                        types.declarations()
+                            .module_settings_store
+                            .name[types.declarations().module_settings_store.index(settings)],
+                    .namespace_name =
+                        types.declarations()
+                            .module_settings_store
+                            .namespace_name[types.declarations().module_settings_store.index(
+                                settings)]
+                            .value_or(lispb::IdentifierId{}),
+                    .name = lispb::codegen::declaration_name(types.declarations(),
+                                                             types.declaration(use))});
         }
     }
     std::vector<ExternalDependency> result;
@@ -75,27 +148,39 @@ auto analyze_external_type(lispb::schema::TypeGraph const& types,
                            std::uint64_t const capacity,
                            SoaAllocationStrategy const allocation_strategy)
     -> ExternalTypeAnalysis {
-    auto const& node{types.type(type)};
-    auto const& external{std::get<lispb::schema::ExternalType>(node.definition)};
+    auto const& node{type};
+    auto const& external{types.definition(node)};
     PhysicalFactsResolver resolver{types, abi, &variant};
-    ExternalTypeAnalysis result{.semantics_known =
-                                    !std::holds_alternative<std::monostate>(external.semantics),
-                                .physical = resolver.resolve(type),
-                                .blocked_declarations = {}};
+    ExternalTypeAnalysis result{
+        .semantics_known =
+            (types.definitions()
+                 .externals.integer_semantics[types.definitions().externals.index(external)]
+                 .has_value() ||
+             types.definitions()
+                 .externals.floating_semantics[types.definitions().externals.index(external)]
+                 .has_value()),
+        .physical = resolver.resolve(type),
+        .blocked_declarations = {}};
     if (result.physical.facts.has_value()) {
         return result;
     }
-    auto const spelling{codegen::native_spelling(node.cpp_spelling)};
+    auto const spelling{lispb::codegen::native_spelling(
+        std::string{types.strings().view(types.cpp_spelling(node))})};
     auto const count{types.types().size()};
     for (std::size_t index{}; index < count; ++index) {
         auto const id{lispb::schema::TypeId{static_cast<std::uint32_t>(index)}};
-        auto const& candidate{types.type(id)};
-        if (candidate.identity.origin != lispb::schema::TypeOrigin::declaration) {
+        auto const& candidate{id};
+        if (types.origin(candidate) != lispb::schema::TypeOrigin::declaration) {
             continue;
         }
         std::vector<Diagnostic> diagnostics;
-        if (auto const* soa{std::get_if<lispb::schema::SoaType>(&candidate.definition)};
-            soa != nullptr && soa->backend == codegen::SoaBackend::standard_library) {
+        if (auto const soa{
+                ((types.definition(candidate)).kind() == lispb::schema::TypeDefinitionKind::soa
+                     ? std::optional{types.definition(candidate)}
+                     : std::nullopt)};
+            static_cast<bool>(soa) &&
+            types.definitions().soas.backend[types.definitions().soas.index(*soa)] ==
+                lispb::codegen::SoaBackend::standard_library) {
             diagnostics =
                 Analyzer::analyze_soa(types, id, variant, abi, capacity, allocation_strategy)
                     .diagnostics;
@@ -105,7 +190,9 @@ auto analyze_external_type(lispb::schema::TypeGraph const& types,
         if (std::ranges::any_of(diagnostics, [&](auto const& diagnostic) {
                 return diagnostic.missing_physical_type == spelling;
             })) {
-            auto const owner{candidate.owning_declaration.value_or(candidate.identity)};
+            auto owner{types.identity(candidate)};
+            owner.name = lispb::codegen::declaration_name(types.declarations(),
+                                                          types.source_declaration(candidate));
             if (std::ranges::find(result.blocked_declarations, owner) ==
                 result.blocked_declarations.end()) {
                 result.blocked_declarations.push_back(owner);
@@ -133,121 +220,133 @@ auto status(std::vector<Diagnostic> const& diagnostics, bool const facts_availab
 
 } // namespace
 
-auto integer_source_reference(lispb::schema::TypeNode const& node) -> std::string {
-    return node.identity.origin == lispb::schema::TypeOrigin::registered_external
-             ? "@" + node.identity.name
-             : node.cpp_spelling;
+auto integer_source_reference(lispb::schema::TypeGraph const& types,
+                              lispb::schema::TypeId const node) -> std::string {
+    return types.origin(node) == lispb::schema::TypeOrigin::registered_external
+             ? "@" + std::string{types.strings().view(types.name(node))}
+             : std::string{types.strings().view(types.cpp_spelling(node))};
 }
 
-auto declaration_capabilities(lispb::schema::TypeNode const& node) -> DeclarationCapabilities {
-    auto result{std::visit(
-        [](auto const& definition) -> DeclarationCapabilities {
-            using Type = std::decay_t<decltype(definition)>;
-            if constexpr (std::is_same_v<Type, lispb::schema::ExternalType>) {
-                return {.kind = DeclarationKind::external, .inspectable = true};
-            } else if constexpr (std::is_same_v<Type, lispb::schema::EnumType>) {
-                return {.kind = DeclarationKind::enumeration,
-                        .inspectable = true,
-                        .editable = true,
-                        .physical_analysis_available = true};
-            } else if constexpr (std::is_same_v<Type, lispb::schema::IntegerScalarType>) {
-                return {.kind = DeclarationKind::integer_scalar,
-                        .inspectable = true,
-                        .editable = true,
-                        .physical_analysis_available = true};
-            } else if constexpr (std::is_same_v<Type, lispb::schema::LinearQuantizedType>) {
-                return {.kind = DeclarationKind::linear_quantized,
-                        .inspectable = true,
-                        .editable = true,
-                        .physical_analysis_available = true};
-            } else if constexpr (std::is_same_v<Type, lispb::schema::IntegerVarintType>) {
-                return {.kind = DeclarationKind::integer_varint,
-                        .inspectable = true,
-                        .editable = true,
-                        .physical_analysis_available = true};
-            } else if constexpr (std::is_same_v<Type, lispb::schema::FixedPointType>) {
-                return {.kind = DeclarationKind::fixed_point,
-                        .inspectable = true,
-                        .editable = true,
-                        .physical_analysis_available = true};
-            } else if constexpr (std::is_same_v<Type, lispb::schema::MiniFloatType>) {
-                return {.kind = DeclarationKind::mini_float,
-                        .inspectable = true,
-                        .editable = true,
-                        .physical_analysis_available = true};
-            } else if constexpr (std::is_same_v<Type, lispb::schema::OptionalSentinelType>) {
-                return {.kind = DeclarationKind::optional_sentinel,
-                        .inspectable = true,
-                        .editable = true,
-                        .physical_analysis_available = true};
-            } else if constexpr (std::is_same_v<Type, lispb::schema::OptionalPresenceBitType>) {
-                return {.kind = DeclarationKind::optional_presence_bit,
-                        .inspectable = true,
-                        .editable = true,
-                        .physical_analysis_available = true};
-            } else if constexpr (std::is_same_v<Type, lispb::schema::PackedType>) {
-                return {.kind = DeclarationKind::packed,
-                        .inspectable = true,
-                        .editable = true,
-                        .physical_analysis_available = true,
-                        .supports_variant_overrides = true};
-            } else if constexpr (std::is_same_v<Type, lispb::schema::RecordType>) {
-                return {.kind = DeclarationKind::record,
-                        .inspectable = true,
-                        .editable = true,
-                        .physical_analysis_available = true};
-            } else if constexpr (std::is_same_v<Type, lispb::schema::UnionType>) {
-                return {.kind = DeclarationKind::union_,
-                        .inspectable = true,
-                        .editable = true,
-                        .physical_analysis_available = true};
-            } else if constexpr (std::is_same_v<Type, lispb::schema::TaggedUnionType>) {
-                return {.kind = DeclarationKind::tagged_union,
-                        .inspectable = true,
-                        .editable = true,
-                        .physical_analysis_available = true};
-            } else if constexpr (std::is_same_v<Type, lispb::schema::StaticTableType>) {
-                return {
-                    .kind = DeclarationKind::static_table, .inspectable = true, .editable = true};
-            } else if constexpr (std::is_same_v<Type, lispb::schema::FacadeType>) {
-                return {.kind = DeclarationKind::facade, .inspectable = true, .editable = true};
-            } else if constexpr (std::is_same_v<Type, lispb::schema::HomogeneousStorageType>) {
-                return {.kind = DeclarationKind::homogeneous_layout,
-                        .inspectable = true,
-                        .editable = true};
-            } else {
-                auto const supported{definition.backend == codegen::SoaBackend::standard_library};
-                auto const vector{definition.source_kind == lispb::schema::SoaSourceKind::vector};
-                return {.kind = vector ? DeclarationKind::vector_soa : DeclarationKind::soa,
-                        .inspectable = true,
-                        .editable = supported && !vector,
-                        .physical_analysis_available = supported,
-                        .supports_variant_overrides = supported};
-            }
-        },
-        node.definition)};
-    return result;
+auto declaration_capabilities(lispb::schema::TypeGraph const& types,
+                              lispb::schema::TypeId const node) -> DeclarationCapabilities {
+    switch ((types.definition(node)).kind()) {
+        case lispb::schema::TypeDefinitionKind::external: {
+            return {.kind = DeclarationKind::external, .inspectable = true};
+        }
+        case lispb::schema::TypeDefinitionKind::enumeration: {
+            return {.kind = DeclarationKind::enumeration,
+                    .inspectable = true,
+                    .editable = true,
+                    .physical_analysis_available = true};
+        }
+        case lispb::schema::TypeDefinitionKind::integer_scalar: {
+            return {.kind = DeclarationKind::integer_scalar,
+                    .inspectable = true,
+                    .editable = true,
+                    .physical_analysis_available = true};
+        }
+        case lispb::schema::TypeDefinitionKind::linear_quantized: {
+            return {.kind = DeclarationKind::linear_quantized,
+                    .inspectable = true,
+                    .editable = true,
+                    .physical_analysis_available = true};
+        }
+        case lispb::schema::TypeDefinitionKind::integer_varint: {
+            return {.kind = DeclarationKind::integer_varint,
+                    .inspectable = true,
+                    .editable = true,
+                    .physical_analysis_available = true};
+        }
+        case lispb::schema::TypeDefinitionKind::fixed_point: {
+            return {.kind = DeclarationKind::fixed_point,
+                    .inspectable = true,
+                    .editable = true,
+                    .physical_analysis_available = true};
+        }
+        case lispb::schema::TypeDefinitionKind::mini_float: {
+            return {.kind = DeclarationKind::mini_float,
+                    .inspectable = true,
+                    .editable = true,
+                    .physical_analysis_available = true};
+        }
+        case lispb::schema::TypeDefinitionKind::optional_sentinel: {
+            return {.kind = DeclarationKind::optional_sentinel,
+                    .inspectable = true,
+                    .editable = true,
+                    .physical_analysis_available = true};
+        }
+        case lispb::schema::TypeDefinitionKind::optional_presence_bit: {
+            return {.kind = DeclarationKind::optional_presence_bit,
+                    .inspectable = true,
+                    .editable = true,
+                    .physical_analysis_available = true};
+        }
+        case lispb::schema::TypeDefinitionKind::packed: {
+            return {.kind = DeclarationKind::packed,
+                    .inspectable = true,
+                    .editable = true,
+                    .physical_analysis_available = true,
+                    .supports_variant_overrides = true};
+        }
+        case lispb::schema::TypeDefinitionKind::record: {
+            return {.kind = DeclarationKind::record,
+                    .inspectable = true,
+                    .editable = true,
+                    .physical_analysis_available = true};
+        }
+        case lispb::schema::TypeDefinitionKind::union_type: {
+            return {.kind = DeclarationKind::union_,
+                    .inspectable = true,
+                    .editable = true,
+                    .physical_analysis_available = true};
+        }
+        case lispb::schema::TypeDefinitionKind::tagged_union: {
+            return {.kind = DeclarationKind::tagged_union,
+                    .inspectable = true,
+                    .editable = true,
+                    .physical_analysis_available = true};
+        }
+        case lispb::schema::TypeDefinitionKind::static_table: {
+            return {.kind = DeclarationKind::static_table, .inspectable = true, .editable = true};
+        }
+        case lispb::schema::TypeDefinitionKind::facade: {
+            return {.kind = DeclarationKind::facade, .inspectable = true, .editable = true};
+        }
+        case lispb::schema::TypeDefinitionKind::homogeneous_storage: {
+            return {
+                .kind = DeclarationKind::homogeneous_layout, .inspectable = true, .editable = true};
+        }
+        case lispb::schema::TypeDefinitionKind::soa: {
+            auto const supported{
+                types.definitions()
+                    .soas.backend[types.definitions().soas.index(types.definition(node))] ==
+                lispb::codegen::SoaBackend::standard_library};
+            auto const vector{types.definitions().soas.source_kind[types.definitions().soas.index(
+                                  types.definition(node))] == lispb::schema::SoaSourceKind::vector};
+            return {.kind = vector ? DeclarationKind::vector_soa : DeclarationKind::soa,
+                    .inspectable = true,
+                    .editable = supported && !vector,
+                    .physical_analysis_available = supported,
+                    .supports_variant_overrides = supported};
+        }
+        default:
+            std::unreachable();
+    }
 }
 
-auto declaration_capabilities(codegen::DeclarationSchema const& declaration)
+auto declaration_capabilities(lispb::codegen::DeclarationHandle const declaration)
     -> DeclarationCapabilities {
-    return std::visit(
-        [](auto const& schema) -> DeclarationCapabilities {
-            using Type = std::decay_t<decltype(schema)>;
-            if constexpr (std::is_same_v<Type, codegen::HomogeneousLayoutSchema>) {
-                return {.kind = DeclarationKind::homogeneous_layout,
-                        .inspectable = true,
-                        .editable = true};
-            } else if constexpr (std::is_same_v<Type, codegen::StaticTableSchema>) {
-                return {
-                    .kind = DeclarationKind::static_table, .inspectable = true, .editable = true};
-            } else if constexpr (std::is_same_v<Type, codegen::FacadeSchema>) {
-                return {.kind = DeclarationKind::facade, .inspectable = true, .editable = true};
-            } else {
-                return {};
-            }
-        },
-        declaration);
+    switch (declaration.kind()) {
+        case lispb::codegen::DeclarationKind::homogeneous_layout:
+            return {
+                .kind = DeclarationKind::homogeneous_layout, .inspectable = true, .editable = true};
+        case lispb::codegen::DeclarationKind::static_table:
+            return {.kind = DeclarationKind::static_table, .inspectable = true, .editable = true};
+        case lispb::codegen::DeclarationKind::facade:
+            return {.kind = DeclarationKind::facade, .inspectable = true, .editable = true};
+        default:
+            return {};
+    }
 }
 
 auto declaration_kind_label(DeclarationKind const kind) -> char const* {
@@ -318,64 +417,67 @@ auto declaration_status(lispb::schema::TypeGraph const& types,
                         SoaAllocationStrategy const allocation_strategy,
                         std::span<RelationshipTargetFacts const> relationship_targets)
     -> LayoutStatus {
-    if (!type.valid() || type.value >= types.types().size()) {
+    if (!lispb::schema::is_valid(type) || type.value >= types.types().size()) {
         return LayoutStatus::error;
     }
-    auto const& definition{types.type(type).definition};
-    if (std::holds_alternative<lispb::schema::ExternalType>(definition)) {
+    auto const& definition{types.definition(type)};
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::external)) {
         auto const physical{PhysicalFactsResolver{types, abi, &variant}.resolve(type)};
         return status(physical.diagnostics, physical.facts.has_value());
     }
-    if (!declaration_capabilities(types.type(type)).physical_analysis_available) {
+    if (!declaration_capabilities(types, type).physical_analysis_available) {
         return LayoutStatus::unknown;
     }
-    if (std::holds_alternative<lispb::schema::EnumType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::enumeration)) {
         auto const analysis{Analyzer::analyze_enum(types, type, abi, element_count)};
         return status(analysis.diagnostics, analysis.backing_facts.has_value());
     }
-    if (std::holds_alternative<lispb::schema::PackedType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::packed)) {
         auto const analysis{Analyzer::analyze_packed(
             types, type, variant, abi, element_count, relationship_targets)};
         return status(analysis.diagnostics, analysis.storage_facts.has_value());
     }
-    if (std::holds_alternative<lispb::schema::RecordType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::record)) {
         auto const analysis{Analyzer::analyze_record(types, type, abi, element_count)};
         return status(analysis.diagnostics, analysis.size_bytes.has_value());
     }
-    if (std::holds_alternative<lispb::schema::UnionType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::union_type)) {
         auto const analysis{Analyzer::analyze_union(types, type, abi, element_count)};
         return status(analysis.diagnostics, analysis.size_bytes.has_value());
     }
-    if (std::holds_alternative<lispb::schema::TaggedUnionType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::tagged_union)) {
         auto const analysis{Analyzer::analyze_tagged_union(types, type, abi, element_count)};
         return status(analysis.diagnostics, analysis.size_bytes.has_value());
     }
-    if (auto const* soa{std::get_if<lispb::schema::SoaType>(&definition)}) {
-        if (soa->backend != codegen::SoaBackend::standard_library) {
+    if (auto const soa{((definition).kind() == lispb::schema::TypeDefinitionKind::soa
+                            ? std::optional{definition}
+                            : std::nullopt)}) {
+        if (types.definitions().soas.backend[types.definitions().soas.index(*soa)] !=
+            lispb::codegen::SoaBackend::standard_library) {
             return LayoutStatus::unknown;
         }
         auto const analysis{Analyzer::analyze_soa(
             types, type, variant, abi, default_capacity, allocation_strategy)};
         return status(analysis.diagnostics, analysis.total_payload_bytes.has_value());
     }
-    if (std::holds_alternative<lispb::schema::IntegerScalarType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::integer_scalar)) {
         return status(
             Analyzer::analyze_integer_scalar(types, type, relationship_targets).diagnostics, true);
     }
-    if (std::holds_alternative<lispb::schema::LinearQuantizedType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::linear_quantized)) {
         return LayoutStatus::available;
     }
-    if (std::holds_alternative<lispb::schema::IntegerVarintType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::integer_varint)) {
         return status(Analyzer::analyze_integer_varint(types, type, element_count).diagnostics,
                       true);
     }
-    if (std::holds_alternative<lispb::schema::FixedPointType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::fixed_point)) {
         return status(Analyzer::analyze_fixed_point(types, type, element_count).diagnostics, true);
     }
-    if (std::holds_alternative<lispb::schema::MiniFloatType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::mini_float)) {
         return status(Analyzer::analyze_mini_float(types, type, element_count).diagnostics, true);
     }
-    if (std::holds_alternative<lispb::schema::OptionalSentinelType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::optional_sentinel)) {
         return status(Analyzer::analyze_optional_sentinel(types, type, element_count).diagnostics,
                       true);
     }

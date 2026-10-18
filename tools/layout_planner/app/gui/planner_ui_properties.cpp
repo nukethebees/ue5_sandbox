@@ -1,6 +1,49 @@
 #include "planner_ui_properties_common.hpp"
 
+#include <codegen/ast/cpp_types.h>
+#include <codegen/schema/declaration_handle.h>
+#include <codegen/schema/declaration_kind.h>
+#include <codegen/schema/enum_schemas.h>
+#include <codegen/schema/facade_schemas.h>
+#include <codegen/schema/fixed_point_schemas.h>
+#include <codegen/schema/floating_point_format_info.h>
+#include <codegen/schema/homogeneous_layout_schemas.h>
+#include <codegen/schema/integer_scalar_schemas.h>
+#include <codegen/schema/integer_varint_schemas.h>
+#include <codegen/schema/linear_quantized_schemas.h>
+#include <codegen/schema/mini_float_schemas.h>
+#include <codegen/schema/module_settings_store.h>
+#include <codegen/schema/optional_presence_bit_schemas.h>
+#include <codegen/schema/optional_sentinel_schemas.h>
+#include <codegen/schema/packed_named_code_schemas.h>
+#include <codegen/schema/packed_value_schemas.h>
+#include <codegen/schema/record_schemas.h>
+#include <codegen/schema/soa_backend.h>
+#include <codegen/schema/soa_member_kind.h>
+#include <codegen/schema/soa_schemas.h>
+#include <codegen/schema/static_table_schemas.h>
+#include <codegen/schema/tagged_union_schemas.h>
+#include <codegen/schema/union_schemas.h>
+#include <codegen/schema/vector_soa_schemas.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/indices.h>
+#include <lispb/schema/external_types.h>
+#include <lispb/schema/soa_columns.h>
+#include <lispb/schema/tagged_union_alternatives.h>
+#include <lispb/schema/type_definitions.h>
+#include <lispb/schema/union_alternatives.h>
+
+#include <cstddef>
+#include <cstdint>
+#include <map>
+#include <optional>
+#include <ranges>
+#include <set>
+#include <span>
+#include <string>
 #include <type_traits>
+#include <utility>
+#include <vector>
 
 namespace ioj::layout_planner {
 
@@ -9,15 +52,21 @@ void PlannerUi::draw_declaration_dependencies(TypeIdentity const& identity) {
         return;
     }
     auto const& types{analysis_session_.inputs.workspace.types()};
+    auto const declaration{document_->find_declaration(identity)};
+    auto const payload{declaration ? document_->declaration_handle(*declaration) : std::nullopt};
     std::size_t count{};
     for (auto const& use : types.type_uses()) {
-        if (use.declaration != identity) {
+        if (!payload || types.declaration(use) != *payload) {
             continue;
         }
         ImGui::PushID(static_cast<int>(count++));
-        auto const label{use.role + ": " + use.target.cpp_type.spelling};
+        auto const label{
+            lispb::codegen::type_reference_role_text(types.cpp_types().strings(), types.role(use)) +
+            ": " +
+            std::string{analysis_session_.inputs.workspace.types().cpp_types().spelling(
+                types.occurrences().cpp_type[types.occurrences().index(types.target(use))])}};
         if (ImGui::Selectable(label.c_str())) {
-            select_type(use.target.type);
+            select_type(types.occurrences().type[types.occurrences().index(types.target(use))]);
         }
         ImGui::PopID();
     }
@@ -31,25 +80,36 @@ void PlannerUi::draw_type_users(TypeId const type) {
         return;
     }
     auto const& types{analysis_session_.inputs.workspace.types()};
-    auto const& selected{types.type(type)};
-    auto const external{std::holds_alternative<ExternalType>(selected.definition)};
+    auto const& selected{type};
+    auto const external{
+        ((types.definition(selected)).kind() == lispb::schema::TypeDefinitionKind::external)};
     std::size_t count{};
     for (auto const& use : types.type_uses()) {
-        auto const& target{types.type(use.target.type)};
-        auto const matches{use.target.type == type ||
-                           (external && std::holds_alternative<ExternalType>(target.definition) &&
-                            codegen::native_spelling(target.cpp_spelling) ==
-                                codegen::native_spelling(selected.cpp_spelling))};
+        auto const& target{types.occurrences().type[types.occurrences().index(types.target(use))]};
+        auto const matches{
+            types.occurrences().type[types.occurrences().index(types.target(use))] == type ||
+            (external &&
+             ((types.definition(target)).kind() == lispb::schema::TypeDefinitionKind::external) &&
+             lispb::codegen::native_spelling(text(types.cpp_spelling(target))) ==
+                 lispb::codegen::native_spelling(text(types.cpp_spelling(selected))))};
         if (!matches) {
             continue;
         }
         ImGui::PushID(static_cast<int>(count++));
-        auto const label{use.module_name + " / " +
-                         (use.declaration.has_value() ? use.declaration->name + " / " : "") +
-                         use.role};
-        auto const declaration{document_.has_value() && use.declaration.has_value()
-                                   ? document_->find_declaration(*use.declaration)
+        auto const declaration{document_.has_value() && types.declaration(use).value != 0
+                                   ? document_->find_declaration(types.declaration(use))
                                    : std::optional<DeclarationId>{}};
+        auto const label{
+            text(declarations()
+                     .module_settings_store.name[declarations().module_settings_store.index(
+                         declarations().module_settings(types.module(use)))]) +
+            " / " +
+            (declaration ? text(document_->declarations()
+                                    .identity[document_->declarations().index(*declaration)]
+                                    .name) +
+                               " / "
+                         : "") +
+            lispb::codegen::type_reference_role_text(strings(), types.role(use))};
         if (declaration.has_value()) {
             if (ImGui::Selectable(label.c_str())) {
                 select_declaration(*declaration);
@@ -64,7 +124,7 @@ void PlannerUi::draw_type_users(TypeId const type) {
     }
 }
 
-auto PlannerUi::draw_type_picker(std::string_view const module_name, TypeIdentity const& owner)
+auto PlannerUi::draw_type_picker(lispb::IdentifierId const module_name, TypeIdentity const& owner)
     -> std::optional<std::string> {
     if (ImGui::SmallButton("...")) {
         type_picker_filter_.fill('\0');
@@ -105,37 +165,58 @@ auto PlannerUi::draw_type_picker(std::string_view const module_name, TypeIdentit
 
     ImGui::BeginChild(
         "type-candidates", {420.0F, 260.0F}, true, ImGuiWindowFlags_HorizontalScrollbar);
-    std::map<std::string, std::size_t, std::less<>> declaration_spelling_counts;
+    std::map<lispb::IdentifierId, std::size_t> declaration_spelling_counts;
+    auto const owner_id{document_->find_declaration(owner)};
+    auto const owner_payload{owner_id ? document_->declaration_handle(*owner_id) : std::nullopt};
     for (auto const& node : analysis_session_.inputs.workspace.types().types()) {
-        if (node.identity.origin == TypeOrigin::declaration) {
-            ++declaration_spelling_counts[node.cpp_spelling];
+        if (analysis_session_.inputs.workspace.types().origin(node) == TypeOrigin::declaration) {
+            ++declaration_spelling_counts[strings().intern(
+                analysis_session_.inputs.workspace.types().cpp_spelling(node))];
         }
     }
 
     if (detail::section("Declared semantic types")) {
         for (auto const& node : analysis_session_.inputs.workspace.types().types()) {
-            if (node.identity.origin != TypeOrigin::declaration ||
-                node.owning_declaration.value_or(node.identity) == owner) {
+            if (analysis_session_.inputs.workspace.types().origin(node) !=
+                    TypeOrigin::declaration ||
+                (owner_payload && analysis_session_.inputs.workspace.types().source_declaration(
+                                      node) == *owner_payload)) {
                 continue;
             }
-            auto const same_module{node.identity.module_name == module_name};
-            if (!same_module && declaration_spelling_counts[node.cpp_spelling] != 1) {
-                auto const label{node.cpp_spelling + "  [ambiguous across declaration modules]"};
+            auto const same_module{analysis_session_.inputs.workspace.types().module_name(node) ==
+                                   module_name};
+            if (!same_module &&
+                declaration_spelling_counts[strings().intern(
+                    analysis_session_.inputs.workspace.types().cpp_spelling(node))] != 1) {
+                auto const label{
+                    text(analysis_session_.inputs.workspace.types().cpp_spelling(node)) +
+                    "  [ambiguous across declaration modules]"};
                 if (filter.empty() || lowercase(label).find(filter) != std::string::npos) {
                     ImGui::TextDisabled("%s", label.c_str());
                 }
                 continue;
             }
-            auto reference{same_module ? node.identity.name : node.cpp_spelling};
-            draw_candidate(std::move(reference), "declared in " + node.identity.module_name);
+            auto reference{
+                same_module ? text(analysis_session_.inputs.workspace.types().name(node))
+                            : text(analysis_session_.inputs.workspace.types().cpp_spelling(node))};
+            draw_candidate(std::move(reference),
+                           "declared in " +
+                               text(analysis_session_.inputs.workspace.types().module_name(node)));
         }
     }
     if (detail::section("Registered semantic types")) {
         auto const owner_type{analysis_session_.inputs.workspace.types().find(owner)};
-        for (auto const& [name, registered] : document_->manifest().types) {
-            auto const type{analysis_session_.inputs.workspace.types().find_registered(name)};
+        for (auto const& [name_id, registered] : document_->manifest().types.entries) {
+            auto const name{std::string{
+                analysis_session_.inputs.workspace.types().cpp_types().strings().view(name_id)}};
+            auto const type{analysis_session_.inputs.workspace.types().find_registered(name_id)};
             if (type.has_value() && type != owner_type) {
-                draw_candidate("@" + name, registered.cpp_type.spelling);
+                draw_candidate(
+                    "@" + name,
+                    std::string{analysis_session_.inputs.workspace.types().cpp_types().spelling(
+                        document_->manifest()
+                            .types.registered
+                            .cpp_type[document_->manifest().types.registered.index(registered)])});
             }
         }
     }
@@ -162,15 +243,17 @@ void PlannerUi::draw_properties_panel() {
     detail::pane_section_menu();
     if (auto const selected{analysis_session_.inputs.selection.type};
         selected.has_value() && document_.has_value()) {
-        auto const& node{analysis_session_.inputs.workspace.types().type(*selected)};
-        if (std::holds_alternative<StaticTableType>(node.definition) ||
-            std::holds_alternative<FacadeType>(node.definition) ||
-            std::holds_alternative<HomogeneousStorageType>(node.definition)) {
-            auto const declaration{
-                document_->find_declaration(node.owning_declaration.value_or(node.identity))};
+        auto const& node{*selected};
+        if (((analysis_session_.inputs.workspace.types().definition(node)).kind() ==
+             lispb::schema::TypeDefinitionKind::static_table) ||
+            ((analysis_session_.inputs.workspace.types().definition(node)).kind() ==
+             lispb::schema::TypeDefinitionKind::facade) ||
+            ((analysis_session_.inputs.workspace.types().definition(node)).kind() ==
+             lispb::schema::TypeDefinitionKind::homogeneous_storage)) {
+            auto const declaration{document_->find_declaration(
+                analysis_session_.inputs.workspace.types().source_declaration(node))};
             if (declaration.has_value()) {
-                static_cast<void>(
-                    draw_structural_declaration(*document_->declaration(*declaration)));
+                static_cast<void>(draw_structural_declaration(*declaration));
             }
             ImGui::End();
             return;
@@ -178,10 +261,10 @@ void PlannerUi::draw_properties_panel() {
     }
     if (!analysis_session_.inputs.selection.type.has_value()) {
         auto const declaration{analysis_session_.inputs.selection.declaration};
-        auto const* info{document_.has_value() && declaration.has_value()
-                             ? document_->declaration(*declaration)
-                             : nullptr};
-        if (info == nullptr) {
+        auto const info{document_.has_value() && declaration.has_value()
+                            ? document_->declarations().find(*declaration)
+                            : std::nullopt};
+        if (!info.has_value()) {
             ImGui::TextDisabled("No selection.");
             ImGui::End();
             return;
@@ -210,14 +293,18 @@ void PlannerUi::draw_properties_panel() {
     };
 
     auto const selected{*analysis_session_.inputs.selection.type};
-    auto const& node{analysis_session_.inputs.workspace.types().type(selected)};
-    auto const capabilities{declaration_capabilities(node)};
-    ImGui::Text("%s", node.identity.name.c_str());
-    ImGui::TextDisabled("%s", node.identity.module_name.c_str());
-    ImGui::TextDisabled("%s", node.cpp_spelling.c_str());
-    auto const selected_declaration{document_.has_value()
-                                        ? document_->find_declaration(node.identity)
-                                        : std::optional<DeclarationId>{}};
+    auto const& node{selected};
+    auto const capabilities{
+        declaration_capabilities(analysis_session_.inputs.workspace.types(), node)};
+    ImGui::Text("%s", text(analysis_session_.inputs.workspace.types().name(node)).c_str());
+    ImGui::TextDisabled("%s",
+                        text(analysis_session_.inputs.workspace.types().module_name(node)).c_str());
+    ImGui::TextDisabled(
+        "%s", text(analysis_session_.inputs.workspace.types().cpp_spelling(node)).c_str());
+    auto const selected_declaration{
+        document_.has_value()
+            ? document_->find_declaration(analysis_session_.inputs.workspace.types().identity(node))
+            : std::optional<DeclarationId>{}};
     if (capabilities.editable && selected_declaration.has_value() &&
         ImGui::Button("Duplicate declaration")) {
         if (duplicate_selected_declaration(node)) {
@@ -226,33 +313,70 @@ void PlannerUi::draw_properties_panel() {
         }
     }
     if (selected_declaration.has_value()) {
-        auto const* declaration_info{document_->declaration(*selected_declaration)};
-        auto const editable{document_->enum_schema(*selected_declaration) != nullptr ||
-                            document_->packed_value_schema(*selected_declaration) != nullptr ||
-                            document_->integer_scalar_schema(*selected_declaration) != nullptr ||
-                            document_->linear_quantized_schema(*selected_declaration) != nullptr ||
-                            document_->integer_varint_schema(*selected_declaration) != nullptr ||
-                            document_->fixed_point_schema(*selected_declaration) != nullptr ||
-                            document_->optional_sentinel_schema(*selected_declaration) != nullptr ||
-                            document_->optional_presence_bit_schema(*selected_declaration) !=
-                                nullptr ||
-                            document_->mini_float_schema(*selected_declaration) != nullptr ||
-                            document_->record_schema(*selected_declaration) != nullptr ||
-                            document_->union_schema(*selected_declaration) != nullptr ||
-                            document_->tagged_union_schema(*selected_declaration) != nullptr ||
-                            document_->soa_schema(*selected_declaration) != nullptr};
-        if (declaration_info != nullptr && editable && capabilities.editable) {
+        auto const declaration_info{document_->declarations().find(*selected_declaration)};
+        auto const editable{
+            document_
+                ->declaration_handle(*selected_declaration,
+                                     lispb::codegen::DeclarationKind::enumeration)
+                .has_value() ||
+            document_
+                ->declaration_handle(*selected_declaration,
+                                     lispb::codegen::DeclarationKind::packed_value)
+                .has_value() ||
+            document_
+                ->declaration_handle(*selected_declaration,
+                                     lispb::codegen::DeclarationKind::integer_scalar)
+                .has_value() ||
+            document_
+                ->declaration_handle(*selected_declaration,
+                                     lispb::codegen::DeclarationKind::linear_quantized)
+                .has_value() ||
+            document_
+                ->declaration_handle(*selected_declaration,
+                                     lispb::codegen::DeclarationKind::integer_varint)
+                .has_value() ||
+            document_
+                ->declaration_handle(*selected_declaration,
+                                     lispb::codegen::DeclarationKind::fixed_point)
+                .has_value() ||
+            document_
+                ->declaration_handle(*selected_declaration,
+                                     lispb::codegen::DeclarationKind::optional_sentinel)
+                .has_value() ||
+            document_
+                ->declaration_handle(*selected_declaration,
+                                     lispb::codegen::DeclarationKind::optional_presence_bit)
+                .has_value() ||
+            document_
+                ->declaration_handle(*selected_declaration,
+                                     lispb::codegen::DeclarationKind::mini_float)
+                .has_value() ||
+            document_
+                ->declaration_handle(*selected_declaration, lispb::codegen::DeclarationKind::record)
+                .has_value() ||
+            document_
+                ->declaration_handle(*selected_declaration,
+                                     lispb::codegen::DeclarationKind::union_type)
+                .has_value() ||
+            document_
+                ->declaration_handle(*selected_declaration,
+                                     lispb::codegen::DeclarationKind::tagged_union)
+                .has_value() ||
+            document_
+                ->declaration_handle(*selected_declaration, lispb::codegen::DeclarationKind::soa)
+                .has_value()};
+        if (declaration_info.has_value() && editable && capabilities.editable) {
             auto const& modules{document_->manifest().modules};
-            auto const& source_module{modules[declaration_info->module_index]};
-            auto const& source_settings{std::visit(
-                [](auto const& module) -> codegen::ModuleSettings const& {
-                    return module.settings;
-                },
-                source_module)};
+            auto const& source_module{
+                modules[document_->declarations()
+                            .module_index[document_->declarations().index(*declaration_info)]]};
+            auto const& source_settings{declarations().module_settings(source_module)};
             std::vector<std::size_t> destinations;
             for (std::size_t index{}; index < modules.size(); ++index) {
-                if (index == declaration_info->module_index ||
-                    modules[index].index() != source_module.index()) {
+                if (index ==
+                        document_->declarations()
+                            .module_index[document_->declarations().index(*declaration_info)] ||
+                    modules[index].kind() != source_module.kind()) {
                     continue;
                 }
                 destinations.push_back(index);
@@ -260,30 +384,36 @@ void PlannerUi::draw_properties_panel() {
             if (!destinations.empty()) {
                 std::optional<std::size_t> requested_destination;
                 ImGui::SetNextItemWidth(std::max(120.0F, ImGui::GetContentRegionAvail().x));
-                if (ImGui::BeginCombo("Module", source_settings.name.c_str())) {
+                if (ImGui::BeginCombo(
+                        "Module",
+                        text(declarations()
+                                 .module_settings_store
+                                 .name[declarations().module_settings_store.index(source_settings)])
+                            .c_str())) {
                     for (auto const index : destinations) {
-                        auto const& settings{std::visit(
-                            [](auto const& module) -> codegen::ModuleSettings const& {
-                                return module.settings;
-                            },
-                            modules[index])};
-                        if (ImGui::Selectable(settings.name.c_str())) {
+                        auto const& settings{declarations().module_settings(modules[index])};
+                        if (ImGui::Selectable(
+                                text(
+                                    declarations()
+                                        .module_settings_store
+                                        .name[declarations().module_settings_store.index(settings)])
+                                    .c_str())) {
                             requested_destination = index;
                         }
                     }
                     ImGui::EndCombo();
                 }
                 if (requested_destination.has_value()) {
-                    auto const& destination_settings{std::visit(
-                        [](auto const& module) -> codegen::ModuleSettings const& {
-                            return module.settings;
-                        },
-                        modules[*requested_destination])};
-                    auto selection{node.identity};
-                    selection.module_name = destination_settings.name;
-                    if (apply_document_edit(MoveDeclaration{.declaration = *selected_declaration,
-                                                            .module_index = *requested_destination,
-                                                            .insertion_index = std::nullopt},
+                    auto const& destination_settings{
+                        declarations().module_settings(modules[*requested_destination])};
+                    auto selection{analysis_session_.inputs.workspace.types().identity(node)};
+                    selection.module_name =
+                        declarations()
+                            .module_settings_store
+                            .name[declarations().module_settings_store.index(destination_settings)];
+                    if (apply_document_edit(document_->move_declaration(*selected_declaration,
+                                                                        *requested_destination,
+                                                                        std::nullopt),
                                             selection)) {
                         end_panel();
                         return;
@@ -294,16 +424,19 @@ void PlannerUi::draw_properties_panel() {
             }
         }
     }
-    auto const rename_supported{capabilities.editable && selected_declaration.has_value() &&
-                                (!std::holds_alternative<SoaType>(node.definition) ||
-                                 document_->soa_schema(*selected_declaration) != nullptr)};
+    auto const rename_supported{
+        capabilities.editable && selected_declaration.has_value() &&
+        (!((analysis_session_.inputs.workspace.types().definition(node)).kind() ==
+           lispb::schema::TypeDefinitionKind::soa) ||
+         document_->declaration_handle(*selected_declaration, lispb::codegen::DeclarationKind::soa)
+             .has_value())};
     if (rename_supported) {
         if (rename_editor_declaration_ != selected_declaration) {
             rename_editor_declaration_ = selected_declaration;
             std::snprintf(declaration_name_.data(),
                           declaration_name_.size(),
                           "%s",
-                          node.identity.name.c_str());
+                          text(analysis_session_.inputs.workspace.types().name(node)).c_str());
         }
         ImGui::SetNextItemWidth(std::max(120.0F, ImGui::GetContentRegionAvail().x - 90.0F));
         auto const submitted{ImGui::InputText("##declaration-name",
@@ -319,11 +452,12 @@ void PlannerUi::draw_properties_panel() {
         if (submitted || rename_clicked) {
             if (declaration_name_.front() == '\0') {
                 schema_edit_message_ = "Declaration name cannot be empty.";
-            } else if (node.identity.name != declaration_name_.data()) {
-                auto selection{node.identity};
-                selection.name = declaration_name_.data();
-                if (apply_document_edit(RenameDeclaration{.declaration = *selected_declaration,
-                                                          .new_name = declaration_name_.data()},
+            } else if (text(analysis_session_.inputs.workspace.types().name(node)) !=
+                       declaration_name_.data()) {
+                auto selection{analysis_session_.inputs.workspace.types().identity(node)};
+                selection.name = strings().intern(declaration_name_.data());
+                if (apply_document_edit(document_->rename_declaration(*selected_declaration,
+                                                                      declaration_name_.data()),
                                         selection)) {
                     rename_editor_declaration_.reset();
                     end_panel();
@@ -333,14 +467,15 @@ void PlannerUi::draw_properties_panel() {
         }
     }
     if (capabilities.editable && selected_declaration.has_value()) {
-        auto const* declaration_info{document_->declaration(*selected_declaration)};
-        if (declaration_info != nullptr) {
+        auto const declaration_info{document_->declarations().find(*selected_declaration)};
+        if (declaration_info.has_value()) {
             auto const user_count{
                 analysis_session_.inputs.workspace.types().users_of(selected).size()};
             ImGui::BeginDisabled(user_count != 0);
             if (ImGui::Button("Delete declaration")) {
                 delete_declaration_ = *selected_declaration;
-                delete_declaration_name_ = node.identity.name;
+                delete_declaration_name_ =
+                    text(analysis_session_.inputs.workspace.types().name(node));
                 ImGui::OpenPopup("Delete declaration?");
             }
             ImGui::EndDisabled();
@@ -374,37 +509,105 @@ void PlannerUi::draw_properties_panel() {
         ImGui::EndPopup();
     }
 
-    if (auto const* soa{std::get_if<SoaType>(&node.definition)};
-        soa != nullptr && !capabilities.physical_analysis_available) {
+    if (auto const soa{
+            ((analysis_session_.inputs.workspace.types().definition(node)).kind() ==
+                     lispb::schema::TypeDefinitionKind::soa
+                 ? std::optional{analysis_session_.inputs.workspace.types().definition(node)}
+                 : std::nullopt)};
+        static_cast<bool>(soa) && !capabilities.physical_analysis_available) {
         if (detail::section("Semantic SoA")) {
-            ImGui::Text("Backend: %s",
-                        soa->backend == codegen::SoaBackend::unreal ? "Unreal"
-                                                                    : "standard library");
-            ImGui::Text("Source kind: %s",
-                        soa->source_kind == SoaSourceKind::vector ? "vector-soa" : "struct");
-            if (soa->equivalent_type.has_value()) {
-                ImGui::Text("Equivalent type: %s", soa->equivalent_type->cpp_type.spelling.c_str());
+            ImGui::Text(
+                "Backend: %s",
+                analysis_session_.inputs.workspace.types().definitions().soas.backend
+                            [analysis_session_.inputs.workspace.types().definitions().soas.index(
+                                *soa)] == lispb::codegen::SoaBackend::unreal
+                    ? "Unreal"
+                    : "standard library");
+            ImGui::Text(
+                "Source kind: %s",
+                analysis_session_.inputs.workspace.types().definitions().soas.source_kind
+                            [analysis_session_.inputs.workspace.types().definitions().soas.index(
+                                *soa)] == SoaSourceKind::vector
+                    ? "vector-soa"
+                    : "struct");
+            if (lispb::schema::is_valid(
+                    analysis_session_.inputs.workspace.types().definitions().soas.equivalent_type
+                        [analysis_session_.inputs.workspace.types().definitions().soas.index(
+                            *soa)])) {
+                ImGui::Text(
+                    "Equivalent type: %s",
+                    std::string{
+                        analysis_session_.inputs.workspace.types().cpp_types().spelling(
+                            analysis_session_.inputs.workspace.types().occurrences().cpp_type
+                                [analysis_session_.inputs.workspace.types().occurrences().index(
+                                    analysis_session_.inputs.workspace.types()
+                                        .definitions()
+                                        .soas
+                                        .equivalent_type[analysis_session_.inputs.workspace.types()
+                                                             .definitions()
+                                                             .soas.index(*soa)])])}
+                        .c_str());
             }
-            if (soa->related_storage_name.has_value()) {
-                ImGui::Text("Related storage: %s", soa->related_storage_name->c_str());
+            if (analysis_session_.inputs.workspace.types()
+                    .definitions()
+                    .soas
+                    .related_storage_name
+                        [analysis_session_.inputs.workspace.types().definitions().soas.index(*soa)]
+                    .has_value()) {
+                ImGui::Text(
+                    "Related storage: %s",
+                    std::string{
+                        analysis_session_.inputs.workspace.types().cpp_types().strings().view(
+                            *analysis_session_.inputs.workspace.types()
+                                 .definitions()
+                                 .soas
+                                 .related_storage_name[analysis_session_.inputs.workspace.types()
+                                                           .definitions()
+                                                           .soas.index(*soa)])}
+                        .c_str());
             }
-            for (auto const& component : soa->vector_components) {
-                ImGui::BulletText("Component: %s", component.c_str());
+            for (auto const& component :
+                 analysis_session_.inputs.workspace.types().definitions().soas.vector_components_of(
+                     *soa)) {
+                ImGui::BulletText("Component: %s", text(component).c_str());
             }
-            for (auto const& column : soa->columns) {
-                auto const* kind{column.kind == codegen::SoaMemberKind::nested ? "nested SoA"
-                                                                               : "array"};
-                ImGui::BulletText("%s [%s]: %s",
-                                  column.name.c_str(),
-                                  kind,
-                                  column.semantic_type.cpp_type.spelling.c_str());
-                if (column.nested_type.has_value()) {
+            for (auto const column_id :
+                 analysis_session_.inputs.workspace.types().definitions().soas.columns_of(*soa)) {
+                auto const column{column_id};
+                auto const* kind{
+                    definitions().soa_columns.kind[definitions().soa_columns.index(column)] ==
+                            lispb::codegen::SoaMemberKind::nested
+                        ? "nested SoA"
+                        : "array"};
+                ImGui::BulletText(
+                    "%s [%s]: %s",
+                    text(definitions().soa_columns.name[definitions().soa_columns.index(column)])
+                        .c_str(),
+                    kind,
+                    std::string{
+                        analysis_session_.inputs.workspace.types().cpp_types().spelling(
+                            analysis_session_.inputs.workspace.types().occurrences().cpp_type
+                                [analysis_session_.inputs.workspace.types().occurrences().index(
+                                    definitions().soa_columns.semantic_type
+                                        [definitions().soa_columns.index(column)])])}
+                        .c_str());
+                if (definitions()
+                        .soa_columns.nested_type[definitions().soa_columns.index(column)]
+                        .has_value()) {
                     auto const& nested{
-                        analysis_session_.inputs.workspace.types().type(*column.nested_type)};
+                        *definitions()
+                             .soa_columns.nested_type[definitions().soa_columns.index(column)]};
                     ImGui::SameLine();
-                    ImGui::PushID(column.name.c_str());
-                    if (ImGui::SmallButton(nested.cpp_spelling.c_str())) {
-                        select_type(*column.nested_type);
+                    ImGui::PushID(
+                        text(
+                            definitions().soa_columns.name[definitions().soa_columns.index(column)])
+                            .c_str());
+                    if (ImGui::SmallButton(
+                            text(analysis_session_.inputs.workspace.types().cpp_spelling(nested))
+                                .c_str())) {
+                        select_type(
+                            *definitions()
+                                 .soa_columns.nested_type[definitions().soa_columns.index(column)]);
                     }
                     ImGui::PopID();
                 }
@@ -412,15 +615,40 @@ void PlannerUi::draw_properties_panel() {
             ImGui::TextWrapped(
                 "Physical layout analysis is not available for the Unreal SoA backend.");
         }
-    } else if (auto const* enumeration{std::get_if<EnumType>(&node.definition)}) {
+    } else if (auto const enumeration{
+                   ((analysis_session_.inputs.workspace.types().definition(node)).kind() ==
+                            lispb::schema::TypeDefinitionKind::enumeration
+                        ? std::optional{analysis_session_.inputs.workspace.types().definition(node)}
+                        : std::nullopt)}) {
         if (detail::section("Enum")) {
-            if (enumeration->underlying_type.has_value()) {
-                auto const& underlying{analysis_session_.inputs.workspace.types().type(
-                    enumeration->underlying_type->type)};
+            if (lispb::schema::is_valid(
+                    analysis_session_.inputs.workspace.types().definitions().enums.underlying_type
+                        [analysis_session_.inputs.workspace.types().definitions().enums.index(
+                            *enumeration)])) {
+                auto const& underlying{
+                    analysis_session_.inputs.workspace.types()
+                        .occurrences()
+                        .type[analysis_session_.inputs.workspace.types().occurrences().index(
+                            analysis_session_.inputs.workspace.types()
+                                .definitions()
+                                .enums.underlying_type[analysis_session_.inputs.workspace.types()
+                                                           .definitions()
+                                                           .enums.index(*enumeration)])]};
                 ImGui::TextUnformatted("Explicit C++ backing");
                 ImGui::SameLine();
-                if (ImGui::SmallButton(underlying.cpp_spelling.c_str())) {
-                    select_type(enumeration->underlying_type->type);
+                if (ImGui::SmallButton(
+                        text(analysis_session_.inputs.workspace.types().cpp_spelling(underlying))
+                            .c_str())) {
+                    select_type(
+                        analysis_session_.inputs.workspace.types()
+                            .occurrences()
+                            .type[analysis_session_.inputs.workspace.types().occurrences().index(
+                                analysis_session_.inputs.workspace.types()
+                                    .definitions()
+                                    .enums
+                                    .underlying_type[analysis_session_.inputs.workspace.types()
+                                                         .definitions()
+                                                         .enums.index(*enumeration)])]);
                     analysis_session_.inputs.selection.field.clear();
                     analysis_session_.inputs.selection.record_access_members.clear();
                     analysis_session_.inputs.selection.record_access_set_explicit = false;
@@ -431,8 +659,22 @@ void PlannerUi::draw_properties_panel() {
             } else {
                 ImGui::TextDisabled("Derived C++ backing: Unknown");
             }
-            if (enumeration->count.has_value()) {
-                ImGui::Text("Count sentinel: %s", enumeration->count->c_str());
+            if (analysis_session_.inputs.workspace.types()
+                    .definitions()
+                    .enums
+                    .count[analysis_session_.inputs.workspace.types().definitions().enums.index(
+                        *enumeration)]
+                    .has_value()) {
+                ImGui::Text(
+                    "Count sentinel: %s",
+                    std::string{
+                        analysis_session_.inputs.workspace.types().cpp_types().strings().view(
+                            *analysis_session_.inputs.workspace.types()
+                                 .definitions()
+                                 .enums.count[analysis_session_.inputs.workspace.types()
+                                                  .definitions()
+                                                  .enums.index(*enumeration)])}
+                        .c_str());
             }
             if (analysis_session_.results().enum_domain.has_value()) {
                 auto const& domain{*analysis_session_.results().enum_domain};
@@ -520,14 +762,18 @@ void PlannerUi::draw_properties_panel() {
                 return;
             }
         }
-    } else if (auto const* scalar{std::get_if<IntegerScalarType>(&node.definition)}) {
+    } else if (auto const scalar{
+                   ((analysis_session_.inputs.workspace.types().definition(node)).kind() ==
+                            lispb::schema::TypeDefinitionKind::integer_scalar
+                        ? std::optional{analysis_session_.inputs.workspace.types().definition(node)}
+                        : std::nullopt)}) {
         if (section_with_tooltip("Semantic integer domain",
                                  "The allowed values and named codes of this integer type, "
                                  "independent of storage.")) {
             if (analysis_session_.results().integer_scalar_analysis.has_value()) {
                 auto const& analysis{*analysis_session_.results().integer_scalar_analysis};
-                auto const minimum{codegen::format_packed_integer(analysis.minimum_value)};
-                auto const maximum{codegen::format_packed_integer(analysis.maximum_value)};
+                auto const minimum{lispb::codegen::format_packed_integer(analysis.minimum_value)};
+                auto const maximum{lispb::codegen::format_packed_integer(analysis.maximum_value)};
                 ImGui::Text("Signedness: %s", analysis.signedness ? "signed" : "unsigned");
                 ImGui::Text("Live range: %s .. %s", minimum.c_str(), maximum.c_str());
                 ImGui::Text("Live values: %s",
@@ -553,22 +799,44 @@ void PlannerUi::draw_properties_panel() {
                 return;
             }
         }
-    } else if (auto const* quantized{std::get_if<LinearQuantizedType>(&node.definition)}) {
+    } else if (auto const quantized{
+                   ((analysis_session_.inputs.workspace.types().definition(node)).kind() ==
+                            lispb::schema::TypeDefinitionKind::linear_quantized
+                        ? std::optional{analysis_session_.inputs.workspace.types().definition(node)}
+                        : std::nullopt)}) {
         if (detail::section("Linear quantized representation")) {
             auto const& source{
-                analysis_session_.inputs.workspace.types().type(quantized->source.type)};
+                analysis_session_.inputs.workspace.types()
+                    .occurrences()
+                    .type[analysis_session_.inputs.workspace.types().occurrences().index(
+                        analysis_session_.inputs.workspace.types()
+                            .definitions()
+                            .linear_quantized.source[analysis_session_.inputs.workspace.types()
+                                                         .definitions()
+                                                         .linear_quantized.index(*quantized)])]};
             ImGui::TextUnformatted("Semantic source");
             ImGui::SameLine();
-            if (ImGui::SmallButton(source.cpp_spelling.c_str())) {
-                select_type(quantized->source.type);
+            if (ImGui::SmallButton(
+                    text(analysis_session_.inputs.workspace.types().cpp_spelling(source))
+                        .c_str())) {
+                select_type(
+                    analysis_session_.inputs.workspace.types()
+                        .occurrences()
+                        .type[analysis_session_.inputs.workspace.types().occurrences().index(
+                            analysis_session_.inputs.workspace.types()
+                                .definitions()
+                                .linear_quantized
+                                .source[analysis_session_.inputs.workspace.types()
+                                            .definitions()
+                                            .linear_quantized.index(*quantized)])]);
                 analysis_session_.inputs.selection.field.clear();
                 analysis_session_.inputs.selection.record_access_members.clear();
                 analysis_session_.inputs.selection.record_access_set_explicit = false;
             }
             if (analysis_session_.results().linear_quantized_analysis.has_value()) {
                 auto const& analysis{*analysis_session_.results().linear_quantized_analysis};
-                auto const minimum{codegen::format_packed_integer(analysis.source_minimum)};
-                auto const maximum{codegen::format_packed_integer(analysis.source_maximum)};
+                auto const minimum{lispb::codegen::format_packed_integer(analysis.source_minimum)};
+                auto const maximum{lispb::codegen::format_packed_integer(analysis.source_maximum)};
                 ImGui::Text("Source range: %s .. %s", minimum.c_str(), maximum.c_str());
                 ImGui::Text("Source span: %s", detail::format_number(analysis.source_span).c_str());
                 ImGui::Text("Encoded width: %u bits", analysis.encoded_storage_bits);
@@ -585,7 +853,7 @@ void PlannerUi::draw_properties_panel() {
                             analysis.minimum_endpoint_exact ? "exact" : "inexact",
                             analysis.maximum_endpoint_exact ? "exact" : "inexact");
                 ImGui::Text("Out-of-range policy: %s",
-                            codegen::quantization_clipping_name(analysis.clipping).data());
+                            lispb::codegen::quantization_clipping_name(analysis.clipping).data());
                 ImGui::TextDisabled("Resolution/error are numeric encoding facts; no performance "
                                     "estimate is made.");
             }
@@ -594,23 +862,45 @@ void PlannerUi::draw_properties_panel() {
                 return;
             }
         }
-    } else if (auto const* optional{std::get_if<OptionalSentinelType>(&node.definition)}) {
+    } else if (auto const optional{
+                   ((analysis_session_.inputs.workspace.types().definition(node)).kind() ==
+                            lispb::schema::TypeDefinitionKind::optional_sentinel
+                        ? std::optional{analysis_session_.inputs.workspace.types().definition(node)}
+                        : std::nullopt)}) {
         if (detail::section("Sentinel-encoded optional representation")) {
             auto const& source{
-                analysis_session_.inputs.workspace.types().type(optional->source.type)};
+                analysis_session_.inputs.workspace.types()
+                    .occurrences()
+                    .type[analysis_session_.inputs.workspace.types().occurrences().index(
+                        analysis_session_.inputs.workspace.types()
+                            .definitions()
+                            .optional_sentinels.source[analysis_session_.inputs.workspace.types()
+                                                           .definitions()
+                                                           .optional_sentinels.index(*optional)])]};
             ImGui::TextUnformatted("Semantic source");
             ImGui::SameLine();
-            if (ImGui::SmallButton(source.cpp_spelling.c_str())) {
-                select_type(optional->source.type);
+            if (ImGui::SmallButton(
+                    text(analysis_session_.inputs.workspace.types().cpp_spelling(source))
+                        .c_str())) {
+                select_type(
+                    analysis_session_.inputs.workspace.types()
+                        .occurrences()
+                        .type[analysis_session_.inputs.workspace.types().occurrences().index(
+                            analysis_session_.inputs.workspace.types()
+                                .definitions()
+                                .optional_sentinels
+                                .source[analysis_session_.inputs.workspace.types()
+                                            .definitions()
+                                            .optional_sentinels.index(*optional)])]);
                 analysis_session_.inputs.selection.field.clear();
                 analysis_session_.inputs.selection.record_access_members.clear();
                 analysis_session_.inputs.selection.record_access_set_explicit = false;
             }
             if (analysis_session_.results().optional_sentinel_analysis.has_value()) {
                 auto const& analysis{*analysis_session_.results().optional_sentinel_analysis};
-                auto const minimum{codegen::format_packed_integer(analysis.source_minimum)};
-                auto const maximum{codegen::format_packed_integer(analysis.source_maximum)};
-                auto const sentinel{codegen::format_packed_integer(analysis.sentinel_value)};
+                auto const minimum{lispb::codegen::format_packed_integer(analysis.source_minimum)};
+                auto const maximum{lispb::codegen::format_packed_integer(analysis.source_maximum)};
+                auto const sentinel{lispb::codegen::format_packed_integer(analysis.sentinel_value)};
                 ImGui::Text("Present range: %s .. %s", minimum.c_str(), maximum.c_str());
                 ImGui::Text("Present values: %s",
                             detail::format_number(analysis.present_value_count).c_str());
@@ -635,22 +925,45 @@ void PlannerUi::draw_properties_panel() {
                 return;
             }
         }
-    } else if (auto const* optional{std::get_if<OptionalPresenceBitType>(&node.definition)}) {
+    } else if (auto const optional{
+                   ((analysis_session_.inputs.workspace.types().definition(node)).kind() ==
+                            lispb::schema::TypeDefinitionKind::optional_presence_bit
+                        ? std::optional{analysis_session_.inputs.workspace.types().definition(node)}
+                        : std::nullopt)}) {
         if (detail::section("Presence-bit optional representation")) {
             auto const& source{
-                analysis_session_.inputs.workspace.types().type(optional->source.type)};
+                analysis_session_.inputs.workspace.types()
+                    .occurrences()
+                    .type[analysis_session_.inputs.workspace.types().occurrences().index(
+                        analysis_session_.inputs.workspace.types()
+                            .definitions()
+                            .optional_presence_bits
+                            .source[analysis_session_.inputs.workspace.types()
+                                        .definitions()
+                                        .optional_presence_bits.index(*optional)])]};
             ImGui::TextUnformatted("Semantic source");
             ImGui::SameLine();
-            if (ImGui::SmallButton(source.cpp_spelling.c_str())) {
-                select_type(optional->source.type);
+            if (ImGui::SmallButton(
+                    text(analysis_session_.inputs.workspace.types().cpp_spelling(source))
+                        .c_str())) {
+                select_type(
+                    analysis_session_.inputs.workspace.types()
+                        .occurrences()
+                        .type[analysis_session_.inputs.workspace.types().occurrences().index(
+                            analysis_session_.inputs.workspace.types()
+                                .definitions()
+                                .optional_presence_bits
+                                .source[analysis_session_.inputs.workspace.types()
+                                            .definitions()
+                                            .optional_presence_bits.index(*optional)])]);
                 analysis_session_.inputs.selection.field.clear();
                 analysis_session_.inputs.selection.record_access_members.clear();
                 analysis_session_.inputs.selection.record_access_set_explicit = false;
             }
             if (analysis_session_.results().optional_presence_bit_analysis.has_value()) {
                 auto const& analysis{*analysis_session_.results().optional_presence_bit_analysis};
-                auto const minimum{codegen::format_packed_integer(analysis.source_minimum)};
-                auto const maximum{codegen::format_packed_integer(analysis.source_maximum)};
+                auto const minimum{lispb::codegen::format_packed_integer(analysis.source_minimum)};
+                auto const maximum{lispb::codegen::format_packed_integer(analysis.source_maximum)};
                 ImGui::Text("Present range: %s .. %s", minimum.c_str(), maximum.c_str());
                 ImGui::Text("Present values: %s",
                             detail::format_number(analysis.present_value_count).c_str());
@@ -681,12 +994,18 @@ void PlannerUi::draw_properties_panel() {
                 return;
             }
         }
-    } else if (auto const* fixed{std::get_if<FixedPointType>(&node.definition)}) {
+    } else if (auto const fixed{
+                   ((analysis_session_.inputs.workspace.types().definition(node)).kind() ==
+                            lispb::schema::TypeDefinitionKind::fixed_point
+                        ? std::optional{analysis_session_.inputs.workspace.types().definition(node)}
+                        : std::nullopt)}) {
         if (detail::section("Fixed-point representation")) {
             if (analysis_session_.results().fixed_point_analysis.has_value()) {
                 auto const& analysis{*analysis_session_.results().fixed_point_analysis};
-                auto const minimum_raw{codegen::format_packed_integer(analysis.minimum_raw_value)};
-                auto const maximum_raw{codegen::format_packed_integer(analysis.maximum_raw_value)};
+                auto const minimum_raw{
+                    lispb::codegen::format_packed_integer(analysis.minimum_raw_value)};
+                auto const maximum_raw{
+                    lispb::codegen::format_packed_integer(analysis.maximum_raw_value)};
                 ImGui::Text("Signedness: %s", analysis.signedness ? "signed" : "unsigned");
                 ImGui::Text("Bit allocation: %u whole + %u fractional%s",
                             analysis.whole_bits,
@@ -703,7 +1022,7 @@ void PlannerUi::draw_properties_panel() {
                             static_cast<double>(analysis.minimum_allowed_value),
                             static_cast<double>(analysis.maximum_allowed_value));
                 ImGui::Text("Rounding: %s",
-                            codegen::fixed_point_rounding_name(analysis.rounding).data());
+                            lispb::codegen::fixed_point_rounding_name(analysis.rounding).data());
                 ImGui::Text("Maximum rounding error: %.12g",
                             static_cast<double>(analysis.maximum_rounding_error));
                 ImGui::Text("Encoded payload at %llu values: %s bits",
@@ -718,7 +1037,11 @@ void PlannerUi::draw_properties_panel() {
                 return;
             }
         }
-    } else if (auto const* mini_float{std::get_if<MiniFloatType>(&node.definition)}) {
+    } else if (auto const mini_float{
+                   ((analysis_session_.inputs.workspace.types().definition(node)).kind() ==
+                            lispb::schema::TypeDefinitionKind::mini_float
+                        ? std::optional{analysis_session_.inputs.workspace.types().definition(node)}
+                        : std::nullopt)}) {
         if (detail::section("Mini-float representation")) {
             if (analysis_session_.results().mini_float_analysis.has_value()) {
                 auto const& analysis{*analysis_session_.results().mini_float_analysis};
@@ -765,13 +1088,35 @@ void PlannerUi::draw_properties_panel() {
                 return;
             }
         }
-    } else if (auto const* varint{std::get_if<IntegerVarintType>(&node.definition)}) {
-        auto const& source{analysis_session_.inputs.workspace.types().type(varint->source.type)};
+    } else if (auto const varint{
+                   ((analysis_session_.inputs.workspace.types().definition(node)).kind() ==
+                            lispb::schema::TypeDefinitionKind::integer_varint
+                        ? std::optional{analysis_session_.inputs.workspace.types().definition(node)}
+                        : std::nullopt)}) {
+        auto const& source{
+            analysis_session_.inputs.workspace.types()
+                .occurrences()
+                .type[analysis_session_.inputs.workspace.types().occurrences().index(
+                    analysis_session_.inputs.workspace.types()
+                        .definitions()
+                        .integer_varints.source[analysis_session_.inputs.workspace.types()
+                                                    .definitions()
+                                                    .integer_varints.index(*varint)])]};
         if (detail::section("Variable-length integer representation")) {
             ImGui::TextUnformatted("Semantic source");
             ImGui::SameLine();
-            if (ImGui::SmallButton(source.cpp_spelling.c_str())) {
-                select_type(varint->source.type);
+            if (ImGui::SmallButton(
+                    text(analysis_session_.inputs.workspace.types().cpp_spelling(source))
+                        .c_str())) {
+                select_type(
+                    analysis_session_.inputs.workspace.types()
+                        .occurrences()
+                        .type[analysis_session_.inputs.workspace.types().occurrences().index(
+                            analysis_session_.inputs.workspace.types()
+                                .definitions()
+                                .integer_varints.source[analysis_session_.inputs.workspace.types()
+                                                            .definitions()
+                                                            .integer_varints.index(*varint)])]);
                 analysis_session_.inputs.selection.field.clear();
                 analysis_session_.inputs.selection.record_access_members.clear();
                 analysis_session_.inputs.selection.record_access_set_explicit = false;
@@ -779,7 +1124,7 @@ void PlannerUi::draw_properties_panel() {
             if (analysis_session_.results().integer_varint_analysis.has_value()) {
                 auto const& analysis{*analysis_session_.results().integer_varint_analysis};
                 ImGui::Text("Encoding: %s",
-                            codegen::integer_varint_encoding_name(analysis.encoding).data());
+                            lispb::codegen::integer_varint_encoding_name(analysis.encoding).data());
                 ImGui::Text("Encoded size: %u .. %u bytes/value",
                             analysis.minimum_encoded_bytes,
                             analysis.maximum_encoded_bytes);
@@ -793,7 +1138,8 @@ void PlannerUi::draw_properties_panel() {
             }
         }
         if (detail::section("Session value distribution")) {
-            auto& rows{varint_distributions_[source.identity]};
+            auto& rows{
+                varint_distributions_[analysis_session_.inputs.workspace.types().identity(source)]};
             auto remove_index{std::optional<std::size_t>{}};
             if (ImGui::BeginTable("varint-distribution",
                                   3,
@@ -886,7 +1232,8 @@ void PlannerUi::draw_properties_panel() {
                 for (auto const& entry : distribution.entries) {
                     ImGui::TableNextRow();
                     ImGui::TableNextColumn();
-                    ImGui::TextUnformatted(codegen::format_packed_integer(entry.value).c_str());
+                    ImGui::TextUnformatted(
+                        lispb::codegen::format_packed_integer(entry.value).c_str());
                     ImGui::TableNextColumn();
                     ImGui::Text("%llu", static_cast<unsigned long long>(entry.weight));
                     ImGui::TableNextColumn();
@@ -914,18 +1261,29 @@ void PlannerUi::draw_properties_panel() {
                 return;
             }
         }
-    } else if (auto const* record{std::get_if<RecordType>(&node.definition)}) {
+    } else if (auto const record{
+                   ((analysis_session_.inputs.workspace.types().definition(node)).kind() ==
+                            lispb::schema::TypeDefinitionKind::record
+                        ? std::optional{analysis_session_.inputs.workspace.types().definition(node)}
+                        : std::nullopt)}) {
         if (detail::section("LispB record declaration")) {
             if (draw_record_editor(node, *record)) {
                 end_panel();
                 return;
             }
         }
-    } else if (auto const* union_type{std::get_if<UnionType>(&node.definition)}) {
+    } else if (auto const union_type{
+                   ((analysis_session_.inputs.workspace.types().definition(node)).kind() ==
+                            lispb::schema::TypeDefinitionKind::union_type
+                        ? std::optional{analysis_session_.inputs.workspace.types().definition(node)}
+                        : std::nullopt)}) {
         if (detail::section("Raw union layout")) {
             auto const& analysis{*analysis_session_.results().union_analysis};
             ImGui::Text("Alternatives: %llu",
-                        static_cast<unsigned long long>(union_type->alternatives.size()));
+                        static_cast<unsigned long long>(analysis_session_.inputs.workspace.types()
+                                                            .definitions()
+                                                            .unions.alternatives_of(*union_type)
+                                                            .size()));
             ImGui::Text("Size: %s", detail::format_bytes(analysis.size_bytes).c_str());
             ImGui::Text("Alignment: %s", detail::format_bytes(analysis.alignment_bytes).c_str());
             ImGui::Text("Largest alternative: %s",
@@ -941,17 +1299,32 @@ void PlannerUi::draw_properties_panel() {
                         ImGui::TableSetupColumn("Alternative");
                         ImGui::TableSetupColumn("Weight");
                         ImGui::TableHeadersRow();
-                        for (auto const& alternative : union_type->alternatives) {
-                            ImGui::PushID(alternative.name.c_str());
+                        for (auto const alternative_id : analysis_session_.inputs.workspace.types()
+                                                             .definitions()
+                                                             .unions.alternatives_of(*union_type)) {
+                            auto const alternative{alternative_id};
+                            ImGui::PushID(
+                                text(definitions()
+                                         .union_alternatives
+                                         .name[definitions().union_alternatives.index(alternative)])
+                                    .c_str());
                             ImGui::TableNextRow();
                             ImGui::TableNextColumn();
-                            ImGui::TextUnformatted(alternative.name.c_str());
+                            ImGui::TextUnformatted(
+                                text(definitions()
+                                         .union_alternatives
+                                         .name[definitions().union_alternatives.index(alternative)])
+                                    .c_str());
                             ImGui::TableNextColumn();
                             auto weight{std::uint64_t{0}};
                             if (auto const* weights{
                                     analysis_session_.union_distribution(*selected_declaration)};
                                 weights != nullptr) {
-                                if (auto const found{weights->find(alternative.name)};
+                                if (auto const found{weights->find(
+                                        text(definitions()
+                                                 .union_alternatives
+                                                 .name[definitions().union_alternatives.index(
+                                                     alternative)]))};
                                     found != weights->end()) {
                                     weight = found->second;
                                 }
@@ -959,7 +1332,10 @@ void PlannerUi::draw_properties_panel() {
                             ImGui::SetNextItemWidth(-1.0F);
                             if (ImGui::InputScalar("##weight", ImGuiDataType_U64, &weight)) {
                                 analysis_session_.set_union_distribution_weight(
-                                    *selected_declaration, alternative.name, weight);
+                                    *selected_declaration,
+                                    text(definitions().union_alternatives.name
+                                             [definitions().union_alternatives.index(alternative)]),
+                                    weight);
                             }
                             ImGui::PopID();
                         }
@@ -1046,12 +1422,25 @@ void PlannerUi::draw_properties_panel() {
                 return;
             }
         }
-    } else if (auto const* tagged{std::get_if<TaggedUnionType>(&node.definition)}) {
+    } else if (auto const tagged{
+                   ((analysis_session_.inputs.workspace.types().definition(node)).kind() ==
+                            lispb::schema::TypeDefinitionKind::tagged_union
+                        ? std::optional{analysis_session_.inputs.workspace.types().definition(node)}
+                        : std::nullopt)}) {
         if (detail::section("Tagged union semantics")) {
             auto const& analysis{*analysis_session_.results().tagged_union_analysis};
             auto const& discriminant{
-                analysis_session_.inputs.workspace.types().type(tagged->discriminant.type)};
-            ImGui::Text("Discriminant: %s", discriminant.identity.name.c_str());
+                analysis_session_.inputs.workspace.types()
+                    .occurrences()
+                    .type[analysis_session_.inputs.workspace.types().occurrences().index(
+                        analysis_session_.inputs.workspace.types()
+                            .definitions()
+                            .tagged_unions.discriminant[analysis_session_.inputs.workspace.types()
+                                                            .definitions()
+                                                            .tagged_unions.index(*tagged)])]};
+            ImGui::Text(
+                "Discriminant: %s",
+                text(analysis_session_.inputs.workspace.types().name(discriminant)).c_str());
             ImGui::Text("Size: %s", detail::format_bytes(analysis.size_bytes).c_str());
             ImGui::Text("Alignment: %s", detail::format_bytes(analysis.alignment_bytes).c_str());
             ImGui::Text("Payload offset: %s",
@@ -1066,7 +1455,16 @@ void PlannerUi::draw_properties_panel() {
                         static_cast<unsigned long long>(analysis.sentinel_tags.size()),
                         analysis.count_sentinel_tag.has_value() ? ", count sentinel present" : "");
             if (ImGui::SmallButton("Go to discriminant")) {
-                select_type(tagged->discriminant.type);
+                select_type(
+                    analysis_session_.inputs.workspace.types()
+                        .occurrences()
+                        .type[analysis_session_.inputs.workspace.types().occurrences().index(
+                            analysis_session_.inputs.workspace.types()
+                                .definitions()
+                                .tagged_unions
+                                .discriminant[analysis_session_.inputs.workspace.types()
+                                                  .definitions()
+                                                  .tagged_unions.index(*tagged)])]);
                 analysis_session_.inputs.selection.field.clear();
                 end_panel();
                 return;
@@ -1080,19 +1478,41 @@ void PlannerUi::draw_properties_panel() {
                 ImGui::TableSetupColumn("Type");
                 ImGui::TableSetupColumn("Count");
                 ImGui::TableHeadersRow();
-                for (auto const& alternative : tagged->alternatives) {
+                for (auto const id : analysis_session_.inputs.workspace.types()
+                                         .definitions()
+                                         .tagged_unions.alternatives_of(*tagged)) {
+                    auto const alternative{id};
                     ImGui::TableNextRow();
                     ImGui::TableNextColumn();
-                    ImGui::TextUnformatted(alternative.tag.c_str());
+                    ImGui::TextUnformatted(
+                        text(definitions()
+                                 .tagged_union_alternatives
+                                 .tag[definitions().tagged_union_alternatives.index(alternative)])
+                            .c_str());
                     ImGui::TableNextColumn();
-                    ImGui::TextUnformatted(alternative.name.c_str());
+                    ImGui::TextUnformatted(
+                        text(definitions()
+                                 .tagged_union_alternatives
+                                 .name[definitions().tagged_union_alternatives.index(alternative)])
+                            .c_str());
                     ImGui::TableNextColumn();
-                    ImGui::TextUnformatted(analysis_session_.inputs.workspace.types()
-                                               .type(alternative.semantic_type.type)
-                                               .cpp_spelling.c_str());
+                    ImGui::TextUnformatted(
+                        text(
+                            analysis_session_.inputs.workspace.types().cpp_spelling(
+                                analysis_session_.inputs.workspace.types().occurrences().type
+                                    [analysis_session_.inputs.workspace.types().occurrences().index(
+                                        definitions().tagged_union_alternatives.semantic_type
+                                            [definitions().tagged_union_alternatives.index(
+                                                alternative)])]))
+                            .c_str());
                     ImGui::TableNextColumn();
-                    ImGui::Text("%llu",
-                                static_cast<unsigned long long>(alternative.count.value_or(1)));
+                    ImGui::Text(
+                        "%llu",
+                        static_cast<unsigned long long>(
+                            definitions()
+                                .tagged_union_alternatives
+                                .count[definitions().tagged_union_alternatives.index(alternative)]
+                                .value_or(1)));
                 }
                 ImGui::EndTable();
             }
@@ -1106,19 +1526,41 @@ void PlannerUi::draw_properties_panel() {
                         ImGui::TableSetupColumn("Alternative");
                         ImGui::TableSetupColumn("Weight");
                         ImGui::TableHeadersRow();
-                        for (auto const& alternative : tagged->alternatives) {
-                            ImGui::PushID(alternative.tag.c_str());
+                        for (auto const id : analysis_session_.inputs.workspace.types()
+                                                 .definitions()
+                                                 .tagged_unions.alternatives_of(*tagged)) {
+                            auto const alternative{id};
+                            ImGui::PushID(
+                                text(definitions()
+                                         .tagged_union_alternatives
+                                         .tag[definitions().tagged_union_alternatives.index(
+                                             alternative)])
+                                    .c_str());
                             ImGui::TableNextRow();
                             ImGui::TableNextColumn();
-                            ImGui::TextUnformatted(alternative.tag.c_str());
+                            ImGui::TextUnformatted(
+                                text(definitions()
+                                         .tagged_union_alternatives
+                                         .tag[definitions().tagged_union_alternatives.index(
+                                             alternative)])
+                                    .c_str());
                             ImGui::TableNextColumn();
-                            ImGui::TextUnformatted(alternative.name.c_str());
+                            ImGui::TextUnformatted(
+                                text(definitions()
+                                         .tagged_union_alternatives
+                                         .name[definitions().tagged_union_alternatives.index(
+                                             alternative)])
+                                    .c_str());
                             ImGui::TableNextColumn();
                             auto weight{std::uint64_t{0}};
                             if (auto const* weights{analysis_session_.tagged_union_distribution(
                                     *selected_declaration)};
                                 weights != nullptr) {
-                                if (auto const found{weights->find(alternative.tag)};
+                                if (auto const found{weights->find(
+                                        text(definitions()
+                                                 .tagged_union_alternatives
+                                                 .tag[definitions().tagged_union_alternatives.index(
+                                                     alternative)]))};
                                     found != weights->end()) {
                                     weight = found->second;
                                 }
@@ -1126,7 +1568,12 @@ void PlannerUi::draw_properties_panel() {
                             ImGui::SetNextItemWidth(-1.0F);
                             if (ImGui::InputScalar("##weight", ImGuiDataType_U64, &weight)) {
                                 analysis_session_.set_tagged_union_distribution_weight(
-                                    *selected_declaration, alternative.tag, weight);
+                                    *selected_declaration,
+                                    text(definitions()
+                                             .tagged_union_alternatives
+                                             .tag[definitions().tagged_union_alternatives.index(
+                                                 alternative)]),
+                                    weight);
                             }
                             ImGui::PopID();
                         }
@@ -1216,21 +1663,39 @@ void PlannerUi::draw_properties_panel() {
                 return;
             }
         }
-    } else if (auto const* external{std::get_if<ExternalType>(&node.definition)}) {
+    } else if (auto const external{
+                   ((analysis_session_.inputs.workspace.types().definition(node)).kind() ==
+                            lispb::schema::TypeDefinitionKind::external
+                        ? std::optional{analysis_session_.inputs.workspace.types().definition(node)}
+                        : std::nullopt)}) {
         if (detail::section("External type")) {
-            ImGui::Text("C++ spelling: %s", external->cpp_type.spelling.c_str());
-            if (!external->registered_names.empty()) {
+            ImGui::Text(
+                "C++ spelling: %s",
+                std::string{analysis_session_.inputs.workspace.types().cpp_types().spelling(
+                                analysis_session_.inputs.workspace.types()
+                                    .definitions()
+                                    .externals.cpp_type[analysis_session_.inputs.workspace.types()
+                                                            .definitions()
+                                                            .externals.index(*external)])}
+                    .c_str());
+            if (!analysis_session_.inputs.workspace.types()
+                     .definitions()
+                     .externals.registered_names_of(*external)
+                     .empty()) {
                 ImGui::TextUnformatted("Registered as");
-                for (auto const& name : external->registered_names) {
-                    ImGui::BulletText("@%s", name.c_str());
+                for (auto const& name : analysis_session_.inputs.workspace.types()
+                                            .definitions()
+                                            .externals.registered_names_of(*external)) {
+                    ImGui::BulletText("@%s", text(name).c_str());
                     if (document_.has_value()) {
-                        if (auto const source{document_->registered_type_source(name)}) {
-                            auto const& path{
-                                document_->source_files()[source->source_file_index].path};
+                        if (auto const source{document_->registered_type_source(text(name))}) {
+                            auto const& path{document_->storage().sources.filesystem_path(
+                                document_->source_span(*source).file)};
                             ImGui::TextWrapped("Source: %s:%llu",
                                                path.string().c_str(),
-                                               static_cast<unsigned long long>(source->line));
-                            ImGui::PushID(name.c_str());
+                                               static_cast<unsigned long long>(
+                                                   document_->source_location(*source).line));
+                            ImGui::PushID(text(name).c_str());
                             if (ImGui::SmallButton("View source")) {
                                 selected_source_view_path_ = path.lexically_normal();
                                 source_view_open_ = true;
@@ -1241,24 +1706,78 @@ void PlannerUi::draw_properties_panel() {
                     }
                 }
             }
-            if (auto const* scalar{integer_domain(node)}) {
-                ImGui::Text("Integer domain: %s, %u bits",
-                            scalar->signedness ? "signed" : "unsigned",
-                            scalar->bit_width);
+            if (auto const scalar{analysis_session_.inputs.workspace.types()
+                                      .definitions()
+                                      .externals
+                                      .integer_semantics[analysis_session_.inputs.workspace.types()
+                                                             .definitions()
+                                                             .externals.index(*external)]
+                                      .transform([&](TypeDefinitionId id) { return id; })}) {
+                ImGui::Text(
+                    "Integer domain: %s, %u bits",
+                    analysis_session_.inputs.workspace.types()
+                            .definitions()
+                            .integer_scalars.signedness[analysis_session_.inputs.workspace.types()
+                                                            .definitions()
+                                                            .integer_scalars.index(*scalar)]
+                        ? "signed"
+                        : "unsigned",
+                    analysis_session_.inputs.workspace.types()
+                        .definitions()
+                        .integer_scalars.bit_width[analysis_session_.inputs.workspace.types()
+                                                       .definitions()
+                                                       .integer_scalars.index(*scalar)]);
                 ImGui::Text("Live range: %s .. %s",
-                            codegen::format_packed_integer(scalar->minimum_value).c_str(),
-                            codegen::format_packed_integer(scalar->maximum_value).c_str());
-                for (auto const& code : scalar->named_codes) {
-                    ImGui::BulletText("%s = %s%s",
-                                      code.name.c_str(),
-                                      codegen::format_packed_integer(code.value).c_str(),
-                                      code.sentinel ? " [sentinel]" : "");
+                            lispb::codegen::format_packed_integer(
+                                analysis_session_.inputs.workspace.types()
+                                    .definitions()
+                                    .integer_scalars
+                                    .minimum_value[analysis_session_.inputs.workspace.types()
+                                                       .definitions()
+                                                       .integer_scalars.index(*scalar)])
+                                .c_str(),
+                            lispb::codegen::format_packed_integer(
+                                analysis_session_.inputs.workspace.types()
+                                    .definitions()
+                                    .integer_scalars
+                                    .maximum_value[analysis_session_.inputs.workspace.types()
+                                                       .definitions()
+                                                       .integer_scalars.index(*scalar)])
+                                .c_str());
+                for (auto const id : declarations().items(
+                         analysis_session_.inputs.workspace.types()
+                             .definitions()
+                             .integer_scalars.named_codes[analysis_session_.inputs.workspace.types()
+                                                              .definitions()
+                                                              .integer_scalars.index(*scalar)])) {
+                    auto const code{id};
+                    ImGui::BulletText(
+                        "%s = %s%s",
+                        text(declarations()
+                                 .packed_named_codes
+                                 .name[declarations().packed_named_codes.index(code)])
+                            .c_str(),
+                        lispb::codegen::format_packed_integer(
+                            declarations()
+                                .packed_named_codes
+                                .value[declarations().packed_named_codes.index(code)])
+                            .c_str(),
+                        declarations()
+                                .packed_named_codes
+                                .sentinel[declarations().packed_named_codes.index(code)]
+                            ? " [sentinel]"
+                            : "");
                 }
-            } else if (auto const* format{
-                           std::get_if<codegen::FloatingPointFormat>(&external->semantics)}) {
-                auto const info{codegen::floating_point_format_info(*format)};
+            } else if (auto const format{
+                           analysis_session_.inputs.workspace.types()
+                               .definitions()
+                               .externals
+                               .floating_semantics[analysis_session_.inputs.workspace.types()
+                                                       .definitions()
+                                                       .externals.index(*external)]}) {
+                auto const info{lispb::codegen::floating_point_format_info(*format)};
                 ImGui::Text("Floating-point format: %s",
-                            codegen::floating_point_format_name(*format).data());
+                            lispb::codegen::floating_point_format_name(*format).data());
                 ImGui::Text("Precision: %u binary digits", info.fraction_bits + 1);
                 ImGui::Text("Sign / exponent / fraction: 1 / %u / %u bits",
                             info.exponent_bits,
@@ -1274,14 +1793,23 @@ void PlannerUi::draw_properties_panel() {
             draw_external_facts(node);
         }
     } else {
-        if (auto const* packed{std::get_if<PackedType>(&node.definition)}) {
+        if (auto const packed{
+                ((analysis_session_.inputs.workspace.types().definition(node)).kind() ==
+                         lispb::schema::TypeDefinitionKind::packed
+                     ? std::optional{analysis_session_.inputs.workspace.types().definition(node)}
+                     : std::nullopt)}) {
             if (detail::section("LispB packed declaration")) {
                 if (draw_packed_editor(node, *packed)) {
                     end_panel();
                     return;
                 }
             }
-        } else if (auto const* soa{std::get_if<SoaType>(&node.definition)}) {
+        } else if (auto const soa{
+                       ((analysis_session_.inputs.workspace.types().definition(node)).kind() ==
+                                lispb::schema::TypeDefinitionKind::soa
+                            ? std::optional{analysis_session_.inputs.workspace.types().definition(
+                                  node)}
+                            : std::nullopt)}) {
             if (detail::section("LispB SoA declaration")) {
                 if (draw_soa_editor(node, *soa)) {
                     end_panel();
@@ -1307,7 +1835,8 @@ void PlannerUi::draw_properties_panel() {
                 }
                 ImGui::TextDisabled(
                     "Use + Add variant in the Layout panel to create an experiment.");
-                if (std::holds_alternative<SoaType>(node.definition)) {
+                if (((analysis_session_.inputs.workspace.types().definition(node)).kind() ==
+                     lispb::schema::TypeDefinitionKind::soa)) {
                     ImGui::TextDisabled("Capacity uses the planner default of %llu.",
                                         static_cast<unsigned long long>(
                                             analysis_session_.inputs.workspace.default_capacity()));
@@ -1321,7 +1850,11 @@ void PlannerUi::draw_properties_panel() {
         }
 
         ImGui::BeginDisabled(!editable);
-        if (auto const* packed{std::get_if<PackedType>(&node.definition)}) {
+        if (auto const packed{
+                ((analysis_session_.inputs.workspace.types().definition(node)).kind() ==
+                         lispb::schema::TypeDefinitionKind::packed
+                     ? std::optional{analysis_session_.inputs.workspace.types().definition(node)}
+                     : std::nullopt)}) {
             auto const& analysis{*analysis_session_.results().active_packed};
             if (detail::section("Packed storage")) {
                 ImGui::Text("Schema storage: %s",
@@ -1349,10 +1882,16 @@ void PlannerUi::draw_properties_panel() {
                     }
                 }
 
-                if (analysis_session_.inputs.selection.field.empty() && !packed->segments.empty()) {
-                    analysis_session_.inputs.selection.field = std::visit(
-                        [](auto const& segment) -> std::string const& { return segment.name; },
-                        packed->segments.front());
+                if (analysis_session_.inputs.selection.field.empty() &&
+                    !analysis_session_.inputs.workspace.types()
+                         .definitions()
+                         .packed.segments_of(*packed)
+                         .empty()) {
+                    analysis_session_.inputs.selection.field =
+                        packed_name(analysis_session_.inputs.workspace.types()
+                                        .definitions()
+                                        .packed.segments_of(*packed)
+                                        .front());
                 }
             }
             if (detail::section("Fields")) {
@@ -1374,9 +1913,12 @@ void PlannerUi::draw_properties_panel() {
                         ImGui::TableNextColumn();
                         if (field.semantic_type.has_value()) {
                             auto const& semantic_type{
-                                analysis_session_.inputs.workspace.types().type(
-                                    *field.semantic_type)};
-                            if (ImGui::SmallButton(semantic_type.cpp_spelling.c_str())) {
+
+                                *field.semantic_type};
+                            if (ImGui::SmallButton(
+                                    text(analysis_session_.inputs.workspace.types().cpp_spelling(
+                                             semantic_type))
+                                        .c_str())) {
                                 select_type(*field.semantic_type);
                                 analysis_session_.inputs.selection.field.clear();
                                 analysis_session_.inputs.selection.record_access_members.clear();
@@ -1413,7 +1955,12 @@ void PlannerUi::draw_properties_panel() {
                     ImGui::EndTable();
                 }
             }
-        } else if (auto const* soa{std::get_if<SoaType>(&node.definition)}) {
+        } else if (auto const soa{
+                       ((analysis_session_.inputs.workspace.types().definition(node)).kind() ==
+                                lispb::schema::TypeDefinitionKind::soa
+                            ? std::optional{analysis_session_.inputs.workspace.types().definition(
+                                  node)}
+                            : std::nullopt)}) {
             auto const& analysis{*analysis_session_.results().active_soa};
             if (detail::section("Planner capacity")) {
                 auto capacity{analysis.capacity};
@@ -1428,8 +1975,17 @@ void PlannerUi::draw_properties_panel() {
                     }
                 }
 
-                if (analysis_session_.inputs.selection.field.empty() && !soa->columns.empty()) {
-                    analysis_session_.inputs.selection.field = soa->columns.front().name;
+                if (analysis_session_.inputs.selection.field.empty() &&
+                    !analysis_session_.inputs.workspace.types()
+                         .definitions()
+                         .soas.columns_of(*soa)
+                         .empty()) {
+                    analysis_session_.inputs.selection.field =
+                        text(definitions().soa_columns.name[definitions().soa_columns.index(
+                            analysis_session_.inputs.workspace.types()
+                                .definitions()
+                                .soas.columns_of(*soa)
+                                .front())]);
                 }
             }
             if (detail::section("Columns")) {
@@ -1486,9 +2042,11 @@ void PlannerUi::draw_properties_panel() {
                 ImGui::TextDisabled("None");
             }
             for (auto const linked : links) {
-                auto const& linked_node{analysis_session_.inputs.workspace.types().type(linked)};
+                auto const& linked_node{linked};
                 ImGui::PushID(static_cast<int>(linked.value));
-                if (ImGui::SmallButton(linked_node.cpp_spelling.c_str())) {
+                if (ImGui::SmallButton(
+                        text(analysis_session_.inputs.workspace.types().cpp_spelling(linked_node))
+                            .c_str())) {
                     select_type(linked);
                     analysis_session_.inputs.selection.field.clear();
                     analysis_session_.inputs.selection.record_access_members.clear();
@@ -1500,204 +2058,134 @@ void PlannerUi::draw_properties_panel() {
     };
     draw_links("Depends on", analysis_session_.inputs.workspace.types().dependencies_of(selected));
     draw_links("Used by", analysis_session_.inputs.workspace.types().users_of(selected));
-    draw_declaration_dependencies(node.identity);
+    draw_declaration_dependencies(analysis_session_.inputs.workspace.types().identity(node));
     draw_type_users(selected);
     end_panel();
 }
 
-auto PlannerUi::duplicate_selected_declaration(TypeNode const& node) -> bool {
-    if (!document_.has_value()) {
+auto PlannerUi::duplicate_selected_declaration(TypeId const node) -> bool {
+    if (!document_) {
         return false;
     }
-    auto const declaration{document_->find_declaration(node.identity)};
-    if (!declaration.has_value()) {
+    auto const declaration{document_->find_declaration(
+        analysis_session_.inputs.workspace.types().source_declaration(node))};
+    if (!declaration) {
         return false;
     }
-    auto const* info{document_->declaration(*declaration)};
-    if (info == nullptr) {
-        return false;
-    }
-
-    auto name{node.identity.name + "_copy"};
-    for (auto suffix{2U};
-         analysis_session_.inputs.workspace.types().find_declared(node.identity.module_name, name);
-         ++suffix) {
-        name = node.identity.name + "_copy" + std::to_string(suffix);
-    }
-    auto selection{node.identity};
-    selection.name = name;
-    auto const id{document_->allocate_declaration_id()};
-
-    if (auto const* schema{document_->enum_schema(*declaration)}) {
-        auto copy{*schema};
-        copy.name = name;
-        return apply_document_edit(CreateEnum{.declaration = id,
-                                              .module_index = info->module_index,
-                                              .schema = std::move(copy),
-                                              .insertion_index = std::nullopt},
-                                   selection);
-    }
-    if (auto const* schema{document_->integer_scalar_schema(*declaration)}) {
-        auto copy{*schema};
-        copy.name = name;
-        return apply_document_edit(CreateIntegerScalar{.declaration = id,
-                                                       .module_index = info->module_index,
-                                                       .schema = std::move(copy),
-                                                       .insertion_index = std::nullopt},
-                                   selection);
-    }
-    if (auto const* schema{document_->linear_quantized_schema(*declaration)}) {
-        auto copy{*schema};
-        copy.name = name;
-        return apply_document_edit(CreateLinearQuantized{.declaration = id,
-                                                         .module_index = info->module_index,
-                                                         .schema = std::move(copy),
-                                                         .insertion_index = std::nullopt},
-                                   selection);
-    }
-    if (auto const* schema{document_->integer_varint_schema(*declaration)}) {
-        auto copy{*schema};
-        copy.name = name;
-        return apply_document_edit(CreateIntegerVarint{.declaration = id,
-                                                       .module_index = info->module_index,
-                                                       .schema = std::move(copy),
-                                                       .insertion_index = std::nullopt},
-                                   selection);
-    }
-    if (auto const* schema{document_->fixed_point_schema(*declaration)}) {
-        auto copy{*schema};
-        copy.name = name;
-        return apply_document_edit(CreateFixedPoint{.declaration = id,
-                                                    .module_index = info->module_index,
-                                                    .schema = std::move(copy),
-                                                    .insertion_index = std::nullopt},
-                                   selection);
-    }
-    if (auto const* schema{document_->mini_float_schema(*declaration)}) {
-        auto copy{*schema};
-        copy.name = name;
-        return apply_document_edit(CreateMiniFloat{.declaration = id,
-                                                   .module_index = info->module_index,
-                                                   .schema = std::move(copy),
-                                                   .insertion_index = std::nullopt},
-                                   selection);
-    }
-    if (auto const* schema{document_->optional_sentinel_schema(*declaration)}) {
-        auto copy{*schema};
-        copy.name = name;
-        return apply_document_edit(CreateOptionalSentinel{.declaration = id,
-                                                          .module_index = info->module_index,
-                                                          .schema = std::move(copy),
-                                                          .insertion_index = std::nullopt},
-                                   selection);
-    }
-    if (auto const* schema{document_->optional_presence_bit_schema(*declaration)}) {
-        auto copy{*schema};
-        copy.name = name;
-        return apply_document_edit(CreateOptionalPresenceBit{.declaration = id,
-                                                             .module_index = info->module_index,
-                                                             .schema = std::move(copy),
-                                                             .insertion_index = std::nullopt},
-                                   selection);
-    }
-    if (auto const* schema{document_->packed_value_schema(*declaration)}) {
-        auto copy{*schema};
-        copy.name = name;
-        return apply_document_edit(CreatePackedValue{.declaration = id,
-                                                     .module_index = info->module_index,
-                                                     .schema = std::move(copy),
-                                                     .insertion_index = std::nullopt},
-                                   selection);
-    }
-    if (auto const* schema{document_->record_schema(*declaration)}) {
-        auto copy{*schema};
-        copy.name = name;
-        return apply_document_edit(CreateRecord{.declaration = id,
-                                                .module_index = info->module_index,
-                                                .schema = std::move(copy),
-                                                .insertion_index = std::nullopt},
-                                   selection);
-    }
-    if (auto const* schema{document_->union_schema(*declaration)}) {
-        auto copy{*schema};
-        copy.name = name;
-        return apply_document_edit(CreateUnion{.declaration = id,
-                                               .module_index = info->module_index,
-                                               .schema = std::move(copy),
-                                               .insertion_index = std::nullopt},
-                                   selection);
-    }
-    if (auto const* schema{document_->tagged_union_schema(*declaration)}) {
-        auto copy{*schema};
-        copy.name = name;
-        return apply_document_edit(CreateTaggedUnion{.declaration = id,
-                                                     .module_index = info->module_index,
-                                                     .schema = std::move(copy),
-                                                     .insertion_index = std::nullopt},
-                                   selection);
-    }
-    if (document_->soa_schema(*declaration) != nullptr) {
-        auto copy{document_->prepare_soa_duplicate(*declaration)};
-        if (!copy.has_value()) {
-            schema_edit_message_ = copy.error().message;
+    auto const& info{*declaration};
+    auto const source{*document_->declaration_handle(*declaration)};
+    auto selection{document_->declarations().identity[document_->declarations().index(info)]};
+    lispb::codegen::DeclarationHandle copy;
+    if (source.kind() == lispb::codegen::DeclarationKind::soa) {
+        auto prepared{document_->prepare_soa_duplicate(*declaration)};
+        if (!prepared) {
+            schema_edit_message_ = prepared.error().message;
             return false;
         }
-        selection.name = copy->name;
-        return apply_document_edit(CreateSoa{.declaration = id,
-                                             .module_index = info->module_index,
-                                             .schema = std::move(*copy),
-                                             .insertion_index = std::nullopt},
-                                   selection);
+        selection.name = declarations().soas.name[declarations().soas.index(*prepared)];
+        copy = *prepared;
+    } else {
+        auto const base{text(selection.name) + "_copy"};
+        selection.name = strings().intern(base);
+        for (auto suffix{2U};
+             document_->find_declaration(selection) ||
+             document_->types().find_declared(
+                 analysis_session_.inputs.workspace.types().module(node), selection.name);
+             ++suffix) {
+            selection.name = strings().intern(base + std::to_string(suffix));
+        }
+        copy = declarations().clone(source);
+        switch (copy.kind()) {
+            case lispb::codegen::DeclarationKind::enumeration:
+                declarations().enums.name[declarations().enums.index(copy)] = selection.name;
+                break;
+            case lispb::codegen::DeclarationKind::facade:
+                declarations().facades.name[declarations().facades.index(copy)] = selection.name;
+                break;
+            case lispb::codegen::DeclarationKind::fixed_point:
+                declarations().fixed_points.name[declarations().fixed_points.index(copy)] =
+                    selection.name;
+                break;
+            case lispb::codegen::DeclarationKind::homogeneous_layout:
+                declarations()
+                    .homogeneous_layouts.name[declarations().homogeneous_layouts.index(copy)] =
+                    selection.name;
+                break;
+            case lispb::codegen::DeclarationKind::integer_scalar:
+                declarations().integer_scalars.name[declarations().integer_scalars.index(copy)] =
+                    selection.name;
+                break;
+            case lispb::codegen::DeclarationKind::integer_varint:
+                declarations().integer_varints.name[declarations().integer_varints.index(copy)] =
+                    selection.name;
+                break;
+            case lispb::codegen::DeclarationKind::linear_quantized:
+                declarations()
+                    .linear_quantizeds.name[declarations().linear_quantizeds.index(copy)] =
+                    selection.name;
+                break;
+            case lispb::codegen::DeclarationKind::mini_float:
+                declarations().mini_floats.name[declarations().mini_floats.index(copy)] =
+                    selection.name;
+                break;
+            case lispb::codegen::DeclarationKind::optional_presence_bit:
+                declarations()
+                    .optional_presence_bits
+                    .name[declarations().optional_presence_bits.index(copy)] = selection.name;
+                break;
+            case lispb::codegen::DeclarationKind::optional_sentinel:
+                declarations()
+                    .optional_sentinels.name[declarations().optional_sentinels.index(copy)] =
+                    selection.name;
+                break;
+            case lispb::codegen::DeclarationKind::packed_value:
+                declarations().packed_values.name[declarations().packed_values.index(copy)] =
+                    selection.name;
+                break;
+            case lispb::codegen::DeclarationKind::record:
+                declarations().records.name[declarations().records.index(copy)] = selection.name;
+                break;
+            case lispb::codegen::DeclarationKind::soa:
+                declarations().soas.name[declarations().soas.index(copy)] = selection.name;
+                break;
+            case lispb::codegen::DeclarationKind::static_table:
+                declarations().static_tables.name[declarations().static_tables.index(copy)] =
+                    selection.name;
+                break;
+            case lispb::codegen::DeclarationKind::tagged_union:
+                declarations().tagged_unions.name[declarations().tagged_unions.index(copy)] =
+                    selection.name;
+                break;
+            case lispb::codegen::DeclarationKind::union_type:
+                declarations().unions.name[declarations().unions.index(copy)] = selection.name;
+                break;
+            case lispb::codegen::DeclarationKind::vector_soa:
+                declarations().vector_soas.name[declarations().vector_soas.index(copy)] =
+                    selection.name;
+                break;
+            default:
+                std::unreachable();
+        }
     }
-
-    schema_edit_message_ = "This declaration kind is not editable and cannot be duplicated.";
-    return false;
+    return apply_document_edit(
+        document_->create_declaration(
+            document_->allocate_declaration_id(),
+            document_->declarations().module_index[document_->declarations().index(info)],
+            copy),
+        selection);
 }
 
 auto PlannerUi::delete_declaration(DeclarationId const declaration) -> bool {
     if (!document_.has_value()) {
         return false;
     }
-    auto const* info{document_->declaration(declaration)};
-    if (info == nullptr) {
+    auto const info{document_->declarations().find(declaration)};
+    if (!info.has_value()) {
         schema_edit_message_ = "The declaration no longer exists.";
         return false;
     }
 
-    auto command{std::optional<SchemaEditCommand>{}};
-    if (document_->enum_schema(declaration) != nullptr) {
-        command = DeleteEnum{.declaration = declaration};
-    } else if (document_->integer_scalar_schema(declaration) != nullptr) {
-        command = DeleteIntegerScalar{.declaration = declaration};
-    } else if (document_->linear_quantized_schema(declaration) != nullptr) {
-        command = DeleteLinearQuantized{.declaration = declaration};
-    } else if (document_->integer_varint_schema(declaration) != nullptr) {
-        command = DeleteIntegerVarint{.declaration = declaration};
-    } else if (document_->fixed_point_schema(declaration) != nullptr) {
-        command = DeleteFixedPoint{.declaration = declaration};
-    } else if (document_->mini_float_schema(declaration) != nullptr) {
-        command = DeleteMiniFloat{.declaration = declaration};
-    } else if (document_->optional_sentinel_schema(declaration) != nullptr) {
-        command = DeleteOptionalSentinel{.declaration = declaration};
-    } else if (document_->optional_presence_bit_schema(declaration) != nullptr) {
-        command = DeleteOptionalPresenceBit{.declaration = declaration};
-    } else if (document_->packed_value_schema(declaration) != nullptr) {
-        command = DeletePackedValue{.declaration = declaration};
-    } else if (document_->record_schema(declaration) != nullptr) {
-        command = DeleteRecord{.declaration = declaration};
-    } else if (document_->union_schema(declaration) != nullptr) {
-        command = DeleteUnion{.declaration = declaration};
-    } else if (document_->tagged_union_schema(declaration) != nullptr) {
-        command = DeleteTaggedUnion{.declaration = declaration};
-    } else if (document_->soa_schema(declaration) != nullptr) {
-        command = DeleteSoa{.declaration = declaration};
-    }
-    if (!command.has_value()) {
-        schema_edit_message_ = "This draft declaration kind cannot be deleted.";
-        return false;
-    }
-
-    if (!apply_document_edit(std::move(*command))) {
+    if (!apply_document_edit(document_->delete_declaration(declaration))) {
         return false;
     }
     analysis_session_.inputs.selection.record_access_members.clear();
@@ -1714,7 +2202,7 @@ void PlannerUi::draw_variants_panel() {
     persist_view_visibility(was_open, variants_view_open_);
     auto const selected_type{analysis_session_.inputs.selection.type};
     if (!selected_type.has_value() ||
-        !declaration_capabilities(analysis_session_.inputs.workspace.types().type(*selected_type))
+        !declaration_capabilities(analysis_session_.inputs.workspace.types(), *selected_type)
              .physical_analysis_available) {
         ImGui::TextWrapped("Physical variants are unavailable for this selection.");
         ImGui::End();

@@ -1,27 +1,36 @@
+#include "compiler_test_context.h"
+#include "test_utilities.h"
+
+#include <codegen/ast/cpp_types.h>
+#include <codegen/ast/indices.h>
 #include <codegen/generator.h>
+#include <codegen/schema/declarations.h>
 #include <codegen/schema/schema_version.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/indices.h>
+#include <lispb/strings.h>
 
 #include <gtest/gtest.h>
 
 #include <string>
 
-namespace codegen {
+namespace lispb::codegen {
 namespace {
 
 TEST(UnionLowering, GeneratesRawAlternativesAndFixedArrays) {
-    Manifest const manifest{
-        .schema_version = manifest_schema_version,
-        .types = {{"value", RegisteredTypeSchema{.cpp_type = CppType{"Value", "Project/Value.h"}}}},
-        .modules = {NormalModuleSchema{
-            .settings =
-                ModuleSettings{.name = "unions", .header = "Unions.h", .namespace_name = "project"},
-            .declarations = {UnionSchema{
-                .name = "Payload",
-                .alternatives = {{.name = "identifier", .type = TypeRef{"std::uint32_t"}},
-                                 {.name = "values", .type = TypeRef{"@value"}, .count = 3}},
-                .export_specifier = "PROJECT_API"}}}}};
+    CompilerTestContext context;
+    auto manifest{parse_test_manifest(
+        context,
+        R"(
+        (module unions :header "Unions.h" :namespace project
+            (union Payload :export-specifier PROJECT_API
+                (alternative identifier std::uint32_t)
+                (alternative values @value :count 3))))",
+        {{"value",
+          context.storage.cpp_types.add(
+              "Value", {context.storage.cpp_types.dependency("Value", "Project/Value.h")})}})};
 
-    auto const files{render_modules(lower_modules(manifest))};
+    auto const files{render_test_manifest(context, manifest)};
 
     ASSERT_EQ(files.size(), 1U);
     auto const& output{files.front().content};
@@ -34,51 +43,34 @@ TEST(UnionLowering, GeneratesRawAlternativesAndFixedArrays) {
 }
 
 TEST(UnionLowering, EmitsByValueDependenciesBeforeTheirUsers) {
-    Manifest const manifest{
-        .schema_version = manifest_schema_version,
-        .modules = {NormalModuleSchema{
-            .settings = ModuleSettings{.name = "unions", .header = "Unions.h"},
-            .declarations = {
-                UnionSchema{.name = "Outer",
-                            .alternatives = {{.name = "inner", .type = TypeRef{"Inner"}}}},
-                UnionSchema{.name = "Inner",
-                            .alternatives = {{.name = "value", .type = TypeRef{"float"}}}}}}}};
+    CompilerTestContext context;
+    auto manifest{parse_test_manifest(context, R"(
+        (module unions :header "Unions.h"
+            (union Outer (alternative inner Inner))
+            (union Inner (alternative value float))))")};
 
-    auto const files{render_modules(lower_modules(manifest))};
+    auto const files{render_test_manifest(context, manifest)};
     auto const& output{files.front().content};
     EXPECT_LT(output.find("union Inner"), output.find("union Outer"));
 }
 
 TEST(UnionLowering, GeneratesTaggedAggregateWithExplicitPayloadUnion) {
-    Manifest const manifest{
-        .schema_version = manifest_schema_version,
-        .types = {{"event_kind",
-                   RegisteredTypeSchema{.cpp_type = CppType{"events::EventKind", "Events.h"}}}},
-        .modules = {NormalModuleSchema{
-                        .settings = ModuleSettings{.name = "events",
-                                                   .header = "Events.h",
-                                                   .namespace_name = "events"},
-                        .declarations = {EnumSchema{
-                            .name = "EventKind",
-                            .underlying_type = TypeRef{"std::uint8_t"},
-                            .values = {EnumeratorSchema{"Spawn"}, EnumeratorSchema{"Damage"}},
-                        }}},
-                    NormalModuleSchema{.settings = ModuleSettings{.name = "unions",
-                                                                  .header = "Unions.h",
-                                                                  .namespace_name = "events"},
-                                       .declarations = {TaggedUnionSchema{
-                                           .name = "Event",
-                                           .discriminant = TypeRef{"@event_kind"},
-                                           .alternatives = {{.name = "spawn",
-                                                             .type = TypeRef{"std::uint32_t"},
-                                                             .tag = "Spawn"},
-                                                            {.name = "damage",
-                                                             .type = TypeRef{"std::uint16_t"},
-                                                             .count = 4,
-                                                             .tag = "Damage"}},
-                                           .export_specifier = "PROJECT_API"}}}}};
+    CompilerTestContext context;
+    auto manifest{parse_test_manifest(
+        context,
+        R"(
+        (module events :header "Events.h" :namespace events
+            (enum EventKind std::uint8_t (value Spawn) (value Damage)))
+        (module unions :header "Unions.h" :namespace events
+            (tagged-union Event :export-specifier PROJECT_API :discriminant @event_kind
+                (alternative spawn std::uint32_t :tag Spawn)
+                (alternative damage std::uint16_t :count 4 :tag Damage))))",
+        {{"event_kind",
+          context.storage.cpp_types.add(
+              "events::EventKind",
+              {context.storage.cpp_types.dependency("events::EventKind", "Events.h")})}})};
 
-    auto const files{render_modules(lower_modules(manifest))};
+    auto const files{render_test_manifest(context, manifest)};
 
     ASSERT_EQ(files.size(), 2U);
     auto const& output{files.back().content};
@@ -93,4 +85,4 @@ TEST(UnionLowering, GeneratesTaggedAggregateWithExplicitPayloadUnion) {
 }
 
 } // namespace
-} // namespace codegen
+} // namespace lispb::codegen

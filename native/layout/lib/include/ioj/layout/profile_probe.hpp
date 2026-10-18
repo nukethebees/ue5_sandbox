@@ -1,5 +1,6 @@
 #pragma once
 
+#include <lispb/schema/indices.h>
 #include <lispb/schema/type_graph.h>
 
 #include <expected>

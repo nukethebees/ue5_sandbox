@@ -3,6 +3,9 @@
 #include <ioj/layout/analyzer.hpp>
 #include <ioj/layout/diagnostic.hpp>
 
+#include <codegen/schema/packed_integer_value.h>
+#include <codegen/schema/semantic_relation_kind.h>
+#include <codegen/schema/semantic_relation_unit.h>
 #include <lispb/schema/type_graph.h>
 
 #include <imgui.h>
@@ -13,6 +16,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace ioj::layout_planner::detail {
 
@@ -52,17 +56,14 @@ auto access_operation_name(layout::AccessOperation operation) -> char const*;
 auto access_operation_summary(std::span<layout::AccessIntent const> accesses) -> char const*;
 auto format_delta_bytes(std::optional<layout::NumericDelta> delta) -> std::string;
 auto format_delta_number(std::optional<layout::NumericDelta> delta) -> std::string;
-auto relationship_extent_term(codegen::SemanticRelationKind kind) -> std::string_view;
-auto relationship_extent_unit(codegen::SemanticRelationKind kind,
-                              std::optional<codegen::SemanticRelationUnit> unit)
+auto relationship_extent_term(lispb::codegen::SemanticRelationKind kind) -> std::string_view;
+auto relationship_extent_unit(lispb::codegen::SemanticRelationKind kind,
+                              std::optional<lispb::codegen::SemanticRelationUnit> unit)
     -> std::string_view;
 auto parse_unsigned(std::string_view text) -> std::optional<std::uint64_t>;
-auto parse_packed_integer(std::string_view text) -> std::optional<codegen::PackedIntegerValue>;
+auto parse_packed_integer(std::string_view text)
+    -> std::optional<lispb::codegen::PackedIntegerValue>;
 auto diagnostic_color(layout::DiagnosticSeverity severity) -> ImVec4;
-auto packed_field(lispb::schema::PackedType const& packed, std::string const& name)
-    -> lispb::schema::PackedField const*;
-auto soa_column(lispb::schema::SoaType const& soa, std::string const& name)
-    -> lispb::schema::SoaColumn const*;
 auto has_error(std::vector<layout::Diagnostic> const& diagnostics) -> bool;
 auto override_count(layout::VariantOverrides const& overrides) -> std::size_t;
 void draw_labeled_gap(ImDrawList* draw_list,

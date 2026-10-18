@@ -1,738 +1,714 @@
 #include "parser.h"
 
+#include <codegen/sexpr/source_error.h>
+#include <codegen/sexpr/source_span.h>
+#include <codegen/sexpr/sources.h>
+#include <codegen/sexpr/syntax.h>
+#include <codegen/sexpr/token_kind.h>
+#include <lispb/indices.h>
+#include <lispb/strings.h>
+#include <slate_codegen/alignment.h>
+#include <slate_codegen/alignment_kind.h>
+#include <slate_codegen/box_orientation.h>
+#include <slate_codegen/child_id.h>
+#include <slate_codegen/child_kind.h>
+#include <slate_codegen/declaration_kind.h>
+#include <slate_codegen/document.h>
+#include <slate_codegen/parameter_kind.h>
+#include <slate_codegen/range.h>
+#include <slate_codegen/value_id.h>
+#include <slate_codegen/value_kind.h>
+
+#include <cassert>
 #include <cctype>
+#include <cstddef>
+#include <cstdint>
 #include <map>
-#include <memory>
 #include <set>
 #include <string>
-#include <utility>
+#include <string_view>
+#include <vector>
 
 namespace slate_codegen::detail {
 namespace {
 
-using codegen::sexpr::Form;
+using lispb::IdentifierId;
+using lispb::StringId;
+using lispb::codegen::sexpr::FormId;
+using lispb::codegen::sexpr::HandleRange;
+using lispb::codegen::sexpr::SourceError;
+using lispb::codegen::sexpr::SourceSpan;
+using lispb::codegen::sexpr::Syntax;
+using lispb::codegen::sexpr::TokenKind;
+
+auto is_identifier(std::string_view const text) -> bool {
+    if (text.empty() ||
+        (std::isalpha(static_cast<unsigned char>(text.front())) == 0 && text.front() != '_')) {
+        return false;
+    }
+    for (auto const character : text.substr(1)) {
+        if (std::isalnum(static_cast<unsigned char>(character)) == 0 && character != '_') {
+            return false;
+        }
+    }
+    return true;
+}
+
+auto is_qualified_identifier(std::string_view text) -> bool {
+    while (true) {
+        auto const separator{text.find("::")};
+        if (!is_identifier(text.substr(0, separator))) {
+            return false;
+        }
+        if (separator == std::string_view::npos) {
+            return true;
+        }
+        text.remove_prefix(separator + 2);
+    }
+}
+
+auto is_number(std::string_view const text) -> bool {
+    if (text.empty()) {
+        return false;
+    }
+    std::size_t index{text.front() == '-' ? 1u : 0u};
+    if (index == text.size() || std::isdigit(static_cast<unsigned char>(text[index])) == 0) {
+        return false;
+    }
+    while (index < text.size() && std::isdigit(static_cast<unsigned char>(text[index])) != 0) {
+        ++index;
+    }
+    if (index < text.size() && text[index] == '.') {
+        ++index;
+        auto const begin{index};
+        while (index < text.size() && std::isdigit(static_cast<unsigned char>(text[index])) != 0) {
+            ++index;
+        }
+        if (index == begin) {
+            return false;
+        }
+    }
+    return index == text.size();
+}
+
+auto kind_name(ParameterKind const kind) -> std::string {
+    switch (kind) {
+        case ParameterKind::value:
+            return "value";
+        case ParameterKind::callback:
+            return "callback";
+        case ParameterKind::factory:
+            return "factory";
+        case ParameterKind::existing:
+            return "existing";
+    }
+    assert(false);
+    return {};
+}
+
+auto child_id(ChildKind const kind, std::size_t const index) -> ChildId {
+    assert(index < 0x01000000u);
+    return {static_cast<std::uint32_t>(kind) << 24 | static_cast<std::uint32_t>(index)};
+}
+auto value_id(ValueKind const kind, std::size_t const index) -> ValueId {
+    assert(index < 0x01000000u);
+    return {static_cast<std::uint32_t>(kind) << 24 | static_cast<std::uint32_t>(index)};
+}
+auto start(std::size_t const size) -> Range {
+    return {static_cast<std::uint32_t>(size), 0};
+}
+void finish(Range& range, std::size_t const size) {
+    range.count = static_cast<std::uint32_t>(size) - range.begin;
+}
 
 class Parser {
   public:
-    Parser(std::string_view const path, std::vector<Form> const& forms)
-        : path_{path} {
-        for (auto const& form : forms) {
-            flatten(form);
-        }
-        tokens_.push_back(Token{TokenKind::end, {}, SourceSpan{.path = std::string{path}}});
-    }
+    Parser(Syntax& syntax, Document& document)
+        : syntax_{syntax}
+        , document_{document} {}
 
-    auto parse() -> Document {
-        Document document;
-        std::set<std::string> owners;
-        while (!at(TokenKind::end)) {
-            if (!list_head_is("widget-class") && !list_head_is("widget-library")) {
-                fail(current().span, "expected 'widget-class' or 'widget-library' declaration");
-            }
-            auto widget_declaration{parse_widget_declaration()};
-            if (!owners.insert(widget_declaration.name).second) {
-                fail(widget_declaration.span,
-                     "duplicate widget declaration '" + widget_declaration.name + "'");
-            }
-            document.declarations.push_back(std::move(widget_declaration));
+    void parse(HandleRange const forms) {
+        if (forms.count == 0) {
+            fail({}, "document must contain at least one widget class or library");
         }
-        if (document.declarations.empty()) {
-            fail(current().span, "document must contain at least one widget class or library");
+        std::set<IdentifierId> owners{document_.declarations.names.begin(),
+                                      document_.declarations.names.end()};
+        for (auto const form : syntax_.forms(forms)) {
+            if (syntax_.head(form) != "widget-class" && syntax_.head(form) != "widget-library") {
+                fail(syntax_.token_span(form),
+                     "expected 'widget-class' or 'widget-library' declaration");
+            }
+            require_count(form, 3, "widget declaration must contain at least one function", false);
+            auto const owner{
+                atom(syntax_.children(form)[1], "expected qualified widget declaration name")};
+            if (!is_qualified_identifier(syntax_.text(owner))) {
+                fail(syntax_.token_span(owner),
+                     "widget declaration name must be a qualified C++ identifier");
+            }
+            if (!owners.insert(syntax_.identifier(owner)).second) {
+                fail(syntax_.token_span(owner),
+                     "duplicate widget declaration '" + std::string{syntax_.text(owner)} + "'");
+            }
+            library_ = syntax_.head(form) == "widget-library";
+            auto functions{start(document_.functions.names.size())};
+            std::set<IdentifierId> function_names;
+            auto const count{syntax_.children(form).size()};
+            for (std::size_t index{2}; index < count; ++index) {
+                auto const function{syntax_.children(form)[index]};
+                if (syntax_.head(function) != "function") {
+                    fail(syntax_.token_span(function), "expected 'function' declaration");
+                }
+                parse_function(function);
+                auto const name{document_.functions.names.back()};
+                if (!function_names.insert(name).second) {
+                    fail(syntax_.token_span(function),
+                         "duplicate generated function '" +
+                             std::string{syntax_.strings().view(name)} + "'");
+                }
+            }
+            finish(functions, document_.functions.names.size());
+            document_.declarations.names.push_back(syntax_.identifier(owner));
+            document_.declarations.functions.push_back(functions);
+            document_.declarations.kinds.push_back(library_ ? DeclarationKind::widget_library
+                                                            : DeclarationKind::widget_class);
+            document_.declarations.spans.push_back(syntax_.token_span(form));
         }
-        return document;
     }
   private:
     struct ParameterState {
         ParameterKind kind;
         std::size_t uses{};
     };
+    struct Argument {
+        IdentifierId name;
+        ValueId value;
+    };
+    struct NamedSlot {
+        IdentifierId name;
+        ChildId child;
+    };
+    struct BoxSlot {
+        bool fill{};
+        ValueId weight{};
+        ValueId padding{};
+        Alignment horizontal{};
+        Alignment vertical{};
+        ChildId child{};
+    };
 
-    void flatten(Form const& form) {
-        tokens_.push_back(form.token);
-        for (auto const& child : form.children) {
-            flatten(child);
+    [[noreturn]] void fail(SourceSpan const span, std::string_view const message) const {
+        throw SourceError{syntax_.sources(), span, std::string{message}};
+    }
+    void require_count(FormId const form,
+                       std::size_t const count,
+                       std::string_view const message,
+                       bool const exact = true) const {
+        if (!syntax_.is_list(form) || (exact ? syntax_.children(form).size() != count
+                                             : syntax_.children(form).size() < count)) {
+            fail(syntax_.token_span(form), message);
         }
-        if (form.is_list()) {
-            tokens_.push_back(form.closing);
+    }
+    auto atom(FormId const form, std::string_view const message) const -> FormId {
+        if (syntax_.kind(form) != TokenKind::atom) {
+            fail(syntax_.token_span(form), message);
+        }
+        return form;
+    }
+    auto string(FormId const form, std::string_view const message) const -> StringId {
+        if (syntax_.kind(form) != TokenKind::string) {
+            fail(syntax_.token_span(form), message);
+        }
+        return syntax_.text_id(form);
+    }
+    void validate_name(FormId const token, std::string_view const subject) const {
+        if (!is_identifier(syntax_.text(token))) {
+            fail(syntax_.token_span(token), std::string{subject} + " must be a C++ identifier");
         }
     }
 
-    auto current() const -> Token const& { return tokens_[index_]; }
-
-    auto previous() const -> Token const& { return tokens_[index_ - 1]; }
-
-    auto at(TokenKind const kind) const -> bool { return current().kind == kind; }
-
-    auto consume(TokenKind const kind) -> bool {
-        if (!at(kind)) {
-            return false;
-        }
-        ++index_;
-        return true;
-    }
-
-    auto expect(TokenKind const kind, std::string_view const message) -> Token const& {
-        if (!consume(kind)) {
-            fail(current().span, message);
-        }
-        return previous();
-    }
-
-    auto expect_atom(std::string_view const message) -> Token const& {
-        return expect(TokenKind::atom, message);
-    }
-
-    auto list_head_is(std::string_view const head) const -> bool {
-        if (!at(TokenKind::left_parenthesis) || index_ + 1 >= tokens_.size()) {
-            return false;
-        }
-        auto const& head_token{tokens_[index_ + 1]};
-        return head_token.kind == TokenKind::atom && head_token.text == head;
-    }
-
-    [[noreturn]] void fail(SourceSpan const& span, std::string_view const message) const {
-        throw SourceError{path_, span, std::string{message}};
-    }
-
-    auto parse_widget_declaration() -> WidgetDeclaration {
-        auto const& opening{
-            expect(TokenKind::left_parenthesis, "expected '(' before widget declaration")};
-        auto const& form{expect_atom("expected 'widget-class'")};
-        if (form.text != "widget-class" && form.text != "widget-library") {
-            fail(form.span, "expected 'widget-class' or 'widget-library'");
-        }
-        library_ = form.text == "widget-library";
-
-        auto const& owner{expect_atom("expected qualified widget declaration name")};
-        if (!is_qualified_identifier(owner.text)) {
-            fail(owner.span, "widget declaration name must be a qualified C++ identifier");
-        }
-
-        WidgetDeclaration result{.name = owner.text, .span = opening.span};
-        result.kind = library_ ? DeclarationKind::widget_library : DeclarationKind::widget_class;
-        std::set<std::string> function_names;
-        while (!at(TokenKind::right_parenthesis)) {
-            if (at(TokenKind::end)) {
-                fail(current().span, "expected ')' after widget declaration");
-            }
-            if (!list_head_is("function")) {
-                fail(current().span, "expected 'function' declaration");
-            }
-            auto function{parse_slate_function()};
-            if (!function_names.insert(function.name).second) {
-                fail(function.span, "duplicate generated function '" + function.name + "'");
-            }
-            result.functions.push_back(std::move(function));
-        }
-        expect(TokenKind::right_parenthesis, "expected ')' after widget declaration");
-        if (result.functions.empty()) {
-            fail(opening.span, "widget declaration must contain at least one function");
-        }
-        return result;
-    }
-
-    auto parse_slate_function() -> SlateFunction {
-        auto const& opening{expect(TokenKind::left_parenthesis, "expected '(' before function")};
-        auto const& form{expect_atom("expected 'function'")};
-        if (form.text != "function") {
-            fail(form.span, "expected 'function'");
-        }
-
-        auto const& name{expect_atom("expected generated function name")};
-        if (!is_identifier(name.text)) {
-            fail(name.span, "generated function name must be a C++ identifier");
-        }
+    void parse_function(FormId const form) {
+        require_count(form, 4, "expected 'params' declaration after function name");
+        auto const name{atom(syntax_.children(form)[1], "expected generated function name")};
+        validate_name(name, "generated function name");
         parameter_states_.clear();
         binding_names_.clear();
-        auto parameters{parse_parameters()};
-        std::vector<Binding> bindings;
-        auto root{list_head_is("let") ? parse_let(bindings) : parse_child()};
-        expect(TokenKind::right_parenthesis, "expected ')' after generated function");
-        for (auto const& parameter : parameters) {
-            if (parameter_states_.at(parameter.name).uses == 0) {
-                fail(parameter.span,
-                     "unused " + parameter_kind_name(parameter.kind) + " parameter '" +
-                         parameter.name + "'");
+        auto const parameter_form{syntax_.children(form)[2]};
+        if (syntax_.head(parameter_form) != "params") {
+            fail(syntax_.token_span(parameter_form),
+                 "expected 'params' declaration after function name");
+        }
+        auto parameters{start(document_.parameters.names.size())};
+        auto const count{syntax_.children(parameter_form).size()};
+        for (std::size_t index{1}; index < count; ++index) {
+            parse_parameter(syntax_.children(parameter_form)[index]);
+        }
+        finish(parameters, document_.parameters.names.size());
+        auto bindings{start(document_.bindings.names.size())};
+        auto const body{syntax_.children(form)[3]};
+        auto const root{syntax_.head(body) == "let" ? parse_let(body) : parse_child(body)};
+        finish(bindings, document_.bindings.names.size());
+        auto const end{parameters.begin + parameters.count};
+        for (auto index{parameters.begin}; index < end; ++index) {
+            auto const parameter{document_.parameters.names[index]};
+            if (parameter_states_.at(parameter).uses == 0) {
+                fail(document_.parameters.spans[index],
+                     "unused " + kind_name(document_.parameters.kinds[index]) + " parameter '" +
+                         std::string{syntax_.strings().view(parameter)} + "'");
             }
         }
-        return SlateFunction{
-            name.text, std::move(parameters), std::move(bindings), std::move(root), opening.span};
+        document_.functions.names.push_back(syntax_.identifier(name));
+        document_.functions.parameters.push_back(parameters);
+        document_.functions.bindings.push_back(bindings);
+        document_.functions.roots.push_back(root);
+        document_.functions.spans.push_back(syntax_.token_span(form));
     }
 
-    auto parse_parameters() -> std::vector<FunctionParameter> {
-        if (!list_head_is("params")) {
-            fail(current().span, "expected 'params' declaration after function name");
+    void parse_parameter(FormId const form) {
+        require_count(form, 2, "expected parameter declaration");
+        auto const role{atom(syntax_.children(form)[0],
+                             "expected value, callback, factory, or existing parameter role")};
+        auto kind{ParameterKind::value};
+        if (syntax_.text(role) == "callback") {
+            kind = ParameterKind::callback;
+        } else if (syntax_.text(role) == "factory") {
+            kind = ParameterKind::factory;
+        } else if (syntax_.text(role) == "existing") {
+            kind = ParameterKind::existing;
+        } else if (syntax_.text(role) != "value") {
+            fail(syntax_.token_span(role),
+                 "expected value, callback, factory, or existing parameter role");
         }
-        expect(TokenKind::left_parenthesis, "expected '(' before params");
-        expect_atom("expected 'params'");
-
-        std::vector<FunctionParameter> parameters;
-        while (!at(TokenKind::right_parenthesis)) {
-            if (at(TokenKind::end)) {
-                fail(current().span, "expected ')' after params declaration");
-            }
-            auto const& opening{
-                expect(TokenKind::left_parenthesis, "expected parameter declaration")};
-            auto const& role{
-                expect_atom("expected value, callback, factory, or existing parameter role")};
-            auto kind{ParameterKind::value};
-            if (role.text == "callback") {
-                kind = ParameterKind::callback;
-            } else if (role.text == "factory") {
-                kind = ParameterKind::factory;
-            } else if (role.text == "existing") {
-                kind = ParameterKind::existing;
-            } else if (role.text != "value") {
-                fail(role.span, "expected value, callback, factory, or existing parameter role");
-            }
-            auto const& name{expect_atom("expected parameter name")};
-            if (!is_identifier(name.text)) {
-                fail(name.span, "parameter name must be a C++ identifier");
-            }
-            expect(TokenKind::right_parenthesis, "expected ')' after parameter declaration");
-            if (name.text == "self_" || name.text == "ThisClass") {
-                fail(name.span, "reserved generated name cannot be used as a parameter");
-            }
-            if (!parameter_states_.emplace(name.text, ParameterState{kind}).second) {
-                fail(name.span, "duplicate parameter declaration '" + name.text + "'");
-            }
-            parameters.push_back(FunctionParameter{kind, name.text, opening.span});
+        auto const name{atom(syntax_.children(form)[1], "expected parameter name")};
+        validate_name(name, "parameter name");
+        if (syntax_.text(name) == "self_" || syntax_.text(name) == "ThisClass") {
+            fail(syntax_.token_span(name), "reserved generated name cannot be used as a parameter");
         }
-        expect(TokenKind::right_parenthesis, "expected ')' after params declaration");
-        return parameters;
+        if (!parameter_states_.emplace(syntax_.identifier(name), ParameterState{kind}).second) {
+            fail(syntax_.token_span(name),
+                 "duplicate parameter declaration '" + std::string{syntax_.text(name)} + "'");
+        }
+        document_.parameters.kinds.push_back(kind);
+        document_.parameters.names.push_back(syntax_.identifier(name));
+        document_.parameters.spans.push_back(syntax_.token_span(form));
     }
 
-    auto parse_let(std::vector<Binding>& bindings) -> Child {
-        auto const& opening{expect(TokenKind::left_parenthesis, "expected '(' before let")};
-        auto const& form{expect_atom("expected 'let'")};
-        if (form.text != "let") {
-            fail(form.span, "expected 'let'");
+    auto parse_let(FormId const form) -> ChildId {
+        require_count(form, 3, "expected bindings and body after let");
+        auto const bindings{syntax_.children(form)[1]};
+        if (!syntax_.is_list(bindings) || syntax_.children(bindings).empty()) {
+            fail(syntax_.token_span(bindings), "let must contain at least one binding");
         }
-        expect(TokenKind::left_parenthesis, "expected '(' before let bindings");
-        while (!at(TokenKind::right_parenthesis)) {
-            if (at(TokenKind::end)) {
-                fail(current().span, "expected ')' after let bindings");
+        for (auto const binding : syntax_.children(bindings)) {
+            require_count(binding, 2, "expected let binding");
+            auto const name{atom(syntax_.children(binding)[0], "expected let binding name")};
+            validate_name(name, "let binding name");
+            if (syntax_.text(name) == "self_" || syntax_.text(name) == "ThisClass") {
+                fail(syntax_.token_span(name),
+                     "reserved generated name cannot be used as a let binding");
             }
-            bindings.push_back(parse_binding());
-        }
-        expect(TokenKind::right_parenthesis, "expected ')' after let bindings");
-        if (bindings.empty()) {
-            fail(opening.span, "let must contain at least one binding");
-        }
-
-        auto root{parse_child()};
-        expect(TokenKind::right_parenthesis, "expected ')' after let body");
-        return root;
-    }
-
-    auto parse_binding() -> Binding {
-        auto const& opening{expect(TokenKind::left_parenthesis, "expected let binding")};
-        auto const& name{expect_atom("expected let binding name")};
-        if (!is_identifier(name.text)) {
-            fail(name.span, "let binding name must be a C++ identifier");
-        }
-        if (name.text == "self_" || name.text == "ThisClass") {
-            fail(name.span, "reserved generated name cannot be used as a let binding");
-        }
-        if (binding_names_.contains(name.text)) {
-            fail(name.span, "duplicate let binding '" + name.text + "'");
-        }
-        if (parameter_states_.contains(name.text)) {
-            fail(name.span, "let binding '" + name.text + "' conflicts with parameter");
-        }
-
-        std::variant<Value, Margin> initializer;
-        if (at(TokenKind::left_parenthesis) && !list_head_is("loc") && !list_head_is("callback") &&
-            !list_head_is("method") && !list_head_is("uobject")) {
-            initializer = parse_margin();
-        } else {
-            auto value{parse_value()};
-            if (value.kind == ValueKind::callback || value.kind == ValueKind::method ||
-                value.kind == ValueKind::uobject) {
-                fail(value.span, "callable values cannot initialize let bindings");
+            if (binding_names_.contains(syntax_.identifier(name))) {
+                fail(syntax_.token_span(name),
+                     "duplicate let binding '" + std::string{syntax_.text(name)} + "'");
             }
-            initializer = std::move(value);
-        }
-        expect(TokenKind::right_parenthesis, "expected ')' after let binding");
-        binding_names_.insert(name.text);
-        return Binding{name.text, std::move(initializer), opening.span};
-    }
-
-    auto parse_widget() -> Child {
-        auto const& opening{expect(TokenKind::left_parenthesis, "expected '(' before widget")};
-        auto const& type{expect_atom("expected widget type")};
-        validate_widget_type(type);
-        return parse_widget_body(opening.span, type.text, std::nullopt);
-    }
-
-    auto parse_assigned_widget() -> Child {
-        if (library_) {
-            fail(current().span,
-                 "assign requires a widget-class host; unavailable in widget-library");
-        }
-        auto const& opening{
-            expect(TokenKind::left_parenthesis, "expected '(' before assigned widget")};
-        auto const& form{expect_atom("expected 'assign'")};
-        if (form.text != "assign") {
-            fail(form.span, "expected 'assign'");
-        }
-        auto const& member{expect_atom("expected assigned widget member")};
-        if (!is_identifier(member.text)) {
-            fail(member.span, "assigned widget member must be a C++ identifier");
-        }
-        auto const& type{expect_atom("expected assigned widget type")};
-        validate_widget_type(type);
-        return parse_widget_body(opening.span, type.text, member.text);
-    }
-
-    void validate_widget_type(Token const& type) const {
-        if (type.text == "widget-class" || type.text == "widget-library" ||
-            type.text == "function" || type.text == "vbox" || type.text == "hbox" ||
-            type.text == "slot" || type.text == "auto" || type.text == "fill" ||
-            type.text == "assign" || type.text == "existing" || type.text == "call" ||
-            type.text == "let" || type.text == "params") {
-            fail(type.span, "expected widget type, found structural form '" + type.text + "'");
-        }
-    }
-
-    auto parse_widget_body(SourceSpan const& span,
-                           std::string type,
-                           std::optional<std::string> assigned_member) -> Child {
-        Widget widget{
-            .type = std::move(type), .assigned_member = std::move(assigned_member), .span = span};
-        std::set<std::string> argument_names;
-        std::set<std::string> slot_names;
-        bool saw_child{false};
-
-        while (!at(TokenKind::right_parenthesis)) {
-            if (at(TokenKind::end)) {
-                fail(current().span, "expected ')' after widget body");
+            if (parameter_states_.contains(syntax_.identifier(name))) {
+                fail(syntax_.token_span(name),
+                     "let binding '" + std::string{syntax_.text(name)} +
+                         "' conflicts with parameter");
             }
-            if (at(TokenKind::keyword)) {
-                if (saw_child) {
-                    fail(current().span, "widget arguments must appear before children");
-                }
-                auto argument{parse_argument()};
-                if (!argument_names.insert(argument.name).second) {
-                    fail(argument.span, "duplicate widget argument ':" + argument.name + "'");
-                }
-                widget.arguments.push_back(std::move(argument));
-                continue;
+            auto const initializer{syntax_.children(binding)[1]};
+            auto const head{syntax_.head(initializer)};
+            auto const value{syntax_.is_list(initializer) && head != "loc" && head != "callback" &&
+                                     head != "method" && head != "uobject"
+                                 ? parse_margin(initializer)
+                                 : parse_value(initializer)};
+            if (value.kind() == ValueKind::callback || value.kind() == ValueKind::method ||
+                value.kind() == ValueKind::uobject) {
+                fail(syntax_.token_span(initializer),
+                     "callable values cannot initialize let bindings");
             }
-            if (!at(TokenKind::left_parenthesis)) {
-                fail(current().span, "expected widget argument or child list");
-            }
-
-            saw_child = true;
-            if (list_head_is("slot")) {
-                auto slot{parse_named_slot()};
-                if (!slot_names.insert(slot.name).second) {
-                    fail(slot.span, "duplicate named slot '" + slot.name + "'");
-                }
-                widget.named_slots.push_back(std::move(slot));
-                continue;
-            }
-            if (widget.content) {
-                fail(current().span, "widget may contain only one default child");
-            }
-            widget.content_span = current().span;
-            widget.content = std::make_shared<Child>(parse_child());
+            document_.bindings.names.push_back(syntax_.identifier(name));
+            document_.bindings.initializers.push_back(value);
+            document_.bindings.spans.push_back(syntax_.token_span(binding));
+            binding_names_.insert(syntax_.identifier(name));
         }
-
-        expect(TokenKind::right_parenthesis, "expected ')' after widget body");
-        return Child{std::move(widget), span};
+        return parse_child(syntax_.children(form)[2]);
     }
 
-    auto parse_argument() -> Argument {
-        auto const& name{expect(TokenKind::keyword, "expected widget argument")};
-        return Argument{name.text, parse_value(), name.span};
-    }
-
-    auto parse_value() -> Value {
-        auto const span{current().span};
-        if (consume(TokenKind::string)) {
-            return Value{ValueKind::text, previous().text, span};
-        }
-        if (at(TokenKind::left_parenthesis)) {
-            return parse_compound_value();
-        }
-        if (!consume(TokenKind::atom)) {
-            fail(span, "expected number, boolean, text, or symbol");
-        }
-
-        auto const& token{previous()};
-        if (token.text == "true" || token.text == "false") {
-            return Value{ValueKind::boolean, token.text, span};
-        }
-        if (is_number(token.text)) {
-            return Value{ValueKind::number, token.text, span};
-        }
-        if (is_identifier(token.text) && parameter_states_.contains(token.text)) {
-            use_parameter(token.text, ParameterKind::value, token.span, true);
-        }
-        return Value{ValueKind::symbol, token.text, span};
-    }
-
-    auto parse_compound_value() -> Value {
-        auto const& opening{expect(TokenKind::left_parenthesis, "expected compound value")};
-        auto const& form{expect_atom("expected callback, method, uobject, or loc")};
-        if (library_ && (form.text == "method" || form.text == "uobject")) {
-            fail(form.span,
-                 form.text + " requires a widget-class host; unavailable in widget-library");
-        }
-        if (form.text == "loc") {
-            auto const& context{expect(TokenKind::string, "expected localization context")};
-            auto const& key{expect(TokenKind::string, "expected localization key")};
-            auto const& text{expect(TokenKind::string, "expected localized text")};
-            expect(TokenKind::right_parenthesis, "expected ')' after localized text");
-            return Value{.kind = ValueKind::localized_text,
-                         .span = opening.span,
-                         .localized_text = LocalizedText{context.text, key.text, text.text}};
-        }
-
-        auto kind{ValueKind::symbol};
-        if (form.text == "callback") {
-            kind = ValueKind::callback;
-        } else if (form.text == "method") {
-            kind = ValueKind::method;
-        } else if (form.text == "uobject") {
-            kind = ValueKind::uobject;
-        } else {
-            fail(form.span, "expected callback, method, uobject, or loc value form");
-        }
-
-        auto const& name{expect_atom("expected callable name")};
-        if (!is_identifier(name.text)) {
-            fail(name.span, "callable name must be a C++ identifier");
-        }
-        expect(TokenKind::right_parenthesis, "expected ')' after callable value");
-        if (kind == ValueKind::callback) {
-            use_parameter(name.text, ParameterKind::callback, opening.span, false);
-        }
-        return Value{kind, name.text, opening.span};
-    }
-
-    auto parse_existing_widget() -> Child {
-        auto const& opening{
-            expect(TokenKind::left_parenthesis, "expected '(' before existing widget")};
-        auto const& form{expect_atom("expected 'existing'")};
-        if (form.text != "existing") {
-            fail(form.span, "expected 'existing'");
-        }
-        auto const& parameter{expect_atom("expected existing widget parameter")};
-        if (!is_identifier(parameter.text)) {
-            fail(parameter.span, "existing widget parameter must be a C++ identifier");
-        }
-        expect(TokenKind::right_parenthesis, "expected ')' after existing widget");
-        use_parameter(parameter.text, ParameterKind::existing, opening.span, false);
-        return Child{ExistingWidget{parameter.text, opening.span}, opening.span};
-    }
-
-    auto parse_called_widget() -> Child {
-        auto const& opening{
-            expect(TokenKind::left_parenthesis, "expected '(' before child factory call")};
-        auto const& form{expect_atom("expected 'call'")};
-        if (form.text != "call") {
-            fail(form.span, "expected 'call'");
-        }
-        auto const& parameter{expect_atom("expected child factory parameter")};
-        if (!is_identifier(parameter.text)) {
-            fail(parameter.span, "child factory parameter must be a C++ identifier");
-        }
-
-        std::vector<Value> arguments;
-        while (!at(TokenKind::right_parenthesis)) {
-            if (at(TokenKind::end)) {
-                fail(current().span, "expected ')' after child factory call");
-            }
-            auto value{parse_value()};
-            if (value.kind == ValueKind::callback || value.kind == ValueKind::method ||
-                value.kind == ValueKind::uobject) {
-                fail(value.span, "callable forms cannot be child factory arguments");
-            }
-            arguments.push_back(std::move(value));
-        }
-        expect(TokenKind::right_parenthesis, "expected ')' after child factory call");
-        use_parameter(parameter.text, ParameterKind::factory, opening.span, true);
-        return Child{CalledWidget{parameter.text, std::move(arguments), opening.span},
-                     opening.span};
-    }
-
-    void use_parameter(std::string const& name,
-                       ParameterKind const expected_kind,
-                       SourceSpan const& span,
-                       bool const allow_multiple_uses) {
-        auto const found{parameter_states_.find(name)};
+    void use_parameter(FormId const name, ParameterKind const expected, bool const multiple) {
+        auto const found{parameter_states_.find(syntax_.identifier(name))};
+        auto const spelling{std::string{syntax_.text(name)}};
         if (found == parameter_states_.end()) {
-            fail(span,
-                 "undeclared " + parameter_kind_name(expected_kind) + " parameter '" + name + "'");
+            fail(syntax_.token_span(name),
+                 "undeclared " + kind_name(expected) + " parameter '" + spelling + "'");
         }
         auto& state{found->second};
-        if (state.kind != expected_kind) {
-            fail(span,
-                 "parameter '" + name + "' is declared as " + parameter_kind_name(state.kind) +
-                     ", not " + parameter_kind_name(expected_kind));
+        if (state.kind != expected) {
+            fail(syntax_.token_span(name),
+                 "parameter '" + spelling + "' is declared as " + kind_name(state.kind) + ", not " +
+                     kind_name(expected));
         }
-        if (!allow_multiple_uses && state.uses != 0) {
-            fail(span,
-                 parameter_kind_name(expected_kind) + " parameter '" + name +
-                     "' may only be used once");
+        if (!multiple && state.uses != 0) {
+            fail(syntax_.token_span(name),
+                 kind_name(expected) + " parameter '" + spelling + "' may only be used once");
         }
         ++state.uses;
     }
 
-    static auto parameter_kind_name(ParameterKind const kind) -> std::string {
-        if (kind == ParameterKind::value) {
-            return "value";
-        }
-        if (kind == ParameterKind::callback) {
-            return "callback";
-        }
-        if (kind == ParameterKind::factory) {
-            return "factory";
-        }
-        return "existing";
+    auto plain_value(ValueKind const kind, FormId const token) -> ValueId {
+        auto const id{value_id(kind, document_.values.text.size())};
+        document_.values.text.push_back(syntax_.text_id(token));
+        document_.values.spans.push_back(syntax_.token_span(token));
+        return id;
     }
 
-    auto parse_named_slot() -> WidgetSlot {
-        auto const& opening{expect(TokenKind::left_parenthesis, "expected '(' before named slot")};
-        auto const& form{expect_atom("expected 'slot'")};
-        if (form.text != "slot") {
-            fail(form.span, "expected 'slot'");
+    auto parse_value(FormId const form) -> ValueId {
+        auto const token{form};
+        if (syntax_.kind(token) == TokenKind::string) {
+            return plain_value(ValueKind::text, token);
         }
-        auto const& name{expect_atom("expected named slot name")};
-        auto child{std::make_shared<Child>(parse_child())};
-        expect(TokenKind::right_parenthesis, "expected ')' after named slot");
-        return WidgetSlot{name.text, std::move(child), opening.span};
+        if (syntax_.is_list(form)) {
+            require_count(form, 2, "expected callback, method, uobject, or loc", false);
+            auto const head{syntax_.head(form)};
+            if (library_ && (head == "method" || head == "uobject")) {
+                fail(syntax_.token_span(form),
+                     std::string{head} +
+                         " requires a widget-class host; unavailable in widget-library");
+            }
+            if (head == "loc") {
+                require_count(form, 4, "expected localization context, key, and text");
+                auto const context{
+                    string(syntax_.children(form)[1], "expected localization context")};
+                auto const key{string(syntax_.children(form)[2], "expected localization key")};
+                auto const text{string(syntax_.children(form)[3], "expected localized text")};
+                auto const id{value_id(ValueKind::localized_text, document_.localized.text.size())};
+                document_.localized.contexts.push_back(context);
+                document_.localized.keys.push_back(key);
+                document_.localized.text.push_back(text);
+                document_.localized.spans.push_back(syntax_.token_span(token));
+                return id;
+            }
+            require_count(form, 2, "expected ')' after callable value");
+            auto kind{ValueKind::callback};
+            if (head == "method") {
+                kind = ValueKind::method;
+            } else if (head == "uobject") {
+                kind = ValueKind::uobject;
+            } else if (head != "callback") {
+                fail(syntax_.token_span(token),
+                     "expected callback, method, uobject, or loc value form");
+            }
+            auto const name{atom(syntax_.children(form)[1], "expected callable name")};
+            validate_name(name, "callable name");
+            if (kind == ValueKind::callback) {
+                use_parameter(name, ParameterKind::callback, false);
+            }
+            return plain_value(kind, name);
+        }
+        atom(form, "expected number, boolean, text, or symbol");
+        if (syntax_.text(token) == "true" || syntax_.text(token) == "false") {
+            return plain_value(ValueKind::boolean, token);
+        }
+        if (is_number(syntax_.text(token))) {
+            return plain_value(ValueKind::number, token);
+        }
+        if (is_identifier(syntax_.text(token)) &&
+            parameter_states_.contains(syntax_.identifier(token))) {
+            use_parameter(token, ParameterKind::value, true);
+        }
+        return plain_value(ValueKind::symbol, token);
     }
 
-    auto parse_child() -> Child {
-        if (!at(TokenKind::left_parenthesis)) {
-            fail(current().span, "expected child list");
+    auto parse_margin(FormId const form) -> ValueId {
+        auto values{start(document_.margin_values.size())};
+        IdentifierId binding{};
+        if (syntax_.is_list(form)) {
+            if (syntax_.children(form).size() != 2 && syntax_.children(form).size() != 4) {
+                fail(syntax_.closing_span(form), "padding tuple must contain two or four values");
+            }
+            for (auto const item : syntax_.children(form)) {
+                auto const token{atom(item, "expected padding value")};
+                if (!is_number(syntax_.text(token))) {
+                    fail(syntax_.token_span(token), "expected padding value");
+                }
+                document_.margin_values.push_back(syntax_.text_id(token));
+            }
+        } else {
+            auto const token{atom(form, "expected padding value or let binding")};
+            if (is_number(syntax_.text(token))) {
+                document_.margin_values.push_back(syntax_.text_id(token));
+            } else {
+                if (!is_identifier(syntax_.text(token))) {
+                    fail(syntax_.token_span(token),
+                         "expected padding value or earlier let binding");
+                }
+                if (!binding_names_.contains(syntax_.identifier(token))) {
+                    use_parameter(token, ParameterKind::value, true);
+                }
+                binding = syntax_.identifier(token);
+            }
         }
-        if (list_head_is("vbox") || list_head_is("hbox")) {
-            return parse_box();
+        finish(values, document_.margin_values.size());
+        auto const id{value_id(ValueKind::margin, document_.margins.values.size())};
+        document_.margins.values.push_back(values);
+        document_.margins.bindings.push_back(binding);
+        document_.margins.spans.push_back(syntax_.token_span(form));
+        return id;
+    }
+
+    auto parse_alignment(FormId const form, bool const horizontal) -> Alignment {
+        auto const token{atom(form, "expected alignment value")};
+        if (is_identifier(syntax_.text(token)) &&
+            parameter_states_.contains(syntax_.identifier(token))) {
+            use_parameter(token, ParameterKind::value, true);
+            return {syntax_.identifier(token), AlignmentKind::parameter};
         }
-        if (list_head_is("assign")) {
-            return parse_assigned_widget();
+        if (syntax_.text(token) == (horizontal ? "left" : "top")) {
+            return {{}, AlignmentKind::start};
         }
-        if (list_head_is("existing")) {
-            return parse_existing_widget();
+        if (syntax_.text(token) == (horizontal ? "right" : "bottom")) {
+            return {{}, AlignmentKind::end};
         }
-        if (list_head_is("call")) {
-            return parse_called_widget();
+        if (syntax_.text(token) == "center") {
+            return {{}, AlignmentKind::center};
         }
-        if (list_head_is("widget-class") || list_head_is("widget-library") ||
-            list_head_is("function") || list_head_is("slot") || list_head_is("auto") ||
-            list_head_is("fill")) {
-            fail(tokens_[index_ + 1].span,
+        if (syntax_.text(token) == "fill") {
+            return {{}, AlignmentKind::fill};
+        }
+        fail(syntax_.token_span(token),
+             horizontal ? "expected left, center, right, or fill"
+                        : "expected top, center, bottom, or fill");
+    }
+
+    auto parse_child(FormId const form) -> ChildId {
+        if (!syntax_.is_list(form) || syntax_.children(form).empty()) {
+            fail(syntax_.token_span(form), "expected child list");
+        }
+        auto const head{syntax_.head(form)};
+        if (head == "hbox" || head == "vbox") {
+            return parse_box(form);
+        }
+        if (head == "existing" || head == "call") {
+            require_count(form, 2, "expected widget parameter", head == "existing");
+            auto const parameter{atom(syntax_.children(form)[1], "expected widget parameter")};
+            validate_name(parameter, "widget parameter");
+            if (head == "existing") {
+                use_parameter(parameter, ParameterKind::existing, false);
+                auto const id{child_id(ChildKind::existing, document_.existing.parameters.size())};
+                document_.existing.parameters.push_back(syntax_.identifier(parameter));
+                document_.existing.spans.push_back(syntax_.token_span(form));
+                return id;
+            }
+            use_parameter(parameter, ParameterKind::factory, true);
+            std::vector<ValueId> arguments;
+            auto const count{syntax_.children(form).size()};
+            for (std::size_t index{2}; index < count; ++index) {
+                auto const value{parse_value(syntax_.children(form)[index])};
+                if (value.kind() == ValueKind::callback || value.kind() == ValueKind::method ||
+                    value.kind() == ValueKind::uobject) {
+                    fail(syntax_.token_span(syntax_.children(form)[index]),
+                         "callable forms cannot be child factory arguments");
+                }
+                arguments.push_back(value);
+            }
+            auto range{start(document_.value_lists.size())};
+            document_.value_lists.insert(
+                document_.value_lists.end(), arguments.begin(), arguments.end());
+            finish(range, document_.value_lists.size());
+            auto const id{child_id(ChildKind::call, document_.calls.parameters.size())};
+            document_.calls.parameters.push_back(syntax_.identifier(parameter));
+            document_.calls.arguments.push_back(range);
+            document_.calls.spans.push_back(syntax_.token_span(form));
+            return id;
+        }
+        if (head == "widget-class" || head == "widget-library" || head == "function" ||
+            head == "slot" || head == "auto" || head == "fill" || head == "let" ||
+            head == "params") {
+            fail(syntax_.token_span(form),
                  "expected widget, assigned widget, existing widget, or box child");
         }
-        return parse_widget();
+        return parse_widget(form);
     }
 
-    auto parse_box() -> Child {
-        auto const& opening{expect(TokenKind::left_parenthesis, "expected '(' before box")};
-        auto const& form{expect_atom("expected 'vbox' or 'hbox'")};
-        if (form.text != "vbox" && form.text != "hbox") {
-            fail(form.span, "expected 'vbox' or 'hbox'");
-        }
-
-        Box box{.orientation =
-                    form.text == "vbox" ? BoxOrientation::vertical : BoxOrientation::horizontal,
-                .span = opening.span};
-        while (!at(TokenKind::right_parenthesis)) {
-            if (at(TokenKind::end)) {
-                fail(current().span, "expected ')' after box body");
+    auto parse_widget(FormId const form) -> ChildId {
+        std::size_t index{1};
+        auto type{atom(syntax_.children(form)[0], "expected widget type")};
+        IdentifierId assigned{};
+        if (syntax_.head(form) == "assign") {
+            if (library_) {
+                fail(syntax_.token_span(form),
+                     "assign requires a widget-class host; unavailable in widget-library");
             }
-            box.slots.push_back(parse_box_slot());
+            require_count(form, 3, "expected assigned widget member and type", false);
+            auto const member{atom(syntax_.children(form)[1], "expected assigned widget member")};
+            validate_name(member, "assigned widget member");
+            assigned = syntax_.identifier(member);
+            type = atom(syntax_.children(form)[2], "expected assigned widget type");
+            index = 3;
         }
-        expect(TokenKind::right_parenthesis, "expected ')' after box body");
-        if (box.slots.empty()) {
-            fail(opening.span, "box must contain at least one slot");
+        if (syntax_.text(type) == "widget-class" || syntax_.text(type) == "widget-library" ||
+            syntax_.text(type) == "function" || syntax_.text(type) == "vbox" ||
+            syntax_.text(type) == "hbox" || syntax_.text(type) == "slot" ||
+            syntax_.text(type) == "auto" || syntax_.text(type) == "fill" ||
+            syntax_.text(type) == "assign" || syntax_.text(type) == "existing" ||
+            syntax_.text(type) == "call" || syntax_.text(type) == "let" ||
+            syntax_.text(type) == "params") {
+            fail(syntax_.token_span(type),
+                 "expected widget type, found structural form '" + std::string{syntax_.text(type)} +
+                     "'");
         }
-        return Child{std::move(box), opening.span};
+        std::vector<Argument> arguments;
+        std::vector<NamedSlot> slots;
+        std::set<IdentifierId> argument_names;
+        std::set<IdentifierId> slot_names;
+        ChildId content{};
+        bool saw_child{};
+        auto const count{syntax_.children(form).size()};
+        while (index < count) {
+            auto const item{syntax_.children(form)[index++]};
+            if (syntax_.kind(item) == TokenKind::keyword) {
+                if (saw_child) {
+                    fail(syntax_.token_span(item), "widget arguments must appear before children");
+                }
+                if (!argument_names.insert(syntax_.identifier(item)).second) {
+                    fail(syntax_.token_span(item),
+                         "duplicate widget argument ':" + std::string{syntax_.text(item)} + "'");
+                }
+                if (index == count) {
+                    fail(syntax_.token_span(item), "expected widget argument value");
+                }
+                arguments.push_back(
+                    {syntax_.identifier(item), parse_value(syntax_.children(form)[index++])});
+                continue;
+            }
+            saw_child = true;
+            if (syntax_.head(item) == "slot") {
+                require_count(item, 3, "expected named slot name and child");
+                auto const name{atom(syntax_.children(item)[1], "expected named slot name")};
+                if (!slot_names.insert(syntax_.identifier(name)).second) {
+                    fail(syntax_.token_span(name),
+                         "duplicate named slot '" + std::string{syntax_.text(name)} + "'");
+                }
+                slots.push_back({syntax_.identifier(name), parse_child(syntax_.children(item)[2])});
+            } else {
+                if (content) {
+                    fail(syntax_.token_span(item), "widget may contain only one default child");
+                }
+                content = parse_child(item);
+            }
+        }
+        auto argument_range{start(document_.arguments.names.size())};
+        for (auto const argument : arguments) {
+            document_.arguments.names.push_back(argument.name);
+            document_.arguments.values.push_back(argument.value);
+        }
+        finish(argument_range, document_.arguments.names.size());
+        auto slot_range{start(document_.named_slots.names.size())};
+        for (auto const slot : slots) {
+            document_.named_slots.names.push_back(slot.name);
+            document_.named_slots.children.push_back(slot.child);
+        }
+        finish(slot_range, document_.named_slots.names.size());
+        auto const id{child_id(ChildKind::widget, document_.widgets.types.size())};
+        document_.widgets.types.push_back(syntax_.identifier(type));
+        document_.widgets.assigned_members.push_back(assigned);
+        document_.widgets.arguments.push_back(argument_range);
+        document_.widgets.contents.push_back(content);
+        document_.widgets.named_slots.push_back(slot_range);
+        document_.widgets.spans.push_back(syntax_.token_span(form));
+        return id;
     }
 
-    auto parse_box_slot() -> BoxSlot {
-        auto const& opening{expect(TokenKind::left_parenthesis, "expected box slot list")};
-        auto const& mode{expect_atom("expected 'auto' or 'fill' box slot")};
-        if (mode.text != "auto" && mode.text != "fill") {
-            fail(mode.span, "expected 'auto' or 'fill' box slot");
+    auto parse_box(FormId const form) -> ChildId {
+        require_count(form, 2, "box must contain at least one slot", false);
+        std::vector<BoxSlot> slots;
+        auto const count{syntax_.children(form).size()};
+        for (std::size_t index{1}; index < count; ++index) {
+            slots.push_back(parse_box_slot(syntax_.children(form)[index]));
         }
+        auto range{start(document_.box_slots.children.size())};
+        for (auto const slot : slots) {
+            document_.box_slots.fill.push_back(slot.fill);
+            document_.box_slots.weights.push_back(slot.weight);
+            document_.box_slots.padding.push_back(slot.padding);
+            document_.box_slots.horizontal.push_back(slot.horizontal);
+            document_.box_slots.vertical.push_back(slot.vertical);
+            document_.box_slots.children.push_back(slot.child);
+        }
+        finish(range, document_.box_slots.children.size());
+        auto const id{child_id(ChildKind::box, document_.boxes.slots.size())};
+        document_.boxes.orientations.push_back(
+            syntax_.head(form) == "vbox" ? BoxOrientation::vertical : BoxOrientation::horizontal);
+        document_.boxes.slots.push_back(range);
+        document_.boxes.spans.push_back(syntax_.token_span(form));
+        return id;
+    }
 
-        BoxSlot slot{.fill = mode.text == "fill", .span = opening.span};
-        bool has_padding{false};
-        bool has_horizontal_alignment{false};
-        bool has_vertical_alignment{false};
-
-        while (at(TokenKind::keyword)) {
-            auto const& option{expect(TokenKind::keyword, "expected box slot option")};
-            if (option.text == "weight") {
+    auto parse_box_slot(FormId const form) -> BoxSlot {
+        require_count(form, 2, "expected box slot list", false);
+        if (syntax_.head(form) != "auto" && syntax_.head(form) != "fill") {
+            fail(syntax_.token_span(form), "expected 'auto' or 'fill' box slot");
+        }
+        BoxSlot slot{.fill = syntax_.head(form) == "fill"};
+        std::size_t index{1};
+        auto const count{syntax_.children(form).size()};
+        while (index < count && syntax_.kind(syntax_.children(form)[index]) == TokenKind::keyword) {
+            auto const option{syntax_.children(form)[index++]};
+            if (index == count) {
+                fail(syntax_.token_span(option), "expected box slot option value");
+            }
+            auto const value{syntax_.children(form)[index++]};
+            if (syntax_.text(option) == "weight") {
                 if (!slot.fill) {
-                    fail(option.span, "weight is only valid on fill slots");
+                    fail(syntax_.token_span(option), "weight is only valid on fill slots");
                 }
                 if (slot.weight) {
-                    fail(option.span, "duplicate fill weight");
+                    fail(syntax_.token_span(option), "duplicate fill weight");
                 }
-                auto weight{parse_value()};
-                if (weight.kind != ValueKind::number &&
-                    (weight.kind != ValueKind::symbol ||
-                     !parameter_states_.contains(weight.text))) {
-                    fail(weight.span, "expected fill weight number or value parameter");
+                slot.weight = parse_value(value);
+                if (slot.weight.kind() != ValueKind::number &&
+                    (slot.weight.kind() != ValueKind::symbol ||
+                     !parameter_states_.contains(syntax_.identifier(value)))) {
+                    fail(syntax_.token_span(value),
+                         "expected fill weight number or value parameter");
                 }
-                slot.weight = std::move(weight);
-            } else if (option.text == "padding") {
-                if (has_padding) {
-                    fail(option.span, "duplicate slot padding");
+            } else if (syntax_.text(option) == "padding") {
+                if (slot.padding) {
+                    fail(syntax_.token_span(option), "duplicate slot padding");
                 }
-                has_padding = true;
-                slot.padding = parse_margin();
-            } else if (option.text == "halign") {
-                if (has_horizontal_alignment) {
-                    fail(option.span, "duplicate horizontal alignment");
+                slot.padding = parse_margin(value);
+            } else if (syntax_.text(option) == "halign") {
+                if (slot.horizontal.kind != AlignmentKind::none) {
+                    fail(syntax_.token_span(option), "duplicate horizontal alignment");
                 }
-                has_horizontal_alignment = true;
-                slot.horizontal_alignment = parse_alignment(true);
-            } else if (option.text == "valign") {
-                if (has_vertical_alignment) {
-                    fail(option.span, "duplicate vertical alignment");
+                slot.horizontal = parse_alignment(value, true);
+            } else if (syntax_.text(option) == "valign") {
+                if (slot.vertical.kind != AlignmentKind::none) {
+                    fail(syntax_.token_span(option), "duplicate vertical alignment");
                 }
-                has_vertical_alignment = true;
-                slot.vertical_alignment = parse_alignment(false);
+                slot.vertical = parse_alignment(value, false);
             } else {
-                fail(option.span, "unsupported box slot option ':" + option.text + "'");
+                fail(syntax_.token_span(option),
+                     "unsupported box slot option ':" + std::string{syntax_.text(option)} + "'");
             }
         }
-
-        slot.child = std::make_shared<Child>(parse_child());
-        expect(TokenKind::right_parenthesis, "expected ')' after box slot");
+        if (index + 1 != count) {
+            fail(syntax_.token_span(form), "expected one child after box slot options");
+        }
+        slot.child = parse_child(syntax_.children(form)[index]);
         return slot;
     }
 
-    auto parse_number(std::string_view const message) -> std::string {
-        auto const& value{expect_atom(message)};
-        if (!is_number(value.text)) {
-            fail(value.span, message);
-        }
-        return value.text;
-    }
-
-    auto parse_margin() -> Margin {
-        if (!consume(TokenKind::left_parenthesis)) {
-            auto const& value{expect_atom("expected padding value or let binding")};
-            if (is_number(value.text)) {
-                return Margin{.values = {value.text}};
-            }
-            if (!is_identifier(value.text)) {
-                fail(value.span, "expected padding value or earlier let binding");
-            }
-            if (!binding_names_.contains(value.text)) {
-                use_parameter(value.text, ParameterKind::value, value.span, true);
-            }
-            return Margin{.binding = value.text};
-        }
-
-        std::vector<std::string> values;
-        while (!at(TokenKind::right_parenthesis)) {
-            if (at(TokenKind::end)) {
-                fail(current().span, "expected ')' after padding");
-            }
-            values.push_back(parse_number("expected padding value"));
-        }
-        auto const& closing{expect(TokenKind::right_parenthesis, "expected ')' after padding")};
-        if (values.size() != 2 && values.size() != 4) {
-            fail(closing.span, "padding tuple must contain two or four values");
-        }
-        return Margin{.values = std::move(values)};
-    }
-
-    auto parse_alignment(bool const horizontal) -> std::string {
-        auto const& value{expect_atom("expected alignment value")};
-        if (is_identifier(value.text) && parameter_states_.contains(value.text)) {
-            use_parameter(value.text, ParameterKind::value, value.span, true);
-            return value.text;
-        }
-        auto const valid{horizontal ? value.text == "left" || value.text == "center" ||
-                                          value.text == "right" || value.text == "fill"
-                                    : value.text == "top" || value.text == "center" ||
-                                          value.text == "bottom" || value.text == "fill"};
-        if (!valid) {
-            fail(value.span,
-                 horizontal ? "expected left, center, right, or fill"
-                            : "expected top, center, bottom, or fill");
-        }
-        return value.text;
-    }
-
-    static auto is_number(std::string_view const text) -> bool {
-        if (text.empty()) {
-            return false;
-        }
-
-        std::size_t index{};
-        if (text[index] == '-') {
-            ++index;
-        }
-        if (index == text.size() || std::isdigit(static_cast<unsigned char>(text[index])) == 0) {
-            return false;
-        }
-        while (index < text.size() && std::isdigit(static_cast<unsigned char>(text[index])) != 0) {
-            ++index;
-        }
-        if (index < text.size() && text[index] == '.') {
-            ++index;
-            if (index == text.size() ||
-                std::isdigit(static_cast<unsigned char>(text[index])) == 0) {
-                return false;
-            }
-            while (index < text.size() &&
-                   std::isdigit(static_cast<unsigned char>(text[index])) != 0) {
-                ++index;
-            }
-        }
-        return index == text.size();
-    }
-
-    static auto is_identifier(std::string_view const text) -> bool {
-        if (text.empty() ||
-            (std::isalpha(static_cast<unsigned char>(text.front())) == 0 && text.front() != '_')) {
-            return false;
-        }
-        for (auto const character : text.substr(1)) {
-            if (std::isalnum(static_cast<unsigned char>(character)) == 0 && character != '_') {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    static auto is_qualified_identifier(std::string_view text) -> bool {
-        while (true) {
-            auto const separator{text.find("::")};
-            auto const component{text.substr(0, separator)};
-            if (!is_identifier(component)) {
-                return false;
-            }
-            if (separator == std::string_view::npos) {
-                return true;
-            }
-            text.remove_prefix(separator + 2);
-        }
-    }
-
-    std::string_view path_;
-    std::vector<Token> tokens_;
-    std::size_t index_{};
+    Syntax& syntax_;
+    Document& document_;
     bool library_{};
-    std::map<std::string, ParameterState> parameter_states_;
-    std::set<std::string> binding_names_;
+    std::map<IdentifierId, ParameterState> parameter_states_;
+    std::set<IdentifierId> binding_names_;
 };
 
 }
 
-auto parse(std::string_view const path, std::vector<Form> const& forms) -> Document {
-    return Parser{path, forms}.parse();
+void parse(Syntax& syntax, HandleRange const forms, Document& document) {
+    Parser{syntax, document}.parse(forms);
 }
 
 }

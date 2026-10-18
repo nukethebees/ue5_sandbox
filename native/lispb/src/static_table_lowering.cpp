@@ -1,98 +1,168 @@
+#include "declaration_emission.h"
 #include "lowering.h"
+#include "lowering_context.h"
 #include "lowering_utils.h"
 
-#include <utility>
+#include <codegen/ast/cpp_ir.h>
+#include <codegen/ast/cpp_types.h>
+#include <codegen/ast/function_receiver.h>
+#include <codegen/ast/indices.h>
+#include <codegen/ast/node_id.h>
+#include <codegen/ast/node_list_builder.h>
+#include <codegen/ast/return_syntax.h>
+#include <codegen/schema/declarations.h>
+#include <codegen/schema/static_table_column_schemas.h>
+#include <codegen/schema/static_table_group_schemas.h>
+#include <codegen/schema/static_table_row_schemas.h>
+#include <codegen/schema/static_table_schemas.h>
+#include <lispb/indices.h>
+#include <lispb/strings.h>
 
-namespace codegen::detail {
+#include <cstddef>
+#include <string>
+#include <vector>
+
+namespace lispb::codegen::detail {
 namespace {
 
-auto static_array_type(CppType const& element_type) -> CppType {
-    TypeDependency dependency{
-        "TStaticArray", "Containers/StaticArray.h", element_type.dependencies};
-    return CppType{
-        "TStaticArray<" + element_type.spelling + ", num_rows>",
-        std::vector<TypeDependency>{std::move(dependency)},
-    };
+auto static_array_type(CppIR& ir, CppTypeId element_type) -> CppTypeId {
+    auto const nested{ir.types.dependencies(element_type)};
+    std::vector<TypeDependencyId> dependencies{nested.begin(), nested.end()};
+    dependencies.push_back(ir.types.dependency("TStaticArray", "Containers/StaticArray.h"));
+    return ir.types.intern("TStaticArray<" + std::string{ir.types.spelling(element_type)} +
+                               ", num_rows>",
+                           dependencies);
 }
 
-auto group_getter(StaticTableGroupSchema const& group, TypeRegistry const& types) -> Node {
-    auto const result_type{resolve_type(group.type, types)};
+auto group_getter(LoweringContext& context, StaticTableGroupId group) -> NodeId {
+    auto& ir{context.ir};
+    auto const result_type{
+        context.resolve(context.declarations.static_table_groups
+                            .type[context.declarations.static_table_groups.index(group)])};
     std::vector<std::string> arguments;
-    arguments.reserve(group.columns.size());
-    for (auto const& column : group.columns) {
-        arguments.push_back(column + "[index]");
+    arguments.reserve(context.declarations.static_table_groups
+                          .columns[context.declarations.static_table_groups.index(group)]
+                          .size());
+    for (auto const column : context.declarations.items(
+             context.declarations.static_table_groups
+                 .columns[context.declarations.static_table_groups.index(group)])) {
+        arguments.push_back(context.text(column) + "[index]");
     }
 
-    return header_function(FunctionSpec{
-        .name = "get_" + group.name,
-        .return_type = "auto",
-        .parameters = {FunctionParameter{CppType{"int32 const", "CoreMinimal.h"}, "index"}},
-        .body = {ReturnStmt{RawExpr{result_type.spelling + "{" + join(arguments, ", ") + "}"}}},
-        .qualifiers = {.trailing_return_type = result_type, .is_const = true, .is_inline = true},
-        .define_in_header = true,
-    });
+    auto const created_function{ir.function(
+        ir.strings.intern(
+            "get_" +
+            context.text(context.declarations.static_table_groups
+                             .name[context.declarations.static_table_groups.index(group)])),
+        ir.types.intern("auto"))};
+    ir.set_function_parameters(
+        created_function,
+        {ir.parameter(
+            ir.types.intern("int32 const", {ir.types.dependency("int32 const", "CoreMinimal.h")}),
+            ir.strings.intern("index"))});
+    ir.set_function_body(
+        created_function,
+        {ir.return_statement(ir.raw_expression(std::string{ir.types.spelling(result_type)} + "{" +
+                                               join(arguments, ", ") + "}"))});
+    ir.set_function_return_type(created_function, result_type, ReturnSyntax::trailing);
+    ir.set_function_receiver(created_function, FunctionReceiver::const_);
+    ir.function_flags(created_function).set_is_inline(true);
+    ir.function_flags(created_function).set_define_in_header(true);
+    return ir.header_function(created_function);
 }
 
-auto table_node(StaticTableSchema const& table, TypeRegistry const& types) -> Node {
-    CppType const int32_type{"int32", "CoreMinimal.h"};
-    NodeListBuilder children;
-    children.add(Member{int32_type,
-                        "num_rows",
-                        RawExpr{std::to_string(table.rows.size())},
-                        {.is_static = true, .is_constexpr = true}},
+auto table_node(LoweringContext& context, DeclarationHandle table) -> NodeId {
+    auto& ir{context.ir};
+    auto const rows{context.declarations.items(
+        context.declarations.static_tables.rows[context.declarations.static_tables.index(table)])};
+    auto const int32_type{
+        ir.types.intern("int32", {ir.types.dependency("int32", "CoreMinimal.h")})};
+    NodeListBuilder children{ir};
+    children.add(ir.constexpr_member(int32_type,
+                                     ir.strings.intern("num_rows"),
+                                     ir.raw_expression(std::to_string(rows.size()))),
                  2);
 
-    for (std::size_t index{0}; index < table.rows.size(); ++index) {
-        children.add(Member{int32_type,
-                            table.rows[index].name + "_index",
-                            RawExpr{std::to_string(index)},
-                            {.is_static = true, .is_constexpr = true}},
-                     index + 1 < table.rows.size() ? 1 : 2);
+    for (std::size_t index{0}; index < rows.size(); ++index) {
+        children.add(
+            ir.constexpr_member(
+                int32_type,
+                ir.strings.intern(
+                    context.text(
+                        context.declarations.static_table_rows
+                            .name[context.declarations.static_table_rows.index(rows[index])]) +
+                    "_index"),
+                ir.raw_expression(std::to_string(index))),
+            index + 1 < rows.size() ? 1 : 2);
     }
 
-    children.add(header_function(FunctionSpec{
-                     .name = "num",
-                     .return_type = "auto",
-                     .body = {ReturnStmt{RawExpr{"num_rows"}}},
-                     .qualifiers = {.trailing_return_type = int32_type,
-                                    .is_noexcept = true,
-                                    .is_static = true,
-                                    .is_constexpr = true,
-                                    .is_inline = true},
-                     .define_in_header = true,
-                 }),
+    children.add(ir.header_function([&] {
+        auto const created_function{ir.function(ir.strings.intern("num"), ir.types.intern("auto"))};
+        ir.set_function_body(created_function,
+                             {ir.return_statement(ir.raw_expression("num_rows"))});
+        ir.set_function_return_type(created_function, int32_type, ReturnSyntax::trailing);
+        ir.set_function_noexcept(created_function);
+        ir.set_function_receiver(created_function, FunctionReceiver::static_);
+        ir.function_flags(created_function).set_is_constexpr(true);
+        ir.function_flags(created_function).set_is_inline(true);
+        ir.function_flags(created_function).set_define_in_header(true);
+        return created_function;
+    }()),
                  2);
 
     std::vector<std::string> column_names;
-    column_names.reserve(table.columns.size());
-    for (auto const& column : table.columns) {
-        column_names.push_back(column.name);
+    column_names.reserve(
+        context.declarations.static_tables.columns[context.declarations.static_tables.index(table)]
+            .size());
+    for (auto const column_id : context.declarations.items(
+             context.declarations.static_tables
+                 .columns[context.declarations.static_tables.index(table)])) {
+        auto const column{column_id};
+        column_names.push_back(
+            context.text(context.declarations.static_table_columns
+                             .name[context.declarations.static_table_columns.index(column)]));
     }
-    children.add(column_apply_arrays_function(column_names), 2)
-        .add(column_apply_array_pairs_function(column_names), 2);
+    children.add(column_apply_arrays_function(ir, column_names), 2)
+        .add(column_apply_array_pairs_function(ir, column_names), 2);
 
-    for (std::size_t index{0}; index < table.groups.size(); ++index) {
-        children.add(group_getter(table.groups[index], types), 2);
+    for (auto const group :
+         context.declarations.items(context.declarations.static_tables
+                                        .groups[context.declarations.static_tables.index(table)])) {
+        children.add(group_getter(context, group), 2);
     }
 
-    for (auto const& column : table.columns) {
+    for (auto const column_id : context.declarations.items(
+             context.declarations.static_tables
+                 .columns[context.declarations.static_tables.index(table)])) {
+        auto const column{column_id};
         children.add(
-            Member{static_array_type(resolve_type(column.type, types)), column.name, RawExpr{""}},
+            ir.instance_member(
+                static_array_type(
+                    ir,
+                    context.resolve(
+                        context.declarations.static_table_columns
+                            .type[context.declarations.static_table_columns.index(column)])),
+                context.declarations.static_table_columns
+                    .name[context.declarations.static_table_columns.index(column)],
+                ir.raw_expression("")),
             1);
     }
 
-    return Struct{
-        .name = table.name,
-        .children = children.build(),
-        .export_specifier = table.export_specifier,
-    };
+    auto const created_record{ir.record(
+        context.declarations.static_tables.name[context.declarations.static_tables.index(table)],
+        children.build(),
+        RecordKind::struct_)};
+    ir.set_record_export_specifier(
+        created_record,
+        context.declarations.static_tables
+            .export_specifier[context.declarations.static_tables.index(table)]);
+    return created_record;
 }
 
 } // namespace
 
-auto lower_static_table(StaticTableSchema const& schema, TypeRegistry const& types)
-    -> DeclarationEmission {
-    return {.header = {table_node(schema, types)}};
+auto lower_static_table(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission {
+    return {.header = {table_node(context, schema)}};
 }
 
-} // namespace codegen::detail
+} // namespace lispb::codegen::detail

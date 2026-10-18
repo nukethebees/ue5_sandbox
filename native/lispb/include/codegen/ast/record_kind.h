@@ -1,10 +1,12 @@
 #pragma once
 
-#include <stdexcept>
+#include <cstdint>
 #include <string_view>
+#include <utility>
 
-namespace codegen {
-enum class RecordKind { struct_, class_, union_ };
+namespace lispb::codegen {
+
+enum class RecordKind : std::uint8_t { struct_, class_, union_ };
 
 constexpr auto record_keyword(RecordKind kind) -> std::string_view {
     switch (kind) {
@@ -15,6 +17,7 @@ constexpr auto record_keyword(RecordKind kind) -> std::string_view {
         case RecordKind::union_:
             return "union";
     }
-    throw std::logic_error{"Invalid C++ record kind"};
+    std::unreachable();
 }
-}
+
+} // namespace lispb::codegen

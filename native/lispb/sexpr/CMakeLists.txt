@@ -1,9 +1,20 @@
-add_library(lispb-syntax
-  src/fields.cpp
-  src/lexer.cpp
-  src/reader.cpp
+add_library(lispb-syntax)
+target_sources(lispb-syntax
+  PRIVATE
+    src/fields.cpp
+    src/lexer.cpp
+    src/reader.cpp
+    src/syntax.cpp
+    src/sources.cpp
+    src/source_location.cpp
+    src/source_error.cpp
+    ../src/strings.cpp
 )
-target_include_directories(lispb-syntax PUBLIC include)
+target_include_directories(lispb-syntax
+  PUBLIC
+    include
+    ../include
+)
 target_link_libraries(lispb-syntax
   PUBLIC
     sandbox::native_defaults

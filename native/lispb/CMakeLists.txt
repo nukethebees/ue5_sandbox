@@ -23,7 +23,8 @@ target_link_libraries(lispb-paths
 ioj_enable_warnings(lispb-paths CODEGEN)
 
 add_library(lispb-output
-  src/generator.cpp
+  src/output.cpp
+  src/compilation.cpp
   src/format_generated.cpp
 )
 target_compile_definitions(lispb-output
@@ -38,7 +39,14 @@ target_link_libraries(lispb-output
 )
 ioj_enable_warnings(lispb-output CODEGEN)
 
-add_library(lispb-project src/project.cpp)
+add_library(lispb-project)
+target_sources(lispb-project
+  PRIVATE
+    src/project.cpp
+    src/project_loader.cpp
+    src/rooted_path.cpp
+    src/editable_project_document.cpp
+)
 target_include_directories(lispb-project PUBLIC include)
 target_link_libraries(lispb-project
   PUBLIC
@@ -52,43 +60,149 @@ ioj_enable_warnings(lispb-project CODEGEN)
 
 add_library(lispb-schema)
 target_sources(lispb-schema PRIVATE
-  src/cpp_type.cpp
+  src/ast/cpp_types.cpp
   src/declaration_schema.cpp
+  src/declarations.cpp
+  src/enumerator_schemas.cpp
+  src/enum_schemas.cpp
+  src/enum_unreal_projections.cpp
+  src/facade_method_schemas.cpp
+  src/facade_schemas.cpp
+  src/fixed_point_schemas.cpp
+  src/fixed_soa_schemas.cpp
+  src/function_schemas.cpp
+  src/homogeneous_layout_schemas.cpp
+  src/homogeneous_value_schemas.cpp
+  src/integer_scalar_schemas.cpp
+  src/integer_varint_schemas.cpp
+  src/linear_quantized_schemas.cpp
+  src/mini_float_schemas.cpp
+  src/module_settings_store.cpp
+  src/normal_module_schemas.cpp
+  src/optional_presence_bit_schemas.cpp
+  src/optional_sentinel_schemas.cpp
+  src/packed_named_code_schemas.cpp
+  src/packed_field_schemas.cpp
+  src/packed_reserved_bits_schemas.cpp
+  src/packed_value_schemas.cpp
+  src/parameter_schemas.cpp
+  src/record_member_schemas.cpp
+  src/record_schemas.cpp
+  src/semantic_relation_schemas.cpp
+  src/setting_category_schemas.cpp
+  src/setting_control_schemas.cpp
+  src/setting_schemas.cpp
+  src/settings_module_schemas.cpp
+  src/soa_mask_dimension_schemas.cpp
+  src/soa_member_schemas.cpp
+  src/soa_schemas.cpp
+  src/static_table_column_schemas.cpp
+  src/static_table_group_schemas.cpp
+  src/static_table_row_schemas.cpp
+  src/static_table_schemas.cpp
+  src/tagged_union_alternative_schemas.cpp
+  src/tagged_union_schemas.cpp
+  src/type_refs.cpp
+  src/umbrella_module_schemas.cpp
+  src/union_alternative_schemas.cpp
+  src/union_schemas.cpp
+  src/vector_soa_schemas.cpp
   src/editable_document.cpp
+  src/editable_document_state.cpp
+  src/editor_declarations.cpp
+  src/manifest.cpp
+  src/packed_integer_value.cpp
+  src/semantic_relation_kind.cpp
+  src/semantic_relation_unit.cpp
+  src/type_reference_role.cpp
+  src/type_registry.cpp
+  src/registered_types.cpp
+  src/editable_source_rendering.cpp
   src/enum_storage_requirement.cpp
   src/enum_code.cpp
-  src/enum_domain.cpp
+  src/enum_domains.cpp
   src/fixed_point_value.cpp
   src/packed_value_internal.cpp
   src/schema.cpp
   src/physical_type_use.cpp
   src/soa_allocator_variants.cpp
+  src/soa_allocators.cpp
+  src/soa_body.cpp
   src/source_loader.cpp
-  src/type_node.cpp
+  src/integer_domain.cpp
+  src/external_types.cpp
+  src/enum_types.cpp
+  src/integer_scalar_types.cpp
+  src/linear_quantized_types.cpp
+  src/integer_varint_types.cpp
+  src/fixed_point_types.cpp
+  src/mini_float_types.cpp
+  src/optional_sentinel_types.cpp
+  src/optional_presence_bit_types.cpp
+  src/packed_types.cpp
+  src/record_types.cpp
+  src/union_types.cpp
+  src/tagged_union_types.cpp
+  src/soa_types.cpp
+  src/static_table_types.cpp
+  src/facade_types.cpp
+  src/homogeneous_storage_types.cpp
+  src/record_members.cpp
+  src/union_alternatives.cpp
+  src/tagged_union_alternatives.cpp
+  src/soa_columns.cpp
+  src/packed_fields.cpp
+  src/packed_reserved_segments.cpp
   src/type_graph.cpp
+  src/resolved_occurrences.cpp
+  src/relationships.cpp
   src/validation.cpp
 )
+set_target_properties(lispb-schema PROPERTIES UNITY_BUILD OFF)
 target_include_directories(lispb-schema PUBLIC include)
 target_link_libraries(lispb-schema
   PUBLIC
     sandbox::native_defaults
+    lispb-syntax
   PRIVATE
     lispb-paths
-    lispb-syntax
 )
 ioj_enable_warnings(lispb-schema CODEGEN)
 
 add_library(codegen-lib)
 target_sources(codegen-lib PRIVATE
-  src/ast.cpp
-  src/expr.cpp
+  src/lowering/resolved_members.cpp
+  src/lowering/fixed_leaves.cpp
+  src/lowering/fixed_member_layouts.cpp
+  src/lowering/fixed_layouts.cpp
+  src/lowering/lowering_paths.cpp
+  src/lowering/lowering_storage.cpp
+  src/lowering/single_allocation_columns.cpp
+  src/lowering/compact_vectors.cpp
+  src/lowering/compact_vector_kind.cpp
+  src/lowering/row_parameters.cpp
+  src/lowering/single_allocation_models.cpp
+  src/lowering/single_allocation_views.cpp
+  src/lowering/packed_field_layouts.cpp
+  src/ast/cpp_ir.cpp
+  src/ast/cpp_files.cpp
+  src/ast/modules.cpp
+  src/ast/cpp_ir_templates.cpp
+  src/ast/cpp_ir_render.cpp
+  src/ast/cpp_ir_expressions.cpp
+  src/ast/render_context.cpp
+  src/ast/include.cpp
+  src/ast/node_list_builder.cpp
+  src/cpp_string.cpp
+  src/complete_dependencies.cpp
+  src/lowering_context.cpp
   src/enum_lowering.cpp
   src/facade_lowering.cpp
   src/fixed_soa_lowering.cpp
   src/fixed_soa_layout.cpp
   src/fixed_soa_container_lowering.cpp
   src/fixed_soa_storage_lowering.cpp
-  src/cpp_generator.cpp
+  src/generator.cpp
   src/homogeneous_lowering.cpp
   src/homogeneous_storage_lowering.cpp
   src/homogeneous_view_lowering.cpp
@@ -103,7 +217,7 @@ target_sources(codegen-lib PRIVATE
   src/single_allocation_soa_lowering.cpp
   src/single_allocation_soa_model.cpp
   src/native_soa_lowering.cpp
-    src/packed_value_lowering.cpp
+  src/packed_value_lowering.cpp
   src/record_lowering.cpp
   src/union_lowering.cpp
   src/soa_view_lowering.cpp
@@ -117,6 +231,7 @@ target_link_libraries(codegen-lib
     sandbox::native_defaults
     lispb-output
     lispb-schema
+    native-core-headers
   PRIVATE
     lispb-paths
     ioj::codegen_pch
@@ -124,7 +239,7 @@ target_link_libraries(codegen-lib
 ioj_enable_warnings(codegen-lib CODEGEN)
 
 add_library(lispb-target-compiler
-  src/target_compiler.cpp
+  src/compiler.cpp
   src/material_compiler.cpp
 )
 target_include_directories(lispb-target-compiler PUBLIC include)
@@ -235,6 +350,7 @@ target_link_libraries(codegen-generated-tests PRIVATE
 ioj_enable_warnings(codegen-generated-tests CODEGEN)
 
 add_executable(codegen-tests
+  tests/test_utilities.cpp
   tests/ast_tests.cpp
   tests/editable_document_tests.cpp
   tests/expr_tests.cpp
@@ -259,8 +375,7 @@ add_dependencies(codegen-tests
   material-gen-tests
 )
 target_link_libraries(codegen-tests PRIVATE
-  codegen-lib
-  lispb-project
+  lispb-target-compiler
   GTest::gtest_main
   sandbox::native_defaults
   ioj::test_pch
@@ -343,6 +458,10 @@ add_custom_target(generate-code
 )
 
 add_custom_target(check-generated-code
+  COMMAND "$<TARGET_FILE:lispb>" check
+    --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
+    --build-root "${CMAKE_BINARY_DIR}"
+    --target compiler-ir
   COMMAND "$<TARGET_FILE:lispb>" check
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"

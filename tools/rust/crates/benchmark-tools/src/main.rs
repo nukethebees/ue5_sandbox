@@ -3,7 +3,6 @@ mod compare;
 mod frame_revision;
 mod gpu;
 mod ismc;
-mod kernel;
 mod native;
 mod plots;
 mod results;
@@ -12,7 +11,6 @@ mod support;
 #[cfg(test)]
 #[path = "../tests/unit/mod.rs"]
 mod tests;
-mod time;
 mod tracy;
 mod unreal;
 
@@ -41,7 +39,6 @@ fn dispatch_benchmark_command(args: &[String]) -> Result<()> {
         Command::FrameMemoryRevisionAb(options) => {
             frame_revision::run_frame_memory_comparison(&root()?, &options, &args[1..])
         }
-        Command::KernelReport(options) => kernel::generate_kernel_report(&root()?, &options),
         Command::GpuStarfield(options) => gpu::run_starfield_benchmark(&root()?, &options),
         Command::SandboxIsmc(options) => {
             ismc::run_ismc_benchmark(&root()?, &options, &args[1..], false)

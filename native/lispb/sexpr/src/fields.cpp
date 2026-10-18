@@ -1,187 +1,265 @@
 #include <codegen/sexpr/fields.h>
 
+#include <codegen/sexpr/failure_handler.h>
+#include <codegen/sexpr/indices.h>
+#include <codegen/sexpr/source_error.h>
+#include <codegen/sexpr/source_span.h>
+#include <codegen/sexpr/sources.h>
+#include <codegen/sexpr/syntax.h>
+#include <codegen/sexpr/token_kind.h>
+#include <lispb/strings.h>
+
+#include <algorithm>
 #include <charconv>
 #include <cmath>
-#include <set>
+#include <cstddef>
+#include <exception>
+#include <initializer_list>
+#include <optional>
+#include <span>
+#include <string>
+#include <string_view>
+#include <system_error>
+#include <vector>
 
-namespace codegen::sexpr {
+namespace lispb::codegen::sexpr {
 namespace {
 
-[[noreturn]] void
-    report(FailureHandler const failure, SourceSpan const& span, std::string const& message) {
-    failure(span, message);
+[[noreturn]] void report(FailureHandler const failure,
+                         Sources const& sources,
+                         SourceSpan const span,
+                         std::string const& message) {
+    failure(sources, span, message);
     std::terminate();
 }
 
 } // namespace
 
-[[noreturn]] void throw_source_error(SourceSpan const& span, std::string const& message) {
-    throw SourceError{span.path, span, message};
+[[noreturn]] void
+    throw_source_error(Sources const& sources, SourceSpan const& span, std::string const& message) {
+    throw SourceError{sources, span, message};
 }
 
-Fields::Fields(Form const& form,
+Fields::Fields(Syntax const& syntax,
+               FormId form,
                std::string_view const expected_head,
                std::size_t const positionals,
                FailureHandler const failure)
-    : form_{form}
+    : syntax_{syntax}
+    , form_{form}
     , failure_{failure} {
-    if (!form.is_list() || form.head() != expected_head) {
-        report(failure_, form.token.span, "expected '" + std::string{expected_head} + "' form");
-    }
-    if (form.children.size() < positionals + 1) {
+    auto const& sources{syntax_.sources()};
+    if (!syntax_.is_list(form) || syntax_.head(form) != expected_head) {
         report(failure_,
-               form.token.span,
+               sources,
+               syntax_.token_span(form),
+               "expected '" + std::string{expected_head} + "' form");
+    }
+    if (syntax_.children(form).size() < positionals + 1) {
+        report(failure_,
+               sources,
+               syntax_.token_span(form),
                "'" + std::string{expected_head} + "' requires " + std::to_string(positionals) +
                    " positional value" + (positionals == 1 ? "" : "s"));
     }
 
-    for (std::size_t index{positionals + 1}; index < form.children.size();) {
-        auto const& child{form.children[index]};
-        if (child.token.kind == TokenKind::keyword) {
-            if (index + 1 >= form.children.size() ||
-                form.children[index + 1].token.kind == TokenKind::keyword) {
+    auto const count{syntax_.children(form).size()};
+    for (std::size_t index{positionals + 1}; index < count;) {
+        auto const child{syntax_.children(form)[index]};
+        if (syntax_.kind(child) == TokenKind::keyword) {
+            if (index + 1 >= count ||
+                syntax_.kind(syntax_.children(form)[index + 1]) == TokenKind::keyword) {
                 report(failure_,
-                       child.token.span,
-                       "property ':" + child.token.text + "' requires a value");
+                       sources,
+                       syntax_.token_span(child),
+                       "property ':" + std::string{syntax_.text(child)} + "' requires a value");
             }
-            if (!properties_.emplace(child.token.text, &form.children[index + 1]).second) {
-                report(
-                    failure_, child.token.span, "duplicate property ':" + child.token.text + "'");
+            if (std::ranges::find(properties_, syntax_.identifier(child)) != properties_.end()) {
+                report(failure_,
+                       sources,
+                       syntax_.token_span(child),
+                       "duplicate property ':" + std::string{syntax_.text(child)} + "'");
             }
-            property_spans_.emplace(child.token.text, child.token.span);
+            properties_.push_back(syntax_.identifier(child));
+            values_.push_back(syntax_.children(form)[index + 1]);
+            property_spans_.push_back(syntax_.token_span(child));
             index += 2;
             continue;
         }
-        if (!child.is_list()) {
-            report(failure_, child.token.span, "expected a property or nested declaration");
+        if (!syntax_.is_list(child)) {
+            report(failure_,
+                   sources,
+                   syntax_.token_span(child),
+                   "expected a property or nested declaration");
         }
-        declarations_.push_back(&child);
+        declarations_.push_back(child);
         ++index;
     }
 }
 
-auto Fields::positional(std::size_t const index) const -> Form const& {
-    return form_.children.at(index + 1);
+auto Fields::positional(std::size_t const index) const -> FormId {
+    return syntax_.child(form_, index + 1);
 }
 
-auto Fields::optional(std::string_view const name) const -> Form const* {
-    auto const found{properties_.find(name)};
-    return found == properties_.end() ? nullptr : found->second;
+auto Fields::optional(std::string_view const name) const -> std::optional<FormId> {
+    auto const count{properties_.size()};
+    for (std::size_t index{}; index < count; ++index) {
+        if (syntax_.strings().view(properties_[index]) == name) {
+            return values_[index];
+        }
+    }
+    return std::nullopt;
 }
 
-auto Fields::required(std::string_view const name) const -> Form const& {
-    auto const* value{optional(name)};
-    if (value == nullptr) {
-        report(
-            failure_, form_.token.span, "missing required property ':" + std::string{name} + "'");
+auto Fields::required(std::string_view const name) const -> FormId {
+    auto const value{optional(name)};
+    if (!value.has_value()) {
+        report(failure_,
+               syntax_.sources(),
+               syntax_.token_span(form_),
+               "missing required property ':" + std::string{name} + "'");
     }
     return *value;
 }
 
-auto Fields::declarations() const -> std::span<Form const* const> {
+auto Fields::declarations() const -> std::span<FormId const> {
     return declarations_;
 }
 
 void Fields::validate(std::initializer_list<std::string_view> const properties,
                       std::initializer_list<std::string_view> const declarations) const {
-    std::set<std::string_view> const allowed_properties{properties};
-    for (auto const& [name, unused] : properties_) {
-        static_cast<void>(unused);
-        if (!allowed_properties.contains(name)) {
-            report(failure_, property_spans_.at(name), "unknown property ':" + name + "'");
+    auto const count{properties_.size()};
+    for (std::size_t index{}; index < count; ++index) {
+        auto const name{syntax_.strings().view(properties_[index])};
+        if (std::ranges::find(properties, name) == properties.end()) {
+            report(failure_,
+                   syntax_.sources(),
+                   property_spans_[index],
+                   "unknown property ':" + std::string{name} + "'");
         }
     }
 
-    std::set<std::string_view> const allowed_declarations{declarations};
-    for (auto const* declaration : declarations_) {
-        auto const head{declaration->head()};
+    for (auto const id : declarations_) {
+        auto const declaration{id};
+        auto const head{syntax_.head(declaration)};
         if (head.empty()) {
-            report(
-                failure_, declaration->token.span, "nested declaration must begin with a symbol");
-        }
-        if (!allowed_declarations.contains(head)) {
             report(failure_,
-                   declaration->token.span,
+                   syntax_.sources(),
+                   syntax_.token_span(declaration),
+                   "nested declaration must begin with a symbol");
+        }
+        if (std::ranges::find(declarations, head) == declarations.end()) {
+            report(failure_,
+                   syntax_.sources(),
+                   syntax_.token_span(declaration),
                    "unexpected nested declaration '" + std::string{head} + "'");
         }
     }
 }
 
-auto text(Form const& form, std::string_view const purpose, FailureHandler const failure)
-    -> std::string {
-    if (form.is_list() ||
-        (form.token.kind != TokenKind::atom && form.token.kind != TokenKind::string)) {
-        report(failure, form.token.span, std::string{purpose} + " must be text or a symbol");
+auto text(Syntax const& syntax,
+          FormId const form,
+          std::string_view const purpose,
+          FailureHandler const failure) -> std::string_view {
+    if (syntax.is_list(form) ||
+        (syntax.kind(form) != TokenKind::atom && syntax.kind(form) != TokenKind::string)) {
+        report(failure,
+               syntax.sources(),
+               syntax.token_span(form),
+               std::string{purpose} + " must be text or a symbol");
     }
-    return form.token.text;
+    return syntax.text(form);
 }
 
-auto raw_text(Form const& form,
+auto raw_text(Syntax const& syntax,
+              FormId const form,
               std::string_view const expected_tag,
               std::string_view const purpose,
-              FailureHandler const failure) -> std::string {
-    if (form.is_list() || form.token.kind != TokenKind::raw_literal) {
+              FailureHandler const failure) -> std::string_view {
+    if (syntax.is_list(form) || syntax.kind(form) != TokenKind::raw_literal) {
         report(failure,
-               form.token.span,
+               syntax.sources(),
+               syntax.token_span(form),
                std::string{purpose} + " must be a #" + std::string{expected_tag} + " raw literal");
     }
-    if (form.token.tag != expected_tag) {
+    if (syntax.tag(form) != expected_tag) {
         report(failure,
-               form.token.span,
+               syntax.sources(),
+               syntax.token_span(form),
                std::string{purpose} + " requires a #" + std::string{expected_tag} +
-                   " raw literal; got #" + form.token.tag);
+                   " raw literal; got #" + std::string{syntax.tag(form)});
     }
-    return form.token.text;
+    return syntax.text(form);
 }
 
-auto boolean(Form const& form, std::string_view const purpose, FailureHandler const failure)
-    -> bool {
-    if (!form.is_list() && form.token.kind == TokenKind::atom) {
-        if (form.token.text == "true") {
+auto boolean(Syntax const& syntax,
+             FormId const form,
+             std::string_view const purpose,
+             FailureHandler const failure) -> bool {
+    if (!syntax.is_list(form) && syntax.kind(form) == TokenKind::atom) {
+        if (syntax.text(form) == "true") {
             return true;
         }
-        if (form.token.text == "false") {
+        if (syntax.text(form) == "false") {
             return false;
         }
     }
-    report(failure, form.token.span, std::string{purpose} + " must be 'true' or 'false'");
+    report(failure,
+           syntax.sources(),
+           syntax.token_span(form),
+           std::string{purpose} + " must be 'true' or 'false'");
 }
 
-auto integer(Form const& form, std::string_view const purpose, FailureHandler const failure)
-    -> int {
-    auto const value{text(form, purpose, failure)};
+auto integer(Syntax const& syntax,
+             FormId const form,
+             std::string_view const purpose,
+             FailureHandler const failure) -> int {
+    auto const value{text(syntax, form, purpose, failure)};
     int result{};
     auto const [position,
                 error]{std::from_chars(value.data(), value.data() + value.size(), result)};
     if (error != std::errc{} || position != value.data() + value.size()) {
-        report(failure, form.token.span, std::string{purpose} + " must be an integer");
+        report(failure,
+               syntax.sources(),
+               syntax.token_span(form),
+               std::string{purpose} + " must be an integer");
     }
     return result;
 }
 
-auto number(Form const& form, std::string_view const purpose, FailureHandler const failure)
-    -> double {
-    auto const value{text(form, purpose, failure)};
+auto number(Syntax const& syntax,
+            FormId const form,
+            std::string_view const purpose,
+            FailureHandler const failure) -> double {
+    auto const value{text(syntax, form, purpose, failure)};
     double result{};
     auto const [position,
                 error]{std::from_chars(value.data(), value.data() + value.size(), result)};
     if (error != std::errc{} || position != value.data() + value.size() || !std::isfinite(result)) {
-        report(failure, form.token.span, std::string{purpose} + " must be a finite number");
+        report(failure,
+               syntax.sources(),
+               syntax.token_span(form),
+               std::string{purpose} + " must be a finite number");
     }
     return result;
 }
 
-auto text_list(Form const& form, std::string_view const purpose, FailureHandler const failure)
-    -> std::vector<std::string> {
-    if (!form.is_list()) {
-        report(failure, form.token.span, std::string{purpose} + " must be a list");
+auto text_list(Syntax const& syntax,
+               FormId const form,
+               std::string_view const purpose,
+               FailureHandler const failure) -> std::vector<std::string> {
+    if (!syntax.is_list(form)) {
+        report(failure,
+               syntax.sources(),
+               syntax.token_span(form),
+               std::string{purpose} + " must be a list");
     }
     std::vector<std::string> result;
-    result.reserve(form.children.size());
-    for (auto const& child : form.children) {
-        result.push_back(text(child, purpose, failure));
+    result.reserve(syntax.children(form).size());
+    for (auto const child : syntax.children(form)) {
+        result.emplace_back(text(syntax, child, purpose, failure));
     }
     return result;
 }
 
-} // namespace codegen::sexpr
+} // namespace lispb::codegen::sexpr

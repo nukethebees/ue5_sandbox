@@ -56,8 +56,8 @@ files without deleting a file from disk.
 
 ## Physical facts and graph views
 
-`ResolvedTypeRef` retains both canonical semantic `TypeId` and the shared `PhysicalTypeUse`
-classification alongside C++ spelling. Schema validation and generator dependency ordering use
+`ResolvedOccurrenceId` addresses the graph's `ResolvedOccurrences` columns for canonical semantic
+`TypeId`, physical classification and C++ emission metadata. Schema validation and generator dependency ordering use
 by-value containment; object pointers and references keep navigation edges without introducing
 aggregate containment cycles. Local aggregate indirection generates forward declarations.
 The bounded classifier supports named values (including opaque template names), cv qualifiers,
@@ -773,8 +773,8 @@ field-local domain. Physical placement width and field relationship remain on th
 bind immediately undoes scalar creation, while a successful pair stays as two ordinary history
 steps and follows the existing preview/save/reload path.
 Packed semantic fields and standalone `integer-scalar` declarations may own one source-backed
-relationship with a declared target. `SemanticRelationSchema` and `SemanticRelationship` are shared
-schema/graph values rather than packed- or planner-specific annotations. Kinds include `index_into`,
+relationship with a declared target. Authored relationship handles address `SemanticRelationSchemas`;
+resolved `RelationshipId` values address the graph's `Relationships` columns. Kinds include `index_into`,
 `count_of`, `offset_into`, `discriminates`, `contains`, `member_of`, `quantises`, `encoded_as`, and
 `references`; targets resolve through the same `TypeRef`/`TypeGraph` machinery as other semantic
 references. Targets that resolve only to external C++ leaves are rejected: a semantic edge must

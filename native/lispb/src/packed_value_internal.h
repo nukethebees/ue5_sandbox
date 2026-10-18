@@ -1,53 +1,48 @@
 #pragma once
 
-#include <codegen/schema.h>
-#include <codegen/schema/enum_schema.h>
-#include <codegen/schema/fixed_point_schema.h>
-#include <codegen/schema/linear_quantized_schema.h>
-#include <codegen/schema/mini_float_schema.h>
-#include <codegen/schema/module_schema.h>
-#include <codegen/schema/packed_field_schema.h>
-#include <codegen/schema/packed_value_schema.h>
-#include <codegen/schema/registered_type_schema.h>
-#include <codegen/schema/type_ref.h>
+#include <codegen/schema/declaration_handle.h>
+#include <codegen/schema/indices.h>
+#include <codegen/schema/module_handle.h>
+#include <codegen/schema/packed_segment_id.h>
+#include <lispb/schema/type_definition_id.h>
 
+#include <cstdint>
 #include <optional>
 #include <string_view>
 
-namespace codegen::detail {
+namespace lispb::schema {
+class TypeGraph;
+}
+namespace lispb::codegen {
+class Declarations;
+struct Manifest;
+}
+
+namespace lispb::codegen::detail {
 
 auto packed_unsigned_width(std::string_view spelling) -> std::optional<int>;
 auto packed_signed_width(std::string_view spelling) -> std::optional<int>;
+// Requires a validated layout; incomplete explicit defaults have no default value.
+auto packed_default_value(lispb::codegen::DeclarationHandle schema,
+                          Manifest const& manifest,
+                          schema::TypeGraph const& graph,
+                          ModuleHandle module) -> std::optional<std::uint64_t>;
+auto find_integer_domain(TypeRefId reference, schema::TypeGraph const& graph, ModuleHandle module)
+    -> std::optional<schema::TypeDefinitionId>;
+auto find_packed_integer_domain(lispb::codegen::PackedSegmentId field,
+                                schema::TypeGraph const& graph,
+                                ModuleHandle module) -> std::optional<schema::TypeDefinitionId>;
+auto derive_packed_field_width(lispb::codegen::PackedSegmentId field,
+                               Manifest const& manifest,
+                               schema::TypeGraph const& graph,
+                               ModuleHandle module) -> std::optional<int>;
+auto find_packed_enum(TypeRefId reference, schema::TypeGraph const& graph, ModuleHandle module)
+    -> std::optional<lispb::codegen::DeclarationHandle>;
+auto find_linear_quantized(TypeRefId reference, schema::TypeGraph const& graph, ModuleHandle module)
+    -> std::optional<lispb::codegen::DeclarationHandle>;
+auto find_fixed_point(TypeRefId reference, schema::TypeGraph const& graph, ModuleHandle module)
+    -> std::optional<lispb::codegen::DeclarationHandle>;
+auto find_mini_float(TypeRefId reference, schema::TypeGraph const& graph, ModuleHandle module)
+    -> std::optional<lispb::codegen::DeclarationHandle>;
 
-// Requires a validated layout. An incomplete explicit default set has no default value.
-auto packed_default_value(PackedValueSchema const& schema,
-                          TypeRegistry const& types,
-                          std::vector<ModuleSchema> const& modules) -> std::optional<std::uint64_t>;
-auto find_packed_enum(TypeRef const& type,
-                      TypeRegistry const& types,
-                      std::vector<ModuleSchema> const& modules) -> EnumSchema const*;
-auto find_integer_domain(TypeRef const& type,
-                         TypeRegistry const& types,
-                         std::vector<ModuleSchema> const& modules,
-                         std::string_view module_name = {}) -> std::optional<IntegerDomainView>;
-auto find_linear_quantized(TypeRef const& type,
-                           TypeRegistry const& types,
-                           std::vector<ModuleSchema> const& modules)
-    -> LinearQuantizedSchema const*;
-auto find_fixed_point(TypeRef const& type,
-                      TypeRegistry const& types,
-                      std::vector<ModuleSchema> const& modules) -> FixedPointSchema const*;
-auto find_mini_float(TypeRef const& type,
-                     TypeRegistry const& types,
-                     std::vector<ModuleSchema> const& modules) -> MiniFloatSchema const*;
-auto derive_integer_scalar_width(IntegerDomainView const& scalar) -> std::optional<int>;
-auto find_packed_integer_domain(PackedFieldSchema const& field,
-                                TypeRegistry const& types,
-                                std::vector<ModuleSchema> const& modules,
-                                std::string_view module_name = {})
-    -> std::optional<IntegerDomainView>;
-auto derive_packed_field_width(PackedFieldSchema const& field,
-                               TypeRegistry const& types,
-                               std::vector<ModuleSchema> const& modules) -> std::optional<int>;
-
-} // namespace codegen::detail
+} // namespace lispb::codegen::detail

@@ -1,68 +1,88 @@
 #include <codegen/sexpr/lexer.h>
 
-#include <cctype>
-#include <optional>
-#include <string>
-#include <utility>
+#include <codegen/sexpr/indices.h>
+#include <codegen/sexpr/source_error.h>
+#include <codegen/sexpr/source_span.h>
+#include <codegen/sexpr/sources.h>
+#include <codegen/sexpr/syntax.h>
+#include <codegen/sexpr/token_kind.h>
+#include <codegen/sexpr/token_range.h>
+#include <lispb/indices.h>
+#include <lispb/strings.h>
 
-namespace codegen::sexpr {
+#include <cctype>
+#include <cstdint>
+#include <string>
+#include <string_view>
+
+namespace lispb::codegen::sexpr {
 namespace {
 
 class Lexer {
   public:
-    Lexer(std::string_view const path, std::string_view const source)
-        : path_{path}
-        , source_{source} {}
+    Lexer(Syntax& syntax, SourceFileId const file)
+        : syntax_{syntax}
+        , file_{file}
+        , source_{syntax.sources().text_id(file)}
+        , length_{static_cast<std::uint32_t>(syntax.sources().text(file).size())} {}
 
-    auto lex() -> std::vector<Token> {
-        std::vector<Token> result;
+    auto lex() -> TokenRange {
+        auto const first{syntax_.token_count()};
         while (true) {
             skip_trivia();
-            auto const span{current_span()};
+            auto const begin{index_};
             if (at_end()) {
-                result.push_back(Token{TokenKind::end, {}, span});
-                return result;
+                emit(TokenKind::end, {}, begin);
+                return {first, syntax_.token_count() - first};
             }
 
-            if (auto raw_literal{lex_raw_literal()}; raw_literal.has_value()) {
-                result.push_back(std::move(*raw_literal));
-            } else if (peek() == '(') {
-                advance();
-                result.push_back(Token{TokenKind::left_parenthesis, "(", span});
-            } else if (peek() == ')') {
-                advance();
-                result.push_back(Token{TokenKind::right_parenthesis, ")", span});
+            if (lex_raw_literal()) {
+                continue;
+            }
+            if (peek() == '(' || peek() == ')') {
+                auto const kind{peek() == '(' ? TokenKind::left_parenthesis
+                                              : TokenKind::right_parenthesis};
+                ++index_;
+                emit(kind, slice(begin, index_), begin);
             } else if (peek() == '"') {
-                result.push_back(lex_string());
+                lex_string();
             } else if (peek() == ':' && peek_next() != ':') {
-                result.push_back(lex_keyword());
+                ++index_;
+                lex_atom(TokenKind::keyword, begin);
             } else {
-                result.push_back(lex_atom());
+                lex_atom(TokenKind::atom, begin);
             }
         }
     }
   private:
-    auto current_span() const -> SourceSpan {
-        return SourceSpan{line_, column_, std::string{path_}, {}, index_};
+    [[nodiscard]] auto source() const -> std::string_view {
+        return syntax_.strings().view(source_);
     }
 
-    auto at_end() const -> bool { return index_ >= source_.size(); }
-
-    auto peek() const -> char { return at_end() ? '\0' : source_[index_]; }
-
-    auto peek_next() const -> char {
-        return index_ + 1 >= source_.size() ? '\0' : source_[index_ + 1];
+    [[nodiscard]] auto span(std::uint32_t const begin) const -> SourceSpan {
+        return {file_, begin, index_, {}};
     }
 
-    auto advance() -> char {
-        auto const value{source_[index_++]};
-        if (value == '\n') {
-            ++line_;
-            column_ = 1;
-        } else {
-            ++column_;
-        }
-        return value;
+    [[nodiscard]] auto at_end() const -> bool { return index_ == length_; }
+    [[nodiscard]] auto peek() const -> char { return at_end() ? '\0' : source()[index_]; }
+    [[nodiscard]] auto peek_next() const -> char {
+        return index_ + 1 >= length_ ? '\0' : source()[index_ + 1];
+    }
+
+    [[nodiscard]] auto slice(std::uint32_t const begin, std::uint32_t const end)
+        -> lispb::StringId {
+        return syntax_.strings().slice(source_, begin, end - begin);
+    }
+
+    void emit(TokenKind const kind,
+              lispb::StringId const text,
+              std::uint32_t const begin,
+              lispb::IdentifierId const tag = {}) {
+        static_cast<void>(syntax_.add_token(kind, text, span(begin), tag));
+    }
+
+    [[noreturn]] void fail(std::uint32_t const begin, std::string const& message) const {
+        throw SourceError{syntax_.sources(), span(begin), message};
     }
 
     static auto is_delimiter(char const value) -> bool {
@@ -71,137 +91,132 @@ class Lexer {
     }
 
     static auto is_tag_start(char const value) -> bool { return value >= 'a' && value <= 'z'; }
-
     static auto is_tag_character(char const value) -> bool {
         return is_tag_start(value) || (value >= '0' && value <= '9') || value == '-';
     }
 
-    auto lex_raw_literal() -> std::optional<Token> {
-        if (peek() != '#' || index_ + 1 >= source_.size() || !is_tag_start(source_[index_ + 1])) {
-            return std::nullopt;
+    auto lex_raw_literal() -> bool {
+        if (peek() != '#' || index_ + 1 >= length_ || !is_tag_start(peek_next())) {
+            return false;
         }
 
         auto tag_end{index_ + 2};
-        while (tag_end < source_.size() && is_tag_character(source_[tag_end])) {
+        while (tag_end < length_ && is_tag_character(source()[tag_end])) {
             ++tag_end;
         }
-        if (tag_end >= source_.size() || source_[tag_end] != '{') {
-            return std::nullopt;
+        if (tag_end >= length_ || source()[tag_end] != '{') {
+            return false;
         }
 
-        auto const span{current_span()};
-        auto const tag{std::string{source_.substr(index_ + 1, tag_end - index_ - 1)}};
-        auto const closing{"}" + tag + "#"};
-        while (index_ <= tag_end) {
-            advance();
-        }
-
+        auto const begin{index_};
+        auto const tag{syntax_.strings().intern(slice(begin + 1, tag_end))};
+        auto const closing{"}" + std::string{syntax_.strings().view(tag)} + "#"};
+        index_ = tag_end + 1;
         auto const payload_start{index_};
-        auto const closing_start{source_.find(closing, payload_start)};
+        auto const closing_start{source().find(closing, payload_start)};
         if (closing_start == std::string_view::npos) {
-            throw SourceError{path_,
-                              span,
-                              "unterminated raw literal '#" + tag + "{'; expected '" + closing +
-                                  "'"};
+            fail(begin,
+                 "unterminated raw literal '#" + std::string{syntax_.strings().view(tag)} +
+                     "{'; expected '" + closing + "'");
         }
 
-        auto text{std::string{source_.substr(payload_start, closing_start - payload_start)}};
-        while (index_ < closing_start + closing.size()) {
-            advance();
-        }
-        return Token{TokenKind::raw_literal, std::move(text), span, tag};
+        auto const text{slice(payload_start, static_cast<std::uint32_t>(closing_start))};
+        index_ = static_cast<std::uint32_t>(closing_start + closing.size());
+        emit(TokenKind::raw_literal, text, begin, tag);
+        return true;
     }
 
     void skip_trivia() {
         while (!at_end()) {
             if (std::isspace(static_cast<unsigned char>(peek())) != 0) {
-                advance();
-                continue;
-            }
-            if (peek() == ';') {
+                ++index_;
+            } else if (peek() == ';') {
                 while (!at_end() && peek() != '\n') {
-                    advance();
+                    ++index_;
                 }
-                continue;
+            } else {
+                return;
             }
-            return;
         }
     }
 
-    auto lex_atom() -> Token {
-        auto const span{current_span()};
-        std::string text;
+    void lex_atom(TokenKind const kind, std::uint32_t const begin) {
+        auto const text_begin{index_};
         while (!is_delimiter(peek())) {
-            text.push_back(advance());
+            ++index_;
         }
-        if (text.empty()) {
-            throw SourceError{path_, span, "unexpected character '" + std::string{peek()} + "'"};
+        if (index_ == text_begin) {
+            fail(text_begin, "unexpected character '" + std::string{peek()} + "'");
         }
-        return Token{TokenKind::atom, std::move(text), span};
+        emit(kind, slice(text_begin, index_), begin);
     }
 
-    auto lex_keyword() -> Token {
-        auto const span{current_span()};
-        advance();
-        auto token{lex_atom()};
-        token.kind = TokenKind::keyword;
-        token.span = span;
-        return token;
-    }
-
-    auto lex_string() -> Token {
-        auto const span{current_span()};
-        advance();
-        std::string text;
+    void lex_string() {
+        auto const begin{index_++};
+        auto const text_begin{index_};
+        auto chunk_begin{index_};
+        std::string decoded;
+        bool escaped{};
         while (!at_end() && peek() != '"') {
-            auto value{advance()};
+            auto value{source()[index_++]};
             if (value == '\n') {
-                throw SourceError{path_, span, "unterminated text literal"};
+                fail(begin, "unterminated text literal");
             }
             if (value != '\\') {
-                text.push_back(value);
                 continue;
             }
+
+            escaped = true;
+            decoded.append(source().substr(chunk_begin, index_ - chunk_begin - 1));
             if (at_end()) {
-                throw SourceError{path_, span, "unterminated text literal"};
+                fail(begin, "unterminated text literal");
             }
-            value = advance();
+            value = source()[index_++];
             switch (value) {
                 case '\\':
                 case '"':
-                    text.push_back(value);
+                    decoded.push_back(value);
                     break;
                 case 'n':
-                    text.push_back('\n');
+                    decoded.push_back('\n');
                     break;
                 case 'r':
-                    text.push_back('\r');
+                    decoded.push_back('\r');
                     break;
                 case 't':
-                    text.push_back('\t');
+                    decoded.push_back('\t');
                     break;
                 default:
-                    throw SourceError{path_, current_span(), "unsupported text escape"};
+                    fail(index_, "unsupported text escape");
             }
+            chunk_begin = index_;
         }
         if (at_end()) {
-            throw SourceError{path_, span, "unterminated text literal"};
+            fail(begin, "unterminated text literal");
         }
-        advance();
-        return Token{TokenKind::string, std::move(text), span};
+
+        lispb::StringId text;
+        if (escaped) {
+            decoded.append(source().substr(chunk_begin, index_ - chunk_begin));
+            text = syntax_.strings().add(decoded);
+        } else {
+            text = slice(text_begin, index_);
+        }
+        ++index_;
+        emit(TokenKind::string, text, begin);
     }
 
-    std::string_view path_;
-    std::string_view source_;
-    std::size_t index_{};
-    std::size_t line_{1};
-    std::size_t column_{1};
+    Syntax& syntax_;
+    SourceFileId file_;
+    lispb::StringId source_;
+    std::uint32_t length_{};
+    std::uint32_t index_{};
 };
 
+} // namespace
+
+auto lex(Syntax& syntax, SourceFileId const file) -> TokenRange {
+    return Lexer{syntax, file}.lex();
 }
 
-auto lex(std::string_view const path, std::string_view const source) -> std::vector<Token> {
-    return Lexer{path, source}.lex();
-}
-
-}
+} // namespace lispb::codegen::sexpr

@@ -1,6 +1,17 @@
 #include "planner_ui.hpp"
 #include "planner_ui_support.hpp"
 
+#include <codegen/ast/cpp_types.h>
+#include <codegen/schema/declarations.h>
+#include <codegen/schema/packed_bit_order.h>
+#include <codegen/schema/packed_value_schemas.h>
+#include <codegen/schema/semantic_relation_kind.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/schema/indices.h>
+#include <lispb/schema/packed_fields.h>
+#include <lispb/schema/packed_types.h>
+#include <lispb/schema/soa_types.h>
+
 #include <imgui.h>
 
 #include <algorithm>
@@ -8,8 +19,11 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <map>
 #include <optional>
+#include <ranges>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace ioj::layout_planner {
@@ -55,7 +69,7 @@ void draw_packed_bar(PackedAnalysis const& analysis,
     constexpr float height{74.0F};
     auto const denominator{static_cast<float>(std::max<std::uint64_t>(1, common_bits))};
     auto const most_significant_first{analysis.bit_order ==
-                                      codegen::PackedBitOrder::most_significant_first};
+                                      lispb::codegen::PackedBitOrder::most_significant_first};
     auto const storage_width{available * static_cast<float>(analysis.storage_bits.value_or(0)) /
                              denominator};
     auto* draw_list{ImGui::GetWindowDrawList()};
@@ -292,9 +306,9 @@ void draw_packed_bar(PackedAnalysis const& analysis,
                 }
                 if (field.minimum_semantic_value.has_value()) {
                     auto const minimum{
-                        codegen::format_packed_integer(*field.minimum_semantic_value)};
+                        lispb::codegen::format_packed_integer(*field.minimum_semantic_value)};
                     auto const maximum{
-                        codegen::format_packed_integer(*field.maximum_semantic_value)};
+                        lispb::codegen::format_packed_integer(*field.maximum_semantic_value)};
                     ImGui::Text("Semantic range: %s..%s", minimum.c_str(), maximum.c_str());
                     ImGui::Text("Semantic values: %s",
                                 detail::format_number(field.semantic_value_count).c_str());
@@ -307,18 +321,18 @@ void draw_packed_bar(PackedAnalysis const& analysis,
                                 detail::format_number(field.unused_codes).c_str());
                 }
                 for (auto const& code : field.named_codes) {
-                    auto const value{codegen::format_packed_integer(code.value)};
+                    auto const value{lispb::codegen::format_packed_integer(code.value)};
                     ImGui::Text("%s = %s%s",
                                 code.name.c_str(),
                                 value.c_str(),
                                 code.sentinel ? " (sentinel)" : "");
                 }
                 if (field.relationship_kind.has_value() && field.relationship_target.has_value()) {
-                    ImGui::Text(
-                        "Relationship: %s -> %s",
-                        std::string{codegen::semantic_relation_kind_name(*field.relationship_kind)}
-                            .c_str(),
-                        field.relationship_target->c_str());
+                    ImGui::Text("Relationship: %s -> %s",
+                                std::string{lispb::codegen::semantic_relation_kind_name(
+                                                *field.relationship_kind)}
+                                    .c_str(),
+                                field.relationship_target->c_str());
                     if (field.relationship_target_extent.has_value()) {
                         auto const kind{*field.relationship_kind};
                         auto const term{detail::relationship_extent_term(kind)};
@@ -383,10 +397,10 @@ void draw_packed_bar(PackedAnalysis const& analysis,
                             term.data(),
                             detail::format_number(field.relationship_effective_capacity_headroom)
                                 .c_str());
-                        if (kind == codegen::SemanticRelationKind::count_of) {
+                        if (kind == lispb::codegen::SemanticRelationKind::count_of) {
                             ImGui::TextDisabled(
                                 "count_of includes the terminal count 0..capacity.");
-                        } else if (kind == codegen::SemanticRelationKind::offset_into) {
+                        } else if (kind == lispb::codegen::SemanticRelationKind::offset_into) {
                             ImGui::TextDisabled(
                                 "offset_into uses live offsets 0..extent-1 in the declared unit.");
                         } else {
@@ -1003,10 +1017,10 @@ auto PlannerUi::draw_access_operation() -> bool {
     return changed;
 }
 
-void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis const& baseline) {
-    auto const& identity{analysis_session_.inputs.workspace.types().type(baseline.type).identity};
-    ImGui::Text("%s", identity.name.c_str());
-    ImGui::TextDisabled("%s", identity.module_name.c_str());
+void PlannerUi::draw_packed_layout(TypeDefinitionId const& packed, PackedAnalysis const& baseline) {
+    auto const& identity{analysis_session_.inputs.workspace.types().identity(baseline.type)};
+    ImGui::Text("%s", text(identity.name).c_str());
+    ImGui::TextDisabled("%s", text(identity.module_name).c_str());
 
     if (detail::section("Analysis scale")) {
         if (draw_element_count()) {
@@ -1017,11 +1031,12 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
         auto const& aggregate{scale_analysis.aggregate};
         auto const byte_order{
             scale_analysis.byte_order.has_value()
-                ? std::string{codegen::packed_byte_order_name(*scale_analysis.byte_order)}
+                ? std::string{lispb::codegen::packed_byte_order_name(*scale_analysis.byte_order)}
                 : std::string{"Unspecified"}};
         ImGui::Text("Serialized byte order: %s", byte_order.c_str());
-        ImGui::Text("Segment bit order: %s",
-                    std::string{codegen::packed_bit_order_name(scale_analysis.bit_order)}.c_str());
+        ImGui::Text(
+            "Segment bit order: %s",
+            std::string{lispb::codegen::packed_bit_order_name(scale_analysis.bit_order)}.c_str());
         ImGui::TextDisabled(
             "Byte order is a serialization fact; the diagram uses numeric storage bit positions.");
         if (ImGui::BeginTable("packed-aggregate",
@@ -1193,8 +1208,11 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
         }
         auto const declaration{document_.has_value() ? document_->find_declaration(identity)
                                                      : std::optional<DeclarationId>{}};
-        auto const* packed_schema{
-            declaration.has_value() ? document_->packed_value_schema(*declaration) : nullptr};
+        auto const packed_schema{
+            declaration.has_value()
+                ? document_->declaration_handle(*declaration,
+                                                lispb::codegen::DeclarationKind::packed_value)
+                : std::nullopt};
         std::optional<std::size_t> inactive_baseline_divider;
         auto& baseline_divider{!packed_dragged_variant_id_.has_value() ||
                                        *packed_dragged_variant_id_ ==
@@ -1211,7 +1229,7 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
                         effective_access_fields,
                         "Baseline",
                         common_bits,
-                        packed_schema != nullptr,
+                        packed_schema.has_value(),
                         baseline_divider,
                         adjustment,
                         activated);
@@ -1225,23 +1243,43 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
         if (baseline_was_dragging && !baseline_divider.has_value() &&
             packed_dragged_variant_id_ == LayoutWorkspace::baseline_variant_id) {
             if (packed_dragged_left_width_.has_value() && packed_dragged_right_width_.has_value() &&
-                packed_schema != nullptr && baseline_dragged_index.has_value()) {
+                packed_schema.has_value() && baseline_dragged_index.has_value()) {
                 auto replacement{*packed_schema};
                 auto const divider{*baseline_dragged_index};
-                if (divider + 1 < replacement.segments.size()) {
-                    std::visit(
-                        [&](auto& segment) {
-                            segment.bits = static_cast<int>(*packed_dragged_left_width_);
-                        },
-                        replacement.segments[divider]);
-                    std::visit(
-                        [&](auto& segment) {
-                            segment.bits = static_cast<int>(*packed_dragged_right_width_);
-                        },
-                        replacement.segments[divider + 1]);
+                if (divider + 1 <
+                    declarations()
+                        .items(document_->storage()
+                                   .declarations.packed_values
+                                   .segments[document_->storage().declarations.packed_values.index(
+                                       replacement)])
+                        .size()) {
+                    document_->storage().declarations.packed_values.segments
+                        [document_->storage().declarations.packed_values.index(replacement)] = [&] {
+                        auto const original_items{declarations().items(
+                            document_->storage()
+                                .declarations.packed_values
+                                .segments[document_->storage().declarations.packed_values.index(
+                                    replacement)])};
+                        auto rows{std::vector(original_items.begin(), original_items.end())};
+                        rows[divider] = resize_packed_segment(
+                            rows[divider], static_cast<int>(*packed_dragged_left_width_));
+                        return declarations().range(rows);
+                    }();
+                    document_->storage().declarations.packed_values.segments
+                        [document_->storage().declarations.packed_values.index(replacement)] = [&] {
+                        auto const original_items{declarations().items(
+                            document_->storage()
+                                .declarations.packed_values
+                                .segments[document_->storage().declarations.packed_values.index(
+                                    replacement)])};
+                        auto rows{std::vector(original_items.begin(), original_items.end())};
+                        rows[divider + 1] = resize_packed_segment(
+                            rows[divider + 1], static_cast<int>(*packed_dragged_right_width_));
+                        return declarations().range(rows);
+                    }();
                     auto const selected_field{analysis_session_.inputs.selection.field};
-                    if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
-                                                               .schema = std::move(replacement)})) {
+                    if (apply_document_edit(
+                            document_->replace_declaration(*declaration, replacement))) {
                         analysis_session_.inputs.selection.field = selected_field;
                     }
                 }
@@ -1251,7 +1289,7 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
             packed_dragged_right_width_.reset();
             return;
         }
-        if (packed_schema != nullptr && baseline.fields.size() > 1) {
+        if (packed_schema.has_value() && baseline.fields.size() > 1) {
             ImGui::TextDisabled("Drag a baseline divider to change both adjacent LispB field "
                                 "widths as one undo step.");
         }
@@ -1305,37 +1343,51 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
                 analysis_session_.inputs.workspace.select_variant(variant_id);
                 sync_variant_name();
             }
-            if (adjustment.has_value() &&
-                adjustment->left_field_index + 1 < packed.segments.size()) {
+            if (adjustment.has_value() && adjustment->left_field_index + 1 <
+                                              definitions().packed.segments_of(packed).size()) {
                 if (analysis_session_.inputs.workspace.active_variant_id() != variant_id) {
                     analysis_session_.inputs.workspace.select_variant(variant_id);
                     sync_variant_name();
                 }
-                auto const* left_field{
-                    std::get_if<PackedField>(&packed.segments[adjustment->left_field_index])};
-                auto const* right_field{
-                    std::get_if<PackedField>(&packed.segments[adjustment->left_field_index + 1])};
-                if (left_field == nullptr || right_field == nullptr) {
+                auto const left_field{
+                    ((definitions().packed.segments_of(packed)[adjustment->left_field_index])
+                                 .kind() == lispb::schema::PackedSegmentKind::field
+                         ? std::optional{definitions().packed.segments_of(
+                               packed)[adjustment->left_field_index]}
+                         : std::nullopt)};
+                auto const right_field{
+                    ((definitions().packed.segments_of(packed)[adjustment->left_field_index + 1])
+                                 .kind() == lispb::schema::PackedSegmentKind::field
+                         ? std::optional{definitions().packed.segments_of(
+                               packed)[adjustment->left_field_index + 1]}
+                         : std::nullopt)};
+                if (!left_field || !right_field) {
                     continue;
                 }
                 analysis_session_.inputs.workspace.set_packed_field_width(
                     analysis.type,
-                    left_field->name,
-                    adjustment->left_width == left_field->bit_width
+                    text(definitions()
+                             .packed_fields.name[definitions().packed_fields.index(*left_field)]),
+                    adjustment->left_width ==
+                            definitions().packed_fields.bit_width[definitions().packed_fields.index(
+                                *left_field)]
                         ? std::optional<std::uint32_t>{}
                         : std::optional<std::uint32_t>{adjustment->left_width});
                 analysis_session_.inputs.workspace.set_packed_field_width(
                     analysis.type,
-                    right_field->name,
-                    adjustment->right_width == right_field->bit_width
+                    text(definitions()
+                             .packed_fields.name[definitions().packed_fields.index(*right_field)]),
+                    adjustment->right_width ==
+                            definitions().packed_fields.bit_width[definitions().packed_fields.index(
+                                *right_field)]
                         ? std::optional<std::uint32_t>{}
                         : std::optional<std::uint32_t>{adjustment->right_width});
             }
             if (analysis.unused_bits.value_or(0) != 0 && analysis.bits_used.has_value()) {
-                auto const first_unused_bit{analysis.bit_order ==
-                                                    codegen::PackedBitOrder::most_significant_first
-                                                ? std::uint64_t{0}
-                                                : *analysis.bits_used};
+                auto const first_unused_bit{
+                    analysis.bit_order == lispb::codegen::PackedBitOrder::most_significant_first
+                        ? std::uint64_t{0}
+                        : *analysis.bits_used};
                 ImGui::TextWrapped(
                     "Hatched region: unused storage bits %llu..%llu.",
                     static_cast<unsigned long long>(first_unused_bit),
@@ -1404,14 +1456,15 @@ void PlannerUi::draw_fixed_point_bit_layout(FixedPointAnalysis const& analysis) 
                 analysis.whole_bits,
                 analysis.fractional_bits);
     ImGui::Text("Allowed raw range: %s .. %s",
-                codegen::format_packed_integer(analysis.minimum_allowed_raw_value).c_str(),
-                codegen::format_packed_integer(analysis.maximum_allowed_raw_value).c_str());
+                lispb::codegen::format_packed_integer(analysis.minimum_allowed_raw_value).c_str(),
+                lispb::codegen::format_packed_integer(analysis.maximum_allowed_raw_value).c_str());
 }
 
 void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
-    auto const& node{analysis_session_.inputs.workspace.types().type(analysis.type)};
-    ImGui::Text("%s", node.identity.name.c_str());
-    ImGui::TextDisabled("%s", node.identity.module_name.c_str());
+    auto const& node{analysis.type};
+    ImGui::Text("%s", text(analysis_session_.inputs.workspace.types().name(node)).c_str());
+    ImGui::TextDisabled("%s",
+                        text(analysis_session_.inputs.workspace.types().module_name(node)).c_str());
 
     if (detail::section("Object layout")) {
         ImGui::Text("Size: %s B    Alignment: %s B",
@@ -1561,9 +1614,9 @@ void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
                     analysis_session_.inputs.selection.field = member.name;
                 }
                 ImGui::TableNextColumn();
-                ImGui::TextUnformatted(analysis_session_.inputs.workspace.types()
-                                           .type(member.semantic_type)
-                                           .cpp_spelling.c_str());
+                ImGui::TextUnformatted(text(analysis_session_.inputs.workspace.types().cpp_spelling(
+                                                member.semantic_type))
+                                           .c_str());
                 ImGui::TableNextColumn();
                 ImGui::Text("%llu", static_cast<unsigned long long>(member.element_count));
                 ImGui::TableNextColumn();
@@ -1733,14 +1786,18 @@ void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
     }
 }
 
-void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline) {
+void PlannerUi::draw_soa_layout(TypeDefinitionId const& soa, SoaAnalysis const& baseline) {
     auto const& active{*analysis_session_.results().active_soa};
-    auto const& identity{analysis_session_.inputs.workspace.types().type(baseline.type).identity};
-    ImGui::Text("%s", identity.name.c_str());
-    ImGui::TextDisabled("%s", identity.module_name.c_str());
-    if (soa.related_storage_name.has_value()) {
-        ImGui::TextDisabled("Related generated storage: %s (padding and gaps not modeled).",
-                            soa.related_storage_name->c_str());
+    auto const& identity{analysis_session_.inputs.workspace.types().identity(baseline.type)};
+    ImGui::Text("%s", text(identity.name).c_str());
+    ImGui::TextDisabled("%s", text(identity.module_name).c_str());
+    if (definitions().soas.related_storage_name[definitions().soas.index(soa)].has_value()) {
+        ImGui::TextDisabled(
+            "Related generated storage: %s (padding and gaps not modeled).",
+            std::string{
+                analysis_session_.inputs.workspace.types().cpp_types().strings().view(
+                    *definitions().soas.related_storage_name[definitions().soas.index(soa)])}
+                .c_str());
     }
     if (detail::section("Analysis scale")) {
         if (draw_element_count()) {
@@ -2045,13 +2102,16 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
     }
 
     if (analysis_session_.results().record_soa_access_comparison.has_value() &&
-        soa.equivalent_type.has_value()) {
+        lispb::schema::is_valid(
+            definitions().soas.equivalent_type[definitions().soas.index(soa)])) {
         if (detail::section("Equivalent AoS / SoA access")) {
             auto const& comparison{*analysis_session_.results().record_soa_access_comparison};
-            auto const& record_identity{analysis_session_.inputs.workspace.types()
-                                            .type(soa.equivalent_type->type)
-                                            .identity};
-            ImGui::Text("Equivalent record: %s", record_identity.name.c_str());
+            auto const& record_identity{analysis_session_.inputs.workspace.types().identity(
+                analysis_session_.inputs.workspace.types()
+                    .occurrences()
+                    .type[analysis_session_.inputs.workspace.types().occurrences().index(
+                        definitions().soas.equivalent_type[definitions().soas.index(soa)])])};
+            ImGui::Text("Equivalent record: %s", text(record_identity.name).c_str());
             if (ImGui::BeginTable("record-soa-access-comparison",
                                   4,
                                   ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |

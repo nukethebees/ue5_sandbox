@@ -713,11 +713,6 @@ def make_native_benchmark_document() -> dict[str, Any]:
     ]
     document["buildPresets"] = [
         {
-            "name": "kernel-benchmark",
-            "configurePreset": BENCHMARK_CONFIGURATION,
-            "targets": ["kernel-native-simd-tests", "kernel-native-benchmarks"],
-        },
-        {
             "name": "native-soa",
             "configurePreset": BENCHMARK_CONFIGURATION,
             "targets": [
@@ -748,22 +743,6 @@ def make_native_benchmark_document() -> dict[str, Any]:
     ]
     document["testPresets"] = [
         {
-            "name": "kernel-benchmark-tests",
-            "inherits": "test-base",
-            "configurePreset": BENCHMARK_CONFIGURATION,
-            "filter": {"include": {"label": "native-kernel-benchmark"}},
-        },
-        {
-            "name": "kernel-benchmark-plot-tests",
-            "inherits": "test-base",
-            "configurePreset": BENCHMARK_CONFIGURATION,
-            "filter": {
-                "include": {
-                    "label": "native-kernel-benchmark|kernel-benchmark-plot"
-                }
-            },
-        },
-        {
             "name": "native-soa",
             "inherits": "test-base",
             "configurePreset": BENCHMARK_CONFIGURATION,
@@ -781,7 +760,6 @@ def make_native_benchmark_document() -> dict[str, Any]:
         },
     ]
     document["workflowPresets"] = [
-        _workflow("kernel-benchmark", BENCHMARK_CONFIGURATION, "kernel-benchmark-plot-tests"),
         _workflow("native-soa", BENCHMARK_CONFIGURATION, "native-soa"),
         {
             "name": "native-simulation-benchmark",

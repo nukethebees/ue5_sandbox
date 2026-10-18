@@ -1,365 +1,646 @@
 #include <codegen/schema/declaration_schema.h>
 
-#include <codegen/schema/normal_module_schema.h>
+#include <codegen/schema/declarations.h>
+#include <codegen/schema/integer_scalar_cpp_emission.h>
+#include <codegen/schema/soa_member_kind.h>
+#include <codegen/schema/type_reference_part.h>
+#include <lispb/strings.h>
 
 #include <algorithm>
+#include <cassert>
+#include <cstdint>
+#include <optional>
+#include <string>
 #include <type_traits>
+#include <utility>
+#include <vector>
 
-namespace codegen {
+namespace lispb::codegen {
 namespace {
 
-template <typename>
-inline constexpr bool unhandled_declaration_schema{false};
-
-template <typename Declaration, typename Visitor>
-void visit_declaration_type_references(Declaration& declaration, Visitor const& detailed_visit) {
-    auto visit = [&](std::string const& role, auto& reference) {
-        detailed_visit(role, reference, TypeReferenceKind::ordinary);
-    };
-    auto optional = [&](std::string const& role,
-                        auto& reference,
-                        TypeReferenceKind const kind = TypeReferenceKind::ordinary) {
-        if (reference.has_value()) {
-            detailed_visit(role, *reference, kind);
+// Publish a new row only when a referenced handle changes.
+template <typename Columns, typename Id, typename Rewrite>
+auto rewrite_row(Columns& columns, Id& id, Rewrite const& rewrite) -> bool {
+    auto current{id};
+    bool changed{};
+    auto field = [&](auto& column, auto const& transform) {
+        auto value{column[columns.index(current)]};
+        if (!transform(value)) {
+            return;
         }
-    };
-    auto relationship = [&](std::string const& role, auto& relation) {
-        if (relation.has_value()) {
-            visit(role + " relationship", relation->target);
-        }
-    };
-    auto function = [&](std::string const& role, auto& method) {
-        auto kind{TypeReferenceKind::ordinary};
-        if constexpr (std::is_same_v<std::decay_t<decltype(method)>, FunctionSchema>) {
-            kind = method.body_lines.empty() || method.definition_in_source
-                     ? TypeReferenceKind::function_declaration
-                     : TypeReferenceKind::function_definition;
-        }
-        detailed_visit(role + " return", method.return_type, kind);
-        for (auto& parameter : method.parameters) {
-            auto const parameter_kind{kind != TypeReferenceKind::ordinary &&
-                                              parameter.default_value.has_value()
-                                          ? TypeReferenceKind::complete_definition
-                                          : kind};
-            detailed_visit(role + " parameter " + parameter.name, parameter.type, parameter_kind);
-        }
-        if constexpr (std::is_same_v<std::decay_t<decltype(method)>, FunctionSchema>) {
-            optional(role + " trailing return", method.trailing_return_type, kind);
-        }
-    };
-    std::visit(
-        [&](auto& schema) {
-            using T = std::decay_t<decltype(schema)>;
-            if constexpr (std::is_same_v<T, EnumSchema>) {
-                optional("underlying type", schema.underlying_type);
-            } else if constexpr (std::is_same_v<T, IntegerScalarSchema>) {
-                optional("C++ type", schema.cpp_type);
-                relationship("value", schema.relationship);
-            } else if constexpr (std::is_same_v<T, LinearQuantizedSchema> ||
-                                 std::is_same_v<T, IntegerVarintSchema> ||
-                                 std::is_same_v<T, OptionalSentinelSchema> ||
-                                 std::is_same_v<T, OptionalPresenceBitSchema>) {
-                visit("source", schema.source);
-            } else if constexpr (std::is_same_v<T, PackedValueSchema>) {
-                visit("storage", schema.storage_type);
-                for (auto& segment : schema.segments) {
-                    if (auto* field{std::get_if<PackedFieldSchema>(&segment)}) {
-                        visit("field " + field->name, field->type);
-                        relationship("field " + field->name, field->relationship);
-                    }
-                }
-            } else if constexpr (std::is_same_v<T, RecordSchema> || std::is_same_v<T, SoaSchema>) {
-                for (auto& member : schema.members) {
-                    visit("member " + member.name, member.type);
-                    relationship("member " + member.name, member.relationship);
-                }
-                if constexpr (std::is_same_v<T, RecordSchema>) {
-                    for (std::size_t index{}; index < schema.functions.size(); ++index) {
-                        auto& method{schema.functions[index]};
-                        auto const role{"function " + method.name + " [" + std::to_string(index) +
-                                        "]"};
-                        function(role, method);
-                    }
-                }
-                if constexpr (std::is_same_v<T, SoaSchema>) {
-                    optional("equivalent type", schema.equivalent_type);
-                    optional("array allocator", schema.array_allocator);
-                    for (std::size_t index{}; index < schema.functions.size(); ++index) {
-                        auto& method{schema.functions[index]};
-                        auto const role{"function " + method.name + " [" + std::to_string(index) +
-                                        "]"};
-                        function(role, method);
-                    }
-                    for (auto& method : schema.const_view_functions) {
-                        function("const view function " + method.name, method);
-                    }
-                    for (std::size_t index{}; index < schema.mutable_view_functions.size();
-                         ++index) {
-                        auto& method{schema.mutable_view_functions[index]};
-                        auto const role{"view function " + method.name + " [" +
-                                        std::to_string(index) + "]"};
-                        function(role, method);
-                    }
-                }
-            } else if constexpr (std::is_same_v<T, UnionSchema> ||
-                                 std::is_same_v<T, TaggedUnionSchema>) {
-                if constexpr (std::is_same_v<T, TaggedUnionSchema>) {
-                    visit("discriminant", schema.discriminant);
-                }
-                for (auto& alternative : schema.alternatives) {
-                    visit("alternative " + alternative.name, alternative.type);
-                }
-            } else if constexpr (std::is_same_v<T, VectorSoaSchema>) {
-                visit("value type", schema.value_type);
-                visit("equivalent type", schema.equivalent_type);
-            } else if constexpr (std::is_same_v<T, StaticTableSchema>) {
-                for (auto& column : schema.columns) {
-                    visit("column " + column.name, column.type);
-                }
-                for (auto& group : schema.groups) {
-                    visit("group " + group.name, group.type);
-                }
-            } else if constexpr (std::is_same_v<T, FacadeSchema>) {
-                visit("target", schema.target_type);
-                for (std::size_t index{}; index < schema.methods.size(); ++index) {
-                    auto& method{schema.methods[index]};
-                    function("method " + method.name + " [" + std::to_string(index) + "]", method);
-                }
-            } else if constexpr (std::is_same_v<T, HomogeneousLayoutSchema>) {
-                for (auto& value : schema.value_types) {
-                    auto const role{"value " + value.suffix};
-                    visit(role, value.type);
-                    optional(role + " equivalent type", value.equivalent_type);
-                    for (std::size_t index{}; index < value.input_types.size(); ++index) {
-                        visit(role + " input " + std::to_string(index), value.input_types[index]);
-                    }
-                }
-            } else {
-                static_assert(std::is_same_v<T, FixedPointSchema> ||
-                              std::is_same_v<T, MiniFloatSchema>);
+        changed = true;
+        if constexpr (!std::is_const_v<Columns>) {
+            if (current == id) {
+                current = columns.clone(id);
             }
-        },
-        declaration);
+            column[columns.index(current)] = value;
+        }
+    };
+    rewrite(field, columns.index(id));
+    id = current;
+    return changed;
 }
 
-auto soa_generated_cpp_names(SoaSchema const& schema,
-                             NormalModuleSchema const& module,
-                             bool const includes_allocator_variants) -> std::vector<std::string> {
-    std::vector<std::string> result{schema.name + "Schema"};
-    if (schema.emits_vector_storage()) {
-        result.insert(result.end(),
-                      {schema.name,
-                       schema.view_name.value_or(schema.name + "View"),
-                       schema.const_view_name.value_or(schema.name + "ConstView")});
+template <typename Store, typename Id, typename Rewrite>
+auto rewrite_range(Store& store, SchemaRange<Id>& range, Rewrite const& rewrite) -> bool {
+    std::vector<Id> updated;
+    auto const count{range.count};
+    for (std::uint32_t index{}; index < count; ++index) {
+        auto id{store.items(range)[index]};
+        if (rewrite(id, index)) {
+            if (updated.empty()) {
+                auto const original{store.items(range)};
+                updated.assign(original.begin(), original.begin() + index);
+            }
+        } else if (updated.empty()) {
+            continue;
+        }
+        updated.push_back(id);
     }
-    if (schema.field_mask_name.has_value()) {
-        result.push_back(*schema.field_mask_name);
+    if (updated.empty()) {
+        return false;
     }
-    if (schema.field_enum_name.has_value()) {
-        result.push_back(*schema.field_enum_name);
+    if constexpr (!std::is_const_v<Store>) {
+        range = store.range(updated);
     }
-    if (schema.single_allocation.has_value()) {
-        result.push_back(*schema.single_allocation);
-        result.push_back(schema.name + "SingleLayout");
-        result.push_back(schema.name + "SingleLayoutColumns");
-        result.push_back(schema.compact_view_name());
-        result.push_back(schema.compact_const_view_name());
-        result.push_back(schema.compact_view_name() + "Impl");
-        std::vector<std::string> ancestors{schema.name};
+    return true;
+}
+
+template <typename Store, typename Visitor>
+auto traverse_references(Store& store, DeclarationHandle declaration, Visitor const& visitor)
+    -> DeclarationHandle {
+    auto role =
+        [](TypeReferenceCategory category, IdentifierId subject = {}, std::uint32_t index = 0) {
+            return TypeReferenceRole{.category = category, .subject = subject, .index = index};
+        };
+    auto reference = [&](TypeReferenceRole location,
+                         TypeRefId& id,
+                         TypeReferenceKind kind = TypeReferenceKind::ordinary) {
+        auto const updated{visitor(location, id, kind)};
+        auto const changed{updated != id};
+        id = updated;
+        return changed;
+    };
+    auto optional = [&](TypeReferenceRole location,
+                        std::optional<TypeRefId>& id,
+                        TypeReferenceKind kind = TypeReferenceKind::ordinary) {
+        return id && reference(location, *id, kind);
+    };
+    auto relationship = [&](TypeReferenceRole location,
+                            std::optional<SemanticRelationId>& relation) {
+        if (!relation) {
+            return false;
+        }
+        location.part = TypeReferencePart::relationship;
+        return rewrite_row(store.semantic_relations, *relation, [&](auto field, auto) {
+            field(store.semantic_relations.target,
+                  [&](auto& value) { return reference(location, value); });
+        });
+    };
+    auto functions = [&](auto& columns, TypeReferenceCategory category, auto& methods) {
+        return rewrite_range(store, methods, [&](auto& method, std::uint32_t index) {
+            return rewrite_row(columns, method, [&](auto field, auto row) {
+                auto location{role(category, columns.name[row], index)};
+                auto kind{TypeReferenceKind::ordinary};
+                if constexpr (requires { columns.body_lines; }) {
+                    kind = columns.body_lines[row].empty() || columns.definition_in_source[row]
+                             ? TypeReferenceKind::function_declaration
+                             : TypeReferenceKind::function_definition;
+                }
+                location.part = TypeReferencePart::return_type;
+                field(columns.return_type,
+                      [&](auto& value) { return reference(location, value, kind); });
+                location.part = TypeReferencePart::parameter;
+                field(columns.parameters, [&](auto& parameters) {
+                    return rewrite_range(
+                        store, parameters, [&](auto& parameter, std::uint32_t parameter_index) {
+                            return rewrite_row(
+                                store.parameters,
+                                parameter,
+                                [&](auto parameter_field, auto parameter_row) {
+                                    location.parameter = store.parameters.name[parameter_row];
+                                    location.secondary_index = parameter_index;
+                                    auto const parameter_kind{
+                                        kind != TypeReferenceKind::ordinary &&
+                                                store.parameters.default_value[parameter_row]
+                                            ? TypeReferenceKind::complete_definition
+                                            : kind};
+                                    parameter_field(store.parameters.type, [&](auto& value) {
+                                        return reference(location, value, parameter_kind);
+                                    });
+                                });
+                        });
+                });
+                if constexpr (requires { columns.trailing_return_type; }) {
+                    location.part = TypeReferencePart::trailing_return;
+                    location.parameter = {};
+                    location.secondary_index = {};
+                    field(columns.trailing_return_type,
+                          [&](auto& value) { return optional(location, value, kind); });
+                }
+            });
+        });
+    };
+    auto children = [&](auto& columns, auto& values, TypeReferenceCategory category) {
+        return rewrite_range(store, values, [&](auto& value, std::uint32_t index) {
+            return rewrite_row(columns, value, [&](auto field, auto row) {
+                auto const location{role(category, columns.name[row], index)};
+                field(columns.type, [&](auto& type) { return reference(location, type); });
+                if constexpr (requires { columns.relationship; }) {
+                    field(columns.relationship,
+                          [&](auto& relation) { return relationship(location, relation); });
+                }
+            });
+        });
+    };
+    switch (declaration.kind()) {
+        case DeclarationKind::enumeration:
+            rewrite_row(store.enums, declaration, [&](auto field, auto row) {
+                static_cast<void>(row);
+                field(store.enums.underlying_type, [&](auto& value) {
+                    return optional(role(TypeReferenceCategory::underlying_type), value);
+                });
+            });
+            break;
+        case DeclarationKind::facade:
+            rewrite_row(store.facades, declaration, [&](auto field, auto row) {
+                static_cast<void>(row);
+                field(store.facades.target_type, [&](auto& value) {
+                    return reference(role(TypeReferenceCategory::target), value);
+                });
+                field(store.facades.methods, [&](auto& value) {
+                    return functions(store.facade_methods, TypeReferenceCategory::method, value);
+                });
+            });
+            break;
+        case DeclarationKind::fixed_point:
+            break;
+        case DeclarationKind::homogeneous_layout:
+            rewrite_row(store.homogeneous_layouts, declaration, [&](auto field, auto row) {
+                static_cast<void>(row);
+                field(store.homogeneous_layouts.value_types, [&](auto& values) {
+                    return rewrite_range(store, values, [&](auto& value, std::uint32_t index) {
+                        return rewrite_row(
+                            store.homogeneous_values, value, [&](auto field, auto row) {
+                                auto location{role(
+                                    TypeReferenceCategory::layout_value,
+                                    store.strings().intern(store.homogeneous_values.suffix[row]),
+                                    index)};
+                                field(store.homogeneous_values.type,
+                                      [&](auto& type) { return reference(location, type); });
+                                location.part = TypeReferencePart::equivalent_type;
+                                field(store.homogeneous_values.equivalent_type,
+                                      [&](auto& type) { return optional(location, type); });
+                                location.part = TypeReferencePart::input;
+                                field(store.homogeneous_values.input_types, [&](auto& inputs) {
+                                    return rewrite_range(
+                                        store, inputs, [&](auto& input, std::uint32_t input_index) {
+                                            location.secondary_index = input_index;
+                                            return reference(location, input);
+                                        });
+                                });
+                            });
+                    });
+                });
+            });
+            break;
+        case DeclarationKind::integer_scalar:
+            rewrite_row(store.integer_scalars, declaration, [&](auto field, auto row) {
+                static_cast<void>(row);
+                field(store.integer_scalars.cpp_type, [&](auto& value) {
+                    return optional(role(TypeReferenceCategory::cpp_type), value);
+                });
+                field(store.integer_scalars.relationship, [&](auto& value) {
+                    return relationship(role(TypeReferenceCategory::value), value);
+                });
+            });
+            break;
+        case DeclarationKind::integer_varint:
+            rewrite_row(store.integer_varints, declaration, [&](auto field, auto row) {
+                static_cast<void>(row);
+                field(store.integer_varints.source, [&](auto& value) {
+                    return reference(role(TypeReferenceCategory::source), value);
+                });
+            });
+            break;
+        case DeclarationKind::linear_quantized:
+            rewrite_row(store.linear_quantizeds, declaration, [&](auto field, auto row) {
+                static_cast<void>(row);
+                field(store.linear_quantizeds.source, [&](auto& value) {
+                    return reference(role(TypeReferenceCategory::source), value);
+                });
+            });
+            break;
+        case DeclarationKind::mini_float:
+            break;
+        case DeclarationKind::optional_presence_bit:
+            rewrite_row(store.optional_presence_bits, declaration, [&](auto field, auto row) {
+                static_cast<void>(row);
+                field(store.optional_presence_bits.source, [&](auto& value) {
+                    return reference(role(TypeReferenceCategory::source), value);
+                });
+            });
+            break;
+        case DeclarationKind::optional_sentinel:
+            rewrite_row(store.optional_sentinels, declaration, [&](auto field, auto row) {
+                static_cast<void>(row);
+                field(store.optional_sentinels.source, [&](auto& value) {
+                    return reference(role(TypeReferenceCategory::source), value);
+                });
+            });
+            break;
+        case DeclarationKind::packed_value:
+            rewrite_row(store.packed_values, declaration, [&](auto field, auto row) {
+                static_cast<void>(row);
+                field(store.packed_values.storage_type, [&](auto& value) {
+                    return reference(role(TypeReferenceCategory::storage), value);
+                });
+                field(store.packed_values.segments, [&](auto& segments) {
+                    return rewrite_range(
+                        store, segments, [&](PackedSegmentId& segment, std::uint32_t index) {
+                            if (segment.kind() != PackedSegmentKind::field) {
+                                return false;
+                            }
+                            return rewrite_row(
+                                store.packed_fields, segment, [&](auto field, auto row) {
+                                    auto const location{role(TypeReferenceCategory::field,
+                                                             store.packed_fields.name[row],
+                                                             index)};
+                                    field(store.packed_fields.type,
+                                          [&](auto& value) { return reference(location, value); });
+                                    field(store.packed_fields.relationship, [&](auto& value) {
+                                        return relationship(location, value);
+                                    });
+                                });
+                        });
+                });
+            });
+            break;
+        case DeclarationKind::record:
+            rewrite_row(store.records, declaration, [&](auto field, auto row) {
+                static_cast<void>(row);
+                field(store.records.members, [&](auto& value) {
+                    return children(store.record_members, value, TypeReferenceCategory::member);
+                });
+                field(store.records.functions, [&](auto& value) {
+                    return functions(store.functions, TypeReferenceCategory::function, value);
+                });
+            });
+            break;
+        case DeclarationKind::soa:
+            rewrite_row(store.soas, declaration, [&](auto field, auto row) {
+                static_cast<void>(row);
+                field(store.soas.members, [&](auto& value) {
+                    return children(store.soa_members, value, TypeReferenceCategory::member);
+                });
+                field(store.soas.functions, [&](auto& value) {
+                    return functions(store.functions, TypeReferenceCategory::function, value);
+                });
+                field(store.soas.equivalent_type, [&](auto& value) {
+                    return optional(role(TypeReferenceCategory::equivalent_type), value);
+                });
+                field(store.soas.array_allocator, [&](auto& value) {
+                    return optional(role(TypeReferenceCategory::array_allocator), value);
+                });
+                field(store.soas.const_view_functions, [&](auto& value) {
+                    return functions(
+                        store.functions, TypeReferenceCategory::const_view_function, value);
+                });
+                field(store.soas.mutable_view_functions, [&](auto& value) {
+                    return functions(store.functions, TypeReferenceCategory::view_function, value);
+                });
+            });
+            break;
+        case DeclarationKind::static_table:
+            rewrite_row(store.static_tables, declaration, [&](auto field, auto row) {
+                static_cast<void>(row);
+                field(store.static_tables.columns, [&](auto& value) {
+                    return children(
+                        store.static_table_columns, value, TypeReferenceCategory::column);
+                });
+                field(store.static_tables.groups, [&](auto& value) {
+                    return children(store.static_table_groups, value, TypeReferenceCategory::group);
+                });
+            });
+            break;
+        case DeclarationKind::tagged_union:
+            rewrite_row(store.tagged_unions, declaration, [&](auto field, auto row) {
+                static_cast<void>(row);
+                field(store.tagged_unions.discriminant, [&](auto& value) {
+                    return reference(role(TypeReferenceCategory::discriminant), value);
+                });
+                field(store.tagged_unions.alternatives, [&](auto& value) {
+                    return children(
+                        store.tagged_union_alternatives, value, TypeReferenceCategory::alternative);
+                });
+            });
+            break;
+        case DeclarationKind::union_type:
+            rewrite_row(store.unions, declaration, [&](auto field, auto row) {
+                static_cast<void>(row);
+                field(store.unions.alternatives, [&](auto& value) {
+                    return children(
+                        store.union_alternatives, value, TypeReferenceCategory::alternative);
+                });
+            });
+            break;
+        case DeclarationKind::vector_soa:
+            rewrite_row(store.vector_soas, declaration, [&](auto field, auto row) {
+                static_cast<void>(row);
+                field(store.vector_soas.value_type, [&](auto& value) {
+                    return reference(role(TypeReferenceCategory::value_type), value);
+                });
+                field(store.vector_soas.equivalent_type, [&](auto& value) {
+                    return reference(role(TypeReferenceCategory::equivalent_type), value);
+                });
+            });
+            break;
+    }
+    return declaration;
+}
+
+auto soa_generated_cpp_names(Declarations const& declarations,
+                             DeclarationHandle schema,
+                             ModuleHandle module,
+                             bool includes_allocator_variants) -> std::vector<IdentifierId> {
+    auto const& soas{declarations.soas};
+    auto const schema_row{soas.index(schema)};
+    auto const module_row{declarations.normal_modules.index(module)};
+    auto& strings{declarations.strings()};
+    auto text = [&](auto id) { return std::string{strings.view(id)}; };
+    auto const name{text(soas.name[schema_row])};
+    auto const view_name{soas.view_name[schema_row] ? text(*soas.view_name[schema_row])
+                                                    : name + "View"};
+    auto const const_view_name{soas.const_view_name[schema_row]
+                                   ? text(*soas.const_view_name[schema_row])
+                                   : name + "ConstView"};
+    auto const compact_view{!soas.emits_vector_storage(schema) && soas.view_name[schema_row]
+                                ? text(*soas.view_name[schema_row])
+                                : name + "SingleView"};
+    auto const compact_const_view{!soas.emits_vector_storage(schema) &&
+                                          soas.const_view_name[schema_row]
+                                      ? text(*soas.const_view_name[schema_row])
+                                      : name + "SingleConstView"};
+    std::vector<IdentifierId> result;
+    auto add = [&](std::string_view spelling) { result.push_back(strings.intern(spelling)); };
+    add(name + "Schema");
+    if (soas.emits_vector_storage(schema)) {
+        result.push_back(soas.name[schema_row]);
+        add(view_name);
+        add(const_view_name);
+    }
+    if (soas.field_mask_name[schema_row]) {
+        result.push_back(*soas.field_mask_name[schema_row]);
+    }
+    if (soas.field_enum_name[schema_row]) {
+        result.push_back(*soas.field_enum_name[schema_row]);
+    }
+    if (soas.single_allocation[schema_row]) {
+        add(text(*soas.single_allocation[schema_row]));
+        add(name + "SingleLayout");
+        add(name + "SingleLayoutColumns");
+        add(compact_view);
+        add(compact_const_view);
+        add(compact_view + "Impl");
+        std::vector<IdentifierId> ancestors{soas.name[schema_row]};
         auto collect_nested =
-            [&](auto&& self, SoaSchema const& parent, std::string const& suffix) -> void {
-            for (auto const& member : parent.members) {
-                if (member.kind != SoaMemberKind::nested || !member.nested_schema) {
+            [&](auto&& self, DeclarationHandle parent, std::string const& suffix) -> void {
+            for (auto const member_id : declarations.items(soas.members[soas.index(parent)])) {
+                auto const member{declarations.soa_members.index(member_id)};
+                if (declarations.soa_members.kind[member] != SoaMemberKind::nested ||
+                    !declarations.soa_members.nested_schema[member]) {
                     continue;
                 }
-                for (auto const& declaration : module.declarations) {
-                    auto const* nested{std::get_if<SoaSchema>(&declaration)};
-                    if (!nested || nested->name != *member.nested_schema ||
-                        nested->uses_compact_vector_runtime() ||
-                        std::ranges::find(ancestors, nested->name) != ancestors.end()) {
+                for (auto const declaration :
+                     declarations.items(declarations.normal_modules.declarations[module_row])) {
+                    if (declaration.kind() != DeclarationKind::soa) {
                         continue;
                     }
-                    auto const path{suffix + "_" + member.name};
-                    result.push_back(schema.compact_view_name() + path);
-                    result.push_back(schema.compact_const_view_name() + path);
-                    result.push_back(schema.compact_view_name() + path + "Impl");
-                    ancestors.push_back(nested->name);
-                    self(self, *nested, path);
+                    auto const nested{soas.index(declaration)};
+                    if (soas.name[nested] != *declarations.soa_members.nested_schema[member] ||
+                        soas.uses_compact_vector_runtime(declaration) ||
+                        std::ranges::find(ancestors, soas.name[nested]) != ancestors.end()) {
+                        continue;
+                    }
+                    auto const path{suffix + "_" + text(declarations.soa_members.name[member])};
+                    add(compact_view + path);
+                    add(compact_const_view + path);
+                    add(compact_view + path + "Impl");
+                    ancestors.push_back(soas.name[nested]);
+                    self(self, declaration, path);
                     ancestors.pop_back();
                 }
             }
         };
         collect_nested(collect_nested, schema, "");
     }
-    if (schema.fixed.has_value()) {
-        result.push_back(schema.fixed->storage_name);
-        result.insert(
-            result.end(), schema.fixed->containers.begin(), schema.fixed->containers.end());
+    if (soas.fixed[schema_row]) {
+        auto const fixed{declarations.fixed_soas.index(*soas.fixed[schema_row])};
+        result.push_back(declarations.fixed_soas.storage_name[fixed]);
+        auto const containers{declarations.items(declarations.fixed_soas.containers[fixed])};
+        for (auto const container : containers) {
+            result.push_back(container);
+        }
     }
-    if (includes_allocator_variants && schema.emits_vector_storage()) {
-        for (auto const& allocator : module.soa_array_allocators) {
-            result.push_back(allocator.prefix + schema.name);
-            result.push_back(allocator.prefix + schema.name + "Schema");
-            result.push_back(allocator.prefix + schema.view_name.value_or(schema.name + "View"));
-            result.push_back(allocator.prefix +
-                             schema.const_view_name.value_or(schema.name + "ConstView"));
+    if (includes_allocator_variants && soas.emits_vector_storage(schema)) {
+        for (auto const id :
+             declarations.items(declarations.normal_modules.soa_array_allocators[module_row])) {
+            auto const prefix{text(declarations.soa_allocator_variants
+                                       .prefix[declarations.soa_allocator_variants.index(id)])};
+            add(prefix + name);
+            add(prefix + name + "Schema");
+            add(prefix + view_name);
+            add(prefix + const_view_name);
         }
     }
     return result;
 }
 
-struct DeclarationMetadata {
-    DeclarationKind kind;
-    std::string_view head;
-    bool semantic_type;
-};
-
-auto declaration_metadata(DeclarationSchema const& declaration) -> DeclarationMetadata {
-    return std::visit(
-        [](auto const& value) -> DeclarationMetadata {
-            using T = std::decay_t<decltype(value)>;
-            if constexpr (std::is_same_v<T, EnumSchema>) {
-                return {DeclarationKind::enumeration, "enum", true};
-            } else if constexpr (std::is_same_v<T, IntegerScalarSchema>) {
-                return {DeclarationKind::integer_scalar, "integer-scalar", true};
-            } else if constexpr (std::is_same_v<T, LinearQuantizedSchema>) {
-                return {DeclarationKind::linear_quantized, "linear-quantized", true};
-            } else if constexpr (std::is_same_v<T, IntegerVarintSchema>) {
-                return {DeclarationKind::integer_varint, "integer-varint", true};
-            } else if constexpr (std::is_same_v<T, FixedPointSchema>) {
-                return {DeclarationKind::fixed_point, "fixed-point", true};
-            } else if constexpr (std::is_same_v<T, MiniFloatSchema>) {
-                return {DeclarationKind::mini_float, "mini-float", true};
-            } else if constexpr (std::is_same_v<T, OptionalSentinelSchema>) {
-                return {DeclarationKind::optional_sentinel, "optional-sentinel", true};
-            } else if constexpr (std::is_same_v<T, OptionalPresenceBitSchema>) {
-                return {DeclarationKind::optional_presence_bit, "optional-presence-bit", true};
-            } else if constexpr (std::is_same_v<T, PackedValueSchema>) {
-                return {DeclarationKind::packed_value, "packed-value", true};
-            } else if constexpr (std::is_same_v<T, RecordSchema>) {
-                return {DeclarationKind::record, "record", true};
-            } else if constexpr (std::is_same_v<T, UnionSchema>) {
-                return {DeclarationKind::union_type, "union", true};
-            } else if constexpr (std::is_same_v<T, TaggedUnionSchema>) {
-                return {DeclarationKind::tagged_union, "tagged-union", true};
-            } else if constexpr (std::is_same_v<T, SoaSchema>) {
-                return {DeclarationKind::soa, "struct", true};
-            } else if constexpr (std::is_same_v<T, VectorSoaSchema>) {
-                return {DeclarationKind::vector_soa, "vector-soa", true};
-            } else if constexpr (std::is_same_v<T, HomogeneousLayoutSchema>) {
-                return {DeclarationKind::homogeneous_layout, "layout", false};
-            } else if constexpr (std::is_same_v<T, StaticTableSchema>) {
-                return {DeclarationKind::static_table, "table", true};
-            } else if constexpr (std::is_same_v<T, FacadeSchema>) {
-                return {DeclarationKind::facade, "facade", true};
-            } else {
-                static_assert(unhandled_declaration_schema<T>);
-            }
-        },
-        declaration);
-}
-
 } // namespace
 
-auto declaration_kind(DeclarationSchema const& declaration) -> DeclarationKind {
-    return declaration_metadata(declaration).kind;
+auto declaration_head(DeclarationHandle declaration) -> std::string_view {
+    switch (declaration.kind()) {
+        case DeclarationKind::enumeration:
+            return "enum";
+        case DeclarationKind::integer_scalar:
+            return "integer-scalar";
+        case DeclarationKind::linear_quantized:
+            return "linear-quantized";
+        case DeclarationKind::integer_varint:
+            return "integer-varint";
+        case DeclarationKind::fixed_point:
+            return "fixed-point";
+        case DeclarationKind::mini_float:
+            return "mini-float";
+        case DeclarationKind::optional_sentinel:
+            return "optional-sentinel";
+        case DeclarationKind::optional_presence_bit:
+            return "optional-presence-bit";
+        case DeclarationKind::packed_value:
+            return "packed-value";
+        case DeclarationKind::record:
+            return "record";
+        case DeclarationKind::union_type:
+            return "union";
+        case DeclarationKind::tagged_union:
+            return "tagged-union";
+        case DeclarationKind::soa:
+            return "struct";
+        case DeclarationKind::vector_soa:
+            return "vector-soa";
+        case DeclarationKind::homogeneous_layout:
+            return "layout";
+        case DeclarationKind::static_table:
+            return "table";
+        case DeclarationKind::facade:
+            return "facade";
+    }
+    std::unreachable();
 }
 
-auto declaration_head(DeclarationSchema const& declaration) -> std::string_view {
-    return declaration_metadata(declaration).head;
-}
-
-auto has_primary_semantic_type(DeclarationSchema const& declaration) -> bool {
-    return declaration_metadata(declaration).semantic_type;
-}
-
-void visit_type_references(DeclarationSchema const& declaration,
-                           std::function<void(std::string const&, TypeRef const&)> const& visit) {
-    visit_declaration_type_references(
-        declaration, [&](auto const& role, auto const& reference, TypeReferenceKind) {
-            visit(role, reference);
-        });
-}
-
-void visit_type_references(DeclarationSchema& declaration,
-                           std::function<void(std::string const&, TypeRef&)> const& visit) {
-    visit_declaration_type_references(
-        declaration,
-        [&](auto const& role, auto& reference, TypeReferenceKind) { visit(role, reference); });
+auto has_primary_semantic_type(DeclarationHandle declaration) -> bool {
+    return declaration.kind() != DeclarationKind::homogeneous_layout;
 }
 
 void visit_type_references(
-    DeclarationSchema const& declaration,
-    std::function<void(std::string const&, TypeRef const&, TypeReferenceKind)> const& visit) {
-    visit_declaration_type_references(declaration, visit);
+    Declarations const& declarations,
+    DeclarationHandle declaration,
+    std::function<void(TypeReferenceRole const&, TypeRefId, TypeReferenceKind)> const& visit) {
+    static_cast<void>(traverse_references(
+        declarations, declaration, [&](auto const& role, TypeRefId id, TypeReferenceKind kind) {
+            visit(role, id, kind);
+            return id;
+        }));
 }
 
-void visit_type_references(
-    DeclarationSchema& declaration,
-    std::function<void(std::string const&, TypeRef&, TypeReferenceKind)> const& visit) {
-    visit_declaration_type_references(declaration, visit);
+auto rewrite_type_references(
+    Declarations& declarations,
+    DeclarationHandle declaration,
+    std::function<TypeRefId(TypeReferenceRole const&, TypeRefId, TypeReferenceKind)> const& rewrite)
+    -> DeclarationHandle {
+    return traverse_references(declarations, declaration, rewrite);
 }
 
-auto declaration_name(DeclarationSchema const& declaration) -> std::string const& {
-    return std::visit([](auto const& value) -> std::string const& { return value.name; },
-                      declaration);
+auto declaration_name(Declarations const& declarations, DeclarationHandle declaration)
+    -> IdentifierId {
+    switch (declaration.kind()) {
+        case DeclarationKind::enumeration:
+            return declarations.enums.name[declarations.enums.index(declaration)];
+        case DeclarationKind::facade:
+            return declarations.facades.name[declarations.facades.index(declaration)];
+        case DeclarationKind::fixed_point:
+            return declarations.fixed_points.name[declarations.fixed_points.index(declaration)];
+        case DeclarationKind::homogeneous_layout:
+            return declarations.homogeneous_layouts
+                .name[declarations.homogeneous_layouts.index(declaration)];
+        case DeclarationKind::integer_scalar:
+            return declarations.integer_scalars
+                .name[declarations.integer_scalars.index(declaration)];
+        case DeclarationKind::integer_varint:
+            return declarations.integer_varints
+                .name[declarations.integer_varints.index(declaration)];
+        case DeclarationKind::linear_quantized:
+            return declarations.linear_quantizeds
+                .name[declarations.linear_quantizeds.index(declaration)];
+        case DeclarationKind::mini_float:
+            return declarations.mini_floats.name[declarations.mini_floats.index(declaration)];
+        case DeclarationKind::optional_presence_bit:
+            return declarations.optional_presence_bits
+                .name[declarations.optional_presence_bits.index(declaration)];
+        case DeclarationKind::optional_sentinel:
+            return declarations.optional_sentinels
+                .name[declarations.optional_sentinels.index(declaration)];
+        case DeclarationKind::packed_value:
+            return declarations.packed_values.name[declarations.packed_values.index(declaration)];
+        case DeclarationKind::record:
+            return declarations.records.name[declarations.records.index(declaration)];
+        case DeclarationKind::soa:
+            return declarations.soas.name[declarations.soas.index(declaration)];
+        case DeclarationKind::static_table:
+            return declarations.static_tables.name[declarations.static_tables.index(declaration)];
+        case DeclarationKind::tagged_union:
+            return declarations.tagged_unions.name[declarations.tagged_unions.index(declaration)];
+        case DeclarationKind::union_type:
+            return declarations.unions.name[declarations.unions.index(declaration)];
+        case DeclarationKind::vector_soa:
+            return declarations.vector_soas.name[declarations.vector_soas.index(declaration)];
+    }
+    std::unreachable();
 }
 
-auto generated_cpp_names(DeclarationSchema const& declaration, NormalModuleSchema const& module)
-    -> std::vector<std::string> {
-    return std::visit(
-        [&](auto const& value) -> std::vector<std::string> {
-            using T = std::decay_t<decltype(value)>;
-            if constexpr (std::is_same_v<T, EnumSchema>) {
-                return {value.name, value.name + "Underlying"};
-            } else if constexpr (std::is_same_v<T, PackedValueSchema> ||
-                                 std::is_same_v<T, RecordSchema> ||
-                                 std::is_same_v<T, UnionSchema> ||
-                                 std::is_same_v<T, TaggedUnionSchema> ||
-                                 std::is_same_v<T, StaticTableSchema> ||
-                                 std::is_same_v<T, FacadeSchema>) {
-                return {value.name};
-            } else if constexpr (std::is_same_v<T, IntegerScalarSchema>) {
-                std::vector<std::string> result;
-                if (value.cpp_emission == IntegerScalarCppEmission::alias) {
-                    return {value.name};
-                }
-                if (value.cpp_emission != IntegerScalarCppEmission::none) {
-                    for (auto const& code : value.named_codes) {
-                        result.push_back(value.name + "_" + code.name);
-                    }
-                    if (value.cpp_emission == IntegerScalarCppEmission::constants_with_names) {
-                        result.push_back(value.name + "_name");
-                    }
-                }
-                return result;
-            } else if constexpr (std::is_same_v<T, SoaSchema>) {
-                return soa_generated_cpp_names(value, module, true);
-            } else if constexpr (std::is_same_v<T, VectorSoaSchema>) {
-                SoaSchema as_soa{.name = value.name, .fixed = value.fixed};
-                return soa_generated_cpp_names(as_soa, module, false);
-            } else if constexpr (std::is_same_v<T, HomogeneousLayoutSchema>) {
-                std::vector<std::string> result{"T" + value.name + "View"};
-                if (!value.value_types.empty() &&
-                    value.value_types.front().equivalent_type.has_value()) {
-                    result.push_back("T" + value.name + "EquivalentType");
-                }
-                for (auto const& item : value.value_types) {
-                    result.push_back("F" + value.name + item.suffix);
-                }
-                return result;
-            } else if constexpr (std::is_same_v<T, LinearQuantizedSchema> ||
-                                 std::is_same_v<T, IntegerVarintSchema> ||
-                                 std::is_same_v<T, FixedPointSchema> ||
-                                 std::is_same_v<T, MiniFloatSchema> ||
-                                 std::is_same_v<T, OptionalSentinelSchema> ||
-                                 std::is_same_v<T, OptionalPresenceBitSchema>) {
-                return {};
-            } else {
-                static_assert(unhandled_declaration_schema<T>);
+auto generated_cpp_names(Declarations const& declarations,
+                         DeclarationHandle declaration,
+                         ModuleHandle module) -> std::vector<IdentifierId> {
+    auto& strings{declarations.strings()};
+    auto text = [&](auto id) { return std::string{strings.view(id)}; };
+    auto const id{declaration_name(declarations, declaration)};
+    auto const name{text(id)};
+    switch (declaration.kind()) {
+        case DeclarationKind::enumeration:
+            return {id, strings.intern(name + "Underlying")};
+        case DeclarationKind::packed_value:
+        case DeclarationKind::record:
+        case DeclarationKind::union_type:
+        case DeclarationKind::tagged_union:
+        case DeclarationKind::static_table:
+        case DeclarationKind::facade:
+            return {id};
+        case DeclarationKind::integer_scalar: {
+            auto const& scalars{declarations.integer_scalars};
+            auto const row{scalars.index(declaration)};
+            std::vector<IdentifierId> result;
+            if (scalars.cpp_emission[row] == IntegerScalarCppEmission::alias) {
+                return {id};
             }
-        },
-        declaration);
+            if (scalars.cpp_emission[row] != IntegerScalarCppEmission::none) {
+                for (auto const code : declarations.items(scalars.named_codes[row])) {
+                    result.push_back(strings.intern(
+                        name + "_" +
+                        text(declarations.packed_named_codes
+                                 .name[declarations.packed_named_codes.index(code)])));
+                }
+                if (scalars.cpp_emission[row] == IntegerScalarCppEmission::constants_with_names) {
+                    result.push_back(strings.intern(name + "_name"));
+                }
+            }
+            return result;
+        }
+        case DeclarationKind::soa:
+            return soa_generated_cpp_names(declarations, declaration, module, true);
+        case DeclarationKind::vector_soa: {
+            std::vector<IdentifierId> result{strings.intern(name + "Schema"),
+                                             id,
+                                             strings.intern(name + "View"),
+                                             strings.intern(name + "ConstView")};
+            auto const fixed{
+                declarations.vector_soas.fixed[declarations.vector_soas.index(declaration)]};
+            if (fixed) {
+                auto const row{declarations.fixed_soas.index(*fixed)};
+                result.push_back(declarations.fixed_soas.storage_name[row]);
+                for (auto container : declarations.items(declarations.fixed_soas.containers[row])) {
+                    result.push_back(container);
+                }
+            }
+            return result;
+        }
+        case DeclarationKind::homogeneous_layout: {
+            std::vector<IdentifierId> result{strings.intern("T" + name + "View")};
+            auto const values{declarations.items(
+                declarations.homogeneous_layouts
+                    .value_types[declarations.homogeneous_layouts.index(declaration)])};
+            auto const& homogeneous{declarations.homogeneous_values};
+            if (!values.empty() && homogeneous.equivalent_type[homogeneous.index(values.front())]) {
+                result.push_back(strings.intern("T" + name + "EquivalentType"));
+            }
+            for (auto value : values) {
+                result.push_back(strings.intern(
+                    "F" + name + text(homogeneous.suffix[homogeneous.index(value)])));
+            }
+            return result;
+        }
+        default:
+            return {};
+    }
 }
 
-} // namespace codegen
+}

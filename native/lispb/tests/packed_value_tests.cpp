@@ -1,15 +1,57 @@
+#include "compiler_test_context.h"
+#include "test_utilities.h"
+
+#include <codegen/ast/cpp_types.h>
+#include <codegen/ast/indices.h>
+#include <codegen/generated_file.h>
 #include <codegen/generator.h>
+#include <codegen/schema/declaration_handle.h>
+#include <codegen/schema/declarations.h>
+#include <codegen/schema/enum_schemas.h>
+#include <codegen/schema/enumerator_schemas.h>
+#include <codegen/schema/fixed_point_rounding.h>
+#include <codegen/schema/fixed_point_schemas.h>
+#include <codegen/schema/indices.h>
+#include <codegen/schema/integer_scalar_schemas.h>
+#include <codegen/schema/linear_quantized_schemas.h>
+#include <codegen/schema/manifest.h>
+#include <codegen/schema/mini_float_schemas.h>
+#include <codegen/schema/module_settings_store.h>
+#include <codegen/schema/normal_module_schemas.h>
+#include <codegen/schema/packed_bit_order.h>
+#include <codegen/schema/packed_byte_order.h>
+#include <codegen/schema/packed_field_kind.h>
+#include <codegen/schema/packed_field_schemas.h>
+#include <codegen/schema/packed_integer_value.h>
+#include <codegen/schema/packed_named_code_schemas.h>
+#include <codegen/schema/packed_reserved_bits_schemas.h>
+#include <codegen/schema/packed_segment_id.h>
+#include <codegen/schema/packed_value_schemas.h>
+#include <codegen/schema/quantization_clipping.h>
 #include <codegen/schema/schema_version.h>
+#include <codegen/schema/semantic_relation_kind.h>
+#include <codegen/schema/semantic_relation_schemas.h>
+#include <codegen/schema/type_refs.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/indices.h>
+#include <lispb/schema/enum_signedness.h>
+#include <lispb/schema/packed_segment_id.h>
+#include <lispb/strings.h>
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
 #include <cctype>
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
+#include <optional>
+#include <stdexcept>
 #include <string>
 #include <utility>
+#include <vector>
 
-namespace codegen {
+namespace lispb::codegen {
 namespace {
 
 auto compact(std::string text) -> std::string {
@@ -30,218 +72,1175 @@ void expect_type_only_in_alias_definitions(std::string const& header,
     EXPECT_EQ(count, expected_definitions);
 }
 
-auto valid_module() -> NormalModuleSchema {
-    return NormalModuleSchema{
-        .settings = ModuleSettings{.name = "packed", .header = "Packed.h"},
-        .declarations = {PackedValueSchema{
-            .name = "FighterState",
-            .storage_type = TypeRef{"std::uint32_t"},
-            .segments =
-                {
-                    PackedFieldSchema{"entity_index", TypeRef{"std::uint32_t"}, 24},
-                    PackedFieldSchema{
-                        "state", TypeRef{"FighterStateKind"}, 8, PackedFieldKind::enumeration},
-                },
-        }}};
+auto valid_module(CompilerTestContext& context) -> ModuleHandle {
+    return [&] {
+        auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+        context.storage.declarations.normal_modules
+            .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] = [&] {
+            auto const new_module_settings_store{
+                context.storage.declarations.module_settings_store.append()};
+            context.storage.declarations.module_settings_store
+                .name[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.intern("packed");
+            context.storage.declarations.module_settings_store
+                .header[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.add("Packed.h");
+            return new_module_settings_store;
+        }();
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+            context.storage.declarations.range<DeclarationHandle>({[&] {
+                auto const new_packed_values{context.storage.declarations.packed_values.append()};
+                context.storage.declarations.packed_values
+                    .name[context.storage.declarations.packed_values.index(new_packed_values)] =
+                    context.storage.strings.intern("FighterState");
+                context.storage.declarations.packed_values
+                    .storage_type[context.storage.declarations.packed_values.index(
+                        new_packed_values)] = [&] {
+                    auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                    context.storage.declarations.type_refs
+                        .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                        context.storage.strings.intern("std::uint32_t");
+                    return new_type_refs;
+                }();
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(new_packed_values)] =
+                    context.storage.declarations.range<PackedSegmentId>(
+                        {[&] {
+                             auto const new_packed_fields{
+                                 context.storage.declarations.packed_fields.append()};
+                             context.storage.declarations.packed_fields
+                                 .name[context.storage.declarations.packed_fields.index(
+                                     new_packed_fields)] =
+                                 context.storage.strings.intern("entity_index");
+                             context.storage.declarations.packed_fields
+                                 .type[context.storage.declarations.packed_fields.index(
+                                     new_packed_fields)] = [&] {
+                                 auto const new_type_refs{
+                                     context.storage.declarations.type_refs.append()};
+                                 context.storage.declarations.type_refs
+                                     .name[context.storage.declarations.type_refs.index(
+                                         new_type_refs)] =
+                                     context.storage.strings.intern("std::uint32_t");
+                                 return new_type_refs;
+                             }();
+                             context.storage.declarations.packed_fields
+                                 .bits[context.storage.declarations.packed_fields.index(
+                                     new_packed_fields)] = 24;
+                             return new_packed_fields;
+                         }(),
+                         [&] {
+                             auto const new_packed_fields{
+                                 context.storage.declarations.packed_fields.append()};
+                             context.storage.declarations.packed_fields
+                                 .name[context.storage.declarations.packed_fields.index(
+                                     new_packed_fields)] = context.storage.strings.intern("state");
+                             context.storage.declarations.packed_fields
+                                 .type[context.storage.declarations.packed_fields.index(
+                                     new_packed_fields)] = [&] {
+                                 auto const new_type_refs{
+                                     context.storage.declarations.type_refs.append()};
+                                 context.storage.declarations.type_refs
+                                     .name[context.storage.declarations.type_refs.index(
+                                         new_type_refs)] =
+                                     context.storage.strings.intern("FighterStateKind");
+                                 return new_type_refs;
+                             }();
+                             context.storage.declarations.packed_fields
+                                 .bits[context.storage.declarations.packed_fields.index(
+                                     new_packed_fields)] = 8;
+                             context.storage.declarations.packed_fields
+                                 .kind[context.storage.declarations.packed_fields.index(
+                                     new_packed_fields)] = PackedFieldKind::enumeration;
+                             return new_packed_fields;
+                         }()});
+                return new_packed_values;
+            }()});
+        return new_normal_modules;
+    }();
 }
 
-auto field(PackedValueSchema& schema, std::size_t const index) -> PackedFieldSchema& {
-    return std::get<PackedFieldSchema>(schema.segments[index]);
-}
-
-auto lower(NormalModuleSchema module) -> std::string {
-    auto const files{render_modules(lower_modules(Manifest{
-        .schema_version = manifest_schema_version,
-        .modules = {std::move(module)},
-    }))};
+auto lower(CompilerTestContext& context, ModuleHandle module) -> std::string {
+    auto const files{render_test_manifest(context,
+                                          Manifest{manifest_schema_version,
+                                                   make_test_registry(context),
+                                                   context.storage.declarations,
+                                                   {std::move(module)}})};
     EXPECT_EQ(files.size(), 1);
     return files.front().content;
 }
 
-auto lower_known_enum(NormalModuleSchema module, EnumSchema schema) -> std::string {
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).type =
-        TypeRef{"@state"};
-    auto const files{render_modules(lower_modules(Manifest{
-        .schema_version = manifest_schema_version,
-        .types = {{"state", RegisteredTypeSchema{.cpp_type = CppType{"FighterStateKind"}}}},
-        .modules = {NormalModuleSchema{.settings =
-                                           ModuleSettings{.name = "enums", .header = "Enums.h"},
-                                       .declarations = {std::move(schema)}},
-                    std::move(module)},
-    }))};
+auto lower_known_enum(CompilerTestContext& context, ModuleHandle module, DeclarationHandle schema)
+    -> std::string {
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[1] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[1])};
+                    context.storage.declarations.packed_fields
+                        .type[context.storage.declarations.packed_fields.index(row_0)] = [&] {
+                        auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                        context.storage.declarations.type_refs
+                            .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                            context.storage.strings.intern("@state");
+                        return new_type_refs;
+                    }();
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    auto const files{render_test_manifest(
+        context,
+        Manifest{
+            manifest_schema_version,
+            make_test_registry(context,
+                               {{"state", context.storage.cpp_types.add("FighterStateKind")}}),
+            context.storage.declarations,
+            {[&] {
+                 auto const new_normal_modules{
+                     context.storage.declarations.normal_modules.append()};
+                 context.storage.declarations.normal_modules
+                     .settings[context.storage.declarations.normal_modules.index(
+                         new_normal_modules)] = [&] {
+                     auto const new_module_settings_store{
+                         context.storage.declarations.module_settings_store.append()};
+                     context.storage.declarations.module_settings_store
+                         .name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] = context.storage.strings.intern("enums");
+                     context.storage.declarations.module_settings_store
+                         .header[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] = context.storage.strings.add("Enums.h");
+                     return new_module_settings_store;
+                 }();
+                 context.storage.declarations.normal_modules
+                     .declarations[context.storage.declarations.normal_modules.index(
+                         new_normal_modules)] =
+                     context.storage.declarations.range<DeclarationHandle>({std::move(schema)});
+                 return new_normal_modules;
+             }(),
+             std::move(module)}})};
     EXPECT_EQ(files.size(), 2);
     return files.back().content;
 }
 
-auto scalar_backed_manifest(NormalModuleSchema module, bool const signedness = false) -> Manifest {
-    auto& packed_field{field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0)};
-    packed_field.type = TypeRef{"project::Health"};
-    packed_field.kind =
-        signedness ? PackedFieldKind::signed_integer : PackedFieldKind::unsigned_integer;
-    packed_field.bits.reset();
-    module.settings.namespace_name = "project";
-    std::get<codegen::PackedValueSchema>(module.declarations.front()).segments.resize(1);
-    std::get<codegen::PackedValueSchema>(module.declarations.front()).mutable_value = true;
+auto scalar_backed_manifest(CompilerTestContext& context,
+                            ModuleHandle module,
+                            bool const signedness = false) -> Manifest {
+
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .type[context.storage.declarations.packed_fields.index(row_0)] = [&] {
+                        auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                        context.storage.declarations.type_refs
+                            .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                            context.storage.strings.intern("project::Health");
+                        return new_type_refs;
+                    }();
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .kind[context.storage.declarations.packed_fields.index(row_0)] =
+                        signedness ? PackedFieldKind::signed_integer
+                                   : PackedFieldKind::unsigned_integer;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .bits[context.storage.declarations.packed_fields.index(row_0)]
+                        .reset();
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .settings[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto row_0{context.storage.declarations.module_settings_store.clone(
+            context.storage.declarations.normal_modules
+                .settings[context.storage.declarations.normal_modules.index(module)])};
+        context.storage.declarations.module_settings_store
+            .namespace_name[context.storage.declarations.module_settings_store.index(row_0)] =
+            context.storage.strings.intern("project");
+        return row_0;
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_0)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_0)])};
+                auto rows{std::vector(original_items.begin(), original_items.end())};
+                rows.resize(1);
+                return context.storage.declarations.range(rows);
+            }();
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .mutable_value[context.storage.declarations.packed_values.index(row_0)] = true;
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
 
     return Manifest{
-        .schema_version = manifest_schema_version,
-        .modules = {NormalModuleSchema{
-                        .settings = ModuleSettings{.name = "scalars",
-                                                   .header = "Scalars.h",
-                                                   .namespace_name = "project"},
-                        .declarations = {IntegerScalarSchema{
-                            .name = "Health",
-                            .signedness = signedness,
-                            .minimum_value =
-                                signedness ? PackedIntegerValue{-100} : PackedIntegerValue{0},
-                            .maximum_value =
-                                signedness ? PackedIntegerValue{100} : PackedIntegerValue{1000},
-                            .bit_width = std::nullopt,
-                            .named_codes = {{.name = "Unknown",
-                                             .value = signedness ? PackedIntegerValue{-128}
-                                                                 : PackedIntegerValue{4095},
-                                             .sentinel = true}},
-                        }}},
-                    std::move(module)},
-    };
+        manifest_schema_version,
+        make_test_registry(context),
+        context.storage.declarations,
+        {[&] {
+             auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+             context.storage.declarations.normal_modules
+                 .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                 [&] {
+                     auto const new_module_settings_store{
+                         context.storage.declarations.module_settings_store.append()};
+                     context.storage.declarations.module_settings_store
+                         .name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("scalars");
+                     context.storage.declarations.module_settings_store
+                         .header[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] = context.storage.strings.add("Scalars.h");
+                     context.storage.declarations.module_settings_store
+                         .namespace_name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("project");
+                     return new_module_settings_store;
+                 }();
+             context.storage.declarations.normal_modules
+                 .declarations[context.storage.declarations.normal_modules.index(
+                     new_normal_modules)] =
+                 context.storage.declarations.range<DeclarationHandle>({[&] {
+                     auto const new_integer_scalars{
+                         context.storage.declarations.integer_scalars.append()};
+                     context.storage.declarations.integer_scalars
+                         .name[context.storage.declarations.integer_scalars.index(
+                             new_integer_scalars)] = context.storage.strings.intern("Health");
+                     context.storage.declarations.integer_scalars
+                         .signedness[context.storage.declarations.integer_scalars.index(
+                             new_integer_scalars)] = signedness;
+                     context.storage.declarations.integer_scalars
+                         .minimum_value[context.storage.declarations.integer_scalars.index(
+                             new_integer_scalars)] =
+                         signedness ? PackedIntegerValue{-100} : PackedIntegerValue{0};
+                     context.storage.declarations.integer_scalars
+                         .maximum_value[context.storage.declarations.integer_scalars.index(
+                             new_integer_scalars)] =
+                         signedness ? PackedIntegerValue{100} : PackedIntegerValue{1000};
+                     context.storage.declarations.integer_scalars
+                         .bit_width[context.storage.declarations.integer_scalars.index(
+                             new_integer_scalars)] = std::nullopt;
+                     context.storage.declarations.integer_scalars
+                         .named_codes[context.storage.declarations.integer_scalars.index(
+                             new_integer_scalars)] =
+                         context.storage.declarations.range<PackedNamedCodeId>({[&] {
+                             auto const new_packed_named_codes{
+                                 context.storage.declarations.packed_named_codes.append()};
+                             context.storage.declarations.packed_named_codes
+                                 .name[context.storage.declarations.packed_named_codes.index(
+                                     new_packed_named_codes)] =
+                                 context.storage.strings.intern("Unknown");
+                             context.storage.declarations.packed_named_codes
+                                 .value[context.storage.declarations.packed_named_codes.index(
+                                     new_packed_named_codes)] =
+                                 signedness ? PackedIntegerValue{-128} : PackedIntegerValue{4095};
+                             context.storage.declarations.packed_named_codes
+                                 .sentinel[context.storage.declarations.packed_named_codes.index(
+                                     new_packed_named_codes)] = true;
+                             return new_packed_named_codes;
+                         }()});
+                     return new_integer_scalars;
+                 }()});
+             return new_normal_modules;
+         }(),
+         std::move(module)}};
 }
 
-auto lower_scalar_backed(NormalModuleSchema module, bool const signedness = false) -> std::string {
-    auto const files{
-        render_modules(lower_modules(scalar_backed_manifest(std::move(module), signedness)))};
+auto lower_scalar_backed(CompilerTestContext& context,
+                         ModuleHandle module,
+                         bool const signedness = false) -> std::string {
+    auto const files{render_test_manifest(
+        context, scalar_backed_manifest(context, std::move(module), signedness))};
     EXPECT_EQ(files.size(), 2);
     return files.back().content;
 }
 
-auto quantized_backed_manifest(std::uint64_t const reserved_codes = 2) -> Manifest {
+auto quantized_backed_manifest(CompilerTestContext& context, std::uint64_t const reserved_codes = 2)
+    -> Manifest {
     return Manifest{
-        .schema_version = manifest_schema_version,
-        .modules = {
-            NormalModuleSchema{.settings = ModuleSettings{.name = "scalars",
-                                                          .header = "Scalars.h",
-                                                          .namespace_name = "project"},
-                               .declarations = {IntegerScalarSchema{.name = "Health",
-                                                                    .signedness = false,
-                                                                    .minimum_value = 0,
-                                                                    .maximum_value = 1000,
-                                                                    .bit_width = std::nullopt}}},
-            NormalModuleSchema{
-                .settings = ModuleSettings{.name = "representations",
-                                           .header = "Representations.h",
-                                           .namespace_name = "project"},
-                .declarations = {LinearQuantizedSchema{.name = "HealthQ8",
-                                                       .source = TypeRef{"project::Health"},
-                                                       .bit_width = 8,
-                                                       .reserved_codes = reserved_codes,
-                                                       .clipping = QuantizationClipping::clamp}}},
-            NormalModuleSchema{
-                .settings = ModuleSettings{.name = "packed",
-                                           .header = "Packed.h",
-                                           .namespace_name = "project"},
-                .declarations = {PackedValueSchema{
-                    .name = "Vitals",
-                    .storage_type = TypeRef{"std::uint16_t"},
-                    .segments = {PackedFieldSchema{.name = "health",
-                                                   .type = TypeRef{"project::HealthQ8"},
-                                                   .bits = std::nullopt,
-                                                   .kind = PackedFieldKind::linear_quantized},
-                                 PackedFieldSchema{
-                                     .name = "state", .type = TypeRef{"std::uint8_t"}, .bits = 8}},
-                    .mutable_value = true}}},
-        }};
+        manifest_schema_version,
+        make_test_registry(context),
+        context.storage.declarations,
+        {[&] {
+             auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+             context.storage.declarations.normal_modules
+                 .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                 [&] {
+                     auto const new_module_settings_store{
+                         context.storage.declarations.module_settings_store.append()};
+                     context.storage.declarations.module_settings_store
+                         .name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("scalars");
+                     context.storage.declarations.module_settings_store
+                         .header[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] = context.storage.strings.add("Scalars.h");
+                     context.storage.declarations.module_settings_store
+                         .namespace_name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("project");
+                     return new_module_settings_store;
+                 }();
+             context.storage.declarations.normal_modules
+                 .declarations[context.storage.declarations.normal_modules.index(
+                     new_normal_modules)] =
+                 context.storage.declarations.range<DeclarationHandle>({[&] {
+                     auto const new_integer_scalars{
+                         context.storage.declarations.integer_scalars.append()};
+                     context.storage.declarations.integer_scalars
+                         .name[context.storage.declarations.integer_scalars.index(
+                             new_integer_scalars)] = context.storage.strings.intern("Health");
+                     context.storage.declarations.integer_scalars
+                         .signedness[context.storage.declarations.integer_scalars.index(
+                             new_integer_scalars)] = false;
+                     context.storage.declarations.integer_scalars
+                         .minimum_value[context.storage.declarations.integer_scalars.index(
+                             new_integer_scalars)] = 0;
+                     context.storage.declarations.integer_scalars
+                         .maximum_value[context.storage.declarations.integer_scalars.index(
+                             new_integer_scalars)] = 1000;
+                     context.storage.declarations.integer_scalars
+                         .bit_width[context.storage.declarations.integer_scalars.index(
+                             new_integer_scalars)] = std::nullopt;
+                     return new_integer_scalars;
+                 }()});
+             return new_normal_modules;
+         }(),
+         [&] {
+             auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+             context.storage.declarations.normal_modules
+                 .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                 [&] {
+                     auto const new_module_settings_store{
+                         context.storage.declarations.module_settings_store.append()};
+                     context.storage.declarations.module_settings_store
+                         .name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("representations");
+                     context.storage.declarations.module_settings_store
+                         .header[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] =
+                         context.storage.strings.add("Representations.h");
+                     context.storage.declarations.module_settings_store
+                         .namespace_name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("project");
+                     return new_module_settings_store;
+                 }();
+             context.storage.declarations.normal_modules
+                 .declarations[context.storage.declarations.normal_modules.index(
+                     new_normal_modules)] =
+                 context.storage.declarations.range<DeclarationHandle>({[&] {
+                     auto const new_linear_quantizeds{
+                         context.storage.declarations.linear_quantizeds.append()};
+                     context.storage.declarations.linear_quantizeds
+                         .name[context.storage.declarations.linear_quantizeds.index(
+                             new_linear_quantizeds)] = context.storage.strings.intern("HealthQ8");
+                     context.storage.declarations.linear_quantizeds
+                         .source[context.storage.declarations.linear_quantizeds.index(
+                             new_linear_quantizeds)] = [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("project::Health");
+                         return new_type_refs;
+                     }();
+                     context.storage.declarations.linear_quantizeds
+                         .bit_width[context.storage.declarations.linear_quantizeds.index(
+                             new_linear_quantizeds)] = 8;
+                     context.storage.declarations.linear_quantizeds
+                         .reserved_codes[context.storage.declarations.linear_quantizeds.index(
+                             new_linear_quantizeds)] = reserved_codes;
+                     context.storage.declarations.linear_quantizeds
+                         .clipping[context.storage.declarations.linear_quantizeds.index(
+                             new_linear_quantizeds)] = QuantizationClipping::clamp;
+                     return new_linear_quantizeds;
+                 }()});
+             return new_normal_modules;
+         }(),
+         [&] {
+             auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+             context.storage.declarations.normal_modules
+                 .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                 [&] {
+                     auto const new_module_settings_store{
+                         context.storage.declarations.module_settings_store.append()};
+                     context.storage.declarations.module_settings_store
+                         .name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] = context.storage.strings.intern("packed");
+                     context.storage.declarations.module_settings_store
+                         .header[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] = context.storage.strings.add("Packed.h");
+                     context.storage.declarations.module_settings_store
+                         .namespace_name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("project");
+                     return new_module_settings_store;
+                 }();
+             context.storage.declarations.normal_modules
+                 .declarations[context.storage.declarations.normal_modules.index(
+                     new_normal_modules)] =
+                 context.storage.declarations.range<DeclarationHandle>({[&] {
+                     auto const new_packed_values{
+                         context.storage.declarations.packed_values.append()};
+                     context.storage.declarations.packed_values
+                         .name[context.storage.declarations.packed_values.index(
+                             new_packed_values)] = context.storage.strings.intern("Vitals");
+                     context.storage.declarations.packed_values
+                         .storage_type[context.storage.declarations.packed_values.index(
+                             new_packed_values)] = [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("std::uint16_t");
+                         return new_type_refs;
+                     }();
+                     context.storage.declarations.packed_values
+                         .segments[context.storage.declarations.packed_values.index(
+                             new_packed_values)] =
+                         context.storage.declarations.range<PackedSegmentId>(
+                             {[&] {
+                                  auto const new_packed_fields{
+                                      context.storage.declarations.packed_fields.append()};
+                                  context.storage.declarations.packed_fields
+                                      .name[context.storage.declarations.packed_fields.index(
+                                          new_packed_fields)] =
+                                      context.storage.strings.intern("health");
+                                  context.storage.declarations.packed_fields
+                                      .type[context.storage.declarations.packed_fields.index(
+                                          new_packed_fields)] = [&] {
+                                      auto const new_type_refs{
+                                          context.storage.declarations.type_refs.append()};
+                                      context.storage.declarations.type_refs
+                                          .name[context.storage.declarations.type_refs.index(
+                                              new_type_refs)] =
+                                          context.storage.strings.intern("project::HealthQ8");
+                                      return new_type_refs;
+                                  }();
+                                  context.storage.declarations.packed_fields
+                                      .bits[context.storage.declarations.packed_fields.index(
+                                          new_packed_fields)] = std::nullopt;
+                                  context.storage.declarations.packed_fields
+                                      .kind[context.storage.declarations.packed_fields.index(
+                                          new_packed_fields)] = PackedFieldKind::linear_quantized;
+                                  return new_packed_fields;
+                              }(),
+                              [&] {
+                                  auto const new_packed_fields{
+                                      context.storage.declarations.packed_fields.append()};
+                                  context.storage.declarations.packed_fields
+                                      .name[context.storage.declarations.packed_fields.index(
+                                          new_packed_fields)] =
+                                      context.storage.strings.intern("state");
+                                  context.storage.declarations.packed_fields
+                                      .type[context.storage.declarations.packed_fields.index(
+                                          new_packed_fields)] = [&] {
+                                      auto const new_type_refs{
+                                          context.storage.declarations.type_refs.append()};
+                                      context.storage.declarations.type_refs
+                                          .name[context.storage.declarations.type_refs.index(
+                                              new_type_refs)] =
+                                          context.storage.strings.intern("std::uint8_t");
+                                      return new_type_refs;
+                                  }();
+                                  context.storage.declarations.packed_fields
+                                      .bits[context.storage.declarations.packed_fields.index(
+                                          new_packed_fields)] = 8;
+                                  return new_packed_fields;
+                              }()});
+                     context.storage.declarations.packed_values
+                         .mutable_value[context.storage.declarations.packed_values.index(
+                             new_packed_values)] = true;
+                     return new_packed_values;
+                 }()});
+             return new_normal_modules;
+         }()}};
 }
 
-auto fixed_point_backed_manifest(bool const signedness = true) -> Manifest {
+auto fixed_point_backed_manifest(CompilerTestContext& context, bool const signedness = true)
+    -> Manifest {
     return Manifest{
-        .schema_version = manifest_schema_version,
-        .modules = {
-            NormalModuleSchema{
-                .settings = ModuleSettings{.name = "representations",
-                                           .header = "Representations.h",
-                                           .namespace_name = "project"},
-                .declarations = {FixedPointSchema{.name = "VelocityQ8_4",
-                                                  .signedness = signedness,
-                                                  .total_bits = 12,
-                                                  .fractional_bits = 4,
-                                                  .rounding = FixedPointRounding::nearest_even}}},
-            NormalModuleSchema{
-                .settings = ModuleSettings{.name = "packed",
-                                           .header = "Packed.h",
-                                           .namespace_name = "project"},
-                .declarations = {PackedValueSchema{
-                    .name = "Motion",
-                    .storage_type = TypeRef{"std::uint16_t"},
-                    .segments = {PackedFieldSchema{.name = "velocity",
-                                                   .type = TypeRef{"project::VelocityQ8_4"},
-                                                   .bits = std::nullopt,
-                                                   .kind = PackedFieldKind::fixed_point},
-                                 PackedFieldSchema{
-                                     .name = "state", .type = TypeRef{"std::uint8_t"}, .bits = 4}},
-                    .mutable_value = true}}},
-        }};
+        manifest_schema_version,
+        make_test_registry(context),
+        context.storage.declarations,
+        {[&] {
+             auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+             context.storage.declarations.normal_modules
+                 .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                 [&] {
+                     auto const new_module_settings_store{
+                         context.storage.declarations.module_settings_store.append()};
+                     context.storage.declarations.module_settings_store
+                         .name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("representations");
+                     context.storage.declarations.module_settings_store
+                         .header[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] =
+                         context.storage.strings.add("Representations.h");
+                     context.storage.declarations.module_settings_store
+                         .namespace_name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("project");
+                     return new_module_settings_store;
+                 }();
+             context.storage.declarations.normal_modules
+                 .declarations[context.storage.declarations.normal_modules.index(
+                     new_normal_modules)] =
+                 context.storage.declarations.range<DeclarationHandle>({[&] {
+                     auto const new_fixed_points{
+                         context.storage.declarations.fixed_points.append()};
+                     context.storage.declarations.fixed_points
+                         .name[context.storage.declarations.fixed_points.index(new_fixed_points)] =
+                         context.storage.strings.intern("VelocityQ8_4");
+                     context.storage.declarations.fixed_points
+                         .signedness[context.storage.declarations.fixed_points.index(
+                             new_fixed_points)] = signedness;
+                     context.storage.declarations.fixed_points
+                         .total_bits[context.storage.declarations.fixed_points.index(
+                             new_fixed_points)] = 12;
+                     context.storage.declarations.fixed_points
+                         .fractional_bits[context.storage.declarations.fixed_points.index(
+                             new_fixed_points)] = 4;
+                     context.storage.declarations.fixed_points
+                         .rounding[context.storage.declarations.fixed_points.index(
+                             new_fixed_points)] = FixedPointRounding::nearest_even;
+                     return new_fixed_points;
+                 }()});
+             return new_normal_modules;
+         }(),
+         [&] {
+             auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+             context.storage.declarations.normal_modules
+                 .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                 [&] {
+                     auto const new_module_settings_store{
+                         context.storage.declarations.module_settings_store.append()};
+                     context.storage.declarations.module_settings_store
+                         .name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] = context.storage.strings.intern("packed");
+                     context.storage.declarations.module_settings_store
+                         .header[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] = context.storage.strings.add("Packed.h");
+                     context.storage.declarations.module_settings_store
+                         .namespace_name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("project");
+                     return new_module_settings_store;
+                 }();
+             context.storage.declarations.normal_modules
+                 .declarations[context.storage.declarations.normal_modules.index(
+                     new_normal_modules)] =
+                 context.storage.declarations.range<DeclarationHandle>({[&] {
+                     auto const new_packed_values{
+                         context.storage.declarations.packed_values.append()};
+                     context.storage.declarations.packed_values
+                         .name[context.storage.declarations.packed_values.index(
+                             new_packed_values)] = context.storage.strings.intern("Motion");
+                     context.storage.declarations.packed_values
+                         .storage_type[context.storage.declarations.packed_values.index(
+                             new_packed_values)] = [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("std::uint16_t");
+                         return new_type_refs;
+                     }();
+                     context.storage.declarations.packed_values
+                         .segments[context.storage.declarations.packed_values.index(
+                             new_packed_values)] =
+                         context.storage.declarations.range<PackedSegmentId>(
+                             {[&] {
+                                  auto const new_packed_fields{
+                                      context.storage.declarations.packed_fields.append()};
+                                  context.storage.declarations.packed_fields
+                                      .name[context.storage.declarations.packed_fields.index(
+                                          new_packed_fields)] =
+                                      context.storage.strings.intern("velocity");
+                                  context.storage.declarations.packed_fields
+                                      .type[context.storage.declarations.packed_fields.index(
+                                          new_packed_fields)] = [&] {
+                                      auto const new_type_refs{
+                                          context.storage.declarations.type_refs.append()};
+                                      context.storage.declarations.type_refs
+                                          .name[context.storage.declarations.type_refs.index(
+                                              new_type_refs)] =
+                                          context.storage.strings.intern("project::VelocityQ8_4");
+                                      return new_type_refs;
+                                  }();
+                                  context.storage.declarations.packed_fields
+                                      .bits[context.storage.declarations.packed_fields.index(
+                                          new_packed_fields)] = std::nullopt;
+                                  context.storage.declarations.packed_fields
+                                      .kind[context.storage.declarations.packed_fields.index(
+                                          new_packed_fields)] = PackedFieldKind::fixed_point;
+                                  return new_packed_fields;
+                              }(),
+                              [&] {
+                                  auto const new_packed_fields{
+                                      context.storage.declarations.packed_fields.append()};
+                                  context.storage.declarations.packed_fields
+                                      .name[context.storage.declarations.packed_fields.index(
+                                          new_packed_fields)] =
+                                      context.storage.strings.intern("state");
+                                  context.storage.declarations.packed_fields
+                                      .type[context.storage.declarations.packed_fields.index(
+                                          new_packed_fields)] = [&] {
+                                      auto const new_type_refs{
+                                          context.storage.declarations.type_refs.append()};
+                                      context.storage.declarations.type_refs
+                                          .name[context.storage.declarations.type_refs.index(
+                                              new_type_refs)] =
+                                          context.storage.strings.intern("std::uint8_t");
+                                      return new_type_refs;
+                                  }();
+                                  context.storage.declarations.packed_fields
+                                      .bits[context.storage.declarations.packed_fields.index(
+                                          new_packed_fields)] = 4;
+                                  return new_packed_fields;
+                              }()});
+                     context.storage.declarations.packed_values
+                         .mutable_value[context.storage.declarations.packed_values.index(
+                             new_packed_values)] = true;
+                     return new_packed_values;
+                 }()});
+             return new_normal_modules;
+         }()}};
 }
 
-auto mini_float_backed_manifest() -> Manifest {
+auto mini_float_backed_manifest(CompilerTestContext& context) -> Manifest {
     return Manifest{
-        .schema_version = manifest_schema_version,
-        .modules = {
-            NormalModuleSchema{.settings = ModuleSettings{.name = "representations",
-                                                          .header = "Representations.h",
-                                                          .namespace_name = "project"},
-                               .declarations = {MiniFloatSchema{.name = "PositionF12",
-                                                                .sign_bits = 1,
-                                                                .exponent_bits = 5,
-                                                                .significand_bits = 6,
-                                                                .exponent_bias = 15}}},
-            NormalModuleSchema{
-                .settings = ModuleSettings{.name = "packed",
-                                           .header = "Packed.h",
-                                           .namespace_name = "project"},
-                .declarations = {PackedValueSchema{
-                    .name = "Position",
-                    .storage_type = TypeRef{"std::uint16_t"},
-                    .segments = {PackedFieldSchema{.name = "component",
-                                                   .type = TypeRef{"project::PositionF12"},
-                                                   .bits = std::nullopt,
-                                                   .kind = PackedFieldKind::mini_float},
-                                 PackedFieldSchema{
-                                     .name = "state", .type = TypeRef{"std::uint8_t"}, .bits = 4}},
-                    .mutable_value = true}}},
-        }};
+        manifest_schema_version,
+        make_test_registry(context),
+        context.storage.declarations,
+        {[&] {
+             auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+             context.storage.declarations.normal_modules
+                 .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                 [&] {
+                     auto const new_module_settings_store{
+                         context.storage.declarations.module_settings_store.append()};
+                     context.storage.declarations.module_settings_store
+                         .name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("representations");
+                     context.storage.declarations.module_settings_store
+                         .header[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] =
+                         context.storage.strings.add("Representations.h");
+                     context.storage.declarations.module_settings_store
+                         .namespace_name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("project");
+                     return new_module_settings_store;
+                 }();
+             context.storage.declarations.normal_modules
+                 .declarations[context.storage.declarations.normal_modules.index(
+                     new_normal_modules)] =
+                 context.storage.declarations.range<DeclarationHandle>({[&] {
+                     auto const new_mini_floats{context.storage.declarations.mini_floats.append()};
+                     context.storage.declarations.mini_floats
+                         .name[context.storage.declarations.mini_floats.index(new_mini_floats)] =
+                         context.storage.strings.intern("PositionF12");
+                     context.storage.declarations.mini_floats
+                         .sign_bits[context.storage.declarations.mini_floats.index(
+                             new_mini_floats)] = 1;
+                     context.storage.declarations.mini_floats
+                         .exponent_bits[context.storage.declarations.mini_floats.index(
+                             new_mini_floats)] = 5;
+                     context.storage.declarations.mini_floats
+                         .significand_bits[context.storage.declarations.mini_floats.index(
+                             new_mini_floats)] = 6;
+                     context.storage.declarations.mini_floats
+                         .exponent_bias[context.storage.declarations.mini_floats.index(
+                             new_mini_floats)] = 15;
+                     return new_mini_floats;
+                 }()});
+             return new_normal_modules;
+         }(),
+         [&] {
+             auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+             context.storage.declarations.normal_modules
+                 .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                 [&] {
+                     auto const new_module_settings_store{
+                         context.storage.declarations.module_settings_store.append()};
+                     context.storage.declarations.module_settings_store
+                         .name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] = context.storage.strings.intern("packed");
+                     context.storage.declarations.module_settings_store
+                         .header[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] = context.storage.strings.add("Packed.h");
+                     context.storage.declarations.module_settings_store
+                         .namespace_name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("project");
+                     return new_module_settings_store;
+                 }();
+             context.storage.declarations.normal_modules
+                 .declarations[context.storage.declarations.normal_modules.index(
+                     new_normal_modules)] =
+                 context.storage.declarations.range<DeclarationHandle>({[&] {
+                     auto const new_packed_values{
+                         context.storage.declarations.packed_values.append()};
+                     context.storage.declarations.packed_values
+                         .name[context.storage.declarations.packed_values.index(
+                             new_packed_values)] = context.storage.strings.intern("Position");
+                     context.storage.declarations.packed_values
+                         .storage_type[context.storage.declarations.packed_values.index(
+                             new_packed_values)] = [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("std::uint16_t");
+                         return new_type_refs;
+                     }();
+                     context.storage.declarations.packed_values
+                         .segments[context.storage.declarations.packed_values.index(
+                             new_packed_values)] =
+                         context.storage.declarations.range<PackedSegmentId>(
+                             {[&] {
+                                  auto const new_packed_fields{
+                                      context.storage.declarations.packed_fields.append()};
+                                  context.storage.declarations.packed_fields
+                                      .name[context.storage.declarations.packed_fields.index(
+                                          new_packed_fields)] =
+                                      context.storage.strings.intern("component");
+                                  context.storage.declarations.packed_fields
+                                      .type[context.storage.declarations.packed_fields.index(
+                                          new_packed_fields)] = [&] {
+                                      auto const new_type_refs{
+                                          context.storage.declarations.type_refs.append()};
+                                      context.storage.declarations.type_refs
+                                          .name[context.storage.declarations.type_refs.index(
+                                              new_type_refs)] =
+                                          context.storage.strings.intern("project::PositionF12");
+                                      return new_type_refs;
+                                  }();
+                                  context.storage.declarations.packed_fields
+                                      .bits[context.storage.declarations.packed_fields.index(
+                                          new_packed_fields)] = std::nullopt;
+                                  context.storage.declarations.packed_fields
+                                      .kind[context.storage.declarations.packed_fields.index(
+                                          new_packed_fields)] = PackedFieldKind::mini_float;
+                                  return new_packed_fields;
+                              }(),
+                              [&] {
+                                  auto const new_packed_fields{
+                                      context.storage.declarations.packed_fields.append()};
+                                  context.storage.declarations.packed_fields
+                                      .name[context.storage.declarations.packed_fields.index(
+                                          new_packed_fields)] =
+                                      context.storage.strings.intern("state");
+                                  context.storage.declarations.packed_fields
+                                      .type[context.storage.declarations.packed_fields.index(
+                                          new_packed_fields)] = [&] {
+                                      auto const new_type_refs{
+                                          context.storage.declarations.type_refs.append()};
+                                      context.storage.declarations.type_refs
+                                          .name[context.storage.declarations.type_refs.index(
+                                              new_type_refs)] =
+                                          context.storage.strings.intern("std::uint8_t");
+                                      return new_type_refs;
+                                  }();
+                                  context.storage.declarations.packed_fields
+                                      .bits[context.storage.declarations.packed_fields.index(
+                                          new_packed_fields)] = 4;
+                                  return new_packed_fields;
+                              }()});
+                     context.storage.declarations.packed_values
+                         .mutable_value[context.storage.declarations.packed_values.index(
+                             new_packed_values)] = true;
+                     return new_packed_values;
+                 }()});
+             return new_normal_modules;
+         }()}};
 }
 
 TEST(PackedValue, ValidatesExplicitDefaultsAndReportsStorageBudget) {
-    NormalModuleSchema module{
-        .settings = {.name = "orders", .header = "Orders.h"},
-        .declarations = {PackedValueSchema{
-            .name = "FighterOrder",
-            .storage_type = TypeRef{"std::uint8_t"},
-            .segments = {
-                PackedFieldSchema{
-                    .name = "task", .type = TypeRef{"std::uint8_t"}, .bits = 1, .default_value = 0},
-                PackedFieldSchema{.name = "target",
-                                  .type = TypeRef{"std::uint8_t"},
-                                  .bits = 1,
-                                  .default_value = 1}}}}};
-    EXPECT_NO_THROW(lower(module));
-    auto& packed{std::get<PackedValueSchema>(module.declarations[0])};
-    field(packed, 1).default_value = 2;
-    EXPECT_THROW(lower(module), std::invalid_argument);
-    field(packed, 1).default_value = -1;
-    EXPECT_THROW(lower(module), std::invalid_argument);
-    field(packed, 1).default_value = 1;
-    packed.invalid_value = 2;
-    EXPECT_THROW(lower(module), std::invalid_argument);
-    packed.bit_order = PackedBitOrder::most_significant_first;
-    EXPECT_NO_THROW(lower(module));
-    packed.invalid_value = 64;
-    EXPECT_THROW(lower(module), std::invalid_argument);
-    field(packed, 0).default_value.reset();
-    EXPECT_NO_THROW(lower(module));
-    packed.invalid_value.reset();
-    field(packed, 1).bits = 8;
+    CompilerTestContext context;
+    auto const module{context.storage.declarations.normal_modules.append()};
+    context.storage.declarations.normal_modules
+        .settings[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const new_module_settings_store{
+            context.storage.declarations.module_settings_store.append()};
+        context.storage.declarations.module_settings_store
+            .name[context.storage.declarations.module_settings_store.index(
+                new_module_settings_store)] = context.storage.strings.intern("orders");
+        context.storage.declarations.module_settings_store
+            .header[context.storage.declarations.module_settings_store.index(
+                new_module_settings_store)] = context.storage.strings.add("Orders.h");
+        return new_module_settings_store;
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(
+            module)] = context.storage.declarations.range<DeclarationHandle>({[&] {
+        auto const new_packed_values{context.storage.declarations.packed_values.append()};
+        context.storage.declarations.packed_values
+            .name[context.storage.declarations.packed_values.index(new_packed_values)] =
+            context.storage.strings.intern("FighterOrder");
+        context.storage.declarations.packed_values
+            .storage_type[context.storage.declarations.packed_values.index(new_packed_values)] =
+            [&] {
+                auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                context.storage.declarations.type_refs
+                    .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                    context.storage.strings.intern("std::uint8_t");
+                return new_type_refs;
+            }();
+        context.storage.declarations.packed_values
+            .segments[context.storage.declarations.packed_values.index(new_packed_values)] =
+            context.storage.declarations.range<PackedSegmentId>(
+                {[&] {
+                     auto const new_packed_fields{
+                         context.storage.declarations.packed_fields.append()};
+                     context.storage.declarations.packed_fields
+                         .name[context.storage.declarations.packed_fields.index(
+                             new_packed_fields)] = context.storage.strings.intern("task");
+                     context.storage.declarations.packed_fields
+                         .type[context.storage.declarations.packed_fields.index(
+                             new_packed_fields)] = [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("std::uint8_t");
+                         return new_type_refs;
+                     }();
+                     context.storage.declarations.packed_fields
+                         .bits[context.storage.declarations.packed_fields.index(
+                             new_packed_fields)] = 1;
+                     context.storage.declarations.packed_fields
+                         .default_value[context.storage.declarations.packed_fields.index(
+                             new_packed_fields)] = 0;
+                     return new_packed_fields;
+                 }(),
+                 [&] {
+                     auto const new_packed_fields{
+                         context.storage.declarations.packed_fields.append()};
+                     context.storage.declarations.packed_fields
+                         .name[context.storage.declarations.packed_fields.index(
+                             new_packed_fields)] = context.storage.strings.intern("target");
+                     context.storage.declarations.packed_fields
+                         .type[context.storage.declarations.packed_fields.index(
+                             new_packed_fields)] = [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("std::uint8_t");
+                         return new_type_refs;
+                     }();
+                     context.storage.declarations.packed_fields
+                         .bits[context.storage.declarations.packed_fields.index(
+                             new_packed_fields)] = 1;
+                     context.storage.declarations.packed_fields
+                         .default_value[context.storage.declarations.packed_fields.index(
+                             new_packed_fields)] = 1;
+                     return new_packed_fields;
+                 }()});
+        return new_packed_values;
+    }()});
+    EXPECT_NO_THROW(lower(context, module));
+
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3[0] = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3[0])};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[1] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[1])};
+                    context.storage.declarations.packed_fields
+                        .default_value[context.storage.declarations.packed_fields.index(row_0)] = 2;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3[0] = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3[0])};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[1] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[1])};
+                    context.storage.declarations.packed_fields
+                        .default_value[context.storage.declarations.packed_fields.index(row_0)] =
+                        -1;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3[0] = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3[0])};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[1] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[1])};
+                    context.storage.declarations.packed_fields
+                        .default_value[context.storage.declarations.packed_fields.index(row_0)] = 1;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1[0] = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1[0])};
+            context.storage.declarations.packed_values
+                .invalid_value[context.storage.declarations.packed_values.index(row_0)] = 2;
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1[0] = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1[0])};
+            context.storage.declarations.packed_values
+                .bit_order[context.storage.declarations.packed_values.index(row_0)] =
+                PackedBitOrder::most_significant_first;
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+    EXPECT_NO_THROW(lower(context, module));
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1[0] = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1[0])};
+            context.storage.declarations.packed_values
+                .invalid_value[context.storage.declarations.packed_values.index(row_0)] = 64;
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3[0] = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3[0])};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .default_value[context.storage.declarations.packed_fields.index(row_0)]
+                        .reset();
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_NO_THROW(lower(context, module));
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1[0] = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1[0])};
+            context.storage.declarations.packed_values
+                .invalid_value[context.storage.declarations.packed_values.index(row_0)]
+                .reset();
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3[0] = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3[0])};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[1] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[1])};
+                    context.storage.declarations.packed_fields
+                        .bits[context.storage.declarations.packed_fields.index(row_0)] = 8;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
     try {
-        static_cast<void>(lower(module));
+        static_cast<void>(lower(context, module));
         FAIL() << "Expected overflow";
     } catch (std::invalid_argument const& error) {
         EXPECT_NE(std::string{error.what()}.find("requires 8 bits, 1 already used, 7 remaining"),
@@ -250,31 +1249,323 @@ TEST(PackedValue, ValidatesExplicitDefaultsAndReportsStorageBudget) {
 }
 
 TEST(PackedValue, ValidatesDefaultsAgainstSemanticRangesAndNamedSentinels) {
-    auto manifest{scalar_backed_manifest(valid_module())};
-    auto& module{std::get<NormalModuleSchema>(manifest.modules.back())};
-    auto& packed{std::get<PackedValueSchema>(module.declarations.front())};
-    field(packed, 0).default_value = 0;
-    EXPECT_NO_THROW(lower_modules(manifest));
-    field(packed, 0).default_value = 4095;
-    EXPECT_NO_THROW(lower_modules(manifest));
-    field(packed, 0).default_value = 1001;
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
-    field(packed, 0).default_value = 1000000;
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    CompilerTestContext context;
+    auto manifest{scalar_backed_manifest(context, valid_module(context))};
+
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .default_value[context.storage.declarations.packed_fields.index(
+                                row_0)] = 0;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_NO_THROW(lower_test_manifest(context, manifest));
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .default_value[context.storage.declarations.packed_fields.index(
+                                row_0)] = 4095;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_NO_THROW(lower_test_manifest(context, manifest));
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .default_value[context.storage.declarations.packed_fields.index(
+                                row_0)] = 1001;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .default_value[context.storage.declarations.packed_fields.index(
+                                row_0)] = 1000000;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 }
 
 TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
-    auto module{valid_module()};
-    std::get<codegen::PackedValueSchema>(module.declarations.front()).invalid_value = 0x7fffffffu;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).range_helper = true;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).bits.reset();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).minimum_value = 10;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).maximum_value =
-        1'000'000;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).named_codes = {
-        {.name = "Player", .value = 42, .sentinel = false},
-        {.name = "Invalid", .value = 0xffffff, .sentinel = true}};
-    auto const header{lower(std::move(module))};
+    CompilerTestContext context;
+    auto module{context.storage.declarations.normal_modules.clone(valid_module(context))};
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .invalid_value[context.storage.declarations.packed_values.index(row_0)] =
+                0x7fffffffu;
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .range_helper[context.storage.declarations.packed_fields.index(row_0)] =
+                        true;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .bits[context.storage.declarations.packed_fields.index(row_0)]
+                        .reset();
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .minimum_value[context.storage.declarations.packed_fields.index(row_0)] =
+                        10;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .maximum_value[context.storage.declarations.packed_fields.index(row_0)] =
+                        1'000'000;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .named_codes[context.storage.declarations.packed_fields.index(row_0)] =
+                        context.storage.declarations.range<PackedNamedCodeId>(
+                            {[&] {
+                                 auto const new_packed_named_codes{
+                                     context.storage.declarations.packed_named_codes.append()};
+                                 context.storage.declarations.packed_named_codes
+                                     .name[context.storage.declarations.packed_named_codes.index(
+                                         new_packed_named_codes)] =
+                                     context.storage.strings.intern("Player");
+                                 context.storage.declarations.packed_named_codes
+                                     .value[context.storage.declarations.packed_named_codes.index(
+                                         new_packed_named_codes)] = 42;
+                                 context.storage.declarations.packed_named_codes
+                                     .sentinel[context.storage.declarations.packed_named_codes
+                                                   .index(new_packed_named_codes)] = false;
+                                 return new_packed_named_codes;
+                             }(),
+                             [&] {
+                                 auto const new_packed_named_codes{
+                                     context.storage.declarations.packed_named_codes.append()};
+                                 context.storage.declarations.packed_named_codes
+                                     .name[context.storage.declarations.packed_named_codes.index(
+                                         new_packed_named_codes)] =
+                                     context.storage.strings.intern("Invalid");
+                                 context.storage.declarations.packed_named_codes
+                                     .value[context.storage.declarations.packed_named_codes.index(
+                                         new_packed_named_codes)] = 0xffffff;
+                                 context.storage.declarations.packed_named_codes
+                                     .sentinel[context.storage.declarations.packed_named_codes
+                                                   .index(new_packed_named_codes)] = true;
+                                 return new_packed_named_codes;
+                             }()});
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    auto const header{lower(context, std::move(module))};
 
     EXPECT_NE(header.find("using storage_type = std::uint32_t;"), std::string::npos);
     EXPECT_NE(header.find("ml::valid_packed_storage<storage_type, 32>()"), std::string::npos);
@@ -324,9 +1615,23 @@ TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
 }
 
 TEST(PackedValue, EmitsAssertBackedMutationOnlyWhenRequested) {
-    auto module{valid_module()};
-    std::get<codegen::PackedValueSchema>(module.declarations.front()).mutable_value = true;
-    auto const header{lower(std::move(module))};
+    CompilerTestContext context;
+    auto module{context.storage.declarations.normal_modules.clone(valid_module(context))};
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .mutable_value[context.storage.declarations.packed_values.index(row_0)] = true;
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+    auto const header{lower(context, std::move(module))};
 
     EXPECT_EQ(header.find("try_make(entity_index_type const entity_index_value"),
               std::string::npos);
@@ -335,12 +1640,53 @@ TEST(PackedValue, EmitsAssertBackedMutationOnlyWhenRequested) {
 }
 
 TEST(PackedValue, UsesFieldAliasesAcrossImmutableAndMutablePublicApis) {
+    CompilerTestContext context;
     for (auto const mutable_value : {false, true}) {
-        auto module{valid_module()};
-        auto& schema{std::get<PackedValueSchema>(module.declarations.front())};
-        schema.mutable_value = mutable_value;
-        field(schema, 0).range_helper = true;
-        auto const header{lower(std::move(module))};
+        auto module{context.storage.declarations.normal_modules.clone(valid_module(context))};
+
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(module)])};
+            auto rows_1{std::vector(original_items.begin(), original_items.end())};
+            rows_1.front() = [&] {
+                auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+                context.storage.declarations.packed_values
+                    .mutable_value[context.storage.declarations.packed_values.index(row_0)] =
+                    mutable_value;
+                return row_0;
+            }();
+            return context.storage.declarations.range(rows_1);
+        }();
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(module)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .range_helper[context.storage.declarations.packed_fields.index(row_0)] =
+                            true;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        auto const header{lower(context, std::move(module))};
         auto const text{compact(header)};
 
         expect_type_only_in_alias_definitions(header, "std::uint32_t", 2);
@@ -375,25 +1721,51 @@ TEST(PackedValue, UsesFieldAliasesAcrossImmutableAndMutablePublicApis) {
 }
 
 TEST(PackedValue, UsesRepresentationAliasesAcrossPublicApis) {
-    for (auto const& manifest : {quantized_backed_manifest(),
-                                 fixed_point_backed_manifest(),
-                                 mini_float_backed_manifest()}) {
-        auto const& schema{std::get<PackedValueSchema>(
-            std::get<NormalModuleSchema>(manifest.modules.back()).declarations.front())};
-        auto const fixed_point{schema.name == "Motion"};
-        auto const accessor{fixed_point               ? std::string{"velocity_raw"}
-                            : schema.name == "Vitals" ? std::string{"health_encoded"}
-                                                      : std::string{"component_encoded"}};
+    CompilerTestContext context;
+    for (auto const& manifest : {quantized_backed_manifest(context),
+                                 fixed_point_backed_manifest(context),
+                                 mini_float_backed_manifest(context)}) {
+        auto const schema{
+            context.storage.declarations
+                .items(context.storage.declarations.normal_modules
+                           .declarations[context.storage.declarations.normal_modules.index(
+                               manifest.modules.back())])
+                .front()};
+        auto const fixed_point{
+            std::string{context.storage.strings.view(
+                context.storage.declarations.packed_values
+                    .name[context.storage.declarations.packed_values.index(schema)])} == "Motion"};
+        auto const accessor{
+            fixed_point ? std::string{"velocity_raw"}
+            : std::string{context.storage.strings.view(
+                  context.storage.declarations.packed_values
+                      .name[context.storage.declarations.packed_values.index(schema)])} == "Vitals"
+                ? std::string{"health_encoded"}
+                : std::string{"component_encoded"}};
         auto const alias{accessor + "_type"};
         auto const parameter{alias + "const" + accessor + "_value"};
-        auto const files{render_modules(lower_modules(manifest))};
+        auto const files{render_test_manifest(context, manifest)};
         auto const& header{files.back().content};
         auto const text{compact(header)};
 
         expect_type_only_in_alias_definitions(
-            header, "std::uint16_t", fixed_point || schema.name == "Vitals" ? 1 : 2);
+            header,
+            "std::uint16_t",
+            fixed_point ||
+                    std::string{context.storage.strings.view(
+                        context.storage.declarations.packed_values
+                            .name[context.storage.declarations.packed_values.index(schema)])} ==
+                        "Vitals"
+                ? 1
+                : 2);
         expect_type_only_in_alias_definitions(
-            header, "std::uint8_t", schema.name == "Vitals" ? 2 : 1);
+            header,
+            "std::uint8_t",
+            std::string{context.storage.strings.view(
+                context.storage.declarations.packed_values
+                    .name[context.storage.declarations.packed_values.index(schema)])} == "Vitals"
+                ? 2
+                : 1);
         if (fixed_point) {
             expect_type_only_in_alias_definitions(header, "std::int16_t", 1);
             EXPECT_NE(text.find("try_encode_velocity_value(doubleconstvalue,velocity_raw_type&out_"
@@ -401,12 +1773,20 @@ TEST(PackedValue, UsesRepresentationAliasesAcrossPublicApis) {
                       std::string::npos);
             EXPECT_NE(text.find("velocity_raw_typeraw{};"), std::string::npos);
         }
-        EXPECT_NE(text.find("explicitconstexpr" + schema.name + "(" + parameter +
-                            ",state_typeconststate_value)noexcept"),
-                  std::string::npos);
-        EXPECT_EQ(text.find("try_make(" + parameter + ",state_typeconststate_value," + schema.name +
-                            "&out_result)noexcept->bool"),
-                  std::string::npos);
+        EXPECT_NE(
+            text.find("explicitconstexpr" +
+                      std::string{context.storage.strings.view(
+                          context.storage.declarations.packed_values
+                              .name[context.storage.declarations.packed_values.index(schema)])} +
+                      "(" + parameter + ",state_typeconststate_value)noexcept"),
+            std::string::npos);
+        EXPECT_EQ(
+            text.find("try_make(" + parameter + ",state_typeconststate_value," +
+                      std::string{context.storage.strings.view(
+                          context.storage.declarations.packed_values
+                              .name[context.storage.declarations.packed_values.index(schema)])} +
+                      "&out_result)noexcept->bool"),
+            std::string::npos);
         EXPECT_NE(text.find(accessor + "()constnoexcept->" + alias), std::string::npos);
         EXPECT_EQ(text.find("try_set_" + accessor + "(" + alias + "constvalue)noexcept->bool"),
                   std::string::npos);
@@ -416,12 +1796,79 @@ TEST(PackedValue, UsesRepresentationAliasesAcrossPublicApis) {
 }
 
 TEST(PackedValue, UsesBooleanFieldAliasWithoutChangingStatusTypes) {
-    auto module{valid_module()};
-    auto& schema{std::get<PackedValueSchema>(module.declarations.front())};
-    schema.mutable_value = true;
-    schema.storage_type = TypeRef{"std::uint8_t"};
-    schema.segments = {PackedFieldSchema{"flag", TypeRef{"bool"}, 1}};
-    auto const text{compact(lower(std::move(module)))};
+    CompilerTestContext context;
+    auto module{context.storage.declarations.normal_modules.clone(valid_module(context))};
+
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .mutable_value[context.storage.declarations.packed_values.index(row_0)] = true;
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .storage_type[context.storage.declarations.packed_values.index(row_0)] = [&] {
+                auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                context.storage.declarations.type_refs
+                    .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                    context.storage.strings.intern("std::uint8_t");
+                return new_type_refs;
+            }();
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_0)] =
+                context.storage.declarations.range<PackedSegmentId>({[&] {
+                    auto const new_packed_fields{
+                        context.storage.declarations.packed_fields.append()};
+                    context.storage.declarations.packed_fields
+                        .name[context.storage.declarations.packed_fields.index(new_packed_fields)] =
+                        context.storage.strings.intern("flag");
+                    context.storage.declarations.packed_fields
+                        .type[context.storage.declarations.packed_fields.index(new_packed_fields)] =
+                        [&] {
+                            auto const new_type_refs{
+                                context.storage.declarations.type_refs.append()};
+                            context.storage.declarations.type_refs
+                                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                                context.storage.strings.intern("bool");
+                            return new_type_refs;
+                        }();
+                    context.storage.declarations.packed_fields
+                        .bits[context.storage.declarations.packed_fields.index(new_packed_fields)] =
+                        1;
+                    return new_packed_fields;
+                }()});
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+    auto const text{compact(lower(context, std::move(module)))};
 
     EXPECT_NE(text.find("usingflag_type=bool;"), std::string::npos);
     EXPECT_NE(text.find("explicitconstexprFighterState(flag_typeconstflag_value)noexcept"),
@@ -433,14 +1880,67 @@ TEST(PackedValue, UsesBooleanFieldAliasWithoutChangingStatusTypes) {
 }
 
 TEST(PackedValue, ReservedSegmentsOccupyBitsWithoutGeneratingValueApi) {
-    auto module{valid_module()};
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).bits = 20;
-    std::get<codegen::PackedValueSchema>(module.declarations.front())
-        .segments.insert(
-            std::get<codegen::PackedValueSchema>(module.declarations.front()).segments.begin() + 1,
-            PackedReservedBitsSchema{.name = "future", .bits = 4});
+    CompilerTestContext context;
+    auto module{context.storage.declarations.normal_modules.clone(valid_module(context))};
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .bits[context.storage.declarations.packed_fields.index(row_0)] = 20;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_0)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_0)])};
+                auto rows{std::vector(original_items.begin(), original_items.end())};
+                rows.insert(rows.begin() + 1, [&] {
+                    auto const new_packed_reserved_bits{
+                        context.storage.declarations.packed_reserved_bits.append()};
+                    context.storage.declarations.packed_reserved_bits
+                        .name[context.storage.declarations.packed_reserved_bits.index(
+                            new_packed_reserved_bits)] = context.storage.strings.intern("future");
+                    context.storage.declarations.packed_reserved_bits
+                        .bits[context.storage.declarations.packed_reserved_bits.index(
+                            new_packed_reserved_bits)] = 4;
+                    return new_packed_reserved_bits;
+                }());
+                return context.storage.declarations.range(rows);
+            }();
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
 
-    auto const header{lower(std::move(module))};
+    auto const header{lower(context, std::move(module))};
 
     EXPECT_NE(header.find("ml::PackedField<storage_type, entity_index_type, 0, 20>"),
               std::string::npos);
@@ -451,15 +1951,98 @@ TEST(PackedValue, ReservedSegmentsOccupyBitsWithoutGeneratingValueApi) {
 }
 
 TEST(PackedValue, MostSignificantFirstSegmentsDriveGeneratedNumericOffsets) {
-    auto module{valid_module()};
-    auto& value{std::get<codegen::PackedValueSchema>(module.declarations.front())};
-    field(value, 0).bits = 20;
-    value.segments.insert(value.segments.begin() + 1,
-                          PackedReservedBitsSchema{.name = "future", .bits = 4});
-    value.byte_order = PackedByteOrder::big_endian;
-    value.bit_order = PackedBitOrder::most_significant_first;
+    CompilerTestContext context;
+    auto module{context.storage.declarations.normal_modules.clone(valid_module(context))};
 
-    auto const header{lower(std::move(module))};
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .bits[context.storage.declarations.packed_fields.index(row_0)] = 20;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_0)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_0)])};
+                auto rows{std::vector(original_items.begin(), original_items.end())};
+                rows.insert(rows.begin() + 1, [&] {
+                    auto const new_packed_reserved_bits{
+                        context.storage.declarations.packed_reserved_bits.append()};
+                    context.storage.declarations.packed_reserved_bits
+                        .name[context.storage.declarations.packed_reserved_bits.index(
+                            new_packed_reserved_bits)] = context.storage.strings.intern("future");
+                    context.storage.declarations.packed_reserved_bits
+                        .bits[context.storage.declarations.packed_reserved_bits.index(
+                            new_packed_reserved_bits)] = 4;
+                    return new_packed_reserved_bits;
+                }());
+                return context.storage.declarations.range(rows);
+            }();
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .byte_order[context.storage.declarations.packed_values.index(row_0)] =
+                PackedByteOrder::big_endian;
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .bit_order[context.storage.declarations.packed_values.index(row_0)] =
+                PackedBitOrder::most_significant_first;
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+
+    auto const header{lower(context, std::move(module))};
 
     EXPECT_NE(header.find("ml::PackedField<storage_type, entity_index_type, 12, 20>"),
               std::string::npos);
@@ -468,30 +2051,110 @@ TEST(PackedValue, MostSignificantFirstSegmentsDriveGeneratedNumericOffsets) {
 }
 
 TEST(PackedValue, MostSignificantFirstEnumDomainCanExcludeInvalidRawValue) {
-    auto module{valid_module()};
-    auto& value{std::get<codegen::PackedValueSchema>(module.declarations.front())};
-    value.invalid_value = 7;
-    value.bit_order = PackedBitOrder::most_significant_first;
+    CompilerTestContext context;
+    auto module{context.storage.declarations.normal_modules.clone(valid_module(context))};
 
-    auto const header{
-        lower_known_enum(std::move(module),
-                         EnumSchema{
-                             .name = "FighterStateKind",
-                             .underlying_type = TypeRef{"uint8"},
-                             .values = {EnumeratorSchema{"Zero", "0"},
-                                        EnumeratorSchema{"COUNT", "5", std::nullopt, true}},
-                             .count = "COUNT",
-                         })};
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .invalid_value[context.storage.declarations.packed_values.index(row_0)] = 7;
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .bit_order[context.storage.declarations.packed_values.index(row_0)] =
+                PackedBitOrder::most_significant_first;
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+
+    auto const header{lower_known_enum(context, std::move(module), [&] {
+        auto const new_enums{context.storage.declarations.enums.append()};
+        context.storage.declarations.enums
+            .name[context.storage.declarations.enums.index(new_enums)] =
+            context.storage.strings.intern("FighterStateKind");
+        context.storage.declarations.enums
+            .underlying_type[context.storage.declarations.enums.index(new_enums)] = [&] {
+            auto const new_type_refs{context.storage.declarations.type_refs.append()};
+            context.storage.declarations.type_refs
+                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                context.storage.strings.intern("uint8");
+            return new_type_refs;
+        }();
+        context.storage.declarations.enums
+            .values[context.storage.declarations.enums.index(new_enums)] =
+            context.storage.declarations.range<EnumeratorId>(
+                {[&] {
+                     auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                     context.storage.declarations.enumerators
+                         .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         context.storage.strings.intern("Zero");
+                     context.storage.declarations.enumerators
+                         .initializer[context.storage.declarations.enumerators.index(
+                             new_enumerators)] = context.storage.strings.add("0");
+                     return new_enumerators;
+                 }(),
+                 [&] {
+                     auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                     context.storage.declarations.enumerators
+                         .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         context.storage.strings.intern("COUNT");
+                     context.storage.declarations.enumerators
+                         .initializer[context.storage.declarations.enumerators.index(
+                             new_enumerators)] = context.storage.strings.add("5");
+                     context.storage.declarations.enumerators
+                         .display_name[context.storage.declarations.enumerators.index(
+                             new_enumerators)] = std::nullopt;
+                     context.storage.declarations.enumerators
+                         .hidden[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         true;
+                     return new_enumerators;
+                 }()});
+        context.storage.declarations.enums
+            .count[context.storage.declarations.enums.index(new_enums)] =
+            context.storage.strings.intern("COUNT");
+        return new_enums;
+    }())};
 
     EXPECT_EQ(header.find("assert(raw != invalid_value);"), std::string::npos);
 }
 
 TEST(PackedValue, SerializedByteOrderDoesNotChangeHostNumericOffsets) {
-    auto module{valid_module()};
-    std::get<codegen::PackedValueSchema>(module.declarations.front()).byte_order =
-        PackedByteOrder::big_endian;
+    CompilerTestContext context;
+    auto module{context.storage.declarations.normal_modules.clone(valid_module(context))};
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .byte_order[context.storage.declarations.packed_values.index(row_0)] =
+                PackedByteOrder::big_endian;
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
 
-    auto const header{lower(std::move(module))};
+    auto const header{lower(context, std::move(module))};
 
     EXPECT_NE(header.find("ml::PackedField<storage_type, entity_index_type, 0, 24>"),
               std::string::npos);
@@ -499,14 +2162,91 @@ TEST(PackedValue, SerializedByteOrderDoesNotChangeHostNumericOffsets) {
 }
 
 TEST(PackedValue, LowersSignedArbitraryWidthFieldWithSafeSignExtension) {
-    auto module{valid_module()};
-    std::get<codegen::PackedValueSchema>(module.declarations.front()).mutable_value = true;
-    std::get<codegen::PackedValueSchema>(module.declarations.front()).name = "SignedDelta";
-    std::get<codegen::PackedValueSchema>(module.declarations.front()).segments = {
-        PackedFieldSchema{"delta", TypeRef{"std::int32_t"}, 17, PackedFieldKind::signed_integer},
-        PackedReservedBitsSchema{.name = "future", .bits = 15}};
+    CompilerTestContext context;
+    auto module{context.storage.declarations.normal_modules.clone(valid_module(context))};
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .mutable_value[context.storage.declarations.packed_values.index(row_0)] = true;
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .name[context.storage.declarations.packed_values.index(row_0)] =
+                context.storage.strings.intern("SignedDelta");
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_0)] =
+                context.storage.declarations.range<PackedSegmentId>(
+                    {[&] {
+                         auto const new_packed_fields{
+                             context.storage.declarations.packed_fields.append()};
+                         context.storage.declarations.packed_fields
+                             .name[context.storage.declarations.packed_fields.index(
+                                 new_packed_fields)] = context.storage.strings.intern("delta");
+                         context.storage.declarations.packed_fields
+                             .type[context.storage.declarations.packed_fields.index(
+                                 new_packed_fields)] = [&] {
+                             auto const new_type_refs{
+                                 context.storage.declarations.type_refs.append()};
+                             context.storage.declarations.type_refs
+                                 .name[context.storage.declarations.type_refs.index(
+                                     new_type_refs)] =
+                                 context.storage.strings.intern("std::int32_t");
+                             return new_type_refs;
+                         }();
+                         context.storage.declarations.packed_fields
+                             .bits[context.storage.declarations.packed_fields.index(
+                                 new_packed_fields)] = 17;
+                         context.storage.declarations.packed_fields
+                             .kind[context.storage.declarations.packed_fields.index(
+                                 new_packed_fields)] = PackedFieldKind::signed_integer;
+                         return new_packed_fields;
+                     }(),
+                     [&] {
+                         auto const new_packed_reserved_bits{
+                             context.storage.declarations.packed_reserved_bits.append()};
+                         context.storage.declarations.packed_reserved_bits
+                             .name[context.storage.declarations.packed_reserved_bits.index(
+                                 new_packed_reserved_bits)] =
+                             context.storage.strings.intern("future");
+                         context.storage.declarations.packed_reserved_bits
+                             .bits[context.storage.declarations.packed_reserved_bits.index(
+                                 new_packed_reserved_bits)] = 15;
+                         return new_packed_reserved_bits;
+                     }()});
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
 
-    auto const header{lower(std::move(module))};
+    auto const header{lower(context, std::move(module))};
 
     EXPECT_NE(header.find("using delta_type = std::int32_t;"), std::string::npos);
     EXPECT_NE(header.find("delta() const noexcept -> delta_type"), std::string::npos);
@@ -521,22 +2261,135 @@ TEST(PackedValue, LowersSignedArbitraryWidthFieldWithSafeSignExtension) {
 }
 
 TEST(PackedValue, DerivesAndEnforcesSignedSemanticRangeWithNamedSentinel) {
-    auto module{valid_module()};
-    std::get<codegen::PackedValueSchema>(module.declarations.front()).mutable_value = true;
-    std::get<codegen::PackedValueSchema>(module.declarations.front()).name = "SignedTemperature";
-    std::get<codegen::PackedValueSchema>(module.declarations.front()).segments = {
-        PackedFieldSchema{.name = "temperature",
-                          .type = TypeRef{"std::int16_t"},
-                          .bits = std::nullopt,
-                          .kind = PackedFieldKind::signed_integer,
-                          .range_helper = false,
-                          .minimum_value = -100,
-                          .maximum_value = 100,
-                          .named_codes = {{.name = "Freezing", .value = 0, .sentinel = false},
-                                          {.name = "Unknown", .value = -128, .sentinel = true}}},
-        PackedReservedBitsSchema{.name = "future", .bits = 24}};
+    CompilerTestContext context;
+    auto module{context.storage.declarations.normal_modules.clone(valid_module(context))};
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .mutable_value[context.storage.declarations.packed_values.index(row_0)] = true;
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .name[context.storage.declarations.packed_values.index(row_0)] =
+                context.storage.strings.intern("SignedTemperature");
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_0)] =
+                context.storage.declarations.range<PackedSegmentId>(
+                    {[&] {
+                         auto const new_packed_fields{
+                             context.storage.declarations.packed_fields.append()};
+                         context.storage.declarations.packed_fields
+                             .name[context.storage.declarations.packed_fields.index(
+                                 new_packed_fields)] =
+                             context.storage.strings.intern("temperature");
+                         context.storage.declarations.packed_fields
+                             .type[context.storage.declarations.packed_fields.index(
+                                 new_packed_fields)] = [&] {
+                             auto const new_type_refs{
+                                 context.storage.declarations.type_refs.append()};
+                             context.storage.declarations.type_refs
+                                 .name[context.storage.declarations.type_refs.index(
+                                     new_type_refs)] =
+                                 context.storage.strings.intern("std::int16_t");
+                             return new_type_refs;
+                         }();
+                         context.storage.declarations.packed_fields
+                             .bits[context.storage.declarations.packed_fields.index(
+                                 new_packed_fields)] = std::nullopt;
+                         context.storage.declarations.packed_fields
+                             .kind[context.storage.declarations.packed_fields.index(
+                                 new_packed_fields)] = PackedFieldKind::signed_integer;
+                         context.storage.declarations.packed_fields
+                             .range_helper[context.storage.declarations.packed_fields.index(
+                                 new_packed_fields)] = false;
+                         context.storage.declarations.packed_fields
+                             .minimum_value[context.storage.declarations.packed_fields.index(
+                                 new_packed_fields)] = -100;
+                         context.storage.declarations.packed_fields
+                             .maximum_value[context.storage.declarations.packed_fields.index(
+                                 new_packed_fields)] = 100;
+                         context.storage.declarations.packed_fields
+                             .named_codes[context.storage.declarations.packed_fields.index(
+                                 new_packed_fields)] =
+                             context.storage.declarations.range<PackedNamedCodeId>(
+                                 {[&] {
+                                      auto const new_packed_named_codes{
+                                          context.storage.declarations.packed_named_codes.append()};
+                                      context.storage.declarations.packed_named_codes
+                                          .name[context.storage.declarations.packed_named_codes
+                                                    .index(new_packed_named_codes)] =
+                                          context.storage.strings.intern("Freezing");
+                                      context.storage.declarations.packed_named_codes
+                                          .value[context.storage.declarations.packed_named_codes
+                                                     .index(new_packed_named_codes)] = 0;
+                                      context.storage.declarations.packed_named_codes
+                                          .sentinel[context.storage.declarations.packed_named_codes
+                                                        .index(new_packed_named_codes)] = false;
+                                      return new_packed_named_codes;
+                                  }(),
+                                  [&] {
+                                      auto const new_packed_named_codes{
+                                          context.storage.declarations.packed_named_codes.append()};
+                                      context.storage.declarations.packed_named_codes
+                                          .name[context.storage.declarations.packed_named_codes
+                                                    .index(new_packed_named_codes)] =
+                                          context.storage.strings.intern("Unknown");
+                                      context.storage.declarations.packed_named_codes
+                                          .value[context.storage.declarations.packed_named_codes
+                                                     .index(new_packed_named_codes)] = -128;
+                                      context.storage.declarations.packed_named_codes
+                                          .sentinel[context.storage.declarations.packed_named_codes
+                                                        .index(new_packed_named_codes)] = true;
+                                      return new_packed_named_codes;
+                                  }()});
+                         return new_packed_fields;
+                     }(),
+                     [&] {
+                         auto const new_packed_reserved_bits{
+                             context.storage.declarations.packed_reserved_bits.append()};
+                         context.storage.declarations.packed_reserved_bits
+                             .name[context.storage.declarations.packed_reserved_bits.index(
+                                 new_packed_reserved_bits)] =
+                             context.storage.strings.intern("future");
+                         context.storage.declarations.packed_reserved_bits
+                             .bits[context.storage.declarations.packed_reserved_bits.index(
+                                 new_packed_reserved_bits)] = 24;
+                         return new_packed_reserved_bits;
+                     }()});
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
 
-    auto const header{lower(std::move(module))};
+    auto const header{lower(context, std::move(module))};
 
     EXPECT_NE(header.find("ml::PackedField<storage_type, temperature_type, 0, 8>"),
               std::string::npos);
@@ -549,8 +2402,9 @@ TEST(PackedValue, DerivesAndEnforcesSignedSemanticRangeWithNamedSentinel) {
 }
 
 TEST(PackedValue, LowersSharedIntegerScalarDomainForPackedPlacement) {
-    auto module{valid_module()};
-    auto const header{lower_scalar_backed(std::move(module))};
+    CompilerTestContext context;
+    auto module{valid_module(context)};
+    auto const header{lower_scalar_backed(context, std::move(module))};
 
     EXPECT_NE(header.find("using entity_index_type = std::uint16_t;"), std::string::npos);
     EXPECT_NE(header.find("ml::PackedField<storage_type, entity_index_type, 0, 12>"),
@@ -565,8 +2419,9 @@ TEST(PackedValue, LowersSharedIntegerScalarDomainForPackedPlacement) {
 }
 
 TEST(PackedValue, LowersSignedSharedIntegerScalarToSmallestNativeAccessor) {
-    auto module{valid_module()};
-    auto const header{lower_scalar_backed(std::move(module), true)};
+    CompilerTestContext context;
+    auto module{valid_module(context)};
+    auto const header{lower_scalar_backed(context, std::move(module), true)};
 
     EXPECT_NE(header.find("using entity_index_type = std::int8_t;"), std::string::npos);
     EXPECT_NE(header.find("ml::PackedField<storage_type, entity_index_type, 0, 8>"),
@@ -577,7 +2432,8 @@ TEST(PackedValue, LowersSignedSharedIntegerScalarToSmallestNativeAccessor) {
 }
 
 TEST(PackedValue, LowersLinearQuantizedPlacementToExplicitEncodedCodeApi) {
-    auto const files{render_modules(lower_modules(quantized_backed_manifest()))};
+    CompilerTestContext context;
+    auto const files{render_test_manifest(context, quantized_backed_manifest(context))};
     ASSERT_EQ(files.size(), 3);
     auto const& header{files.back().content};
 
@@ -598,30 +2454,299 @@ TEST(PackedValue, LowersLinearQuantizedPlacementToExplicitEncodedCodeApi) {
 }
 
 TEST(PackedValue, RejectsCompetingLinearQuantizedPlacementFacts) {
-    auto manifest{quantized_backed_manifest()};
-    auto& packed{std::get<NormalModuleSchema>(manifest.modules.back())};
-    auto& health{field(std::get<PackedValueSchema>(packed.declarations.front()), 0)};
+    CompilerTestContext context;
+    auto manifest{quantized_backed_manifest(context)};
 
-    health.bits = 7;
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .bits[context.storage.declarations.packed_fields.index(row_0)] = 7;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 
-    health.bits.reset();
-    health.kind = PackedFieldKind::unsigned_integer;
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .bits[context.storage.declarations.packed_fields.index(row_0)]
+                            .reset();
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .kind[context.storage.declarations.packed_fields.index(row_0)] =
+                            PackedFieldKind::unsigned_integer;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 
-    health.kind = PackedFieldKind::linear_quantized;
-    health.minimum_value = 0;
-    health.maximum_value = 1000;
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .kind[context.storage.declarations.packed_fields.index(row_0)] =
+                            PackedFieldKind::linear_quantized;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .minimum_value[context.storage.declarations.packed_fields.index(
+                                row_0)] = 0;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .maximum_value[context.storage.declarations.packed_fields.index(
+                                row_0)] = 1000;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 
-    health.minimum_value.reset();
-    health.maximum_value.reset();
-    health.range_helper = true;
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .minimum_value[context.storage.declarations.packed_fields.index(row_0)]
+                            .reset();
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .maximum_value[context.storage.declarations.packed_fields.index(row_0)]
+                            .reset();
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .range_helper[context.storage.declarations.packed_fields.index(row_0)] =
+                            true;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 }
 
 TEST(PackedValue, LowersFixedPointPlacementToExplicitRawCodeApi) {
-    auto const files{render_modules(lower_modules(fixed_point_backed_manifest()))};
+    CompilerTestContext context;
+    auto const files{render_test_manifest(context, fixed_point_backed_manifest(context))};
     ASSERT_EQ(files.size(), 2);
     auto const& header{files.back().content};
 
@@ -647,19 +2772,57 @@ TEST(PackedValue, LowersFixedPointPlacementToExplicitRawCodeApi) {
     EXPECT_EQ(header.find("project::VelocityQ8_4"), std::string::npos);
     EXPECT_EQ(header.find("velocity()"), std::string::npos);
 
-    auto const unsigned_files{render_modules(lower_modules(fixed_point_backed_manifest(false)))};
+    auto const unsigned_files{
+        render_test_manifest(context, fixed_point_backed_manifest(context, false))};
     ASSERT_EQ(unsigned_files.size(), 2);
     auto const& unsigned_header{unsigned_files.back().content};
     EXPECT_NE(unsigned_header.find("using velocity_raw_type = std::uint16_t;"), std::string::npos);
     EXPECT_NE(unsigned_header.find("velocity_maximum_raw{velocity_raw_type{0xfff}}"),
               std::string::npos);
 
-    auto bounded_manifest{fixed_point_backed_manifest()};
-    auto& fixed_schema{std::get<FixedPointSchema>(
-        std::get<NormalModuleSchema>(bounded_manifest.modules.front()).declarations.front())};
-    fixed_schema.minimum_value = "-1.5";
-    fixed_schema.maximum_value = "2.25";
-    auto const bounded_files{render_modules(lower_modules(bounded_manifest))};
+    auto bounded_manifest{fixed_point_backed_manifest(context)};
+
+    bounded_manifest.modules.front() = [&] {
+        auto row_2{
+            context.storage.declarations.normal_modules.clone(bounded_manifest.modules.front())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_2)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_2)])};
+            auto rows_1{std::vector(original_items.begin(), original_items.end())};
+            rows_1.front() = [&] {
+                auto row_0{context.storage.declarations.fixed_points.clone(rows_1.front())};
+                context.storage.declarations.fixed_points
+                    .minimum_value[context.storage.declarations.fixed_points.index(row_0)] =
+                    context.storage.strings.add("-1.5");
+                return row_0;
+            }();
+            return context.storage.declarations.range(rows_1);
+        }();
+        return row_2;
+    }();
+    bounded_manifest.modules.front() = [&] {
+        auto row_2{
+            context.storage.declarations.normal_modules.clone(bounded_manifest.modules.front())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_2)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_2)])};
+            auto rows_1{std::vector(original_items.begin(), original_items.end())};
+            rows_1.front() = [&] {
+                auto row_0{context.storage.declarations.fixed_points.clone(rows_1.front())};
+                context.storage.declarations.fixed_points
+                    .maximum_value[context.storage.declarations.fixed_points.index(row_0)] =
+                    context.storage.strings.add("2.25");
+                return row_0;
+            }();
+            return context.storage.declarations.range(rows_1);
+        }();
+        return row_2;
+    }();
+    auto const bounded_files{render_test_manifest(context, bounded_manifest)};
     auto const& bounded_header{bounded_files.back().content};
     EXPECT_NE(
         bounded_header.find("velocity_minimum_allowed_raw{static_cast<velocity_raw_type>(-24)}"),
@@ -668,11 +2831,27 @@ TEST(PackedValue, LowersFixedPointPlacementToExplicitRawCodeApi) {
         bounded_header.find("velocity_maximum_allowed_raw{static_cast<velocity_raw_type>(36)}"),
         std::string::npos);
 
-    auto immutable_manifest{fixed_point_backed_manifest()};
-    std::get<PackedValueSchema>(
-        std::get<NormalModuleSchema>(immutable_manifest.modules.back()).declarations.front())
-        .mutable_value = false;
-    auto const immutable_files{render_modules(lower_modules(immutable_manifest))};
+    auto immutable_manifest{fixed_point_backed_manifest(context)};
+    immutable_manifest.modules.back() = [&] {
+        auto row_2{
+            context.storage.declarations.normal_modules.clone(immutable_manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_2)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_2)])};
+            auto rows_1{std::vector(original_items.begin(), original_items.end())};
+            rows_1.front() = [&] {
+                auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+                context.storage.declarations.packed_values
+                    .mutable_value[context.storage.declarations.packed_values.index(row_0)] = false;
+                return row_0;
+            }();
+            return context.storage.declarations.range(rows_1);
+        }();
+        return row_2;
+    }();
+    auto const immutable_files{render_test_manifest(context, immutable_manifest)};
     ASSERT_EQ(immutable_files.size(), 2);
     EXPECT_NE(immutable_files.back().content.find(
                   "assert(velocity_raw_value >= velocity_minimum_allowed_raw && "
@@ -681,40 +2860,470 @@ TEST(PackedValue, LowersFixedPointPlacementToExplicitRawCodeApi) {
 }
 
 TEST(PackedValue, RejectsCompetingFixedPointPlacementFacts) {
-    auto manifest{fixed_point_backed_manifest()};
-    auto& packed{std::get<NormalModuleSchema>(manifest.modules.back())};
-    auto& velocity{field(std::get<PackedValueSchema>(packed.declarations.front()), 0)};
+    CompilerTestContext context;
+    auto manifest{fixed_point_backed_manifest(context)};
 
-    velocity.bits = 11;
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .bits[context.storage.declarations.packed_fields.index(row_0)] = 11;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 
-    velocity.bits.reset();
-    velocity.kind = PackedFieldKind::signed_integer;
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .bits[context.storage.declarations.packed_fields.index(row_0)]
+                            .reset();
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .kind[context.storage.declarations.packed_fields.index(row_0)] =
+                            PackedFieldKind::signed_integer;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 
-    velocity.kind = PackedFieldKind::fixed_point;
-    velocity.minimum_value = -10;
-    velocity.maximum_value = 10;
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .kind[context.storage.declarations.packed_fields.index(row_0)] =
+                            PackedFieldKind::fixed_point;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .minimum_value[context.storage.declarations.packed_fields.index(
+                                row_0)] = -10;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .maximum_value[context.storage.declarations.packed_fields.index(
+                                row_0)] = 10;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 
-    velocity.minimum_value.reset();
-    velocity.maximum_value.reset();
-    velocity.named_codes.push_back({.name = "Zero", .value = 0, .sentinel = false});
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .minimum_value[context.storage.declarations.packed_fields.index(row_0)]
+                            .reset();
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .maximum_value[context.storage.declarations.packed_fields.index(row_0)]
+                            .reset();
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .named_codes[context.storage.declarations.packed_fields.index(
+                                row_0)] = [&] {
+                            auto const original_items{context.storage.declarations.items(
+                                context.storage.declarations.packed_fields
+                                    .named_codes[context.storage.declarations.packed_fields.index(
+                                        row_0)])};
+                            auto rows{std::vector(original_items.begin(), original_items.end())};
+                            rows.push_back([&] {
+                                auto const new_packed_named_codes{
+                                    context.storage.declarations.packed_named_codes.append()};
+                                context.storage.declarations.packed_named_codes
+                                    .name[context.storage.declarations.packed_named_codes.index(
+                                        new_packed_named_codes)] =
+                                    context.storage.strings.intern("Zero");
+                                context.storage.declarations.packed_named_codes
+                                    .value[context.storage.declarations.packed_named_codes.index(
+                                        new_packed_named_codes)] = 0;
+                                context.storage.declarations.packed_named_codes
+                                    .sentinel[context.storage.declarations.packed_named_codes.index(
+                                        new_packed_named_codes)] = false;
+                                return new_packed_named_codes;
+                            }());
+                            return context.storage.declarations.range(rows);
+                        }();
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 
-    velocity.named_codes.clear();
-    velocity.range_helper = true;
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .named_codes[context.storage.declarations.packed_fields.index(row_0)] =
+                            {};
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .range_helper[context.storage.declarations.packed_fields.index(row_0)] =
+                            true;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 
-    velocity.range_helper = false;
-    velocity.relationship = SemanticRelationSchema{.kind = SemanticRelationKind::encoded_as,
-                                                   .target = TypeRef{"project::VelocityQ8_4"},
-                                                   .unit = std::nullopt};
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .range_helper[context.storage.declarations.packed_fields.index(row_0)] =
+                            false;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .relationship[context.storage.declarations.packed_fields.index(row_0)] =
+                            [&] {
+                                auto const new_semantic_relations{
+                                    context.storage.declarations.semantic_relations.append()};
+                                context.storage.declarations.semantic_relations
+                                    .kind[context.storage.declarations.semantic_relations.index(
+                                        new_semantic_relations)] = SemanticRelationKind::encoded_as;
+                                context.storage.declarations.semantic_relations
+                                    .target[context.storage.declarations.semantic_relations.index(
+                                        new_semantic_relations)] = [&] {
+                                    auto const new_type_refs{
+                                        context.storage.declarations.type_refs.append()};
+                                    context.storage.declarations.type_refs
+                                        .name[context.storage.declarations.type_refs.index(
+                                            new_type_refs)] =
+                                        context.storage.strings.intern("project::VelocityQ8_4");
+                                    return new_type_refs;
+                                }();
+                                context.storage.declarations.semantic_relations
+                                    .unit[context.storage.declarations.semantic_relations.index(
+                                        new_semantic_relations)] = std::nullopt;
+                                return new_semantic_relations;
+                            }();
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 }
 
 TEST(PackedValue, LowersMiniFloatPlacementAsRawEncodedBits) {
-    auto const files{render_modules(lower_modules(mini_float_backed_manifest()))};
+    CompilerTestContext context;
+    auto const files{render_test_manifest(context, mini_float_backed_manifest(context))};
     ASSERT_EQ(files.size(), 2U);
     auto const& header{files.back().content};
     EXPECT_NE(header.find("using component_encoded_type = std::uint16_t;"), std::string::npos);
@@ -732,16 +3341,95 @@ TEST(PackedValue, LowersMiniFloatPlacementAsRawEncodedBits) {
     EXPECT_EQ(header.find("project::PositionF12"), std::string::npos);
     EXPECT_EQ(header.find("component()"), std::string::npos);
 
-    auto wide{mini_float_backed_manifest()};
-    auto& wide_representations{std::get<NormalModuleSchema>(wide.modules.front())};
-    std::get<codegen::MiniFloatSchema>(wide_representations.declarations.front()).significand_bits =
-        58;
-    auto& wide_packed{std::get<codegen::PackedValueSchema>(
-        std::get<NormalModuleSchema>(wide.modules.back()).declarations.front())};
-    wide_packed.storage_type = TypeRef{"std::uint64_t"};
-    wide_packed.segments.resize(1);
-    wide_packed.mutable_value = false;
-    auto const wide_files{render_modules(lower_modules(wide))};
+    auto wide{mini_float_backed_manifest(context)};
+
+    wide.modules.front() = [&] {
+        auto row_2{context.storage.declarations.normal_modules.clone(wide.modules.front())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_2)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_2)])};
+            auto rows_1{std::vector(original_items.begin(), original_items.end())};
+            rows_1.front() = [&] {
+                auto row_0{context.storage.declarations.mini_floats.clone(rows_1.front())};
+                context.storage.declarations.mini_floats
+                    .significand_bits[context.storage.declarations.mini_floats.index(row_0)] = 58;
+                return row_0;
+            }();
+            return context.storage.declarations.range(rows_1);
+        }();
+        return row_2;
+    }();
+
+    wide.modules.back() = [&] {
+        auto row_2{context.storage.declarations.normal_modules.clone(wide.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_2)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_2)])};
+            auto rows_1{std::vector(original_items.begin(), original_items.end())};
+            rows_1.front() = [&] {
+                auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+                context.storage.declarations.packed_values
+                    .storage_type[context.storage.declarations.packed_values.index(row_0)] = [&] {
+                    auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                    context.storage.declarations.type_refs
+                        .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                        context.storage.strings.intern("std::uint64_t");
+                    return new_type_refs;
+                }();
+                return row_0;
+            }();
+            return context.storage.declarations.range(rows_1);
+        }();
+        return row_2;
+    }();
+    wide.modules.back() = [&] {
+        auto row_2{context.storage.declarations.normal_modules.clone(wide.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_2)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_2)])};
+            auto rows_1{std::vector(original_items.begin(), original_items.end())};
+            rows_1.front() = [&] {
+                auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_0)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_0)])};
+                    auto rows{std::vector(original_items.begin(), original_items.end())};
+                    rows.resize(1);
+                    return context.storage.declarations.range(rows);
+                }();
+                return row_0;
+            }();
+            return context.storage.declarations.range(rows_1);
+        }();
+        return row_2;
+    }();
+    wide.modules.back() = [&] {
+        auto row_2{context.storage.declarations.normal_modules.clone(wide.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_2)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_2)])};
+            auto rows_1{std::vector(original_items.begin(), original_items.end())};
+            rows_1.front() = [&] {
+                auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+                context.storage.declarations.packed_values
+                    .mutable_value[context.storage.declarations.packed_values.index(row_0)] = false;
+                return row_0;
+            }();
+            return context.storage.declarations.range(rows_1);
+        }();
+        return row_2;
+    }();
+    auto const wide_files{render_test_manifest(context, wide)};
     ASSERT_EQ(wide_files.size(), 2U);
     EXPECT_NE(wide_files.back().content.find(
                   "ml::PackedField<storage_type, component_encoded_type, 0, 64>"),
@@ -755,292 +3443,2821 @@ TEST(PackedValue, LowersMiniFloatPlacementAsRawEncodedBits) {
 }
 
 TEST(PackedValue, RejectsCompetingMiniFloatPlacementFacts) {
-    auto manifest{mini_float_backed_manifest()};
-    auto& packed{std::get<NormalModuleSchema>(manifest.modules.back())};
-    auto& component{field(std::get<PackedValueSchema>(packed.declarations.front()), 0)};
-    component.bits = 11;
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
-    component.bits.reset();
-    component.kind = PackedFieldKind::unsigned_integer;
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
-    component.kind = PackedFieldKind::mini_float;
-    component.minimum_value = 0;
-    component.maximum_value = 1;
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
-    component.minimum_value.reset();
-    component.maximum_value.reset();
-    component.named_codes.push_back({.name = "Zero", .value = 0, .sentinel = false});
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
-    component.named_codes.clear();
-    component.range_helper = true;
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
-    component.range_helper = false;
-    component.relationship = SemanticRelationSchema{.kind = SemanticRelationKind::encoded_as,
-                                                    .target = TypeRef{"project::PositionF12"},
-                                                    .unit = std::nullopt};
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    CompilerTestContext context;
+    auto manifest{mini_float_backed_manifest(context)};
+
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .bits[context.storage.declarations.packed_fields.index(row_0)] = 11;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .bits[context.storage.declarations.packed_fields.index(row_0)]
+                            .reset();
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .kind[context.storage.declarations.packed_fields.index(row_0)] =
+                            PackedFieldKind::unsigned_integer;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .kind[context.storage.declarations.packed_fields.index(row_0)] =
+                            PackedFieldKind::mini_float;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .minimum_value[context.storage.declarations.packed_fields.index(
+                                row_0)] = 0;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .maximum_value[context.storage.declarations.packed_fields.index(
+                                row_0)] = 1;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .minimum_value[context.storage.declarations.packed_fields.index(row_0)]
+                            .reset();
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .maximum_value[context.storage.declarations.packed_fields.index(row_0)]
+                            .reset();
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .named_codes[context.storage.declarations.packed_fields.index(
+                                row_0)] = [&] {
+                            auto const original_items{context.storage.declarations.items(
+                                context.storage.declarations.packed_fields
+                                    .named_codes[context.storage.declarations.packed_fields.index(
+                                        row_0)])};
+                            auto rows{std::vector(original_items.begin(), original_items.end())};
+                            rows.push_back([&] {
+                                auto const new_packed_named_codes{
+                                    context.storage.declarations.packed_named_codes.append()};
+                                context.storage.declarations.packed_named_codes
+                                    .name[context.storage.declarations.packed_named_codes.index(
+                                        new_packed_named_codes)] =
+                                    context.storage.strings.intern("Zero");
+                                context.storage.declarations.packed_named_codes
+                                    .value[context.storage.declarations.packed_named_codes.index(
+                                        new_packed_named_codes)] = 0;
+                                context.storage.declarations.packed_named_codes
+                                    .sentinel[context.storage.declarations.packed_named_codes.index(
+                                        new_packed_named_codes)] = false;
+                                return new_packed_named_codes;
+                            }());
+                            return context.storage.declarations.range(rows);
+                        }();
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .named_codes[context.storage.declarations.packed_fields.index(row_0)] =
+                            {};
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .range_helper[context.storage.declarations.packed_fields.index(row_0)] =
+                            true;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .range_helper[context.storage.declarations.packed_fields.index(row_0)] =
+                            false;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .relationship[context.storage.declarations.packed_fields.index(row_0)] =
+                            [&] {
+                                auto const new_semantic_relations{
+                                    context.storage.declarations.semantic_relations.append()};
+                                context.storage.declarations.semantic_relations
+                                    .kind[context.storage.declarations.semantic_relations.index(
+                                        new_semantic_relations)] = SemanticRelationKind::encoded_as;
+                                context.storage.declarations.semantic_relations
+                                    .target[context.storage.declarations.semantic_relations.index(
+                                        new_semantic_relations)] = [&] {
+                                    auto const new_type_refs{
+                                        context.storage.declarations.type_refs.append()};
+                                    context.storage.declarations.type_refs
+                                        .name[context.storage.declarations.type_refs.index(
+                                            new_type_refs)] =
+                                        context.storage.strings.intern("project::PositionF12");
+                                    return new_type_refs;
+                                }();
+                                context.storage.declarations.semantic_relations
+                                    .unit[context.storage.declarations.semantic_relations.index(
+                                        new_semantic_relations)] = std::nullopt;
+                                return new_semantic_relations;
+                            }();
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 }
 
 TEST(PackedValue, RejectsCompetingOrMismatchedIntegerScalarFieldDomain) {
-    auto module{valid_module()};
-    auto manifest{scalar_backed_manifest(std::move(module))};
-    auto& packed{std::get<NormalModuleSchema>(manifest.modules.back())};
-    auto& packed_field{field(std::get<PackedValueSchema>(packed.declarations.front()), 0)};
+    CompilerTestContext context;
+    auto module{valid_module(context)};
+    auto manifest{scalar_backed_manifest(context, std::move(module))};
 
-    packed_field.minimum_value = 0;
-    packed_field.maximum_value = 1000;
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .minimum_value[context.storage.declarations.packed_fields.index(
+                                row_0)] = 0;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .maximum_value[context.storage.declarations.packed_fields.index(
+                                row_0)] = 1000;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 
-    packed_field.minimum_value.reset();
-    packed_field.maximum_value.reset();
-    packed_field.kind = PackedFieldKind::signed_integer;
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .minimum_value[context.storage.declarations.packed_fields.index(row_0)]
+                            .reset();
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .maximum_value[context.storage.declarations.packed_fields.index(row_0)]
+                            .reset();
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .kind[context.storage.declarations.packed_fields.index(row_0)] =
+                            PackedFieldKind::signed_integer;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 
-    packed_field.kind = PackedFieldKind::unsigned_integer;
-    packed_field.bits = 11;
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .kind[context.storage.declarations.packed_fields.index(row_0)] =
+                            PackedFieldKind::unsigned_integer;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(row_4)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(row_4)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                        context.storage.declarations.packed_fields
+                            .bits[context.storage.declarations.packed_fields.index(row_0)] = 11;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 }
 
 TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
-    auto module{valid_module()};
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).bits = 0;
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    CompilerTestContext context;
+    auto module{context.storage.declarations.normal_modules.clone(valid_module(context))};
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .bits[context.storage.declarations.packed_fields.index(row_0)] = 0;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).bits = 25;
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .bits[context.storage.declarations.packed_fields.index(row_0)] = 25;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    std::get<codegen::PackedValueSchema>(module.declarations.front()).storage_type =
-        TypeRef{"int32"};
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .storage_type[context.storage.declarations.packed_values.index(row_0)] = [&] {
+                auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                context.storage.declarations.type_refs
+                    .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                    context.storage.strings.intern("int32");
+                return new_type_refs;
+            }();
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).type =
-        TypeRef{"int32"};
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .type[context.storage.declarations.packed_fields.index(row_0)] = [&] {
+                        auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                        context.storage.declarations.type_refs
+                            .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                            context.storage.strings.intern("int32");
+                        return new_type_refs;
+                    }();
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).kind =
-        PackedFieldKind::signed_integer;
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .kind[context.storage.declarations.packed_fields.index(row_0)] =
+                        PackedFieldKind::signed_integer;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).type =
-        TypeRef{"int32"};
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).kind =
-        PackedFieldKind::signed_integer;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).bits.reset();
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .type[context.storage.declarations.packed_fields.index(row_0)] = [&] {
+                        auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                        context.storage.declarations.type_refs
+                            .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                            context.storage.strings.intern("int32");
+                        return new_type_refs;
+                    }();
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .kind[context.storage.declarations.packed_fields.index(row_0)] =
+                        PackedFieldKind::signed_integer;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .bits[context.storage.declarations.packed_fields.index(row_0)]
+                        .reset();
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).type =
-        TypeRef{"int16"};
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).kind =
-        PackedFieldKind::signed_integer;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).bits = 17;
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .type[context.storage.declarations.packed_fields.index(row_0)] = [&] {
+                        auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                        context.storage.declarations.type_refs
+                            .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                            context.storage.strings.intern("int16");
+                        return new_type_refs;
+                    }();
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .kind[context.storage.declarations.packed_fields.index(row_0)] =
+                        PackedFieldKind::signed_integer;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .bits[context.storage.declarations.packed_fields.index(row_0)] = 17;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    std::get<codegen::PackedValueSchema>(module.declarations.front()).segments.front() =
-        PackedFieldSchema{"flag", TypeRef{"bool"}, 2};
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_2{std::vector(original_items.begin(), original_items.end())};
+        rows_2.front() = [&] {
+            auto row_1{context.storage.declarations.packed_values.clone(rows_2.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_1)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_1)])};
+                auto rows_0{std::vector(original_items.begin(), original_items.end())};
+                rows_0.front() = [&] {
+                    auto const new_packed_fields{
+                        context.storage.declarations.packed_fields.append()};
+                    context.storage.declarations.packed_fields
+                        .name[context.storage.declarations.packed_fields.index(new_packed_fields)] =
+                        context.storage.strings.intern("flag");
+                    context.storage.declarations.packed_fields
+                        .type[context.storage.declarations.packed_fields.index(new_packed_fields)] =
+                        [&] {
+                            auto const new_type_refs{
+                                context.storage.declarations.type_refs.append()};
+                            context.storage.declarations.type_refs
+                                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                                context.storage.strings.intern("bool");
+                            return new_type_refs;
+                        }();
+                    context.storage.declarations.packed_fields
+                        .bits[context.storage.declarations.packed_fields.index(new_packed_fields)] =
+                        2;
+                    return new_packed_fields;
+                }();
+                return context.storage.declarations.range(rows_0);
+            }();
+            return row_1;
+        }();
+        return context.storage.declarations.range(rows_2);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    module.settings.source = "Packed.cpp";
-    EXPECT_EQ(render_modules(lower_modules(Manifest{.schema_version = manifest_schema_version,
-                                                    .modules = {module}}))
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .settings[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto row_0{context.storage.declarations.module_settings_store.clone(
+            context.storage.declarations.normal_modules
+                .settings[context.storage.declarations.normal_modules.index(module)])};
+        context.storage.declarations.module_settings_store
+            .source[context.storage.declarations.module_settings_store.index(row_0)] =
+            context.storage.strings.add("Packed.cpp");
+        return row_0;
+    }();
+    EXPECT_EQ(render_test_manifest(context,
+                                   Manifest{manifest_schema_version,
+                                            make_test_registry(context),
+                                            context.storage.declarations,
+                                            {module}})
                   .size(),
               2U);
 
-    module = valid_module();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).range_helper = true;
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[1] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[1])};
+                    context.storage.declarations.packed_fields
+                        .range_helper[context.storage.declarations.packed_fields.index(row_0)] =
+                        true;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    std::get<codegen::PackedValueSchema>(module.declarations.front()).invalid_value =
-        std::uint64_t{1} << 32;
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .invalid_value[context.storage.declarations.packed_values.index(row_0)] =
+                std::uint64_t{1} << 32;
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    std::get<codegen::PackedValueSchema>(module.declarations.front()).segments = {
-        PackedReservedBitsSchema{.name = "future", .bits = 32}};
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_0)] =
+                context.storage.declarations.range<PackedSegmentId>({[&] {
+                    auto const new_packed_reserved_bits{
+                        context.storage.declarations.packed_reserved_bits.append()};
+                    context.storage.declarations.packed_reserved_bits
+                        .name[context.storage.declarations.packed_reserved_bits.index(
+                            new_packed_reserved_bits)] = context.storage.strings.intern("future");
+                    context.storage.declarations.packed_reserved_bits
+                        .bits[context.storage.declarations.packed_reserved_bits.index(
+                            new_packed_reserved_bits)] = 32;
+                    return new_packed_reserved_bits;
+                }()});
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    std::get<codegen::PackedValueSchema>(module.declarations.front())
-        .segments.insert(
-            std::get<codegen::PackedValueSchema>(module.declarations.front()).segments.begin() + 1,
-            PackedReservedBitsSchema{.name = "future", .bits = 0});
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_0)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_0)])};
+                auto rows{std::vector(original_items.begin(), original_items.end())};
+                rows.insert(rows.begin() + 1, [&] {
+                    auto const new_packed_reserved_bits{
+                        context.storage.declarations.packed_reserved_bits.append()};
+                    context.storage.declarations.packed_reserved_bits
+                        .name[context.storage.declarations.packed_reserved_bits.index(
+                            new_packed_reserved_bits)] = context.storage.strings.intern("future");
+                    context.storage.declarations.packed_reserved_bits
+                        .bits[context.storage.declarations.packed_reserved_bits.index(
+                            new_packed_reserved_bits)] = 0;
+                    return new_packed_reserved_bits;
+                }());
+                return context.storage.declarations.range(rows);
+            }();
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    std::get<codegen::PackedValueSchema>(module.declarations.front())
-        .segments.insert(
-            std::get<codegen::PackedValueSchema>(module.declarations.front()).segments.begin() + 1,
-            PackedReservedBitsSchema{.name = "entity_index", .bits = 1});
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_0)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_0)])};
+                auto rows{std::vector(original_items.begin(), original_items.end())};
+                rows.insert(rows.begin() + 1, [&] {
+                    auto const new_packed_reserved_bits{
+                        context.storage.declarations.packed_reserved_bits.append()};
+                    context.storage.declarations.packed_reserved_bits
+                        .name[context.storage.declarations.packed_reserved_bits.index(
+                            new_packed_reserved_bits)] =
+                        context.storage.strings.intern("entity_index");
+                    context.storage.declarations.packed_reserved_bits
+                        .bits[context.storage.declarations.packed_reserved_bits.index(
+                            new_packed_reserved_bits)] = 1;
+                    return new_packed_reserved_bits;
+                }());
+                return context.storage.declarations.range(rows);
+            }();
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).minimum_value = 1;
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .minimum_value[context.storage.declarations.packed_fields.index(row_0)] = 1;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).bits.reset();
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .bits[context.storage.declarations.packed_fields.index(row_0)]
+                        .reset();
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).bits.reset();
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[1] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[1])};
+                    context.storage.declarations.packed_fields
+                        .bits[context.storage.declarations.packed_fields.index(row_0)]
+                        .reset();
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).minimum_value = 100;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).maximum_value = 10;
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .minimum_value[context.storage.declarations.packed_fields.index(row_0)] =
+                        100;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .maximum_value[context.storage.declarations.packed_fields.index(row_0)] =
+                        10;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).minimum_value = -1;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).maximum_value = 100;
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .minimum_value[context.storage.declarations.packed_fields.index(row_0)] =
+                        -1;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .maximum_value[context.storage.declarations.packed_fields.index(row_0)] =
+                        100;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).type =
-        TypeRef{"std::int32_t"};
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).kind =
-        PackedFieldKind::signed_integer;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).bits = 7;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).minimum_value =
-        -100;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).maximum_value = 100;
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .type[context.storage.declarations.packed_fields.index(row_0)] = [&] {
+                        auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                        context.storage.declarations.type_refs
+                            .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                            context.storage.strings.intern("std::int32_t");
+                        return new_type_refs;
+                    }();
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .kind[context.storage.declarations.packed_fields.index(row_0)] =
+                        PackedFieldKind::signed_integer;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .bits[context.storage.declarations.packed_fields.index(row_0)] = 7;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .minimum_value[context.storage.declarations.packed_fields.index(row_0)] =
+                        -100;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .maximum_value[context.storage.declarations.packed_fields.index(row_0)] =
+                        100;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).type =
-        TypeRef{"std::int32_t"};
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).kind =
-        PackedFieldKind::signed_integer;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).bits = 8;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).minimum_value =
-        -100;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).maximum_value = 100;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).named_codes = {
-        {.name = "Invalid", .value = 0, .sentinel = true}};
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .type[context.storage.declarations.packed_fields.index(row_0)] = [&] {
+                        auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                        context.storage.declarations.type_refs
+                            .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                            context.storage.strings.intern("std::int32_t");
+                        return new_type_refs;
+                    }();
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .kind[context.storage.declarations.packed_fields.index(row_0)] =
+                        PackedFieldKind::signed_integer;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .bits[context.storage.declarations.packed_fields.index(row_0)] = 8;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .minimum_value[context.storage.declarations.packed_fields.index(row_0)] =
+                        -100;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .maximum_value[context.storage.declarations.packed_fields.index(row_0)] =
+                        100;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .named_codes[context.storage.declarations.packed_fields.index(row_0)] =
+                        context.storage.declarations.range<PackedNamedCodeId>({[&] {
+                            auto const new_packed_named_codes{
+                                context.storage.declarations.packed_named_codes.append()};
+                            context.storage.declarations.packed_named_codes
+                                .name[context.storage.declarations.packed_named_codes.index(
+                                    new_packed_named_codes)] =
+                                context.storage.strings.intern("Invalid");
+                            context.storage.declarations.packed_named_codes
+                                .value[context.storage.declarations.packed_named_codes.index(
+                                    new_packed_named_codes)] = 0;
+                            context.storage.declarations.packed_named_codes
+                                .sentinel[context.storage.declarations.packed_named_codes.index(
+                                    new_packed_named_codes)] = true;
+                            return new_packed_named_codes;
+                        }()});
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).minimum_value = 0;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).maximum_value =
-        std::uint64_t{1} << 24;
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .minimum_value[context.storage.declarations.packed_fields.index(row_0)] = 0;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .maximum_value[context.storage.declarations.packed_fields.index(row_0)] =
+                        std::uint64_t{1} << 24;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).minimum_value = 0;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).maximum_value = 3;
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[1] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[1])};
+                    context.storage.declarations.packed_fields
+                        .minimum_value[context.storage.declarations.packed_fields.index(row_0)] = 0;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[1] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[1])};
+                    context.storage.declarations.packed_fields
+                        .maximum_value[context.storage.declarations.packed_fields.index(row_0)] = 3;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).named_codes = {
-        {.name = "Invalid", .value = 0xffffff, .sentinel = true}};
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .named_codes[context.storage.declarations.packed_fields.index(row_0)] =
+                        context.storage.declarations.range<PackedNamedCodeId>({[&] {
+                            auto const new_packed_named_codes{
+                                context.storage.declarations.packed_named_codes.append()};
+                            context.storage.declarations.packed_named_codes
+                                .name[context.storage.declarations.packed_named_codes.index(
+                                    new_packed_named_codes)] =
+                                context.storage.strings.intern("Invalid");
+                            context.storage.declarations.packed_named_codes
+                                .value[context.storage.declarations.packed_named_codes.index(
+                                    new_packed_named_codes)] = 0xffffff;
+                            context.storage.declarations.packed_named_codes
+                                .sentinel[context.storage.declarations.packed_named_codes.index(
+                                    new_packed_named_codes)] = true;
+                            return new_packed_named_codes;
+                        }()});
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).minimum_value = 0;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).maximum_value = 100;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).named_codes = {
-        {.name = "Invalid", .value = 100, .sentinel = true}};
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .minimum_value[context.storage.declarations.packed_fields.index(row_0)] = 0;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .maximum_value[context.storage.declarations.packed_fields.index(row_0)] =
+                        100;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .named_codes[context.storage.declarations.packed_fields.index(row_0)] =
+                        context.storage.declarations.range<PackedNamedCodeId>({[&] {
+                            auto const new_packed_named_codes{
+                                context.storage.declarations.packed_named_codes.append()};
+                            context.storage.declarations.packed_named_codes
+                                .name[context.storage.declarations.packed_named_codes.index(
+                                    new_packed_named_codes)] =
+                                context.storage.strings.intern("Invalid");
+                            context.storage.declarations.packed_named_codes
+                                .value[context.storage.declarations.packed_named_codes.index(
+                                    new_packed_named_codes)] = 100;
+                            context.storage.declarations.packed_named_codes
+                                .sentinel[context.storage.declarations.packed_named_codes.index(
+                                    new_packed_named_codes)] = true;
+                            return new_packed_named_codes;
+                        }()});
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).minimum_value = 0;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).maximum_value = 100;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).named_codes = {
-        {.name = "Named", .value = 101, .sentinel = false}};
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .minimum_value[context.storage.declarations.packed_fields.index(row_0)] = 0;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .maximum_value[context.storage.declarations.packed_fields.index(row_0)] =
+                        100;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .named_codes[context.storage.declarations.packed_fields.index(row_0)] =
+                        context.storage.declarations.range<PackedNamedCodeId>({[&] {
+                            auto const new_packed_named_codes{
+                                context.storage.declarations.packed_named_codes.append()};
+                            context.storage.declarations.packed_named_codes
+                                .name[context.storage.declarations.packed_named_codes.index(
+                                    new_packed_named_codes)] =
+                                context.storage.strings.intern("Named");
+                            context.storage.declarations.packed_named_codes
+                                .value[context.storage.declarations.packed_named_codes.index(
+                                    new_packed_named_codes)] = 101;
+                            context.storage.declarations.packed_named_codes
+                                .sentinel[context.storage.declarations.packed_named_codes.index(
+                                    new_packed_named_codes)] = false;
+                            return new_packed_named_codes;
+                        }()});
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).minimum_value = 0;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).maximum_value = 100;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).named_codes = {
-        {.name = "Invalid", .value = 0x1000000, .sentinel = true}};
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .minimum_value[context.storage.declarations.packed_fields.index(row_0)] = 0;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .maximum_value[context.storage.declarations.packed_fields.index(row_0)] =
+                        100;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .named_codes[context.storage.declarations.packed_fields.index(row_0)] =
+                        context.storage.declarations.range<PackedNamedCodeId>({[&] {
+                            auto const new_packed_named_codes{
+                                context.storage.declarations.packed_named_codes.append()};
+                            context.storage.declarations.packed_named_codes
+                                .name[context.storage.declarations.packed_named_codes.index(
+                                    new_packed_named_codes)] =
+                                context.storage.strings.intern("Invalid");
+                            context.storage.declarations.packed_named_codes
+                                .value[context.storage.declarations.packed_named_codes.index(
+                                    new_packed_named_codes)] = 0x1000000;
+                            context.storage.declarations.packed_named_codes
+                                .sentinel[context.storage.declarations.packed_named_codes.index(
+                                    new_packed_named_codes)] = true;
+                            return new_packed_named_codes;
+                        }()});
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).minimum_value = 0;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).maximum_value = 100;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).named_codes = {
-        {.name = "Invalid", .value = 0xffffff, .sentinel = true},
-        {.name = "Invalid", .value = 0xfffffe, .sentinel = true}};
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .minimum_value[context.storage.declarations.packed_fields.index(row_0)] = 0;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .maximum_value[context.storage.declarations.packed_fields.index(row_0)] =
+                        100;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .named_codes[context.storage.declarations.packed_fields.index(row_0)] =
+                        context.storage.declarations.range<PackedNamedCodeId>(
+                            {[&] {
+                                 auto const new_packed_named_codes{
+                                     context.storage.declarations.packed_named_codes.append()};
+                                 context.storage.declarations.packed_named_codes
+                                     .name[context.storage.declarations.packed_named_codes.index(
+                                         new_packed_named_codes)] =
+                                     context.storage.strings.intern("Invalid");
+                                 context.storage.declarations.packed_named_codes
+                                     .value[context.storage.declarations.packed_named_codes.index(
+                                         new_packed_named_codes)] = 0xffffff;
+                                 context.storage.declarations.packed_named_codes
+                                     .sentinel[context.storage.declarations.packed_named_codes
+                                                   .index(new_packed_named_codes)] = true;
+                                 return new_packed_named_codes;
+                             }(),
+                             [&] {
+                                 auto const new_packed_named_codes{
+                                     context.storage.declarations.packed_named_codes.append()};
+                                 context.storage.declarations.packed_named_codes
+                                     .name[context.storage.declarations.packed_named_codes.index(
+                                         new_packed_named_codes)] =
+                                     context.storage.strings.intern("Invalid");
+                                 context.storage.declarations.packed_named_codes
+                                     .value[context.storage.declarations.packed_named_codes.index(
+                                         new_packed_named_codes)] = 0xfffffe;
+                                 context.storage.declarations.packed_named_codes
+                                     .sentinel[context.storage.declarations.packed_named_codes
+                                                   .index(new_packed_named_codes)] = true;
+                                 return new_packed_named_codes;
+                             }()});
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).minimum_value = 0;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).maximum_value = 100;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).named_codes = {
-        {.name = "Invalid", .value = 0xffffff, .sentinel = true},
-        {.name = "Pending", .value = 0xffffff, .sentinel = true}};
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .minimum_value[context.storage.declarations.packed_fields.index(row_0)] = 0;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .maximum_value[context.storage.declarations.packed_fields.index(row_0)] =
+                        100;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .named_codes[context.storage.declarations.packed_fields.index(row_0)] =
+                        context.storage.declarations.range<PackedNamedCodeId>(
+                            {[&] {
+                                 auto const new_packed_named_codes{
+                                     context.storage.declarations.packed_named_codes.append()};
+                                 context.storage.declarations.packed_named_codes
+                                     .name[context.storage.declarations.packed_named_codes.index(
+                                         new_packed_named_codes)] =
+                                     context.storage.strings.intern("Invalid");
+                                 context.storage.declarations.packed_named_codes
+                                     .value[context.storage.declarations.packed_named_codes.index(
+                                         new_packed_named_codes)] = 0xffffff;
+                                 context.storage.declarations.packed_named_codes
+                                     .sentinel[context.storage.declarations.packed_named_codes
+                                                   .index(new_packed_named_codes)] = true;
+                                 return new_packed_named_codes;
+                             }(),
+                             [&] {
+                                 auto const new_packed_named_codes{
+                                     context.storage.declarations.packed_named_codes.append()};
+                                 context.storage.declarations.packed_named_codes
+                                     .name[context.storage.declarations.packed_named_codes.index(
+                                         new_packed_named_codes)] =
+                                     context.storage.strings.intern("Pending");
+                                 context.storage.declarations.packed_named_codes
+                                     .value[context.storage.declarations.packed_named_codes.index(
+                                         new_packed_named_codes)] = 0xffffff;
+                                 context.storage.declarations.packed_named_codes
+                                     .sentinel[context.storage.declarations.packed_named_codes
+                                                   .index(new_packed_named_codes)] = true;
+                                 return new_packed_named_codes;
+                             }()});
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).relationship =
-        SemanticRelationSchema{.kind = SemanticRelationKind::discriminates,
-                               .target = TypeRef{"ExternalPayload"},
-                               .unit = std::nullopt};
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .relationship[context.storage.declarations.packed_fields.index(
+                            row_0)] = [&] {
+                        auto const new_semantic_relations{
+                            context.storage.declarations.semantic_relations.append()};
+                        context.storage.declarations.semantic_relations
+                            .kind[context.storage.declarations.semantic_relations.index(
+                                new_semantic_relations)] = SemanticRelationKind::discriminates;
+                        context.storage.declarations.semantic_relations
+                            .target[context.storage.declarations.semantic_relations.index(
+                                new_semantic_relations)] = [&] {
+                            auto const new_type_refs{
+                                context.storage.declarations.type_refs.append()};
+                            context.storage.declarations.type_refs
+                                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                                context.storage.strings.intern("ExternalPayload");
+                            return new_type_refs;
+                        }();
+                        context.storage.declarations.semantic_relations
+                            .unit[context.storage.declarations.semantic_relations.index(
+                                new_semantic_relations)] = std::nullopt;
+                        return new_semantic_relations;
+                    }();
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).relationship =
-        SemanticRelationSchema{.kind = SemanticRelationKind::index_into,
-                               .target = TypeRef{"ExternalTable"},
-                               .unit = std::nullopt};
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[1] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[1])};
+                    context.storage.declarations.packed_fields
+                        .relationship[context.storage.declarations.packed_fields.index(
+                            row_0)] = [&] {
+                        auto const new_semantic_relations{
+                            context.storage.declarations.semantic_relations.append()};
+                        context.storage.declarations.semantic_relations
+                            .kind[context.storage.declarations.semantic_relations.index(
+                                new_semantic_relations)] = SemanticRelationKind::index_into;
+                        context.storage.declarations.semantic_relations
+                            .target[context.storage.declarations.semantic_relations.index(
+                                new_semantic_relations)] = [&] {
+                            auto const new_type_refs{
+                                context.storage.declarations.type_refs.append()};
+                            context.storage.declarations.type_refs
+                                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                                context.storage.strings.intern("ExternalTable");
+                            return new_type_refs;
+                        }();
+                        context.storage.declarations.semantic_relations
+                            .unit[context.storage.declarations.semantic_relations.index(
+                                new_semantic_relations)] = std::nullopt;
+                        return new_semantic_relations;
+                    }();
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 
-    module = valid_module();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).relationship =
-        SemanticRelationSchema{.kind = SemanticRelationKind::references,
-                               .target = TypeRef{"ExternalType"},
-                               .unit = std::nullopt};
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    module = valid_module(context);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .relationship[context.storage.declarations.packed_fields.index(
+                            row_0)] = [&] {
+                        auto const new_semantic_relations{
+                            context.storage.declarations.semantic_relations.append()};
+                        context.storage.declarations.semantic_relations
+                            .kind[context.storage.declarations.semantic_relations.index(
+                                new_semantic_relations)] = SemanticRelationKind::references;
+                        context.storage.declarations.semantic_relations
+                            .target[context.storage.declarations.semantic_relations.index(
+                                new_semantic_relations)] = [&] {
+                            auto const new_type_refs{
+                                context.storage.declarations.type_refs.append()};
+                            context.storage.declarations.type_refs
+                                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                                context.storage.strings.intern("TypeDefinitionId");
+                            return new_type_refs;
+                        }();
+                        context.storage.declarations.semantic_relations
+                            .unit[context.storage.declarations.semantic_relations.index(
+                                new_semantic_relations)] = std::nullopt;
+                        return new_semantic_relations;
+                    }();
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 }
 
 TEST(PackedValue, RejectsGeneratedApiCollisions) {
-    auto module{valid_module()};
-    std::get<codegen::PackedValueSchema>(module.declarations.front()).mutable_value = true;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).name =
-        "set_entity_index";
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+    CompilerTestContext context;
+    auto module{context.storage.declarations.normal_modules.clone(valid_module(context))};
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .mutable_value[context.storage.declarations.packed_values.index(row_0)] = true;
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[1] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[1])};
+                    context.storage.declarations.packed_fields
+                        .name[context.storage.declarations.packed_fields.index(row_0)] =
+                        context.storage.strings.intern("set_entity_index");
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
 }
 
 TEST(PackedValue, RejectsDescriptorAndRawFactoryNameCollisions) {
-    auto module{valid_module()};
-    auto& schema{std::get<codegen::PackedValueSchema>(module.declarations.front())};
-    field(schema, 1).name = "entity_index_field";
-    EXPECT_THROW(lower(module), std::invalid_argument);
-    field(schema, 1).name = "from_raw";
-    EXPECT_THROW(lower(module), std::invalid_argument);
-    field(schema, 1).name = "entity_index_minimum";
-    EXPECT_THROW(lower(module), std::invalid_argument);
-    field(schema, 1).name = "entity_index_maximum";
-    EXPECT_THROW(lower(module), std::invalid_argument);
+    CompilerTestContext context;
+    auto module{context.storage.declarations.normal_modules.clone(valid_module(context))};
+
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[1] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[1])};
+                    context.storage.declarations.packed_fields
+                        .name[context.storage.declarations.packed_fields.index(row_0)] =
+                        context.storage.strings.intern("entity_index_field");
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[1] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[1])};
+                    context.storage.declarations.packed_fields
+                        .name[context.storage.declarations.packed_fields.index(row_0)] =
+                        context.storage.strings.intern("from_raw");
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[1] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[1])};
+                    context.storage.declarations.packed_fields
+                        .name[context.storage.declarations.packed_fields.index(row_0)] =
+                        context.storage.strings.intern("entity_index_minimum");
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[1] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[1])};
+                    context.storage.declarations.packed_fields
+                        .name[context.storage.declarations.packed_fields.index(row_0)] =
+                        context.storage.strings.intern("entity_index_maximum");
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 }
 
 TEST(PackedValue, ValidatesKnownEnumUnderlyingType) {
-    auto module{valid_module()};
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).type =
-        TypeRef{"@state"};
-    NormalModuleSchema enums{.settings = ModuleSettings{.name = "enums", .header = "Enums.h"},
-                             .declarations = {EnumSchema{
-                                 .name = "FighterStateKind",
-                                 .underlying_type = TypeRef{"int8"},
-                                 .values = {EnumeratorSchema{"Value"}},
-                             }}};
+    CompilerTestContext context;
+    auto module{context.storage.declarations.normal_modules.clone(valid_module(context))};
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[1] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[1])};
+                    context.storage.declarations.packed_fields
+                        .type[context.storage.declarations.packed_fields.index(row_0)] = [&] {
+                        auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                        context.storage.declarations.type_refs
+                            .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                            context.storage.strings.intern("@state");
+                        return new_type_refs;
+                    }();
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    auto const enums{context.storage.declarations.normal_modules.append()};
+    context.storage.declarations.normal_modules
+        .settings[context.storage.declarations.normal_modules.index(enums)] = [&] {
+        auto const new_module_settings_store{
+            context.storage.declarations.module_settings_store.append()};
+        context.storage.declarations.module_settings_store
+            .name[context.storage.declarations.module_settings_store.index(
+                new_module_settings_store)] = context.storage.strings.intern("enums");
+        context.storage.declarations.module_settings_store
+            .header[context.storage.declarations.module_settings_store.index(
+                new_module_settings_store)] = context.storage.strings.add("Enums.h");
+        return new_module_settings_store;
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(enums)] =
+        context.storage.declarations.range<DeclarationHandle>({[&] {
+            auto const new_enums{context.storage.declarations.enums.append()};
+            context.storage.declarations.enums
+                .name[context.storage.declarations.enums.index(new_enums)] =
+                context.storage.strings.intern("FighterStateKind");
+            context.storage.declarations.enums
+                .underlying_type[context.storage.declarations.enums.index(new_enums)] = [&] {
+                auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                context.storage.declarations.type_refs
+                    .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                    context.storage.strings.intern("int8");
+                return new_type_refs;
+            }();
+            context.storage.declarations.enums
+                .values[context.storage.declarations.enums.index(new_enums)] =
+                context.storage.declarations.range<EnumeratorId>({[&] {
+                    auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                    context.storage.declarations.enumerators
+                        .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                        context.storage.strings.intern("Value");
+                    return new_enumerators;
+                }()});
+            return new_enums;
+        }()});
     Manifest manifest{
-        .schema_version = manifest_schema_version,
-        .types = {{"state", RegisteredTypeSchema{.cpp_type = CppType{"FighterStateKind"}}}},
-        .modules = {std::move(enums), std::move(module)},
-    };
+        manifest_schema_version,
+        make_test_registry(context, {{"state", context.storage.cpp_types.add("FighterStateKind")}}),
+        context.storage.declarations,
+        {std::move(enums), std::move(module)}};
 
     try {
-        static_cast<void>(lower_modules(manifest));
+        static_cast<void>(lower_test_manifest(context, manifest));
         FAIL() << "Expected validation error";
     } catch (std::invalid_argument const& error) {
         EXPECT_NE(std::string{error.what()}.find(
@@ -1050,106 +6267,608 @@ TEST(PackedValue, ValidatesKnownEnumUnderlyingType) {
 }
 
 TEST(PackedValue, ValidatesKnownEnumEncodedWidthWithoutEmittingPerValueAssertions) {
-    auto module{valid_module()};
-    std::get<codegen::PackedValueSchema>(module.declarations.front()).invalid_value = 0x07ffffffu;
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).bits = 4;
-    auto schema{EnumSchema{
-        .name = "FighterStateKind",
-        .underlying_type = TypeRef{"uint8"},
-        .values = {EnumeratorSchema{"Zero", "0"},
-                   EnumeratorSchema{"High", "7"},
-                   EnumeratorSchema{"COUNT", "8", std::nullopt, true}},
-        .count = "COUNT",
-    }};
+    CompilerTestContext context;
+    auto module{context.storage.declarations.normal_modules.clone(valid_module(context))};
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .invalid_value[context.storage.declarations.packed_values.index(row_0)] =
+                0x07ffffffu;
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[1] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[1])};
+                    context.storage.declarations.packed_fields
+                        .bits[context.storage.declarations.packed_fields.index(row_0)] = 4;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    auto schema{[&] {
+        auto const new_enums{context.storage.declarations.enums.append()};
+        context.storage.declarations.enums
+            .name[context.storage.declarations.enums.index(new_enums)] =
+            context.storage.strings.intern("FighterStateKind");
+        context.storage.declarations.enums
+            .underlying_type[context.storage.declarations.enums.index(new_enums)] = [&] {
+            auto const new_type_refs{context.storage.declarations.type_refs.append()};
+            context.storage.declarations.type_refs
+                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                context.storage.strings.intern("uint8");
+            return new_type_refs;
+        }();
+        context.storage.declarations.enums
+            .values[context.storage.declarations.enums.index(new_enums)] =
+            context.storage.declarations.range<EnumeratorId>(
+                {[&] {
+                     auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                     context.storage.declarations.enumerators
+                         .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         context.storage.strings.intern("Zero");
+                     context.storage.declarations.enumerators
+                         .initializer[context.storage.declarations.enumerators.index(
+                             new_enumerators)] = context.storage.strings.add("0");
+                     return new_enumerators;
+                 }(),
+                 [&] {
+                     auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                     context.storage.declarations.enumerators
+                         .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         context.storage.strings.intern("High");
+                     context.storage.declarations.enumerators
+                         .initializer[context.storage.declarations.enumerators.index(
+                             new_enumerators)] = context.storage.strings.add("7");
+                     return new_enumerators;
+                 }(),
+                 [&] {
+                     auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                     context.storage.declarations.enumerators
+                         .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         context.storage.strings.intern("COUNT");
+                     context.storage.declarations.enumerators
+                         .initializer[context.storage.declarations.enumerators.index(
+                             new_enumerators)] = context.storage.strings.add("8");
+                     context.storage.declarations.enumerators
+                         .display_name[context.storage.declarations.enumerators.index(
+                             new_enumerators)] = std::nullopt;
+                     context.storage.declarations.enumerators
+                         .hidden[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         true;
+                     return new_enumerators;
+                 }()});
+        context.storage.declarations.enums
+            .count[context.storage.declarations.enums.index(new_enums)] =
+            context.storage.strings.intern("COUNT");
+        return new_enums;
+    }()};
 
-    auto const header{lower_known_enum(module, schema)};
+    auto const header{lower_known_enum(context, module, schema)};
     EXPECT_EQ(header.find("static_assert(static_cast<state_underlying_type>"), std::string::npos);
     EXPECT_EQ(header.find("static_assert(state"), std::string::npos);
     EXPECT_EQ(header.find("assert(static_cast<state_underlying_type>(state_value)"),
               std::string::npos);
     EXPECT_NE(header.find("assert(raw != invalid_value);"), std::string::npos);
 
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).bits = 3;
-    EXPECT_THROW(lower_known_enum(std::move(module), std::move(schema)), std::invalid_argument);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[1] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[1])};
+                    context.storage.declarations.packed_fields
+                        .bits[context.storage.declarations.packed_fields.index(row_0)] = 3;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower_known_enum(context, std::move(module), std::move(schema)),
+                 std::invalid_argument);
 }
 
 TEST(PackedValue, OmitsSentinelAssertionWhenTheKnownEnumDomainExcludesIt) {
-    auto module{valid_module()};
-    std::get<codegen::PackedValueSchema>(module.declarations.front()).invalid_value = 0xffffffffu;
-    auto const header{
-        lower_known_enum(std::move(module),
-                         EnumSchema{
-                             .name = "FighterStateKind",
-                             .underlying_type = TypeRef{"uint8"},
-                             .values = {EnumeratorSchema{"Zero", "0"},
-                                        EnumeratorSchema{"COUNT", "5", std::nullopt, true}},
-                             .count = "COUNT",
-                         })};
+    CompilerTestContext context;
+    auto module{context.storage.declarations.normal_modules.clone(valid_module(context))};
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{context.storage.declarations.packed_values.clone(rows_1.front())};
+            context.storage.declarations.packed_values
+                .invalid_value[context.storage.declarations.packed_values.index(row_0)] =
+                0xffffffffu;
+            return row_0;
+        }();
+        return context.storage.declarations.range(rows_1);
+    }();
+    auto const header{lower_known_enum(context, std::move(module), [&] {
+        auto const new_enums{context.storage.declarations.enums.append()};
+        context.storage.declarations.enums
+            .name[context.storage.declarations.enums.index(new_enums)] =
+            context.storage.strings.intern("FighterStateKind");
+        context.storage.declarations.enums
+            .underlying_type[context.storage.declarations.enums.index(new_enums)] = [&] {
+            auto const new_type_refs{context.storage.declarations.type_refs.append()};
+            context.storage.declarations.type_refs
+                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                context.storage.strings.intern("uint8");
+            return new_type_refs;
+        }();
+        context.storage.declarations.enums
+            .values[context.storage.declarations.enums.index(new_enums)] =
+            context.storage.declarations.range<EnumeratorId>(
+                {[&] {
+                     auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                     context.storage.declarations.enumerators
+                         .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         context.storage.strings.intern("Zero");
+                     context.storage.declarations.enumerators
+                         .initializer[context.storage.declarations.enumerators.index(
+                             new_enumerators)] = context.storage.strings.add("0");
+                     return new_enumerators;
+                 }(),
+                 [&] {
+                     auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                     context.storage.declarations.enumerators
+                         .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         context.storage.strings.intern("COUNT");
+                     context.storage.declarations.enumerators
+                         .initializer[context.storage.declarations.enumerators.index(
+                             new_enumerators)] = context.storage.strings.add("5");
+                     context.storage.declarations.enumerators
+                         .display_name[context.storage.declarations.enumerators.index(
+                             new_enumerators)] = std::nullopt;
+                     context.storage.declarations.enumerators
+                         .hidden[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         true;
+                     return new_enumerators;
+                 }()});
+        context.storage.declarations.enums
+            .count[context.storage.declarations.enums.index(new_enums)] =
+            context.storage.strings.intern("COUNT");
+        return new_enums;
+    }())};
 
     EXPECT_EQ(header.find("assert(raw != invalid_value);"), std::string::npos);
 }
 
 TEST(PackedValue, ResolvesImplicitValuesAfterExplicitHexadecimalValues) {
-    auto module{valid_module()};
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).bits = 4;
-    auto schema{EnumSchema{
-        .name = "FighterStateKind",
-        .underlying_type = TypeRef{"uint8"},
-        .values = {EnumeratorSchema{"Zero", "0"},
-                   EnumeratorSchema{"High", "0x7"},
-                   EnumeratorSchema{"Next"},
-                   EnumeratorSchema{"COUNT", std::nullopt, std::nullopt, true}},
-        .count = "COUNT",
-    }};
+    CompilerTestContext context;
+    auto module{context.storage.declarations.normal_modules.clone(valid_module(context))};
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[1] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[1])};
+                    context.storage.declarations.packed_fields
+                        .bits[context.storage.declarations.packed_fields.index(row_0)] = 4;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    auto schema{[&] {
+        auto const new_enums{context.storage.declarations.enums.append()};
+        context.storage.declarations.enums
+            .name[context.storage.declarations.enums.index(new_enums)] =
+            context.storage.strings.intern("FighterStateKind");
+        context.storage.declarations.enums
+            .underlying_type[context.storage.declarations.enums.index(new_enums)] = [&] {
+            auto const new_type_refs{context.storage.declarations.type_refs.append()};
+            context.storage.declarations.type_refs
+                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                context.storage.strings.intern("uint8");
+            return new_type_refs;
+        }();
+        context.storage.declarations.enums
+            .values[context.storage.declarations.enums.index(new_enums)] =
+            context.storage.declarations.range<EnumeratorId>(
+                {[&] {
+                     auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                     context.storage.declarations.enumerators
+                         .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         context.storage.strings.intern("Zero");
+                     context.storage.declarations.enumerators
+                         .initializer[context.storage.declarations.enumerators.index(
+                             new_enumerators)] = context.storage.strings.add("0");
+                     return new_enumerators;
+                 }(),
+                 [&] {
+                     auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                     context.storage.declarations.enumerators
+                         .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         context.storage.strings.intern("High");
+                     context.storage.declarations.enumerators
+                         .initializer[context.storage.declarations.enumerators.index(
+                             new_enumerators)] = context.storage.strings.add("0x7");
+                     return new_enumerators;
+                 }(),
+                 [&] {
+                     auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                     context.storage.declarations.enumerators
+                         .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         context.storage.strings.intern("Next");
+                     return new_enumerators;
+                 }(),
+                 [&] {
+                     auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                     context.storage.declarations.enumerators
+                         .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         context.storage.strings.intern("COUNT");
+                     context.storage.declarations.enumerators
+                         .initializer[context.storage.declarations.enumerators.index(
+                             new_enumerators)] = std::nullopt;
+                     context.storage.declarations.enumerators
+                         .display_name[context.storage.declarations.enumerators.index(
+                             new_enumerators)] = std::nullopt;
+                     context.storage.declarations.enumerators
+                         .hidden[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         true;
+                     return new_enumerators;
+                 }()});
+        context.storage.declarations.enums
+            .count[context.storage.declarations.enums.index(new_enums)] =
+            context.storage.strings.intern("COUNT");
+        return new_enums;
+    }()};
 
-    EXPECT_NO_THROW(static_cast<void>(lower_known_enum(module, schema)));
+    EXPECT_NO_THROW(static_cast<void>(lower_known_enum(context, module, schema)));
 
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).bits = 3;
-    EXPECT_THROW(lower_known_enum(std::move(module), std::move(schema)), std::invalid_argument);
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[1] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[1])};
+                    context.storage.declarations.packed_fields
+                        .bits[context.storage.declarations.packed_fields.index(row_0)] = 3;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower_known_enum(context, std::move(module), std::move(schema)),
+                 std::invalid_argument);
 }
 
 TEST(PackedValue, RejectsKnownEnumValuesOutsideTheirUnderlyingType) {
-    auto module{valid_module()};
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).bits = 8;
-    auto schema{EnumSchema{
-        .name = "FighterStateKind",
-        .underlying_type = TypeRef{"uint8"},
-        .values = {EnumeratorSchema{"Zero", "0"}, EnumeratorSchema{"Maximum", "255"}},
-    }};
-    EXPECT_NO_THROW(static_cast<void>(lower_known_enum(module, schema)));
+    CompilerTestContext context;
+    auto module{context.storage.declarations.normal_modules.clone(valid_module(context))};
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[1] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[1])};
+                    context.storage.declarations.packed_fields
+                        .bits[context.storage.declarations.packed_fields.index(row_0)] = 8;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    auto schema{[&] {
+        auto const new_enums{context.storage.declarations.enums.append()};
+        context.storage.declarations.enums
+            .name[context.storage.declarations.enums.index(new_enums)] =
+            context.storage.strings.intern("FighterStateKind");
+        context.storage.declarations.enums
+            .underlying_type[context.storage.declarations.enums.index(new_enums)] = [&] {
+            auto const new_type_refs{context.storage.declarations.type_refs.append()};
+            context.storage.declarations.type_refs
+                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                context.storage.strings.intern("uint8");
+            return new_type_refs;
+        }();
+        context.storage.declarations.enums
+            .values[context.storage.declarations.enums.index(new_enums)] =
+            context.storage.declarations.range<EnumeratorId>(
+                {[&] {
+                     auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                     context.storage.declarations.enumerators
+                         .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         context.storage.strings.intern("Zero");
+                     context.storage.declarations.enumerators
+                         .initializer[context.storage.declarations.enumerators.index(
+                             new_enumerators)] = context.storage.strings.add("0");
+                     return new_enumerators;
+                 }(),
+                 [&] {
+                     auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                     context.storage.declarations.enumerators
+                         .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         context.storage.strings.intern("Maximum");
+                     context.storage.declarations.enumerators
+                         .initializer[context.storage.declarations.enumerators.index(
+                             new_enumerators)] = context.storage.strings.add("255");
+                     return new_enumerators;
+                 }()});
+        return new_enums;
+    }()};
+    EXPECT_NO_THROW(static_cast<void>(lower_known_enum(context, module, schema)));
 
-    schema.values.back().initializer = "256";
-    EXPECT_THROW(lower_known_enum(module, schema), std::invalid_argument);
+    context.storage.declarations.enums.values[context.storage.declarations.enums.index(schema)] =
+        [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.enums
+                    .values[context.storage.declarations.enums.index(schema)])};
+            auto rows_1{std::vector(original_items.begin(), original_items.end())};
+            rows_1.back() = [&] {
+                auto row_0{context.storage.declarations.enumerators.clone(rows_1.back())};
+                context.storage.declarations.enumerators
+                    .initializer[context.storage.declarations.enumerators.index(row_0)] =
+                    context.storage.strings.add("256");
+                return row_0;
+            }();
+            return context.storage.declarations.range(rows_1);
+        }();
+    EXPECT_THROW(lower_known_enum(context, module, schema), std::invalid_argument);
 }
 
 TEST(PackedValue, AllowsEnumAliasesAndUsesStructuralCountSemantics) {
-    auto module{valid_module()};
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).bits = 8;
-    auto schema{EnumSchema{
-        .name = "FighterStateKind",
-        .underlying_type = TypeRef{"uint8"},
-        .values = {EnumeratorSchema{"Zero", "0"}, EnumeratorSchema{"Alias", "0"}},
-    }};
-    EXPECT_NO_THROW(static_cast<void>(lower_known_enum(module, schema)));
+    CompilerTestContext context;
+    auto module{context.storage.declarations.normal_modules.clone(valid_module(context))};
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[1] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[1])};
+                    context.storage.declarations.packed_fields
+                        .bits[context.storage.declarations.packed_fields.index(row_0)] = 8;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    auto schema{[&] {
+        auto const new_enums{context.storage.declarations.enums.append()};
+        context.storage.declarations.enums
+            .name[context.storage.declarations.enums.index(new_enums)] =
+            context.storage.strings.intern("FighterStateKind");
+        context.storage.declarations.enums
+            .underlying_type[context.storage.declarations.enums.index(new_enums)] = [&] {
+            auto const new_type_refs{context.storage.declarations.type_refs.append()};
+            context.storage.declarations.type_refs
+                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                context.storage.strings.intern("uint8");
+            return new_type_refs;
+        }();
+        context.storage.declarations.enums
+            .values[context.storage.declarations.enums.index(new_enums)] =
+            context.storage.declarations.range<EnumeratorId>(
+                {[&] {
+                     auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                     context.storage.declarations.enumerators
+                         .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         context.storage.strings.intern("Zero");
+                     context.storage.declarations.enumerators
+                         .initializer[context.storage.declarations.enumerators.index(
+                             new_enumerators)] = context.storage.strings.add("0");
+                     return new_enumerators;
+                 }(),
+                 [&] {
+                     auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                     context.storage.declarations.enumerators
+                         .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         context.storage.strings.intern("Alias");
+                     context.storage.declarations.enumerators
+                         .initializer[context.storage.declarations.enumerators.index(
+                             new_enumerators)] = context.storage.strings.add("0");
+                     return new_enumerators;
+                 }()});
+        return new_enums;
+    }()};
+    EXPECT_NO_THROW(static_cast<void>(lower_known_enum(context, module, schema)));
 
-    schema.values = {EnumeratorSchema{"Zero", "0"},
-                     EnumeratorSchema{"High", "7"},
-                     EnumeratorSchema{"COUNT", "6", std::nullopt, true}};
-    schema.count = "COUNT";
-    EXPECT_NO_THROW(static_cast<void>(lower_known_enum(std::move(module), std::move(schema))));
+    context.storage.declarations.enums.values[context.storage.declarations.enums.index(schema)] =
+        context.storage.declarations.range<EnumeratorId>(
+            {[&] {
+                 auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                 context.storage.declarations.enumerators
+                     .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                     context.storage.strings.intern("Zero");
+                 context.storage.declarations.enumerators
+                     .initializer[context.storage.declarations.enumerators.index(new_enumerators)] =
+                     context.storage.strings.add("0");
+                 return new_enumerators;
+             }(),
+             [&] {
+                 auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                 context.storage.declarations.enumerators
+                     .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                     context.storage.strings.intern("High");
+                 context.storage.declarations.enumerators
+                     .initializer[context.storage.declarations.enumerators.index(new_enumerators)] =
+                     context.storage.strings.add("7");
+                 return new_enumerators;
+             }(),
+             [&] {
+                 auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                 context.storage.declarations.enumerators
+                     .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                     context.storage.strings.intern("COUNT");
+                 context.storage.declarations.enumerators
+                     .initializer[context.storage.declarations.enumerators.index(new_enumerators)] =
+                     context.storage.strings.add("6");
+                 context.storage.declarations.enumerators
+                     .display_name[context.storage.declarations.enumerators.index(
+                         new_enumerators)] = std::nullopt;
+                 context.storage.declarations.enumerators
+                     .hidden[context.storage.declarations.enumerators.index(new_enumerators)] =
+                     true;
+                 return new_enumerators;
+             }()});
+    context.storage.declarations.enums.count[context.storage.declarations.enums.index(schema)] =
+        context.storage.strings.intern("COUNT");
+    EXPECT_NO_THROW(
+        static_cast<void>(lower_known_enum(context, std::move(module), std::move(schema))));
 }
 
 TEST(PackedValue, EmitsCompactFallbackForOpaqueKnownEnumValues) {
-    auto module{valid_module()};
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).bits = 3;
-    auto const header{
-        lower_known_enum(std::move(module),
-                         EnumSchema{
-                             .name = "FighterStateKind",
-                             .underlying_type = TypeRef{"uint8"},
-                             .values = {EnumeratorSchema{"Zero", "static_cast<uint8>(0)"},
-                                        EnumeratorSchema{"High", "static_cast<uint8>(7)"}},
-                         })};
+    CompilerTestContext context;
+    auto module{context.storage.declarations.normal_modules.clone(valid_module(context))};
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[1] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[1])};
+                    context.storage.declarations.packed_fields
+                        .bits[context.storage.declarations.packed_fields.index(row_0)] = 3;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    auto const header{lower_known_enum(context, std::move(module), [&] {
+        auto const new_enums{context.storage.declarations.enums.append()};
+        context.storage.declarations.enums
+            .name[context.storage.declarations.enums.index(new_enums)] =
+            context.storage.strings.intern("FighterStateKind");
+        context.storage.declarations.enums
+            .underlying_type[context.storage.declarations.enums.index(new_enums)] = [&] {
+            auto const new_type_refs{context.storage.declarations.type_refs.append()};
+            context.storage.declarations.type_refs
+                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                context.storage.strings.intern("uint8");
+            return new_type_refs;
+        }();
+        context.storage.declarations.enums
+            .values[context.storage.declarations.enums.index(new_enums)] =
+            context.storage.declarations.range<EnumeratorId>(
+                {[&] {
+                     auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                     context.storage.declarations.enumerators
+                         .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         context.storage.strings.intern("Zero");
+                     context.storage.declarations.enumerators
+                         .initializer[context.storage.declarations.enumerators.index(
+                             new_enumerators)] =
+                         context.storage.strings.add("static_cast<uint8>(0)");
+                     return new_enumerators;
+                 }(),
+                 [&] {
+                     auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                     context.storage.declarations.enumerators
+                         .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         context.storage.strings.intern("High");
+                     context.storage.declarations.enumerators
+                         .initializer[context.storage.declarations.enumerators.index(
+                             new_enumerators)] =
+                         context.storage.strings.add("static_cast<uint8>(7)");
+                     return new_enumerators;
+                 }()});
+        return new_enums;
+    }())};
 
     EXPECT_NE(header.find("static_assert([]<auto... values>() consteval -> bool"),
               std::string::npos);
@@ -1158,58 +6877,260 @@ TEST(PackedValue, EmitsCompactFallbackForOpaqueKnownEnumValues) {
 }
 
 TEST(PackedValue, RejectsFieldsNarrowerThanEnumSemanticDomain) {
-    auto manifest = [](std::optional<std::uint32_t> const bit_width,
-                       std::string maximum,
-                       std::optional<bool> const signedness = std::nullopt) -> Manifest {
-        auto module{valid_module()};
-        field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).bits = 2;
-        NormalModuleSchema enums{.settings = ModuleSettings{.name = "enums", .header = "Enums.h"},
-                                 .declarations = {EnumSchema{
-                                     .name = "FighterStateKind",
-                                     .underlying_type = TypeRef{"uint8"},
-                                     .values = {EnumeratorSchema{"Idle", "0"},
-                                                EnumeratorSchema{"Maximum", std::move(maximum)}},
-                                     .bit_width = bit_width,
-                                     .signedness = signedness,
-                                 }}};
-        return {.schema_version = manifest_schema_version,
-                .modules = {std::move(enums), std::move(module)}};
+    CompilerTestContext context;
+    auto manifest = [&](std::optional<std::uint32_t> const bit_width,
+                        std::string maximum,
+                        std::optional<bool> const signedness = std::nullopt) -> Manifest {
+        auto module{context.storage.declarations.normal_modules.clone(valid_module(context))};
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+            auto const original_items{context.storage.declarations.items(
+                context.storage.declarations.normal_modules
+                    .declarations[context.storage.declarations.normal_modules.index(module)])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+                context.storage.declarations.packed_values
+                    .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                    auto const original_items{context.storage.declarations.items(
+                        context.storage.declarations.packed_values
+                            .segments[context.storage.declarations.packed_values.index(row_2)])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[1] = [&] {
+                        auto row_0{context.storage.declarations.packed_fields.clone(rows_1[1])};
+                        context.storage.declarations.packed_fields
+                            .bits[context.storage.declarations.packed_fields.index(row_0)] = 2;
+                        return row_0;
+                    }();
+                    return context.storage.declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return context.storage.declarations.range(rows_3);
+        }();
+        auto const enums{context.storage.declarations.normal_modules.append()};
+        context.storage.declarations.normal_modules
+            .settings[context.storage.declarations.normal_modules.index(enums)] = [&] {
+            auto const new_module_settings_store{
+                context.storage.declarations.module_settings_store.append()};
+            context.storage.declarations.module_settings_store
+                .name[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.intern("enums");
+            context.storage.declarations.module_settings_store
+                .header[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.add("Enums.h");
+            return new_module_settings_store;
+        }();
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(enums)] =
+            context.storage.declarations.range<DeclarationHandle>({[&] {
+                auto const new_enums{context.storage.declarations.enums.append()};
+                context.storage.declarations.enums
+                    .name[context.storage.declarations.enums.index(new_enums)] =
+                    context.storage.strings.intern("FighterStateKind");
+                context.storage.declarations.enums
+                    .underlying_type[context.storage.declarations.enums.index(new_enums)] = [&] {
+                    auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                    context.storage.declarations.type_refs
+                        .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                        context.storage.strings.intern("uint8");
+                    return new_type_refs;
+                }();
+                context.storage.declarations.enums
+                    .values[context.storage.declarations.enums.index(new_enums)] =
+                    context.storage.declarations.range<EnumeratorId>(
+                        {[&] {
+                             auto const new_enumerators{
+                                 context.storage.declarations.enumerators.append()};
+                             context.storage.declarations.enumerators
+                                 .name[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = context.storage.strings.intern("Idle");
+                             context.storage.declarations.enumerators
+                                 .initializer[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = context.storage.strings.add("0");
+                             return new_enumerators;
+                         }(),
+                         [&] {
+                             auto const new_enumerators{
+                                 context.storage.declarations.enumerators.append()};
+                             context.storage.declarations.enumerators
+                                 .name[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] = context.storage.strings.intern("Maximum");
+                             context.storage.declarations.enumerators
+                                 .initializer[context.storage.declarations.enumerators.index(
+                                     new_enumerators)] =
+                                 context.storage.strings.add(std::move(maximum));
+                             return new_enumerators;
+                         }()});
+                context.storage.declarations.enums
+                    .bit_width[context.storage.declarations.enums.index(new_enums)] = bit_width;
+                context.storage.declarations.enums
+                    .signedness[context.storage.declarations.enums.index(new_enums)] =
+                    signedness ? (*signedness ? schema::EnumSignedness::signed_
+                                              : schema::EnumSignedness::unsigned_)
+                               : schema::EnumSignedness::unspecified;
+                return new_enums;
+            }()});
+        return {manifest_schema_version,
+                make_test_registry(context),
+                context.storage.declarations,
+                {enums, module}};
     };
 
     try {
-        static_cast<void>(lower_modules(manifest(3, "1")));
+        static_cast<void>(lower_test_manifest(context, manifest(3, "1")));
         FAIL() << "Expected validation error";
     } catch (std::invalid_argument const& error) {
         EXPECT_NE(std::string{error.what()}.find("smaller than the enum's 3-bit semantic domain"),
                   std::string::npos);
     }
 
-    EXPECT_THROW(static_cast<void>(lower_modules(manifest(std::nullopt, "7"))),
+    EXPECT_THROW(static_cast<void>(lower_test_manifest(context, manifest(std::nullopt, "7"))),
                  std::invalid_argument);
-    EXPECT_THROW(static_cast<void>(lower_modules(manifest(std::nullopt, "3", true))),
+    EXPECT_THROW(static_cast<void>(lower_test_manifest(context, manifest(std::nullopt, "3", true))),
                  std::invalid_argument);
 }
 
 TEST(PackedValue, DerivesAutoWidthFromEnumSemanticDomain) {
-    auto module{valid_module()};
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).bits.reset();
-    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).relationship =
-        SemanticRelationSchema{.kind = SemanticRelationKind::index_into,
-                               .target = TypeRef{"FighterStateKind"},
-                               .unit = std::nullopt};
-    NormalModuleSchema enums{
-        .settings = ModuleSettings{.name = "enums", .header = "Enums.h"},
-        .declarations = {EnumSchema{
-            .name = "FighterStateKind",
-            .underlying_type = TypeRef{"uint8"},
-            .values = {EnumeratorSchema{"Idle", "0"}, EnumeratorSchema{"Maximum", "7"}},
-            .bit_width = std::nullopt,
-            .signedness = false,
-        }}};
-    auto const files{render_modules(lower_modules(Manifest{
-        .schema_version = manifest_schema_version,
-        .modules = {std::move(enums), std::move(module)},
-    }))};
+    CompilerTestContext context;
+    auto module{context.storage.declarations.normal_modules.clone(valid_module(context))};
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[1] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[1])};
+                    context.storage.declarations.packed_fields
+                        .bits[context.storage.declarations.packed_fields.index(row_0)]
+                        .reset();
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .relationship[context.storage.declarations.packed_fields.index(
+                            row_0)] = [&] {
+                        auto const new_semantic_relations{
+                            context.storage.declarations.semantic_relations.append()};
+                        context.storage.declarations.semantic_relations
+                            .kind[context.storage.declarations.semantic_relations.index(
+                                new_semantic_relations)] = SemanticRelationKind::index_into;
+                        context.storage.declarations.semantic_relations
+                            .target[context.storage.declarations.semantic_relations.index(
+                                new_semantic_relations)] = [&] {
+                            auto const new_type_refs{
+                                context.storage.declarations.type_refs.append()};
+                            context.storage.declarations.type_refs
+                                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                                context.storage.strings.intern("FighterStateKind");
+                            return new_type_refs;
+                        }();
+                        context.storage.declarations.semantic_relations
+                            .unit[context.storage.declarations.semantic_relations.index(
+                                new_semantic_relations)] = std::nullopt;
+                        return new_semantic_relations;
+                    }();
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    auto const enums{context.storage.declarations.normal_modules.append()};
+    context.storage.declarations.normal_modules
+        .settings[context.storage.declarations.normal_modules.index(enums)] = [&] {
+        auto const new_module_settings_store{
+            context.storage.declarations.module_settings_store.append()};
+        context.storage.declarations.module_settings_store
+            .name[context.storage.declarations.module_settings_store.index(
+                new_module_settings_store)] = context.storage.strings.intern("enums");
+        context.storage.declarations.module_settings_store
+            .header[context.storage.declarations.module_settings_store.index(
+                new_module_settings_store)] = context.storage.strings.add("Enums.h");
+        return new_module_settings_store;
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(
+            enums)] = context.storage.declarations.range<DeclarationHandle>({[&] {
+        auto const new_enums{context.storage.declarations.enums.append()};
+        context.storage.declarations.enums
+            .name[context.storage.declarations.enums.index(new_enums)] =
+            context.storage.strings.intern("FighterStateKind");
+        context.storage.declarations.enums
+            .underlying_type[context.storage.declarations.enums.index(new_enums)] = [&] {
+            auto const new_type_refs{context.storage.declarations.type_refs.append()};
+            context.storage.declarations.type_refs
+                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                context.storage.strings.intern("uint8");
+            return new_type_refs;
+        }();
+        context.storage.declarations.enums
+            .values[context.storage.declarations.enums.index(new_enums)] =
+            context.storage.declarations.range<EnumeratorId>(
+                {[&] {
+                     auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                     context.storage.declarations.enumerators
+                         .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         context.storage.strings.intern("Idle");
+                     context.storage.declarations.enumerators
+                         .initializer[context.storage.declarations.enumerators.index(
+                             new_enumerators)] = context.storage.strings.add("0");
+                     return new_enumerators;
+                 }(),
+                 [&] {
+                     auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                     context.storage.declarations.enumerators
+                         .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         context.storage.strings.intern("Maximum");
+                     context.storage.declarations.enumerators
+                         .initializer[context.storage.declarations.enumerators.index(
+                             new_enumerators)] = context.storage.strings.add("7");
+                     return new_enumerators;
+                 }()});
+        context.storage.declarations.enums
+            .bit_width[context.storage.declarations.enums.index(new_enums)] = std::nullopt;
+        context.storage.declarations.enums
+            .signedness[context.storage.declarations.enums.index(new_enums)] =
+            lispb::schema::EnumSignedness::unsigned_;
+        return new_enums;
+    }()});
+    auto const files{render_test_manifest(context,
+                                          Manifest{manifest_schema_version,
+                                                   make_test_registry(context),
+                                                   context.storage.declarations,
+                                                   {std::move(enums), std::move(module)}})};
 
     auto const generated{
         std::ranges::find(files, std::filesystem::path{"Packed.h"}, &GeneratedFile::path)};
@@ -1219,14 +7140,131 @@ TEST(PackedValue, DerivesAutoWidthFromEnumSemanticDomain) {
 }
 
 TEST(PackedValue, SentinelCodeCanIncreaseDerivedIntegerWidth) {
-    auto module{valid_module()};
-    auto& index{field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0)};
-    index.bits.reset();
-    index.minimum_value = 0;
-    index.maximum_value = 7;
-    index.named_codes = {{.name = "Invalid", .value = 8, .sentinel = true}};
+    CompilerTestContext context;
+    auto module{context.storage.declarations.normal_modules.clone(valid_module(context))};
 
-    auto const header{lower(std::move(module))};
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .bits[context.storage.declarations.packed_fields.index(row_0)]
+                        .reset();
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .minimum_value[context.storage.declarations.packed_fields.index(row_0)] = 0;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .maximum_value[context.storage.declarations.packed_fields.index(row_0)] = 7;
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(module)] = [&] {
+        auto const original_items{context.storage.declarations.items(
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(module)])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{context.storage.declarations.packed_values.clone(rows_3.front())};
+            context.storage.declarations.packed_values
+                .segments[context.storage.declarations.packed_values.index(row_2)] = [&] {
+                auto const original_items{context.storage.declarations.items(
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(row_2)])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{context.storage.declarations.packed_fields.clone(rows_1[0])};
+                    context.storage.declarations.packed_fields
+                        .named_codes[context.storage.declarations.packed_fields.index(row_0)] =
+                        context.storage.declarations.range<PackedNamedCodeId>({[&] {
+                            auto const new_packed_named_codes{
+                                context.storage.declarations.packed_named_codes.append()};
+                            context.storage.declarations.packed_named_codes
+                                .name[context.storage.declarations.packed_named_codes.index(
+                                    new_packed_named_codes)] =
+                                context.storage.strings.intern("Invalid");
+                            context.storage.declarations.packed_named_codes
+                                .value[context.storage.declarations.packed_named_codes.index(
+                                    new_packed_named_codes)] = 8;
+                            context.storage.declarations.packed_named_codes
+                                .sentinel[context.storage.declarations.packed_named_codes.index(
+                                    new_packed_named_codes)] = true;
+                            return new_packed_named_codes;
+                        }()});
+                    return row_0;
+                }();
+                return context.storage.declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return context.storage.declarations.range(rows_3);
+    }();
+
+    auto const header{lower(context, std::move(module))};
 
     EXPECT_NE(header.find("ml::PackedField<storage_type, entity_index_type, 0, 4>"),
               std::string::npos);
@@ -1235,4 +7273,4 @@ TEST(PackedValue, SentinelCodeCanIncreaseDerivedIntegerWidth) {
 }
 
 } // namespace
-} // namespace codegen
+} // namespace lispb::codegen

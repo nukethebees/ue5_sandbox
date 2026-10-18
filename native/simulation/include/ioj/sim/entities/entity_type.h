@@ -72,18 +72,15 @@ enum class EntityType : EntityTypeUnderlying {
 namespace ml {
 template <>
 struct EnumTraits<::ioj::sim::EntityType> {
-    inline static constexpr std::array values{
-        ::ioj::sim::EntityType::PlayerShip,
-        ::ioj::sim::EntityType::Turret,
-        ::ioj::sim::EntityType::CapitalShip,
-        ::ioj::sim::EntityType::Fighter,
-        ::ioj::sim::EntityType::TubeSpinner,
-    };
+    inline static constexpr std::array values{::ioj::sim::EntityType::PlayerShip,
+                                              ::ioj::sim::EntityType::Turret,
+                                              ::ioj::sim::EntityType::CapitalShip,
+                                              ::ioj::sim::EntityType::Fighter,
+                                              ::ioj::sim::EntityType::TubeSpinner};
 };
 
 template <>
 [[nodiscard]] constexpr auto enum_count<::ioj::sim::EntityType>() noexcept -> std::size_t {
     return 5;
 }
-
 } // namespace ml

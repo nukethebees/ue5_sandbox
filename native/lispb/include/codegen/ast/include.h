@@ -1,13 +1,7 @@
 #pragma once
+#include <codegen/ast/include_style.h>
 
-#include <optional>
-#include <string>
-
-namespace codegen {
-
-struct Include {
-    std::string path;
-    std::optional<bool> system;
-};
-
-} // namespace codegen
+#include <string_view>
+namespace lispb::codegen {
+auto include_is_system(std::string_view path, IncludeStyle style = IncludeStyle::inferred) -> bool;
+}

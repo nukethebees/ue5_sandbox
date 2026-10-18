@@ -1,55 +1,74 @@
 #pragma once
 
-#include <codegen/sexpr/reader.h>
+#include <codegen/sexpr/failure_handler.h>
+#include <codegen/sexpr/indices.h>
+#include <codegen/sexpr/source_span.h>
+#include <lispb/indices.h>
 
+#include <cstddef>
 #include <initializer_list>
-#include <map>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
 #include <vector>
 
-namespace codegen::sexpr {
+namespace lispb::codegen::sexpr {
 
-using FailureHandler = void (*)(SourceSpan const&, std::string const&);
+class Sources;
+class Syntax;
 
-[[noreturn]] void throw_source_error(SourceSpan const& span, std::string const& message);
+[[noreturn]] void
+    throw_source_error(Sources const& sources, SourceSpan const& span, std::string const& message);
 
 class Fields {
   public:
-    Fields(Form const& form,
+    Fields(Syntax const& syntax,
+           FormId form,
            std::string_view expected_head,
            std::size_t positionals,
            FailureHandler failure = throw_source_error);
 
-    [[nodiscard]] auto positional(std::size_t index) const -> Form const&;
-    [[nodiscard]] auto optional(std::string_view name) const -> Form const*;
-    [[nodiscard]] auto required(std::string_view name) const -> Form const&;
-    [[nodiscard]] auto declarations() const -> std::span<Form const* const>;
+    [[nodiscard]] auto positional(std::size_t index) const -> FormId;
+    [[nodiscard]] auto optional(std::string_view name) const -> std::optional<FormId>;
+    [[nodiscard]] auto required(std::string_view name) const -> FormId;
+    [[nodiscard]] auto declarations() const -> std::span<FormId const>;
 
     void validate(std::initializer_list<std::string_view> properties,
                   std::initializer_list<std::string_view> declarations = {}) const;
   private:
-    Form const& form_;
+    Syntax const& syntax_;
+    FormId form_;
     FailureHandler failure_;
-    std::map<std::string, Form const*, std::less<>> properties_;
-    std::map<std::string, SourceSpan, std::less<>> property_spans_;
-    std::vector<Form const*> declarations_;
+    std::vector<IdentifierId> properties_;
+    std::vector<FormId> values_;
+    std::vector<SourceSpan> property_spans_;
+    std::vector<FormId> declarations_;
 };
 
-[[nodiscard]] auto text(Form const& form, std::string_view purpose, FailureHandler failure)
-    -> std::string;
-[[nodiscard]] auto raw_text(Form const& form,
+[[nodiscard]] auto
+    text(Syntax const& syntax, FormId const form, std::string_view purpose, FailureHandler failure)
+        -> std::string_view;
+[[nodiscard]] auto raw_text(Syntax const& syntax,
+                            FormId const form,
                             std::string_view expected_tag,
                             std::string_view purpose,
-                            FailureHandler failure) -> std::string;
-[[nodiscard]] auto boolean(Form const& form, std::string_view purpose, FailureHandler failure)
-    -> bool;
-[[nodiscard]] auto integer(Form const& form, std::string_view purpose, FailureHandler failure)
-    -> int;
-[[nodiscard]] auto number(Form const& form, std::string_view purpose, FailureHandler failure)
-    -> double;
-[[nodiscard]] auto text_list(Form const& form, std::string_view purpose, FailureHandler failure)
-    -> std::vector<std::string>;
+                            FailureHandler failure) -> std::string_view;
+[[nodiscard]] auto boolean(Syntax const& syntax,
+                           FormId const form,
+                           std::string_view purpose,
+                           FailureHandler failure) -> bool;
+[[nodiscard]] auto integer(Syntax const& syntax,
+                           FormId const form,
+                           std::string_view purpose,
+                           FailureHandler failure) -> int;
+[[nodiscard]] auto number(Syntax const& syntax,
+                          FormId const form,
+                          std::string_view purpose,
+                          FailureHandler failure) -> double;
+[[nodiscard]] auto text_list(Syntax const& syntax,
+                             FormId const form,
+                             std::string_view purpose,
+                             FailureHandler failure) -> std::vector<std::string>;
 
-} // namespace codegen::sexpr
+} // namespace lispb::codegen::sexpr

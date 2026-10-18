@@ -19,14 +19,6 @@
   ],
   "buildPresets": [
     {
-      "name": "kernel-benchmark",
-      "configurePreset": "native-benchmark",
-      "targets": [
-        "kernel-native-simd-tests",
-        "kernel-native-benchmarks"
-      ]
-    },
-    {
       "name": "native-soa",
       "configurePreset": "native-benchmark",
       "targets": [
@@ -57,26 +49,6 @@
   ],
   "testPresets": [
     {
-      "name": "kernel-benchmark-tests",
-      "inherits": "test-base",
-      "configurePreset": "native-benchmark",
-      "filter": {
-        "include": {
-          "label": "native-kernel-benchmark"
-        }
-      }
-    },
-    {
-      "name": "kernel-benchmark-plot-tests",
-      "inherits": "test-base",
-      "configurePreset": "native-benchmark",
-      "filter": {
-        "include": {
-          "label": "native-kernel-benchmark|kernel-benchmark-plot"
-        }
-      }
-    },
-    {
       "name": "native-soa",
       "inherits": "test-base",
       "configurePreset": "native-benchmark",
@@ -98,23 +70,6 @@
     }
   ],
   "workflowPresets": [
-    {
-      "name": "kernel-benchmark",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "native-benchmark"
-        },
-        {
-          "type": "build",
-          "name": "kernel-benchmark"
-        },
-        {
-          "type": "test",
-          "name": "kernel-benchmark-plot-tests"
-        }
-      ]
-    },
     {
       "name": "native-soa",
       "steps": [

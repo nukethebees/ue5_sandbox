@@ -29,7 +29,6 @@ pub fn plot_fighters(document: &Value, output: &Path) -> Result<Vec<PathBuf>> {
             points.push(Point {
                 x: cap as f64,
                 y,
-                deviation: 0.0,
             });
         }
         points.sort_by(|a, b| a.x.total_cmp(&b.x));
@@ -52,22 +51,18 @@ pub fn plot_fighters(document: &Value, output: &Path) -> Result<Vec<PathBuf>> {
         &timings,
         "Fighter tick latency (lower is better)",
         "Fighter cap",
-        false,
         &[Panel {
             label: "Tick latency (us)".into(),
             series: latency,
-            reference: None,
         }],
     )?;
     line_plot(
         &rate,
         "Fighter throughput (higher is better)",
         "Fighter cap",
-        false,
         &[Panel {
             label: "Throughput (ticks/s)".into(),
             series: throughput,
-            reference: None,
         }],
     )?;
     Ok(vec![timings, rate])

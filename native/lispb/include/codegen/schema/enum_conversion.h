@@ -1,11 +1,12 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include <string_view>
 
-namespace codegen {
+namespace lispb::codegen {
 
-enum class EnumConversion {
+enum class EnumConversion : std::uint8_t {
     lex_to_string,
     string_view,
     string,
@@ -51,4 +52,4 @@ inline constexpr auto enum_conversion_name(EnumConversion const conversion) -> s
     return "unknown";
 }
 
-} // namespace codegen
+} // namespace lispb::codegen

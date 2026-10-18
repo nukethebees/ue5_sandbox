@@ -3,36 +3,35 @@
 #include <ioj/layout/planner_type.hpp>
 #include <ioj/layout/schema_loader.hpp>
 
+#include <codegen/schema/integer_varint_encoding.h>
 #include <codegen/schema/schema_version.h>
+#include <codegen/schema/semantic_relation_kind.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/project_loader.h>
+#include <lispb/schema/packed_fields.h>
+#include <lispb/schema/packed_types.h>
+#include <lispb/schema/type_graph.h>
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <filesystem>
 #include <limits>
+#include <ranges>
+#include <string>
 #include <string_view>
+#include <utility>
 
 namespace ioj::layout {
 namespace {
 
 TEST(PlannerType, OpaqueExternalFactsUnblockOnlyValueDependenciesOnTheActiveTarget) {
-    codegen::Manifest manifest{};
-    manifest.schema_version = codegen::manifest_schema_version;
-    codegen::NormalModuleSchema module{};
-    module.settings.name = "external_users";
-    module.settings.header = "external_users.hpp";
-    for (auto const pointer : {false, true}) {
-        codegen::RecordSchema record{};
-        record.name = pointer ? "Pointer" : "Value";
-        codegen::RecordMemberSchema member{};
-        member.name = "value";
-        member.type.name = "OpaqueVector";
-        member.type.suffix = pointer ? "*" : "";
-        record.members.push_back(member);
-        module.declarations.push_back(record);
-    }
-    manifest.modules.emplace_back(module);
-    auto const types{lispb::schema::resolve_type_graph(manifest)};
+    lispb::CompilerStorage storage;
+    auto const types{fixture_graph(storage, R"(
+        (module external_users :header "external_users.hpp"
+            (record Value (member value OpaqueVector))
+            (record Pointer (member value (type-ref OpaqueVector :suffix "*")))))")};
     auto const dependencies{external_dependencies(types)};
     ASSERT_EQ(dependencies.size(), 1);
     auto const external{dependencies.front().types.front()};
@@ -47,7 +46,7 @@ TEST(PlannerType, OpaqueExternalFactsUnblockOnlyValueDependenciesOnTheActiveTarg
     EXPECT_FALSE(before.semantics_known);
     EXPECT_FALSE(before.physical.facts.has_value());
     ASSERT_EQ(before.blocked_declarations.size(), 1);
-    EXPECT_EQ(before.blocked_declarations.front().name, "Value");
+    EXPECT_EQ(types.strings().view(before.blocked_declarations.front().name), "Value");
     TypeFacts facts{};
     facts.size_bytes = 3;
     facts.alignment_bytes = 4;
@@ -71,7 +70,7 @@ TEST(PlannerType, OpaqueExternalFactsUnblockOnlyValueDependenciesOnTheActiveTarg
     auto const imported{parse_abi_profile(serialize_abi_profile(session.primary_abi()))};
     ASSERT_TRUE(imported);
     EXPECT_EQ(imported->find("OpaqueVector"), after.physical.facts);
-    auto const value{*types.find_declared("external_users", "Value")};
+    auto const value{*fixture_find(types, "external_users", "Value")};
     auto const resolved{PhysicalFactsResolver{types, *imported}.resolve(value)};
     ASSERT_TRUE(resolved.facts.has_value());
     EXPECT_EQ(resolved.facts->size_bytes, 12);
@@ -86,23 +85,23 @@ TEST(PlannerType, ClassifiesInspectableAndPhysicalDeclarations) {
     ASSERT_TRUE(loaded.loaded);
     ASSERT_TRUE(loaded.document.has_value());
     auto const& types{loaded.document->types()};
-    auto const enumeration{types.find_declared("native_entity_type", "EntityType")};
-    auto const packed{types.find_declared("native_entity_unique_id", "EntityUniqueId")};
-    auto const soa{types.find_declared("native_world_aabbs", "WorldAABBsColumns")};
+    auto const enumeration{fixture_find(types, "native_entity_type", "EntityType")};
+    auto const packed{fixture_find(types, "native_entity_unique_id", "EntityUniqueId")};
+    auto const soa{fixture_find(types, "native_world_aabbs", "WorldAABBsColumns")};
     ASSERT_TRUE(enumeration.has_value());
     ASSERT_TRUE(packed.has_value());
     ASSERT_TRUE(soa.has_value());
 
-    auto const enum_capabilities{declaration_capabilities(types.type(*enumeration))};
+    auto const enum_capabilities{declaration_capabilities(types, *enumeration)};
     EXPECT_EQ(enum_capabilities.kind, DeclarationKind::enumeration);
     EXPECT_TRUE(enum_capabilities.inspectable);
     EXPECT_TRUE(enum_capabilities.editable);
     EXPECT_TRUE(enum_capabilities.physical_analysis_available);
     EXPECT_FALSE(enum_capabilities.supports_variant_overrides);
-    auto const packed_capabilities{declaration_capabilities(types.type(*packed))};
+    auto const packed_capabilities{declaration_capabilities(types, *packed)};
     EXPECT_EQ(packed_capabilities.kind, DeclarationKind::packed);
     EXPECT_TRUE(packed_capabilities.supports_variant_overrides);
-    auto const soa_capabilities{declaration_capabilities(types.type(*soa))};
+    auto const soa_capabilities{declaration_capabilities(types, *soa)};
     EXPECT_EQ(soa_capabilities.kind, DeclarationKind::soa);
     EXPECT_TRUE(soa_capabilities.inspectable);
     EXPECT_TRUE(soa_capabilities.editable);
@@ -110,45 +109,29 @@ TEST(PlannerType, ClassifiesInspectableAndPhysicalDeclarations) {
     EXPECT_TRUE(soa_capabilities.supports_variant_overrides);
 }
 
-auto backend_soa_graph() -> lispb::schema::TypeGraph {
-    codegen::Manifest manifest{};
-    manifest.schema_version = codegen::manifest_schema_version;
-    for (auto const backend :
-         {codegen::SoaBackend::unreal, codegen::SoaBackend::standard_library}) {
-        codegen::NormalModuleSchema module{};
-        module.settings.name = backend == codegen::SoaBackend::unreal ? "unreal" : "stdlib";
-        module.settings.header = module.settings.name + ".h";
-        module.settings.source = module.settings.name + ".cpp";
-        module.soa_backend = backend;
-        codegen::SoaSchema soa{};
-        soa.name = "Columns";
-        codegen::SoaMemberSchema member{};
-        member.name = "values";
-        member.kind = codegen::SoaMemberKind::array;
-        member.type.name = "std::uint32_t";
-        soa.members.push_back(std::move(member));
-        module.declarations.push_back(std::move(soa));
-        codegen::VectorSoaSchema vector{};
-        vector.name = "VectorColumns";
-        vector.value_type.name = "std::uint32_t";
-        vector.equivalent_type.name = "Vector";
-        vector.components = {"x", "y"};
-        vector.equivalent_members = {"x", "y"};
-        module.declarations.push_back(std::move(vector));
-        manifest.modules.emplace_back(std::move(module));
+auto backend_soa_graph(lispb::CompilerStorage& storage) -> lispb::schema::TypeGraph {
+    std::string source;
+    for (auto const standard : {false, true}) {
+        auto const name{standard ? "stdlib" : "unreal"};
+        source += "(module " + std::string{name} + " :header \"" + name + ".h\" :source \"" + name +
+                  ".cpp\" :backend " + (standard ? "standard-library" : "unreal") + R"(
+                    (struct Columns (member values array std::uint32_t))
+                    (vector-soa VectorColumns :value-type std::uint32_t
+                        :equivalent-type Vector :components (x y) :equivalent-members (x y))))";
     }
-    return lispb::schema::resolve_type_graph(manifest);
+    return fixture_graph(storage, source);
 }
 
 TEST(PlannerType, SoaBackendAndSourceKindControlAnalysisAndAuthoring) {
-    auto const types{backend_soa_graph()};
+    lispb::CompilerStorage storage;
+    auto const types{backend_soa_graph(storage)};
     for (auto const* module : {"unreal", "stdlib"}) {
         auto const physical{std::string_view{module} == "stdlib"};
         for (auto const* name : {"Columns", "VectorColumns"}) {
             auto const vector{std::string_view{name} == "VectorColumns"};
-            auto const type{types.find_declared(module, name)};
+            auto const type{fixture_find(types, module, name)};
             ASSERT_TRUE(type.has_value());
-            auto const capabilities{declaration_capabilities(types.type(*type))};
+            auto const capabilities{declaration_capabilities(types, *type)};
             EXPECT_TRUE(capabilities.inspectable);
             EXPECT_EQ(capabilities.kind,
                       vector ? DeclarationKind::vector_soa : DeclarationKind::soa);
@@ -165,38 +148,11 @@ TEST(PlannerType, SoaBackendAndSourceKindControlAnalysisAndAuthoring) {
     }
 }
 
-TEST(PlannerType, SupportedKindsKeepInspectionAndAnalysisCapabilities) {
-    using namespace lispb::schema;
-    auto const definitions{std::vector<std::pair<TypeDefinition, DeclarationKind>>{
-        {EnumType{}, DeclarationKind::enumeration},
-        {IntegerScalarType{}, DeclarationKind::integer_scalar},
-        {LinearQuantizedType{}, DeclarationKind::linear_quantized},
-        {IntegerVarintType{}, DeclarationKind::integer_varint},
-        {FixedPointType{}, DeclarationKind::fixed_point},
-        {MiniFloatType{}, DeclarationKind::mini_float},
-        {OptionalSentinelType{}, DeclarationKind::optional_sentinel},
-        {OptionalPresenceBitType{}, DeclarationKind::optional_presence_bit},
-        {PackedType{}, DeclarationKind::packed},
-        {RecordType{}, DeclarationKind::record},
-        {UnionType{}, DeclarationKind::union_},
-        {TaggedUnionType{}, DeclarationKind::tagged_union},
-    }};
-    for (auto const& [definition, kind] : definitions) {
-        auto node{TypeNode{}};
-        node.definition = definition;
-        auto const capabilities{declaration_capabilities(node)};
-        EXPECT_EQ(capabilities.kind, kind);
-        EXPECT_TRUE(capabilities.inspectable);
-        EXPECT_TRUE(capabilities.editable);
-        EXPECT_TRUE(capabilities.physical_analysis_available);
-        EXPECT_STRNE(declaration_kind_label(kind), "unknown");
-    }
-}
-
 TEST(PlannerType, SwitchingToUnrealSoaClearsPhysicalResults) {
-    auto const types{backend_soa_graph()};
-    auto const supported{*types.find_declared("stdlib", "Columns")};
-    auto const unsupported{*types.find_declared("unreal", "Columns")};
+    lispb::CompilerStorage storage;
+    auto const types{backend_soa_graph(storage)};
+    auto const supported{*fixture_find(types, "stdlib", "Columns")};
+    auto const unsupported{*fixture_find(types, "unreal", "Columns")};
     PlannerAnalysisSession session{types};
     EXPECT_TRUE(session.inputs.selection.select_type(session.inputs.workspace.types(), supported));
     EXPECT_TRUE(session.refresh(nullptr));
@@ -220,7 +176,7 @@ TEST(PlannerType, DistinguishesUnknownTargetFactsFromErrors) {
     ASSERT_TRUE(loaded.loaded);
     ASSERT_TRUE(loaded.document.has_value());
     auto const& types{loaded.document->types()};
-    auto const packed{types.find_declared("native_entity_unique_id", "EntityUniqueId")};
+    auto const packed{fixture_find(types, "native_entity_unique_id", "EntityUniqueId")};
     ASSERT_TRUE(packed.has_value());
 
     EXPECT_EQ(declaration_status(types, *packed, Variant{}, AbiProfile{"unknown"}, 64),
@@ -236,58 +192,30 @@ TEST(PlannerType, DistinguishesUnknownTargetFactsFromErrors) {
               LayoutStatus::available);
 
     auto invalid{Variant{}};
-    auto const& packed_type{std::get<lispb::schema::PackedType>(types.type(*packed).definition)};
-    auto const* field{std::get_if<lispb::schema::PackedField>(&packed_type.segments.front())};
-    ASSERT_NE(field, nullptr);
+    auto const& packed_type{types.definition(*packed)};
+    auto const field{types.definitions().packed.segments_of(packed_type).front()};
     invalid.overrides.packed_field_widths.emplace(
-        FieldOverrideId{.type = *packed, .field_name = field->name}, 1'024);
+        FieldOverrideId{
+            .type = *packed,
+            .field_name = std::string{types.strings().view(
+                types.definitions()
+                    .packed_fields.name[types.definitions().packed_fields.index(field)])}},
+        1'024);
     EXPECT_EQ(declaration_status(types, *packed, invalid, AbiProfile::host_common(), 64),
               LayoutStatus::error);
 }
 
 TEST(PlannerType, TaggedUnionsNeedRealTargetFactsWhileSemanticScalarsDoNot) {
-    codegen::Manifest manifest{};
-    manifest.schema_version = codegen::manifest_schema_version;
-    codegen::NormalModuleSchema enums{};
-    enums.settings.name = "enums";
-    enums.settings.header = "Enums.h";
-    codegen::EnumSchema kind{};
-    kind.name = "Kind";
-    kind.underlying_type =
-        codegen::TypeRef{.name = "std::uint8_t", .suffix = {}, .nested = std::nullopt};
-    codegen::EnumeratorSchema value{};
-    value.name = "Value";
-    kind.values.push_back(std::move(value));
-    enums.declarations.push_back(std::move(kind));
-    manifest.modules.emplace_back(std::move(enums));
-
-    codegen::NormalModuleSchema scalars{};
-    scalars.settings.name = "scalars";
-    scalars.settings.header = "Scalars.h";
-    codegen::IntegerScalarSchema semantic{};
-    semantic.name = "Semantic";
-    semantic.minimum_value = 0;
-    semantic.maximum_value = 10;
-    scalars.declarations.push_back(std::move(semantic));
-    manifest.modules.emplace_back(std::move(scalars));
-
-    codegen::NormalModuleSchema unions{};
-    unions.settings.name = "unions";
-    unions.settings.header = "Unions.h";
-    codegen::TaggedUnionSchema tagged{};
-    tagged.name = "Tagged";
-    tagged.discriminant.name = "Kind";
-    codegen::TaggedUnionAlternativeSchema alternative{};
-    alternative.name = "value";
-    alternative.tag = "Value";
-    alternative.type.name = "std::uint32_t";
-    tagged.alternatives.push_back(std::move(alternative));
-    unions.declarations.push_back(std::move(tagged));
-    manifest.modules.emplace_back(std::move(unions));
-
-    auto const types{lispb::schema::resolve_type_graph(manifest)};
-    auto const tagged_type{*types.find_declared("unions", "Tagged")};
-    auto const semantic_type{*types.find_declared("scalars", "Semantic")};
+    lispb::CompilerStorage storage;
+    auto const types{fixture_graph(storage, R"(
+        (module enums :header "Enums.h" (enum Kind std::uint8_t (value Value)))
+        (module scalars :header "Scalars.h"
+            (integer-scalar Semantic :signed false :minimum 0 :maximum 10))
+        (module unions :header "Unions.h"
+            (tagged-union Tagged :discriminant Kind
+                (alternative value std::uint32_t :tag Value))))")};
+    auto const tagged_type{*fixture_find(types, "unions", "Tagged")};
+    auto const semantic_type{*fixture_find(types, "scalars", "Semantic")};
     EXPECT_EQ(declaration_status(types, tagged_type, Variant{}, AbiProfile{"unknown"}, 1),
               LayoutStatus::unknown);
     EXPECT_EQ(declaration_status(types, tagged_type, Variant{}, AbiProfile::host_common(), 1),
@@ -297,9 +225,10 @@ TEST(PlannerType, TaggedUnionsNeedRealTargetFactsWhileSemanticScalarsDoNot) {
 }
 
 TEST(PlannerType, RelationshipCapacityErrorsMatchSelectedPackedAndScalarAnalysis) {
-    for (auto const kind :
-         {codegen::SemanticRelationKind::index_into, codegen::SemanticRelationKind::count_of}) {
-        auto const fixture{relationship_capacity_type(kind, 8)};
+    lispb::CompilerStorage storage;
+    for (auto const kind : {lispb::codegen::SemanticRelationKind::index_into,
+                            lispb::codegen::SemanticRelationKind::count_of}) {
+        auto const fixture{relationship_capacity_type(storage, kind, 8)};
         PlannerAnalysisSession session{fixture.types};
         session.inputs.selection.select_type(session.inputs.workspace.types(), fixture.packed);
         ASSERT_TRUE(session.refresh(nullptr));
@@ -311,8 +240,8 @@ TEST(PlannerType, RelationshipCapacityErrorsMatchSelectedPackedAndScalarAnalysis
         EXPECT_EQ(session.status(fixture.packed), LayoutStatus::error);
     }
 
-    auto const scalar_fixture{
-        relationship_capacity_scalar_type(codegen::SemanticRelationKind::index_into, 8, 255)};
+    auto const scalar_fixture{relationship_capacity_scalar_type(
+        storage, lispb::codegen::SemanticRelationKind::index_into, 8, 255)};
     PlannerAnalysisSession scalar_session{scalar_fixture.types};
     scalar_session.inputs.selection.select_type(scalar_session.inputs.workspace.types(),
                                                 scalar_fixture.packed);
@@ -326,7 +255,8 @@ TEST(PlannerType, RelationshipCapacityErrorsMatchSelectedPackedAndScalarAnalysis
 }
 
 TEST(PlannerType, UnknownSoaColumnFactsRemainUnknown) {
-    auto const fixture{soa_type({{"opaque", "UnknownColumnType"}})};
+    lispb::CompilerStorage storage;
+    auto const fixture{soa_type(storage, {{"opaque", "UnknownColumnType"}})};
     auto const analysis{Analyzer::analyze_soa(
         fixture.types, fixture.type, Variant{}, AbiProfile::host_common(), 64)};
     ASSERT_EQ(analysis.columns.size(), 1);
@@ -342,7 +272,9 @@ TEST(PlannerType, UnknownSoaColumnFactsRemainUnknown) {
 }
 
 TEST(PlannerType, StatusTracksActiveVariantRelationshipOverrides) {
-    auto const fixture{relationship_capacity_type(codegen::SemanticRelationKind::index_into, 17)};
+    lispb::CompilerStorage storage;
+    auto const fixture{
+        relationship_capacity_type(storage, lispb::codegen::SemanticRelationKind::index_into, 17)};
     PlannerAnalysisSession session{fixture.types};
     EXPECT_EQ(session.status(fixture.packed), LayoutStatus::available);
 
@@ -359,8 +291,9 @@ TEST(PlannerType, StatusTracksActiveVariantRelationshipOverrides) {
 }
 
 TEST(PlannerType, VarintStatusUsesSelectedElementCount) {
-    auto const fixture{
-        integer_varint_type(false, 0, 16'384, codegen::IntegerVarintEncoding::unsigned_varint)};
+    lispb::CompilerStorage storage;
+    auto const fixture{integer_varint_type(
+        storage, false, 0, 16'384, lispb::codegen::IntegerVarintEncoding::unsigned_varint)};
     auto const large_count{(std::numeric_limits<std::uint64_t>::max)()};
     auto const analysis{Analyzer::analyze_integer_varint(fixture.types, fixture.type, large_count)};
     EXPECT_FALSE(analysis.maximum_total_bytes.has_value());

@@ -4,31 +4,103 @@
 #include "planner_ui_support.hpp"
 #include <ioj/layout/planner_type.hpp>
 
+#include <codegen/schema/declarations.h>
 #include <codegen/schema/fixed_point_value.h>
-#include <lispb/target_compiler.h>
+#include <codegen/schema/module_settings_store.h>
+#include <codegen/schema/normal_module_schemas.h>
+#include <codegen/schema/soa_backend.h>
+#include <lispb/compiler.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/indices.h>
+#include <lispb/output.h>
+#include <lispb/path_base.h>
+#include <lispb/project.h>
+#include <lispb/project_edit_request.h>
+#include <lispb/project_loader.h>
+#include <lispb/schema/enum_types.h>
+#include <lispb/schema/fixed_point_types.h>
+#include <lispb/schema/indices.h>
+#include <lispb/schema/integer_scalar_types.h>
+#include <lispb/schema/integer_varint_types.h>
+#include <lispb/schema/linear_quantized_types.h>
+#include <lispb/schema/mini_float_types.h>
+#include <lispb/schema/optional_presence_bit_types.h>
+#include <lispb/schema/optional_sentinel_types.h>
+#include <lispb/schema/packed_types.h>
+#include <lispb/schema/record_types.h>
+#include <lispb/schema/schema_edit_command.h>
+#include <lispb/schema/soa_types.h>
+#include <lispb/schema/tagged_union_types.h>
+#include <lispb/schema/type_definitions.h>
+#include <lispb/schema/type_identity.h>
+#include <lispb/schema/type_origin.h>
+#include <lispb/schema/union_types.h>
+#include <lispb/strings.h>
+#include <lispb/target_kind.h>
 
 #include <imgui.h>
 #include <imgui_internal.h>
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <charconv>
 #include <cmath>
+#include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <exception>
+#include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <optional>
+#include <ranges>
 #include <set>
+#include <string>
 #include <string_view>
 #include <tuple>
 #include <utility>
-#include <variant>
+#include <vector>
 
 namespace ioj::layout_planner {
 
+auto PlannerUi::strings() const -> lispb::Strings& {
+    return declarations().strings();
+}
+
 void PlannerUi::set_file_dialog(FileDialog* const dialog) {
     file_dialog_ = dialog;
+}
+
+auto PlannerUi::retain_identity(lispb::schema::TypeIdentity const identity)
+    -> RetainedTypeIdentity {
+    return {.origin = identity.origin,
+            .module_name = retained_strings_.intern(strings().view(identity.module_name)),
+            .namespace_name = retained_strings_.intern(strings().view(identity.namespace_name)),
+            .name = retained_strings_.intern(strings().view(identity.name))};
+}
+
+auto PlannerUi::restore_identity(RetainedTypeIdentity const identity) const
+    -> std::optional<lispb::schema::TypeIdentity> {
+    auto restore = [&](lispb::IdentifierId const id) -> std::optional<lispb::IdentifierId> {
+        auto const spelling{retained_strings_.view(id)};
+        auto const current{strings().find(spelling)};
+        if (!spelling.empty() && current.value == 0) {
+            return std::nullopt;
+        }
+        return current;
+    };
+    auto const module{restore(identity.module_name)};
+    auto const name_space{restore(identity.namespace_name)};
+    auto const name{restore(identity.name)};
+    if (!module || !name_space || !name) {
+        return std::nullopt;
+    }
+    return lispb::schema::TypeIdentity{.origin = identity.origin,
+                                       .module_name = *module,
+                                       .namespace_name = *name_space,
+                                       .name = *name};
 }
 
 namespace {
@@ -54,7 +126,8 @@ auto format_cache_capacity(std::uint64_t const bytes, int const unit) -> std::st
 
 auto parse_cache_capacity(std::string_view const text, int const unit)
     -> std::optional<std::uint64_t> {
-    auto parsed{codegen::parse_fixed_point_value(text, static_cast<std::uint32_t>(unit * 10))};
+    auto parsed{
+        lispb::codegen::parse_fixed_point_value(text, static_cast<std::uint32_t>(unit * 10))};
     if (!parsed.has_value() || parsed->negative) {
         return std::nullopt;
     }
@@ -161,8 +234,8 @@ auto percent_decode(std::string_view const value) -> std::optional<std::string> 
     return result;
 }
 
-auto parse_graph_position(std::string_view const value)
-    -> std::optional<std::tuple<std::string, TypeIdentity, std::array<float, 2>>> {
+auto parse_graph_position(lispb::Strings& strings, std::string_view const value)
+    -> std::optional<std::tuple<std::string, RetainedTypeIdentity, std::array<float, 2>>> {
     std::array<std::string_view, 7> parts;
     auto remaining{value};
     for (std::size_t index{}; index + 1 < parts.size(); ++index) {
@@ -199,10 +272,10 @@ auto parse_graph_position(std::string_view const value)
         return std::nullopt;
     }
     return std::tuple{*project,
-                      TypeIdentity{.origin = static_cast<TypeOrigin>(origin),
-                                   .module_name = *module,
-                                   .namespace_name = *namespace_name,
-                                   .name = *name},
+                      RetainedTypeIdentity{.origin = static_cast<TypeOrigin>(origin),
+                                           .module_name = strings.intern(*module),
+                                           .namespace_name = strings.intern(*namespace_name),
+                                           .name = strings.intern(*name)},
                       std::array{x, y}};
 }
 
@@ -439,14 +512,16 @@ PlannerUi::PlannerUi(SchemaLoadResult loaded)
     , target_name_{std::move(loaded.target_name)}
     , project_document_{std::move(loaded.project_document)}
     , document_{std::move(loaded.document)}
-    , analysis_session_{document_.has_value() ? document_->types() : TypeGraph{}}
+    , analysis_session_{document_.has_value() ? PlannerAnalysisSession{document_->types()}
+                                              : PlannerAnalysisSession{}}
     , load_diagnostics_{std::move(loaded.diagnostics)} {
     target_memory_fact_defaults_ = analysis_session_.primary_abi().memory_facts();
     sync_target_memory_fact_inputs();
     auto const types{analysis_session_.inputs.workspace.types().types()};
-    auto const found{std::ranges::find_if(types, [](auto const& type) {
-        return type.identity.origin == TypeOrigin::declaration &&
-               declaration_capabilities(type).inspectable;
+    auto const found{std::ranges::find_if(types, [&](auto const& type) {
+        return analysis_session_.inputs.workspace.types().origin(type) == TypeOrigin::declaration &&
+               declaration_capabilities(analysis_session_.inputs.workspace.types(), type)
+                   .inspectable;
     })};
     if (found != types.end()) {
         select_type(TypeId{static_cast<std::uint32_t>(found - types.begin())});
@@ -968,16 +1043,17 @@ void PlannerUi::settings_read_line(ImGuiContext*,
     }
     constexpr std::string_view graph_node_prefix{"GraphNode="};
     if (value.starts_with(graph_node_prefix)) {
-        auto const parsed{parse_graph_position(value.substr(graph_node_prefix.size()))};
+        auto const parsed{
+            parse_graph_position(ui->retained_strings_, value.substr(graph_node_prefix.size()))};
         if (!parsed.has_value()) {
             return;
         }
         auto const& [project, identity, position]{*parsed};
         ui->persisted_graph_node_positions_[project][identity] = position;
         if (project == graph_project_key(ui->project_path_)) {
-            auto const types{ui->analysis_session_.inputs.workspace.types().types()};
-            if (std::ranges::find(types, identity, &TypeNode::identity) != types.end()) {
-                ui->graph_node_positions_[identity] = position;
+            if (auto const current{ui->restore_identity(identity)};
+                current && ui->analysis_session_.inputs.workspace.types().find(*current)) {
+                ui->graph_node_positions_[*current] = position;
             }
         }
         return;
@@ -1051,9 +1127,11 @@ void PlannerUi::settings_write_all(ImGuiContext*,
     for (auto const& [project, positions] : ui->persisted_graph_node_positions_) {
         auto const encoded_project{percent_encode(project)};
         for (auto const& [identity, position] : positions) {
-            auto const encoded_module{percent_encode(identity.module_name)};
-            auto const encoded_namespace{percent_encode(identity.namespace_name)};
-            auto const encoded_name{percent_encode(identity.name)};
+            auto const encoded_module{
+                percent_encode(ui->retained_strings_.view(identity.module_name))};
+            auto const encoded_namespace{
+                percent_encode(ui->retained_strings_.view(identity.namespace_name))};
+            auto const encoded_name{percent_encode(ui->retained_strings_.view(identity.name))};
             output->appendf("GraphNode=%s|%d|%s|%s|%s|%g|%g\n",
                             encoded_project.c_str(),
                             static_cast<int>(identity.origin),
@@ -1126,9 +1204,14 @@ void PlannerUi::gate_new_declaration_dialogs() {
     bool has_module{};
     bool has_soa{};
     for (auto const& module : document_->manifest().modules) {
-        if (auto const* normal{std::get_if<codegen::NormalModuleSchema>(&module)}) {
+        if (auto const normal{((module).kind() == lispb::codegen::ModuleKind::normal
+                                   ? std::optional{module}
+                                   : std::nullopt)}) {
             has_module = true;
-            has_soa |= normal->soa_backend == codegen::SoaBackend::standard_library;
+            has_soa |=
+                declarations()
+                    .normal_modules.soa_backend[declarations().normal_modules.index(*normal)] ==
+                lispb::codegen::SoaBackend::standard_library;
         }
     }
 
@@ -1150,8 +1233,10 @@ void PlannerUi::gate_new_declaration_dialogs() {
         auto suffix{2};
         auto const& modules{document_->manifest().modules};
         while (std::ranges::any_of(modules, [&](auto const& module) {
-            return std::visit([&](auto const& value) { return value.settings.name == name; },
-                              module);
+            return (strings().view(
+                        declarations()
+                            .module_settings_store.name[declarations().module_settings_store.index(
+                                declarations().module_settings(module))]) == name);
         })) {
             name = std::string{suggested_name} + "_" + std::to_string(suffix++);
         }
@@ -1618,7 +1703,7 @@ void PlannerUi::draw_source_panel() {
     }
     struct SourceViewFile {
         std::filesystem::path path;
-        std::string const* loaded{};
+        std::optional<std::string_view> loaded;
         std::string original;
         std::optional<std::string> updated;
         std::filesystem::path read_path;
@@ -1626,13 +1711,15 @@ void PlannerUi::draw_source_panel() {
     std::vector<SourceViewFile> files;
     if (project_document_.has_value()) {
         files.push_back({.path = project_document_->path(),
-                         .loaded = &project_document_->source_text(),
+                         .loaded = project_document_->source_text(),
                          .original = {},
                          .updated = std::nullopt});
     }
     for (auto const& source : document_->source_files()) {
-        files.push_back(
-            {.path = source.path, .loaded = &source.text, .original = {}, .updated = std::nullopt});
+        files.push_back({.path = document_->storage().sources.filesystem_path(source),
+                         .loaded = document_->storage().sources.text(source),
+                         .original = {},
+                         .updated = std::nullopt});
     }
     auto apply_update = [&](std::filesystem::path path, std::string original, std::string updated) {
         auto const normalized{path.lexically_normal()};
@@ -1640,7 +1727,7 @@ void PlannerUi::draw_source_panel() {
             files, [&](auto const& file) { return file.path.lexically_normal() == normalized; })};
         if (existing == files.end()) {
             files.push_back({.path = std::move(path),
-                             .loaded = nullptr,
+                             .loaded = std::nullopt,
                              .original = std::move(original),
                              .updated = std::move(updated)});
         } else {
@@ -1674,12 +1761,9 @@ void PlannerUi::draw_source_panel() {
     }
     if (project_document_.has_value()) {
         auto const& project{project_document_->project()};
-        auto const target_found{project.targets.find(target_name_)};
-        auto const* target{target_found == project.targets.end()
-                               ? nullptr
-                               : std::get_if<lispb::CppSchemaTarget>(&target_found->second)};
-        if (target != nullptr) {
-            for (auto const& source : target->sources) {
+        auto const target{project.find_target(target_name_)};
+        if (target && target->kind() == lispb::TargetKind::cpp_schema) {
+            for (auto const& source : project.sources(*target)) {
                 auto const path{(project.root / source).lexically_normal()};
                 if (std::ranges::any_of(files, [&](auto const& file) {
                         return file.path.lexically_normal() == path;
@@ -1740,9 +1824,9 @@ void PlannerUi::draw_source_panel() {
             }
             ImGui::EndCombo();
         }
-        auto draw_text = [](char const* id, std::string const& value) {
+        auto draw_text = [](char const* id, std::string_view const value) {
             if (ImGui::Button("Copy source")) {
-                ImGui::SetClipboardText(value.c_str());
+                ImGui::SetClipboardText(std::string{value}.c_str());
             }
             if (ImGui::BeginChild(id, {0.0F, 0.0F}, true, ImGuiWindowFlags_HorizontalScrollbar)) {
                 ImGui::TextUnformatted(value.data(), value.data() + value.size());
@@ -1762,7 +1846,7 @@ void PlannerUi::draw_source_panel() {
                     draw_text("original-source", file.original);
                     ImGui::EndTabItem();
                 }
-            } else if (file.loaded != nullptr) {
+            } else if (file.loaded.has_value()) {
                 if (ImGui::BeginTabItem("Current")) {
                     draw_text("current-source", *file.loaded);
                     ImGui::EndTabItem();
@@ -2066,22 +2150,22 @@ auto PlannerUi::export_cpp(std::filesystem::path const& build_root) -> bool {
     }
 
     try {
-        auto const project{lispb::load_project(project_path_)};
-        auto const target{project.targets.find(target_name_)};
-        if (target == project.targets.end() ||
-            !std::holds_alternative<lispb::CppSchemaTarget>(target->second)) {
+        lispb::Compiler compiler;
+        auto const project{lispb::load_project(compiler.storage().syntax, project_path_)};
+        auto const target{project.find_target(target_name_)};
+        if (!target || target->kind() != lispb::TargetKind::cpp_schema) {
             schema_edit_message_ = "The saved project no longer contains C++ schema target '" +
                                    target_name_ + "'. Reopen the project.";
             return false;
         }
-        auto const& schema{std::get<lispb::CppSchemaTarget>(target->second)};
-        if (schema.output_root.base == lispb::PathBase::build && !build_root.is_absolute()) {
+        if (project.output_path(*target).base == lispb::PathBase::build &&
+            !build_root.is_absolute()) {
             schema_edit_message_ = "Choose an absolute build directory for this export.";
             open_export_build_root_dialog_ = true;
             return false;
         }
 
-        auto const compiled{lispb::compile_target(target->second, project.root, build_root)};
+        auto& compiled{compiler.compile(project, *target, build_root)};
         if (lispb::publish(compiled.compilation, compiled.publication) != 0) {
             schema_edit_message_ = "C++ export failed for target '" + target_name_ + "'.";
             return false;
@@ -2096,7 +2180,7 @@ auto PlannerUi::export_cpp(std::filesystem::path const& build_root) -> bool {
     }
 }
 
-auto PlannerUi::apply_project_edit(lispb::ProjectEditCommand command) -> bool {
+auto PlannerUi::apply_project_edit(lispb::ProjectEditRequest command) -> bool {
     if (!project_document_.has_value()) {
         schema_edit_message_ = "No editable LispB project manifest is loaded.";
         return false;
@@ -2152,7 +2236,7 @@ auto PlannerUi::apply_document_edit(SchemaEditCommand command,
 void PlannerUi::sync_document_graph(std::optional<TypeIdentity> selection) {
     std::erase_if(varint_distributions_, [&](auto const& entry) {
         auto const type{document_->types().find(entry.first)};
-        return !type.has_value() || integer_domain(document_->types().type(*type)) == nullptr;
+        return !type.has_value() || !integer_domain(document_->types(), *type).has_value();
     });
     analysis_session_.replace_types(*document_, selection);
     invalidate_type_editor_state();
@@ -2219,11 +2303,12 @@ auto PlannerUi::load_project(std::filesystem::path const& path,
     if (use_recent_target && !selected_target.has_value()) {
         auto const normalized{std::filesystem::absolute(path).lexically_normal()};
         try {
-            auto const project{lispb::load_project(path)};
+            lispb::CompilerStorage storage;
+            auto const project{lispb::load_project(storage.syntax, path)};
             std::vector<std::string> schema_targets;
-            for (auto const& [name, candidate] : project.targets) {
-                if (std::holds_alternative<lispb::CppSchemaTarget>(candidate)) {
-                    schema_targets.push_back(name);
+            for (auto const candidate : project.target_ids()) {
+                if (candidate.kind() == lispb::TargetKind::cpp_schema) {
+                    schema_targets.emplace_back(project.target_name(candidate));
                 }
             }
             if (schema_targets.empty()) {
@@ -2267,12 +2352,11 @@ void PlannerUi::refresh_project() {
     }
 
     auto inputs{analysis_session_.inputs};
-    auto const identity{inputs.selection.identity()};
     auto const primary_abi{analysis_session_.primary_abi()};
     auto const comparison_abi{analysis_session_.comparison_abi()};
     adopt_loaded_schema(std::move(loaded));
     analysis_session_.inputs = std::move(inputs);
-    analysis_session_.replace_types(*document_, identity);
+    analysis_session_.replace_types(*document_, std::nullopt);
     static_cast<void>(analysis_session_.set_primary_abi(primary_abi));
     static_cast<void>(analysis_session_.set_comparison_abi(comparison_abi));
     sync_variant_name();
@@ -2285,9 +2369,11 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
     structural_creation_draft_.reset();
     structural_creation_module_.reset();
     open_new_structural_dialog_ = false;
-    std::optional<TypeIdentity> previous_identity;
+    std::optional<RetainedTypeIdentity> previous_identity;
     if (project_path_ == loaded.project_path && target_name_ == loaded.target_name) {
-        previous_identity = analysis_session_.inputs.selection.identity();
+        if (auto const selected{analysis_session_.inputs.selection.identity()}) {
+            previous_identity = retain_identity(*selected);
+        }
     }
     schema_warning_message_.clear();
     if (project_path_ != loaded.project_path || target_name_ != loaded.target_name) {
@@ -2296,8 +2382,9 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
     open_export_build_root_dialog_ = false;
     project_path_ = std::move(loaded.project_path);
     target_name_ = std::move(loaded.target_name);
-    analysis_session_ = PlannerAnalysisSession{
-        loaded.document.has_value() ? loaded.document->types() : TypeGraph{}};
+    document_ = std::move(loaded.document);
+    analysis_session_ = document_.has_value() ? PlannerAnalysisSession{document_->types()}
+                                              : PlannerAnalysisSession{};
     use_builtin_target_profile(false);
     use_builtin_comparison_target_profile();
     if (auto const saved_profile{
@@ -2308,7 +2395,6 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
     }
     restore_saved_target_memory_facts();
     project_document_ = std::move(loaded.project_document);
-    document_ = std::move(loaded.document);
     load_diagnostics_ = std::move(loaded.diagnostics);
     select_type(std::nullopt);
     inline_record_rename_.reset();
@@ -2324,26 +2410,30 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
     if (auto const saved{persisted_graph_node_positions_.find(graph_project_key(project_path_))};
         saved != persisted_graph_node_positions_.end()) {
         for (auto const& [identity, position] : saved->second) {
-            if (std::ranges::find(types, identity, &TypeNode::identity) != types.end()) {
-                graph_node_positions_[identity] = position;
+            if (auto const current{restore_identity(identity)};
+                current && analysis_session_.inputs.workspace.types().find(*current)) {
+                graph_node_positions_[*current] = position;
             }
         }
     }
     if (previous_identity.has_value()) {
-        if (auto const next_type{
-                analysis_session_.inputs.workspace.types().find(*previous_identity)};
+        auto const current{restore_identity(*previous_identity)};
+        if (auto const next_type{current ? analysis_session_.inputs.workspace.types().find(*current)
+                                         : std::nullopt};
             next_type.has_value()) {
             select_type(*next_type);
-        } else if (document_.has_value()) {
-            if (auto const next_declaration{document_->find_declaration(*previous_identity)};
+        } else if (document_.has_value() && current) {
+            if (auto const next_declaration{document_->find_declaration(*current)};
                 next_declaration.has_value()) {
                 select_declaration(*next_declaration);
             }
         }
     } else {
         for (std::size_t index{}; index < types.size(); ++index) {
-            if (types[index].identity.origin == TypeOrigin::declaration &&
-                declaration_capabilities(types[index]).inspectable) {
+            if (analysis_session_.inputs.workspace.types().origin(types[index]) ==
+                    TypeOrigin::declaration &&
+                declaration_capabilities(analysis_session_.inputs.workspace.types(), types[index])
+                    .inspectable) {
                 select_type(TypeId{static_cast<std::uint32_t>(index)});
                 break;
             }
@@ -2471,9 +2561,20 @@ void PlannerUi::refresh_analysis() {
     std::vector<IntegerVarintDistributionEntry> entries;
     bool rows_present{};
     if (inputs.selection.type.has_value()) {
-        auto const& definition{inputs.workspace.types().type(*inputs.selection.type).definition};
-        if (auto const* varint{std::get_if<IntegerVarintType>(&definition)}) {
-            source_identity = inputs.workspace.types().type(varint->source.type).identity;
+        auto const& definition{inputs.workspace.types().definition(*inputs.selection.type)};
+        if (auto const varint{
+                ((definition).kind() == lispb::schema::TypeDefinitionKind::integer_varint
+                     ? std::optional{definition}
+                     : std::nullopt)}) {
+            source_identity = inputs.workspace.types().identity(
+                analysis_session_.inputs.workspace.types()
+                    .occurrences()
+                    .type[analysis_session_.inputs.workspace.types().occurrences().index(
+                        analysis_session_.inputs.workspace.types()
+                            .definitions()
+                            .integer_varints.source[analysis_session_.inputs.workspace.types()
+                                                        .definitions()
+                                                        .integer_varints.index(*varint)])]);
             if (auto const found{varint_distributions_.find(*source_identity)};
                 found != varint_distributions_.end()) {
                 rows_present = !found->second.empty();
@@ -2552,7 +2653,7 @@ void PlannerUi::draw_layout_panel() {
     auto const selected_type{analysis_session_.inputs.selection.type};
     auto const can_analyze{
         selected_type.has_value() &&
-        declaration_capabilities(analysis_session_.inputs.workspace.types().type(*selected_type))
+        declaration_capabilities(analysis_session_.inputs.workspace.types(), *selected_type)
             .physical_analysis_available};
     if (can_analyze && ImGui::Button("+ Add variant")) {
         create_variant_for_selected_schema();
@@ -2581,15 +2682,15 @@ void PlannerUi::draw_layout_panel() {
         }
         ImGui::TextWrapped("Inspect or supply external facts in Properties.");
     } else if (!can_analyze) {
-        auto const& node{analysis_session_.inputs.workspace.types().type(*selected_type)};
+        auto const& node{*selected_type};
         ImGui::TextWrapped("Physical layout analysis is not available for %s.",
-                           std::holds_alternative<SoaType>(node.definition)
+                           ((analysis_session_.inputs.workspace.types().definition(node)).kind() ==
+                            lispb::schema::TypeDefinitionKind::soa)
                                ? "the Unreal SoA backend"
                                : "this semantic type");
-    } else if (auto const& definition{analysis_session_.inputs.workspace.types()
-                                          .type(*analysis_session_.inputs.selection.type)
-                                          .definition};
-               std::holds_alternative<EnumType>(definition)) {
+    } else if (auto const& definition{analysis_session_.inputs.workspace.types().definition(
+                   *analysis_session_.inputs.selection.type)};
+               ((definition).kind() == lispb::schema::TypeDefinitionKind::enumeration)) {
         auto const& analysis{*analysis_session_.results().enum_domain};
         auto const& aggregate{analysis.aggregate};
         if (detail::section("Standalone C++ backing scale")) {
@@ -2638,14 +2739,23 @@ void PlannerUi::draw_layout_panel() {
                 "included.");
             draw_diagnostics(analysis.diagnostics);
         }
-    } else if (auto const* packed = std::get_if<PackedType>(&definition)) {
+    } else if (auto const packed = ((definition).kind() == lispb::schema::TypeDefinitionKind::packed
+                                        ? std::optional{definition}
+                                        : std::nullopt)) {
         draw_packed_layout(*packed, *analysis_session_.results().baseline_packed);
-    } else if (auto const* soa{std::get_if<SoaType>(&definition)};
-               soa != nullptr && soa->backend == codegen::SoaBackend::standard_library) {
+    } else if (auto const soa{((definition).kind() == lispb::schema::TypeDefinitionKind::soa
+                                   ? std::optional{definition}
+                                   : std::nullopt)};
+               static_cast<bool>(soa) &&
+               analysis_session_.inputs.workspace.types()
+                       .definitions()
+                       .soas
+                       .backend[analysis_session_.inputs.workspace.types().definitions().soas.index(
+                           *soa)] == lispb::codegen::SoaBackend::standard_library) {
         draw_soa_layout(*soa, *analysis_session_.results().baseline_soa);
-    } else if (std::holds_alternative<RecordType>(definition)) {
+    } else if (((definition).kind() == lispb::schema::TypeDefinitionKind::record)) {
         draw_record_layout(*analysis_session_.results().record_analysis);
-    } else if (std::holds_alternative<UnionType>(definition)) {
+    } else if (((definition).kind() == lispb::schema::TypeDefinitionKind::union_type)) {
         auto const& analysis{*analysis_session_.results().union_analysis};
         if (detail::section("Analysis scale")) {
             if (draw_element_count()) {
@@ -2885,7 +2995,10 @@ void PlannerUi::draw_layout_panel() {
                 "distribution is implied.");
             draw_diagnostics(analysis.diagnostics);
         }
-    } else if (auto const* tagged{std::get_if<TaggedUnionType>(&definition)}) {
+    } else if (auto const tagged{
+                   ((definition).kind() == lispb::schema::TypeDefinitionKind::tagged_union
+                        ? std::optional{definition}
+                        : std::nullopt)}) {
         auto const& analysis{*analysis_session_.results().tagged_union_analysis};
         if (detail::section("Analysis scale")) {
             if (draw_element_count()) {
@@ -2893,13 +3006,22 @@ void PlannerUi::draw_layout_panel() {
                 return;
             }
             ImGui::Text("Tagged union: %s",
-                        analysis_session_.inputs.workspace.types()
-                            .type(*analysis_session_.inputs.selection.type)
-                            .identity.name.c_str());
-            ImGui::Text("Discriminant: %s",
-                        analysis_session_.inputs.workspace.types()
-                            .type(tagged->discriminant.type)
-                            .identity.name.c_str());
+                        text(analysis_session_.inputs.workspace.types().name(
+                                 *analysis_session_.inputs.selection.type))
+                            .c_str());
+            ImGui::Text(
+                "Discriminant: %s",
+                text(analysis_session_.inputs.workspace.types().name(
+                         analysis_session_.inputs.workspace.types()
+                             .occurrences()
+                             .type[analysis_session_.inputs.workspace.types().occurrences().index(
+                                 analysis_session_.inputs.workspace.types()
+                                     .definitions()
+                                     .tagged_unions
+                                     .discriminant[analysis_session_.inputs.workspace.types()
+                                                       .definitions()
+                                                       .tagged_unions.index(*tagged)])]))
+                    .c_str());
             if (detail::section("Discriminant coverage")) {
                 ImGui::Text("Mapped live tags: %llu",
                             static_cast<unsigned long long>(analysis.mapped_live_tags.size()));
@@ -3104,9 +3226,10 @@ void PlannerUi::draw_layout_panel() {
                         ImGui::TableNextColumn();
                         ImGui::TextUnformatted(alternative.name.c_str());
                         ImGui::TableNextColumn();
-                        ImGui::TextUnformatted(analysis_session_.inputs.workspace.types()
-                                                   .type(alternative.semantic_type)
-                                                   .cpp_spelling.c_str());
+                        ImGui::TextUnformatted(
+                            text(analysis_session_.inputs.workspace.types().cpp_spelling(
+                                     alternative.semantic_type))
+                                .c_str());
                         ImGui::TableNextColumn();
                         ImGui::Text("%llu",
                                     static_cast<unsigned long long>(alternative.element_count));
@@ -3128,16 +3251,16 @@ void PlannerUi::draw_layout_panel() {
                 draw_diagnostics(analysis.diagnostics);
             }
         }
-    } else if (std::holds_alternative<EnumType>(definition)) {
+    } else if (((definition).kind() == lispb::schema::TypeDefinitionKind::enumeration)) {
         ImGui::TextDisabled("Enums have semantic metadata but no standalone aggregate layout.");
-    } else if (std::holds_alternative<IntegerScalarType>(definition)) {
+    } else if (((definition).kind() == lispb::schema::TypeDefinitionKind::integer_scalar)) {
         auto const& analysis{*analysis_session_.results().integer_scalar_analysis};
         if (analysis.relationship_kind.has_value() && analysis.relationship_target.has_value()) {
-            ImGui::Text(
-                "Relationship: %s -> %s",
-                std::string{codegen::semantic_relation_kind_name(*analysis.relationship_kind)}
-                    .c_str(),
-                analysis.relationship_target->c_str());
+            ImGui::Text("Relationship: %s -> %s",
+                        std::string{lispb::codegen::semantic_relation_kind_name(
+                                        *analysis.relationship_kind)}
+                            .c_str(),
+                        analysis.relationship_target->c_str());
             if (analysis.relationship_target_extent.has_value()) {
                 auto const kind{*analysis.relationship_kind};
                 auto const term{detail::relationship_extent_term(kind)};
@@ -3192,7 +3315,7 @@ void PlannerUi::draw_layout_panel() {
             "Semantic integer scalars have no standalone physical layout. Target facts explain "
             "the domain requirement but do not create an ABI sizeof or mutate LispB.");
         draw_diagnostics(analysis.diagnostics);
-    } else if (std::holds_alternative<LinearQuantizedType>(definition)) {
+    } else if (((definition).kind() == lispb::schema::TypeDefinitionKind::linear_quantized)) {
         auto const& analysis{*analysis_session_.results().linear_quantized_analysis};
         ImGui::Text("Encoded width: %u bits", analysis.encoded_storage_bits);
         ImGui::Text("Usable codes: %s",
@@ -3202,7 +3325,7 @@ void PlannerUi::draw_layout_panel() {
                     static_cast<double>(analysis.maximum_rounding_error));
         ImGui::TextDisabled(
             "Encoded bits are representation facts, not a standalone ABI sizeof/alignment.");
-    } else if (std::holds_alternative<IntegerVarintType>(definition)) {
+    } else if (((definition).kind() == lispb::schema::TypeDefinitionKind::integer_varint)) {
         if (detail::section("Analysis scale")) {
             if (draw_element_count()) {
                 ImGui::End();
@@ -3219,7 +3342,7 @@ void PlannerUi::draw_layout_panel() {
             ImGui::TextDisabled(
                 "Variable-length size is a range; expected size requires a value distribution.");
         }
-    } else if (std::holds_alternative<FixedPointType>(definition)) {
+    } else if (((definition).kind() == lispb::schema::TypeDefinitionKind::fixed_point)) {
         draw_fixed_point_bit_layout(*analysis_session_.results().fixed_point_analysis);
         if (detail::section("Analysis scale")) {
             if (draw_element_count()) {
@@ -3242,7 +3365,7 @@ void PlannerUi::draw_layout_panel() {
                                 "allocation size.");
             draw_diagnostics(analysis.diagnostics);
         }
-    } else if (std::holds_alternative<MiniFloatType>(definition)) {
+    } else if (((definition).kind() == lispb::schema::TypeDefinitionKind::mini_float)) {
         if (detail::section("Analysis scale")) {
             if (draw_element_count()) {
                 ImGui::End();
@@ -3271,7 +3394,7 @@ void PlannerUi::draw_layout_panel() {
                                 "allocation size.");
             draw_diagnostics(analysis.diagnostics);
         }
-    } else if (std::holds_alternative<OptionalSentinelType>(definition)) {
+    } else if (((definition).kind() == lispb::schema::TypeDefinitionKind::optional_sentinel)) {
         if (detail::section("Analysis scale")) {
             if (draw_element_count()) {
                 ImGui::End();
@@ -3294,7 +3417,7 @@ void PlannerUi::draw_layout_panel() {
                 "Encoded payload bits are not a standalone ABI sizeof or allocation size.");
             draw_diagnostics(analysis.diagnostics);
         }
-    } else if (std::holds_alternative<OptionalPresenceBitType>(definition)) {
+    } else if (((definition).kind() == lispb::schema::TypeDefinitionKind::optional_presence_bit)) {
         if (detail::section("Analysis scale")) {
             if (draw_element_count()) {
                 ImGui::End();
@@ -3347,9 +3470,8 @@ void PlannerUi::sync_variant_name() {
 
 void PlannerUi::create_variant_for_selected_schema() {
     auto const name{analysis_session_.inputs.selection.type.has_value()
-                        ? analysis_session_.inputs.workspace.types()
-                                  .type(*analysis_session_.inputs.selection.type)
-                                  .identity.name +
+                        ? text(analysis_session_.inputs.workspace.types().name(
+                              *analysis_session_.inputs.selection.type)) +
                               " experiment " + std::to_string(next_variant_number_++)
                         : "Experiment " + std::to_string(next_variant_number_++)};
     analysis_session_.inputs.workspace.create_variant(name);

@@ -1,37 +1,127 @@
+#include "test_utilities.h"
+
+#include <codegen/ast/indices.h>
+#include <codegen/schema.h>
+#include <codegen/schema/declaration_handle.h>
+#include <codegen/schema/enum_schemas.h>
+#include <codegen/schema/enumerator_schemas.h>
+#include <codegen/schema/fixed_point_rounding.h>
+#include <codegen/schema/fixed_point_schemas.h>
+#include <codegen/schema/indices.h>
+#include <codegen/schema/integer_scalar_schemas.h>
+#include <codegen/schema/integer_varint_encoding.h>
+#include <codegen/schema/integer_varint_schemas.h>
+#include <codegen/schema/linear_quantized_schemas.h>
+#include <codegen/schema/manifest.h>
+#include <codegen/schema/mini_float_schemas.h>
+#include <codegen/schema/module_handle.h>
+#include <codegen/schema/module_settings_store.h>
+#include <codegen/schema/normal_module_schemas.h>
+#include <codegen/schema/optional_presence_bit_schemas.h>
+#include <codegen/schema/optional_sentinel_schemas.h>
+#include <codegen/schema/packed_bit_order.h>
+#include <codegen/schema/packed_byte_order.h>
+#include <codegen/schema/packed_field_kind.h>
+#include <codegen/schema/packed_field_schemas.h>
+#include <codegen/schema/packed_integer_value.h>
+#include <codegen/schema/packed_named_code_schemas.h>
+#include <codegen/schema/packed_segment_id.h>
+#include <codegen/schema/packed_value_schemas.h>
+#include <codegen/schema/physical_type_form.h>
+#include <codegen/schema/quantization_clipping.h>
+#include <codegen/schema/record_member_schemas.h>
+#include <codegen/schema/record_schemas.h>
 #include <codegen/schema/schema_version.h>
+#include <codegen/schema/semantic_relation_kind.h>
+#include <codegen/schema/semantic_relation_schemas.h>
+#include <codegen/schema/semantic_relation_unit.h>
+#include <codegen/schema/soa_backend.h>
+#include <codegen/schema/soa_member_kind.h>
+#include <codegen/schema/soa_member_schemas.h>
+#include <codegen/schema/soa_schemas.h>
+#include <codegen/schema/tagged_union_alternative_schemas.h>
+#include <codegen/schema/tagged_union_schemas.h>
+#include <codegen/schema/type_refs.h>
+#include <codegen/schema/union_alternative_schemas.h>
+#include <codegen/schema/union_schemas.h>
 #include <codegen/source_loader.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/indices.h>
 #include <lispb/project.h>
+#include <lispb/project_loader.h>
+#include <lispb/schema/enum_types.h>
+#include <lispb/schema/external_types.h>
+#include <lispb/schema/fixed_point_types.h>
+#include <lispb/schema/indices.h>
+#include <lispb/schema/integer_scalar_types.h>
+#include <lispb/schema/integer_varint_types.h>
+#include <lispb/schema/linear_quantized_types.h>
+#include <lispb/schema/mini_float_types.h>
+#include <lispb/schema/optional_presence_bit_types.h>
+#include <lispb/schema/optional_sentinel_types.h>
+#include <lispb/schema/packed_fields.h>
+#include <lispb/schema/packed_segment_id.h>
+#include <lispb/schema/packed_types.h>
+#include <lispb/schema/record_members.h>
+#include <lispb/schema/record_types.h>
+#include <lispb/schema/soa_columns.h>
+#include <lispb/schema/soa_source_kind.h>
+#include <lispb/schema/soa_types.h>
+#include <lispb/schema/tagged_union_alternatives.h>
+#include <lispb/schema/tagged_union_types.h>
 #include <lispb/schema/type_graph.h>
+#include <lispb/schema/type_origin.h>
+#include <lispb/schema/union_alternatives.h>
+#include <lispb/schema/union_types.h>
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
+#include <optional>
+#include <ranges>
+#include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 namespace lispb::schema {
 namespace {
 
-auto production_graph() -> TypeGraph {
+template <typename Id>
+auto text(CompilerStorage const& storage, Id id) -> std::string_view {
+    return storage.strings.view(id);
+}
+template <typename Id>
+auto text(CompilerStorage const& storage, std::optional<Id> id) -> std::optional<std::string_view> {
+    return id ? std::optional{storage.strings.view(*id)} : std::nullopt;
+}
+
+auto production_graph(CompilerStorage& storage) -> TypeGraph {
     auto const project_root{
         std::filesystem::path{IOJ_CODEGEN_SOURCE_DIR}.parent_path().parent_path()};
-    auto const project{lispb::load_project(project_root / "lispb/project.lispb")};
-    auto const& target{std::get<lispb::CppSchemaTarget>(project.targets.at("sandbox-code"))};
+    auto const project{lispb::load_project(storage.syntax, project_root / "lispb/project.lispb")};
+    auto const target{*project.find_target("sandbox-code")};
+    auto const project_sources{project.sources(target)};
     std::vector<std::filesystem::path> sources;
-    sources.reserve(target.sources.size());
-    for (auto const& source : target.sources) {
+    sources.reserve(project_sources.size());
+    for (auto const& source : project_sources) {
         sources.push_back(project.root / source);
     }
-    auto const manifest{codegen::load_sources(project.root / target.types, sources)};
+    auto manifest{
+        lispb::codegen::load_sources(storage, project.root / project.types(target), sources)};
     return resolve_type_graph(manifest);
 }
 
 TEST(SemanticTypeGraph, SimulationModelCompositionUsesDeclaredNodesAndStrongScalarDomain) {
-    auto const graph{production_graph()};
-    auto const loadout{
-        graph.find_declared("native_player_flight_model_data", "FlightModelLoadout")};
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    auto const graph{production_graph(storage)};
+    auto const loadout{lispb::codegen::find_test_type(
+        graph, "native_player_flight_model_data", "FlightModelLoadout")};
     ASSERT_TRUE(loadout.has_value());
     auto current{*loadout};
     for (auto const& [member_name, expected] :
@@ -42,258 +132,875 @@ TEST(SemanticTypeGraph, SimulationModelCompositionUsesDeclaredNodesAndStrongScal
           std::pair{"manual", "TranslationChannelConfig"},
           std::pair{"response", "ResponseConfig"},
           std::pair{"second_order", "SecondOrderResponseConfig"}}) {
-        auto const& record{std::get<RecordType>(graph.type(current).definition)};
-        auto const member{std::ranges::find(record.members, member_name, &RecordMember::name)};
-        ASSERT_NE(member, record.members.end());
-        auto const next{member->semantic_type.type};
-        EXPECT_EQ(graph.type(next).identity.origin, TypeOrigin::declaration);
-        EXPECT_EQ(graph.type(next).identity.name, expected);
+        auto const& record{graph.definition(current)};
+        auto const member{std::ranges::find(
+            graph.definitions().records.members_of(record), member_name, [&](auto id) {
+                return text(storage,
+                            graph.definitions()
+                                .record_members.name[graph.definitions().record_members.index(id)]);
+            })};
+        ASSERT_NE(member, graph.definitions().records.members_of(record).end());
+        auto const next{graph.occurrences().type[graph.occurrences().index(
+            graph.definitions()
+                .record_members.semantic_type[graph.definitions().record_members.index(*member)])]};
+        EXPECT_EQ(graph.origin(next), TypeOrigin::declaration);
+        EXPECT_EQ(text(storage, graph.name(next)), expected);
         EXPECT_NE(std::ranges::find(graph.dependencies_of(current), next),
                   graph.dependencies_of(current).end());
         current = next;
     }
-    auto const& response{std::get<RecordType>(graph.type(current).definition)};
-    EXPECT_EQ(response.members[0].initializer, "3.f");
-    EXPECT_EQ(response.members[1].initializer, "0.5f");
-    EXPECT_EQ(graph.find_registered("laser_source"),
-              graph.find_declared("native_laser_source", "LaserSource"));
-    EXPECT_EQ(graph.find_registered("native_index_span"),
-              graph.find_declared("native_index_span", "IndexSpan"));
-    EXPECT_EQ(graph.find_registered("native_trace_hit"),
-              graph.find_declared("query_results", "TraceHit"));
-    auto const frame_index{graph.find_declared("entity_instance_handle", "EntityFrameIndex")};
+    auto const& response{graph.definition(current)};
+    EXPECT_EQ(
+        text(
+            storage,
+            graph.definitions().record_members.initializer[graph.definitions().record_members.index(
+                graph.definitions().records.members_of(response)[0])]),
+        "3.f");
+    EXPECT_EQ(
+        text(
+            storage,
+            graph.definitions().record_members.initializer[graph.definitions().record_members.index(
+                graph.definitions().records.members_of(response)[1])]),
+        "0.5f");
+    EXPECT_EQ(graph.find_registered(storage.strings.find("laser_source")),
+              lispb::codegen::find_test_type(graph, "native_laser_source", "LaserSource"));
+    EXPECT_EQ(graph.find_registered(storage.strings.find("native_index_span")),
+              lispb::codegen::find_test_type(graph, "native_index_span", "IndexSpan"));
+    EXPECT_EQ(graph.find_registered(storage.strings.find("native_trace_hit")),
+              lispb::codegen::find_test_type(graph, "query_results", "TraceHit"));
+    auto const frame_index{
+        lispb::codegen::find_test_type(graph, "entity_instance_handle", "EntityFrameIndex")};
     ASSERT_TRUE(frame_index.has_value());
-    auto const& integer{std::get<IntegerScalarType>(graph.type(*frame_index).definition)};
-    EXPECT_FALSE(integer.signedness);
-    EXPECT_EQ(integer.bit_width, 18U);
-    EXPECT_EQ(integer.minimum_value, codegen::PackedIntegerValue{0});
-    EXPECT_EQ(integer.maximum_value, codegen::PackedIntegerValue{262143});
-    EXPECT_FALSE(graph.find_registered("native_health_index").has_value());
+    auto const& integer{graph.definition(*frame_index)};
+    EXPECT_FALSE(
+        graph.definitions()
+            .integer_scalars.signedness[graph.definitions().integer_scalars.index(integer)]);
+    EXPECT_EQ(graph.definitions()
+                  .integer_scalars.bit_width[graph.definitions().integer_scalars.index(integer)],
+              18U);
+    EXPECT_EQ(
+        graph.definitions()
+            .integer_scalars.minimum_value[graph.definitions().integer_scalars.index(integer)],
+        lispb::codegen::PackedIntegerValue{0});
+    EXPECT_EQ(
+        graph.definitions()
+            .integer_scalars.maximum_value[graph.definitions().integer_scalars.index(integer)],
+        lispb::codegen::PackedIntegerValue{262143});
+    EXPECT_FALSE(graph.find_registered(storage.strings.find("native_health_index")).has_value());
     for (auto const& [module, name, column_name, registration] :
          {std::tuple{"native_trace_hits", "TraceHits", "hits", "native_trace_hit"}}) {
-        auto const owner{graph.find_declared(module, name)};
+        auto const owner{lispb::codegen::find_test_type(graph, module, name)};
         ASSERT_TRUE(owner.has_value()) << module;
-        auto const& soa{std::get<SoaType>(graph.type(*owner).definition)};
-        auto const column{std::ranges::find(soa.columns, column_name, &SoaColumn::name)};
-        ASSERT_NE(column, soa.columns.end());
-        EXPECT_EQ(column->semantic_type.type, *graph.find_registered(registration));
+        auto const& soa{graph.definition(*owner)};
+        auto const column{
+            std::ranges::find(graph.definitions().soas.columns_of(soa), column_name, [&](auto id) {
+                return text(storage,
+                            graph.definitions()
+                                .soa_columns.name[graph.definitions().soa_columns.index(id)]);
+            })};
+        ASSERT_NE(column, graph.definitions().soas.columns_of(soa).end());
+        EXPECT_EQ(
+            graph.occurrences().type[graph.occurrences().index(
+                graph.definitions()
+                    .soa_columns.semantic_type[graph.definitions().soa_columns.index(*column)])],
+            *graph.find_registered(storage.strings.find(registration)));
     }
 }
 
 TEST(SemanticTypeGraph, PreservesEntityTypeEnumSemantics) {
-    auto const graph{production_graph()};
-    auto const id{graph.find_declared("native_entity_type", "EntityType")};
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    auto const graph{production_graph(storage)};
+    auto const id{lispb::codegen::find_test_type(graph, "native_entity_type", "EntityType")};
     ASSERT_TRUE(id.has_value());
 
-    auto const& node{graph.type(*id)};
-    EXPECT_EQ(node.identity.namespace_name, "ioj::sim");
-    auto const* type{std::get_if<EnumType>(&node.definition)};
-    ASSERT_NE(type, nullptr);
-    ASSERT_TRUE(type->underlying_type.has_value());
-    EXPECT_EQ(graph.type(type->underlying_type->type).cpp_spelling, "std::uint8_t");
-    EXPECT_NE(std::ranges::find(graph.dependencies_of(*id), type->underlying_type->type),
-              graph.dependencies_of(*id).end());
-    EXPECT_FALSE(type->count.has_value());
-    EXPECT_TRUE(type->enum_array);
+    auto const& node{*id};
+    EXPECT_EQ(text(storage, graph.namespace_name(node)), "ioj::sim");
+    auto const type{
+        ((graph.definition(node)).kind() == lispb::schema::TypeDefinitionKind::enumeration
+             ? std::optional{graph.definition(node)}
+             : std::nullopt)};
+    ASSERT_TRUE(type.has_value());
+    ASSERT_TRUE(lispb::schema::is_valid(
+        graph.definitions().enums.underlying_type[graph.definitions().enums.index(*type)]));
+    EXPECT_EQ(text(storage,
+                   graph.cpp_spelling(graph.occurrences().type[graph.occurrences().index(
+                       graph.definitions()
+                           .enums.underlying_type[graph.definitions().enums.index(*type)])])),
+              "std::uint8_t");
+    EXPECT_NE(
+        std::ranges::find(graph.dependencies_of(*id),
+                          graph.occurrences().type[graph.occurrences().index(
+                              graph.definitions()
+                                  .enums.underlying_type[graph.definitions().enums.index(*type)])]),
+        graph.dependencies_of(*id).end());
+    EXPECT_FALSE(
+        graph.definitions().enums.count[graph.definitions().enums.index(*type)].has_value());
+    EXPECT_TRUE(graph.definitions().enums.enum_array[graph.definitions().enums.index(*type)]);
 
-    auto const player_ship{
-        std::ranges::find(type->enumerators, std::string{"PlayerShip"}, &Enumerator::name)};
-    ASSERT_NE(player_ship, type->enumerators.end());
-    EXPECT_EQ(player_ship->explicit_value, "0");
-    EXPECT_EQ(player_ship->display_name, "Player Ship");
-    EXPECT_EQ(player_ship->serialized_name, "player_ship");
+    auto const player_ship{std::ranges::find(
+        graph.enum_domains().values(
+            graph.definitions().enums.domain[graph.definitions().enums.index(*type)]),
+        std::string{"PlayerShip"},
+        [&](auto id) {
+            return text(
+                storage,
+                graph.declarations().enumerators.name[graph.declarations().enumerators.index(id)]);
+        })};
+    ASSERT_NE(player_ship,
+              graph.enum_domains()
+                  .values(graph.definitions().enums.domain[graph.definitions().enums.index(*type)])
+                  .end());
+    EXPECT_EQ(
+        text(storage,
+             graph.declarations()
+                 .enumerators.initializer[graph.declarations().enumerators.index(*player_ship)]),
+        "0");
+    EXPECT_EQ(
+        text(storage,
+             graph.declarations()
+                 .enumerators.display_name[graph.declarations().enumerators.index(*player_ship)]),
+        "Player Ship");
+    EXPECT_EQ(
+        text(
+            storage,
+            graph.declarations()
+                .enumerators.serialized_name[graph.declarations().enumerators.index(*player_ship)]),
+        "player_ship");
 
-    auto const count{std::ranges::find(type->enumerators, std::string{"COUNT"}, &Enumerator::name)};
-    EXPECT_EQ(count, type->enumerators.end());
+    auto const count{std::ranges::find(
+        graph.enum_domains().values(
+            graph.definitions().enums.domain[graph.definitions().enums.index(*type)]),
+        std::string{"COUNT"},
+        [&](auto id) {
+            return text(
+                storage,
+                graph.declarations().enumerators.name[graph.declarations().enumerators.index(id)]);
+        })};
+    EXPECT_EQ(count,
+              graph.enum_domains()
+                  .values(graph.definitions().enums.domain[graph.definitions().enums.index(*type)])
+                  .end());
 }
 
 TEST(SemanticTypeGraph, PreservesExplicitEnumSemanticWidth) {
-    codegen::Manifest const manifest{
-        .schema_version = codegen::manifest_schema_version,
-        .modules = {codegen::NormalModuleSchema{
-            .settings = codegen::ModuleSettings{.name = "states", .header = "States.h"},
-            .declarations = {codegen::EnumSchema{
-                .name = "State",
-                .underlying_type = codegen::TypeRef{"std::uint8_t"},
-                .values = {codegen::EnumeratorSchema{"Idle", "0"},
-                           codegen::EnumeratorSchema{
-                               .name = "Active", .initializer = "7", .sentinel = true}},
-                .bit_width = 3,
-                .signedness = false,
-            }}}},
-    };
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    lispb::codegen::Manifest manifest{
+        lispb::codegen::manifest_schema_version,
+        lispb::codegen::make_test_registry(context),
+        context.storage.declarations,
+        {[&] {
+            auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+            context.storage.declarations.normal_modules
+                .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                [&] {
+                    auto const new_module_settings_store{
+                        context.storage.declarations.module_settings_store.append()};
+                    context.storage.declarations.module_settings_store
+                        .name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.intern("states");
+                    context.storage.declarations.module_settings_store
+                        .header[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.add("States.h");
+                    return new_module_settings_store;
+                }();
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(
+                    new_normal_modules)] =
+                context.storage.declarations.range<lispb::codegen::DeclarationHandle>({[&] {
+                    auto const new_enums{context.storage.declarations.enums.append()};
+                    context.storage.declarations.enums
+                        .name[context.storage.declarations.enums.index(new_enums)] =
+                        context.storage.strings.intern("State");
+                    context.storage.declarations.enums
+                        .underlying_type[context.storage.declarations.enums.index(new_enums)] =
+                        [&] {
+                            auto const new_type_refs{
+                                context.storage.declarations.type_refs.append()};
+                            context.storage.declarations.type_refs
+                                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                                context.storage.strings.intern("std::uint8_t");
+                            return new_type_refs;
+                        }();
+                    context.storage.declarations.enums
+                        .values[context.storage.declarations.enums.index(new_enums)] =
+                        context.storage.declarations.range<lispb::codegen::EnumeratorId>(
+                            {[&] {
+                                 auto const new_enumerators{
+                                     context.storage.declarations.enumerators.append()};
+                                 context.storage.declarations.enumerators
+                                     .name[context.storage.declarations.enumerators.index(
+                                         new_enumerators)] = context.storage.strings.intern("Idle");
+                                 context.storage.declarations.enumerators
+                                     .initializer[context.storage.declarations.enumerators.index(
+                                         new_enumerators)] = context.storage.strings.add("0");
+                                 return new_enumerators;
+                             }(),
+                             [&] {
+                                 auto const new_enumerators{
+                                     context.storage.declarations.enumerators.append()};
+                                 context.storage.declarations.enumerators
+                                     .name[context.storage.declarations.enumerators.index(
+                                         new_enumerators)] =
+                                     context.storage.strings.intern("Active");
+                                 context.storage.declarations.enumerators
+                                     .initializer[context.storage.declarations.enumerators.index(
+                                         new_enumerators)] = context.storage.strings.add("7");
+                                 context.storage.declarations.enumerators
+                                     .sentinel[context.storage.declarations.enumerators.index(
+                                         new_enumerators)] = true;
+                                 return new_enumerators;
+                             }()});
+                    context.storage.declarations.enums
+                        .bit_width[context.storage.declarations.enums.index(new_enums)] = 3;
+                    context.storage.declarations.enums
+                        .signedness[context.storage.declarations.enums.index(new_enums)] =
+                        lispb::schema::EnumSignedness::unsigned_;
+                    return new_enums;
+                }()});
+            return new_normal_modules;
+        }()}};
 
     auto const graph{resolve_type_graph(manifest)};
-    auto const state{graph.find_declared("states", "State")};
+    auto const state{lispb::codegen::find_test_type(graph, "states", "State")};
     ASSERT_TRUE(state.has_value());
-    auto const& type{std::get<EnumType>(graph.type(*state).definition)};
-    EXPECT_EQ(type.bit_width, 3);
-    EXPECT_EQ(type.signedness, false);
-    ASSERT_EQ(type.enumerators.size(), 2U);
-    EXPECT_FALSE(type.enumerators[0].sentinel);
-    EXPECT_TRUE(type.enumerators[1].sentinel);
-    EXPECT_FALSE(type.enumerators[1].count_sentinel);
+    auto const& type{graph.definition(*state)};
+    EXPECT_EQ(graph.definitions().enums.bit_width[graph.definitions().enums.index(type)], 3);
+    EXPECT_EQ(graph.definitions().enums.signedness[graph.definitions().enums.index(type)],
+              EnumSignedness::unsigned_);
+    ASSERT_EQ(graph.enum_domains()
+                  .values(graph.definitions().enums.domain[graph.definitions().enums.index(type)])
+                  .size(),
+              2U);
+    EXPECT_FALSE(graph.declarations().enumerators.sentinel[graph.declarations().enumerators.index(
+        graph.enum_domains().values(
+            graph.definitions().enums.domain[graph.definitions().enums.index(type)])[0])]);
+    EXPECT_TRUE(graph.declarations().enumerators.sentinel[graph.declarations().enumerators.index(
+        graph.enum_domains().values(
+            graph.definitions().enums.domain[graph.definitions().enums.index(type)])[1])]);
+    EXPECT_NE(graph.enum_domains().count_value[graph.enum_domains().index(
+                  graph.definitions().enums.domain[graph.definitions().enums.index(type)])],
+              graph.enum_domains().values(
+                  graph.definitions().enums.domain[graph.definitions().enums.index(type)])[1]);
 }
 
 TEST(SemanticTypeGraph, KeepsDerivedEnumBackingOutOfSemanticDependencies) {
-    codegen::Manifest const manifest{
-        .schema_version = codegen::manifest_schema_version,
-        .modules = {codegen::NormalModuleSchema{
-            .settings = codegen::ModuleSettings{.name = "states", .header = "States.h"},
-            .declarations = {codegen::EnumSchema{
-                .name = "State",
-                .underlying_type = std::nullopt,
-                .values = {codegen::EnumeratorSchema{"Idle", "0"},
-                           codegen::EnumeratorSchema{"Active", "7"}},
-                .bit_width = 3,
-                .signedness = false,
-            }}}},
-    };
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    lispb::codegen::Manifest manifest{
+        lispb::codegen::manifest_schema_version,
+        lispb::codegen::make_test_registry(context),
+        context.storage.declarations,
+        {[&] {
+            auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+            context.storage.declarations.normal_modules
+                .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                [&] {
+                    auto const new_module_settings_store{
+                        context.storage.declarations.module_settings_store.append()};
+                    context.storage.declarations.module_settings_store
+                        .name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.intern("states");
+                    context.storage.declarations.module_settings_store
+                        .header[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.add("States.h");
+                    return new_module_settings_store;
+                }();
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(
+                    new_normal_modules)] =
+                context.storage.declarations.range<lispb::codegen::DeclarationHandle>({[&] {
+                    auto const new_enums{context.storage.declarations.enums.append()};
+                    context.storage.declarations.enums
+                        .name[context.storage.declarations.enums.index(new_enums)] =
+                        context.storage.strings.intern("State");
+                    context.storage.declarations.enums
+                        .underlying_type[context.storage.declarations.enums.index(new_enums)] =
+                        std::nullopt;
+                    context.storage.declarations.enums
+                        .values[context.storage.declarations.enums.index(new_enums)] =
+                        context.storage.declarations.range<lispb::codegen::EnumeratorId>(
+                            {[&] {
+                                 auto const new_enumerators{
+                                     context.storage.declarations.enumerators.append()};
+                                 context.storage.declarations.enumerators
+                                     .name[context.storage.declarations.enumerators.index(
+                                         new_enumerators)] = context.storage.strings.intern("Idle");
+                                 context.storage.declarations.enumerators
+                                     .initializer[context.storage.declarations.enumerators.index(
+                                         new_enumerators)] = context.storage.strings.add("0");
+                                 return new_enumerators;
+                             }(),
+                             [&] {
+                                 auto const new_enumerators{
+                                     context.storage.declarations.enumerators.append()};
+                                 context.storage.declarations.enumerators
+                                     .name[context.storage.declarations.enumerators.index(
+                                         new_enumerators)] =
+                                     context.storage.strings.intern("Active");
+                                 context.storage.declarations.enumerators
+                                     .initializer[context.storage.declarations.enumerators.index(
+                                         new_enumerators)] = context.storage.strings.add("7");
+                                 return new_enumerators;
+                             }()});
+                    context.storage.declarations.enums
+                        .bit_width[context.storage.declarations.enums.index(new_enums)] = 3;
+                    context.storage.declarations.enums
+                        .signedness[context.storage.declarations.enums.index(new_enums)] =
+                        lispb::schema::EnumSignedness::unsigned_;
+                    return new_enums;
+                }()});
+            return new_normal_modules;
+        }()}};
 
     auto const graph{resolve_type_graph(manifest)};
-    auto const state{graph.find_declared("states", "State")};
+    auto const state{lispb::codegen::find_test_type(graph, "states", "State")};
     ASSERT_TRUE(state.has_value());
-    auto const& type{std::get<EnumType>(graph.type(*state).definition)};
-    EXPECT_FALSE(type.underlying_type.has_value());
+    auto const& type{graph.definition(*state)};
+    EXPECT_FALSE(lispb::schema::is_valid(
+        graph.definitions().enums.underlying_type[graph.definitions().enums.index(type)]));
     EXPECT_TRUE(graph.dependencies_of(*state).empty());
 }
 
 TEST(SemanticTypeGraph, ResolvesStandaloneIntegerScalarWithoutPhysicalFacts) {
-    codegen::Manifest const manifest{
-        .schema_version = codegen::manifest_schema_version,
-        .modules = {
-            codegen::NormalModuleSchema{
-                .settings = codegen::ModuleSettings{.name = "semantic_values",
-                                                    .header = "SemanticValues.h",
-                                                    .namespace_name = "project"},
-                .declarations = {
-                    codegen::IntegerScalarSchema{
-                        .name = "DamageReason",
-                        .signedness = false,
-                        .minimum_value = 0,
-                        .maximum_value = 10,
-                        .bit_width = std::nullopt,
-                        .named_codes = {{.name = "Unknown", .value = 0, .sentinel = false},
-                                        {.name = "Invalid", .value = 15, .sentinel = true}},
-                        .relationship =
-                            codegen::SemanticRelationSchema{
-                                .kind = codegen::SemanticRelationKind::offset_into,
-                                .target = codegen::TypeRef{"project::EntityTable"},
-                                .unit = codegen::SemanticRelationUnit::bytes}},
-                    codegen::IntegerScalarSchema{.name = "EntityTable",
-                                                 .signedness = false,
-                                                 .minimum_value = 0,
-                                                 .maximum_value = 1'023,
-                                                 .bit_width = 10,
-                                                 .named_codes = {}}}}}};
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    lispb::codegen::Manifest manifest{
+        lispb::codegen::manifest_schema_version,
+        lispb::codegen::make_test_registry(context),
+        context.storage.declarations,
+        {[&] {
+            auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+            context.storage.declarations.normal_modules
+                .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                [&] {
+                    auto const new_module_settings_store{
+                        context.storage.declarations.module_settings_store.append()};
+                    context.storage.declarations.module_settings_store
+                        .name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] =
+                        context.storage.strings.intern("semantic_values");
+                    context.storage.declarations.module_settings_store
+                        .header[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] =
+                        context.storage.strings.add("SemanticValues.h");
+                    context.storage.declarations.module_settings_store
+                        .namespace_name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.intern("project");
+                    return new_module_settings_store;
+                }();
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(
+                    new_normal_modules)] =
+                context.storage.declarations.range<lispb::codegen::DeclarationHandle>(
+                    {[&] {
+                         auto const new_integer_scalars{
+                             context.storage.declarations.integer_scalars.append()};
+                         context.storage.declarations.integer_scalars
+                             .name[context.storage.declarations.integer_scalars.index(
+                                 new_integer_scalars)] =
+                             context.storage.strings.intern("DamageReason");
+                         context.storage.declarations.integer_scalars
+                             .signedness[context.storage.declarations.integer_scalars.index(
+                                 new_integer_scalars)] = false;
+                         context.storage.declarations.integer_scalars
+                             .minimum_value[context.storage.declarations.integer_scalars.index(
+                                 new_integer_scalars)] = 0;
+                         context.storage.declarations.integer_scalars
+                             .maximum_value[context.storage.declarations.integer_scalars.index(
+                                 new_integer_scalars)] = 10;
+                         context.storage.declarations.integer_scalars
+                             .bit_width[context.storage.declarations.integer_scalars.index(
+                                 new_integer_scalars)] = std::nullopt;
+                         context.storage.declarations.integer_scalars
+                             .named_codes[context.storage.declarations.integer_scalars.index(
+                                 new_integer_scalars)] =
+                             context.storage.declarations.range<lispb::codegen::PackedNamedCodeId>(
+                                 {[&] {
+                                      auto const new_packed_named_codes{
+                                          context.storage.declarations.packed_named_codes.append()};
+                                      context.storage.declarations.packed_named_codes
+                                          .name[context.storage.declarations.packed_named_codes
+                                                    .index(new_packed_named_codes)] =
+                                          context.storage.strings.intern("Unknown");
+                                      context.storage.declarations.packed_named_codes
+                                          .value[context.storage.declarations.packed_named_codes
+                                                     .index(new_packed_named_codes)] = 0;
+                                      context.storage.declarations.packed_named_codes
+                                          .sentinel[context.storage.declarations.packed_named_codes
+                                                        .index(new_packed_named_codes)] = false;
+                                      return new_packed_named_codes;
+                                  }(),
+                                  [&] {
+                                      auto const new_packed_named_codes{
+                                          context.storage.declarations.packed_named_codes.append()};
+                                      context.storage.declarations.packed_named_codes
+                                          .name[context.storage.declarations.packed_named_codes
+                                                    .index(new_packed_named_codes)] =
+                                          context.storage.strings.intern("Invalid");
+                                      context.storage.declarations.packed_named_codes
+                                          .value[context.storage.declarations.packed_named_codes
+                                                     .index(new_packed_named_codes)] = 15;
+                                      context.storage.declarations.packed_named_codes
+                                          .sentinel[context.storage.declarations.packed_named_codes
+                                                        .index(new_packed_named_codes)] = true;
+                                      return new_packed_named_codes;
+                                  }()});
+                         context.storage.declarations.integer_scalars
+                             .relationship[context.storage.declarations.integer_scalars.index(
+                                 new_integer_scalars)] = [&] {
+                             auto const new_semantic_relations{
+                                 context.storage.declarations.semantic_relations.append()};
+                             context.storage.declarations.semantic_relations
+                                 .kind[context.storage.declarations.semantic_relations.index(
+                                     new_semantic_relations)] =
+                                 lispb::codegen::SemanticRelationKind::offset_into;
+                             context.storage.declarations.semantic_relations
+                                 .target[context.storage.declarations.semantic_relations.index(
+                                     new_semantic_relations)] = [&] {
+                                 auto const new_type_refs{
+                                     context.storage.declarations.type_refs.append()};
+                                 context.storage.declarations.type_refs
+                                     .name[context.storage.declarations.type_refs.index(
+                                         new_type_refs)] =
+                                     context.storage.strings.intern("project::EntityTable");
+                                 return new_type_refs;
+                             }();
+                             context.storage.declarations.semantic_relations
+                                 .unit[context.storage.declarations.semantic_relations.index(
+                                     new_semantic_relations)] =
+                                 lispb::codegen::SemanticRelationUnit::bytes;
+                             return new_semantic_relations;
+                         }();
+                         return new_integer_scalars;
+                     }(),
+                     [&] {
+                         auto const new_integer_scalars{
+                             context.storage.declarations.integer_scalars.append()};
+                         context.storage.declarations.integer_scalars
+                             .name[context.storage.declarations.integer_scalars.index(
+                                 new_integer_scalars)] =
+                             context.storage.strings.intern("EntityTable");
+                         context.storage.declarations.integer_scalars
+                             .signedness[context.storage.declarations.integer_scalars.index(
+                                 new_integer_scalars)] = false;
+                         context.storage.declarations.integer_scalars
+                             .minimum_value[context.storage.declarations.integer_scalars.index(
+                                 new_integer_scalars)] = 0;
+                         context.storage.declarations.integer_scalars
+                             .maximum_value[context.storage.declarations.integer_scalars.index(
+                                 new_integer_scalars)] = 1'023;
+                         context.storage.declarations.integer_scalars
+                             .bit_width[context.storage.declarations.integer_scalars.index(
+                                 new_integer_scalars)] = 10;
+                         context.storage.declarations.integer_scalars
+                             .named_codes[context.storage.declarations.integer_scalars.index(
+                                 new_integer_scalars)] = {};
+                         return new_integer_scalars;
+                     }()});
+            return new_normal_modules;
+        }()}};
 
     auto const graph{resolve_type_graph(manifest)};
-    auto const scalar_id{graph.find_declared("semantic_values", "DamageReason")};
+    auto const scalar_id{lispb::codegen::find_test_type(graph, "semantic_values", "DamageReason")};
     ASSERT_TRUE(scalar_id.has_value());
-    auto const& node{graph.type(*scalar_id)};
-    EXPECT_EQ(node.identity.namespace_name, "project");
-    auto const* scalar{std::get_if<IntegerScalarType>(&node.definition)};
-    ASSERT_NE(scalar, nullptr);
-    EXPECT_FALSE(scalar->signedness);
-    EXPECT_EQ(scalar->minimum_value, codegen::PackedIntegerValue{0});
-    EXPECT_EQ(scalar->maximum_value, codegen::PackedIntegerValue{10});
-    EXPECT_TRUE(scalar->bit_width_auto);
-    EXPECT_EQ(scalar->bit_width, 4U);
-    ASSERT_EQ(scalar->named_codes.size(), 2U);
-    EXPECT_TRUE(scalar->named_codes[1].sentinel);
-    ASSERT_TRUE(scalar->relationship.has_value());
-    EXPECT_EQ(scalar->relationship->kind, codegen::SemanticRelationKind::offset_into);
-    EXPECT_EQ(scalar->relationship->unit, codegen::SemanticRelationUnit::bytes);
-    auto const target{graph.find_declared("semantic_values", "EntityTable")};
+    auto const& node{*scalar_id};
+    EXPECT_EQ(text(storage, graph.namespace_name(node)), "project");
+    auto const scalar{graph.definition(node).kind() == TypeDefinitionKind::integer_scalar
+                          ? std::optional{graph.definition(node)}
+                          : std::nullopt};
+    ASSERT_TRUE(scalar.has_value());
+    EXPECT_FALSE(
+        graph.definitions()
+            .integer_scalars.signedness[graph.definitions().integer_scalars.index(*scalar)]);
+    EXPECT_EQ(
+        graph.definitions()
+            .integer_scalars.minimum_value[graph.definitions().integer_scalars.index(*scalar)],
+        lispb::codegen::PackedIntegerValue{0});
+    EXPECT_EQ(
+        graph.definitions()
+            .integer_scalars.maximum_value[graph.definitions().integer_scalars.index(*scalar)],
+        lispb::codegen::PackedIntegerValue{10});
+    EXPECT_TRUE(
+        graph.definitions()
+            .integer_scalars.bit_width_auto[graph.definitions().integer_scalars.index(*scalar)]);
+    EXPECT_EQ(graph.definitions()
+                  .integer_scalars.bit_width[graph.definitions().integer_scalars.index(*scalar)],
+              4U);
+    ASSERT_EQ(graph.definitions()
+                  .integer_scalars.named_codes[graph.definitions().integer_scalars.index(*scalar)]
+                  .size(),
+              2U);
+    EXPECT_TRUE(
+        storage.declarations.packed_named_codes
+            .sentinel[storage.declarations.packed_named_codes.index(storage.declarations.items(
+                graph.definitions().integer_scalars.named_codes
+                    [graph.definitions().integer_scalars.index(*scalar)])[1])]);
+    ASSERT_TRUE(lispb::schema::is_valid(
+        graph.definitions()
+            .integer_scalars.relationship[graph.definitions().integer_scalars.index(*scalar)]));
+    EXPECT_EQ(
+        graph.relationships().kind[graph.relationships().index(
+            graph.definitions()
+                .integer_scalars.relationship[graph.definitions().integer_scalars.index(*scalar)])],
+        lispb::codegen::SemanticRelationKind::offset_into);
+    EXPECT_EQ(
+        graph.relationships().unit[graph.relationships().index(
+            graph.definitions()
+                .integer_scalars.relationship[graph.definitions().integer_scalars.index(*scalar)])],
+        lispb::codegen::SemanticRelationUnit::bytes);
+    auto const target{lispb::codegen::find_test_type(graph, "semantic_values", "EntityTable")};
     ASSERT_TRUE(target.has_value());
-    EXPECT_EQ(scalar->relationship->target.type, *target);
-    ASSERT_EQ(node.dependencies.size(), 1U);
-    EXPECT_EQ(node.dependencies.front(), *target);
-    ASSERT_EQ(graph.type(*target).users.size(), 1U);
-    EXPECT_EQ(graph.type(*target).users.front(), *scalar_id);
+    EXPECT_EQ(graph.occurrences().type[graph.occurrences().index(
+                  graph.relationships().target[graph.relationships().index(
+                      graph.definitions().integer_scalars.relationship
+                          [graph.definitions().integer_scalars.index(*scalar)])])],
+              *target);
+    ASSERT_EQ(graph.dependencies_of(*scalar_id).size(), 1U);
+    EXPECT_EQ(graph.dependencies_of(*scalar_id).front(), *target);
+    ASSERT_EQ(graph.users_of(*target).size(), 1U);
+    EXPECT_EQ(graph.users_of(*target).front(), *scalar_id);
 }
 
 TEST(SemanticTypeGraph, RejectsIntegerScalarRelationshipToExternalLeaf) {
-    codegen::Manifest const manifest{
-        .schema_version = codegen::manifest_schema_version,
-        .types = {{"external_table",
-                   codegen::RegisteredTypeSchema{
-                       .cpp_type = codegen::CppType{"project::ExternalTable", "ExternalTable.h"}}}},
-        .modules = {codegen::NormalModuleSchema{
-            .settings = codegen::ModuleSettings{.name = "semantic_values",
-                                                .header = "SemanticValues.h",
-                                                .namespace_name = "project"},
-            .declarations = {
-                codegen::IntegerScalarSchema{.name = "EntityIndex",
-                                             .signedness = false,
-                                             .minimum_value = 0,
-                                             .maximum_value = 1'023,
-                                             .bit_width = 10,
-                                             .named_codes = {},
-                                             .relationship = codegen::SemanticRelationSchema{
-                                                 .kind = codegen::SemanticRelationKind::index_into,
-                                                 .target = codegen::TypeRef{"@external_table"},
-                                                 .unit = std::nullopt}}}}}};
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    lispb::codegen::Manifest manifest{
+        lispb::codegen::manifest_schema_version,
+        lispb::codegen::make_test_registry(
+            context,
+            {{"external_table",
+              storage.cpp_types.add(
+                  "project::ExternalTable",
+                  {storage.cpp_types.dependency("project::ExternalTable", "ExternalTable.h")})}}),
+        context.storage.declarations,
+        {[&] {
+            auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+            context.storage.declarations.normal_modules
+                .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                [&] {
+                    auto const new_module_settings_store{
+                        context.storage.declarations.module_settings_store.append()};
+                    context.storage.declarations.module_settings_store
+                        .name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] =
+                        context.storage.strings.intern("semantic_values");
+                    context.storage.declarations.module_settings_store
+                        .header[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] =
+                        context.storage.strings.add("SemanticValues.h");
+                    context.storage.declarations.module_settings_store
+                        .namespace_name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.intern("project");
+                    return new_module_settings_store;
+                }();
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(
+                    new_normal_modules)] =
+                context.storage.declarations.range<lispb::codegen::DeclarationHandle>({[&] {
+                    auto const new_integer_scalars{
+                        context.storage.declarations.integer_scalars.append()};
+                    context.storage.declarations.integer_scalars
+                        .name[context.storage.declarations.integer_scalars.index(
+                            new_integer_scalars)] = context.storage.strings.intern("EntityIndex");
+                    context.storage.declarations.integer_scalars
+                        .signedness[context.storage.declarations.integer_scalars.index(
+                            new_integer_scalars)] = false;
+                    context.storage.declarations.integer_scalars
+                        .minimum_value[context.storage.declarations.integer_scalars.index(
+                            new_integer_scalars)] = 0;
+                    context.storage.declarations.integer_scalars
+                        .maximum_value[context.storage.declarations.integer_scalars.index(
+                            new_integer_scalars)] = 1'023;
+                    context.storage.declarations.integer_scalars
+                        .bit_width[context.storage.declarations.integer_scalars.index(
+                            new_integer_scalars)] = 10;
+                    context.storage.declarations.integer_scalars
+                        .named_codes[context.storage.declarations.integer_scalars.index(
+                            new_integer_scalars)] = {};
+                    context.storage.declarations.integer_scalars
+                        .relationship[context.storage.declarations.integer_scalars.index(
+                            new_integer_scalars)] = [&] {
+                        auto const new_semantic_relations{
+                            context.storage.declarations.semantic_relations.append()};
+                        context.storage.declarations.semantic_relations
+                            .kind[context.storage.declarations.semantic_relations.index(
+                                new_semantic_relations)] =
+                            lispb::codegen::SemanticRelationKind::index_into;
+                        context.storage.declarations.semantic_relations
+                            .target[context.storage.declarations.semantic_relations.index(
+                                new_semantic_relations)] = [&] {
+                            auto const new_type_refs{
+                                context.storage.declarations.type_refs.append()};
+                            context.storage.declarations.type_refs
+                                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                                context.storage.strings.intern("@external_table");
+                            return new_type_refs;
+                        }();
+                        context.storage.declarations.semantic_relations
+                            .unit[context.storage.declarations.semantic_relations.index(
+                                new_semantic_relations)] = std::nullopt;
+                        return new_semantic_relations;
+                    }();
+                    return new_integer_scalars;
+                }()});
+            return new_normal_modules;
+        }()}};
 
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 }
 
 TEST(SemanticTypeGraph, ResolvesPhysicalRepresentationsAndDependencies) {
-    codegen::Manifest const manifest{
-        .schema_version = codegen::manifest_schema_version,
-        .modules =
-            {codegen::NormalModuleSchema{
-                 .settings = codegen::ModuleSettings{.name = "semantic_values",
-                                                     .header = "SemanticValues.h",
-                                                     .namespace_name = "project"},
-                 .declarations = {codegen::IntegerScalarSchema{
-                     .name = "Health",
-                     .signedness = false,
-                     .minimum_value = 0,
-                     .maximum_value = 1000,
-                     .bit_width = std::nullopt,
-                     .named_codes = {{.name = "Invalid", .value = 1023, .sentinel = true}}}}},
-             codegen::NormalModuleSchema{
-                 .settings = codegen::ModuleSettings{.name = "representations",
-                                                     .header = "Representations.h",
-                                                     .namespace_name = "project"},
-                 .declarations =
-                     {codegen::LinearQuantizedSchema{.name = "HealthQ8",
-                                                     .source = codegen::TypeRef{"project::Health"},
-                                                     .bit_width = 8,
-                                                     .reserved_codes = 1,
-                                                     .clipping =
-                                                         codegen::QuantizationClipping::clamp},
-                      codegen::IntegerVarintSchema{
-                          .name = "HealthVarint",
-                          .source = codegen::TypeRef{"project::Health"},
-                          .encoding = codegen::IntegerVarintEncoding::unsigned_varint},
-                      codegen::FixedPointSchema{.name = "VelocityQ12_4",
-                                                .signedness = true,
-                                                .total_bits = 16,
-                                                .fractional_bits = 4,
-                                                .rounding =
-                                                    codegen::FixedPointRounding::toward_zero},
-                      codegen::OptionalSentinelSchema{.name = "OptionalHealth",
-                                                      .source = codegen::TypeRef{"project::Health"},
-                                                      .sentinel = "Invalid"},
-                      codegen::OptionalPresenceBitSchema{
-                          .name = "PresentHealth", .source = codegen::TypeRef{"project::Health"}},
-                      codegen::MiniFloatSchema{.name = "CompactFloat",
-                                               .sign_bits = 1,
-                                               .exponent_bits = 5,
-                                               .significand_bits = 10,
-                                               .exponent_bias = 15}}}},
-    };
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    lispb::codegen::Manifest manifest{
+        lispb::codegen::manifest_schema_version,
+        lispb::codegen::make_test_registry(context),
+        context.storage.declarations,
+        {[&] {
+             auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+             context.storage.declarations.normal_modules
+                 .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                 [&] {
+                     auto const new_module_settings_store{
+                         context.storage.declarations.module_settings_store.append()};
+                     context.storage.declarations.module_settings_store
+                         .name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("semantic_values");
+                     context.storage.declarations.module_settings_store
+                         .header[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] =
+                         context.storage.strings.add("SemanticValues.h");
+                     context.storage.declarations.module_settings_store
+                         .namespace_name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("project");
+                     return new_module_settings_store;
+                 }();
+             context.storage.declarations.normal_modules
+                 .declarations[context.storage.declarations.normal_modules.index(
+                     new_normal_modules)] =
+                 context.storage.declarations.range<lispb::codegen::DeclarationHandle>({[&] {
+                     auto const new_integer_scalars{
+                         context.storage.declarations.integer_scalars.append()};
+                     context.storage.declarations.integer_scalars
+                         .name[context.storage.declarations.integer_scalars.index(
+                             new_integer_scalars)] = context.storage.strings.intern("Health");
+                     context.storage.declarations.integer_scalars
+                         .signedness[context.storage.declarations.integer_scalars.index(
+                             new_integer_scalars)] = false;
+                     context.storage.declarations.integer_scalars
+                         .minimum_value[context.storage.declarations.integer_scalars.index(
+                             new_integer_scalars)] = 0;
+                     context.storage.declarations.integer_scalars
+                         .maximum_value[context.storage.declarations.integer_scalars.index(
+                             new_integer_scalars)] = 1000;
+                     context.storage.declarations.integer_scalars
+                         .bit_width[context.storage.declarations.integer_scalars.index(
+                             new_integer_scalars)] = std::nullopt;
+                     context.storage.declarations.integer_scalars
+                         .named_codes[context.storage.declarations.integer_scalars.index(
+                             new_integer_scalars)] =
+                         context.storage.declarations.range<lispb::codegen::PackedNamedCodeId>(
+                             {[&] {
+                                 auto const new_packed_named_codes{
+                                     context.storage.declarations.packed_named_codes.append()};
+                                 context.storage.declarations.packed_named_codes
+                                     .name[context.storage.declarations.packed_named_codes.index(
+                                         new_packed_named_codes)] =
+                                     context.storage.strings.intern("Invalid");
+                                 context.storage.declarations.packed_named_codes
+                                     .value[context.storage.declarations.packed_named_codes.index(
+                                         new_packed_named_codes)] = 1023;
+                                 context.storage.declarations.packed_named_codes
+                                     .sentinel[context.storage.declarations.packed_named_codes
+                                                   .index(new_packed_named_codes)] = true;
+                                 return new_packed_named_codes;
+                             }()});
+                     return new_integer_scalars;
+                 }()});
+             return new_normal_modules;
+         }(),
+         [&] {
+             auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+             context.storage.declarations.normal_modules
+                 .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                 [&] {
+                     auto const new_module_settings_store{
+                         context.storage.declarations.module_settings_store.append()};
+                     context.storage.declarations.module_settings_store
+                         .name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("representations");
+                     context.storage.declarations.module_settings_store
+                         .header[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] =
+                         context.storage.strings.add("Representations.h");
+                     context.storage.declarations.module_settings_store
+                         .namespace_name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("project");
+                     return new_module_settings_store;
+                 }();
+             context.storage.declarations.normal_modules
+                 .declarations[context.storage.declarations.normal_modules.index(
+                     new_normal_modules)] =
+                 context.storage.declarations.range<lispb::codegen::DeclarationHandle>(
+                     {[&] {
+                          auto const new_linear_quantizeds{
+                              context.storage.declarations.linear_quantizeds.append()};
+                          context.storage.declarations.linear_quantizeds
+                              .name[context.storage.declarations.linear_quantizeds.index(
+                                  new_linear_quantizeds)] =
+                              context.storage.strings.intern("HealthQ8");
+                          context.storage.declarations.linear_quantizeds
+                              .source[context.storage.declarations.linear_quantizeds.index(
+                                  new_linear_quantizeds)] = [&] {
+                              auto const new_type_refs{
+                                  context.storage.declarations.type_refs.append()};
+                              context.storage.declarations.type_refs
+                                  .name[context.storage.declarations.type_refs.index(
+                                      new_type_refs)] =
+                                  context.storage.strings.intern("project::Health");
+                              return new_type_refs;
+                          }();
+                          context.storage.declarations.linear_quantizeds
+                              .bit_width[context.storage.declarations.linear_quantizeds.index(
+                                  new_linear_quantizeds)] = 8;
+                          context.storage.declarations.linear_quantizeds
+                              .reserved_codes[context.storage.declarations.linear_quantizeds.index(
+                                  new_linear_quantizeds)] = 1;
+                          context.storage.declarations.linear_quantizeds
+                              .clipping[context.storage.declarations.linear_quantizeds.index(
+                                  new_linear_quantizeds)] =
+                              lispb::codegen::QuantizationClipping::clamp;
+                          return new_linear_quantizeds;
+                      }(),
+                      [&] {
+                          auto const new_integer_varints{
+                              context.storage.declarations.integer_varints.append()};
+                          context.storage.declarations.integer_varints
+                              .name[context.storage.declarations.integer_varints.index(
+                                  new_integer_varints)] =
+                              context.storage.strings.intern("HealthVarint");
+                          context.storage.declarations.integer_varints
+                              .source[context.storage.declarations.integer_varints.index(
+                                  new_integer_varints)] = [&] {
+                              auto const new_type_refs{
+                                  context.storage.declarations.type_refs.append()};
+                              context.storage.declarations.type_refs
+                                  .name[context.storage.declarations.type_refs.index(
+                                      new_type_refs)] =
+                                  context.storage.strings.intern("project::Health");
+                              return new_type_refs;
+                          }();
+                          context.storage.declarations.integer_varints
+                              .encoding[context.storage.declarations.integer_varints.index(
+                                  new_integer_varints)] =
+                              lispb::codegen::IntegerVarintEncoding::unsigned_varint;
+                          return new_integer_varints;
+                      }(),
+                      [&] {
+                          auto const new_fixed_points{
+                              context.storage.declarations.fixed_points.append()};
+                          context.storage.declarations.fixed_points
+                              .name[context.storage.declarations.fixed_points.index(
+                                  new_fixed_points)] =
+                              context.storage.strings.intern("VelocityQ12_4");
+                          context.storage.declarations.fixed_points
+                              .signedness[context.storage.declarations.fixed_points.index(
+                                  new_fixed_points)] = true;
+                          context.storage.declarations.fixed_points
+                              .total_bits[context.storage.declarations.fixed_points.index(
+                                  new_fixed_points)] = 16;
+                          context.storage.declarations.fixed_points
+                              .fractional_bits[context.storage.declarations.fixed_points.index(
+                                  new_fixed_points)] = 4;
+                          context.storage.declarations.fixed_points
+                              .rounding[context.storage.declarations.fixed_points.index(
+                                  new_fixed_points)] =
+                              lispb::codegen::FixedPointRounding::toward_zero;
+                          return new_fixed_points;
+                      }(),
+                      [&] {
+                          auto const new_optional_sentinels{
+                              context.storage.declarations.optional_sentinels.append()};
+                          context.storage.declarations.optional_sentinels
+                              .name[context.storage.declarations.optional_sentinels.index(
+                                  new_optional_sentinels)] =
+                              context.storage.strings.intern("OptionalHealth");
+                          context.storage.declarations.optional_sentinels
+                              .source[context.storage.declarations.optional_sentinels.index(
+                                  new_optional_sentinels)] = [&] {
+                              auto const new_type_refs{
+                                  context.storage.declarations.type_refs.append()};
+                              context.storage.declarations.type_refs
+                                  .name[context.storage.declarations.type_refs.index(
+                                      new_type_refs)] =
+                                  context.storage.strings.intern("project::Health");
+                              return new_type_refs;
+                          }();
+                          context.storage.declarations.optional_sentinels
+                              .sentinel[context.storage.declarations.optional_sentinels.index(
+                                  new_optional_sentinels)] =
+                              context.storage.strings.intern("Invalid");
+                          return new_optional_sentinels;
+                      }(),
+                      [&] {
+                          auto const new_optional_presence_bits{
+                              context.storage.declarations.optional_presence_bits.append()};
+                          context.storage.declarations.optional_presence_bits
+                              .name[context.storage.declarations.optional_presence_bits.index(
+                                  new_optional_presence_bits)] =
+                              context.storage.strings.intern("PresentHealth");
+                          context.storage.declarations.optional_presence_bits
+                              .source[context.storage.declarations.optional_presence_bits.index(
+                                  new_optional_presence_bits)] = [&] {
+                              auto const new_type_refs{
+                                  context.storage.declarations.type_refs.append()};
+                              context.storage.declarations.type_refs
+                                  .name[context.storage.declarations.type_refs.index(
+                                      new_type_refs)] =
+                                  context.storage.strings.intern("project::Health");
+                              return new_type_refs;
+                          }();
+                          return new_optional_presence_bits;
+                      }(),
+                      [&] {
+                          auto const new_mini_floats{
+                              context.storage.declarations.mini_floats.append()};
+                          context.storage.declarations.mini_floats
+                              .name[context.storage.declarations.mini_floats.index(
+                                  new_mini_floats)] =
+                              context.storage.strings.intern("CompactFloat");
+                          context.storage.declarations.mini_floats
+                              .sign_bits[context.storage.declarations.mini_floats.index(
+                                  new_mini_floats)] = 1;
+                          context.storage.declarations.mini_floats
+                              .exponent_bits[context.storage.declarations.mini_floats.index(
+                                  new_mini_floats)] = 5;
+                          context.storage.declarations.mini_floats
+                              .significand_bits[context.storage.declarations.mini_floats.index(
+                                  new_mini_floats)] = 10;
+                          context.storage.declarations.mini_floats
+                              .exponent_bias[context.storage.declarations.mini_floats.index(
+                                  new_mini_floats)] = 15;
+                          return new_mini_floats;
+                      }()});
+             return new_normal_modules;
+         }()}};
 
     auto const graph{resolve_type_graph(manifest)};
-    auto const source{graph.find_declared("semantic_values", "Health")};
-    auto const representation{graph.find_declared("representations", "HealthQ8")};
-    auto const varint{graph.find_declared("representations", "HealthVarint")};
-    auto const fixed_point{graph.find_declared("representations", "VelocityQ12_4")};
-    auto const optional{graph.find_declared("representations", "OptionalHealth")};
-    auto const presence{graph.find_declared("representations", "PresentHealth")};
-    auto const mini_float{graph.find_declared("representations", "CompactFloat")};
+    auto const source{lispb::codegen::find_test_type(graph, "semantic_values", "Health")};
+    auto const representation{lispb::codegen::find_test_type(graph, "representations", "HealthQ8")};
+    auto const varint{lispb::codegen::find_test_type(graph, "representations", "HealthVarint")};
+    auto const fixed_point{
+        lispb::codegen::find_test_type(graph, "representations", "VelocityQ12_4")};
+    auto const optional{lispb::codegen::find_test_type(graph, "representations", "OptionalHealth")};
+    auto const presence{lispb::codegen::find_test_type(graph, "representations", "PresentHealth")};
+    auto const mini_float{lispb::codegen::find_test_type(graph, "representations", "CompactFloat")};
     ASSERT_TRUE(source.has_value());
     ASSERT_TRUE(representation.has_value());
     ASSERT_TRUE(varint.has_value());
@@ -302,74 +1009,163 @@ TEST(SemanticTypeGraph, ResolvesPhysicalRepresentationsAndDependencies) {
     ASSERT_TRUE(presence.has_value());
     ASSERT_TRUE(mini_float.has_value());
 
-    auto const& type{std::get<LinearQuantizedType>(graph.type(*representation).definition)};
-    EXPECT_EQ(type.source.type, *source);
-    EXPECT_EQ(type.bit_width, 8U);
-    EXPECT_EQ(type.reserved_codes, 1U);
-    EXPECT_EQ(type.clipping, codegen::QuantizationClipping::clamp);
+    auto const& type{graph.definition(*representation)};
+    EXPECT_EQ(graph.occurrences().type[graph.occurrences().index(
+                  graph.definitions()
+                      .linear_quantized.source[graph.definitions().linear_quantized.index(type)])],
+              *source);
+    EXPECT_EQ(graph.definitions()
+                  .linear_quantized.bit_width[graph.definitions().linear_quantized.index(type)],
+              8U);
+    EXPECT_EQ(
+        graph.definitions()
+            .linear_quantized.reserved_codes[graph.definitions().linear_quantized.index(type)],
+        1U);
+    EXPECT_EQ(graph.definitions()
+                  .linear_quantized.clipping[graph.definitions().linear_quantized.index(type)],
+              lispb::codegen::QuantizationClipping::clamp);
     EXPECT_NE(std::ranges::find(graph.dependencies_of(*representation), *source),
               graph.dependencies_of(*representation).end());
     EXPECT_NE(std::ranges::find(graph.users_of(*source), *representation),
               graph.users_of(*source).end());
 
-    auto const& varint_type{std::get<IntegerVarintType>(graph.type(*varint).definition)};
-    EXPECT_EQ(varint_type.source.type, *source);
-    EXPECT_EQ(varint_type.encoding, codegen::IntegerVarintEncoding::unsigned_varint);
+    auto const& varint_type{graph.definition(*varint)};
+    EXPECT_EQ(
+        graph.occurrences().type[graph.occurrences().index(
+            graph.definitions()
+                .integer_varints.source[graph.definitions().integer_varints.index(varint_type)])],
+        *source);
+    EXPECT_EQ(graph.definitions()
+                  .integer_varints.encoding[graph.definitions().integer_varints.index(varint_type)],
+              lispb::codegen::IntegerVarintEncoding::unsigned_varint);
     EXPECT_NE(std::ranges::find(graph.dependencies_of(*varint), *source),
               graph.dependencies_of(*varint).end());
     EXPECT_NE(std::ranges::find(graph.users_of(*source), *varint), graph.users_of(*source).end());
 
-    auto const& fixed_point_type{std::get<FixedPointType>(graph.type(*fixed_point).definition)};
-    EXPECT_TRUE(fixed_point_type.signedness);
-    EXPECT_EQ(fixed_point_type.total_bits, 16U);
-    EXPECT_EQ(fixed_point_type.fractional_bits, 4U);
-    EXPECT_EQ(fixed_point_type.rounding, codegen::FixedPointRounding::toward_zero);
+    auto const& fixed_point_type{graph.definition(*fixed_point)};
+    EXPECT_TRUE(
+        graph.definitions()
+            .fixed_points.signedness[graph.definitions().fixed_points.index(fixed_point_type)]);
+    EXPECT_EQ(
+        graph.definitions()
+            .fixed_points.total_bits[graph.definitions().fixed_points.index(fixed_point_type)],
+        16U);
+    EXPECT_EQ(
+        graph.definitions()
+            .fixed_points.fractional_bits[graph.definitions().fixed_points.index(fixed_point_type)],
+        4U);
+    EXPECT_EQ(graph.definitions()
+                  .fixed_points.rounding[graph.definitions().fixed_points.index(fixed_point_type)],
+              lispb::codegen::FixedPointRounding::toward_zero);
     EXPECT_TRUE(graph.dependencies_of(*fixed_point).empty());
 
-    auto const& optional_type{std::get<OptionalSentinelType>(graph.type(*optional).definition)};
-    EXPECT_EQ(optional_type.source.type, *source);
-    EXPECT_EQ(optional_type.sentinel_name, "Invalid");
-    EXPECT_EQ(optional_type.sentinel_value, codegen::PackedIntegerValue{1023});
-    EXPECT_EQ(optional_type.bit_width, 10U);
+    auto const& optional_type{graph.definition(*optional)};
+    EXPECT_EQ(graph.occurrences().type[graph.occurrences().index(
+                  graph.definitions().optional_sentinels.source
+                      [graph.definitions().optional_sentinels.index(optional_type)])],
+              *source);
+    EXPECT_EQ(storage.strings.view(
+                  graph.definitions()
+                      .optional_sentinels
+                      .sentinel_name[graph.definitions().optional_sentinels.index(optional_type)]),
+              "Invalid");
+    EXPECT_EQ(graph.definitions()
+                  .optional_sentinels
+                  .sentinel_value[graph.definitions().optional_sentinels.index(optional_type)],
+              lispb::codegen::PackedIntegerValue{1023});
+    EXPECT_EQ(graph.definitions()
+                  .optional_sentinels
+                  .bit_width[graph.definitions().optional_sentinels.index(optional_type)],
+              10U);
     EXPECT_NE(std::ranges::find(graph.dependencies_of(*optional), *source),
               graph.dependencies_of(*optional).end());
     EXPECT_NE(std::ranges::find(graph.users_of(*source), *optional), graph.users_of(*source).end());
 
-    auto const& presence_type{std::get<OptionalPresenceBitType>(graph.type(*presence).definition)};
-    EXPECT_EQ(presence_type.source.type, *source);
-    EXPECT_EQ(presence_type.payload_bits, 10U);
-    EXPECT_EQ(presence_type.encoded_bits, 11U);
+    auto const& presence_type{graph.definition(*presence)};
+    EXPECT_EQ(graph.occurrences().type[graph.occurrences().index(
+                  graph.definitions().optional_presence_bits.source
+                      [graph.definitions().optional_presence_bits.index(presence_type)])],
+              *source);
+    EXPECT_EQ(graph.definitions()
+                  .optional_presence_bits
+                  .payload_bits[graph.definitions().optional_presence_bits.index(presence_type)],
+              10U);
+    EXPECT_EQ(graph.definitions()
+                  .optional_presence_bits
+                  .encoded_bits[graph.definitions().optional_presence_bits.index(presence_type)],
+              11U);
     EXPECT_NE(std::ranges::find(graph.dependencies_of(*presence), *source),
               graph.dependencies_of(*presence).end());
     EXPECT_NE(std::ranges::find(graph.users_of(*source), *presence), graph.users_of(*source).end());
 
-    auto const& mini_float_type{std::get<MiniFloatType>(graph.type(*mini_float).definition)};
-    EXPECT_EQ(mini_float_type.sign_bits, 1U);
-    EXPECT_EQ(mini_float_type.exponent_bits, 5U);
-    EXPECT_EQ(mini_float_type.significand_bits, 10U);
-    EXPECT_EQ(mini_float_type.exponent_bias, 15);
+    auto const& mini_float_type{graph.definition(*mini_float)};
+    EXPECT_EQ(graph.definitions()
+                  .mini_floats.sign_bits[graph.definitions().mini_floats.index(mini_float_type)],
+              1U);
+    EXPECT_EQ(
+        graph.definitions()
+            .mini_floats.exponent_bits[graph.definitions().mini_floats.index(mini_float_type)],
+        5U);
+    EXPECT_EQ(
+        graph.definitions()
+            .mini_floats.significand_bits[graph.definitions().mini_floats.index(mini_float_type)],
+        10U);
+    EXPECT_EQ(
+        graph.definitions()
+            .mini_floats.exponent_bias[graph.definitions().mini_floats.index(mini_float_type)],
+        15);
     EXPECT_TRUE(graph.dependencies_of(*mini_float).empty());
 }
 
 TEST(SemanticTypeGraph, ResolvesPackedFieldsAndDependencies) {
-    auto const graph{production_graph()};
-    auto const entity_type{graph.find_declared("native_entity_type", "EntityType")};
-    auto const unique_id{graph.find_declared("native_entity_unique_id", "EntityUniqueId")};
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    auto const graph{production_graph(storage)};
+    auto const entity_type{
+        lispb::codegen::find_test_type(graph, "native_entity_type", "EntityType")};
+    auto const unique_id{
+        lispb::codegen::find_test_type(graph, "native_entity_unique_id", "EntityUniqueId")};
     ASSERT_TRUE(entity_type.has_value());
     ASSERT_TRUE(unique_id.has_value());
 
-    auto const* packed{std::get_if<PackedType>(&graph.type(*unique_id).definition)};
-    ASSERT_NE(packed, nullptr);
-    EXPECT_EQ(graph.type(packed->storage_type.type).cpp_spelling, "std::uint32_t");
-    EXPECT_EQ(packed->invalid_raw_value, 0xffffffffU);
-    ASSERT_EQ(packed->segments.size(), 2U);
-    auto const& index{std::get<PackedField>(packed->segments[0])};
-    auto const& entity_type_field{std::get<PackedField>(packed->segments[1])};
-    EXPECT_EQ(index.name, "index");
-    EXPECT_EQ(index.bit_width, 24U);
-    EXPECT_EQ(entity_type_field.name, "entity_type");
-    EXPECT_EQ(entity_type_field.bit_width, 8U);
-    EXPECT_EQ(entity_type_field.semantic_type.type, *entity_type);
+    auto const packed{
+        ((graph.definition(*unique_id)).kind() == lispb::schema::TypeDefinitionKind::packed
+             ? std::optional{graph.definition(*unique_id)}
+             : std::nullopt)};
+    ASSERT_TRUE(packed.has_value());
+    EXPECT_EQ(text(storage,
+                   graph.cpp_spelling(graph.occurrences().type[graph.occurrences().index(
+                       graph.definitions()
+                           .packed.storage_type[graph.definitions().packed.index(*packed)])])),
+              "std::uint32_t");
+    EXPECT_EQ(
+        graph.definitions().packed.invalid_raw_value[graph.definitions().packed.index(*packed)],
+        0xffffffffU);
+    ASSERT_EQ(graph.definitions().packed.segments_of(*packed).size(), 2U);
+    auto const& index{graph.definitions().packed.segments_of(*packed)[0]};
+    auto const& entity_type_field{graph.definitions().packed.segments_of(*packed)[1]};
+    EXPECT_EQ(
+        text(
+            storage,
+            graph.definitions().packed_fields.name[graph.definitions().packed_fields.index(index)]),
+        "index");
+    EXPECT_EQ(
+        graph.definitions().packed_fields.bit_width[graph.definitions().packed_fields.index(index)],
+        24U);
+    EXPECT_EQ(
+        text(storage,
+             graph.definitions()
+                 .packed_fields.name[graph.definitions().packed_fields.index(entity_type_field)]),
+        "entity_type");
+    EXPECT_EQ(
+        graph.definitions()
+            .packed_fields.bit_width[graph.definitions().packed_fields.index(entity_type_field)],
+        8U);
+    EXPECT_EQ(
+        graph.occurrences().type[graph.occurrences().index(
+            graph.definitions().packed_fields.semantic_type[graph.definitions().packed_fields.index(
+                entity_type_field)])],
+        *entity_type);
 
     EXPECT_NE(std::ranges::find(graph.dependencies_of(*unique_id), *entity_type),
               graph.dependencies_of(*unique_id).end());
@@ -378,253 +1174,846 @@ TEST(SemanticTypeGraph, ResolvesPackedFieldsAndDependencies) {
 }
 
 TEST(SemanticTypeGraph, ResolvesPackedIntegerScalarDomainAndDependency) {
-    codegen::Manifest const
-        manifest{
-            .schema_version = codegen::manifest_schema_version,
-            .modules =
-                {
-                    codegen::NormalModuleSchema{
-                        .settings = codegen::ModuleSettings{.name = "domains",
-                                                            .header = "Domains.h",
-                                                            .namespace_name = "project"},
-                        .declarations = {codegen::IntegerScalarSchema{
-                            .name = "Health",
-                            .signedness = false,
-                            .minimum_value = 0,
-                            .maximum_value = 1000,
-                            .bit_width = std::nullopt,
-                            .named_codes = {{.name = "Invalid", .value = 4095, .sentinel = true}},
-                        }}},
-                    codegen::
-                        NormalModuleSchema{.settings =
-                                               codegen::ModuleSettings{.name = "packed",
-                                                                       .header = "Packed.h",
-                                                                       .namespace_name = "project"},
-                                           .declarations =
-                                               {
-                                                   codegen::
-                                                       PackedValueSchema{
-                                                           .name = "Status",
-                                                           .storage_type = codegen::
-                                                               TypeRef{"std::uint16_t"},
-                                                           .segments = {codegen::PackedFieldSchema{
-                                                               .name = "healt"
-                                                                       "h",
-                                                               .type = codegen::TypeRef{"pr"
-                                                                                        "oj"
-                                                                                        "ec"
-                                                                                        "t:"
-                                                                                        ":H"
-                                                                                        "ea"
-                                                                                        "lt"
-                                                                                        "h"},
-                                                               .bits = std::nullopt,
-                                                               .kind = codegen::
-                                                                   PackedFieldKind::unsigned_integer,
-                                                           }},
-                                                       }}},
-                },
-    };
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    lispb::codegen::Manifest manifest{
+        lispb::codegen::manifest_schema_version,
+        lispb::codegen::make_test_registry(context),
+        context.storage.declarations,
+        {[&] {
+             auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+             context.storage.declarations.normal_modules
+                 .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                 [&] {
+                     auto const new_module_settings_store{
+                         context.storage.declarations.module_settings_store.append()};
+                     context.storage.declarations.module_settings_store
+                         .name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("domains");
+                     context.storage.declarations.module_settings_store
+                         .header[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] = context.storage.strings.add("Domains.h");
+                     context.storage.declarations.module_settings_store
+                         .namespace_name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("project");
+                     return new_module_settings_store;
+                 }();
+             context.storage.declarations.normal_modules
+                 .declarations[context.storage.declarations.normal_modules.index(
+                     new_normal_modules)] =
+                 context.storage.declarations.range<lispb::codegen::DeclarationHandle>({[&] {
+                     auto const new_integer_scalars{
+                         context.storage.declarations.integer_scalars.append()};
+                     context.storage.declarations.integer_scalars
+                         .name[context.storage.declarations.integer_scalars.index(
+                             new_integer_scalars)] = context.storage.strings.intern("Health");
+                     context.storage.declarations.integer_scalars
+                         .signedness[context.storage.declarations.integer_scalars.index(
+                             new_integer_scalars)] = false;
+                     context.storage.declarations.integer_scalars
+                         .minimum_value[context.storage.declarations.integer_scalars.index(
+                             new_integer_scalars)] = 0;
+                     context.storage.declarations.integer_scalars
+                         .maximum_value[context.storage.declarations.integer_scalars.index(
+                             new_integer_scalars)] = 1000;
+                     context.storage.declarations.integer_scalars
+                         .bit_width[context.storage.declarations.integer_scalars.index(
+                             new_integer_scalars)] = std::nullopt;
+                     context.storage.declarations.integer_scalars
+                         .named_codes[context.storage.declarations.integer_scalars.index(
+                             new_integer_scalars)] =
+                         context.storage.declarations.range<lispb::codegen::PackedNamedCodeId>(
+                             {[&] {
+                                 auto const new_packed_named_codes{
+                                     context.storage.declarations.packed_named_codes.append()};
+                                 context.storage.declarations.packed_named_codes
+                                     .name[context.storage.declarations.packed_named_codes.index(
+                                         new_packed_named_codes)] =
+                                     context.storage.strings.intern("Invalid");
+                                 context.storage.declarations.packed_named_codes
+                                     .value[context.storage.declarations.packed_named_codes.index(
+                                         new_packed_named_codes)] = 4095;
+                                 context.storage.declarations.packed_named_codes
+                                     .sentinel[context.storage.declarations.packed_named_codes
+                                                   .index(new_packed_named_codes)] = true;
+                                 return new_packed_named_codes;
+                             }()});
+                     return new_integer_scalars;
+                 }()});
+             return new_normal_modules;
+         }(),
+         [&] {
+             auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+             context.storage.declarations.normal_modules
+                 .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                 [&] {
+                     auto const new_module_settings_store{
+                         context.storage.declarations.module_settings_store.append()};
+                     context.storage.declarations.module_settings_store
+                         .name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] = context.storage.strings.intern("packed");
+                     context.storage.declarations.module_settings_store
+                         .header[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] = context.storage.strings.add("Packed.h");
+                     context.storage.declarations.module_settings_store
+                         .namespace_name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("project");
+                     return new_module_settings_store;
+                 }();
+             context.storage.declarations.normal_modules
+                 .declarations[context.storage.declarations.normal_modules.index(
+                     new_normal_modules)] =
+                 context.storage.declarations.range<lispb::codegen::DeclarationHandle>({[&] {
+                     auto const new_packed_values{
+                         context.storage.declarations.packed_values.append()};
+                     context.storage.declarations.packed_values
+                         .name[context.storage.declarations.packed_values.index(
+                             new_packed_values)] = context.storage.strings.intern("Status");
+                     context.storage.declarations.packed_values
+                         .storage_type[context.storage.declarations.packed_values.index(
+                             new_packed_values)] = [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("std::uint16_t");
+                         return new_type_refs;
+                     }();
+                     context.storage.declarations.packed_values
+                         .segments[context.storage.declarations.packed_values.index(
+                             new_packed_values)] =
+                         context.storage.declarations.range<lispb::codegen::PackedSegmentId>({[&] {
+                             auto const new_packed_fields{
+                                 context.storage.declarations.packed_fields.append()};
+                             context.storage.declarations.packed_fields
+                                 .name[context.storage.declarations.packed_fields.index(
+                                     new_packed_fields)] = context.storage.strings.intern("healt"
+                                                                                          "h");
+                             context.storage.declarations.packed_fields
+                                 .type[context.storage.declarations.packed_fields.index(
+                                     new_packed_fields)] = [&] {
+                                 auto const new_type_refs{
+                                     context.storage.declarations.type_refs.append()};
+                                 context.storage.declarations.type_refs
+                                     .name[context.storage.declarations.type_refs.index(
+                                         new_type_refs)] = context.storage.strings.intern("pr"
+                                                                                          "oj"
+                                                                                          "ec"
+                                                                                          "t:"
+                                                                                          ":H"
+                                                                                          "ea"
+                                                                                          "lt"
+                                                                                          "h");
+                                 return new_type_refs;
+                             }();
+                             context.storage.declarations.packed_fields
+                                 .bits[context.storage.declarations.packed_fields.index(
+                                     new_packed_fields)] = std::nullopt;
+                             context.storage.declarations.packed_fields
+                                 .kind[context.storage.declarations.packed_fields.index(
+                                     new_packed_fields)] =
+                                 lispb::codegen::PackedFieldKind::unsigned_integer;
+                             return new_packed_fields;
+                         }()});
+                     return new_packed_values;
+                 }()});
+             return new_normal_modules;
+         }()}};
 
     auto const graph{resolve_type_graph(manifest)};
-    auto const health{graph.find_declared("domains", "Health")};
-    auto const status{graph.find_declared("packed", "Status")};
+    auto const health{lispb::codegen::find_test_type(graph, "domains", "Health")};
+    auto const status{lispb::codegen::find_test_type(graph, "packed", "Status")};
     ASSERT_TRUE(health.has_value());
     ASSERT_TRUE(status.has_value());
 
-    auto const& packed{std::get<PackedType>(graph.type(*status).definition)};
-    ASSERT_EQ(packed.segments.size(), 1U);
-    auto const& field{std::get<PackedField>(packed.segments.front())};
-    EXPECT_EQ(field.semantic_type.type, *health);
-    EXPECT_EQ(field.bit_width, 12U);
-    EXPECT_TRUE(field.bit_width_auto);
-    EXPECT_EQ(field.minimum_value, codegen::PackedIntegerValue{0});
-    EXPECT_EQ(field.maximum_value, codegen::PackedIntegerValue{1000});
-    ASSERT_EQ(field.named_codes.size(), 1U);
-    EXPECT_EQ(field.named_codes.front().name, "Invalid");
-    EXPECT_TRUE(field.named_codes.front().sentinel);
+    auto const& packed{graph.definition(*status)};
+    ASSERT_EQ(graph.definitions().packed.segments_of(packed).size(), 1U);
+    auto const& field{graph.definitions().packed.segments_of(packed).front()};
+    EXPECT_EQ(
+        graph.occurrences().type[graph.occurrences().index(
+            graph.definitions()
+                .packed_fields.semantic_type[graph.definitions().packed_fields.index(field)])],
+        *health);
+    EXPECT_EQ(
+        graph.definitions().packed_fields.bit_width[graph.definitions().packed_fields.index(field)],
+        12U);
+    EXPECT_TRUE(graph.definitions()
+                    .packed_fields.bit_width_auto[graph.definitions().packed_fields.index(field)]);
+    EXPECT_EQ(graph.definitions()
+                  .packed_fields.minimum_value[graph.definitions().packed_fields.index(field)],
+              lispb::codegen::PackedIntegerValue{0});
+    EXPECT_EQ(graph.definitions()
+                  .packed_fields.maximum_value[graph.definitions().packed_fields.index(field)],
+              lispb::codegen::PackedIntegerValue{1000});
+    ASSERT_EQ(graph.definitions()
+                  .packed_fields.named_codes[graph.definitions().packed_fields.index(field)]
+                  .size(),
+              1U);
+    EXPECT_EQ(text(storage,
+                   storage.declarations.packed_named_codes
+                       .name[storage.declarations.packed_named_codes.index(
+                           storage.declarations
+                               .items(graph.definitions().packed_fields.named_codes
+                                          [graph.definitions().packed_fields.index(field)])
+                               .front())]),
+              "Invalid");
+    EXPECT_TRUE(storage.declarations.packed_named_codes
+                    .sentinel[storage.declarations.packed_named_codes.index(
+                        storage.declarations
+                            .items(graph.definitions().packed_fields.named_codes
+                                       [graph.definitions().packed_fields.index(field)])
+                            .front())]);
     EXPECT_NE(std::ranges::find(graph.dependencies_of(*status), *health),
               graph.dependencies_of(*status).end());
     EXPECT_NE(std::ranges::find(graph.users_of(*health), *status), graph.users_of(*health).end());
 }
 
 TEST(SemanticTypeGraph, RetainsPackedPhysicalOrdering) {
-    codegen::Manifest const manifest{
-        .schema_version = codegen::manifest_schema_version,
-        .modules = {codegen::NormalModuleSchema{
-            .settings = codegen::ModuleSettings{.name = "wire", .header = "Wire.h"},
-            .declarations = {codegen::PackedValueSchema{
-                .name = "Header",
-                .storage_type = codegen::TypeRef{"std::uint32_t"},
-                .segments = {codegen::PackedFieldSchema{
-                    "kind", codegen::TypeRef{"std::uint8_t"}, 8}},
-                .byte_order = codegen::PackedByteOrder::big_endian,
-                .bit_order = codegen::PackedBitOrder::most_significant_first}}}}};
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    lispb::codegen::Manifest manifest{
+        lispb::codegen::manifest_schema_version,
+        lispb::codegen::make_test_registry(context),
+        context.storage.declarations,
+        {[&] {
+            auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+            context.storage.declarations.normal_modules
+                .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                [&] {
+                    auto const new_module_settings_store{
+                        context.storage.declarations.module_settings_store.append()};
+                    context.storage.declarations.module_settings_store
+                        .name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.intern("wire");
+                    context.storage.declarations.module_settings_store
+                        .header[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.add("Wire.h");
+                    return new_module_settings_store;
+                }();
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(
+                    new_normal_modules)] =
+                context.storage.declarations.range<lispb::codegen::DeclarationHandle>({[&] {
+                    auto const new_packed_values{
+                        context.storage.declarations.packed_values.append()};
+                    context.storage.declarations.packed_values
+                        .name[context.storage.declarations.packed_values.index(new_packed_values)] =
+                        context.storage.strings.intern("Header");
+                    context.storage.declarations.packed_values
+                        .storage_type[context.storage.declarations.packed_values.index(
+                            new_packed_values)] = [&] {
+                        auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                        context.storage.declarations.type_refs
+                            .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                            context.storage.strings.intern("std::uint32_t");
+                        return new_type_refs;
+                    }();
+                    context.storage.declarations.packed_values
+                        .segments[context.storage.declarations.packed_values.index(
+                            new_packed_values)] =
+                        context.storage.declarations.range<lispb::codegen::PackedSegmentId>({[&] {
+                            auto const new_packed_fields{
+                                context.storage.declarations.packed_fields.append()};
+                            context.storage.declarations.packed_fields
+                                .name[context.storage.declarations.packed_fields.index(
+                                    new_packed_fields)] = context.storage.strings.intern("kind");
+                            context.storage.declarations.packed_fields
+                                .type[context.storage.declarations.packed_fields.index(
+                                    new_packed_fields)] = [&] {
+                                auto const new_type_refs{
+                                    context.storage.declarations.type_refs.append()};
+                                context.storage.declarations.type_refs
+                                    .name[context.storage.declarations.type_refs.index(
+                                        new_type_refs)] =
+                                    context.storage.strings.intern("std::uint8_t");
+                                return new_type_refs;
+                            }();
+                            context.storage.declarations.packed_fields
+                                .bits[context.storage.declarations.packed_fields.index(
+                                    new_packed_fields)] = 8;
+                            return new_packed_fields;
+                        }()});
+                    context.storage.declarations.packed_values
+                        .byte_order[context.storage.declarations.packed_values.index(
+                            new_packed_values)] = lispb::codegen::PackedByteOrder::big_endian;
+                    context.storage.declarations.packed_values
+                        .bit_order[context.storage.declarations.packed_values.index(
+                            new_packed_values)] =
+                        lispb::codegen::PackedBitOrder::most_significant_first;
+                    return new_packed_values;
+                }()});
+            return new_normal_modules;
+        }()}};
 
     auto const graph{resolve_type_graph(manifest)};
-    auto const header{graph.find_declared("wire", "Header")};
+    auto const header{lispb::codegen::find_test_type(graph, "wire", "Header")};
     ASSERT_TRUE(header.has_value());
-    auto const& packed{std::get<PackedType>(graph.type(*header).definition)};
-    EXPECT_EQ(packed.byte_order, codegen::PackedByteOrder::big_endian);
-    EXPECT_EQ(packed.bit_order, codegen::PackedBitOrder::most_significant_first);
+    auto const& packed{graph.definition(*header)};
+    EXPECT_EQ(graph.definitions().packed.byte_order[graph.definitions().packed.index(packed)],
+              lispb::codegen::PackedByteOrder::big_endian);
+    EXPECT_EQ(graph.definitions().packed.bit_order[graph.definitions().packed.index(packed)],
+              lispb::codegen::PackedBitOrder::most_significant_first);
 }
 
 TEST(SemanticTypeGraph, ResolvesStandardLibrarySoaColumns) {
-    auto const graph{production_graph()};
-    auto const entity_type{graph.find_declared("native_entity_type", "EntityType")};
-    auto const history{graph.find_declared("native_entity_history", "EntityHistoryColumns")};
-    auto const vectors{graph.find_declared("native_vectors_3f", "Vectors3f")};
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    auto const graph{production_graph(storage)};
+    auto const entity_type{
+        lispb::codegen::find_test_type(graph, "native_entity_type", "EntityType")};
+    auto const history{
+        lispb::codegen::find_test_type(graph, "native_entity_history", "EntityHistoryColumns")};
+    auto const vectors{lispb::codegen::find_test_type(graph, "native_vectors_3f", "Vectors3f")};
     ASSERT_TRUE(entity_type.has_value());
     ASSERT_TRUE(history.has_value());
     ASSERT_TRUE(vectors.has_value());
 
-    auto const& history_type{std::get<SoaType>(graph.type(*history).definition)};
-    auto const entity_types{
-        std::ranges::find(history_type.columns, std::string{"entity_types"}, &SoaColumn::name)};
-    ASSERT_NE(entity_types, history_type.columns.end());
-    EXPECT_EQ(entity_types->semantic_type.type, *entity_type);
+    auto const& history_type{graph.definition(*history)};
+    auto const entity_types{std::ranges::find(
+        graph.definitions().soas.columns_of(history_type),
+        std::string{"entity_types"},
+        [&](auto id) {
+            return text(
+                storage,
+                graph.definitions().soa_columns.name[graph.definitions().soa_columns.index(id)]);
+        })};
+    ASSERT_NE(entity_types, graph.definitions().soas.columns_of(history_type).end());
+    EXPECT_EQ(
+        graph.occurrences().type[graph.occurrences().index(
+            graph.definitions()
+                .soa_columns.semantic_type[graph.definitions().soa_columns.index(*entity_types)])],
+        *entity_type);
 
-    auto const& vector_type{std::get<SoaType>(graph.type(*vectors).definition)};
-    EXPECT_EQ(vector_type.source_kind, SoaSourceKind::vector);
-    auto const vector_equivalent{graph.find_registered("native_vector_3f")};
+    auto const& vector_type{graph.definition(*vectors)};
+    EXPECT_EQ(graph.definitions().soas.source_kind[graph.definitions().soas.index(vector_type)],
+              SoaSourceKind::vector);
+    auto const vector_equivalent{graph.find_registered(storage.strings.find("native_vector_3f"))};
     ASSERT_TRUE(vector_equivalent.has_value());
-    ASSERT_TRUE(vector_type.equivalent_type.has_value());
-    EXPECT_EQ(vector_type.equivalent_type->type, *vector_equivalent);
+    ASSERT_TRUE(lispb::schema::is_valid(
+        graph.definitions().soas.equivalent_type[graph.definitions().soas.index(vector_type)]));
+    EXPECT_EQ(
+        graph.occurrences().type[graph.occurrences().index(
+            graph.definitions().soas.equivalent_type[graph.definitions().soas.index(vector_type)])],
+        *vector_equivalent);
     EXPECT_NE(std::ranges::find(graph.dependencies_of(*vectors), *vector_equivalent),
               graph.dependencies_of(*vectors).end());
-    ASSERT_EQ(vector_type.columns.size(), 3U);
-    EXPECT_EQ(vector_type.vector_components, (std::vector<std::string>{"xs", "ys", "zs"}));
-    for (auto const& column : vector_type.columns) {
-        EXPECT_EQ(graph.type(column.semantic_type.type).cpp_spelling, "float");
+    ASSERT_EQ(graph.definitions().soas.columns_of(vector_type).size(), 3U);
+    EXPECT_TRUE(std::ranges::equal(graph.definitions().soas.vector_components_of(vector_type),
+                                   std::vector<IdentifierId>{storage.strings.find("xs"),
+                                                             storage.strings.find("ys"),
+                                                             storage.strings.find("zs")}));
+    for (auto const column_id : graph.definitions().soas.columns_of(vector_type)) {
+        auto const column{column_id};
+        EXPECT_EQ(text(storage,
+                       graph.cpp_spelling(graph.occurrences().type[graph.occurrences().index(
+                           graph.definitions().soa_columns.semantic_type
+                               [graph.definitions().soa_columns.index(column)])])),
+                  "float");
     }
-    auto const local_vectors{graph.find_declared("lasers_soa_entities", "Vectors3f")};
+    auto const local_vectors{
+        lispb::codegen::find_test_type(graph, "lasers_soa_entities", "Vectors3f")};
     ASSERT_TRUE(local_vectors.has_value());
-    auto const& local{std::get<SoaType>(graph.type(*local_vectors).definition)};
-    EXPECT_EQ(local.source_kind, SoaSourceKind::structure);
-    EXPECT_EQ(local.vector_components, vector_type.vector_components);
-    EXPECT_EQ(vector_type.equivalent_constructor, "ml::make_vector3f");
-    EXPECT_EQ(local.equivalent_constructor, vector_type.equivalent_constructor);
+    auto const& local{graph.definition(*local_vectors)};
+    EXPECT_EQ(graph.definitions().soas.source_kind[graph.definitions().soas.index(local)],
+              SoaSourceKind::structure);
+    EXPECT_TRUE(std::ranges::equal(graph.definitions().soas.vector_components_of(local),
+                                   graph.definitions().soas.vector_components_of(vector_type)));
+    ASSERT_TRUE(graph.definitions()
+                    .soas.equivalent_constructor[graph.definitions().soas.index(vector_type)]);
+    EXPECT_EQ(storage.strings.view(
+                  *graph.definitions()
+                       .soas.equivalent_constructor[graph.definitions().soas.index(vector_type)]),
+              "ml::make_vector3f");
+    EXPECT_EQ(
+        graph.definitions().soas.equivalent_constructor[graph.definitions().soas.index(local)],
+        graph.definitions()
+            .soas.equivalent_constructor[graph.definitions().soas.index(vector_type)]);
 }
 
 TEST(SemanticTypeGraph, RejectsVectorComponentsThatDisagreeWithDeclaredEquivalent) {
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
     auto const project_root{
         std::filesystem::path{IOJ_CODEGEN_SOURCE_DIR}.parent_path().parent_path()};
-    auto const project{lispb::load_project(project_root / "lispb/project.lispb")};
-    auto const& target{std::get<lispb::CppSchemaTarget>(project.targets.at("sandbox-code"))};
+    auto const project{lispb::load_project(storage.syntax, project_root / "lispb/project.lispb")};
+    auto const target{*project.find_target("sandbox-code")};
     std::vector<std::filesystem::path> sources;
-    for (auto const& source : target.sources) {
+    for (auto const& source : project.sources(target)) {
         sources.push_back(project.root / source);
     }
-    auto manifest{codegen::load_sources(project.root / target.types, sources)};
-    for (auto& module : manifest.modules) {
-        auto* soa{std::get_if<codegen::NormalModuleSchema>(&module)};
-        if (soa == nullptr || soa->settings.name != "lasers_soa_entities") {
+    auto manifest{
+        lispb::codegen::load_sources(storage, project.root / project.types(target), sources)};
+    auto& store{storage.declarations};
+    for (auto& module_id : manifest.modules) {
+        auto module{((module_id).kind() == lispb::codegen::ModuleKind::normal
+                         ? std::optional{module_id}
+                         : std::nullopt)};
+        if (!module ||
+            text(storage,
+                 store.module_settings_store.name[store.module_settings_store.index(
+                     store.normal_modules.settings[store.normal_modules.index(*module)])]) !=
+                "lasers_soa_entities") {
             continue;
         }
-        auto& vectors{std::get<codegen::SoaSchema>(soa->declarations.front())};
-        for (auto& member : vectors.members) {
-            member.type = codegen::TypeRef{"double"};
+        auto const declarations{
+            store.items(store.normal_modules.declarations[store.normal_modules.index(*module)])};
+        std::vector<lispb::codegen::DeclarationHandle> updated{declarations.begin(),
+                                                               declarations.end()};
+        auto vectors{updated.front()};
+        std::vector<lispb::codegen::SoaMemberId> members;
+        for (auto member_id : store.items(store.soas.members[store.soas.index(vectors)])) {
+            auto member{member_id};
+            store.soa_members.type[store.soa_members.index(member)] = [&] {
+                auto const new_type_refs{store.type_refs.append()};
+                store.type_refs.name[store.type_refs.index(new_type_refs)] =
+                    storage.strings.intern("double");
+                return new_type_refs;
+            }();
+            members.push_back(member);
         }
+        store.soas.members[store.soas.index(vectors)] = store.range(members);
+        updated.front() = vectors;
+        store.normal_modules.declarations[store.normal_modules.index(*module)] =
+            store.range(updated);
+        module_id = *module;
     }
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 }
 
 TEST(SemanticTypeGraph, RejectsNestedSoaTypeThatDisagreesWithResolvedSchema) {
-    codegen::Manifest const manifest{
-        .schema_version = codegen::manifest_schema_version,
-        .modules = {codegen::NormalModuleSchema{
-            .settings = codegen::ModuleSettings{.name = "tables", .header = "Tables.h"},
-            .declarations = {codegen::SoaSchema{.name = "Child",
-                                                .members = {{.name = "values",
-                                                             .kind = codegen::SoaMemberKind::array,
-                                                             .type = codegen::TypeRef{"float"}}}},
-                             codegen::SoaSchema{.name = "Parent",
-                                                .members = {{.name = "child",
-                                                             .kind = codegen::SoaMemberKind::nested,
-                                                             .type = codegen::TypeRef{"Other"},
-                                                             .nested_schema = "Child"}},
-                                                .single_allocation = "SingleParent"}}}},
-    };
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    lispb::codegen::Manifest manifest{
+        lispb::codegen::manifest_schema_version,
+        lispb::codegen::make_test_registry(context),
+        context.storage.declarations,
+        {[&] {
+            auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+            context.storage.declarations.normal_modules
+                .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                [&] {
+                    auto const new_module_settings_store{
+                        context.storage.declarations.module_settings_store.append()};
+                    context.storage.declarations.module_settings_store
+                        .name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.intern("tables");
+                    context.storage.declarations.module_settings_store
+                        .header[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.add("Tables.h");
+                    return new_module_settings_store;
+                }();
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(
+                    new_normal_modules)] =
+                context.storage.declarations.range<lispb::codegen::DeclarationHandle>(
+                    {[&] {
+                         auto const new_soas{context.storage.declarations.soas.append()};
+                         context.storage.declarations.soas
+                             .name[context.storage.declarations.soas.index(new_soas)] =
+                             context.storage.strings.intern("Child");
+                         context.storage.declarations.soas
+                             .members[context.storage.declarations.soas.index(new_soas)] =
+                             context.storage.declarations.range<lispb::codegen::SoaMemberId>({[&] {
+                                 auto const new_soa_members{
+                                     context.storage.declarations.soa_members.append()};
+                                 context.storage.declarations.soa_members
+                                     .name[context.storage.declarations.soa_members.index(
+                                         new_soa_members)] =
+                                     context.storage.strings.intern("values");
+                                 context.storage.declarations.soa_members
+                                     .kind[context.storage.declarations.soa_members.index(
+                                         new_soa_members)] = lispb::codegen::SoaMemberKind::array;
+                                 context.storage.declarations.soa_members
+                                     .type[context.storage.declarations.soa_members.index(
+                                         new_soa_members)] = [&] {
+                                     auto const new_type_refs{
+                                         context.storage.declarations.type_refs.append()};
+                                     context.storage.declarations.type_refs
+                                         .name[context.storage.declarations.type_refs.index(
+                                             new_type_refs)] =
+                                         context.storage.strings.intern("float");
+                                     return new_type_refs;
+                                 }();
+                                 return new_soa_members;
+                             }()});
+                         return new_soas;
+                     }(),
+                     [&] {
+                         auto const new_soas{context.storage.declarations.soas.append()};
+                         context.storage.declarations.soas
+                             .name[context.storage.declarations.soas.index(new_soas)] =
+                             context.storage.strings.intern("Parent");
+                         context.storage.declarations.soas
+                             .members[context.storage.declarations.soas.index(new_soas)] =
+                             context.storage.declarations.range<lispb::codegen::SoaMemberId>({[&] {
+                                 auto const new_soa_members{
+                                     context.storage.declarations.soa_members.append()};
+                                 context.storage.declarations.soa_members
+                                     .name[context.storage.declarations.soa_members.index(
+                                         new_soa_members)] =
+                                     context.storage.strings.intern("child");
+                                 context.storage.declarations.soa_members
+                                     .kind[context.storage.declarations.soa_members.index(
+                                         new_soa_members)] = lispb::codegen::SoaMemberKind::nested;
+                                 context.storage.declarations.soa_members
+                                     .type[context.storage.declarations.soa_members.index(
+                                         new_soa_members)] = [&] {
+                                     auto const new_type_refs{
+                                         context.storage.declarations.type_refs.append()};
+                                     context.storage.declarations.type_refs
+                                         .name[context.storage.declarations.type_refs.index(
+                                             new_type_refs)] =
+                                         context.storage.strings.intern("Other");
+                                     return new_type_refs;
+                                 }();
+                                 context.storage.declarations.soa_members
+                                     .nested_schema[context.storage.declarations.soa_members.index(
+                                         new_soa_members)] =
+                                     context.storage.strings.intern("Child");
+                                 return new_soa_members;
+                             }()});
+                         context.storage.declarations.soas
+                             .single_allocation[context.storage.declarations.soas.index(new_soas)] =
+                             context.storage.strings.intern("SingleParent");
+                         return new_soas;
+                     }()});
+            return new_normal_modules;
+        }()}};
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 }
 
 TEST(SemanticTypeGraph, ResolvesSoaColumnRelationshipsAndDependencies) {
-    codegen::Manifest const manifest{
-        .schema_version = codegen::manifest_schema_version,
-        .modules = {codegen::NormalModuleSchema{
-            .settings = codegen::ModuleSettings{.name = "tables", .header = "Tables.h"},
-            .declarations = {codegen::SoaSchema{.name = "Target",
-                                                .members = {codegen::SoaMemberSchema{
-                                                    .name = "values",
-                                                    .kind = codegen::SoaMemberKind::array,
-                                                    .type = codegen::TypeRef{"float"},
-                                                    .relationship = std::nullopt}}},
-                             codegen::SoaSchema{.name = "User",
-                                                .members = {codegen::SoaMemberSchema{
-                                                    .name = "identifiers",
-                                                    .kind = codegen::SoaMemberKind::array,
-                                                    .type = codegen::TypeRef{"std::uint32_t"},
-                                                    .relationship =
-                                                        codegen::SemanticRelationSchema{
-                                                            .kind = codegen::SemanticRelationKind::
-                                                                index_into,
-                                                            .target = codegen::TypeRef{"Target"},
-                                                            .unit = std::nullopt}}}}},
-            .soa_backend = codegen::SoaBackend::standard_library}}};
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    lispb::codegen::Manifest manifest{
+        lispb::codegen::manifest_schema_version,
+        lispb::codegen::make_test_registry(context),
+        context.storage.declarations,
+        {[&] {
+            auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+            context.storage.declarations.normal_modules
+                .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                [&] {
+                    auto const new_module_settings_store{
+                        context.storage.declarations.module_settings_store.append()};
+                    context.storage.declarations.module_settings_store
+                        .name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.intern("tables");
+                    context.storage.declarations.module_settings_store
+                        .header[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.add("Tables.h");
+                    return new_module_settings_store;
+                }();
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(
+                    new_normal_modules)] =
+                context.storage.declarations.range<lispb::codegen::DeclarationHandle>(
+                    {[&] {
+                         auto const new_soas{context.storage.declarations.soas.append()};
+                         context.storage.declarations.soas
+                             .name[context.storage.declarations.soas.index(new_soas)] =
+                             context.storage.strings.intern("Target");
+                         context.storage.declarations.soas
+                             .members[context.storage.declarations.soas.index(new_soas)] =
+                             context.storage.declarations.range<lispb::codegen::SoaMemberId>({[&] {
+                                 auto const new_soa_members{
+                                     context.storage.declarations.soa_members.append()};
+                                 context.storage.declarations.soa_members
+                                     .name[context.storage.declarations.soa_members.index(
+                                         new_soa_members)] =
+                                     context.storage.strings.intern("values");
+                                 context.storage.declarations.soa_members
+                                     .kind[context.storage.declarations.soa_members.index(
+                                         new_soa_members)] = lispb::codegen::SoaMemberKind::array;
+                                 context.storage.declarations.soa_members
+                                     .type[context.storage.declarations.soa_members.index(
+                                         new_soa_members)] = [&] {
+                                     auto const new_type_refs{
+                                         context.storage.declarations.type_refs.append()};
+                                     context.storage.declarations.type_refs
+                                         .name[context.storage.declarations.type_refs.index(
+                                             new_type_refs)] =
+                                         context.storage.strings.intern("float");
+                                     return new_type_refs;
+                                 }();
+                                 context.storage.declarations.soa_members
+                                     .relationship[context.storage.declarations.soa_members.index(
+                                         new_soa_members)] = std::nullopt;
+                                 return new_soa_members;
+                             }()});
+                         return new_soas;
+                     }(),
+                     [&] {
+                         auto const new_soas{context.storage.declarations.soas.append()};
+                         context.storage.declarations.soas
+                             .name[context.storage.declarations.soas.index(new_soas)] =
+                             context.storage.strings.intern("User");
+                         context.storage.declarations.soas
+                             .members[context.storage.declarations.soas.index(new_soas)] =
+                             context.storage.declarations.range<lispb::codegen::SoaMemberId>({[&] {
+                                 auto const new_soa_members{
+                                     context.storage.declarations.soa_members.append()};
+                                 context.storage.declarations.soa_members
+                                     .name[context.storage.declarations.soa_members.index(
+                                         new_soa_members)] =
+                                     context.storage.strings.intern("identifiers");
+                                 context.storage.declarations.soa_members
+                                     .kind[context.storage.declarations.soa_members.index(
+                                         new_soa_members)] = lispb::codegen::SoaMemberKind::array;
+                                 context.storage.declarations.soa_members
+                                     .type[context.storage.declarations.soa_members.index(
+                                         new_soa_members)] = [&] {
+                                     auto const new_type_refs{
+                                         context.storage.declarations.type_refs.append()};
+                                     context.storage.declarations.type_refs
+                                         .name[context.storage.declarations.type_refs.index(
+                                             new_type_refs)] =
+                                         context.storage.strings.intern("std::uint32_t");
+                                     return new_type_refs;
+                                 }();
+                                 context.storage.declarations.soa_members
+                                     .relationship[context.storage.declarations.soa_members.index(
+                                         new_soa_members)] = [&] {
+                                     auto const new_semantic_relations{
+                                         context.storage.declarations.semantic_relations.append()};
+                                     context.storage.declarations.semantic_relations
+                                         .kind[context.storage.declarations.semantic_relations
+                                                   .index(new_semantic_relations)] =
+                                         lispb::codegen::SemanticRelationKind::index_into;
+                                     context.storage.declarations.semantic_relations
+                                         .target[context.storage.declarations.semantic_relations
+                                                     .index(new_semantic_relations)] = [&] {
+                                         auto const new_type_refs{
+                                             context.storage.declarations.type_refs.append()};
+                                         context.storage.declarations.type_refs
+                                             .name[context.storage.declarations.type_refs.index(
+                                                 new_type_refs)] =
+                                             context.storage.strings.intern("Target");
+                                         return new_type_refs;
+                                     }();
+                                     context.storage.declarations.semantic_relations
+                                         .unit[context.storage.declarations.semantic_relations
+                                                   .index(new_semantic_relations)] = std::nullopt;
+                                     return new_semantic_relations;
+                                 }();
+                                 return new_soa_members;
+                             }()});
+                         return new_soas;
+                     }()});
+            context.storage.declarations.normal_modules
+                .soa_backend[context.storage.declarations.normal_modules.index(
+                    new_normal_modules)] = lispb::codegen::SoaBackend::standard_library;
+            return new_normal_modules;
+        }()}};
 
     auto const graph{resolve_type_graph(manifest)};
-    auto const target{graph.find_declared("tables", "Target")};
-    auto const user{graph.find_declared("tables", "User")};
+    auto const target{lispb::codegen::find_test_type(graph, "tables", "Target")};
+    auto const user{lispb::codegen::find_test_type(graph, "tables", "User")};
     ASSERT_TRUE(target.has_value());
     ASSERT_TRUE(user.has_value());
-    auto const& soa{std::get<SoaType>(graph.type(*user).definition)};
-    ASSERT_EQ(soa.columns.size(), 1U);
-    ASSERT_TRUE(soa.columns[0].relationship.has_value());
-    EXPECT_EQ(soa.columns[0].relationship->kind, codegen::SemanticRelationKind::index_into);
-    EXPECT_EQ(soa.columns[0].relationship->target.type, *target);
+    auto const& soa{graph.definition(*user)};
+    ASSERT_EQ(graph.definitions().soas.columns_of(soa).size(), 1U);
+    ASSERT_TRUE(lispb::schema::is_valid(
+        graph.definitions().soa_columns.relationship[graph.definitions().soa_columns.index(
+            graph.definitions().soas.columns_of(soa)[0])]));
+    EXPECT_EQ(
+        graph.relationships().kind[graph.relationships().index(
+            graph.definitions().soa_columns.relationship[graph.definitions().soa_columns.index(
+                graph.definitions().soas.columns_of(soa)[0])])],
+        lispb::codegen::SemanticRelationKind::index_into);
+    EXPECT_EQ(
+        graph.occurrences().type[graph.occurrences().index(
+            graph.relationships().target[graph.relationships().index(
+                graph.definitions().soa_columns.relationship[graph.definitions().soa_columns.index(
+                    graph.definitions().soas.columns_of(soa)[0])])])],
+        *target);
     EXPECT_NE(std::ranges::find(graph.dependencies_of(*user), *target),
               graph.dependencies_of(*user).end());
     EXPECT_NE(std::ranges::find(graph.users_of(*target), *user), graph.users_of(*target).end());
 }
 
 TEST(SemanticTypeGraph, ResolvesRecordMembersFixedArraysAndDependencies) {
-    codegen::Manifest const manifest{
-        .schema_version = codegen::manifest_schema_version,
-        .modules = {codegen::NormalModuleSchema{
-            .settings = codegen::ModuleSettings{.name = "records", .header = "Records.h"},
-            .declarations = {codegen::RecordSchema{
-                                 .name = "Position",
-                                 .members = {{.name = "x", .type = codegen::TypeRef{"float"}}}},
-                             codegen::RecordSchema{
-                                 .name = "Table",
-                                 .members = {{.name = "value", .type = codegen::TypeRef{"float"}}}},
-                             codegen::RecordSchema{
-                                 .name = "Path",
-                                 .members = {{.name = "points",
-                                              .type = codegen::TypeRef{"Position"},
-                                              .count = 8,
-                                              .relationship =
-                                                  codegen::SemanticRelationSchema{
-                                                      .kind = codegen::SemanticRelationKind::
-                                                          member_of,
-                                                      .target = codegen::TypeRef{"Table"},
-                                                      .unit = std::nullopt}}}}}}},
-    };
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    lispb::codegen::Manifest manifest{
+        lispb::codegen::manifest_schema_version,
+        lispb::codegen::make_test_registry(context),
+        context.storage.declarations,
+        {[&] {
+            auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+            context.storage.declarations.normal_modules
+                .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                [&] {
+                    auto const new_module_settings_store{
+                        context.storage.declarations.module_settings_store.append()};
+                    context.storage.declarations.module_settings_store
+                        .name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.intern("records");
+                    context.storage.declarations.module_settings_store
+                        .header[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.add("Records.h");
+                    return new_module_settings_store;
+                }();
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(
+                    new_normal_modules)] =
+                context.storage.declarations.range<lispb::codegen::DeclarationHandle>(
+                    {[&] {
+                         auto const new_records{context.storage.declarations.records.append()};
+                         context.storage.declarations.records
+                             .name[context.storage.declarations.records.index(new_records)] =
+                             context.storage.strings.intern("Position");
+                         context.storage.declarations.records
+                             .members[context.storage.declarations.records.index(new_records)] =
+                             context.storage.declarations.range<lispb::codegen::RecordMemberId>(
+                                 {[&] {
+                                     auto const new_record_members{
+                                         context.storage.declarations.record_members.append()};
+                                     context.storage.declarations.record_members
+                                         .name[context.storage.declarations.record_members.index(
+                                             new_record_members)] =
+                                         context.storage.strings.intern("x");
+                                     context.storage.declarations.record_members
+                                         .type[context.storage.declarations.record_members.index(
+                                             new_record_members)] = [&] {
+                                         auto const new_type_refs{
+                                             context.storage.declarations.type_refs.append()};
+                                         context.storage.declarations.type_refs
+                                             .name[context.storage.declarations.type_refs.index(
+                                                 new_type_refs)] =
+                                             context.storage.strings.intern("float");
+                                         return new_type_refs;
+                                     }();
+                                     return new_record_members;
+                                 }()});
+                         return new_records;
+                     }(),
+                     [&] {
+                         auto const new_records{context.storage.declarations.records.append()};
+                         context.storage.declarations.records
+                             .name[context.storage.declarations.records.index(new_records)] =
+                             context.storage.strings.intern("Table");
+                         context.storage.declarations.records
+                             .members[context.storage.declarations.records.index(new_records)] =
+                             context.storage.declarations.range<lispb::codegen::RecordMemberId>(
+                                 {[&] {
+                                     auto const new_record_members{
+                                         context.storage.declarations.record_members.append()};
+                                     context.storage.declarations.record_members
+                                         .name[context.storage.declarations.record_members.index(
+                                             new_record_members)] =
+                                         context.storage.strings.intern("value");
+                                     context.storage.declarations.record_members
+                                         .type[context.storage.declarations.record_members.index(
+                                             new_record_members)] = [&] {
+                                         auto const new_type_refs{
+                                             context.storage.declarations.type_refs.append()};
+                                         context.storage.declarations.type_refs
+                                             .name[context.storage.declarations.type_refs.index(
+                                                 new_type_refs)] =
+                                             context.storage.strings.intern("float");
+                                         return new_type_refs;
+                                     }();
+                                     return new_record_members;
+                                 }()});
+                         return new_records;
+                     }(),
+                     [&] {
+                         auto const new_records{context.storage.declarations.records.append()};
+                         context.storage.declarations.records
+                             .name[context.storage.declarations.records.index(new_records)] =
+                             context.storage.strings.intern("Path");
+                         context.storage.declarations.records
+                             .members[context.storage.declarations.records.index(new_records)] =
+                             context.storage.declarations.range<lispb::codegen::RecordMemberId>(
+                                 {[&] {
+                                     auto const new_record_members{
+                                         context.storage.declarations.record_members.append()};
+                                     context.storage.declarations.record_members
+                                         .name[context.storage.declarations.record_members.index(
+                                             new_record_members)] =
+                                         context.storage.strings.intern("points");
+                                     context.storage.declarations.record_members
+                                         .type[context.storage.declarations.record_members.index(
+                                             new_record_members)] = [&] {
+                                         auto const new_type_refs{
+                                             context.storage.declarations.type_refs.append()};
+                                         context.storage.declarations.type_refs
+                                             .name[context.storage.declarations.type_refs.index(
+                                                 new_type_refs)] =
+                                             context.storage.strings.intern("Position");
+                                         return new_type_refs;
+                                     }();
+                                     context.storage.declarations.record_members
+                                         .count[context.storage.declarations.record_members.index(
+                                             new_record_members)] = 8;
+                                     context.storage.declarations.record_members
+                                         .relationship[context.storage.declarations.record_members
+                                                           .index(new_record_members)] = [&] {
+                                         auto const new_semantic_relations{
+                                             context.storage.declarations.semantic_relations
+                                                 .append()};
+                                         context.storage.declarations.semantic_relations
+                                             .kind[context.storage.declarations.semantic_relations
+                                                       .index(new_semantic_relations)] =
+                                             lispb::codegen::SemanticRelationKind::member_of;
+                                         context.storage.declarations.semantic_relations
+                                             .target[context.storage.declarations.semantic_relations
+                                                         .index(new_semantic_relations)] = [&] {
+                                             auto const new_type_refs{
+                                                 context.storage.declarations.type_refs.append()};
+                                             context.storage.declarations.type_refs
+                                                 .name[context.storage.declarations.type_refs.index(
+                                                     new_type_refs)] =
+                                                 context.storage.strings.intern("Table");
+                                             return new_type_refs;
+                                         }();
+                                         context.storage.declarations.semantic_relations
+                                             .unit[context.storage.declarations.semantic_relations
+                                                       .index(new_semantic_relations)] =
+                                             std::nullopt;
+                                         return new_semantic_relations;
+                                     }();
+                                     return new_record_members;
+                                 }()});
+                         return new_records;
+                     }()});
+            return new_normal_modules;
+        }()}};
 
     auto const graph{resolve_type_graph(manifest)};
-    auto const position{graph.find_declared("records", "Position")};
-    auto const table{graph.find_declared("records", "Table")};
-    auto const path{graph.find_declared("records", "Path")};
+    auto const position{lispb::codegen::find_test_type(graph, "records", "Position")};
+    auto const table{lispb::codegen::find_test_type(graph, "records", "Table")};
+    auto const path{lispb::codegen::find_test_type(graph, "records", "Path")};
     ASSERT_TRUE(position.has_value());
     ASSERT_TRUE(table.has_value());
     ASSERT_TRUE(path.has_value());
-    auto const& record{std::get<RecordType>(graph.type(*path).definition)};
-    ASSERT_EQ(record.members.size(), 1U);
-    EXPECT_EQ(record.members[0].semantic_type.type, *position);
-    EXPECT_EQ(record.members[0].count, 8);
-    ASSERT_TRUE(record.members[0].relationship.has_value());
-    EXPECT_EQ(record.members[0].relationship->kind, codegen::SemanticRelationKind::member_of);
-    EXPECT_EQ(record.members[0].relationship->target.type, *table);
+    auto const& record{graph.definition(*path)};
+    ASSERT_EQ(graph.definitions().records.members_of(record).size(), 1U);
+    EXPECT_EQ(graph.occurrences().type[graph.occurrences().index(
+                  graph.definitions()
+                      .record_members.semantic_type[graph.definitions().record_members.index(
+                          graph.definitions().records.members_of(record)[0])])],
+              *position);
+    EXPECT_EQ(graph.definitions().record_members.count[graph.definitions().record_members.index(
+                  graph.definitions().records.members_of(record)[0])],
+              8);
+    ASSERT_TRUE(lispb::schema::is_valid(
+        graph.definitions().record_members.relationship[graph.definitions().record_members.index(
+            graph.definitions().records.members_of(record)[0])]));
+    EXPECT_EQ(graph.relationships().kind[graph.relationships().index(
+                  graph.definitions()
+                      .record_members.relationship[graph.definitions().record_members.index(
+                          graph.definitions().records.members_of(record)[0])])],
+              lispb::codegen::SemanticRelationKind::member_of);
+    EXPECT_EQ(graph.occurrences().type[graph.occurrences().index(
+                  graph.relationships().target[graph.relationships().index(
+                      graph.definitions()
+                          .record_members.relationship[graph.definitions().record_members.index(
+                              graph.definitions().records.members_of(record)[0])])])],
+              *table);
     EXPECT_NE(std::ranges::find(graph.dependencies_of(*path), *position),
               graph.dependencies_of(*path).end());
     EXPECT_NE(std::ranges::find(graph.users_of(*position), *path), graph.users_of(*position).end());
@@ -634,364 +2023,1529 @@ TEST(SemanticTypeGraph, ResolvesRecordMembersFixedArraysAndDependencies) {
 }
 
 TEST(SemanticTypeGraph, RejectsDirectAndIndirectByValueRecordCycles) {
-    auto module{codegen::NormalModuleSchema{
-        .settings = codegen::ModuleSettings{.name = "records", .header = "Records.h"},
-        .declarations = {codegen::RecordSchema{
-            .name = "Record", .members = {{.name = "self", .type = codegen::TypeRef{"Record"}}}}}}};
-    auto manifest{
-        codegen::Manifest{.schema_version = codegen::manifest_schema_version, .modules = {module}}};
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    auto module{[&] {
+        auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+        context.storage.declarations.normal_modules
+            .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] = [&] {
+            auto const new_module_settings_store{
+                context.storage.declarations.module_settings_store.append()};
+            context.storage.declarations.module_settings_store
+                .name[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.intern("records");
+            context.storage.declarations.module_settings_store
+                .header[context.storage.declarations.module_settings_store.index(
+                    new_module_settings_store)] = context.storage.strings.add("Records.h");
+            return new_module_settings_store;
+        }();
+        context.storage.declarations.normal_modules
+            .declarations[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+            context.storage.declarations.range<lispb::codegen::DeclarationHandle>({[&] {
+                auto const new_records{context.storage.declarations.records.append()};
+                context.storage.declarations.records
+                    .name[context.storage.declarations.records.index(new_records)] =
+                    context.storage.strings.intern("Record");
+                context.storage.declarations.records
+                    .members[context.storage.declarations.records.index(new_records)] =
+                    context.storage.declarations.range<lispb::codegen::RecordMemberId>({[&] {
+                        auto const new_record_members{
+                            context.storage.declarations.record_members.append()};
+                        context.storage.declarations.record_members
+                            .name[context.storage.declarations.record_members.index(
+                                new_record_members)] = context.storage.strings.intern("self");
+                        context.storage.declarations.record_members
+                            .type[context.storage.declarations.record_members.index(
+                                new_record_members)] = [&] {
+                            auto const new_type_refs{
+                                context.storage.declarations.type_refs.append()};
+                            context.storage.declarations.type_refs
+                                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                                context.storage.strings.intern("Record");
+                            return new_type_refs;
+                        }();
+                        return new_record_members;
+                    }()});
+                return new_records;
+            }()});
+        return new_normal_modules;
+    }()};
+    auto manifest{lispb::codegen::Manifest{lispb::codegen::manifest_schema_version,
+                                           lispb::codegen::make_test_registry(context),
+                                           context.storage.declarations,
+                                           {module}}};
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 
-    module.declarations = {
-        codegen::RecordSchema{.name = "First",
-                              .members = {{.name = "second", .type = codegen::TypeRef{"Second"}}}},
-        codegen::RecordSchema{.name = "Second",
-                              .members = {{.name = "first", .type = codegen::TypeRef{"First"}}}}};
+    storage.declarations.normal_modules.declarations
+        [storage.declarations.normal_modules.index(module)] = storage.declarations.range(
+        {[&] {
+             auto const new_records{storage.declarations.records.append()};
+             storage.declarations.records.name[storage.declarations.records.index(new_records)] =
+                 context.storage.strings.intern("First");
+             storage.declarations.records.members[storage.declarations.records.index(new_records)] =
+                 context.storage.declarations.range<lispb::codegen::RecordMemberId>({[&] {
+                     auto const new_record_members{
+                         context.storage.declarations.record_members.append()};
+                     context.storage.declarations.record_members
+                         .name[context.storage.declarations.record_members.index(
+                             new_record_members)] = context.storage.strings.intern("second");
+                     context.storage.declarations.record_members
+                         .type[context.storage.declarations.record_members.index(
+                             new_record_members)] = [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("Second");
+                         return new_type_refs;
+                     }();
+                     return new_record_members;
+                 }()});
+             return new_records;
+         }(),
+         [&] {
+             auto const new_records{context.storage.declarations.records.append()};
+             context.storage.declarations.records
+                 .name[context.storage.declarations.records.index(new_records)] =
+                 context.storage.strings.intern("Second");
+             context.storage.declarations.records
+                 .members[context.storage.declarations.records.index(new_records)] =
+                 context.storage.declarations.range<lispb::codegen::RecordMemberId>({[&] {
+                     auto const new_record_members{
+                         context.storage.declarations.record_members.append()};
+                     context.storage.declarations.record_members
+                         .name[context.storage.declarations.record_members.index(
+                             new_record_members)] = context.storage.strings.intern("first");
+                     context.storage.declarations.record_members
+                         .type[context.storage.declarations.record_members.index(
+                             new_record_members)] = [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("First");
+                         return new_type_refs;
+                     }();
+                     return new_record_members;
+                 }()});
+             return new_records;
+         }()});
     manifest.modules = {module};
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 }
 
 TEST(SemanticTypeGraph, PointerSelfReferenceIsNotByValueRecursion) {
-    codegen::Manifest const manifest{
-        .schema_version = codegen::manifest_schema_version,
-        .modules = {codegen::NormalModuleSchema{
-            .settings = codegen::ModuleSettings{.name = "records", .header = "Records.h"},
-            .declarations = {codegen::RecordSchema{
-                .name = "Node",
-                .members = {{.name = "next", .type = codegen::TypeRef{"Node", "*"}}}}}}}};
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    lispb::codegen::Manifest manifest{
+        lispb::codegen::manifest_schema_version,
+        lispb::codegen::make_test_registry(context),
+        context.storage.declarations,
+        {[&] {
+            auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+            context.storage.declarations.normal_modules
+                .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                [&] {
+                    auto const new_module_settings_store{
+                        context.storage.declarations.module_settings_store.append()};
+                    context.storage.declarations.module_settings_store
+                        .name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.intern("records");
+                    context.storage.declarations.module_settings_store
+                        .header[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.add("Records.h");
+                    return new_module_settings_store;
+                }();
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(
+                    new_normal_modules)] =
+                context.storage.declarations.range<lispb::codegen::DeclarationHandle>({[&] {
+                    auto const new_records{context.storage.declarations.records.append()};
+                    context.storage.declarations.records
+                        .name[context.storage.declarations.records.index(new_records)] =
+                        context.storage.strings.intern("Node");
+                    context.storage.declarations.records
+                        .members[context.storage.declarations.records.index(new_records)] =
+                        context.storage.declarations.range<lispb::codegen::RecordMemberId>({[&] {
+                            auto const new_record_members{
+                                context.storage.declarations.record_members.append()};
+                            context.storage.declarations.record_members
+                                .name[context.storage.declarations.record_members.index(
+                                    new_record_members)] = context.storage.strings.intern("next");
+                            context.storage.declarations.record_members
+                                .type[context.storage.declarations.record_members.index(
+                                    new_record_members)] = [&] {
+                                auto const new_type_refs{
+                                    context.storage.declarations.type_refs.append()};
+                                context.storage.declarations.type_refs
+                                    .name[context.storage.declarations.type_refs.index(
+                                        new_type_refs)] = context.storage.strings.intern("Node");
+                                context.storage.declarations.type_refs
+                                    .suffix[context.storage.declarations.type_refs.index(
+                                        new_type_refs)] = context.storage.strings.add("*");
+                                return new_type_refs;
+                            }();
+                            return new_record_members;
+                        }()});
+                    return new_records;
+                }()});
+            return new_normal_modules;
+        }()}};
     EXPECT_NO_THROW(static_cast<void>(resolve_type_graph(manifest)));
 }
 
 TEST(SemanticTypeGraph, ClassifiesBoundedUsesWithoutDiscardingSpelling) {
-    auto const pointer{codegen::resolve_type_use(codegen::TypeRef{"float", " const* const*"}, {})};
-    EXPECT_EQ(pointer.cpp_type.spelling, "float const* const*");
-    EXPECT_EQ(pointer.physical.form, codegen::PhysicalTypeForm::object_pointer);
-    EXPECT_EQ(pointer.physical.object_spelling, "float");
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    auto const pointer{lispb::codegen::resolve_type_use(
+        [&] {
+            auto const new_type_refs{context.storage.declarations.type_refs.append()};
+            context.storage.declarations.type_refs
+                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                context.storage.strings.intern("float");
+            context.storage.declarations.type_refs
+                .suffix[context.storage.declarations.type_refs.index(new_type_refs)] =
+                context.storage.strings.add(" const* const*");
+            return new_type_refs;
+        }(),
+        lispb::codegen::make_test_registry(context))};
+    EXPECT_EQ(storage.cpp_types.spelling(pointer.cpp_type), "float const* const*");
+    EXPECT_EQ(pointer.physical.form, lispb::codegen::PhysicalTypeForm::object_pointer);
+    EXPECT_EQ(storage.strings.view(pointer.physical.object_spelling), "float");
     EXPECT_FALSE(pointer.physical.contains_value());
-    auto const value{codegen::resolve_type_use(codegen::TypeRef{"float", " const"}, {})};
+    auto const value{lispb::codegen::resolve_type_use(
+        [&] {
+            auto const new_type_refs{context.storage.declarations.type_refs.append()};
+            context.storage.declarations.type_refs
+                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                context.storage.strings.intern("float");
+            context.storage.declarations.type_refs
+                .suffix[context.storage.declarations.type_refs.index(new_type_refs)] =
+                context.storage.strings.add(" const");
+            return new_type_refs;
+        }(),
+        lispb::codegen::make_test_registry(context))};
     EXPECT_TRUE(value.physical.contains_value());
     for (auto const suffix : {"&", "&&", "* const&"}) {
-        auto const reference{codegen::resolve_type_use(codegen::TypeRef{"float", suffix}, {})};
+        auto const reference{lispb::codegen::resolve_type_use(
+            [&] {
+                auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                context.storage.declarations.type_refs
+                    .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                    context.storage.strings.intern("float");
+                context.storage.declarations.type_refs
+                    .suffix[context.storage.declarations.type_refs.index(new_type_refs)] =
+                    context.storage.strings.add(suffix);
+                return new_type_refs;
+            }(),
+            lispb::codegen::make_test_registry(context))};
         EXPECT_FALSE(reference.physical.contains_value());
-        EXPECT_NE(reference.physical.form, codegen::PhysicalTypeForm::value);
+        EXPECT_NE(reference.physical.form, lispb::codegen::PhysicalTypeForm::value);
     }
     for (auto const suffix : {"[4]", "(*)()", " Owner::*", "*[]"}) {
-        auto const unsupported{codegen::resolve_type_use(codegen::TypeRef{"float", suffix}, {})};
-        EXPECT_EQ(unsupported.physical.form, codegen::PhysicalTypeForm::unsupported) << suffix;
-        EXPECT_FALSE(unsupported.physical.diagnostic.empty());
+        auto const unsupported{lispb::codegen::resolve_type_use(
+            [&] {
+                auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                context.storage.declarations.type_refs
+                    .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                    context.storage.strings.intern("float");
+                context.storage.declarations.type_refs
+                    .suffix[context.storage.declarations.type_refs.index(new_type_refs)] =
+                    context.storage.strings.add(suffix);
+                return new_type_refs;
+            }(),
+            lispb::codegen::make_test_registry(context))};
+        EXPECT_EQ(unsupported.physical.form, lispb::codegen::PhysicalTypeForm::unsupported)
+            << suffix;
+        EXPECT_FALSE(
+            lispb::codegen::physical_type_diagnostic(storage.cpp_types, unsupported.cpp_type)
+                .empty());
     }
-    auto const nested{codegen::resolve_type_use(codegen::TypeRef{"Owner", "", "Inner"}, {})};
-    EXPECT_EQ(nested.physical.object_spelling, "Owner::Inner");
+    auto const nested{lispb::codegen::resolve_type_use(
+        [&] {
+            auto const new_type_refs{context.storage.declarations.type_refs.append()};
+            context.storage.declarations.type_refs
+                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                context.storage.strings.intern("Owner");
+            context.storage.declarations.type_refs
+                .suffix[context.storage.declarations.type_refs.index(new_type_refs)] =
+                context.storage.strings.add("");
+            context.storage.declarations.type_refs
+                .nested[context.storage.declarations.type_refs.index(new_type_refs)] =
+                context.storage.strings.add("Inner");
+            return new_type_refs;
+        }(),
+        lispb::codegen::make_test_registry(context))};
+    EXPECT_EQ(storage.strings.view(nested.physical.object_spelling), "Owner::Inner");
     EXPECT_FALSE(nested.physical.contains_value());
 }
 
 TEST(SemanticTypeGraph, ResolvesRawUnionAlternativesAndDependencies) {
-    codegen::Manifest const manifest{
-        .schema_version = codegen::manifest_schema_version,
-        .modules = {codegen::NormalModuleSchema{
-            .settings = codegen::ModuleSettings{.name = "payloads", .header = "Payloads.h"},
-            .declarations = {codegen::UnionSchema{
-                .name = "Payload",
-                .alternatives =
-                    {{.name = "identifier", .type = codegen::TypeRef{"std::uint32_t"}},
-                     {.name = "bytes", .type = codegen::TypeRef{"std::uint8_t"}, .count = 12}},
-                .export_specifier = std::nullopt}}}}};
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    lispb::codegen::Manifest manifest{
+        lispb::codegen::manifest_schema_version,
+        lispb::codegen::make_test_registry(context),
+        context.storage.declarations,
+        {[&] {
+            auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+            context.storage.declarations.normal_modules
+                .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                [&] {
+                    auto const new_module_settings_store{
+                        context.storage.declarations.module_settings_store.append()};
+                    context.storage.declarations.module_settings_store
+                        .name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] =
+                        context.storage.strings.intern("payloads");
+                    context.storage.declarations.module_settings_store
+                        .header[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.add("Payloads.h");
+                    return new_module_settings_store;
+                }();
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(
+                    new_normal_modules)] =
+                context.storage.declarations.range<lispb::codegen::DeclarationHandle>({[&] {
+                    auto const new_unions{context.storage.declarations.unions.append()};
+                    context.storage.declarations.unions
+                        .name[context.storage.declarations.unions.index(new_unions)] =
+                        context.storage.strings.intern("Payload");
+                    context.storage.declarations.unions
+                        .alternatives[context.storage.declarations.unions.index(new_unions)] =
+                        context.storage.declarations.range<lispb::codegen::UnionAlternativeId>(
+                            {[&] {
+                                 auto const new_union_alternatives{
+                                     context.storage.declarations.union_alternatives.append()};
+                                 context.storage.declarations.union_alternatives
+                                     .name[context.storage.declarations.union_alternatives.index(
+                                         new_union_alternatives)] =
+                                     context.storage.strings.intern("identifier");
+                                 context.storage.declarations.union_alternatives
+                                     .type[context.storage.declarations.union_alternatives.index(
+                                         new_union_alternatives)] = [&] {
+                                     auto const new_type_refs{
+                                         context.storage.declarations.type_refs.append()};
+                                     context.storage.declarations.type_refs
+                                         .name[context.storage.declarations.type_refs.index(
+                                             new_type_refs)] =
+                                         context.storage.strings.intern("std::uint32_t");
+                                     return new_type_refs;
+                                 }();
+                                 return new_union_alternatives;
+                             }(),
+                             [&] {
+                                 auto const new_union_alternatives{
+                                     context.storage.declarations.union_alternatives.append()};
+                                 context.storage.declarations.union_alternatives
+                                     .name[context.storage.declarations.union_alternatives.index(
+                                         new_union_alternatives)] =
+                                     context.storage.strings.intern("bytes");
+                                 context.storage.declarations.union_alternatives
+                                     .type[context.storage.declarations.union_alternatives.index(
+                                         new_union_alternatives)] = [&] {
+                                     auto const new_type_refs{
+                                         context.storage.declarations.type_refs.append()};
+                                     context.storage.declarations.type_refs
+                                         .name[context.storage.declarations.type_refs.index(
+                                             new_type_refs)] =
+                                         context.storage.strings.intern("std::uint8_t");
+                                     return new_type_refs;
+                                 }();
+                                 context.storage.declarations.union_alternatives
+                                     .count[context.storage.declarations.union_alternatives.index(
+                                         new_union_alternatives)] = 12;
+                                 return new_union_alternatives;
+                             }()});
+                    context.storage.declarations.unions
+                        .export_specifier[context.storage.declarations.unions.index(new_unions)] =
+                        {};
+                    return new_unions;
+                }()});
+            return new_normal_modules;
+        }()}};
 
     auto const graph{resolve_type_graph(manifest)};
-    auto const payload{graph.find_declared("payloads", "Payload")};
+    auto const payload{lispb::codegen::find_test_type(graph, "payloads", "Payload")};
     ASSERT_TRUE(payload.has_value());
-    auto const& union_type{std::get<UnionType>(graph.type(*payload).definition)};
-    ASSERT_EQ(union_type.alternatives.size(), 2U);
-    EXPECT_EQ(union_type.alternatives[0].name, "identifier");
-    EXPECT_EQ(graph.type(union_type.alternatives[0].semantic_type.type).cpp_spelling,
-              "std::uint32_t");
-    EXPECT_EQ(union_type.alternatives[1].count, 12);
+    auto const& union_type{graph.definition(*payload)};
+    ASSERT_EQ(graph.definitions().unions.alternatives_of(union_type).size(), 2U);
+    EXPECT_EQ(text(storage,
+                   graph.definitions()
+                       .union_alternatives.name[graph.definitions().union_alternatives.index(
+                           graph.definitions().unions.alternatives_of(union_type)[0])]),
+              "identifier");
+    EXPECT_EQ(
+        text(storage,
+             graph.cpp_spelling(graph.occurrences().type[graph.occurrences().index(
+                 graph.definitions()
+                     .union_alternatives.semantic_type[graph.definitions().union_alternatives.index(
+                         graph.definitions().unions.alternatives_of(union_type)[0])])])),
+        "std::uint32_t");
+    EXPECT_EQ(
+        graph.definitions().union_alternatives.count[graph.definitions().union_alternatives.index(
+            graph.definitions().unions.alternatives_of(union_type)[1])],
+        12);
     EXPECT_EQ(graph.dependencies_of(*payload).size(), 2U);
 }
 
 TEST(SemanticTypeGraph, RejectsUnionAndMixedAggregateCycles) {
-    codegen::UnionSchema union_schema{
-        .name = "Payload",
-        .alternatives = {{.name = "self", .type = codegen::TypeRef{"Payload"}}},
-        .export_specifier = std::nullopt};
-    codegen::NormalModuleSchema union_module{
-        .settings = codegen::ModuleSettings{.name = "payloads",
-                                            .header = "Payloads.h",
-                                            .namespace_name = "payloads"},
-        .declarations = {union_schema}};
-    codegen::Manifest manifest{.schema_version = codegen::manifest_schema_version,
-                               .modules = {union_module}};
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    auto const union_schema{context.storage.declarations.unions.append()};
+    context.storage.declarations.unions
+        .name[context.storage.declarations.unions.index(union_schema)] =
+        context.storage.strings.intern("Payload");
+    context.storage.declarations.unions
+        .alternatives[context.storage.declarations.unions.index(union_schema)] =
+        context.storage.declarations.range<lispb::codegen::UnionAlternativeId>({[&] {
+            auto const new_union_alternatives{
+                context.storage.declarations.union_alternatives.append()};
+            context.storage.declarations.union_alternatives
+                .name[context.storage.declarations.union_alternatives.index(
+                    new_union_alternatives)] = context.storage.strings.intern("self");
+            context.storage.declarations.union_alternatives
+                .type[context.storage.declarations.union_alternatives.index(
+                    new_union_alternatives)] = [&] {
+                auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                context.storage.declarations.type_refs
+                    .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                    context.storage.strings.intern("Payload");
+                return new_type_refs;
+            }();
+            return new_union_alternatives;
+        }()});
+    context.storage.declarations.unions
+        .export_specifier[context.storage.declarations.unions.index(union_schema)] = {};
+    auto const union_module{context.storage.declarations.normal_modules.append()};
+    context.storage.declarations.normal_modules
+        .settings[context.storage.declarations.normal_modules.index(union_module)] = [&] {
+        auto const new_module_settings_store{
+            context.storage.declarations.module_settings_store.append()};
+        context.storage.declarations.module_settings_store
+            .name[context.storage.declarations.module_settings_store.index(
+                new_module_settings_store)] = context.storage.strings.intern("payloads");
+        context.storage.declarations.module_settings_store
+            .header[context.storage.declarations.module_settings_store.index(
+                new_module_settings_store)] = context.storage.strings.add("Payloads.h");
+        context.storage.declarations.module_settings_store
+            .namespace_name[context.storage.declarations.module_settings_store.index(
+                new_module_settings_store)] = context.storage.strings.intern("payloads");
+        return new_module_settings_store;
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(union_module)] =
+        context.storage.declarations.range<lispb::codegen::DeclarationHandle>({union_schema});
+    lispb::codegen::Manifest manifest{lispb::codegen::manifest_schema_version,
+                                      lispb::codegen::make_test_registry(context),
+                                      context.storage.declarations,
+                                      {union_module}};
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 
-    std::get<codegen::UnionSchema>(union_module.declarations.front()).alternatives = {
-        {.name = "record", .type = codegen::TypeRef{"records::Record"}}};
-    codegen::RecordSchema record_schema{
-        .name = "Record",
-        .members = {{.name = "payload", .type = codegen::TypeRef{"payloads::Payload"}}},
-        .export_specifier = std::nullopt};
-    codegen::NormalModuleSchema record_module{
-        .settings = codegen::ModuleSettings{.name = "records",
-                                            .header = "Records.h",
-                                            .namespace_name = "records"},
-        .declarations = {record_schema}};
+    context.storage.declarations.unions
+        .alternatives[context.storage.declarations.unions.index(union_schema)] =
+        storage.declarations.range({[&] {
+            auto const new_union_alternatives{storage.declarations.union_alternatives.append()};
+            storage.declarations.union_alternatives
+                .name[storage.declarations.union_alternatives.index(new_union_alternatives)] =
+                storage.strings.intern("record");
+            storage.declarations.union_alternatives
+                .type[storage.declarations.union_alternatives.index(new_union_alternatives)] = [&] {
+                auto const new_type_refs{storage.declarations.type_refs.append()};
+                storage.declarations.type_refs
+                    .name[storage.declarations.type_refs.index(new_type_refs)] =
+                    storage.strings.intern("records::Record");
+                return new_type_refs;
+            }();
+            return new_union_alternatives;
+        }()});
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(union_module)] =
+        storage.declarations.range({union_schema});
+    auto const record_schema{context.storage.declarations.records.append()};
+    context.storage.declarations.records
+        .name[context.storage.declarations.records.index(record_schema)] =
+        context.storage.strings.intern("Record");
+    context.storage.declarations.records
+        .members[context.storage.declarations.records.index(record_schema)] =
+        context.storage.declarations.range<lispb::codegen::RecordMemberId>({[&] {
+            auto const new_record_members{context.storage.declarations.record_members.append()};
+            context.storage.declarations.record_members
+                .name[context.storage.declarations.record_members.index(new_record_members)] =
+                context.storage.strings.intern("payload");
+            context.storage.declarations.record_members
+                .type[context.storage.declarations.record_members.index(new_record_members)] = [&] {
+                auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                context.storage.declarations.type_refs
+                    .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                    context.storage.strings.intern("payloads::Payload");
+                return new_type_refs;
+            }();
+            return new_record_members;
+        }()});
+    context.storage.declarations.records
+        .export_specifier[context.storage.declarations.records.index(record_schema)] = {};
+    auto const record_module{storage.declarations.normal_modules.append()};
+    storage.declarations.normal_modules
+        .settings[storage.declarations.normal_modules.index(record_module)] = [&] {
+        auto const new_module_settings_store{
+            context.storage.declarations.module_settings_store.append()};
+        context.storage.declarations.module_settings_store
+            .name[context.storage.declarations.module_settings_store.index(
+                new_module_settings_store)] = context.storage.strings.intern("records");
+        context.storage.declarations.module_settings_store
+            .header[context.storage.declarations.module_settings_store.index(
+                new_module_settings_store)] = context.storage.strings.add("Records.h");
+        context.storage.declarations.module_settings_store
+            .namespace_name[context.storage.declarations.module_settings_store.index(
+                new_module_settings_store)] = context.storage.strings.intern("records");
+        return new_module_settings_store;
+    }();
+    storage.declarations.normal_modules
+        .declarations[storage.declarations.normal_modules.index(record_module)] =
+        context.storage.declarations.range<lispb::codegen::DeclarationHandle>({record_schema});
     manifest.modules = {record_module, union_module};
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 }
 
 TEST(SemanticTypeGraph, ResolvesTaggedUnionDiscriminantMappingsAndDependencies) {
-    codegen::NormalModuleSchema enums{
-        .settings = codegen::ModuleSettings{.name = "events",
-                                            .header = "Events.h",
-                                            .namespace_name = "events"},
-        .declarations = {codegen::EnumSchema{
-            .name = "EventKind",
-            .underlying_type = codegen::TypeRef{"std::uint8_t"},
-            .values = {codegen::EnumeratorSchema{"Spawn"},
-                       codegen::EnumeratorSchema{"Damage"},
-                       codegen::EnumeratorSchema{.name = "Invalid", .sentinel = true}},
-        }}};
-    codegen::NormalModuleSchema unions{
-        .settings = codegen::ModuleSettings{.name = "payloads",
-                                            .header = "Payloads.h",
-                                            .namespace_name = "payloads"},
-        .declarations = {codegen::TaggedUnionSchema{
-            .name = "Event",
-            .discriminant = codegen::TypeRef{"events::EventKind"},
-            .alternatives = {
-                {.name = "spawn", .type = codegen::TypeRef{"std::uint32_t"}, .tag = "Spawn"},
-                {.name = "damage",
-                 .type = codegen::TypeRef{"std::uint16_t"},
-                 .count = 4,
-                 .tag = "Damage"}}}}};
-    codegen::Manifest manifest{.schema_version = codegen::manifest_schema_version,
-                               .modules = {enums, unions}};
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    auto const enums{context.storage.declarations.normal_modules.append()};
+    context.storage.declarations.normal_modules
+        .settings[context.storage.declarations.normal_modules.index(enums)] = [&] {
+        auto const new_module_settings_store{
+            context.storage.declarations.module_settings_store.append()};
+        context.storage.declarations.module_settings_store
+            .name[context.storage.declarations.module_settings_store.index(
+                new_module_settings_store)] = context.storage.strings.intern("events");
+        context.storage.declarations.module_settings_store
+            .header[context.storage.declarations.module_settings_store.index(
+                new_module_settings_store)] = context.storage.strings.add("Events.h");
+        context.storage.declarations.module_settings_store
+            .namespace_name[context.storage.declarations.module_settings_store.index(
+                new_module_settings_store)] = context.storage.strings.intern("events");
+        return new_module_settings_store;
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(
+            enums)] = context.storage.declarations.range<lispb::codegen::DeclarationHandle>({[&] {
+        auto const new_enums{context.storage.declarations.enums.append()};
+        context.storage.declarations.enums
+            .name[context.storage.declarations.enums.index(new_enums)] =
+            context.storage.strings.intern("EventKind");
+        context.storage.declarations.enums
+            .underlying_type[context.storage.declarations.enums.index(new_enums)] = [&] {
+            auto const new_type_refs{context.storage.declarations.type_refs.append()};
+            context.storage.declarations.type_refs
+                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                context.storage.strings.intern("std::uint8_t");
+            return new_type_refs;
+        }();
+        context.storage.declarations.enums
+            .values[context.storage.declarations.enums.index(new_enums)] =
+            context.storage.declarations.range<lispb::codegen::EnumeratorId>(
+                {[&] {
+                     auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                     context.storage.declarations.enumerators
+                         .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         context.storage.strings.intern("Spawn");
+                     return new_enumerators;
+                 }(),
+                 [&] {
+                     auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                     context.storage.declarations.enumerators
+                         .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         context.storage.strings.intern("Damage");
+                     return new_enumerators;
+                 }(),
+                 [&] {
+                     auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                     context.storage.declarations.enumerators
+                         .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                         context.storage.strings.intern("Invalid");
+                     context.storage.declarations.enumerators
+                         .sentinel[context.storage.declarations.enumerators.index(
+                             new_enumerators)] = true;
+                     return new_enumerators;
+                 }()});
+        return new_enums;
+    }()});
+    auto const unions{context.storage.declarations.normal_modules.append()};
+    context.storage.declarations.normal_modules
+        .settings[context.storage.declarations.normal_modules.index(unions)] = [&] {
+        auto const new_module_settings_store{
+            context.storage.declarations.module_settings_store.append()};
+        context.storage.declarations.module_settings_store
+            .name[context.storage.declarations.module_settings_store.index(
+                new_module_settings_store)] = context.storage.strings.intern("payloads");
+        context.storage.declarations.module_settings_store
+            .header[context.storage.declarations.module_settings_store.index(
+                new_module_settings_store)] = context.storage.strings.add("Payloads.h");
+        context.storage.declarations.module_settings_store
+            .namespace_name[context.storage.declarations.module_settings_store.index(
+                new_module_settings_store)] = context.storage.strings.intern("payloads");
+        return new_module_settings_store;
+    }();
+    context.storage.declarations.normal_modules
+        .declarations[context.storage.declarations.normal_modules.index(
+            unions)] = context.storage.declarations.range<lispb::codegen::DeclarationHandle>({[&] {
+        auto const new_tagged_unions{context.storage.declarations.tagged_unions.append()};
+        context.storage.declarations.tagged_unions
+            .name[context.storage.declarations.tagged_unions.index(new_tagged_unions)] =
+            context.storage.strings.intern("Event");
+        context.storage.declarations.tagged_unions
+            .discriminant[context.storage.declarations.tagged_unions.index(new_tagged_unions)] =
+            [&] {
+                auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                context.storage.declarations.type_refs
+                    .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                    context.storage.strings.intern("events::EventKind");
+                return new_type_refs;
+            }();
+        context.storage.declarations.tagged_unions
+            .alternatives[context.storage.declarations.tagged_unions.index(new_tagged_unions)] =
+            context.storage.declarations.range<lispb::codegen::TaggedUnionAlternativeId>(
+                {[&] {
+                     auto const new_tagged_union_alternatives{
+                         context.storage.declarations.tagged_union_alternatives.append()};
+                     context.storage.declarations.tagged_union_alternatives
+                         .name[context.storage.declarations.tagged_union_alternatives.index(
+                             new_tagged_union_alternatives)] =
+                         context.storage.strings.intern("spawn");
+                     context.storage.declarations.tagged_union_alternatives
+                         .type[context.storage.declarations.tagged_union_alternatives.index(
+                             new_tagged_union_alternatives)] = [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("std::uint32_t");
+                         return new_type_refs;
+                     }();
+                     context.storage.declarations.tagged_union_alternatives
+                         .tag[context.storage.declarations.tagged_union_alternatives.index(
+                             new_tagged_union_alternatives)] =
+                         context.storage.strings.intern("Spawn");
+                     return new_tagged_union_alternatives;
+                 }(),
+                 [&] {
+                     auto const new_tagged_union_alternatives{
+                         context.storage.declarations.tagged_union_alternatives.append()};
+                     context.storage.declarations.tagged_union_alternatives
+                         .name[context.storage.declarations.tagged_union_alternatives.index(
+                             new_tagged_union_alternatives)] =
+                         context.storage.strings.intern("damage");
+                     context.storage.declarations.tagged_union_alternatives
+                         .type[context.storage.declarations.tagged_union_alternatives.index(
+                             new_tagged_union_alternatives)] = [&] {
+                         auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                         context.storage.declarations.type_refs
+                             .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                             context.storage.strings.intern("std::uint16_t");
+                         return new_type_refs;
+                     }();
+                     context.storage.declarations.tagged_union_alternatives
+                         .count[context.storage.declarations.tagged_union_alternatives.index(
+                             new_tagged_union_alternatives)] = 4;
+                     context.storage.declarations.tagged_union_alternatives
+                         .tag[context.storage.declarations.tagged_union_alternatives.index(
+                             new_tagged_union_alternatives)] =
+                         context.storage.strings.intern("Damage");
+                     return new_tagged_union_alternatives;
+                 }()});
+        return new_tagged_unions;
+    }()});
+    lispb::codegen::Manifest manifest{lispb::codegen::manifest_schema_version,
+                                      lispb::codegen::make_test_registry(context),
+                                      context.storage.declarations,
+                                      {enums, unions}};
 
     auto graph{resolve_type_graph(manifest)};
-    auto const event{graph.find_declared("payloads", "Event")};
-    auto const kind{graph.find_declared("events", "EventKind")};
+    auto const event{lispb::codegen::find_test_type(graph, "payloads", "Event")};
+    auto const kind{lispb::codegen::find_test_type(graph, "events", "EventKind")};
     ASSERT_TRUE(event.has_value());
     ASSERT_TRUE(kind.has_value());
-    auto const& tagged{std::get<TaggedUnionType>(graph.type(*event).definition)};
-    EXPECT_EQ(tagged.discriminant.type, *kind);
-    ASSERT_EQ(tagged.alternatives.size(), 2U);
-    EXPECT_EQ(tagged.alternatives[0].tag, "Spawn");
-    EXPECT_EQ(tagged.alternatives[1].count, 4);
+    auto const& tagged{graph.definition(*event)};
+    EXPECT_EQ(
+        graph.occurrences().type[graph.occurrences().index(
+            graph.definitions()
+                .tagged_unions.discriminant[graph.definitions().tagged_unions.index(tagged)])],
+        *kind);
+    ASSERT_EQ(graph.definitions().tagged_unions.alternatives_of(tagged).size(), 2U);
+    EXPECT_EQ(
+        text(storage,
+             graph.definitions()
+                 .tagged_union_alternatives.tag[graph.definitions().tagged_union_alternatives.index(
+                     graph.definitions().tagged_unions.alternatives_of(tagged)[0])]),
+        "Spawn");
+    EXPECT_EQ(
+        graph.definitions()
+            .tagged_union_alternatives.count[graph.definitions().tagged_union_alternatives.index(
+                graph.definitions().tagged_unions.alternatives_of(tagged)[1])],
+        4);
     EXPECT_NE(std::ranges::find(graph.dependencies_of(*event), *kind),
               graph.dependencies_of(*event).end());
     EXPECT_EQ(graph.users_of(*kind).front(), *event);
 
-    manifest.modules = {
-        enums,
-        codegen::NormalModuleSchema{.settings = unions.settings,
-                                    .declarations = {codegen::TaggedUnionSchema{
-                                        .name = "Event",
-                                        .discriminant = codegen::TypeRef{"events::EventKind"},
-                                        .alternatives = {{.name = "missing",
-                                                          .type = codegen::TypeRef{"std::uint32_t"},
-                                                          .tag = "Missing"}}}}}};
-    EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
-
-    std::get<codegen::TaggedUnionSchema>(
-        std::get<codegen::NormalModuleSchema>(manifest.modules[1]).declarations.front())
-        .alternatives.front()
-        .tag = "Invalid";
-    EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
-
-    std::get<codegen::TaggedUnionSchema>(
-        std::get<codegen::NormalModuleSchema>(manifest.modules[1]).declarations.front())
-        .discriminant = codegen::TypeRef{"std::uint8_t"};
+    for (auto const tag : {"Missing", "Invalid"}) {
+        auto invalid{lispb::codegen::parse_test_manifest(
+            context,
+            "(module payloads :header \"Payloads.h\" :namespace payloads (tagged-union Event "
+            ":discriminant events::EventKind (alternative missing std::uint32_t :tag " +
+                std::string{tag} + ")))")};
+        manifest.modules = {enums, invalid.modules.front()};
+        EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
+    }
+    auto invalid{lispb::codegen::parse_test_manifest(context, R"(
+        (module payloads :header "Payloads.h" :namespace payloads
+          (tagged-union Event :discriminant std::uint8_t
+            (alternative missing std::uint32_t :tag Invalid))))")};
+    manifest.modules = {enums, invalid.modules.front()};
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 }
 
 TEST(SemanticTypeGraph, KeepsUnknownRegisteredTypesAsExternalLeaves) {
-    codegen::Manifest const manifest{
-        .schema_version = codegen::manifest_schema_version,
-        .types = {{"native_handle",
-                   codegen::RegisteredTypeSchema{
-                       .cpp_type = codegen::CppType{"NativeHandle", "native/handle.h"}}}},
-        .modules = {codegen::NormalModuleSchema{
-            .settings = codegen::ModuleSettings{.name = "mode", .header = "Mode.h"},
-            .declarations = {codegen::EnumSchema{
-                .name = "Mode",
-                .underlying_type = codegen::TypeRef{"uint8"},
-                .values = {codegen::EnumeratorSchema{"Value"}},
-            }}}},
-    };
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    lispb::codegen::Manifest manifest{
+        lispb::codegen::manifest_schema_version,
+        lispb::codegen::make_test_registry(
+            context,
+            {{"native_handle",
+              storage.cpp_types.add(
+                  "NativeHandle",
+                  {storage.cpp_types.dependency("NativeHandle", "native/handle.h")})}}),
+        context.storage.declarations,
+        {[&] {
+            auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+            context.storage.declarations.normal_modules
+                .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                [&] {
+                    auto const new_module_settings_store{
+                        context.storage.declarations.module_settings_store.append()};
+                    context.storage.declarations.module_settings_store
+                        .name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.intern("mode");
+                    context.storage.declarations.module_settings_store
+                        .header[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.add("Mode.h");
+                    return new_module_settings_store;
+                }();
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(
+                    new_normal_modules)] =
+                context.storage.declarations.range<lispb::codegen::DeclarationHandle>({[&] {
+                    auto const new_enums{context.storage.declarations.enums.append()};
+                    context.storage.declarations.enums
+                        .name[context.storage.declarations.enums.index(new_enums)] =
+                        context.storage.strings.intern("Mode");
+                    context.storage.declarations.enums
+                        .underlying_type[context.storage.declarations.enums.index(new_enums)] =
+                        [&] {
+                            auto const new_type_refs{
+                                context.storage.declarations.type_refs.append()};
+                            context.storage.declarations.type_refs
+                                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                                context.storage.strings.intern("uint8");
+                            return new_type_refs;
+                        }();
+                    context.storage.declarations.enums
+                        .values[context.storage.declarations.enums.index(new_enums)] =
+                        context.storage.declarations.range<lispb::codegen::EnumeratorId>({[&] {
+                            auto const new_enumerators{
+                                context.storage.declarations.enumerators.append()};
+                            context.storage.declarations.enumerators
+                                .name[context.storage.declarations.enumerators.index(
+                                    new_enumerators)] = context.storage.strings.intern("Value");
+                            return new_enumerators;
+                        }()});
+                    return new_enums;
+                }()});
+            return new_normal_modules;
+        }()}};
     auto const graph{resolve_type_graph(manifest)};
-    auto const handle{graph.find_registered("native_handle")};
+    auto const handle{graph.find_registered(storage.strings.find("native_handle"))};
     ASSERT_TRUE(handle.has_value());
-    auto const* external{std::get_if<ExternalType>(&graph.type(*handle).definition)};
-    ASSERT_NE(external, nullptr);
-    EXPECT_EQ(external->cpp_type.spelling, "NativeHandle");
-    ASSERT_FALSE(external->cpp_type.dependencies.empty());
-    EXPECT_EQ(*external->cpp_type.dependencies.front().header, "native/handle.h");
+    auto const external{
+        ((graph.definition(*handle)).kind() == lispb::schema::TypeDefinitionKind::external
+             ? std::optional{graph.definition(*handle)}
+             : std::nullopt)};
+    ASSERT_TRUE(external.has_value());
+    EXPECT_EQ(
+        storage.cpp_types.spelling(
+            graph.definitions().externals.cpp_type[graph.definitions().externals.index(*external)]),
+        "NativeHandle");
+    ASSERT_FALSE(
+        storage.cpp_types
+            .dependencies(graph.definitions()
+                              .externals.cpp_type[graph.definitions().externals.index(*external)])
+            .empty());
+    EXPECT_EQ(*storage.cpp_types.dependency_header(
+                  storage.cpp_types
+                      .dependencies(
+                          graph.definitions()
+                              .externals.cpp_type[graph.definitions().externals.index(*external)])
+                      .front()),
+              "native/handle.h");
     EXPECT_TRUE(graph.dependencies_of(*handle).empty());
 }
 
 TEST(SemanticTypeGraph, RejectsAmbiguousRegisteredDeclarationBindings) {
-    auto enum_module = [](std::string module_name, std::string const& header) {
-        return codegen::NormalModuleSchema{
-            .settings = codegen::ModuleSettings{.name = std::move(module_name),
-                                                .header = header,
-                                                .namespace_name = "project"},
-            .declarations = {codegen::EnumSchema{
-                .name = "Mode",
-                .underlying_type = codegen::TypeRef{"uint8"},
-                .values = {codegen::EnumeratorSchema{"Value"}},
-            }}};
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    auto enum_module = [&](std::string module_name, std::string const& header) {
+        return [&] {
+            auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+            context.storage.declarations.normal_modules
+                .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                [&] {
+                    auto const new_module_settings_store{
+                        context.storage.declarations.module_settings_store.append()};
+                    context.storage.declarations.module_settings_store
+                        .name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] =
+                        context.storage.strings.intern(std::move(module_name));
+                    context.storage.declarations.module_settings_store
+                        .header[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.add(header);
+                    context.storage.declarations.module_settings_store
+                        .namespace_name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.intern("project");
+                    return new_module_settings_store;
+                }();
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(
+                    new_normal_modules)] =
+                context.storage.declarations.range<lispb::codegen::DeclarationHandle>({[&] {
+                    auto const new_enums{context.storage.declarations.enums.append()};
+                    context.storage.declarations.enums
+                        .name[context.storage.declarations.enums.index(new_enums)] =
+                        context.storage.strings.intern("Mode");
+                    context.storage.declarations.enums
+                        .underlying_type[context.storage.declarations.enums.index(new_enums)] =
+                        [&] {
+                            auto const new_type_refs{
+                                context.storage.declarations.type_refs.append()};
+                            context.storage.declarations.type_refs
+                                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                                context.storage.strings.intern("uint8");
+                            return new_type_refs;
+                        }();
+                    context.storage.declarations.enums
+                        .values[context.storage.declarations.enums.index(new_enums)] =
+                        context.storage.declarations.range<lispb::codegen::EnumeratorId>({[&] {
+                            auto const new_enumerators{
+                                context.storage.declarations.enumerators.append()};
+                            context.storage.declarations.enumerators
+                                .name[context.storage.declarations.enumerators.index(
+                                    new_enumerators)] = context.storage.strings.intern("Value");
+                            return new_enumerators;
+                        }()});
+                    return new_enums;
+                }()});
+            return new_normal_modules;
+        }();
     };
-    codegen::Manifest const manifest{
-        .schema_version = codegen::manifest_schema_version,
-        .types = {{"mode",
-                   codegen::RegisteredTypeSchema{.cpp_type = codegen::CppType{"project::Mode"}}}},
-        .modules = {enum_module("first", "First.h"), enum_module("second", "Second.h")},
-    };
+    lispb::codegen::Manifest manifest{
+        lispb::codegen::manifest_schema_version,
+        lispb::codegen::make_test_registry(context,
+                                           {{"mode", storage.cpp_types.add("project::Mode")}}),
+        context.storage.declarations,
+        {enum_module("first", "First.h"), enum_module("second", "Second.h")}};
 
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 }
 
 TEST(SemanticTypeGraph, RejectsInvalidAndDuplicateDeclaredIdentities) {
-    auto const make_module = [](std::string name, std::vector<codegen::EnumSchema> enums) {
-        return codegen::NormalModuleSchema{
-            .settings = codegen::ModuleSettings{.name = std::move(name), .header = "Types.h"},
-            .declarations = {std::make_move_iterator(enums.begin()),
-                             std::make_move_iterator(enums.end())}};
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    auto const make_module = [&](std::string name,
+                                 std::vector<lispb::codegen::DeclarationHandle> enums) {
+        std::vector<lispb::codegen::DeclarationHandle> declarations;
+        for (auto const& value : enums) {
+            declarations.push_back(value);
+        }
+        return [&] {
+            auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+            context.storage.declarations.normal_modules
+                .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                [&] {
+                    auto const new_module_settings_store{
+                        context.storage.declarations.module_settings_store.append()};
+                    context.storage.declarations.module_settings_store
+                        .name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] =
+                        context.storage.strings.intern(std::move(name));
+                    context.storage.declarations.module_settings_store
+                        .header[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.add("Types.h");
+                    return new_module_settings_store;
+                }();
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(
+                    new_normal_modules)] = storage.declarations.range(declarations);
+            return new_normal_modules;
+        }();
     };
-    auto const make_enum = [](std::string name) {
-        return codegen::EnumSchema{
-            .name = std::move(name),
-            .underlying_type = codegen::TypeRef{"uint8"},
-            .values = {codegen::EnumeratorSchema{"Value"}},
-        };
+    auto const make_enum = [&](std::string name) {
+        return [&] {
+            auto const new_enums{context.storage.declarations.enums.append()};
+            context.storage.declarations.enums
+                .name[context.storage.declarations.enums.index(new_enums)] =
+                context.storage.strings.intern(std::move(name));
+            context.storage.declarations.enums
+                .underlying_type[context.storage.declarations.enums.index(new_enums)] = [&] {
+                auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                context.storage.declarations.type_refs
+                    .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                    context.storage.strings.intern("uint8");
+                return new_type_refs;
+            }();
+            context.storage.declarations.enums
+                .values[context.storage.declarations.enums.index(new_enums)] =
+                context.storage.declarations.range<lispb::codegen::EnumeratorId>({[&] {
+                    auto const new_enumerators{context.storage.declarations.enumerators.append()};
+                    context.storage.declarations.enumerators
+                        .name[context.storage.declarations.enumerators.index(new_enumerators)] =
+                        context.storage.strings.intern("Value");
+                    return new_enumerators;
+                }()});
+            return new_enums;
+        }();
     };
 
-    codegen::Manifest const invalid{
-        .schema_version = codegen::manifest_schema_version,
-        .modules = {make_module("types", {make_enum("")})},
-    };
+    lispb::codegen::Manifest invalid{lispb::codegen::manifest_schema_version,
+                                     lispb::codegen::make_test_registry(context),
+                                     context.storage.declarations,
+                                     {make_module("types", {make_enum("")})}};
     EXPECT_THROW(static_cast<void>(resolve_type_graph(invalid)), std::invalid_argument);
 
-    codegen::Manifest const duplicate{
-        .schema_version = codegen::manifest_schema_version,
-        .modules = {make_module("types", {make_enum("Mode"), make_enum("Mode")})},
-    };
+    lispb::codegen::Manifest duplicate{
+        lispb::codegen::manifest_schema_version,
+        lispb::codegen::make_test_registry(context),
+        context.storage.declarations,
+        {make_module("types", {make_enum("Mode"), make_enum("Mode")})}};
     EXPECT_THROW(static_cast<void>(resolve_type_graph(duplicate)), std::invalid_argument);
 }
 
 TEST(SemanticTypeGraph, RejectsUnresolvedRegisteredReferences) {
-    codegen::Manifest const manifest{
-        .schema_version = codegen::manifest_schema_version,
-        .modules = {codegen::NormalModuleSchema{
-            .settings = codegen::ModuleSettings{.name = "mode", .header = "Mode.h"},
-            .declarations = {codegen::EnumSchema{
-                .name = "Mode",
-                .underlying_type = codegen::TypeRef{"@missing"},
-                .values = {codegen::EnumeratorSchema{"Value"}},
-            }}}},
-    };
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    lispb::codegen::Manifest manifest{
+        lispb::codegen::manifest_schema_version,
+        lispb::codegen::make_test_registry(context),
+        context.storage.declarations,
+        {[&] {
+            auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+            context.storage.declarations.normal_modules
+                .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                [&] {
+                    auto const new_module_settings_store{
+                        context.storage.declarations.module_settings_store.append()};
+                    context.storage.declarations.module_settings_store
+                        .name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.intern("mode");
+                    context.storage.declarations.module_settings_store
+                        .header[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.add("Mode.h");
+                    return new_module_settings_store;
+                }();
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(
+                    new_normal_modules)] =
+                context.storage.declarations.range<lispb::codegen::DeclarationHandle>({[&] {
+                    auto const new_enums{context.storage.declarations.enums.append()};
+                    context.storage.declarations.enums
+                        .name[context.storage.declarations.enums.index(new_enums)] =
+                        context.storage.strings.intern("Mode");
+                    context.storage.declarations.enums
+                        .underlying_type[context.storage.declarations.enums.index(new_enums)] =
+                        [&] {
+                            auto const new_type_refs{
+                                context.storage.declarations.type_refs.append()};
+                            context.storage.declarations.type_refs
+                                .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                                context.storage.strings.intern("@missing");
+                            return new_type_refs;
+                        }();
+                    context.storage.declarations.enums
+                        .values[context.storage.declarations.enums.index(new_enums)] =
+                        context.storage.declarations.range<lispb::codegen::EnumeratorId>({[&] {
+                            auto const new_enumerators{
+                                context.storage.declarations.enumerators.append()};
+                            context.storage.declarations.enumerators
+                                .name[context.storage.declarations.enumerators.index(
+                                    new_enumerators)] = context.storage.strings.intern("Value");
+                            return new_enumerators;
+                        }()});
+                    return new_enums;
+                }()});
+            return new_normal_modules;
+        }()}};
 
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 }
 
 TEST(SemanticTypeGraph, ReferenceLookupMatchesResolverBindings) {
-    codegen::Manifest const manifest{
-        .schema_version = codegen::manifest_schema_version,
-        .types = {{"bar",
-                   codegen::RegisteredTypeSchema{.cpp_type = codegen::CppType{"game::Bar"}}}},
-        .modules = {codegen::NormalModuleSchema{
-                        .settings = {.name = "A", .header = "A.h", .namespace_name = "game"},
-                        .declarations =
-                            {codegen::RecordSchema{
-                                 .name = "Foo", .members = {{.name = "value", .type = {"int32"}}}},
-                             codegen::RecordSchema{
-                                 .name = "Bar", .members = {{.name = "value", .type = {"int32"}}}},
-                             codegen::RecordSchema{
-                                 .name = "User",
-                                 .members = {{.name = "local", .type = {"Foo"}},
-                                             {.name = "qualified", .type = {"game::Bar"}},
-                                             {.name = "registered", .type = {"@bar"}},
-                                             {.name = "suffixed", .type = {"Foo", "*"}},
-                                             {.name = "ambiguous", .type = {"game::Foo"}}}}}},
-                    codegen::NormalModuleSchema{
-                        .settings = {.name = "B", .header = "B.h", .namespace_name = "game"},
-                        .declarations = {codegen::RecordSchema{
-                            .name = "Foo", .members = {{.name = "value", .type = {"int32"}}}}}}}};
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    lispb::codegen::Manifest manifest{
+        lispb::codegen::manifest_schema_version,
+        lispb::codegen::make_test_registry(context, {{"bar", storage.cpp_types.add("game::Bar")}}),
+        context.storage.declarations,
+        {[&] {
+             auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+             context.storage.declarations.normal_modules
+                 .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                 [&] {
+                     auto const new_module_settings_store{
+                         context.storage.declarations.module_settings_store.append()};
+                     context.storage.declarations.module_settings_store
+                         .name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] = context.storage.strings.intern("A");
+                     context.storage.declarations.module_settings_store
+                         .header[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] = context.storage.strings.add("A.h");
+                     context.storage.declarations.module_settings_store
+                         .namespace_name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] = context.storage.strings.intern("game");
+                     return new_module_settings_store;
+                 }();
+             context.storage.declarations.normal_modules
+                 .declarations[context.storage.declarations.normal_modules.index(
+                     new_normal_modules)] =
+                 context.storage.declarations.range<lispb::codegen::DeclarationHandle>(
+                     {[&] {
+                          auto const new_records{context.storage.declarations.records.append()};
+                          context.storage.declarations.records
+                              .name[context.storage.declarations.records.index(new_records)] =
+                              context.storage.strings.intern("Foo");
+                          context.storage.declarations.records
+                              .members[context.storage.declarations.records.index(new_records)] =
+                              context.storage.declarations.range<lispb::codegen::RecordMemberId>(
+                                  {[&] {
+                                      auto const new_record_members{
+                                          context.storage.declarations.record_members.append()};
+                                      context.storage.declarations.record_members
+                                          .name[context.storage.declarations.record_members.index(
+                                              new_record_members)] =
+                                          context.storage.strings.intern("value");
+                                      context.storage.declarations.record_members
+                                          .type[context.storage.declarations.record_members.index(
+                                              new_record_members)] = [&] {
+                                          auto const new_type_refs{
+                                              context.storage.declarations.type_refs.append()};
+                                          context.storage.declarations.type_refs
+                                              .name[context.storage.declarations.type_refs.index(
+                                                  new_type_refs)] =
+                                              context.storage.strings.intern("int32");
+                                          return new_type_refs;
+                                      }();
+                                      return new_record_members;
+                                  }()});
+                          return new_records;
+                      }(),
+                      [&] {
+                          auto const new_records{context.storage.declarations.records.append()};
+                          context.storage.declarations.records
+                              .name[context.storage.declarations.records.index(new_records)] =
+                              context.storage.strings.intern("Bar");
+                          context.storage.declarations.records
+                              .members[context.storage.declarations.records.index(new_records)] =
+                              context.storage.declarations.range<lispb::codegen::RecordMemberId>(
+                                  {[&] {
+                                      auto const new_record_members{
+                                          context.storage.declarations.record_members.append()};
+                                      context.storage.declarations.record_members
+                                          .name[context.storage.declarations.record_members.index(
+                                              new_record_members)] =
+                                          context.storage.strings.intern("value");
+                                      context.storage.declarations.record_members
+                                          .type[context.storage.declarations.record_members.index(
+                                              new_record_members)] = [&] {
+                                          auto const new_type_refs{
+                                              context.storage.declarations.type_refs.append()};
+                                          context.storage.declarations.type_refs
+                                              .name[context.storage.declarations.type_refs.index(
+                                                  new_type_refs)] =
+                                              context.storage.strings.intern("int32");
+                                          return new_type_refs;
+                                      }();
+                                      return new_record_members;
+                                  }()});
+                          return new_records;
+                      }(),
+                      [&] {
+                          auto const new_records{context.storage.declarations.records.append()};
+                          context.storage.declarations.records
+                              .name[context.storage.declarations.records.index(new_records)] =
+                              context.storage.strings.intern("User");
+                          context.storage.declarations.records
+                              .members[context.storage.declarations.records.index(new_records)] =
+                              context.storage.declarations.range<lispb::codegen::RecordMemberId>(
+                                  {[&] {
+                                       auto const new_record_members{
+                                           context.storage.declarations.record_members.append()};
+                                       context.storage.declarations.record_members
+                                           .name[context.storage.declarations.record_members.index(
+                                               new_record_members)] =
+                                           context.storage.strings.intern("local");
+                                       context.storage.declarations.record_members
+                                           .type[context.storage.declarations.record_members.index(
+                                               new_record_members)] = [&] {
+                                           auto const new_type_refs{
+                                               context.storage.declarations.type_refs.append()};
+                                           context.storage.declarations.type_refs
+                                               .name[context.storage.declarations.type_refs.index(
+                                                   new_type_refs)] =
+                                               context.storage.strings.intern("Foo");
+                                           return new_type_refs;
+                                       }();
+                                       return new_record_members;
+                                   }(),
+                                   [&] {
+                                       auto const new_record_members{
+                                           context.storage.declarations.record_members.append()};
+                                       context.storage.declarations.record_members
+                                           .name[context.storage.declarations.record_members.index(
+                                               new_record_members)] =
+                                           context.storage.strings.intern("qualified");
+                                       context.storage.declarations.record_members
+                                           .type[context.storage.declarations.record_members.index(
+                                               new_record_members)] = [&] {
+                                           auto const new_type_refs{
+                                               context.storage.declarations.type_refs.append()};
+                                           context.storage.declarations.type_refs
+                                               .name[context.storage.declarations.type_refs.index(
+                                                   new_type_refs)] =
+                                               context.storage.strings.intern("game::Bar");
+                                           return new_type_refs;
+                                       }();
+                                       return new_record_members;
+                                   }(),
+                                   [&] {
+                                       auto const new_record_members{
+                                           context.storage.declarations.record_members.append()};
+                                       context.storage.declarations.record_members
+                                           .name[context.storage.declarations.record_members.index(
+                                               new_record_members)] =
+                                           context.storage.strings.intern("registered");
+                                       context.storage.declarations.record_members
+                                           .type[context.storage.declarations.record_members.index(
+                                               new_record_members)] = [&] {
+                                           auto const new_type_refs{
+                                               context.storage.declarations.type_refs.append()};
+                                           context.storage.declarations.type_refs
+                                               .name[context.storage.declarations.type_refs.index(
+                                                   new_type_refs)] =
+                                               context.storage.strings.intern("@bar");
+                                           return new_type_refs;
+                                       }();
+                                       return new_record_members;
+                                   }(),
+                                   [&] {
+                                       auto const new_record_members{
+                                           context.storage.declarations.record_members.append()};
+                                       context.storage.declarations.record_members
+                                           .name[context.storage.declarations.record_members.index(
+                                               new_record_members)] =
+                                           context.storage.strings.intern("suffixed");
+                                       context.storage.declarations.record_members
+                                           .type[context.storage.declarations.record_members.index(
+                                               new_record_members)] = [&] {
+                                           auto const new_type_refs{
+                                               context.storage.declarations.type_refs.append()};
+                                           context.storage.declarations.type_refs
+                                               .name[context.storage.declarations.type_refs.index(
+                                                   new_type_refs)] =
+                                               context.storage.strings.intern("Foo");
+                                           context.storage.declarations.type_refs
+                                               .suffix[context.storage.declarations.type_refs.index(
+                                                   new_type_refs)] =
+                                               context.storage.strings.add("*");
+                                           return new_type_refs;
+                                       }();
+                                       return new_record_members;
+                                   }(),
+                                   [&] {
+                                       auto const new_record_members{
+                                           context.storage.declarations.record_members.append()};
+                                       context.storage.declarations.record_members
+                                           .name[context.storage.declarations.record_members.index(
+                                               new_record_members)] =
+                                           context.storage.strings.intern("ambiguous");
+                                       context.storage.declarations.record_members
+                                           .type[context.storage.declarations.record_members.index(
+                                               new_record_members)] = [&] {
+                                           auto const new_type_refs{
+                                               context.storage.declarations.type_refs.append()};
+                                           context.storage.declarations.type_refs
+                                               .name[context.storage.declarations.type_refs.index(
+                                                   new_type_refs)] =
+                                               context.storage.strings.intern("game::Foo");
+                                           return new_type_refs;
+                                       }();
+                                       return new_record_members;
+                                   }()});
+                          return new_records;
+                      }()});
+             return new_normal_modules;
+         }(),
+         [&] {
+             auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+             context.storage.declarations.normal_modules
+                 .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                 [&] {
+                     auto const new_module_settings_store{
+                         context.storage.declarations.module_settings_store.append()};
+                     context.storage.declarations.module_settings_store
+                         .name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] = context.storage.strings.intern("B");
+                     context.storage.declarations.module_settings_store
+                         .header[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] = context.storage.strings.add("B.h");
+                     context.storage.declarations.module_settings_store
+                         .namespace_name[context.storage.declarations.module_settings_store.index(
+                             new_module_settings_store)] = context.storage.strings.intern("game");
+                     return new_module_settings_store;
+                 }();
+             context.storage.declarations.normal_modules
+                 .declarations[context.storage.declarations.normal_modules.index(
+                     new_normal_modules)] =
+                 context.storage.declarations.range<lispb::codegen::DeclarationHandle>({[&] {
+                     auto const new_records{context.storage.declarations.records.append()};
+                     context.storage.declarations.records
+                         .name[context.storage.declarations.records.index(new_records)] =
+                         context.storage.strings.intern("Foo");
+                     context.storage.declarations.records
+                         .members[context.storage.declarations.records.index(new_records)] =
+                         context.storage.declarations.range<lispb::codegen::RecordMemberId>({[&] {
+                             auto const new_record_members{
+                                 context.storage.declarations.record_members.append()};
+                             context.storage.declarations.record_members
+                                 .name[context.storage.declarations.record_members.index(
+                                     new_record_members)] = context.storage.strings.intern("value");
+                             context.storage.declarations.record_members
+                                 .type[context.storage.declarations.record_members.index(
+                                     new_record_members)] = [&] {
+                                 auto const new_type_refs{
+                                     context.storage.declarations.type_refs.append()};
+                                 context.storage.declarations.type_refs
+                                     .name[context.storage.declarations.type_refs.index(
+                                         new_type_refs)] = context.storage.strings.intern("int32");
+                                 return new_type_refs;
+                             }();
+                             return new_record_members;
+                         }()});
+                     return new_records;
+                 }()});
+             return new_normal_modules;
+         }()}};
     auto const graph{resolve_type_graph(manifest)};
-    auto const& schema{std::get<codegen::RecordSchema>(
-        std::get<codegen::NormalModuleSchema>(manifest.modules.front()).declarations.back())};
-    auto const& user{
-        std::get<RecordType>(graph.type(*graph.find_declared("A", "User")).definition)};
-    auto const bound_member_count{schema.members.size() - 1};
+    auto const& store{storage.declarations};
+    auto const module{manifest.modules.front()};
+    auto const schema{
+        store.items(store.normal_modules.declarations[store.normal_modules.index(module)]).back()};
+    auto const& user{graph.definition(*lispb::codegen::find_test_type(graph, "A", "User"))};
+    auto const bound_member_count{store.records.members[store.records.index(schema)].size() - 1};
     for (std::size_t index{}; index < bound_member_count; ++index) {
-        EXPECT_EQ(graph.find_reference(schema.members[index].type, "A"),
-                  user.members[index].semantic_type.type);
+        EXPECT_EQ(
+            graph.find_reference(store.record_members.type[store.record_members.index(store.items(
+                                     store.records.members[store.records.index(schema)])[index])],
+                                 module),
+            graph.occurrences().type[graph.occurrences().index(
+                graph.definitions()
+                    .record_members.semantic_type[graph.definitions().record_members.index(
+                        graph.definitions().records.members_of(user)[index])])]);
     }
-    EXPECT_FALSE(graph.find_reference({"game::Foo"}, "A").has_value());
-    EXPECT_EQ(graph.type(user.members.back().semantic_type.type).identity.origin,
+    EXPECT_FALSE(graph
+                     .find_reference(
+                         [&] {
+                             auto const new_type_refs{storage.declarations.type_refs.append()};
+                             storage.declarations.type_refs
+                                 .name[storage.declarations.type_refs.index(new_type_refs)] =
+                                 storage.strings.intern("game::Foo");
+                             return new_type_refs;
+                         }(),
+                         module)
+                     .has_value());
+    EXPECT_EQ(graph.origin(graph.occurrences().type[graph.occurrences().index(
+                  graph.definitions()
+                      .record_members.semantic_type[graph.definitions().record_members.index(
+                          graph.definitions().records.members_of(user).back())])]),
               TypeOrigin::cpp_spelling);
-    EXPECT_FALSE(graph.find_reference({"Foo"}, "other").has_value());
-    EXPECT_FALSE(graph.find_reference({"@missing"}, "A").has_value());
+    EXPECT_FALSE(graph
+                     .find_reference(
+                         [&] {
+                             auto const new_type_refs{storage.declarations.type_refs.append()};
+                             storage.declarations.type_refs
+                                 .name[storage.declarations.type_refs.index(new_type_refs)] =
+                                 storage.strings.intern("Foo");
+                             return new_type_refs;
+                         }(),
+                         lispb::codegen::ModuleHandle{})
+                     .has_value());
+    EXPECT_FALSE(graph
+                     .find_reference(
+                         [&] {
+                             auto const new_type_refs{storage.declarations.type_refs.append()};
+                             storage.declarations.type_refs
+                                 .name[storage.declarations.type_refs.index(new_type_refs)] =
+                                 storage.strings.intern("@missing");
+                             return new_type_refs;
+                         }(),
+                         module)
+                     .has_value());
 }
 
 TEST(SemanticTypeGraph, TreatsRawCppSpellingsAsExplicitExternalLeaves) {
-    codegen::Manifest const manifest{
-        .schema_version = codegen::manifest_schema_version,
-        .modules = {codegen::NormalModuleSchema{
-            .settings = codegen::ModuleSettings{.name = "values", .header = "Values.h"},
-            .declarations = {codegen::SoaSchema{
-                .name = "Values",
-                .members = {codegen::SoaMemberSchema{
-                    "items", codegen::SoaMemberKind::array, codegen::TypeRef{"ExternalValue"}}},
-            }},
-            .soa_backend = codegen::SoaBackend::standard_library}},
-    };
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    lispb::codegen::Manifest manifest{
+        lispb::codegen::manifest_schema_version,
+        lispb::codegen::make_test_registry(context),
+        context.storage.declarations,
+        {[&] {
+            auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+            context.storage.declarations.normal_modules
+                .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                [&] {
+                    auto const new_module_settings_store{
+                        context.storage.declarations.module_settings_store.append()};
+                    context.storage.declarations.module_settings_store
+                        .name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.intern("values");
+                    context.storage.declarations.module_settings_store
+                        .header[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.add("Values.h");
+                    return new_module_settings_store;
+                }();
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(
+                    new_normal_modules)] =
+                context.storage.declarations.range<lispb::codegen::DeclarationHandle>({[&] {
+                    auto const new_soas{context.storage.declarations.soas.append()};
+                    context.storage.declarations.soas
+                        .name[context.storage.declarations.soas.index(new_soas)] =
+                        context.storage.strings.intern("Values");
+                    context.storage.declarations.soas
+                        .members[context.storage.declarations.soas.index(new_soas)] =
+                        context.storage.declarations.range<lispb::codegen::SoaMemberId>({[&] {
+                            auto const new_soa_members{
+                                context.storage.declarations.soa_members.append()};
+                            context.storage.declarations.soa_members
+                                .name[context.storage.declarations.soa_members.index(
+                                    new_soa_members)] = context.storage.strings.intern("items");
+                            context.storage.declarations.soa_members
+                                .kind[context.storage.declarations.soa_members.index(
+                                    new_soa_members)] = lispb::codegen::SoaMemberKind::array;
+                            context.storage.declarations.soa_members
+                                .type[context.storage.declarations.soa_members.index(
+                                    new_soa_members)] = [&] {
+                                auto const new_type_refs{
+                                    context.storage.declarations.type_refs.append()};
+                                context.storage.declarations.type_refs
+                                    .name[context.storage.declarations.type_refs.index(
+                                        new_type_refs)] =
+                                    context.storage.strings.intern("ExternalValue");
+                                return new_type_refs;
+                            }();
+                            return new_soa_members;
+                        }()});
+                    return new_soas;
+                }()});
+            context.storage.declarations.normal_modules
+                .soa_backend[context.storage.declarations.normal_modules.index(
+                    new_normal_modules)] = lispb::codegen::SoaBackend::standard_library;
+            return new_normal_modules;
+        }()}};
     auto const graph{resolve_type_graph(manifest)};
-    auto const values{graph.find_declared("values", "Values")};
+    auto const values{lispb::codegen::find_test_type(graph, "values", "Values")};
     ASSERT_TRUE(values.has_value());
-    auto const& soa{std::get<SoaType>(graph.type(*values).definition)};
-    ASSERT_EQ(soa.columns.size(), 1U);
-    EXPECT_EQ(graph.type(soa.columns.front().semantic_type.type).identity.origin,
-              TypeOrigin::cpp_spelling);
+    auto const& soa{graph.definition(*values)};
+    ASSERT_EQ(graph.definitions().soas.columns_of(soa).size(), 1U);
+    EXPECT_EQ(
+        graph.origin(graph.occurrences().type[graph.occurrences().index(
+            graph.definitions().soa_columns.semantic_type[graph.definitions().soa_columns.index(
+                graph.definitions().soas.columns_of(soa).front())])]),
+        TypeOrigin::cpp_spelling);
 }
 
 TEST(SemanticTypeGraph, SingleOnlyPhysicalOwnerDoesNotRenameLogicalIdentity) {
-    codegen::SoaSchema rows{
-        .name = "LogicalRows",
-        .members = {{"values", codegen::SoaMemberKind::array, codegen::TypeRef{"float"}}},
-        .equivalent_type = codegen::TypeRef{"Row"},
-        .single_allocation = "CompactOwner"};
-    codegen::Manifest const manifest{
-        .schema_version = codegen::manifest_schema_version,
-        .types = {{"logical", {{"model::LogicalRows"}, {}}},
-                  {"physical", {{"model::CompactOwner"}, {}}}},
-        .modules = {codegen::NormalModuleSchema{
-            .settings = {.name = "model", .header = "Model.h", .namespace_name = "model"},
-            .declarations =
-                {rows,
-                 codegen::SoaSchema{
-                     .name = "Layout",
-                     .members = {{"xs", codegen::SoaMemberKind::array, codegen::TypeRef{"float"}}},
-                     .layout_only = true},
-                 codegen::RecordSchema{
-                     .name = "Reference",
-                     .members = {{.name = "owner", .type = codegen::TypeRef{"LogicalRows", "*"}}}}},
-            .soa_backend = codegen::SoaBackend::standard_library}}};
+    lispb::codegen::CompilerTestContext context;
+    [[maybe_unused]] auto& storage{context.storage};
+    auto const rows{context.storage.declarations.soas.append()};
+    context.storage.declarations.soas.name[context.storage.declarations.soas.index(rows)] =
+        context.storage.strings.intern("LogicalRows");
+    context.storage.declarations.soas.members[context.storage.declarations.soas.index(rows)] =
+        context.storage.declarations.range<lispb::codegen::SoaMemberId>({[&] {
+            auto const new_soa_members{context.storage.declarations.soa_members.append()};
+            context.storage.declarations.soa_members
+                .name[context.storage.declarations.soa_members.index(new_soa_members)] =
+                context.storage.strings.intern("values");
+            context.storage.declarations.soa_members
+                .kind[context.storage.declarations.soa_members.index(new_soa_members)] =
+                lispb::codegen::SoaMemberKind::array;
+            context.storage.declarations.soa_members
+                .type[context.storage.declarations.soa_members.index(new_soa_members)] = [&] {
+                auto const new_type_refs{context.storage.declarations.type_refs.append()};
+                context.storage.declarations.type_refs
+                    .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+                    context.storage.strings.intern("float");
+                return new_type_refs;
+            }();
+            return new_soa_members;
+        }()});
+    context.storage.declarations.soas
+        .equivalent_type[context.storage.declarations.soas.index(rows)] = [&] {
+        auto const new_type_refs{context.storage.declarations.type_refs.append()};
+        context.storage.declarations.type_refs
+            .name[context.storage.declarations.type_refs.index(new_type_refs)] =
+            context.storage.strings.intern("Row");
+        return new_type_refs;
+    }();
+    context.storage.declarations.soas
+        .single_allocation[context.storage.declarations.soas.index(rows)] =
+        context.storage.strings.intern("CompactOwner");
+    lispb::codegen::Manifest manifest{
+        lispb::codegen::manifest_schema_version,
+        lispb::codegen::make_test_registry(
+            context,
+            {{"logical", storage.cpp_types.add("model::LogicalRows")},
+             {"physical", storage.cpp_types.add("model::CompactOwner")}}),
+        context.storage.declarations,
+        {[&] {
+            auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
+            context.storage.declarations.normal_modules
+                .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
+                [&] {
+                    auto const new_module_settings_store{
+                        context.storage.declarations.module_settings_store.append()};
+                    context.storage.declarations.module_settings_store
+                        .name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.intern("model");
+                    context.storage.declarations.module_settings_store
+                        .header[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.add("Model.h");
+                    context.storage.declarations.module_settings_store
+                        .namespace_name[context.storage.declarations.module_settings_store.index(
+                            new_module_settings_store)] = context.storage.strings.intern("model");
+                    return new_module_settings_store;
+                }();
+            context.storage.declarations.normal_modules
+                .declarations[context.storage.declarations.normal_modules.index(
+                    new_normal_modules)] =
+                context.storage.declarations.range<lispb::codegen::DeclarationHandle>(
+                    {rows,
+                     [&] {
+                         auto const new_soas{context.storage.declarations.soas.append()};
+                         context.storage.declarations.soas
+                             .name[context.storage.declarations.soas.index(new_soas)] =
+                             context.storage.strings.intern("Layout");
+                         context.storage.declarations.soas
+                             .members[context.storage.declarations.soas.index(new_soas)] =
+                             context.storage.declarations.range<lispb::codegen::SoaMemberId>({[&] {
+                                 auto const new_soa_members{
+                                     context.storage.declarations.soa_members.append()};
+                                 context.storage.declarations.soa_members
+                                     .name[context.storage.declarations.soa_members.index(
+                                         new_soa_members)] = context.storage.strings.intern("xs");
+                                 context.storage.declarations.soa_members
+                                     .kind[context.storage.declarations.soa_members.index(
+                                         new_soa_members)] = lispb::codegen::SoaMemberKind::array;
+                                 context.storage.declarations.soa_members
+                                     .type[context.storage.declarations.soa_members.index(
+                                         new_soa_members)] = [&] {
+                                     auto const new_type_refs{
+                                         context.storage.declarations.type_refs.append()};
+                                     context.storage.declarations.type_refs
+                                         .name[context.storage.declarations.type_refs.index(
+                                             new_type_refs)] =
+                                         context.storage.strings.intern("float");
+                                     return new_type_refs;
+                                 }();
+                                 return new_soa_members;
+                             }()});
+                         context.storage.declarations.soas
+                             .layout_only[context.storage.declarations.soas.index(new_soas)] = true;
+                         return new_soas;
+                     }(),
+                     [&] {
+                         auto const new_records{context.storage.declarations.records.append()};
+                         context.storage.declarations.records
+                             .name[context.storage.declarations.records.index(new_records)] =
+                             context.storage.strings.intern("Reference");
+                         context.storage.declarations.records
+                             .members[context.storage.declarations.records.index(new_records)] =
+                             context.storage.declarations.range<lispb::codegen::RecordMemberId>(
+                                 {[&] {
+                                     auto const new_record_members{
+                                         context.storage.declarations.record_members.append()};
+                                     context.storage.declarations.record_members
+                                         .name[context.storage.declarations.record_members.index(
+                                             new_record_members)] =
+                                         context.storage.strings.intern("owner");
+                                     context.storage.declarations.record_members
+                                         .type[context.storage.declarations.record_members.index(
+                                             new_record_members)] = [&] {
+                                         auto const new_type_refs{
+                                             context.storage.declarations.type_refs.append()};
+                                         context.storage.declarations.type_refs
+                                             .name[context.storage.declarations.type_refs.index(
+                                                 new_type_refs)] =
+                                             context.storage.strings.intern("LogicalRows");
+                                         context.storage.declarations.type_refs
+                                             .suffix[context.storage.declarations.type_refs.index(
+                                                 new_type_refs)] = context.storage.strings.add("*");
+                                         return new_type_refs;
+                                     }();
+                                     return new_record_members;
+                                 }()});
+                         return new_records;
+                     }()});
+            context.storage.declarations.normal_modules
+                .soa_backend[context.storage.declarations.normal_modules.index(
+                    new_normal_modules)] = lispb::codegen::SoaBackend::standard_library;
+            return new_normal_modules;
+        }()}};
     auto const graph{resolve_type_graph(manifest)};
-    auto const id{graph.find_declared("model", "LogicalRows")};
+    auto const id{lispb::codegen::find_test_type(graph, "model", "LogicalRows")};
     ASSERT_TRUE(id);
-    EXPECT_EQ(graph.type(*id).identity.name, "LogicalRows");
-    EXPECT_EQ(graph.type(*id).cpp_spelling, "model::CompactOwner");
-    EXPECT_EQ(graph.find_registered("logical"), id);
-    EXPECT_EQ(graph.find_registered("physical"), id);
-    EXPECT_EQ(graph.find_reference(codegen::TypeRef{"CompactOwner"}, "model"), id);
-    auto const& soa{std::get<SoaType>(graph.type(*id).definition)};
-    ASSERT_TRUE(soa.equivalent_type);
-    EXPECT_EQ(graph.type(soa.equivalent_type->type).identity.name, "Row");
-    EXPECT_TRUE(graph.type(*graph.find_declared("model", "Layout")).cpp_spelling.empty());
+    EXPECT_EQ(text(storage, graph.name(*id)), "LogicalRows");
+    EXPECT_EQ(text(storage, graph.cpp_spelling(*id)), "model::CompactOwner");
+    EXPECT_EQ(graph.find_registered(storage.strings.find("logical")), id);
+    EXPECT_EQ(graph.find_registered(storage.strings.find("physical")), id);
+    EXPECT_EQ(graph.find_reference(
+                  [&] {
+                      auto const new_type_refs{storage.declarations.type_refs.append()};
+                      storage.declarations.type_refs
+                          .name[storage.declarations.type_refs.index(new_type_refs)] =
+                          storage.strings.intern("CompactOwner");
+                      return new_type_refs;
+                  }(),
+                  manifest.modules.front()),
+              id);
+    auto const& soa{graph.definition(*id)};
+    ASSERT_TRUE(lispb::schema::is_valid(
+        graph.definitions().soas.equivalent_type[graph.definitions().soas.index(soa)]));
+    EXPECT_EQ(
+        text(storage,
+             graph.name(graph.occurrences().type[graph.occurrences().index(
+                 graph.definitions().soas.equivalent_type[graph.definitions().soas.index(soa)])])),
+        "Row");
+    EXPECT_TRUE(
+        text(storage, graph.cpp_spelling(*lispb::codegen::find_test_type(graph, "model", "Layout")))
+            .empty());
     auto const& reference{
-        std::get<RecordType>(graph.type(*graph.find_declared("model", "Reference")).definition)};
-    EXPECT_EQ(reference.members.front().semantic_type.type, *id);
-    EXPECT_EQ(reference.members.front().semantic_type.cpp_type.spelling, "model::CompactOwner*");
+        graph.definition(*lispb::codegen::find_test_type(graph, "model", "Reference"))};
+    EXPECT_EQ(graph.occurrences().type[graph.occurrences().index(
+                  graph.definitions()
+                      .record_members.semantic_type[graph.definitions().record_members.index(
+                          graph.definitions().records.members_of(reference).front())])],
+              *id);
+    EXPECT_EQ(storage.cpp_types.spelling(graph.occurrences().cpp_type[graph.occurrences().index(
+                  graph.definitions()
+                      .record_members.semantic_type[graph.definitions().record_members.index(
+                          graph.definitions().records.members_of(reference).front())])]),
+              "model::CompactOwner*");
 }
 
 } // namespace

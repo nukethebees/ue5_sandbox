@@ -5,10 +5,18 @@
 #include <ioj/layout/physical_facts.hpp>
 #include <ioj/layout/workspace.hpp>
 
+#include <codegen/schema/declaration_handle.h>
+#include <lispb/schema/indices.h>
+#include <lispb/schema/integer_domain.h>
 #include <lispb/schema/type_graph.h>
+#include <lispb/schema/type_identity.h>
 
+#include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <span>
+#include <string>
+#include <vector>
 
 namespace ioj::layout {
 
@@ -47,7 +55,7 @@ struct ExternalDependency {
     std::string cpp_spelling;
     std::vector<lispb::schema::TypeId> types;
     std::vector<std::string> registered_names;
-    std::vector<std::size_t> uses;
+    std::vector<lispb::schema::TypeUseId> uses;
     std::vector<lispb::schema::TypeIdentity> declarations;
     std::vector<std::string> modules;
     bool semantics_known{};
@@ -70,10 +78,12 @@ auto analyze_external_type(lispb::schema::TypeGraph const& types,
                            std::uint64_t capacity,
                            SoaAllocationStrategy allocation_strategy) -> ExternalTypeAnalysis;
 
-auto integer_source_reference(lispb::schema::TypeNode const& node) -> std::string;
+auto integer_source_reference(lispb::schema::TypeGraph const& types,
+                              lispb::schema::TypeId const node) -> std::string;
 
-auto declaration_capabilities(lispb::schema::TypeNode const& node) -> DeclarationCapabilities;
-auto declaration_capabilities(codegen::DeclarationSchema const& declaration)
+auto declaration_capabilities(lispb::schema::TypeGraph const& types,
+                              lispb::schema::TypeId const node) -> DeclarationCapabilities;
+auto declaration_capabilities(lispb::codegen::DeclarationHandle declaration)
     -> DeclarationCapabilities;
 auto declaration_kind_label(DeclarationKind kind) -> char const*;
 auto declaration_status(lispb::schema::TypeGraph const& types,

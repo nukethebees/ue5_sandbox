@@ -1,11 +1,20 @@
+#include "analyzer_test_fixtures.hpp"
 #include <ioj/layout/graph_view.hpp>
 #include <ioj/layout/schema_loader.hpp>
 
 #include <codegen/schema/schema_version.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/schema/type_graph.h>
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cstddef>
+#include <filesystem>
+#include <ranges>
+#include <string>
+#include <string_view>
+#include <vector>
 
 namespace ioj::layout {
 namespace {
@@ -30,29 +39,23 @@ TEST(GraphView, RealProjectModuleProjectionReducesScopeAndKeepsBoundaries) {
         EXPECT_LE((positions[index][1] + sizes[index][1]) * fit.zoom + fit.pan[1], 800.0F);
     }
 }
-auto graph_fixture() -> lispb::schema::TypeGraph {
-    codegen::Manifest manifest{};
-    manifest.schema_version = codegen::manifest_schema_version;
+auto graph_fixture(lispb::CompilerStorage& storage) -> lispb::schema::TypeGraph {
+    std::string source;
     for (auto const name : {"a", "b", "c"}) {
-        codegen::NormalModuleSchema module{};
-        module.settings.name = name;
-        module.settings.header = std::string{name} + ".h";
-        codegen::RecordSchema record{};
-        record.name = std::string{name} + "Record";
+        source += "(module " + std::string{name} + " :header \"" + name + ".h\" (record " + name +
+                  "Record";
         for (auto const field : {"max", "x"}) {
-            codegen::RecordMemberSchema member{};
-            member.name = field;
-            member.type.name = std::string{name} == "a" ? "bRecord" : "float";
-            record.members.push_back(member);
+            source += " (member " + std::string{field} + " " +
+                      (std::string_view{name} == "a" ? "bRecord" : "float") + ')';
         }
-        module.declarations.push_back(record);
-        manifest.modules.emplace_back(module);
+        source += "))";
     }
-    return lispb::schema::resolve_type_graph(manifest);
+    return fixture_graph(storage, source);
 }
 
 TEST(GraphView, ModuleScopeKeepsDirectBoundariesWithoutExpandingTheirDependencies) {
-    auto const types{graph_fixture()};
+    lispb::CompilerStorage storage;
+    auto const types{graph_fixture(storage)};
     GraphScope scope{};
     scope.module = "a";
     auto const graph{project_graph(types, scope)};
@@ -61,10 +64,10 @@ TEST(GraphView, ModuleScopeKeepsDirectBoundariesWithoutExpandingTheirDependencie
     auto const& edge{graph.edges.front()};
     EXPECT_FALSE(graph.nodes[edge.user].boundary);
     EXPECT_TRUE(graph.nodes[edge.dependency].boundary);
-    EXPECT_EQ(types.type(graph.nodes[edge.dependency].type).identity.name, "bRecord");
+    EXPECT_EQ(types.strings().view(types.name(graph.nodes[edge.dependency].type)), "bRecord");
     EXPECT_EQ(edge.labels, (std::vector<std::string>{"max", "x"}));
     EXPECT_EQ(edge.summary, "max, x");
-    scope.members.push_back(types.type(*types.find_declared("c", "cRecord")).identity);
+    scope.members.push_back(types.identity(*fixture_find(types, "c", "cRecord")));
     EXPECT_EQ(project_graph(types, scope).nodes.size(), 4);
     EXPECT_EQ(project_graph(types, {}).nodes.size(), types.types().size());
 }

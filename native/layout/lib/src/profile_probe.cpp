@@ -3,23 +3,38 @@
 #include <ioj/layout/abi_profile.hpp>
 #include <ioj/layout/planner_type.hpp>
 
+#include <codegen/ast/indices.h>
 #include <codegen/schema.h>
+#include <codegen/schema/physical_type_form.h>
 #include <codegen/schema/physical_type_use.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/schema/external_types.h>
+#include <lispb/schema/indices.h>
 
 #include <algorithm>
+#include <cstdint>
+#include <expected>
 #include <iomanip>
+#include <limits>
+#include <optional>
+#include <ranges>
 #include <set>
+#include <span>
 #include <sstream>
+#include <string>
 
 namespace ioj::layout {
 namespace {
 
-auto probe_error(std::string const& spelling, codegen::PhysicalTypeUse const& use)
-    -> std::optional<std::string> {
-    if ((use.form != codegen::PhysicalTypeForm::value &&
-         use.form != codegen::PhysicalTypeForm::object_pointer) ||
-        (use.form == codegen::PhysicalTypeForm::value && use.object_spelling == "void") ||
-        use.object_spelling == "auto" ||
+auto probe_error(lispb::codegen::CppTypes const& types,
+                 std::string const& spelling,
+                 lispb::codegen::PhysicalTypeForm const form,
+                 lispb::StringId const object_spelling) -> std::optional<std::string> {
+    if ((form != lispb::codegen::PhysicalTypeForm::value &&
+         form != lispb::codegen::PhysicalTypeForm::object_pointer) ||
+        (form == lispb::codegen::PhysicalTypeForm::value &&
+         types.strings().view(object_spelling) == "void") ||
+        types.strings().view(object_spelling) == "auto" ||
         spelling.find_first_of(";{}\r\n\"#") != std::string::npos) {
         return "Cannot probe unsupported complete-object spelling: " + spelling;
     }
@@ -31,44 +46,57 @@ auto probe_error(std::string const& spelling, codegen::PhysicalTypeUse const& us
 auto external_probe_request(lispb::schema::TypeGraph const& types, lispb::schema::TypeId selected)
     -> ExternalProbeRequest {
     ExternalProbeRequest result;
-    auto const& node{types.type(selected)};
-    auto const* external{std::get_if<lispb::schema::ExternalType>(&node.definition)};
-    if (external == nullptr) {
+    auto const& node{selected};
+    auto const external{
+        ((types.definition(node)).kind() == lispb::schema::TypeDefinitionKind::external
+             ? std::optional{types.definition(node)}
+             : std::nullopt)};
+    if (!external) {
         result.diagnostics.push_back("Compiler probe selection must be an external type.");
         return result;
     }
     std::set<std::string> spellings;
     std::set<std::string> headers;
     std::set<std::string> diagnostics;
-    auto const collect_headers{[&](auto const& self, auto const& dependencies) -> void {
+    auto const collect_headers{[&](auto const dependencies) -> void {
         for (auto const& dependency : dependencies) {
-            if (dependency.header.has_value()) {
-                headers.insert(*dependency.header);
+            if (auto const header{types.cpp_types().dependency_header(dependency)}) {
+                headers.emplace(*header);
             }
-            self(self, dependency.dependencies);
         }
     }};
-    auto const collect{[&](codegen::CppType const& cpp_type, codegen::PhysicalTypeUse const& use) {
-        if (auto const error{probe_error(cpp_type.spelling, use)}) {
+    auto const collect{[&](lispb::codegen::CppTypeId cpp_type,
+                           lispb::codegen::PhysicalTypeForm const form,
+                           lispb::StringId const object_spelling) {
+        auto const spelling{std::string{types.cpp_types().spelling(cpp_type)}};
+        if (auto const error{probe_error(types.cpp_types(), spelling, form, object_spelling)}) {
             diagnostics.insert(*error);
         } else {
-            spellings.insert(codegen::native_spelling(cpp_type.spelling));
-            collect_headers(collect_headers, cpp_type.dependencies);
+            spellings.insert(lispb::codegen::native_spelling(spelling));
+            collect_headers(types.cpp_types().dependencies(cpp_type));
         }
     }};
-    collect_headers(collect_headers, external->cpp_type.dependencies);
-    collect(external->cpp_type, codegen::classify_physical_type_use(node.cpp_spelling));
+    collect_headers(types.cpp_types().dependencies(
+        types.definitions().externals.cpp_type[types.definitions().externals.index(*external)]));
+    auto const cpp_type{
+        types.definitions().externals.cpp_type[types.definitions().externals.index(*external)]};
+    auto const physical{lispb::codegen::classify_physical_type_use(types.cpp_types(), cpp_type)};
+    collect(cpp_type, physical.form, physical.object_spelling);
     for (auto const& dependency : external_dependencies(types)) {
         if (std::ranges::find(dependency.types, selected) == dependency.types.end()) {
             continue;
         }
         for (auto const type : dependency.types) {
-            auto const& grouped{std::get<lispb::schema::ExternalType>(types.type(type).definition)};
-            collect_headers(collect_headers, grouped.cpp_type.dependencies);
+            auto const& grouped{types.definition(type)};
+            collect_headers(types.cpp_types().dependencies(
+                types.definitions()
+                    .externals.cpp_type[types.definitions().externals.index(grouped)]));
         }
-        for (auto const index : dependency.uses) {
-            auto const& use{types.type_uses()[index]};
-            collect(use.target.cpp_type, use.target.physical);
+        for (auto const use : dependency.uses) {
+            auto const row{types.occurrences().index(types.target(use))};
+            collect(types.occurrences().cpp_type[row],
+                    types.occurrences().physical_form[row],
+                    types.occurrences().object_spelling[row]);
         }
         break;
     }
@@ -145,9 +173,12 @@ int main(int argc, char** argv) {
                                    "std::uint64_t",
                                    "void*"};
     measured.insert(types.begin(), types.end());
+    lispb::CompilerStorage storage;
     for (auto const& spelling : measured) {
-        auto const use{codegen::classify_physical_type_use(spelling)};
-        if (auto const error{probe_error(spelling, use)}) {
+        auto const type{storage.cpp_types.intern(spelling)};
+        auto const use{lispb::codegen::classify_physical_type_use(storage.cpp_types, type)};
+        if (auto const error{
+                probe_error(storage.cpp_types, spelling, use.form, use.object_spelling)}) {
             return std::unexpected{*error};
         }
         source << "    emit_type<" << spelling << ">(" << std::quoted(spelling) << ");\n";

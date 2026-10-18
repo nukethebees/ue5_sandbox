@@ -1,23 +1,33 @@
 #include "fixed_soa_internal.h"
+#include "lowering_context.h"
 
-namespace codegen::detail {
-namespace {
+#include <codegen/ast/indices.h>
+#include <codegen/ast/node_list_builder.h>
+#include <codegen/ast/nodes.h>
+#include <codegen/schema/declarations.h>
+#include <codegen/schema/fixed_soa_schemas.h>
+#include <codegen/schema/soa_schemas.h>
+#include <lispb/indices.h>
 
-auto fixed_nodes(FixedLayout const& layout, TypeRegistry const& types) -> Nodes {
-    NodeListBuilder result;
-    result.add(fixed_storage_node(layout));
-    for (auto const& container : layout.schema->fixed->containers) {
-        result.new_lines(2).add(fixed_container_node(layout, container, types));
+#include <map>
+
+namespace lispb::codegen::detail {
+
+auto lower_fixed_nodes(LoweringContext& context,
+                       DeclarationHandle schema,
+                       std::map<IdentifierId, DeclarationHandle> const& schemas,
+                       CppTypeId const equivalent_set_type) -> Nodes {
+    auto const layout{build_fixed_layout(context, schema, schemas)};
+    auto const fixed{*context.declarations.soas.fixed[context.declarations.soas.index(schema)]};
+    NodeListBuilder result{context.ir};
+    result.add(fixed_storage_node(context, layout));
+    for (auto const container : context.declarations.items(
+             context.declarations.fixed_soas
+                 .containers[context.declarations.fixed_soas.index(fixed)])) {
+        result.new_lines(2).add(
+            fixed_container_node(context, layout, context.text(container), equivalent_set_type));
     }
     return result.build();
 }
 
-} // namespace
-
-auto lower_fixed_nodes(SoaSchema const& schema,
-                       std::map<std::string, SoaSchema const*> const& schemas,
-                       TypeRegistry const& types) -> Nodes {
-    return fixed_nodes(build_fixed_layout(schema, schemas, types), types);
-}
-
-} // namespace codegen::detail
+} // namespace lispb::codegen::detail

@@ -3,10 +3,6 @@ use crate::results::{Comparison, Conditions, Identity, PairedMetric, Summary};
 use serde_json::json;
 use std::fs;
 
-fn fixture() -> Value {
-    serde_json::from_str(include_str!("kernel-benchmark-results.json")).unwrap()
-}
-
 fn assert_svg(path: &Path, labels: &[&str]) {
     let svg = fs::read_to_string(path).unwrap();
     assert!(svg.starts_with("<svg"));
@@ -50,61 +46,6 @@ pub fn comparison() -> Comparison {
         errors: Vec::new(),
         metrics,
     }
-}
-
-#[test]
-fn kernel_fixture_renders_expected_chart_families() {
-    let output = ioj_test_support::temp_dir("kernel svg");
-    let paths = plot_kernel(&fixture(), output.path(), "scalar").unwrap();
-    assert_eq!(paths.len(), 7);
-    for path in &paths {
-        assert_svg(path, &["Element count", "<polyline"]);
-    }
-    assert!(
-        paths
-            .iter()
-            .any(|p| p.to_string_lossy().contains("alignment-penalty"))
-    );
-    assert!(
-        paths
-            .iter()
-            .any(|p| p.to_string_lossy().contains("layout-speedup"))
-    );
-}
-
-#[test]
-fn missing_baseline_keeps_absolute_single_point_charts_and_omits_unmatched_pairs() {
-    let output = ioj_test_support::temp_dir("sparse kernel svg");
-    let data = json!({"benchmarks":[
-        {"run_name":"dot/relaxed/flat/avx2/ordinary/aligned/32/real_time","real_time":2,"time_unit":"ns"},
-        {"run_name":"dot/relaxed/chunked16/avx2/ordinary/unaligned/64/real_time","real_time":3,"time_unit":"ns"}
-    ]});
-    let paths = plot_kernel(&data, output.path(), "scalar").unwrap();
-    assert_eq!(paths.len(), 4);
-    for path in paths {
-        assert!(!fs::read_to_string(path).unwrap().contains("Speedup"));
-    }
-}
-
-#[test]
-fn fallback_baseline_and_aos_layouts_render() {
-    let output = ioj_test_support::temp_dir("aos kernel svg");
-    let data = json!({"benchmarks":[
-        {"run_name":"dot/relaxed/aos/autovec-avx2/ordinary/aligned/32/real_time","real_time":4,"time_unit":"ns"},
-        {"run_name":"dot/relaxed/soa-flat/autovec-avx2/ordinary/aligned/32/real_time","real_time":2,"time_unit":"ns"}
-    ]});
-    let paths = plot_kernel(&data, output.path(), "scalar").unwrap();
-    assert_eq!(paths.len(), 4);
-    assert_svg(
-        &output.path().join("dot-relaxed-aos-ordinary-aligned.svg"),
-        &["Speedup over autovec-avx2"],
-    );
-    assert_svg(
-        &output
-            .path()
-            .join("dot-relaxed-ordinary-aos-layout-speedup.svg"),
-        &["Speedup over aos"],
-    );
 }
 
 #[test]
@@ -167,7 +108,6 @@ fn automatic_failure_preserves_measurements_and_offline_failure_is_an_error() {
 fn offline_commands_regenerate_saved_results() {
     let output = ioj_test_support::temp_dir("offline svg");
     for (kind, data, count) in [
-        ("kernel", fixture(), 7),
         ("fighter", fighters(), 2),
         (
             "comparison",

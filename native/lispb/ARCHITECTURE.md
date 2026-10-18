@@ -1,5 +1,53 @@
 # Lispb architecture
 
+## Ownership and compilation
+
+`lispb::Compiler` owns the shared source, string, syntax, declaration and C++ type stores,
+the current semantic graph, backend IR, generated C++ IR and output artifacts. A compilation
+selects a frontend and runs parsing, semantic checks, lowering and rendering through those
+stores. Validation stops before lowering/rendering. Schema, Slate and kernel output use
+`CppIR`; material output keeps its binary format and runtime-facing data library.
+
+Strings use offsets into flat character buffers. `StringId` and `IdentifierId` share backing
+text; views are transient and must be reacquired after appending to the same buffer. Source
+text is retained once, tokens use slices and exact source offsets, and macro provenance is
+stored separately. Syntax forms retain token IDs and flat child ranges, not owning trees.
+Slate parses expanded forms directly without a token flatten/reparse step.
+
+Declarations, semantic definitions, C++ nodes and expressions use typed tagged handles with
+kind-specific columns. Ordered lists use flat ranges of handles. Callers access fields through
+handles and columns; edits clone a payload row and publish its new handle. C++ functions
+retain one signature and body shared by declaration and definition nodes. C++ type handles
+carry centralized dependency and passing policies; semantic type IDs remain a separate
+domain. Resolved occurrence IDs address semantic targets, physical type-use metadata and C++
+emission metadata stored once in the graph, without synthetic type names or rewritten manifests.
+Relationships reference these occurrences. Enum-domain codes and widths are computed once per
+semantic graph from authored enumerator IDs; validation, lowering and layout analysis share them.
+
+C++ template declarations and parameters use separate tagged handle domains. Type/value parameters,
+defaults, packs, specialization names and constraints retain their structure through rendering.
+Generated templates are constructed directly; authored `#cpp` template parameters and constraints
+remain raw language-boundary inputs. Export specifiers are interned identifiers. Compiler function,
+member and output-file flags are generated packed values checked into the source tree.
+
+`NodeId` identifies a generated node. `Modules` and `CppFiles` retain output assembly metadata in
+the same C++ IR owner, with file/module handles, shared text and flat ordered node/text ranges.
+Final standalone artifacts acquire their own path/content only at publication.
+
+Compiler reset discards semantic/generated IR, lexical storage and temporary strings while
+retaining loaded source documents. Editable documents instead own durable compiler storage,
+stable declaration IDs and immutable payload versions referenced by compact undo/redo
+commands. Durable editor declaration metadata uses separate columns keyed by four-byte IDs;
+history retains payload versions and ID ranges. Their current semantic graph is replaceable.
+Handles belong to their storage owner:
+UI state that survives replacement retains spellings and resolves them in the new document.
+
+Material compilation uses the compiler's strings. A deserialized `CompiledMaterial` owns its
+own strings so runtime consumers need no frontend. Its serialized source locations and node
+order are preserved. Final output buffers, formatted diagnostics, filesystem boundary values
+and temporary output formatting buffers remain ordinary strings where independent
+ownership is useful; retained compiler nodes and declarations store handles.
+
 ## Ordinary value records
 
 Record members distinguish an omitted initializer from `:initializer ""` (C++ `{}`) and
@@ -54,7 +102,7 @@ See [README.md](README.md) for entry points.
 ## Schema modules and declarations
 
 A normal `(module name ...)` is one source and C++ output context, not a declaration family.
-Its `NormalModuleSchema` has one ordered `DeclarationSchema` variant sequence. Enums, integer
+Its row in `NormalModuleSchemas` has one ordered range of `DeclarationHandle` values. Enums, integer
 scalars, the six physical-representation declarations, packed values, records, ordinary and
 tagged unions, SoAs, vector SoAs, homogeneous layouts, static tables, and facades can coexist.
 The sequence is the source of truth for declaration indices and source-preserving editing.
@@ -63,8 +111,8 @@ includes, and prelude remain module-wide policies. Settings modules remain speci
 describe generated settings integration rather than independent semantic types; umbrella modules
 remain special because they aggregate existing outputs.
 
-`ModuleSchema` contains only `NormalModuleSchema`, `SettingsModuleSchema`, and
-`UmbrellaModuleSchema`. Declaration-family module types and parser heads no longer exist.
+`ModuleHandle` selects a row in `NormalModuleSchemas`, `SettingsModuleSchemas`, or
+`UmbrellaModuleSchemas` in the central declaration store.
 The parser constructs the canonical declaration representation directly; validation, editing,
 graph resolution, and generation consume it without a conversion pass.
 
@@ -84,7 +132,7 @@ tagged-union discriminants. This leaves source declaration indices unchanged and
 declarations by semantic navigation relationships.
 
 Declaration metadata is exhaustive: semantic-TypeGraph contribution, canonical source rendering,
-and generated C++ names are each derived by visiting `DeclarationSchema`. Generated-name ownership
+and generated C++ names are each derived by visiting declaration handles. Generated-name ownership
 includes public helper types such as SoA views and homogeneous storage/view traits, so validation
 can reject cross-declaration collisions before lowering a heterogeneous output module.
 SoA array-allocator variants use one validation and expansion policy; they are limited to plain
@@ -93,7 +141,7 @@ types are checked before lowering.
 
 `EditableSchemaDocument` owns the manifest draft, source-file and declaration ranges, stable
 `DeclarationId` values, tombstones, undo/redo, and the last valid resolved graph. Normal-module
-declarations move as one variant element, including across declaration families. Successful
+declarations move as one handle, including across declaration families. Successful
 edits replace the graph and adjust locations; rejected edits restore the previous manifest,
 graph, source ownership, and revision. Source-backed module deletion and restoration retain
 their original ranges, including comments and unrelated text.
@@ -151,9 +199,10 @@ Alias emission provides no strong typing or runtime domain checking.
 
 ## External scalar registry
 
-`Manifest::types` owns `RegisteredTypeSchema`: the existing C++ spelling/includes/operations and
-an optional integer domain or IEEE binary floating-point format. This metadata generates no C++
-declaration. The graph retains `ExternalType` identity and exposes the resolved scalar metadata
+`CompilerStorage::registered_types` owns registration columns linking `CppTypeId` to shared integer
+domains or IEEE binary floating-point formats. `Manifest::types` maps identifier handles to
+`RegisteredTypeId` values, so document snapshots copy bindings without copying metadata. This
+metadata generates no C++ declaration. The graph retains external type identity and exposes it
 to shared integer-domain consumers and planner inspection. Plain references with the same
 normalized C++ spelling receive the same metadata; conflicting registrations are rejected.
 
@@ -250,12 +299,12 @@ view lifetime, and PMR resource ownership; `native-tests` covers production simu
 
 ### Logical API and storage policy
 
-`SoaSchema` is the logical declaration. The type graph resolves its columns and relationships
+A `DeclarationHandle` into `SoaSchemas` identifies the logical declaration. The type graph resolves its columns and relationships
 before vector and single-allocation lowering split. Both lowerers use `soa_api` for function
 signatures, receiver selection, aliases, and logical column expressions. A compact owner never
 needs an ordinary owner or aggregate view to implement this API.
 
-Every `SoaSchema` field has an explicit role:
+Every `SoaSchemas` column has an explicit role:
 
 | Field | Classification | Contract |
 | --- | --- | --- |

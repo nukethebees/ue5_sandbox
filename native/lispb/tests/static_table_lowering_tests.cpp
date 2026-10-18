@@ -1,49 +1,57 @@
+#include "compiler_test_context.h"
+#include "test_utilities.h"
+
+#include <codegen/ast/cpp_types.h>
+#include <codegen/ast/indices.h>
 #include <codegen/generator.h>
+#include <codegen/schema/declarations.h>
 #include <codegen/schema/schema_version.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/indices.h>
+#include <lispb/strings.h>
 
 #include <gtest/gtest.h>
 
 #include <string>
+#include <string_view>
 
-namespace codegen {
+namespace lispb::codegen {
 namespace {
 
-auto static_table_module() -> NormalModuleSchema {
-    return NormalModuleSchema{
-        .settings =
-            ModuleSettings{
-                .name = "tables",
-                .header = "Tables.h",
-                .namespace_name = "project::generated",
-                .prelude_lines = {"class FForward;"},
-            },
-        .declarations = {StaticTableSchema{
-            .name = "FValues",
-            .rows = {StaticTableRowSchema{"first"},
-                     StaticTableRowSchema{"second"},
-                     StaticTableRowSchema{"third"}},
-            .columns = {StaticTableColumnSchema{"ids", TypeRef{"int32"}},
-                        StaticTableColumnSchema{"values", TypeRef{"@value"}}},
-            .groups = {StaticTableGroupSchema{"point", TypeRef{"@point"}, {"ids", "values"}}},
-            .export_specifier = "PROJECT_API",
-        }}};
-}
-
-auto render_static_table(NormalModuleSchema module) -> std::string {
-    Manifest const manifest{
-        .schema_version = manifest_schema_version,
-        .types = {{"value", RegisteredTypeSchema{.cpp_type = CppType{"FValue", "Project/Value.h"}}},
-                  {"point",
-                   RegisteredTypeSchema{.cpp_type = CppType{"FPoint", "Project/Point.h"}}}},
-        .modules = {std::move(module)},
+auto render_static_table(CompilerTestContext& context, bool const two_tables = false)
+    -> std::string {
+    std::string source{R"((module tables :header "Tables.h" :namespace project::generated
+        :prelude ("class FForward;"))"};
+    auto append_table = [&](std::string_view name) {
+        source += "(table " + std::string{name} + R"( :export-specifier PROJECT_API
+            (row first) (row second) (row third)
+            (column ids int32) (column values @value)
+            (group point @point :columns (ids values))))";
     };
-    auto const files{render_modules(lower_modules(manifest))};
+    append_table("FValues");
+    if (two_tables) {
+        append_table("FOtherValues");
+    }
+    source += ')';
+    auto const files{render_test_manifest(
+        context,
+        parse_test_manifest(
+            context,
+            source,
+            {{"value",
+              context.storage.cpp_types.add(
+                  "FValue", {context.storage.cpp_types.dependency("FValue", "Project/Value.h")})},
+             {"point",
+              context.storage.cpp_types.add(
+                  "FPoint",
+                  {context.storage.cpp_types.dependency("FPoint", "Project/Point.h")})}}))};
     EXPECT_EQ(files.size(), 1);
     return files.front().content;
 }
 
 TEST(StaticTableLowering, GeneratesFixedRowsColumnsAndCoreFunctions) {
-    auto const output{render_static_table(static_table_module())};
+    CompilerTestContext context;
+    auto const output{render_static_table(context)};
 
     EXPECT_NE(output.find("#include \"Project/Value.h\""), std::string::npos);
     EXPECT_NE(output.find("#include \"Project/Point.h\""), std::string::npos);
@@ -67,16 +75,12 @@ TEST(StaticTableLowering, GeneratesFixedRowsColumnsAndCoreFunctions) {
 }
 
 TEST(StaticTableLowering, GeneratesMultipleTablesInOneHeader) {
-    auto module{static_table_module()};
-    auto second{std::get<codegen::StaticTableSchema>(module.declarations.front())};
-    second.name = "FOtherValues";
-    module.declarations.push_back(std::move(second));
-
-    auto const output{render_static_table(std::move(module))};
+    CompilerTestContext context;
+    auto const output{render_static_table(context, true)};
 
     EXPECT_NE(output.find("struct PROJECT_API FValues"), std::string::npos);
     EXPECT_NE(output.find("struct PROJECT_API FOtherValues"), std::string::npos);
 }
 
 } // namespace
-} // namespace codegen
+} // namespace lispb::codegen

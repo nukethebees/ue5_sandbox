@@ -4,17 +4,23 @@ target_sources(material-gen
     src/CompiledMaterial.cpp
     src/MaterialFrontend.cpp
     src/MaterialIR.cpp
+    src/CustomInputs.cpp
+    src/Nodes.cpp
+    src/Parameters.cpp
+    src/NamedNodes.cpp
+    src/ValueType.cpp
     src/SourceHash.cpp
 )
 target_include_directories(material-gen
   PUBLIC
     include
+    ../../include
 )
 target_link_libraries(material-gen
   PUBLIC
     sandbox::native_defaults
-  PRIVATE
     lispb-syntax
+  PRIVATE
     ioj::codegen_pch
 )
 ioj_enable_warnings(material-gen CODEGEN)
@@ -32,11 +38,18 @@ if(IOJ_WITH_UNREAL)
     PRIVATE
       src/CompiledMaterial.cpp
       src/MaterialIR.cpp
+      src/CustomInputs.cpp
+      src/Nodes.cpp
+      src/Parameters.cpp
+      src/NamedNodes.cpp
+      src/ValueType.cpp
+      ../../src/strings.cpp
       src/SourceHash.cpp
   )
   target_include_directories(sandbox-material-gen
     PUBLIC
       include
+      ../../include
   )
   target_link_libraries(sandbox-material-gen
     PUBLIC

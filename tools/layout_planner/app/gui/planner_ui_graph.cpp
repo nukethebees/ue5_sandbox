@@ -1,6 +1,29 @@
 #include "planner_ui.hpp"
 #include "planner_ui_support.hpp"
 
+#include <lispb/schema/enum_types.h>
+#include <lispb/schema/external_types.h>
+#include <lispb/schema/facade_types.h>
+#include <lispb/schema/fixed_point_types.h>
+#include <lispb/schema/homogeneous_storage_types.h>
+#include <lispb/schema/indices.h>
+#include <lispb/schema/integer_domain.h>
+#include <lispb/schema/integer_scalar_types.h>
+#include <lispb/schema/integer_varint_types.h>
+#include <lispb/schema/linear_quantized_types.h>
+#include <lispb/schema/mini_float_types.h>
+#include <lispb/schema/optional_presence_bit_types.h>
+#include <lispb/schema/optional_sentinel_types.h>
+#include <lispb/schema/packed_types.h>
+#include <lispb/schema/record_types.h>
+#include <lispb/schema/soa_types.h>
+#include <lispb/schema/static_table_types.h>
+#include <lispb/schema/tagged_union_types.h>
+#include <lispb/schema/type_definition_id.h>
+#include <lispb/schema/type_definitions.h>
+#include <lispb/schema/union_types.h>
+#include <lispb/strings.h>
+
 #include <imgui.h>
 #include <imgui_internal.h>
 
@@ -10,10 +33,12 @@
 #include <cstddef>
 #include <cstdint>
 #include <iterator>
+#include <optional>
+#include <ranges>
+#include <set>
 #include <span>
 #include <string>
 #include <string_view>
-#include <variant>
 #include <vector>
 
 namespace ioj::layout_planner {
@@ -21,59 +46,59 @@ namespace {
 
 using namespace lispb::schema;
 
-auto graph_kind(TypeDefinition const& definition) -> char const* {
-    if (std::holds_alternative<ExternalType>(definition)) {
+auto graph_kind(TypeDefinitionId const definition) -> char const* {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::external)) {
         return "external";
     }
-    if (std::holds_alternative<EnumType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::enumeration)) {
         return "enum";
     }
-    if (std::holds_alternative<IntegerScalarType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::integer_scalar)) {
         return "integer scalar";
     }
-    if (std::holds_alternative<LinearQuantizedType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::linear_quantized)) {
         return "linear quantized";
     }
-    if (std::holds_alternative<IntegerVarintType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::integer_varint)) {
         return "integer varint";
     }
-    if (std::holds_alternative<FixedPointType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::fixed_point)) {
         return "fixed point";
     }
-    if (std::holds_alternative<MiniFloatType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::mini_float)) {
         return "mini float";
     }
-    if (std::holds_alternative<OptionalSentinelType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::optional_sentinel)) {
         return "optional sentinel";
     }
-    if (std::holds_alternative<OptionalPresenceBitType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::optional_presence_bit)) {
         return "optional presence bit";
     }
-    if (std::holds_alternative<PackedType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::packed)) {
         return "packed";
     }
-    if (std::holds_alternative<RecordType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::record)) {
         return "record";
     }
-    if (std::holds_alternative<UnionType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::union_type)) {
         return "union";
     }
-    if (std::holds_alternative<TaggedUnionType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::tagged_union)) {
         return "tagged union";
     }
-    if (std::holds_alternative<StaticTableType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::static_table)) {
         return "static table";
     }
-    if (std::holds_alternative<FacadeType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::facade)) {
         return "facade";
     }
-    if (std::holds_alternative<HomogeneousStorageType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::homogeneous_storage)) {
         return "homogeneous storage";
     }
     return "SoA";
 }
 
-auto node_color(TypeDefinition const& definition,
+auto node_color(TypeDefinitionId const definition,
                 bool const selected,
                 bool const dependency,
                 bool const user,
@@ -93,43 +118,43 @@ auto node_color(TypeDefinition const& definition,
     if (neighborhood_active) {
         return IM_COL32(45, 49, 57, 210);
     }
-    if (std::holds_alternative<EnumType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::enumeration)) {
         return IM_COL32(80, 105, 155, 255);
     }
-    if (std::holds_alternative<IntegerScalarType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::integer_scalar)) {
         return IM_COL32(68, 118, 148, 255);
     }
-    if (std::holds_alternative<LinearQuantizedType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::linear_quantized)) {
         return IM_COL32(116, 94, 164, 255);
     }
-    if (std::holds_alternative<IntegerVarintType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::integer_varint)) {
         return IM_COL32(98, 102, 172, 255);
     }
-    if (std::holds_alternative<FixedPointType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::fixed_point)) {
         return IM_COL32(108, 88, 176, 255);
     }
-    if (std::holds_alternative<MiniFloatType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::mini_float)) {
         return IM_COL32(118, 84, 174, 255);
     }
-    if (std::holds_alternative<OptionalSentinelType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::optional_sentinel)) {
         return IM_COL32(128, 82, 168, 255);
     }
-    if (std::holds_alternative<OptionalPresenceBitType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::optional_presence_bit)) {
         return IM_COL32(142, 78, 158, 255);
     }
-    if (std::holds_alternative<PackedType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::packed)) {
         return IM_COL32(126, 88, 148, 255);
     }
-    if (std::holds_alternative<SoaType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::soa)) {
         return IM_COL32(65, 130, 118, 255);
     }
-    if (std::holds_alternative<RecordType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::record)) {
         return IM_COL32(148, 104, 64, 255);
     }
-    if (std::holds_alternative<UnionType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::union_type)) {
         return IM_COL32(156, 84, 72, 255);
     }
-    if (std::holds_alternative<TaggedUnionType>(definition)) {
+    if (((definition).kind() == lispb::schema::TypeDefinitionKind::tagged_union)) {
         return IM_COL32(174, 76, 96, 255);
     }
     return IM_COL32(80, 86, 96, 255);
@@ -147,21 +172,26 @@ auto multiply(ImVec2 const value, float const scale) -> ImVec2 {
     return {value.x * scale, value.y * scale};
 }
 
-auto graph_matches(TypeNode const& node, std::string_view const lowercase_query) -> bool {
+auto graph_matches(TypeGraph const& types,
+                   TypeId const node,
+                   std::string_view const lowercase_query) -> bool {
     if (lowercase_query.empty()) {
         return false;
     }
 
-    auto const haystack{detail::lowercase(node.identity.name + " " + node.identity.module_name +
-                                          " " + node.identity.namespace_name + " " +
-                                          graph_kind(node.definition))};
+    auto const haystack{
+        detail::lowercase(std::string{types.strings().view(types.name(node))} + " " +
+                          std::string{types.strings().view(types.module_name(node))} + " " +
+                          std::string{types.strings().view(types.namespace_name(node))} + " " +
+                          graph_kind(types.definition(node)))};
     return haystack.find(lowercase_query) != std::string::npos;
 }
 
-auto graph_detail(TypeNode const& node) -> std::string {
-    return std::string{graph_kind(node.definition)} + " · " +
-           (node.identity.module_name.empty() ? std::string{"external"}
-                                              : node.identity.module_name);
+auto graph_detail(TypeGraph const& types, TypeId const node) -> std::string {
+    return std::string{graph_kind(types.definition(node))} + " · " +
+           (types.strings().view(types.module_name(node)).empty()
+                ? std::string{"external"}
+                : std::string{types.strings().view(types.module_name(node))});
 }
 
 auto graph_display_text(std::string_view const text, float const available_width) -> std::string {
@@ -203,17 +233,20 @@ void PlannerUi::draw_graph_panel() {
     auto const& workspace{analysis_session_.inputs.workspace};
     auto const& graph{workspace.types()};
     auto selection{analysis_session_.inputs.selection.type};
-    if (!selection && analysis_session_.inputs.selection.identity()) {
-        auto const generated{
-            graph.types_for_declaration(*analysis_session_.inputs.selection.identity())};
-        if (!generated.empty()) {
-            selection = generated.front();
+    if (!selection && document_ && analysis_session_.inputs.selection.declaration) {
+        auto const declaration{
+            document_->declaration_handle(*analysis_session_.inputs.selection.declaration)};
+        if (declaration) {
+            auto const generated{graph.types_for_declaration(*declaration)};
+            if (!generated.empty()) {
+                selection = generated.front();
+            }
         }
     }
     std::set<std::string> modules;
     for (auto const& node : graph.types()) {
-        if (!node.identity.module_name.empty()) {
-            modules.insert(node.identity.module_name);
+        if (!text(graph.module_name(node)).empty()) {
+            modules.insert(text(graph.module_name(node)));
         }
     }
     ImGui::SetNextItemWidth(240.0F);
@@ -230,7 +263,7 @@ void PlannerUi::draw_graph_panel() {
     }
     detail::WrappingButtonRow actions;
     if (actions.button("View selected module") && selection) {
-        auto const& module{graph.type(*selection).identity.module_name};
+        auto const module{text(graph.module_name(*selection))};
         if (!module.empty()) {
             graph_scope_.module = module;
         }
@@ -251,7 +284,7 @@ void PlannerUi::draw_graph_panel() {
         graph_fit_all_ = true;
     }
     if (actions.button("Focus selection") && selection) {
-        graph_focus_ = graph.type(*selection).identity;
+        graph_focus_ = graph.identity(*selection);
         graph_focus_selected_ = true;
     }
     if (actions.button("Clear focus")) {
@@ -280,26 +313,26 @@ void PlannerUi::draw_graph_panel() {
         graph_names_.clear();
         graph_details_.clear();
         for (auto const& occurrence : graph_projection_.nodes) {
-            auto const& node{graph.type(occurrence.type)};
-            auto const detail{occurrence.boundary ? "boundary: " + node.identity.module_name
-                                                  : graph_detail(node)};
+            auto const& node{occurrence.type};
+            auto const detail{occurrence.boundary ? "boundary: " + text(graph.module_name(node))
+                                                  : graph_detail(graph, node)};
             auto const width{
                 occurrence.boundary
                     ? std::max(150.0F, font_size * 9.0F)
-                    : std::clamp(std::max(ImGui::CalcTextSize(node.identity.name.c_str()).x,
+                    : std::clamp(std::max(ImGui::CalcTextSize(text(graph.name(node)).c_str()).x,
                                           ImGui::CalcTextSize(detail.c_str()).x) +
                                      16.0F,
                                  font_size * 10.0F,
                                  font_size * 18.0F)};
             graph_sizes_.push_back({width, font_size * 2.0F + 24.0F});
-            graph_names_.push_back(graph_display_text(node.identity.name, width - 16.0F));
+            graph_names_.push_back(graph_display_text(text(graph.name(node)), width - 16.0F));
             graph_details_.push_back(graph_display_text(detail, width - 16.0F));
         }
         graph_positions_ = layout::layout_graph(graph_projection_, graph_sizes_);
         auto const& manual{graph_scope_.module ? module_graph_positions_[*graph_scope_.module]
                                                : graph_node_positions_};
         for (std::size_t index{}; index < graph_projection_.nodes.size(); ++index) {
-            auto const found{manual.find(graph.type(graph_projection_.nodes[index].type).identity)};
+            auto const found{manual.find(graph.identity(graph_projection_.nodes[index].type))};
             if (found != manual.end()) {
                 graph_positions_[index] = found->second;
             }
@@ -314,7 +347,7 @@ void PlannerUi::draw_graph_panel() {
     if ((search || next) && !query.empty()) {
         std::vector<TypeId> matches;
         for (auto const& node : nodes) {
-            if (graph_matches(graph.type(node.type), query)) {
+            if (graph_matches(graph, node.type, query)) {
                 matches.push_back(node.type);
             }
         }
@@ -325,7 +358,7 @@ void PlannerUi::draw_graph_panel() {
             }
             select_type(*found);
             selection = *found;
-            graph_focus_ = graph.type(*found).identity;
+            graph_focus_ = graph.identity(*found);
             graph_focus_selected_ = true;
         }
     }
@@ -449,8 +482,8 @@ void PlannerUi::draw_graph_panel() {
                 ImGui::BeginTooltip();
                 ImGui::PushTextWrapPos(ImGui::GetFontSize() * 32.0F);
                 ImGui::TextWrapped("%s -> %s",
-                                   graph.type(nodes[edge.user].type).identity.name.c_str(),
-                                   graph.type(nodes[edge.dependency].type).identity.name.c_str());
+                                   text(graph.name(nodes[edge.user].type)).c_str(),
+                                   text(graph.name(nodes[edge.dependency].type)).c_str());
                 for (auto const& label : edge.labels) {
                     ImGui::TextWrapped("%s", label.c_str());
                 }
@@ -464,25 +497,26 @@ void PlannerUi::draw_graph_panel() {
         }
         for (std::size_t index{}; index < count; ++index) {
             auto const& occurrence{nodes[index]};
-            auto const& node{graph.type(occurrence.type)};
+            auto const& node{occurrence.type};
             auto min{screen(graph_positions_[index])};
             auto max{add(min, size(index))};
             ImGui::SetCursorScreenPos(min);
             ImGui::PushID(static_cast<int>(index));
             if (ImGui::InvisibleButton("node", size(index))) {
                 select_type(occurrence.type);
-                graph_focus_ = node.identity;
+                graph_focus_ = graph.identity(node);
             }
             if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left, 2.0F)) {
                 graph_positions_[index][0] += io.MouseDelta.x / graph_zoom_;
                 graph_positions_[index][1] += io.MouseDelta.y / graph_zoom_;
                 auto& manual{graph_scope_.module ? module_graph_positions_[*graph_scope_.module]
                                                  : graph_node_positions_};
-                manual[node.identity] = graph_positions_[index];
+                manual[graph.identity(node)] = graph_positions_[index];
                 if (!graph_scope_.module && !project_path_.empty()) {
                     persisted_graph_node_positions_[project_path_.lexically_normal()
-                                                        .generic_string()][node.identity] =
-                        graph_positions_[index];
+                                                        .generic_string()]
+                                                   [retain_identity(graph.identity(node))] =
+                                                       graph_positions_[index];
                     ImGui::MarkIniSettingsDirty();
                 }
                 min = screen(graph_positions_[index]);
@@ -490,8 +524,8 @@ void PlannerUi::draw_graph_panel() {
             }
             if (ImGui::IsItemHovered() && !panning) {
                 ImGui::SetItemTooltip("%s\n%s%s",
-                                      node.cpp_spelling.c_str(),
-                                      node.identity.module_name.c_str(),
+                                      text(graph.cpp_spelling(node)).c_str(),
+                                      text(graph.module_name(node)).c_str(),
                                       occurrence.boundary ? " (scope boundary)" : "");
             }
             auto const selected{selection == occurrence.type};
@@ -500,7 +534,8 @@ void PlannerUi::draw_graph_panel() {
             draw->AddRectFilled(
                 min,
                 max,
-                node_color(node.definition, is_focus, dependencies[index], users[index], focused),
+                node_color(
+                    graph.definition(node), is_focus, dependencies[index], users[index], focused),
                 6.0F * graph_zoom_);
             draw->AddRect(min,
                           max,

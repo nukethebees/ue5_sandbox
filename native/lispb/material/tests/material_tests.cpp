@@ -1,19 +1,64 @@
+#include <codegen/sexpr/sources.h>
+#include <codegen/sexpr/syntax.h>
+#include <lispb/project_loader.h>
+#include <lispb/strings.h>
+#include <material_gen/BlendMode.h>
 #include <material_gen/CompiledMaterial.h>
+#include <material_gen/Diagnostic.h>
+#include <material_gen/Indices.h>
+#include <material_gen/MaterialDomain.h>
 #include <material_gen/MaterialFrontend.h>
+#include <material_gen/MaterialIR.h>
+#include <material_gen/NamedNodes.h>
+#include <material_gen/NodeKind.h>
+#include <material_gen/Nodes.h>
+#include <material_gen/Parameters.h>
+#include <material_gen/ShadingModel.h>
 #include <material_gen/SourceHash.h>
+#include <material_gen/TextureResolver.h>
+#include <material_gen/TextureSamplerType.h>
+#include <material_gen/ValueType.h>
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <memory>
+#include <optional>
 #include <ranges>
+#include <span>
 #include <sstream>
+#include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 namespace material_synth {
 namespace {
+
+struct AnalyzedMaterial {
+    std::unique_ptr<lispb::Strings> strings;
+    std::optional<MaterialIR> material;
+    std::vector<Diagnostic> diagnostics;
+};
+
+auto analyze(std::string_view path, std::string_view source, TextureResolver resolver)
+    -> AnalyzedMaterial {
+    auto strings{std::make_unique<lispb::Strings>()};
+    lispb::codegen::sexpr::Sources sources{*strings};
+    lispb::codegen::sexpr::Syntax syntax{*strings, sources};
+    auto const file{sources.add(path, source)};
+    MaterialIR material{*strings};
+    auto diagnostics{material_synth::analyze(syntax, file, resolver, material)};
+    if (!diagnostics.empty()) {
+        return {std::move(strings), {}, std::move(diagnostics)};
+    }
+    return {std::move(strings), std::move(material), {}};
+}
 
 TEST(MaterialGen, ComputesSha256) {
     constexpr std::string_view input{"abc"};
@@ -45,23 +90,30 @@ TEST(MaterialFrontend, LowersUiGlowGoldenSourceWithStableHandles) {
     ASSERT_TRUE(result.material.has_value())
         << (result.diagnostics.empty() ? "" : result.diagnostics.front().message);
     auto const& material{*result.material};
-    EXPECT_EQ(material.settings.name, "M_UiGlowComposite");
-    EXPECT_EQ(material.settings.package_path, "/SandboxUI/Generated/Materials/M_UiGlowComposite");
+    auto const node_handles{material.nodes.handles()};
+    EXPECT_EQ(material.text(material.settings.name), "M_UiGlowComposite");
+    EXPECT_EQ(material.text(material.settings.package_path),
+              "/SandboxUI/Generated/Materials/M_UiGlowComposite");
     ASSERT_EQ(material.parameters.size(), 4);
     for (std::size_t index{}; index < material.parameters.size(); ++index) {
-        EXPECT_EQ(material.parameters[index].node.index, index);
+        EXPECT_EQ(material.parameters.node[index].value, index);
     }
-    EXPECT_EQ(material.nodes[4].kind, NodeKind::texture_coordinate);
-    EXPECT_EQ(std::ranges::count_if(material.nodes,
-                                    [](Node const& node) { return node.kind == NodeKind::sample; }),
+    EXPECT_EQ(material.nodes.kind(NodeHandle{4}), NodeKind::texture_coordinate);
+    EXPECT_EQ(std::ranges::count_if(
+                  node_handles,
+                  [&](NodeHandle node) { return material.nodes.kind(node) == NodeKind::sample; }),
               2);
-    auto const custom{std::ranges::find_if(
-        material.nodes, [](Node const& node) { return node.kind == NodeKind::custom; })};
-    ASSERT_NE(custom, material.nodes.end());
-    EXPECT_EQ(custom->type, ValueType::float1);
-    ASSERT_EQ(custom->custom_inputs.size(), 2);
-    EXPECT_EQ(custom->custom_inputs[1].name, "CoreAlpha");
-    EXPECT_EQ(material.nodes[material.outputs.front().node.index].kind, NodeKind::multiply);
+    auto const custom{std::ranges::find_if(node_handles, [&](NodeHandle node) {
+        return material.nodes.kind(node) == NodeKind::custom;
+    })};
+    ASSERT_NE(custom, node_handles.end());
+    EXPECT_EQ(material.nodes.type(*custom), ValueType::float1);
+    ASSERT_EQ(material.nodes.custom_inputs(*custom).size(), 2);
+    EXPECT_EQ(
+        material.text(
+            material.nodes.input_declarations.name[material.nodes.custom_inputs(*custom)[1].value]),
+        "CoreAlpha");
+    EXPECT_EQ(material.nodes.kind(material.outputs.node.front()), NodeKind::multiply);
     EXPECT_EQ(material.texture_dependencies.size(), 1);
     EXPECT_TRUE(validate(material).empty());
 }
@@ -75,10 +127,12 @@ TEST(MaterialFrontend, LowersVertexColourForProceduralRendererMaterials) {
                           TextureResolver{nullptr, resolve})};
     ASSERT_TRUE(analysis.material.has_value());
     auto const& material{*analysis.material};
-    auto const vertex_colour{std::ranges::find_if(
-        material.nodes, [](Node const& node) { return node.kind == NodeKind::vertex_color; })};
-    ASSERT_NE(vertex_colour, material.nodes.end());
-    EXPECT_EQ(vertex_colour->type, ValueType::float4);
+    auto const node_handles{material.nodes.handles()};
+    auto const vertex_colour{std::ranges::find_if(node_handles, [&](NodeHandle node) {
+        return material.nodes.kind(node) == NodeKind::vertex_color;
+    })};
+    ASSERT_NE(vertex_colour, node_handles.end());
+    EXPECT_EQ(material.nodes.type(*vertex_colour), ValueType::float4);
     EXPECT_TRUE(material.settings.used_with_particle_sprites);
     EXPECT_TRUE(validate(material).empty());
 }
@@ -92,26 +146,25 @@ TEST(CompiledMaterial, RoundTripsDeterministically) {
     ASSERT_TRUE(analysis.material.has_value());
     auto const source_bytes{
         std::span{reinterpret_cast<std::uint8_t const*>(source.data()), source.size()}};
-    CompiledMaterial const compiled{.source_path =
-                                        "Plugins/SandboxUI/Source/SandboxUI/Private/materials/"
-                                        "UiGlowComposite.lispb",
-                                    .source_hash = sha256(source_bytes),
-                                    .material = std::move(*analysis.material)};
+    std::string_view const relative_path{
+        "Plugins/SandboxUI/Source/SandboxUI/Private/materials/UiGlowComposite.lispb"};
+    auto const source_hash{sha256(source_bytes)};
+    auto const& material{*analysis.material};
 
-    auto const first{serialize(compiled)};
-    auto const second{serialize(compiled)};
+    auto const first{serialize(material, relative_path, source_hash)};
+    auto const second{serialize(material, relative_path, source_hash)};
     ASSERT_TRUE(first.has_value()) << first.error();
     ASSERT_TRUE(second.has_value()) << second.error();
     EXPECT_EQ(*first, *second);
 
     auto const decoded{deserialize(*first)};
     ASSERT_TRUE(decoded.has_value()) << decoded.error();
-    EXPECT_EQ(decoded->source_path, compiled.source_path);
-    EXPECT_EQ(decoded->source_hash, compiled.source_hash);
-    EXPECT_EQ(decoded->material.settings.name, "M_UiGlowComposite");
+    EXPECT_EQ(decoded->material.text(decoded->source_path), relative_path);
+    EXPECT_EQ(decoded->material.text(decoded->source_hash), source_hash);
+    EXPECT_EQ(decoded->material.text(decoded->material.settings.name), "M_UiGlowComposite");
     EXPECT_EQ(decoded->material.parameters.size(), 4);
-    EXPECT_TRUE(std::ranges::any_of(decoded->material.nodes, [](Node const& node) {
-        return node.kind == NodeKind::component_mask;
+    EXPECT_TRUE(std::ranges::any_of(decoded->material.nodes.handles(), [&](NodeHandle node) {
+        return decoded->material.nodes.kind(node) == NodeKind::component_mask;
     }));
     EXPECT_TRUE(validate(decoded->material).empty());
 }
@@ -129,10 +182,9 @@ TEST(CompiledMaterial, RejectsWrongVersionCorruptionAndTrailingData) {
                 "(emissive (float3 1 1 1)))",
                 TextureResolver{nullptr, resolve})};
     ASSERT_TRUE(analysis.material.has_value());
-    auto artifact{serialize(
-        {.source_path = "source.scm",
-         .source_hash = "0000000000000000000000000000000000000000000000000000000000000000",
-         .material = std::move(*analysis.material)})};
+    auto artifact{serialize(*analysis.material,
+                            "source.scm",
+                            "0000000000000000000000000000000000000000000000000000000000000000")};
     ASSERT_TRUE(artifact.has_value());
     artifact->push_back(0);
     EXPECT_FALSE(deserialize(*artifact).has_value());
@@ -147,6 +199,7 @@ TEST(MaterialFrontend, LowersWorldSurfaceSettingsInstanceDataAndOpacity) {
     ASSERT_TRUE(result.material.has_value())
         << (result.diagnostics.empty() ? "" : result.diagnostics.front().message);
     auto const& material{*result.material};
+    auto const node_handles{material.nodes.handles()};
     EXPECT_EQ(material.settings.domain, MaterialDomain::surface);
     EXPECT_EQ(material.settings.blend_mode, BlendMode::translucent);
     EXPECT_EQ(material.settings.shading_model, ShadingModel::unlit);
@@ -154,37 +207,45 @@ TEST(MaterialFrontend, LowersWorldSurfaceSettingsInstanceDataAndOpacity) {
     EXPECT_TRUE(material.settings.disable_depth_test);
     EXPECT_TRUE(material.settings.used_with_instanced_static_meshes);
     ASSERT_EQ(material.parameters.size(), 16);
-    auto const filaments{
-        std::ranges::find(material.parameters, "EnergyFilaments", &Parameter::name)};
-    ASSERT_NE(filaments, material.parameters.end());
-    EXPECT_EQ(filaments->texture_sampler_type, TextureSamplerType::linear_grayscale);
-    auto const flow{std::ranges::find(material.parameters, "EnergyFlow", &Parameter::name)};
-    ASSERT_NE(flow, material.parameters.end());
-    EXPECT_EQ(flow->texture_sampler_type, TextureSamplerType::linear_color);
+    auto const parameter_ids{material.parameters.handles()};
+    auto const filaments{std::ranges::find_if(parameter_ids, [&](ParameterId parameter) {
+        return material.text(material.parameters.name[parameter.value]) == "EnergyFilaments";
+    })};
+    ASSERT_NE(filaments, parameter_ids.end());
+    EXPECT_EQ(material.parameters.texture_sampler_type[(*filaments).value],
+              TextureSamplerType::linear_grayscale);
+    auto const flow{std::ranges::find_if(parameter_ids, [&](ParameterId parameter) {
+        return material.text(material.parameters.name[parameter.value]) == "EnergyFlow";
+    })};
+    ASSERT_NE(flow, parameter_ids.end());
+    EXPECT_EQ(material.parameters.texture_sampler_type[(*flow).value],
+              TextureSamplerType::linear_color);
     for (unsigned instance_data_index{}; instance_data_index < 6; ++instance_data_index) {
-        EXPECT_TRUE(std::ranges::any_of(material.nodes, [&](Node const& node) {
-            return node.kind == NodeKind::per_instance_custom_data &&
-                   node.instance_data_index == instance_data_index;
+        EXPECT_TRUE(std::ranges::any_of(node_handles, [&](NodeHandle node) {
+            return material.nodes.kind(node) == NodeKind::per_instance_custom_data &&
+                   material.nodes.instance_data_index(node) == instance_data_index;
         }));
     }
-    EXPECT_TRUE(std::ranges::any_of(material.nodes,
-                                    [](Node const& node) { return node.kind == NodeKind::time; }));
-    EXPECT_TRUE(std::ranges::any_of(
-        material.nodes, [](Node const& node) { return node.kind == NodeKind::saturate; }));
-    EXPECT_TRUE(std::ranges::any_of(material.nodes,
-                                    [](Node const& node) { return node.kind == NodeKind::lerp; }));
-    EXPECT_EQ(std::ranges::count_if(material.nodes,
-                                    [](Node const& node) { return node.kind == NodeKind::custom; }),
+    EXPECT_TRUE(std::ranges::any_of(node_handles, [&](NodeHandle node) {
+        return material.nodes.kind(node) == NodeKind::time;
+    }));
+    EXPECT_TRUE(std::ranges::any_of(node_handles, [&](NodeHandle node) {
+        return material.nodes.kind(node) == NodeKind::saturate;
+    }));
+    EXPECT_TRUE(std::ranges::any_of(node_handles, [&](NodeHandle node) {
+        return material.nodes.kind(node) == NodeKind::lerp;
+    }));
+    EXPECT_EQ(std::ranges::count_if(
+                  node_handles,
+                  [&](NodeHandle node) { return material.nodes.kind(node) == NodeKind::custom; }),
               2);
     ASSERT_EQ(material.outputs.size(), 2);
-    EXPECT_EQ(material.outputs[1].name, "opacity");
+    EXPECT_EQ(material.text(material.outputs.name[1]), "opacity");
     EXPECT_TRUE(validate(material).empty());
 
-    CompiledMaterial const compiled{
-        .source_path = source_path.generic_string(),
-        .source_hash = "0000000000000000000000000000000000000000000000000000000000000000",
-        .material = material};
-    auto const bytes{serialize(compiled)};
+    auto const bytes{serialize(material,
+                               source_path.generic_string(),
+                               "0000000000000000000000000000000000000000000000000000000000000000")};
     ASSERT_TRUE(bytes.has_value()) << bytes.error();
     auto const decoded{deserialize(*bytes)};
     ASSERT_TRUE(decoded.has_value()) << decoded.error();
@@ -192,8 +253,9 @@ TEST(MaterialFrontend, LowersWorldSurfaceSettingsInstanceDataAndOpacity) {
     EXPECT_EQ(decoded->material.settings.shading_model, ShadingModel::unlit);
     EXPECT_TRUE(decoded->material.settings.used_with_instanced_static_meshes);
     EXPECT_EQ(decoded->material.parameters.size(), 16);
-    EXPECT_TRUE(std::ranges::any_of(decoded->material.nodes,
-                                    [](Node const& node) { return node.kind == NodeKind::time; }));
+    EXPECT_TRUE(std::ranges::any_of(decoded->material.nodes.handles(), [&](NodeHandle node) {
+        return decoded->material.nodes.kind(node) == NodeKind::time;
+    }));
 }
 
 TEST(MaterialFrontend, LowersTimeTrigDynamicVectorsAndNaryArithmetic) {
@@ -212,27 +274,30 @@ TEST(MaterialFrontend, LowersTimeTrigDynamicVectorsAndNaryArithmetic) {
     ASSERT_TRUE(result.material.has_value())
         << (result.diagnostics.empty() ? "" : result.diagnostics.front().message);
     auto const& material{*result.material};
+    auto const node_handles{material.nodes.handles()};
 
-    auto const find_binding{[&](std::string_view const name) -> Node const& {
-        auto const binding{
-            std::ranges::find_if(material.bindings, [name](NamedNode const& candidate) {
-                return candidate.name == name;
-            })};
-        EXPECT_NE(binding, material.bindings.end());
-        return material.nodes[binding->node.index];
+    auto const binding_ids{material.bindings.handles()};
+    auto const find_binding{[&](std::string_view const name) -> NodeHandle {
+        auto const binding{std::ranges::find_if(binding_ids, [&](NamedNodeId candidate) {
+            return material.text(material.bindings.name[candidate.value]) == name;
+        })};
+        EXPECT_NE(binding, binding_ids.end());
+        return material.bindings.node[(*binding).value];
     }};
 
-    EXPECT_EQ(find_binding("phase").kind, NodeKind::multiply);
-    EXPECT_EQ(find_binding("pulse").kind, NodeKind::multiply);
-    EXPECT_EQ(find_binding("offset").kind, NodeKind::cosine);
-    EXPECT_EQ(find_binding("tint").kind, NodeKind::vector_constructor);
-    EXPECT_TRUE(std::ranges::any_of(material.nodes,
-                                    [](Node const& node) { return node.kind == NodeKind::time; }));
-    EXPECT_TRUE(std::ranges::any_of(material.nodes,
-                                    [](Node const& node) { return node.kind == NodeKind::sine; }));
-    auto const& emissive{material.nodes[material.outputs.front().node.index]};
-    EXPECT_EQ(emissive.kind, NodeKind::multiply);
-    EXPECT_EQ(emissive.inputs.size(), 4);
+    EXPECT_EQ(material.nodes.kind(find_binding("phase")), NodeKind::multiply);
+    EXPECT_EQ(material.nodes.kind(find_binding("pulse")), NodeKind::multiply);
+    EXPECT_EQ(material.nodes.kind(find_binding("offset")), NodeKind::cosine);
+    EXPECT_EQ(material.nodes.kind(find_binding("tint")), NodeKind::vector_constructor);
+    EXPECT_TRUE(std::ranges::any_of(node_handles, [&](NodeHandle node) {
+        return material.nodes.kind(node) == NodeKind::time;
+    }));
+    EXPECT_TRUE(std::ranges::any_of(node_handles, [&](NodeHandle node) {
+        return material.nodes.kind(node) == NodeKind::sine;
+    }));
+    auto const emissive{material.outputs.node.front()};
+    EXPECT_EQ(material.nodes.kind(emissive), NodeKind::multiply);
+    EXPECT_EQ(material.nodes.inputs(emissive).size(), 4);
     EXPECT_TRUE(validate(material).empty());
 }
 
@@ -258,14 +323,16 @@ TEST(MaterialFrontend, SupportsEveryNumericExpressionAndPropagatesTypes) {
     ASSERT_TRUE(result.material.has_value())
         << (result.diagnostics.empty() ? "" : result.diagnostics.front().message);
     auto const& material{*result.material};
-    EXPECT_EQ(material.nodes[2].type, ValueType::float2);
-    EXPECT_EQ(material.nodes[3].type, ValueType::float3);
-    EXPECT_EQ(material.nodes[4].type, ValueType::float4);
-    auto const sampled{std::ranges::find_if(
-        material.bindings, [](NamedNode const& binding) { return binding.name == "sampled"; })};
-    ASSERT_NE(sampled, material.bindings.end());
-    EXPECT_EQ(material.nodes[sampled->node.index].kind, NodeKind::sample);
-    EXPECT_EQ(material.nodes[sampled->node.index].type, ValueType::float4);
+    EXPECT_EQ(material.nodes.type(NodeHandle{2}), ValueType::float2);
+    EXPECT_EQ(material.nodes.type(NodeHandle{3}), ValueType::float3);
+    EXPECT_EQ(material.nodes.type(NodeHandle{4}), ValueType::float4);
+    auto const binding_ids{material.bindings.handles()};
+    auto const sampled{std::ranges::find_if(binding_ids, [&](NamedNodeId binding) {
+        return material.text(material.bindings.name[binding.value]) == "sampled";
+    })};
+    ASSERT_NE(sampled, binding_ids.end());
+    EXPECT_EQ(material.nodes.kind(material.bindings.node[(*sampled).value]), NodeKind::sample);
+    EXPECT_EQ(material.nodes.type(material.bindings.node[(*sampled).value]), ValueType::float4);
 }
 
 TEST(MaterialFrontend, LowersMigratedMaterialsToNativeScaffoldingAndTypedShaderLeaves) {
@@ -289,7 +356,7 @@ TEST(MaterialFrontend, LowersMigratedMaterialsToNativeScaffoldingAndTypedShaderL
         source_root / "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/"
                       "TacticalScan.lispb"};
 
-    std::vector<MaterialIR> materials;
+    std::vector<AnalyzedMaterial> materials;
     for (auto const& source_path : sources) {
         auto result{analyze(
             source_path.generic_string(), read(source_path), TextureResolver{nullptr, resolve})};
@@ -298,48 +365,55 @@ TEST(MaterialFrontend, LowersMigratedMaterialsToNativeScaffoldingAndTypedShaderL
             << (result.diagnostics.empty() ? "" : result.diagnostics.front().message);
         EXPECT_TRUE(result.material->settings.adopt_existing);
         EXPECT_TRUE(validate(*result.material).empty());
-        materials.push_back(std::move(*result.material));
+        materials.push_back(std::move(result));
     }
 
-    auto const& energy_shield{materials[1]};
-    EXPECT_TRUE(std::ranges::any_of(
-        energy_shield.nodes, [](Node const& node) { return node.kind == NodeKind::subtract; }));
-    EXPECT_TRUE(std::ranges::any_of(energy_shield.nodes, [](Node const& node) {
-        return node.kind == NodeKind::shader_call && node.shader_function == "sbx_energy_shield";
+    auto const& energy_shield{*materials[1].material};
+    EXPECT_TRUE(std::ranges::any_of(energy_shield.nodes.handles(), [&](NodeHandle node) {
+        return energy_shield.nodes.kind(node) == NodeKind::subtract;
+    }));
+    EXPECT_TRUE(std::ranges::any_of(energy_shield.nodes.handles(), [&](NodeHandle node) {
+        return energy_shield.nodes.kind(node) == NodeKind::shader_call &&
+               energy_shield.text(energy_shield.nodes.shader_function(node)) == "sbx_energy_shield";
     }));
 
-    auto const& glowing_cross{materials[3]};
-    EXPECT_TRUE(std::ranges::none_of(glowing_cross.nodes, [](Node const& node) {
-        return node.kind == NodeKind::custom || node.kind == NodeKind::shader_call;
+    auto const& glowing_cross{*materials[3].material};
+    EXPECT_TRUE(std::ranges::none_of(glowing_cross.nodes.handles(), [&](NodeHandle node) {
+        return glowing_cross.nodes.kind(node) == NodeKind::custom ||
+               glowing_cross.nodes.kind(node) == NodeKind::shader_call;
     }));
-    EXPECT_TRUE(std::ranges::any_of(glowing_cross.nodes, [](Node const& node) {
-        return node.kind == NodeKind::texture_object;
+    EXPECT_TRUE(std::ranges::any_of(glowing_cross.nodes.handles(), [&](NodeHandle node) {
+        return glowing_cross.nodes.kind(node) == NodeKind::texture_object;
     }));
 
-    auto const& construction_spawn{materials[5]};
+    auto const& construction_spawn{*materials[5].material};
     EXPECT_EQ(construction_spawn.settings.blend_mode, BlendMode::masked);
-    EXPECT_TRUE(std::ranges::any_of(construction_spawn.nodes, [](Node const& node) {
-        return node.kind == NodeKind::transform_position;
+    EXPECT_TRUE(std::ranges::any_of(construction_spawn.nodes.handles(), [&](NodeHandle node) {
+        return construction_spawn.nodes.kind(node) == NodeKind::transform_position;
     }));
-    EXPECT_TRUE(std::ranges::any_of(construction_spawn.outputs, [](NamedNode const& output) {
-        return output.name == "opacity-mask";
+    EXPECT_TRUE(std::ranges::any_of(construction_spawn.outputs.handles(), [&](NamedNodeId output) {
+        return construction_spawn.text(construction_spawn.outputs.name[output.value]) ==
+               "opacity-mask";
     }));
 
-    auto const& tactical_scan{materials[8]};
+    auto const& tactical_scan{*materials[8].material};
     EXPECT_EQ(tactical_scan.settings.domain, MaterialDomain::post_process);
-    EXPECT_EQ(std::ranges::count_if(
-                  tactical_scan.nodes,
-                  [](Node const& node) { return node.kind == NodeKind::scene_texture; }),
+    EXPECT_EQ(std::ranges::count_if(tactical_scan.nodes.handles(),
+                                    [&](NodeHandle node) {
+                                        return tactical_scan.nodes.kind(node) ==
+                                               NodeKind::scene_texture;
+                                    }),
               2);
 }
 
 TEST(MaterialIR, RejectsForgedForwardHandlesAndMalformedNodes) {
-    MaterialIR material;
-    material.settings.name = "M_Invalid";
-    material.settings.package_path = "/Game/Generated/Materials/M_Invalid";
-    material.nodes.push_back(
-        Node{.kind = NodeKind::add, .type = ValueType::float1, .inputs = {{1}, {1}}});
-    material.outputs.push_back({"emissive", {0}, {}});
+    lispb::Strings strings;
+    MaterialIR material{strings};
+    material.settings.name = material.intern("M_Invalid");
+    material.settings.package_path = material.intern("/Game/Generated/Materials/M_Invalid");
+    material.nodes.add(
+        NodeKind::add, ValueType::float1, {}, std::array{NodeHandle{1}, NodeHandle{1}});
+    material.outputs.append(material.intern("emissive"), {0}, {});
     EXPECT_FALSE(validate(material).empty());
 }
 

@@ -3,11 +3,22 @@
 #include "planner_ui.hpp"
 #include "planner_ui_support.hpp"
 
+#include <lispb/schema/indices.h>
+#include <lispb/schema/integer_domain.h>
+#include <lispb/schema/optional_presence_bit_types.h>
+#include <lispb/schema/optional_sentinel_types.h>
+#include <lispb/schema/type_definition_id.h>
+#include <lispb/schema/type_graph.h>
+#include <lispb/strings.h>
+
 #include <imgui.h>
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <cstdio>
+#include <optional>
+#include <ranges>
 #include <string>
 #include <utility>
 #include <vector>
@@ -75,18 +86,31 @@ inline auto format_optional_decimal(std::optional<long double> const value) -> s
     return value.has_value() ? format_decimal(*value) : "Unknown";
 }
 
-inline auto type_label(lispb::schema::TypeNode const& node) -> std::string {
-    return node.identity.module_name.empty()
-             ? node.identity.name
-             : node.identity.module_name + "::" + node.identity.name;
+inline auto type_label(lispb::schema::TypeGraph const& types, lispb::schema::TypeId const node)
+    -> std::string {
+    return types.strings().view(types.module_name(node)).empty()
+             ? std::string{types.strings().view(types.name(node))}
+             : std::string{types.strings().view(types.module_name(node))} +
+                   "::" + std::string{types.strings().view(types.name(node))};
 }
 
-inline auto optional_source(TypeDefinition const& definition) -> std::optional<TypeId> {
-    if (auto const* sentinel{std::get_if<OptionalSentinelType>(&definition)}) {
-        return sentinel->source.type;
+inline auto optional_source(TypeGraph const& types, TypeDefinitionId const definition)
+    -> std::optional<TypeId> {
+    if (auto const sentinel{
+            ((definition).kind() == lispb::schema::TypeDefinitionKind::optional_sentinel
+                 ? std::optional{definition}
+                 : std::nullopt)}) {
+        return types.occurrences().type[types.occurrences().index(
+            types.definitions().optional_sentinels.source
+                [types.definitions().optional_sentinels.index(*sentinel)])];
     }
-    if (auto const* presence{std::get_if<OptionalPresenceBitType>(&definition)}) {
-        return presence->source.type;
+    if (auto const presence{
+            ((definition).kind() == lispb::schema::TypeDefinitionKind::optional_presence_bit
+                 ? std::optional{definition}
+                 : std::nullopt)}) {
+        return types.occurrences().type[types.occurrences().index(
+            types.definitions().optional_presence_bits.source
+                [types.definitions().optional_presence_bits.index(*presence)])];
     }
     return std::nullopt;
 }

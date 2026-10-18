@@ -5,6 +5,7 @@
 
 #include "ioj/enum_traits.h"
 
+#include <cstddef>
 #include <cstdint>
 namespace codegen_compile_fixture {
 using PackedStateUnderlying = std::uint8_t;
@@ -48,5 +49,4 @@ template <>
     -> std::size_t {
     return 2;
 }
-
 } // namespace ml

@@ -7,6 +7,8 @@
 
 #include "CoreMinimal.h"
 
+#include <cstddef>
+
 #include "GameUiStyleTypes.generated.h"
 
 // Logical bit width: 4.
@@ -56,7 +58,6 @@ template <>
 [[nodiscard]] constexpr auto enum_count<::EGameTextStyle>() noexcept -> std::size_t {
     return 10;
 }
-
 } // namespace ml
 
 namespace ml {
@@ -64,7 +65,6 @@ template <>
 [[nodiscard]] constexpr auto enum_count<::EGameButtonStyle>() noexcept -> std::size_t {
     return 2;
 }
-
 } // namespace ml
 
 namespace ml {
@@ -72,7 +72,6 @@ template <>
 [[nodiscard]] constexpr auto enum_count<::EGameUiIcon>() noexcept -> std::size_t {
     return 9;
 }
-
 } // namespace ml
 
 SPACEGAMEPRESENTATION_API auto LexToString(EGameUiIcon const value) -> TCHAR const*;

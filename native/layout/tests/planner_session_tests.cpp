@@ -1,151 +1,92 @@
+#include "analyzer_test_fixtures.hpp"
 #include <ioj/layout/planner_session.hpp>
 
+#include <codegen/schema/indices.h>
+#include <codegen/schema/manifest.h>
 #include <codegen/schema/schema_version.h>
+#include <codegen/schema/tagged_union_schemas.h>
+#include <codegen/schema/union_alternative_schemas.h>
+#include <codegen/schema/union_schemas.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/schema/editable_document.h>
+#include <lispb/schema/indices.h>
+#include <lispb/schema/integer_varint_types.h>
+#include <lispb/schema/save_replace_file.h>
+#include <lispb/schema/save_replacement_hook.h>
+#include <lispb/schema/tagged_union_types.h>
+#include <lispb/schema/type_identity.h>
 
 #include <gtest/gtest.h>
 
 #include <array>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <memory>
+#include <optional>
 #include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace ioj::layout {
 namespace {
 
-auto session_manifest(bool const include_first = false) -> codegen::Manifest {
-    codegen::Manifest manifest{};
-    manifest.schema_version = codegen::manifest_schema_version;
+auto session_manifest(lispb::CompilerStorage& storage, bool const include_first = false)
+    -> lispb::codegen::Manifest {
+    std::string source;
     if (include_first) {
-        codegen::NormalModuleSchema first{};
-        first.settings.name = "first";
-        first.settings.header = "First.h";
-        codegen::EnumSchema value{};
-        value.name = "First";
-        value.underlying_type =
-            codegen::TypeRef{.name = "std::uint8_t", .suffix = {}, .nested = std::nullopt};
-        codegen::EnumeratorSchema enumerator{};
-        enumerator.name = "Value";
-        value.values.push_back(std::move(enumerator));
-        first.declarations.push_back(std::move(value));
-        manifest.modules.emplace_back(std::move(first));
+        source += R"((module first :header "First.h" (enum First std::uint8_t (value Value))))";
     }
-
-    codegen::NormalModuleSchema packed_module{};
-    packed_module.settings.name = "packed";
-    packed_module.settings.header = "Packed.h";
-    codegen::PackedValueSchema packed{};
-    packed.name = "Packet";
-    packed.storage_type.name = "std::uint8_t";
-    codegen::PackedFieldSchema bits{};
-    bits.name = "bits";
-    bits.type.name = "std::uint8_t";
-    bits.bits = 8;
-    packed.segments.emplace_back(std::move(bits));
-    packed_module.declarations.push_back(std::move(packed));
-    manifest.modules.emplace_back(std::move(packed_module));
-
-    codegen::NormalModuleSchema records{};
-    records.settings.name = "records";
-    records.settings.header = "Records.h";
-    codegen::RecordSchema record{};
-    record.name = "Record";
-    codegen::RecordMemberSchema member{};
-    member.name = "value";
-    member.type.name = "std::uint32_t";
-    record.members.push_back(std::move(member));
-    records.declarations.push_back(std::move(record));
-    manifest.modules.emplace_back(std::move(records));
-    return manifest;
+    source += R"((module packed :header "Packed.h"
+        (packed-value Packet :storage std::uint8_t (field bits std::uint8_t :bits 8)))
+        (module records :header "Records.h" (record Record (member value std::uint32_t))))";
+    return fixture_manifest(storage, source);
 }
 
-auto distribution_manifest() -> codegen::Manifest {
-    codegen::Manifest manifest{};
-    manifest.schema_version = codegen::manifest_schema_version;
-    codegen::NormalModuleSchema enums{};
-    enums.settings.name = "kinds";
-    enums.settings.header = "Kinds.h";
-    codegen::EnumSchema kind{};
-    kind.name = "Kind";
-    kind.underlying_type =
-        codegen::TypeRef{.name = "std::uint8_t", .suffix = {}, .nested = std::nullopt};
-    for (auto const* name : {"Small", "Large"}) {
-        codegen::EnumeratorSchema value{};
-        value.name = name;
-        kind.values.push_back(std::move(value));
-    }
-    enums.declarations.push_back(std::move(kind));
-    manifest.modules.emplace_back(std::move(enums));
-
-    codegen::NormalModuleSchema unions{};
-    unions.settings.name = "unions";
-    unions.settings.header = "Unions.h";
-    codegen::UnionSchema raw{};
-    raw.name = "Raw";
-    codegen::UnionAlternativeSchema small{};
-    small.name = "small";
-    small.type.name = "std::uint8_t";
-    codegen::UnionAlternativeSchema large{};
-    large.name = "large";
-    large.type.name = "std::uint32_t";
-    raw.alternatives = {std::move(small), std::move(large)};
-    unions.declarations.push_back(std::move(raw));
-
-    codegen::TaggedUnionSchema tagged{};
-    tagged.name = "Tagged";
-    tagged.discriminant.name = "Kind";
-    codegen::TaggedUnionAlternativeSchema tagged_small{};
-    tagged_small.name = "small";
-    tagged_small.tag = "Small";
-    tagged_small.type.name = "std::uint8_t";
-    codegen::TaggedUnionAlternativeSchema tagged_large{};
-    tagged_large.name = "large";
-    tagged_large.tag = "Large";
-    tagged_large.type.name = "std::uint32_t";
-    tagged.alternatives = {std::move(tagged_small), std::move(tagged_large)};
-    unions.declarations.push_back(std::move(tagged));
-    manifest.modules.emplace_back(std::move(unions));
-    return manifest;
+auto distribution_manifest(lispb::CompilerStorage& storage) -> lispb::codegen::Manifest {
+    return fixture_manifest(storage, R"(
+        (module kinds :header "Kinds.h" (enum Kind std::uint8_t (value Small) (value Large)))
+        (module unions :header "Unions.h"
+            (union Raw (alternative small std::uint8_t) (alternative large std::uint32_t))
+            (tagged-union Tagged :discriminant Kind
+                (alternative small std::uint8_t :tag Small)
+                (alternative large std::uint32_t :tag Large))))");
 }
 
-auto varint_manifest(bool const include_second) -> codegen::Manifest {
-    codegen::Manifest manifest{};
-    manifest.schema_version = codegen::manifest_schema_version;
-    codegen::NormalModuleSchema scalars{};
-    scalars.settings.name = "scalars";
-    scalars.settings.header = "Scalars.h";
-    codegen::IntegerScalarSchema value{};
-    value.name = "Value";
-    value.signedness = true;
-    value.minimum_value = -100;
-    value.maximum_value = 1000;
-    scalars.declarations.push_back(std::move(value));
-    manifest.modules.emplace_back(std::move(scalars));
-
-    codegen::NormalModuleSchema representations{};
-    representations.settings.name = "representations";
-    representations.settings.header = "Representations.h";
-    codegen::IntegerVarintSchema first{};
-    first.name = "First";
-    first.source.name = "Value";
-    first.encoding = codegen::IntegerVarintEncoding::signed_varint;
-    representations.declarations.push_back(std::move(first));
+auto varint_manifest(lispb::CompilerStorage& storage, bool const include_second)
+    -> lispb::codegen::Manifest {
+    std::string source{R"(
+        (module scalars :header "Scalars.h"
+            (integer-scalar Value :signed true :minimum -100 :maximum 1000))
+        (module representations :header "Representations.h"
+            (integer-varint First :source Value :encoding signed))"};
     if (include_second) {
-        codegen::IntegerVarintSchema second{};
-        second.name = "Second";
-        second.source.name = "Value";
-        second.encoding = codegen::IntegerVarintEncoding::zigzag_varint;
-        representations.declarations.push_back(std::move(second));
+        source += " (integer-varint Second :source Value :encoding zigzag)";
     }
-    manifest.modules.emplace_back(std::move(representations));
-    return manifest;
+    source += ')';
+    return fixture_manifest(storage, source);
+}
+
+auto session_document() -> lispb::schema::EditableSchemaDocument {
+    auto storage{std::make_unique<lispb::CompilerStorage>()};
+    auto manifest{session_manifest(*storage)};
+    return lispb::schema::EditableSchemaDocument::from_manifest(std::move(storage),
+                                                                std::move(manifest));
+}
+
+auto distribution_document() -> lispb::schema::EditableSchemaDocument {
+    auto storage{std::make_unique<lispb::CompilerStorage>()};
+    auto manifest{distribution_manifest(*storage)};
+    return lispb::schema::EditableSchemaDocument::from_manifest(std::move(storage),
+                                                                std::move(manifest));
 }
 
 TEST(PlannerSession, SelectionChangeDropsAccessAnalysisAndRepairsGraphIds) {
-    auto document{lispb::schema::EditableSchemaDocument::from_manifest(session_manifest())};
+    auto document{session_document()};
     PlannerAnalysisSession session{document.types()};
-    auto const record{*session.inputs.workspace.types().find_declared("records", "Record")};
-    auto const packet{*session.inputs.workspace.types().find_declared("packed", "Packet")};
-    auto const record_identity{session.inputs.workspace.types().type(record).identity};
+    auto const record{*fixture_find(session.inputs.workspace.types(), "records", "Record")};
+    auto const packet{*fixture_find(session.inputs.workspace.types(), "packed", "Packet")};
 
     ASSERT_TRUE(session.inputs.selection.select_type(session.inputs.workspace.types(), record));
     session.inputs.selection.field = "value";
@@ -161,9 +102,11 @@ TEST(PlannerSession, SelectionChangeDropsAccessAnalysisAndRepairsGraphIds) {
     session.inputs.selection.field = "value";
     session.inputs.selection.record_access_members["value"] = AccessOperation::read;
     session.inputs.selection.record_access_set_explicit = true;
-    auto reordered{lispb::schema::resolve_type_graph(session_manifest(true))};
+    lispb::CompilerStorage storage;
+    auto reordered_manifest{session_manifest(storage, true)};
+    auto reordered{lispb::schema::resolve_type_graph(reordered_manifest)};
     session.inputs.workspace.replace_types(reordered);
-    session.inputs.selection.reconcile(session.inputs.workspace.types(), record_identity);
+    session.inputs.selection.reconcile(session.inputs.workspace.types(), std::nullopt);
     session.refresh(nullptr);
     ASSERT_TRUE(session.inputs.selection.type.has_value());
     EXPECT_NE(*session.inputs.selection.type, record);
@@ -172,8 +115,11 @@ TEST(PlannerSession, SelectionChangeDropsAccessAnalysisAndRepairsGraphIds) {
 }
 
 TEST(PlannerSession, TargetAndVariantChangesRefreshComparisonsWithoutGuessingFacts) {
-    PlannerAnalysisSession session{lispb::schema::resolve_type_graph(session_manifest())};
-    auto const packet{*session.inputs.workspace.types().find_declared("packed", "Packet")};
+    lispb::CompilerStorage storage;
+    auto manifest{session_manifest(storage)};
+    auto graph{lispb::schema::resolve_type_graph(manifest)};
+    PlannerAnalysisSession session{graph};
+    auto const packet{*fixture_find(session.inputs.workspace.types(), "packed", "Packet")};
     session.inputs.selection.select_type(session.inputs.workspace.types(), packet);
     session.refresh(nullptr);
     ASSERT_TRUE(session.results().packed_target_comparison.has_value());
@@ -216,8 +162,11 @@ TEST(PlannerSession, TargetAndVariantChangesRefreshComparisonsWithoutGuessingFac
 }
 
 TEST(PlannerSession, UnknownPrimaryTargetFactsRemainUnknown) {
-    PlannerAnalysisSession session{lispb::schema::resolve_type_graph(session_manifest())};
-    auto const record{*session.inputs.workspace.types().find_declared("records", "Record")};
+    lispb::CompilerStorage storage;
+    auto manifest{session_manifest(storage)};
+    auto graph{lispb::schema::resolve_type_graph(manifest)};
+    PlannerAnalysisSession session{graph};
+    auto const record{*fixture_find(session.inputs.workspace.types(), "records", "Record")};
     session.inputs.selection.select_type(session.inputs.workspace.types(), record);
     EXPECT_TRUE(session.set_primary_abi(AbiProfile{"unknown"}));
     session.refresh(nullptr);
@@ -227,8 +176,11 @@ TEST(PlannerSession, UnknownPrimaryTargetFactsRemainUnknown) {
 }
 
 TEST(PlannerSession, IrrelevantControlsDoNotInvalidateRecordAnalysis) {
-    PlannerAnalysisSession session{lispb::schema::resolve_type_graph(session_manifest())};
-    auto const record{*session.inputs.workspace.types().find_declared("records", "Record")};
+    lispb::CompilerStorage storage;
+    auto manifest{session_manifest(storage)};
+    auto graph{lispb::schema::resolve_type_graph(manifest)};
+    PlannerAnalysisSession session{graph};
+    auto const record{*fixture_find(session.inputs.workspace.types(), "records", "Record")};
     auto const variant{session.inputs.workspace.create_variant("compare")};
     session.inputs.selection.select_type(session.inputs.workspace.types(), record);
     EXPECT_TRUE(session.refresh(nullptr));
@@ -242,13 +194,13 @@ TEST(PlannerSession, IrrelevantControlsDoNotInvalidateRecordAnalysis) {
 }
 
 TEST(PlannerSession, UnionAndTaggedDistributionChangesRefreshAnalysis) {
-    auto document{lispb::schema::EditableSchemaDocument::from_manifest(distribution_manifest())};
+    auto document{distribution_document()};
     PlannerAnalysisSession session{document.types()};
     auto const& types{session.inputs.workspace.types()};
-    auto const raw{*types.find_declared("unions", "Raw")};
-    auto const tagged{*types.find_declared("unions", "Tagged")};
-    auto const raw_declaration{*document.find_declaration(types.type(raw).identity)};
-    auto const tagged_declaration{*document.find_declaration(types.type(tagged).identity)};
+    auto const raw{*fixture_find(types, "unions", "Raw")};
+    auto const tagged{*fixture_find(types, "unions", "Tagged")};
+    auto const raw_declaration{*document.find_declaration(types.identity(raw))};
+    auto const tagged_declaration{*document.find_declaration(types.identity(tagged))};
 
     session.inputs.selection.select_type(types, raw);
     EXPECT_TRUE(session.set_union_distribution_weight(raw_declaration, "small", 1));
@@ -285,18 +237,19 @@ TEST(PlannerSession, UnionAndTaggedDistributionChangesRefreshAnalysis) {
 }
 
 TEST(PlannerSession, VarintDistributionsAndComparisonReferencesFollowGraphChanges) {
-    PlannerAnalysisSession session{lispb::schema::resolve_type_graph(varint_manifest(true))};
+    lispb::CompilerStorage storage;
+    auto manifest{varint_manifest(storage, true)};
+    auto graph{lispb::schema::resolve_type_graph(manifest)};
+    PlannerAnalysisSession session{graph};
     auto const& types{session.inputs.workspace.types()};
-    auto const first{*types.find_declared("representations", "First")};
-    auto const second{*types.find_declared("representations", "Second")};
-    auto const first_identity{types.type(first).identity};
+    auto const first{*fixture_find(types, "representations", "First")};
+    auto const second{*fixture_find(types, "representations", "Second")};
+    auto const first_identity{types.identity(first)};
     session.inputs.selection.select_type(types, first);
-    session.inputs.varint_comparison_type = types.type(second).identity;
-    auto const source_identity{
-        types
-            .type(std::get<lispb::schema::IntegerVarintType>(types.type(first).definition)
-                      .source.type)
-            .identity};
+    session.inputs.varint_comparison_type = types.identity(second);
+    auto const source_identity{types.identity(types.occurrences().type[types.occurrences().index(
+        types.definitions().integer_varints.source[types.definitions().integer_varints.index(
+            types.definition(first))])])};
     EXPECT_TRUE(
         session.set_varint_distribution(source_identity, {{.value = 5, .weight = 2}}, true));
     session.refresh(nullptr);
@@ -314,8 +267,9 @@ TEST(PlannerSession, VarintDistributionsAndComparisonReferencesFollowGraphChange
         session.set_varint_distribution(source_identity, {{.value = 5, .weight = 7}}, true));
     EXPECT_FALSE(session.refresh(nullptr));
 
-    session.inputs.workspace.replace_types(
-        lispb::schema::resolve_type_graph(varint_manifest(false)));
+    auto replacement_manifest{varint_manifest(storage, false)};
+    auto replacement_graph{lispb::schema::resolve_type_graph(replacement_manifest)};
+    session.inputs.workspace.replace_types(replacement_graph);
     session.inputs.selection.reconcile(session.inputs.workspace.types(), first_identity);
     session.refresh(nullptr);
     EXPECT_FALSE(session.inputs.varint_comparison_type.has_value());
@@ -323,30 +277,53 @@ TEST(PlannerSession, VarintDistributionsAndComparisonReferencesFollowGraphChange
 }
 
 TEST(PlannerSession, GraphEditsAndUndoRedoReconcileDistributionRows) {
-    auto document{lispb::schema::EditableSchemaDocument::from_manifest(distribution_manifest())};
+    auto document{distribution_document()};
     PlannerAnalysisSession session{document.types()};
-    auto const raw{*document.types().find_declared("unions", "Raw")};
-    auto const tagged{*document.types().find_declared("unions", "Tagged")};
-    auto const raw_identity{document.types().type(raw).identity};
+    auto const raw{*fixture_find(document.types(), "unions", "Raw")};
+    auto const tagged{*fixture_find(document.types(), "unions", "Tagged")};
+    auto const raw_identity{document.types().identity(raw)};
     auto const raw_declaration{*document.find_declaration(raw_identity)};
-    auto const tagged_declaration{
-        *document.find_declaration(document.types().type(tagged).identity)};
+    auto const tagged_declaration{*document.find_declaration(document.types().identity(tagged))};
     session.inputs.selection.select_type(session.inputs.workspace.types(), raw);
     EXPECT_TRUE(session.set_union_distribution_weight(raw_declaration, "small", 3));
     EXPECT_TRUE(session.set_tagged_union_distribution_weight(tagged_declaration, "Small", 2));
 
-    auto renamed{*document.union_schema(raw_declaration)};
-    renamed.alternatives.front().name = "renamed";
-    ASSERT_TRUE(document
-                    .apply(lispb::schema::ReplaceUnion{.declaration = raw_declaration,
-                                                       .schema = std::move(renamed)})
-                    .value());
-    auto reduced{*document.tagged_union_schema(tagged_declaration)};
-    reduced.alternatives.erase(reduced.alternatives.begin());
-    ASSERT_TRUE(document
-                    .apply(lispb::schema::ReplaceTaggedUnion{.declaration = tagged_declaration,
-                                                             .schema = std::move(reduced)})
-                    .value());
+    auto renamed{document.storage().declarations.unions.clone(*document.declaration_handle(
+        raw_declaration, lispb::codegen::DeclarationKind::union_type))};
+    auto& declarations{document.storage().declarations};
+    document.storage()
+        .declarations.unions.alternatives[document.storage().declarations.unions.index(renamed)] =
+        [&] {
+            auto const original_items{declarations.items(
+                document.storage()
+                    .declarations.unions
+                    .alternatives[document.storage().declarations.unions.index(renamed)])};
+            std::vector<lispb::codegen::UnionAlternativeId> rows{original_items.begin(),
+                                                                 original_items.end()};
+            rows.front() = [&] {
+                auto value{declarations.union_alternatives.clone(rows.front())};
+                declarations.union_alternatives.name[declarations.union_alternatives.index(value)] =
+                    document.storage().strings.intern("renamed");
+                return value;
+            }();
+            return declarations.range(rows);
+        }();
+    ASSERT_TRUE(document.apply(document.replace_declaration(raw_declaration, renamed)).value());
+    auto reduced{document.storage().declarations.tagged_unions.clone(*document.declaration_handle(
+        tagged_declaration, lispb::codegen::DeclarationKind::tagged_union))};
+    document.storage()
+        .declarations.tagged_unions
+        .alternatives[document.storage().declarations.tagged_unions.index(reduced)] = [&] {
+        auto const original_items{declarations.items(
+            document.storage()
+                .declarations.tagged_unions
+                .alternatives[document.storage().declarations.tagged_unions.index(reduced)])};
+        std::vector<lispb::codegen::TaggedUnionAlternativeId> rows{original_items.begin(),
+                                                                   original_items.end()};
+        rows.erase(rows.begin());
+        return declarations.range(rows);
+    }();
+    ASSERT_TRUE(document.apply(document.replace_declaration(tagged_declaration, reduced)).value());
     session.replace_types(document, raw_identity);
     EXPECT_EQ(session.union_distributions().at(raw_declaration).at("renamed"), 3);
     EXPECT_FALSE(session.union_distributions().at(raw_declaration).contains("small"));
@@ -361,12 +338,12 @@ TEST(PlannerSession, GraphEditsAndUndoRedoReconcileDistributionRows) {
 }
 
 TEST(PlannerSession, DistributionWeightTransitionsRefreshCachedAnalysis) {
-    auto document{lispb::schema::EditableSchemaDocument::from_manifest(distribution_manifest())};
+    auto document{distribution_document()};
     PlannerAnalysisSession session{document.types()};
     for (auto const tagged : {false, true}) {
         auto const& types{session.inputs.workspace.types()};
-        auto const type{*types.find_declared("unions", tagged ? "Tagged" : "Raw")};
-        auto const declaration{*document.find_declaration(types.type(type).identity)};
+        auto const type{*fixture_find(types, "unions", tagged ? "Tagged" : "Raw")};
+        auto const declaration{*document.find_declaration(types.identity(type))};
         auto const first{std::string{tagged ? "Small" : "small"}};
         auto const second{std::string{tagged ? "Large" : "large"}};
         auto set = [&](std::string name, std::uint64_t const weight) {
@@ -482,28 +459,26 @@ TEST(PlannerSession, SavePreservesDistributionOwnersAfterEarlierDeclarationsAreD
     TemporaryPlannerSchema files;
     auto document{files.load()};
     auto const earlier{*document.find_declaration(
-        document.types().type(*document.types().find_declared("unions", "Earlier")).identity)};
+        document.types().identity(*fixture_find(document.types(), "unions", "Earlier")))};
     auto const later{*document.find_declaration(
-        document.types().type(*document.types().find_declared("unions", "Later")).identity)};
+        document.types().identity(*fixture_find(document.types(), "unions", "Later")))};
     auto const tagged_earlier{*document.find_declaration(
-        document.types()
-            .type(*document.types().find_declared("unions", "TaggedEarlier"))
-            .identity)};
+        document.types().identity(*fixture_find(document.types(), "unions", "TaggedEarlier")))};
     auto const tagged_later{*document.find_declaration(
-        document.types().type(*document.types().find_declared("unions", "TaggedLater")).identity)};
-    auto const later_identity{document.declaration(later)->identity};
+        document.types().identity(*fixture_find(document.types(), "unions", "TaggedLater")))};
+    auto const later_identity{
+        document.declarations().identity[document.declarations().index(later)]};
     PlannerAnalysisSession session{document.types()};
     session.inputs.selection.select_type(
         session.inputs.workspace.types(),
-        *session.inputs.workspace.types().find_declared("unions", "Later"));
+        *fixture_find(session.inputs.workspace.types(), "unions", "Later"));
     session.set_union_distribution_weight(earlier, "small", 3);
     session.set_union_distribution_weight(later, "small", 7);
     session.set_tagged_union_distribution_weight(tagged_earlier, "Small", 5);
     session.set_tagged_union_distribution_weight(tagged_later, "Small", 11);
 
-    ASSERT_TRUE(document.apply(lispb::schema::DeleteUnion{.declaration = earlier}).value());
-    ASSERT_TRUE(
-        document.apply(lispb::schema::DeleteTaggedUnion{.declaration = tagged_earlier}).value());
+    ASSERT_TRUE(document.apply(document.delete_declaration(earlier)).value());
+    ASSERT_TRUE(document.apply(document.delete_declaration(tagged_earlier)).value());
     auto saved{document.save()};
     ASSERT_TRUE(saved.has_value()) << saved.error().message;
     session.replace_types(document, later_identity);
@@ -517,7 +492,7 @@ TEST(PlannerSession, SavePreservesDistributionOwnersAfterEarlierDeclarationsAreD
     EXPECT_EQ(session.results().union_distribution_analysis->total_weight, 7);
 
     auto const& types{session.inputs.workspace.types()};
-    session.inputs.selection.select_type(types, *types.find_declared("unions", "TaggedLater"));
+    session.inputs.selection.select_type(types, *fixture_find(types, "unions", "TaggedLater"));
     EXPECT_TRUE(session.refresh(&document));
     ASSERT_TRUE(session.results().tagged_union_distribution_analysis.has_value());
     EXPECT_EQ(session.results().tagged_union_distribution_analysis->total_weight, 11);
@@ -535,10 +510,12 @@ TEST(PlannerSession, SaveKeepsSurvivingUnionDistributionsWithOverlappingAlternat
     };
     std::vector<ExpectedDistribution> expected;
     for (auto const& name : {"Earlier", "Later", "TaggedEarlier", "TaggedLater"}) {
-        auto const type{*document.types().find_declared("unions", name)};
-        auto const identity{document.types().type(type).identity};
+        auto const type{*fixture_find(document.types(), "unions", name)};
+        auto const identity{document.types().identity(type)};
         auto const declaration{*document.find_declaration(identity)};
-        auto const tagged{document.tagged_union_schema(declaration) != nullptr};
+        auto const tagged{
+            document.declaration_handle(declaration, lispb::codegen::DeclarationKind::tagged_union)
+                .has_value()};
         auto const small_weight{static_cast<std::uint64_t>(expected.size() * 10 + 3)};
         auto const large_weight{small_weight + 4};
         auto const small{tagged ? "Small" : "small"};
@@ -556,8 +533,8 @@ TEST(PlannerSession, SaveKeepsSurvivingUnionDistributionsWithOverlappingAlternat
             {identity, declaration, tagged, {{small, small_weight}, {large, large_weight}}});
     }
     auto const before{*document.find_declaration(
-        document.types().type(*document.types().find_declared("unions", "Before")).identity)};
-    ASSERT_TRUE(document.apply(lispb::schema::DeleteIntegerScalar{before}).value());
+        document.types().identity(*fixture_find(document.types(), "unions", "Before")))};
+    ASSERT_TRUE(document.apply(document.delete_declaration(before)).value());
     session.replace_types(document, expected.front().identity);
     ASSERT_TRUE(session.refresh(&document));
     auto const saved{document.save()};
@@ -565,16 +542,28 @@ TEST(PlannerSession, SaveKeepsSurvivingUnionDistributionsWithOverlappingAlternat
     session.replace_types(document, expected.front().identity);
 
     auto const fresh{files.load()};
-    EXPECT_EQ(*fresh.find_declaration(expected[1].identity), expected[0].declaration);
-    EXPECT_EQ(*fresh.find_declaration(expected[3].identity), expected[2].declaration);
+    auto fresh_declaration = [&](lispb::schema::TypeIdentity identity) {
+        for (auto* part : {&identity.module_name, &identity.namespace_name, &identity.name}) {
+            *part = fresh.storage().strings.find(document.storage().strings.view(*part));
+        }
+        return fresh.find_declaration(identity);
+    };
+    auto const fresh_later{fresh_declaration(expected[1].identity)};
+    auto const fresh_tagged_later{fresh_declaration(expected[3].identity)};
+    ASSERT_TRUE(fresh_later.has_value());
+    ASSERT_TRUE(fresh_tagged_later.has_value());
+    EXPECT_EQ(*fresh_later, expected[0].declaration);
+    EXPECT_EQ(*fresh_tagged_later, expected[2].declaration);
     EXPECT_EQ(session.union_distributions().size(), 2U);
     EXPECT_EQ(session.tagged_union_distributions().size(), 2U);
     for (auto const& owner : expected) {
-        SCOPED_TRACE(owner.identity.name);
+        SCOPED_TRACE(document.storage().strings.view(owner.identity.name));
         auto const declaration{document.find_declaration(owner.identity)};
         ASSERT_TRUE(declaration.has_value());
         EXPECT_EQ(*declaration, owner.declaration);
-        EXPECT_NE(*fresh.find_declaration(owner.identity), *declaration);
+        auto const fresh_id{fresh_declaration(owner.identity)};
+        ASSERT_TRUE(fresh_id.has_value());
+        EXPECT_NE(*fresh_id, *declaration);
         auto const* weights{owner.tagged ? session.tagged_union_distribution(*declaration)
                                          : session.union_distribution(*declaration)};
         ASSERT_NE(weights, nullptr);
@@ -597,8 +586,8 @@ TEST(PlannerSession, SaveKeepsSurvivingUnionDistributionsWithOverlappingAlternat
 TEST(PlannerSession, FailedSaveKeepsSelectionDistributionAndCachedResult) {
     TemporaryPlannerSchema files;
     auto document{files.load()};
-    auto const type{*document.types().find_declared("unions", "Later")};
-    auto const identity{document.types().type(type).identity};
+    auto const type{*fixture_find(document.types(), "unions", "Later")};
+    auto const identity{document.types().identity(type)};
     auto const declaration{*document.find_declaration(identity)};
     PlannerAnalysisSession session{document.types()};
     session.inputs.selection.select_type(session.inputs.workspace.types(), type);
@@ -607,10 +596,7 @@ TEST(PlannerSession, FailedSaveKeepsSelectionDistributionAndCachedResult) {
     ASSERT_TRUE(session.results().union_distribution_analysis.has_value());
     EXPECT_EQ(session.results().union_distribution_analysis->total_weight, 9);
 
-    ASSERT_TRUE(document
-                    .apply(lispb::schema::RenameDeclaration{.declaration = declaration,
-                                                            .new_name = "RenamedLater"})
-                    .value());
+    ASSERT_TRUE(document.apply(document.rename_declaration(declaration, "RenamedLater")).value());
     auto const revision{document.revision()};
     auto const preview{document.preview_source_updates().value()};
     files.append_external_edit();
@@ -618,10 +604,12 @@ TEST(PlannerSession, FailedSaveKeepsSelectionDistributionAndCachedResult) {
     ASSERT_FALSE(saved.has_value());
     EXPECT_EQ(document.revision(), revision);
     EXPECT_TRUE(document.can_undo());
-    EXPECT_EQ(document.declaration(declaration)->identity.name, "RenamedLater");
+    EXPECT_EQ(
+        document.storage().strings.view(
+            document.declarations().identity[document.declarations().index(declaration)].name),
+        "RenamedLater");
     EXPECT_EQ(document.preview_source_updates().value()[0].updated, preview[0].updated);
-    EXPECT_EQ(session.inputs.workspace.types().type(*session.inputs.selection.type).identity,
-              identity);
+    EXPECT_EQ(session.inputs.selection.identity(), identity);
     EXPECT_EQ(session.union_distributions().at(declaration).at("small"), 9);
     EXPECT_FALSE(session.refresh(&document));
     ASSERT_TRUE(session.results().union_distribution_analysis.has_value());
@@ -631,16 +619,16 @@ TEST(PlannerSession, FailedSaveKeepsSelectionDistributionAndCachedResult) {
 TEST(PlannerSession, SavedMovePreservesSelectionReferenceAndDistribution) {
     TemporaryPlannerSchema files;
     auto document{files.load_with_destination()};
-    auto const type{*document.types().find_declared("unions", "TaggedLater")};
-    auto const declaration{*document.find_declaration(document.types().type(type).identity)};
+    auto const type{*fixture_find(document.types(), "unions", "TaggedLater")};
+    auto const declaration{*document.find_declaration(document.types().identity(type))};
     PlannerAnalysisSession session{document.types()};
     session.inputs.selection.select_type(session.inputs.workspace.types(), type);
     ASSERT_TRUE(session.set_tagged_union_distribution_weight(declaration, "Small", 13));
-    auto moved{document.apply(lispb::schema::MoveDeclaration{
-        .declaration = declaration, .module_index = 1, .insertion_index = std::nullopt})};
+    auto moved{document.apply(document.move_declaration(declaration, 1, std::nullopt))};
     ASSERT_TRUE(moved.has_value()) << moved.error().message;
     ASSERT_TRUE(*moved);
-    auto const moved_identity{document.declaration(declaration)->identity};
+    auto const moved_identity{
+        document.declarations().identity[document.declarations().index(declaration)]};
     auto saved{document.save()};
     ASSERT_TRUE(saved.has_value()) << saved.error().message;
     session.replace_types(document, moved_identity);
@@ -648,31 +636,31 @@ TEST(PlannerSession, SavedMovePreservesSelectionReferenceAndDistribution) {
 
     auto const& types{session.inputs.workspace.types()};
     ASSERT_TRUE(session.inputs.selection.type.has_value());
-    EXPECT_EQ(types.type(*session.inputs.selection.type).identity, moved_identity);
+    EXPECT_EQ(types.identity(*session.inputs.selection.type), moved_identity);
     EXPECT_EQ(session.tagged_union_distributions().at(declaration).at("Small"), 13);
     ASSERT_TRUE(session.results().tagged_union_distribution_analysis.has_value());
     EXPECT_EQ(session.results().tagged_union_distribution_analysis->total_weight, 13);
-    auto const& tagged{std::get<lispb::schema::TaggedUnionType>(
-        types.type(*session.inputs.selection.type).definition)};
-    EXPECT_EQ(types.type(tagged.discriminant.type).identity.name, "Kind");
+    auto const& tagged{types.definition(*session.inputs.selection.type)};
+    EXPECT_EQ(
+        types.strings().view(types.name(types.occurrences().type[types.occurrences().index(
+            types.definitions()
+                .tagged_unions.discriminant[types.definitions().tagged_unions.index(tagged)])])),
+        "Kind");
 }
 
 TEST(PlannerSession, UnsafeRollbackKeepsDraftDistributionsAndCachedAnalysis) {
     TemporaryPlannerSchema files;
     auto document{files.load_with_destination()};
-    auto const raw_type{*document.types().find_declared("unions", "Later")};
-    auto const raw{*document.find_declaration(document.types().type(raw_type).identity)};
+    auto const raw_type{*fixture_find(document.types(), "unions", "Later")};
+    auto const raw{*document.find_declaration(document.types().identity(raw_type))};
     auto const tagged{*document.find_declaration(
-        document.types().type(*document.types().find_declared("unions", "TaggedLater")).identity)};
+        document.types().identity(*fixture_find(document.types(), "unions", "TaggedLater")))};
     PlannerAnalysisSession session{document.types()};
     session.inputs.selection.select_type(session.inputs.workspace.types(), raw_type);
     session.set_union_distribution_weight(raw, "small", 9);
     session.set_tagged_union_distribution_weight(tagged, "Small", 13);
-    ASSERT_TRUE(document
-                    .apply(lispb::schema::MoveDeclaration{
-                        .declaration = raw, .module_index = 1, .insertion_index = std::nullopt})
-                    .value());
-    auto const identity{document.declaration(raw)->identity};
+    ASSERT_TRUE(document.apply(document.move_declaration(raw, 1, std::nullopt)).value());
+    auto const identity{document.declarations().identity[document.declarations().index(raw)]};
     session.replace_types(document, identity);
     ASSERT_TRUE(session.refresh(&document));
     auto const revision{document.revision()};
@@ -700,7 +688,7 @@ TEST(PlannerSession, UnsafeRollbackKeepsDraftDistributionsAndCachedAnalysis) {
     EXPECT_NE(saved.error().message.find("rollback skipped"), std::string::npos);
     EXPECT_EQ(document.revision(), revision);
     EXPECT_TRUE(document.can_undo());
-    EXPECT_EQ(document.declaration(raw)->identity, identity);
+    EXPECT_EQ(document.declarations().identity[document.declarations().index(raw)], identity);
     EXPECT_EQ(session.inputs.workspace.revision(), workspace_revision);
     EXPECT_EQ(session.inputs.selection.identity(), identity);
     EXPECT_EQ(session.union_distributions().at(raw).at("small"), 9);
@@ -713,11 +701,11 @@ TEST(PlannerSession, UnsafeRollbackKeepsDraftDistributionsAndCachedAnalysis) {
 TEST(PlannerSession, ExplicitReloadSessionResetClearsDistributions) {
     TemporaryPlannerSchema files;
     auto document{files.load()};
-    auto const raw_type{*document.types().find_declared("unions", "Later")};
-    auto const identity{document.types().type(raw_type).identity};
+    auto const raw_type{*fixture_find(document.types(), "unions", "Later")};
+    auto const identity{document.types().identity(raw_type)};
     auto const raw{*document.find_declaration(identity)};
     auto const tagged{*document.find_declaration(
-        document.types().type(*document.types().find_declared("unions", "TaggedLater")).identity)};
+        document.types().identity(*fixture_find(document.types(), "unions", "TaggedLater")))};
     PlannerAnalysisSession session{document.types()};
     session.inputs.selection.select_type(session.inputs.workspace.types(), raw_type);
     session.set_union_distribution_weight(raw, "small", 9);
@@ -738,7 +726,7 @@ TEST(PlannerSession, ExplicitReloadSessionResetClearsDistributions) {
     EXPECT_TRUE(session.union_distributions().empty());
     EXPECT_TRUE(session.tagged_union_distributions().empty());
     auto const& types{session.inputs.workspace.types()};
-    session.inputs.selection.select_type(types, *types.find_declared("unions", "TaggedLater"));
+    session.inputs.selection.select_type(types, *fixture_find(types, "unions", "TaggedLater"));
     ASSERT_TRUE(session.refresh(&document));
     EXPECT_FALSE(session.results().tagged_union_distribution_analysis.has_value());
 }

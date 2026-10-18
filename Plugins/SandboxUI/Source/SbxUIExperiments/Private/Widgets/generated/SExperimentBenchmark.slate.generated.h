@@ -4,9 +4,7 @@
 #pragma once
 
 #include <utility>
-
 namespace SlateGenerated {
-
 struct SExperimentBenchmarkBuilder {
     using ThisClass = ::SExperimentBenchmark;
 
@@ -30,5 +28,4 @@ struct SExperimentBenchmarkBuilder {
   private:
     ThisClass& self_;
 };
-
-}
+} // namespace SlateGenerated

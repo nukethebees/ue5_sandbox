@@ -1,13 +1,20 @@
 #pragma once
 
-#include <lispb/schema/type_graph.h>
+#include <lispb/schema/indices.h>
+#include <lispb/schema/type_identity.h>
+#include <lispb/strings.h>
 
 #include <compare>
 #include <cstdint>
 #include <map>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
+
+namespace lispb::schema {
+class TypeGraph;
+}
 
 namespace ioj::layout {
 
@@ -38,8 +45,10 @@ class LayoutWorkspace {
   public:
     static constexpr std::uint64_t baseline_variant_id{0};
 
-    explicit LayoutWorkspace(lispb::schema::TypeGraph types = {},
+    LayoutWorkspace();
+    explicit LayoutWorkspace(lispb::schema::TypeGraph const& types,
                              std::uint64_t default_capacity = 65'536);
+    LayoutWorkspace(lispb::schema::TypeGraph const&&, std::uint64_t = 65'536) = delete;
 
     auto types() const -> lispb::schema::TypeGraph const&;
     auto default_capacity() const -> std::uint64_t;
@@ -50,7 +59,11 @@ class LayoutWorkspace {
     auto active_variant_id() const -> std::uint64_t;
     auto revision() const -> std::uint64_t;
     auto graph_revision() const -> std::uint64_t;
-    void replace_types(lispb::schema::TypeGraph types);
+    // The graph must outlive this workspace; rebind after replacing its owning document.
+    void replace_types(lispb::schema::TypeGraph const& types);
+    auto previous_alternative_keys(lispb::Strings const& strings,
+                                   lispb::schema::TypeIdentity const& identity) const
+        -> std::span<std::string const>;
 
     auto select_variant(std::uint64_t id) -> bool;
     auto create_variant(std::string name) -> std::uint64_t;
@@ -73,8 +86,15 @@ class LayoutWorkspace {
   private:
     auto editable_active_variant() -> Variant*;
     void note_change(Variant& variant);
+    void retain_type_identities();
 
-    lispb::schema::TypeGraph types_;
+    struct TypeSnapshot {
+        lispb::schema::TypeIdentity identity;
+        std::vector<std::string> alternative_keys;
+    };
+    lispb::schema::TypeGraph const* types_{};
+    lispb::Strings identity_strings_;
+    std::vector<TypeSnapshot> previous_types_;
     std::uint64_t default_capacity_{};
     std::uint64_t element_count_{1};
     std::vector<Variant> variants_;

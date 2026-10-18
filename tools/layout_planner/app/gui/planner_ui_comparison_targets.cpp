@@ -346,10 +346,12 @@ auto PlannerUi::draw_soa_target_comparison() -> bool {
                         ImGui::TableSetupColumn("Difference (B - A)");
                         ImGui::TableHeadersRow();
                         comparison_row("Semantic type",
-                                       type_label(analysis_session_.inputs.workspace.types().type(
-                                           column.first.semantic_type)),
-                                       type_label(analysis_session_.inputs.workspace.types().type(
-                                           column.second.semantic_type)));
+                                       type_label(analysis_session_.inputs.workspace.types(),
+
+                                                  column.first.semantic_type),
+                                       type_label(analysis_session_.inputs.workspace.types(),
+
+                                                  column.second.semantic_type));
                         comparison_row("Physical type",
                                        column.first.physical_type,
                                        column.second.physical_type);
@@ -789,10 +791,12 @@ void PlannerUi::draw_union_target_comparison() {
                         ImGui::TableSetupColumn("Difference (B - A)");
                         ImGui::TableHeadersRow();
                         comparison_row("Semantic type",
-                                       type_label(analysis_session_.inputs.workspace.types().type(
-                                           alternative.first.semantic_type)),
-                                       type_label(analysis_session_.inputs.workspace.types().type(
-                                           alternative.second.semantic_type)));
+                                       type_label(analysis_session_.inputs.workspace.types(),
+
+                                                  alternative.first.semantic_type),
+                                       type_label(analysis_session_.inputs.workspace.types(),
+
+                                                  alternative.second.semantic_type));
                         comparison_row("Element count",
                                        std::to_string(alternative.first.element_count),
                                        std::to_string(alternative.second.element_count));
@@ -972,10 +976,12 @@ void PlannerUi::draw_tagged_union_target_comparison() {
                            std::to_string(first_aggregate.element_count),
                            std::to_string(second_aggregate.element_count));
             comparison_row("Discriminant semantic type",
-                           type_label(analysis_session_.inputs.workspace.types().type(
-                               first.discriminant_type)),
-                           type_label(analysis_session_.inputs.workspace.types().type(
-                               second.discriminant_type)));
+                           type_label(analysis_session_.inputs.workspace.types(),
+
+                                      first.discriminant_type),
+                           type_label(analysis_session_.inputs.workspace.types(),
+
+                                      second.discriminant_type));
             comparison_row("Discriminant size",
                            detail::format_bytes(first_discriminant_size),
                            detail::format_bytes(second_discriminant_size),
@@ -1128,10 +1134,12 @@ void PlannerUi::draw_tagged_union_target_comparison() {
                         ImGui::TableHeadersRow();
                         comparison_row("Tag", alternative.first.tag, alternative.second.tag);
                         comparison_row("Semantic type",
-                                       type_label(analysis_session_.inputs.workspace.types().type(
-                                           alternative.first.semantic_type)),
-                                       type_label(analysis_session_.inputs.workspace.types().type(
-                                           alternative.second.semantic_type)));
+                                       type_label(analysis_session_.inputs.workspace.types(),
+
+                                                  alternative.first.semantic_type),
+                                       type_label(analysis_session_.inputs.workspace.types(),
+
+                                                  alternative.second.semantic_type));
                         comparison_row("Element count",
                                        std::to_string(alternative.first.element_count),
                                        std::to_string(alternative.second.element_count));

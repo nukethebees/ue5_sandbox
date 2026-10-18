@@ -1,6 +1,34 @@
 #include "analyzer_internal.hpp"
 
+#include <codegen/schema/fixed_point_rounding.h>
+#include <codegen/schema/packed_integer_value.h>
+#include <codegen/schema/packed_named_code_schemas.h>
+#include <codegen/schema/semantic_relation_kind.h>
+#include <lispb/project_loader.h>
+#include <lispb/schema/enum_domain_issue_severity.h>
+#include <lispb/schema/enum_types.h>
+#include <lispb/schema/fixed_point_types.h>
+#include <lispb/schema/indices.h>
+#include <lispb/schema/integer_domain.h>
+#include <lispb/schema/integer_varint_types.h>
+#include <lispb/schema/linear_quantized_types.h>
+#include <lispb/schema/mini_float_types.h>
+#include <lispb/schema/optional_presence_bit_types.h>
+#include <lispb/schema/optional_sentinel_types.h>
+#include <lispb/schema/type_definitions.h>
+
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <optional>
+#include <ranges>
+#include <set>
+#include <span>
 #include <stdexcept>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 namespace ioj::layout {
 
@@ -8,42 +36,58 @@ auto Analyzer::analyze_enum(lispb::schema::TypeGraph const& types,
                             lispb::schema::TypeId const type,
                             AbiProfile const& abi,
                             std::uint64_t const element_count) -> EnumDomainAnalysis {
-    auto const& enumeration{std::get<lispb::schema::EnumType>(types.type(type).definition)};
-    auto const backing_type{enumeration.underlying_type.has_value()
-                                ? physical_type_spelling(types, *enumeration.underlying_type)
-                                      .value_or(enumeration.underlying_type->cpp_type.spelling)
-                                : derived_enum_backing_type(enumeration).value_or("Unknown")};
+    auto const& enumeration{types.definition(type)};
+    auto const signedness{
+        types.definitions().enums.signedness[types.definitions().enums.index(enumeration)]};
+    auto const declared_signedness{
+        signedness == lispb::schema::EnumSignedness::unspecified
+            ? std::nullopt
+            : std::optional{signedness == lispb::schema::EnumSignedness::signed_}};
+    auto const backing_type{
+        lispb::schema::is_valid(
+            types.definitions().enums.underlying_type[types.definitions().enums.index(enumeration)])
+            ? physical_type_spelling(
+                  types,
+                  types.definitions()
+                      .enums.underlying_type[types.definitions().enums.index(enumeration)])
+                  .value_or(std::string{types.cpp_types().spelling(
+                      types.occurrences().cpp_type[types.occurrences().index(
+                          types.definitions().enums.underlying_type[types.definitions().enums.index(
+                              enumeration)])])})
+            : derived_enum_backing_type(types, enumeration).value_or("Unknown")};
     auto physical{PhysicalFactsResolver{types, abi}.resolve(type)};
-    EnumDomainAnalysis result{.type = type,
-                              .backing_type = backing_type,
-                              .backing_facts = physical.facts,
-                              .backing_bits = std::nullopt,
-                              .live_value_count = 0,
-                              .reserved_value_count = 0,
-                              .minimum_value = std::nullopt,
-                              .maximum_value = std::nullopt,
-                              .signed_domain = std::nullopt,
-                              .declared_signedness = enumeration.signedness,
-                              .minimum_required_bits = std::nullopt,
-                              .declared_bit_width = enumeration.bit_width,
-                              .effective_bit_width = std::nullopt,
-                              .semantic_width_can_represent_domain = std::nullopt,
-                              .unused_semantic_codes = std::nullopt,
-                              .backing_can_represent_domain = std::nullopt,
-                              .unused_backing_codes = std::nullopt,
-                              .enumerators = {},
-                              .diagnostics = std::move(physical.diagnostics),
-                              .aggregate = {.element_count = element_count,
-                                            .total_storage_bytes = std::nullopt,
-                                            .cache_line_bytes = std::nullopt,
-                                            .minimum_cache_lines = std::nullopt,
-                                            .complete_elements_per_cache_line = std::nullopt,
-                                            .cache_line_straddling_elements = std::nullopt,
-                                            .page_bytes = std::nullopt,
-                                            .minimum_pages = std::nullopt,
-                                            .complete_elements_per_page = std::nullopt,
-                                            .page_straddling_elements = std::nullopt,
-                                            .cache_capacity = {}}};
+    EnumDomainAnalysis result{
+        .type = type,
+        .backing_type = backing_type,
+        .backing_facts = physical.facts,
+        .backing_bits = std::nullopt,
+        .live_value_count = 0,
+        .reserved_value_count = 0,
+        .minimum_value = std::nullopt,
+        .maximum_value = std::nullopt,
+        .signed_domain = std::nullopt,
+        .declared_signedness = declared_signedness,
+        .minimum_required_bits = std::nullopt,
+        .declared_bit_width =
+            types.definitions().enums.bit_width[types.definitions().enums.index(enumeration)],
+        .effective_bit_width = std::nullopt,
+        .semantic_width_can_represent_domain = std::nullopt,
+        .unused_semantic_codes = std::nullopt,
+        .backing_can_represent_domain = std::nullopt,
+        .unused_backing_codes = std::nullopt,
+        .enumerators = {},
+        .diagnostics = std::move(physical.diagnostics),
+        .aggregate = {.element_count = element_count,
+                      .total_storage_bytes = std::nullopt,
+                      .cache_line_bytes = std::nullopt,
+                      .minimum_cache_lines = std::nullopt,
+                      .complete_elements_per_cache_line = std::nullopt,
+                      .cache_line_straddling_elements = std::nullopt,
+                      .page_bytes = std::nullopt,
+                      .minimum_pages = std::nullopt,
+                      .complete_elements_per_page = std::nullopt,
+                      .page_straddling_elements = std::nullopt,
+                      .cache_capacity = {}}};
     if (backing_type == "Unknown") {
         result.diagnostics.push_back(
             {DiagnosticSeverity::error,
@@ -65,40 +109,54 @@ auto Analyzer::analyze_enum(lispb::schema::TypeGraph const& types,
         }
     }
 
-    auto const domain{resolved_enum_domain(enumeration)};
-    result.live_value_count = domain.live_value_count;
-    result.reserved_value_count = domain.reserved_value_count;
-    result.minimum_value = domain.minimum_value;
-    result.maximum_value = domain.maximum_value;
-    result.signed_domain = domain.signed_domain;
-    result.minimum_required_bits = domain.minimum_required_bits;
-    result.effective_bit_width =
-        enumeration.bit_width.has_value() ? enumeration.bit_width : domain.minimum_required_bits;
-    if (domain.minimum_required_bits.has_value() && result.effective_bit_width.has_value()) {
+    auto const& domains{types.enum_domains()};
+    auto const domain{
+        types.definitions().enums.domain[types.definitions().enums.index(enumeration)]};
+    auto const domain_row{domains.index(domain)};
+    result.live_value_count = domains.live_value_count[domain_row];
+    result.reserved_value_count = domains.reserved_value_count[domain_row];
+    result.minimum_value = domains.minimum_value[domain_row];
+    result.maximum_value = domains.maximum_value[domain_row];
+    result.signed_domain =
+        domains.signedness[domain_row] == lispb::schema::EnumSignedness::unspecified
+            ? std::nullopt
+            : std::optional{domains.signedness[domain_row] ==
+                            lispb::schema::EnumSignedness::signed_};
+    result.minimum_required_bits = domains.minimum_required_bits[domain_row];
+    result.effective_bit_width = result.declared_bit_width.has_value()
+                                   ? result.declared_bit_width
+                                   : result.minimum_required_bits;
+    if (domains.minimum_required_bits[domain_row].has_value() &&
+        result.effective_bit_width.has_value()) {
         result.semantic_width_can_represent_domain =
-            *result.effective_bit_width >= *domain.minimum_required_bits;
+            *result.effective_bit_width >= *domains.minimum_required_bits[domain_row];
     }
     if (result.effective_bit_width.has_value() && *result.effective_bit_width < 64) {
         auto const semantic_codes{std::uint64_t{1} << *result.effective_bit_width};
-        if (domain.distinct_code_count <= semantic_codes) {
-            result.unused_semantic_codes = semantic_codes - domain.distinct_code_count;
+        if (domains.distinct_code_count[domain_row] <= semantic_codes) {
+            result.unused_semantic_codes = semantic_codes - domains.distinct_code_count[domain_row];
         }
     }
-    result.enumerators.reserve(domain.values.size());
-    for (std::size_t index{}; index < domain.values.size(); ++index) {
-        auto const& value{domain.values[index]};
-        auto const& enumerator{enumeration.enumerators[index]};
-        result.enumerators.push_back({.name = value.name,
-                                      .sentinel = enumerator.sentinel,
-                                      .count_sentinel = enumerator.count_sentinel,
-                                      .code = value.code});
+    auto const value_count{domains.values(domain).size()};
+    result.enumerators.reserve(value_count);
+    for (std::size_t index{}; index < value_count; ++index) {
+        auto const enumerator{domains.values(domain)[index]};
+        auto const& enumerators{types.declarations().enumerators};
+        auto const row{enumerators.index(enumerator)};
+        result.enumerators.push_back(
+            {.name = std::string{types.strings().view(enumerators.name[row])},
+             .sentinel = enumerators.sentinel[row] != 0,
+             .count_sentinel = enumerator == domains.count_value[domain_row],
+             .code = domains.code(domain, index)});
     }
-    for (auto const& issue : domain.issues) {
+    auto const issue_count{domains.issue_count(domain)};
+    for (std::uint32_t issue{}; issue < issue_count; ++issue) {
         result.diagnostics.push_back(
-            {.severity = issue.severity == lispb::schema::EnumDomainIssueSeverity::error
+            {.severity = domains.issue_severity(domain, issue) ==
+                                 lispb::schema::EnumDomainIssueSeverity::error
                            ? DiagnosticSeverity::error
                            : DiagnosticSeverity::warning,
-             .message = issue.message});
+             .message = domains.issue_message(domain, issue)});
     }
 
     if (result.minimum_value.has_value() && result.maximum_value.has_value() &&
@@ -132,8 +190,9 @@ auto Analyzer::analyze_enum(lispb::schema::TypeGraph const& types,
         }
         if (backing_code_bits.has_value() && *backing_code_bits < 64) {
             auto const backing_codes{std::uint64_t{1} << *backing_code_bits};
-            if (domain.distinct_code_count <= backing_codes) {
-                result.unused_backing_codes = backing_codes - domain.distinct_code_count;
+            if (domains.distinct_code_count[domain_row] <= backing_codes) {
+                result.unused_backing_codes =
+                    backing_codes - domains.distinct_code_count[domain_row];
             }
         }
     }
@@ -326,53 +385,113 @@ auto Analyzer::analyze_integer_scalar(
     lispb::schema::TypeGraph const& types,
     lispb::schema::TypeId const type,
     std::span<RelationshipTargetFacts const> const relationship_targets) -> IntegerScalarAnalysis {
-    auto const* domain{lispb::schema::integer_domain(types.type(type))};
-    if (domain == nullptr) {
+    auto const domain{lispb::schema::integer_domain(types, type)};
+    if (!domain.has_value()) {
         throw std::invalid_argument{"Integer scalar analysis requires a declared integer domain"};
     }
     auto const& scalar{*domain};
-    auto required_minimum{scalar.minimum_value};
-    auto required_maximum{scalar.maximum_value};
+    auto required_minimum{
+        types.definitions()
+            .integer_scalars.minimum_value[types.definitions().integer_scalars.index(scalar)]};
+    auto required_maximum{
+        types.definitions()
+            .integer_scalars.maximum_value[types.definitions().integer_scalars.index(scalar)]};
     auto sentinel_count{std::uint64_t{0}};
     std::vector<PackedNamedCodeAnalysis> named_codes;
-    named_codes.reserve(scalar.named_codes.size());
-    for (auto const& code : scalar.named_codes) {
-        named_codes.push_back({.name = code.name, .value = code.value, .sentinel = code.sentinel});
-        if (code.sentinel) {
+    named_codes.reserve(
+        types.definitions()
+            .integer_scalars.named_codes[types.definitions().integer_scalars.index(scalar)]
+            .size());
+    for (auto const code_id : types.declarations().items(
+             types.definitions()
+                 .integer_scalars.named_codes[types.definitions().integer_scalars.index(scalar)])) {
+        auto const code{code_id};
+        named_codes.push_back(
+            {.name = std::string{types.strings().view(
+                 types.declarations()
+                     .packed_named_codes
+                     .name[types.declarations().packed_named_codes.index(code)])},
+             .value =
+                 types.declarations()
+                     .packed_named_codes.value[types.declarations().packed_named_codes.index(code)],
+             .sentinel = types.declarations()
+                             .packed_named_codes
+                             .sentinel[types.declarations().packed_named_codes.index(code)] != 0});
+        if (types.declarations()
+                .packed_named_codes.sentinel[types.declarations().packed_named_codes.index(code)]) {
             ++sentinel_count;
         }
-        if (codegen::packed_integer_less(code.value, required_minimum)) {
-            required_minimum = code.value;
+        if (lispb::codegen::packed_integer_less(
+                types.declarations()
+                    .packed_named_codes.value[types.declarations().packed_named_codes.index(code)],
+                required_minimum)) {
+            required_minimum =
+                types.declarations()
+                    .packed_named_codes.value[types.declarations().packed_named_codes.index(code)];
         }
-        if (codegen::packed_integer_less(required_maximum, code.value)) {
-            required_maximum = code.value;
+        if (lispb::codegen::packed_integer_less(
+                required_maximum,
+                types.declarations()
+                    .packed_named_codes
+                    .value[types.declarations().packed_named_codes.index(code)])) {
+            required_maximum =
+                types.declarations()
+                    .packed_named_codes.value[types.declarations().packed_named_codes.index(code)];
         }
     }
 
-    auto const live_count{packed_range_count(scalar.minimum_value, scalar.maximum_value)};
+    auto const live_count{packed_range_count(
+        types.definitions()
+            .integer_scalars.minimum_value[types.definitions().integer_scalars.index(scalar)],
+        types.definitions()
+            .integer_scalars.maximum_value[types.definitions().integer_scalars.index(scalar)])};
     auto const required_count{live_count.has_value() ? checked_add(*live_count, sentinel_count)
                                                      : std::nullopt};
     auto unused_codes{std::optional<std::uint64_t>{}};
     if (required_count.has_value()) {
-        unused_codes = scalar.bit_width == 64
-                         ? std::optional<std::uint64_t>{std::numeric_limits<std::uint64_t>::max() -
-                                                        *required_count + 1}
-                         : std::optional<std::uint64_t>{(std::uint64_t{1} << scalar.bit_width) -
-                                                        *required_count};
-    } else if (scalar.bit_width == 64 && live_count.has_value() &&
+        unused_codes =
+            types.definitions().integer_scalars.bit_width[types.definitions().integer_scalars.index(
+                scalar)] == 64
+                ? std::optional<std::uint64_t>{std::numeric_limits<std::uint64_t>::max() -
+                                               *required_count + 1}
+                : std::optional<std::uint64_t>{
+                      (std::uint64_t{1}
+                       << types.definitions()
+                              .integer_scalars
+                              .bit_width[types.definitions().integer_scalars.index(scalar)]) -
+                      *required_count};
+    } else if (types.definitions()
+                       .integer_scalars
+                       .bit_width[types.definitions().integer_scalars.index(scalar)] == 64 &&
+               live_count.has_value() &&
                sentinel_count > (std::numeric_limits<std::uint64_t>::max)() - *live_count) {
         unused_codes = 0;
-    } else if (sentinel_count == 0 && scalar.bit_width == 64) {
+    } else if (sentinel_count == 0 &&
+               types.definitions()
+                       .integer_scalars
+                       .bit_width[types.definitions().integer_scalars.index(scalar)] == 64) {
         auto const full_unsigned_domain{
-            !scalar.signedness && scalar.minimum_value == codegen::PackedIntegerValue{0} &&
-            scalar.maximum_value ==
-                codegen::PackedIntegerValue{(std::numeric_limits<std::uint64_t>::max)()}};
+            !types.definitions()
+                 .integer_scalars.signedness[types.definitions().integer_scalars.index(scalar)] &&
+            types.definitions()
+                    .integer_scalars
+                    .minimum_value[types.definitions().integer_scalars.index(scalar)] ==
+                lispb::codegen::PackedIntegerValue{0} &&
+            types.definitions()
+                    .integer_scalars
+                    .maximum_value[types.definitions().integer_scalars.index(scalar)] ==
+                lispb::codegen::PackedIntegerValue{(std::numeric_limits<std::uint64_t>::max)()}};
         auto const full_signed_domain{
-            scalar.signedness &&
-            scalar.minimum_value ==
-                codegen::PackedIntegerValue::from_parts(true, std::uint64_t{1} << 63) &&
-            scalar.maximum_value ==
-                codegen::PackedIntegerValue{(std::numeric_limits<std::int64_t>::max)()}};
+            types.definitions()
+                .integer_scalars.signedness[types.definitions().integer_scalars.index(scalar)] &&
+            types.definitions()
+                    .integer_scalars
+                    .minimum_value[types.definitions().integer_scalars.index(scalar)] ==
+                lispb::codegen::PackedIntegerValue::from_parts(true, std::uint64_t{1} << 63) &&
+            types.definitions()
+                    .integer_scalars
+                    .maximum_value[types.definitions().integer_scalars.index(scalar)] ==
+                lispb::codegen::PackedIntegerValue{(std::numeric_limits<std::int64_t>::max)()}};
         if (full_unsigned_domain || full_signed_domain) {
             unused_codes = 0;
         }
@@ -380,27 +499,63 @@ auto Analyzer::analyze_integer_scalar(
 
     auto result{IntegerScalarAnalysis{
         .type = type,
-        .signedness = scalar.signedness,
-        .minimum_value = scalar.minimum_value,
-        .maximum_value = scalar.maximum_value,
+        .signedness =
+            types.definitions()
+                .integer_scalars.signedness[types.definitions().integer_scalars.index(scalar)] != 0,
+        .minimum_value =
+            types.definitions()
+                .integer_scalars.minimum_value[types.definitions().integer_scalars.index(scalar)],
+        .maximum_value =
+            types.definitions()
+                .integer_scalars.maximum_value[types.definitions().integer_scalars.index(scalar)],
         .live_value_count = live_count,
         .sentinel_code_count = sentinel_count,
         .required_code_count = required_count,
-        .minimum_required_bits = *codegen::minimum_packed_integer_bits(
-            required_minimum, required_maximum, scalar.signedness),
+        .minimum_required_bits = *lispb::codegen::minimum_packed_integer_bits(
+            required_minimum,
+            required_maximum,
+            types.definitions()
+                .integer_scalars.signedness[types.definitions().integer_scalars.index(scalar)]),
         .declared_bit_width =
-            scalar.bit_width_auto ? std::nullopt : std::optional{scalar.bit_width},
-        .effective_bit_width = scalar.bit_width,
+            types.definitions().integer_scalars.bit_width_auto[types.definitions()
+                                                                   .integer_scalars.index(scalar)]
+                ? std::nullopt
+                : std::optional{types.definitions()
+                                    .integer_scalars
+                                    .bit_width[types.definitions().integer_scalars.index(scalar)]},
+        .effective_bit_width =
+            types.definitions()
+                .integer_scalars.bit_width[types.definitions().integer_scalars.index(scalar)],
         .unused_codes = unused_codes,
         .named_codes = std::move(named_codes),
-        .relationship_kind = scalar.relationship.has_value()
-                               ? std::optional{scalar.relationship->kind}
-                               : std::nullopt,
+        .relationship_kind =
+            lispb::schema::is_valid(
+                types.definitions()
+                    .integer_scalars
+                    .relationship[types.definitions().integer_scalars.index(scalar)])
+                ? std::optional{types.relationships().kind[types.relationships().index(
+                      types.definitions().integer_scalars.relationship
+                          [types.definitions().integer_scalars.index(scalar)])]}
+                : std::nullopt,
         .relationship_unit =
-            scalar.relationship.has_value() ? scalar.relationship->unit : std::nullopt,
+            lispb::schema::is_valid(
+                types.definitions()
+                    .integer_scalars
+                    .relationship[types.definitions().integer_scalars.index(scalar)])
+                ? types.relationships().unit[types.relationships().index(
+                      types.definitions().integer_scalars.relationship
+                          [types.definitions().integer_scalars.index(scalar)])]
+                : std::nullopt,
         .relationship_target =
-            scalar.relationship.has_value()
-                ? std::optional{types.type(scalar.relationship->target.type).identity.name}
+            lispb::schema::is_valid(
+                types.definitions()
+                    .integer_scalars
+                    .relationship[types.definitions().integer_scalars.index(scalar)])
+                ? std::optional{std::string{types.strings().view(
+                      types.name(types.occurrences().type[types.occurrences().index(
+                          types.relationships().target[types.relationships().index(
+                              types.definitions().integer_scalars.relationship
+                                  [types.definitions().integer_scalars.index(scalar)])])]))}}
                 : std::nullopt,
         .relationship_target_extent = std::nullopt,
         .relationship_live_value_count = std::nullopt,
@@ -414,27 +569,55 @@ auto Analyzer::analyze_integer_scalar(
         .relationship_effective_capacity_limit = std::nullopt,
         .relationship_effective_capacity_headroom = std::nullopt,
         .diagnostics = {}}};
-    if (scalar.relationship.has_value() &&
-        (scalar.relationship->kind == codegen::SemanticRelationKind::index_into ||
-         scalar.relationship->kind == codegen::SemanticRelationKind::count_of ||
-         scalar.relationship->kind == codegen::SemanticRelationKind::offset_into)) {
-        auto const target_facts{std::ranges::find(relationship_targets,
-                                                  scalar.relationship->target.type,
-                                                  &RelationshipTargetFacts::target)};
+    if (lispb::schema::is_valid(
+            types.definitions()
+                .integer_scalars.relationship[types.definitions().integer_scalars.index(scalar)]) &&
+        (types.relationships().kind[types.relationships().index(
+             types.definitions().integer_scalars.relationship
+                 [types.definitions().integer_scalars.index(scalar)])] ==
+             lispb::codegen::SemanticRelationKind::index_into ||
+         types.relationships().kind[types.relationships().index(
+             types.definitions().integer_scalars.relationship
+                 [types.definitions().integer_scalars.index(scalar)])] ==
+             lispb::codegen::SemanticRelationKind::count_of ||
+         types.relationships().kind[types.relationships().index(
+             types.definitions().integer_scalars.relationship
+                 [types.definitions().integer_scalars.index(scalar)])] ==
+             lispb::codegen::SemanticRelationKind::offset_into)) {
+        auto const target_facts{
+            std::ranges::find(relationship_targets,
+                              types.occurrences().type[types.occurrences().index(
+                                  types.relationships().target[types.relationships().index(
+                                      types.definitions().integer_scalars.relationship
+                                          [types.definitions().integer_scalars.index(scalar)])])],
+                              &RelationshipTargetFacts::target)};
         if (target_facts != relationship_targets.end()) {
-            auto const target_extent{
-                relationship_target_extent(*scalar.relationship, *target_facts)};
+            auto const target_extent{relationship_target_extent(
+                types,
+                types.definitions()
+                    .integer_scalars
+                    .relationship[types.definitions().integer_scalars.index(scalar)],
+                *target_facts)};
             if (!target_extent.has_value()) {
                 return result;
             }
             auto const extent_analysis{analyze_unsigned_relationship_extent(
-                "Integer scalar '" + types.type(type).identity.name + "'",
-                scalar.relationship->kind,
+                types.declarations(),
+                "Integer scalar '" + std::string{types.strings().view(types.name(type))} + "'",
+                types.relationships().kind[types.relationships().index(
+                    types.definitions().integer_scalars.relationship
+                        [types.definitions().integer_scalars.index(scalar)])],
                 *target_extent,
-                scalar.named_codes,
-                scalar.bit_width,
-                scalar.minimum_value,
-                scalar.maximum_value)};
+                types.definitions()
+                    .integer_scalars.named_codes[types.definitions().integer_scalars.index(scalar)],
+                types.definitions()
+                    .integer_scalars.bit_width[types.definitions().integer_scalars.index(scalar)],
+                types.definitions()
+                    .integer_scalars
+                    .minimum_value[types.definitions().integer_scalars.index(scalar)],
+                types.definitions()
+                    .integer_scalars
+                    .maximum_value[types.definitions().integer_scalars.index(scalar)])};
             result.relationship_target_extent = extent_analysis.target_extent;
             result.relationship_live_value_count = extent_analysis.live_values;
             result.relationship_required_code_count = extent_analysis.required_codes;
@@ -506,30 +689,66 @@ auto Analyzer::analyze_optional_sentinel(lispb::schema::TypeGraph const& types,
                                          lispb::schema::TypeId const type,
                                          std::uint64_t const element_count)
     -> OptionalSentinelAnalysis {
-    auto const& optional{
-        std::get<lispb::schema::OptionalSentinelType>(types.type(type).definition)};
-    auto const& source{*lispb::schema::integer_domain(types.type(optional.source.type))};
-    auto const source_analysis{analyze_integer_scalar(types, optional.source.type)};
+    auto const& optional{types.definition(type)};
+    auto const source{*lispb::schema::integer_domain(
+        types,
+        types.occurrences().type[types.occurrences().index(
+            types.definitions().optional_sentinels.source
+                [types.definitions().optional_sentinels.index(optional)])])};
+    auto const source_analysis{
+        analyze_integer_scalar(types,
+                               types.occurrences().type[types.occurrences().index(
+                                   types.definitions().optional_sentinels.source
+                                       [types.definitions().optional_sentinels.index(optional)])])};
 
     OptionalSentinelAnalysis result{
         .type = type,
-        .source_type = optional.source.type,
-        .sentinel_name = optional.sentinel_name,
-        .sentinel_value = optional.sentinel_value,
-        .source_signedness = source.signedness,
-        .source_minimum = source.minimum_value,
-        .source_maximum = source.maximum_value,
+        .source_type = types.occurrences().type[types.occurrences().index(
+            types.definitions().optional_sentinels.source
+                [types.definitions().optional_sentinels.index(optional)])],
+        .sentinel_name = std::string{types.cpp_types().strings().view(
+            types.definitions()
+                .optional_sentinels
+                .sentinel_name[types.definitions().optional_sentinels.index(optional)])},
+        .sentinel_value =
+            types.definitions()
+                .optional_sentinels
+                .sentinel_value[types.definitions().optional_sentinels.index(optional)],
+        .source_signedness =
+            types.definitions()
+                .integer_scalars.signedness[types.definitions().integer_scalars.index(source)] != 0,
+        .source_minimum =
+            types.definitions()
+                .integer_scalars.minimum_value[types.definitions().integer_scalars.index(source)],
+        .source_maximum =
+            types.definitions()
+                .integer_scalars.maximum_value[types.definitions().integer_scalars.index(source)],
         .present_value_count = source_analysis.live_value_count,
         .absence_code_count = 1,
         .other_sentinel_code_count = source_analysis.sentinel_code_count - 1,
         .unused_code_count = source_analysis.unused_codes,
-        .encoded_storage_bits = optional.bit_width,
-        .total_code_count = optional.bit_width == 64
-                              ? ExactCodeCount{.value = 0, .two_to_64 = true}
-                              : ExactCodeCount{.value = std::uint64_t{1} << optional.bit_width,
-                                               .two_to_64 = false},
+        .encoded_storage_bits =
+            types.definitions()
+                .optional_sentinels
+                .bit_width[types.definitions().optional_sentinels.index(optional)],
+        .total_code_count =
+            types.definitions()
+                        .optional_sentinels
+                        .bit_width[types.definitions().optional_sentinels.index(optional)] == 64
+                ? ExactCodeCount{.value = 0, .two_to_64 = true}
+                : ExactCodeCount{.value =
+                                     std::uint64_t{1}
+                                     << types.definitions()
+                                            .optional_sentinels
+                                            .bit_width[types.definitions().optional_sentinels.index(
+                                                optional)],
+                                 .two_to_64 = false},
         .element_count = element_count,
-        .total_encoded_bits = checked_multiply(optional.bit_width, element_count),
+        .total_encoded_bits =
+            checked_multiply(types.definitions()
+                                 .optional_sentinels
+                                 .bit_width[types.definitions().optional_sentinels.index(optional)],
+                             element_count),
         .diagnostics = {},
     };
     if (!result.total_encoded_bits.has_value()) {
@@ -544,29 +763,61 @@ auto Analyzer::analyze_optional_presence_bit(lispb::schema::TypeGraph const& typ
                                              lispb::schema::TypeId const type,
                                              std::uint64_t const element_count)
     -> OptionalPresenceBitAnalysis {
-    auto const& optional{
-        std::get<lispb::schema::OptionalPresenceBitType>(types.type(type).definition)};
-    auto const& source{*lispb::schema::integer_domain(types.type(optional.source.type))};
-    auto const source_analysis{analyze_integer_scalar(types, optional.source.type)};
+    auto const& optional{types.definition(type)};
+    auto const source{*lispb::schema::integer_domain(
+        types,
+        types.occurrences().type[types.occurrences().index(
+            types.definitions().optional_presence_bits.source
+                [types.definitions().optional_presence_bits.index(optional)])])};
+    auto const source_analysis{analyze_integer_scalar(
+        types,
+        types.occurrences().type[types.occurrences().index(
+            types.definitions().optional_presence_bits.source
+                [types.definitions().optional_presence_bits.index(optional)])])};
 
     OptionalPresenceBitAnalysis result{
         .type = type,
-        .source_type = optional.source.type,
-        .source_signedness = source.signedness,
-        .source_minimum = source.minimum_value,
-        .source_maximum = source.maximum_value,
+        .source_type = types.occurrences().type[types.occurrences().index(
+            types.definitions().optional_presence_bits.source
+                [types.definitions().optional_presence_bits.index(optional)])],
+        .source_signedness =
+            types.definitions()
+                .integer_scalars.signedness[types.definitions().integer_scalars.index(source)] != 0,
+        .source_minimum =
+            types.definitions()
+                .integer_scalars.minimum_value[types.definitions().integer_scalars.index(source)],
+        .source_maximum =
+            types.definitions()
+                .integer_scalars.maximum_value[types.definitions().integer_scalars.index(source)],
         .present_value_count = source_analysis.live_value_count,
         .canonical_absence_state_count = 1,
         .source_sentinel_code_count = source_analysis.sentinel_code_count,
         .source_unused_payload_codes = source_analysis.unused_codes,
         .presence_bits = 1,
-        .payload_bits = optional.payload_bits,
-        .encoded_storage_bits = optional.encoded_bits,
-        .noncanonical_absence_patterns = optional.payload_bits == 64
-                                           ? (std::numeric_limits<std::uint64_t>::max)()
-                                           : (std::uint64_t{1} << optional.payload_bits) - 1,
+        .payload_bits =
+            types.definitions()
+                .optional_presence_bits
+                .payload_bits[types.definitions().optional_presence_bits.index(optional)],
+        .encoded_storage_bits =
+            types.definitions()
+                .optional_presence_bits
+                .encoded_bits[types.definitions().optional_presence_bits.index(optional)],
+        .noncanonical_absence_patterns =
+            types.definitions()
+                        .optional_presence_bits
+                        .payload_bits[types.definitions().optional_presence_bits.index(optional)] ==
+                    64
+                ? (std::numeric_limits<std::uint64_t>::max)()
+                : (std::uint64_t{1}
+                   << types.definitions().optional_presence_bits.payload_bits
+                          [types.definitions().optional_presence_bits.index(optional)]) -
+                      1,
         .element_count = element_count,
-        .total_encoded_bits = checked_multiply(optional.encoded_bits, element_count),
+        .total_encoded_bits = checked_multiply(
+            types.definitions()
+                .optional_presence_bits
+                .encoded_bits[types.definitions().optional_presence_bits.index(optional)],
+            element_count),
         .diagnostics = {},
     };
     if (!result.total_encoded_bits.has_value()) {
@@ -588,8 +839,8 @@ auto Analyzer::compare_optional_encodings(lispb::schema::TypeGraph const& types,
 
     auto summarize =
         [&](lispb::schema::TypeId const type) -> std::optional<OptionalEncodingSummary> {
-        auto const& definition{types.type(type).definition};
-        if (std::holds_alternative<lispb::schema::OptionalSentinelType>(definition)) {
+        auto const& definition{types.definition(type)};
+        if (((definition).kind() == lispb::schema::TypeDefinitionKind::optional_sentinel)) {
             auto const analysis{analyze_optional_sentinel(types, type, element_count)};
             result.diagnostics.insert(
                 result.diagnostics.end(), analysis.diagnostics.begin(), analysis.diagnostics.end());
@@ -609,7 +860,7 @@ auto Analyzer::compare_optional_encodings(lispb::schema::TypeGraph const& types,
                 .total_encoded_bits = analysis.total_encoded_bits,
             };
         }
-        if (std::holds_alternative<lispb::schema::OptionalPresenceBitType>(definition)) {
+        if (((definition).kind() == lispb::schema::TypeDefinitionKind::optional_presence_bit)) {
             auto const analysis{analyze_optional_presence_bit(types, type, element_count)};
             result.diagnostics.insert(
                 result.diagnostics.end(), analysis.diagnostics.begin(), analysis.diagnostics.end());
@@ -631,7 +882,7 @@ auto Analyzer::compare_optional_encodings(lispb::schema::TypeGraph const& types,
         }
         result.diagnostics.push_back(
             {DiagnosticSeverity::error,
-             "Type '" + types.type(type).identity.name +
+             "Type '" + std::string{types.strings().view(types.name(type))} +
                  "' is not a sentinel or presence-bit optional representation."});
         return std::nullopt;
     };
@@ -648,8 +899,8 @@ auto Analyzer::compare_optional_encodings(lispb::schema::TypeGraph const& types,
     if (!result.compatible_source) {
         result.diagnostics.push_back(
             {DiagnosticSeverity::error,
-             "Optional representations '" + types.type(first).identity.name + "' and '" +
-                 types.type(second).identity.name +
+             "Optional representations '" + std::string{types.strings().view(types.name(first))} +
+                 "' and '" + std::string{types.strings().view(types.name(second))} +
                  "' have different semantic sources and cannot be compared."});
         return result;
     }
@@ -664,47 +915,97 @@ auto Analyzer::compare_optional_encodings(lispb::schema::TypeGraph const& types,
 auto Analyzer::analyze_linear_quantized(lispb::schema::TypeGraph const& types,
                                         lispb::schema::TypeId const type)
     -> LinearQuantizedAnalysis {
-    auto const& quantized{
-        std::get<lispb::schema::LinearQuantizedType>(types.type(type).definition)};
-    auto const& source{*lispb::schema::integer_domain(types.type(quantized.source.type))};
+    auto const& quantized{types.definition(type)};
+    auto const source{*lispb::schema::integer_domain(
+        types,
+        types.occurrences().type[types.occurrences().index(
+            types.definitions()
+                .linear_quantized.source[types.definitions().linear_quantized.index(quantized)])])};
 
     auto const total_code_count{
-        quantized.bit_width == 64
+        types.definitions().linear_quantized.bit_width[types.definitions().linear_quantized.index(
+            quantized)] == 64
             ? ExactCodeCount{.value = 0, .two_to_64 = true}
-            : ExactCodeCount{.value = std::uint64_t{1} << quantized.bit_width, .two_to_64 = false}};
+            : ExactCodeCount{
+                  .value = std::uint64_t{1}
+                        << types.definitions()
+                               .linear_quantized
+                               .bit_width[types.definitions().linear_quantized.index(quantized)],
+                  .two_to_64 = false}};
     auto const usable_code_count{
-        total_code_count.two_to_64 && quantized.reserved_codes == 0
+        total_code_count.two_to_64 &&
+                types.definitions()
+                        .linear_quantized
+                        .reserved_codes[types.definitions().linear_quantized.index(quantized)] == 0
             ? total_code_count
-            : ExactCodeCount{.value = total_code_count.two_to_64
-                                        ? (std::numeric_limits<std::uint64_t>::max)() -
-                                              quantized.reserved_codes + 1
-                                        : total_code_count.value - quantized.reserved_codes,
-                             .two_to_64 = false}};
+            : ExactCodeCount{
+                  .value = total_code_count.two_to_64
+                             ? (std::numeric_limits<std::uint64_t>::max)() -
+                                   types.definitions().linear_quantized.reserved_codes
+                                       [types.definitions().linear_quantized.index(quantized)] +
+                                   1
+                             : total_code_count.value -
+                                   types.definitions().linear_quantized.reserved_codes
+                                       [types.definitions().linear_quantized.index(quantized)],
+                  .two_to_64 = false}};
 
-    auto const source_span{packed_range_span(source.minimum_value, source.maximum_value)};
-    auto const numerical_code_count{std::ldexp(1.0L, static_cast<int>(quantized.bit_width))};
-    auto const numerical_usable_count{numerical_code_count -
-                                      static_cast<long double>(quantized.reserved_codes)};
-    auto const numerical_span{source_span.has_value()
-                                  ? static_cast<long double>(*source_span)
-                                  : packed_integer_as_long_double(source.maximum_value) -
-                                        packed_integer_as_long_double(source.minimum_value)};
+    auto const source_span{packed_range_span(
+        types.definitions()
+            .integer_scalars.minimum_value[types.definitions().integer_scalars.index(source)],
+        types.definitions()
+            .integer_scalars.maximum_value[types.definitions().integer_scalars.index(source)])};
+    auto const numerical_code_count{std::ldexp(
+        1.0L,
+        static_cast<int>(types.definitions()
+                             .linear_quantized
+                             .bit_width[types.definitions().linear_quantized.index(quantized)]))};
+    auto const numerical_usable_count{
+        numerical_code_count -
+        static_cast<long double>(
+            types.definitions()
+                .linear_quantized
+                .reserved_codes[types.definitions().linear_quantized.index(quantized)])};
+    auto const numerical_span{
+        source_span.has_value()
+            ? static_cast<long double>(*source_span)
+            : packed_integer_as_long_double(
+                  types.definitions()
+                      .integer_scalars
+                      .maximum_value[types.definitions().integer_scalars.index(source)]) -
+                  packed_integer_as_long_double(
+                      types.definitions()
+                          .integer_scalars
+                          .minimum_value[types.definitions().integer_scalars.index(source)])};
     auto const resolution{numerical_span / (numerical_usable_count - 1.0L)};
 
-    return {.type = type,
-            .source_type = quantized.source.type,
-            .source_minimum = source.minimum_value,
-            .source_maximum = source.maximum_value,
-            .source_span = source_span,
-            .encoded_storage_bits = quantized.bit_width,
-            .total_code_count = total_code_count,
-            .reserved_code_count = quantized.reserved_codes,
-            .usable_code_count = usable_code_count,
-            .resolution = resolution,
-            .maximum_rounding_error = resolution / 2.0L,
-            .minimum_endpoint_exact = true,
-            .maximum_endpoint_exact = true,
-            .clipping = quantized.clipping};
+    return {
+        .type = type,
+        .source_type = types.occurrences().type[types.occurrences().index(
+            types.definitions()
+                .linear_quantized.source[types.definitions().linear_quantized.index(quantized)])],
+        .source_minimum =
+            types.definitions()
+                .integer_scalars.minimum_value[types.definitions().integer_scalars.index(source)],
+        .source_maximum =
+            types.definitions()
+                .integer_scalars.maximum_value[types.definitions().integer_scalars.index(source)],
+        .source_span = source_span,
+        .encoded_storage_bits =
+            types.definitions()
+                .linear_quantized.bit_width[types.definitions().linear_quantized.index(quantized)],
+        .total_code_count = total_code_count,
+        .reserved_code_count =
+            types.definitions()
+                .linear_quantized
+                .reserved_codes[types.definitions().linear_quantized.index(quantized)],
+        .usable_code_count = usable_code_count,
+        .resolution = resolution,
+        .maximum_rounding_error = resolution / 2.0L,
+        .minimum_endpoint_exact = true,
+        .maximum_endpoint_exact = true,
+        .clipping =
+            types.definitions()
+                .linear_quantized.clipping[types.definitions().linear_quantized.index(quantized)]};
 }
 
 auto Analyzer::compare_linear_quantized(lispb::schema::TypeGraph const& types,
@@ -720,8 +1021,9 @@ auto Analyzer::compare_linear_quantized(lispb::schema::TypeGraph const& types,
     if (!result.compatible_source) {
         result.diagnostics.push_back(
             {DiagnosticSeverity::error,
-             "Linear quantized representations '" + types.type(first).identity.name + "' and '" +
-                 types.type(second).identity.name +
+             "Linear quantized representations '" +
+                 std::string{types.strings().view(types.name(first))} + "' and '" +
+                 std::string{types.strings().view(types.name(second))} +
                  "' have different semantic sources and cannot be compared."});
         return result;
     }
@@ -758,66 +1060,123 @@ auto Analyzer::compare_linear_quantized(lispb::schema::TypeGraph const& types,
 auto Analyzer::analyze_fixed_point(lispb::schema::TypeGraph const& types,
                                    lispb::schema::TypeId const type,
                                    std::uint64_t const element_count) -> FixedPointAnalysis {
-    auto const& fixed{std::get<lispb::schema::FixedPointType>(types.type(type).definition)};
-    auto const sign_bits{fixed.signedness ? std::uint32_t{1} : std::uint32_t{0}};
-    auto const whole_bits{fixed.total_bits - fixed.fractional_bits - sign_bits};
-    auto const resolution{std::ldexp(1.0L, -static_cast<int>(fixed.fractional_bits))};
-    auto const scale{std::ldexp(1.0L, static_cast<int>(fixed.fractional_bits))};
+    auto const& fixed{types.definition(type)};
+    auto const sign_bits{
+        types.definitions().fixed_points.signedness[types.definitions().fixed_points.index(fixed)]
+            ? std::uint32_t{1}
+            : std::uint32_t{0}};
+    auto const whole_bits{
+        types.definitions().fixed_points.total_bits[types.definitions().fixed_points.index(fixed)] -
+        types.definitions()
+            .fixed_points.fractional_bits[types.definitions().fixed_points.index(fixed)] -
+        sign_bits};
+    auto const resolution{std::ldexp(
+        1.0L,
+        -static_cast<int>(
+            types.definitions()
+                .fixed_points.fractional_bits[types.definitions().fixed_points.index(fixed)]))};
+    auto const scale{std::ldexp(
+        1.0L,
+        static_cast<int>(
+            types.definitions()
+                .fixed_points.fractional_bits[types.definitions().fixed_points.index(fixed)]))};
 
-    codegen::PackedIntegerValue minimum_raw;
-    codegen::PackedIntegerValue maximum_raw;
+    lispb::codegen::PackedIntegerValue minimum_raw;
+    lispb::codegen::PackedIntegerValue maximum_raw;
     long double minimum_value{};
     long double maximum_value{};
-    if (fixed.signedness) {
-        auto const negative_magnitude{std::uint64_t{1} << (fixed.total_bits - 1)};
-        minimum_raw = codegen::PackedIntegerValue::from_parts(true, negative_magnitude);
-        maximum_raw = codegen::PackedIntegerValue{negative_magnitude - 1};
-        auto const range_limit{std::ldexp(1.0L,
-                                          static_cast<int>(fixed.total_bits - 1) -
-                                              static_cast<int>(fixed.fractional_bits))};
+    if (types.definitions()
+            .fixed_points.signedness[types.definitions().fixed_points.index(fixed)]) {
+        auto const negative_magnitude{
+            std::uint64_t{1}
+            << (types.definitions()
+                    .fixed_points.total_bits[types.definitions().fixed_points.index(fixed)] -
+                1)};
+        minimum_raw = lispb::codegen::PackedIntegerValue::from_parts(true, negative_magnitude);
+        maximum_raw = lispb::codegen::PackedIntegerValue{negative_magnitude - 1};
+        auto const range_limit{std::ldexp(
+            1.0L,
+            static_cast<int>(
+                types.definitions()
+                    .fixed_points.total_bits[types.definitions().fixed_points.index(fixed)] -
+                1) -
+                static_cast<int>(
+                    types.definitions()
+                        .fixed_points
+                        .fractional_bits[types.definitions().fixed_points.index(fixed)]))};
         minimum_value = -range_limit;
         maximum_value = range_limit - resolution;
     } else {
-        minimum_raw = codegen::PackedIntegerValue{0};
-        maximum_raw = codegen::PackedIntegerValue{fixed.total_bits == 64
-                                                      ? (std::numeric_limits<std::uint64_t>::max)()
-                                                      : (std::uint64_t{1} << fixed.total_bits) - 1};
-        maximum_value = std::ldexp(1.0L,
-                                   static_cast<int>(fixed.total_bits) -
-                                       static_cast<int>(fixed.fractional_bits)) -
-                        resolution;
+        minimum_raw = lispb::codegen::PackedIntegerValue{0};
+        maximum_raw = lispb::codegen::PackedIntegerValue{
+            types.definitions()
+                        .fixed_points.total_bits[types.definitions().fixed_points.index(fixed)] ==
+                    64
+                ? (std::numeric_limits<std::uint64_t>::max)()
+                : (std::uint64_t{1}
+                   << types.definitions()
+                          .fixed_points.total_bits[types.definitions().fixed_points.index(fixed)]) -
+                      1};
+        maximum_value =
+            std::ldexp(
+                1.0L,
+                static_cast<int>(
+                    types.definitions()
+                        .fixed_points.total_bits[types.definitions().fixed_points.index(fixed)]) -
+                    static_cast<int>(
+                        types.definitions()
+                            .fixed_points
+                            .fractional_bits[types.definitions().fixed_points.index(fixed)])) -
+            resolution;
     }
 
-    auto const minimum_allowed_raw{fixed.minimum_raw_value.value_or(minimum_raw)};
-    auto const maximum_allowed_raw{fixed.maximum_raw_value.value_or(maximum_raw)};
-    auto const to_value = [&](codegen::PackedIntegerValue const raw) {
+    auto const minimum_allowed_raw{
+        types.definitions()
+            .fixed_points.minimum_raw_value[types.definitions().fixed_points.index(fixed)]
+            .value_or(minimum_raw)};
+    auto const maximum_allowed_raw{
+        types.definitions()
+            .fixed_points.maximum_raw_value[types.definitions().fixed_points.index(fixed)]
+            .value_or(maximum_raw)};
+    auto const to_value = [&](lispb::codegen::PackedIntegerValue const raw) {
         auto const value{static_cast<long double>(raw.magnitude) / scale};
         return raw.negative ? -value : value;
     };
-    auto const total_encoded_bits{checked_multiply(fixed.total_bits, element_count)};
-    FixedPointAnalysis result{.type = type,
-                              .signedness = fixed.signedness,
-                              .total_bits = fixed.total_bits,
-                              .fractional_bits = fixed.fractional_bits,
-                              .whole_bits = whole_bits,
-                              .minimum_raw_value = minimum_raw,
-                              .maximum_raw_value = maximum_raw,
-                              .minimum_allowed_raw_value = minimum_allowed_raw,
-                              .maximum_allowed_raw_value = maximum_allowed_raw,
-                              .scale = scale,
-                              .resolution = resolution,
-                              .minimum_value = minimum_value,
-                              .maximum_value = maximum_value,
-                              .minimum_allowed_value = to_value(minimum_allowed_raw),
-                              .maximum_allowed_value = to_value(maximum_allowed_raw),
-                              .maximum_rounding_error =
-                                  fixed.rounding == codegen::FixedPointRounding::nearest_even
-                                      ? resolution / 2.0L
-                                      : resolution,
-                              .rounding = fixed.rounding,
-                              .element_count = element_count,
-                              .total_encoded_bits = total_encoded_bits,
-                              .diagnostics = {}};
+    auto const total_encoded_bits{checked_multiply(
+        types.definitions().fixed_points.total_bits[types.definitions().fixed_points.index(fixed)],
+        element_count)};
+    FixedPointAnalysis result{
+        .type = type,
+        .signedness =
+            types.definitions()
+                .fixed_points.signedness[types.definitions().fixed_points.index(fixed)] != 0,
+        .total_bits = types.definitions()
+                          .fixed_points.total_bits[types.definitions().fixed_points.index(fixed)],
+        .fractional_bits =
+            types.definitions()
+                .fixed_points.fractional_bits[types.definitions().fixed_points.index(fixed)],
+        .whole_bits = whole_bits,
+        .minimum_raw_value = minimum_raw,
+        .maximum_raw_value = maximum_raw,
+        .minimum_allowed_raw_value = minimum_allowed_raw,
+        .maximum_allowed_raw_value = maximum_allowed_raw,
+        .scale = scale,
+        .resolution = resolution,
+        .minimum_value = minimum_value,
+        .maximum_value = maximum_value,
+        .minimum_allowed_value = to_value(minimum_allowed_raw),
+        .maximum_allowed_value = to_value(maximum_allowed_raw),
+        .maximum_rounding_error =
+            types.definitions()
+                        .fixed_points.rounding[types.definitions().fixed_points.index(fixed)] ==
+                    lispb::codegen::FixedPointRounding::nearest_even
+                ? resolution / 2.0L
+                : resolution,
+        .rounding = types.definitions()
+                        .fixed_points.rounding[types.definitions().fixed_points.index(fixed)],
+        .element_count = element_count,
+        .total_encoded_bits = total_encoded_bits,
+        .diagnostics = {}};
     if (!total_encoded_bits.has_value()) {
         result.diagnostics.push_back(
             {DiagnosticSeverity::error, "Fixed-point encoded payload bit count overflows uint64."});
@@ -828,24 +1187,47 @@ auto Analyzer::analyze_fixed_point(lispb::schema::TypeGraph const& types,
 auto Analyzer::analyze_mini_float(lispb::schema::TypeGraph const& types,
                                   lispb::schema::TypeId const type,
                                   std::uint64_t const element_count) -> MiniFloatAnalysis {
-    auto const& mini{std::get<lispb::schema::MiniFloatType>(types.type(type).definition)};
-    auto const total_bits{mini.sign_bits + mini.exponent_bits + mini.significand_bits};
-    auto const exponent_code_count{std::uint64_t{1} << mini.exponent_bits};
+    auto const& mini{types.definition(type)};
+    auto const total_bits{
+        types.definitions().mini_floats.sign_bits[types.definitions().mini_floats.index(mini)] +
+        types.definitions().mini_floats.exponent_bits[types.definitions().mini_floats.index(mini)] +
+        types.definitions()
+            .mini_floats.significand_bits[types.definitions().mini_floats.index(mini)]};
+    auto const exponent_code_count{
+        std::uint64_t{1}
+        << types.definitions()
+               .mini_floats.exponent_bits[types.definitions().mini_floats.index(mini)]};
     auto const normal_exponent_code_count{exponent_code_count - 2};
-    auto const sign_code_count{mini.sign_bits == 0 ? std::uint64_t{1} : std::uint64_t{2}};
-    auto const significand_code_count{std::uint64_t{1} << mini.significand_bits};
-    auto const minimum_normal_exponent{std::int32_t{1} - mini.exponent_bias};
-    auto const maximum_normal_exponent{static_cast<std::int32_t>(exponent_code_count - 2) -
-                                       mini.exponent_bias};
+    auto const sign_code_count{
+        types.definitions().mini_floats.sign_bits[types.definitions().mini_floats.index(mini)] == 0
+            ? std::uint64_t{1}
+            : std::uint64_t{2}};
+    auto const significand_code_count{
+        std::uint64_t{1}
+        << types.definitions()
+               .mini_floats.significand_bits[types.definitions().mini_floats.index(mini)]};
+    auto const minimum_normal_exponent{
+        std::int32_t{1} -
+        types.definitions().mini_floats.exponent_bias[types.definitions().mini_floats.index(mini)]};
+    auto const maximum_normal_exponent{
+        static_cast<std::int32_t>(exponent_code_count - 2) -
+        types.definitions().mini_floats.exponent_bias[types.definitions().mini_floats.index(mini)]};
     auto const total_encoded_bits{checked_multiply(total_bits, element_count)};
 
     MiniFloatAnalysis result{
         .type = type,
-        .sign_bits = mini.sign_bits,
-        .exponent_bits = mini.exponent_bits,
-        .significand_bits = mini.significand_bits,
+        .sign_bits =
+            types.definitions().mini_floats.sign_bits[types.definitions().mini_floats.index(mini)],
+        .exponent_bits =
+            types.definitions()
+                .mini_floats.exponent_bits[types.definitions().mini_floats.index(mini)],
+        .significand_bits =
+            types.definitions()
+                .mini_floats.significand_bits[types.definitions().mini_floats.index(mini)],
         .total_bits = total_bits,
-        .exponent_bias = mini.exponent_bias,
+        .exponent_bias =
+            types.definitions()
+                .mini_floats.exponent_bias[types.definitions().mini_floats.index(mini)],
         .exponent_code_count = exponent_code_count,
         .normal_exponent_code_count = normal_exponent_code_count,
         .minimum_normal_exponent = minimum_normal_exponent,
@@ -861,8 +1243,12 @@ auto Analyzer::analyze_mini_float(lispb::schema::TypeGraph const& types,
         .maximum_finite = std::nullopt,
         .minimum_finite = std::nullopt,
         .unit_interval_resolution = std::nullopt,
-        .maximum_relative_rounding_error =
-            std::ldexp(1.0L, -static_cast<int>(mini.significand_bits) - 1),
+        .maximum_relative_rounding_error = std::ldexp(
+            1.0L,
+            -static_cast<int>(
+                types.definitions()
+                    .mini_floats.significand_bits[types.definitions().mini_floats.index(mini)]) -
+                1),
         .element_count = element_count,
         .total_encoded_bits = total_encoded_bits,
         .diagnostics = {}};
@@ -882,23 +1268,43 @@ auto Analyzer::analyze_mini_float(lispb::schema::TypeGraph const& types,
 
     result.minimum_positive_normal = retain_positive_finite(
         std::ldexp(1.0L, minimum_normal_exponent), "Minimum positive normal value");
-    if (mini.significand_bits != 0) {
+    if (types.definitions()
+            .mini_floats.significand_bits[types.definitions().mini_floats.index(mini)] != 0) {
         result.minimum_positive_subnormal = retain_positive_finite(
-            std::ldexp(1.0L, minimum_normal_exponent - static_cast<int>(mini.significand_bits)),
+            std::ldexp(1.0L,
+                       minimum_normal_exponent -
+                           static_cast<int>(
+                               types.definitions()
+                                   .mini_floats
+                                   .significand_bits[types.definitions().mini_floats.index(mini)])),
             "Minimum positive subnormal value");
     }
-    auto const maximum_significand{2.0L -
-                                   std::ldexp(1.0L, -static_cast<int>(mini.significand_bits))};
+    auto const maximum_significand{
+        2.0L -
+        std::ldexp(
+            1.0L,
+            -static_cast<int>(
+                types.definitions()
+                    .mini_floats.significand_bits[types.definitions().mini_floats.index(mini)]))};
     result.maximum_finite = retain_positive_finite(
         std::ldexp(maximum_significand, maximum_normal_exponent), "Maximum finite value");
     if (result.maximum_finite.has_value()) {
-        result.minimum_finite = mini.sign_bits == 0 ? std::optional<long double>{0.0L}
-                                                    : std::optional{-*result.maximum_finite};
+        result.minimum_finite =
+            types.definitions()
+                        .mini_floats.sign_bits[types.definitions().mini_floats.index(mini)] == 0
+                ? std::optional<long double>{0.0L}
+                : std::optional{-*result.maximum_finite};
     }
-    if (mini.exponent_bias >= 1 &&
-        mini.exponent_bias <= static_cast<std::int32_t>(exponent_code_count - 2)) {
-        result.unit_interval_resolution =
-            std::ldexp(1.0L, -static_cast<int>(mini.significand_bits));
+    if (types.definitions()
+                .mini_floats.exponent_bias[types.definitions().mini_floats.index(mini)] >= 1 &&
+        types.definitions()
+                .mini_floats.exponent_bias[types.definitions().mini_floats.index(mini)] <=
+            static_cast<std::int32_t>(exponent_code_count - 2)) {
+        result.unit_interval_resolution = std::ldexp(
+            1.0L,
+            -static_cast<int>(
+                types.definitions()
+                    .mini_floats.significand_bits[types.definitions().mini_floats.index(mini)]));
     } else {
         result.diagnostics.push_back(
             {DiagnosticSeverity::warning,
@@ -914,28 +1320,58 @@ auto Analyzer::analyze_mini_float(lispb::schema::TypeGraph const& types,
 auto Analyzer::analyze_integer_varint(lispb::schema::TypeGraph const& types,
                                       lispb::schema::TypeId const type,
                                       std::uint64_t const element_count) -> IntegerVarintAnalysis {
-    auto const& varint{std::get<lispb::schema::IntegerVarintType>(types.type(type).definition)};
-    auto const& source{*lispb::schema::integer_domain(types.type(varint.source.type))};
+    auto const& varint{types.definition(type)};
+    auto const source{*lispb::schema::integer_domain(
+        types,
+        types.occurrences().type[types.occurrences().index(
+            types.definitions()
+                .integer_varints.source[types.definitions().integer_varints.index(varint)])])};
 
-    auto const minimum_endpoint_bytes{integer_varint_bytes(source.minimum_value, varint.encoding)};
-    auto const maximum_endpoint_bytes{integer_varint_bytes(source.maximum_value, varint.encoding)};
+    auto const minimum_endpoint_bytes{integer_varint_bytes(
+        types.definitions()
+            .integer_scalars.minimum_value[types.definitions().integer_scalars.index(source)],
+        types.definitions()
+            .integer_varints.encoding[types.definitions().integer_varints.index(varint)])};
+    auto const maximum_endpoint_bytes{integer_varint_bytes(
+        types.definitions()
+            .integer_scalars.maximum_value[types.definitions().integer_scalars.index(source)],
+        types.definitions()
+            .integer_varints.encoding[types.definitions().integer_varints.index(varint)])};
     auto minimum_bytes{std::min(minimum_endpoint_bytes, maximum_endpoint_bytes)};
-    auto const zero{codegen::PackedIntegerValue{0}};
-    if (codegen::packed_integer_less_equal(source.minimum_value, zero) &&
-        codegen::packed_integer_less_equal(zero, source.maximum_value)) {
+    auto const zero{lispb::codegen::PackedIntegerValue{0}};
+    if (lispb::codegen::packed_integer_less_equal(
+            types.definitions()
+                .integer_scalars.minimum_value[types.definitions().integer_scalars.index(source)],
+            zero) &&
+        lispb::codegen::packed_integer_less_equal(
+            zero,
+            types.definitions()
+                .integer_scalars
+                .maximum_value[types.definitions().integer_scalars.index(source)])) {
         minimum_bytes = 1;
     }
     auto maximum_bytes{std::max(minimum_endpoint_bytes, maximum_endpoint_bytes)};
-    for (auto const& code : source.named_codes) {
-        auto const bytes{integer_varint_bytes(code.value, varint.encoding)};
+    for (auto const code_id : types.declarations().items(
+             types.definitions()
+                 .integer_scalars.named_codes[types.definitions().integer_scalars.index(source)])) {
+        auto const code{code_id};
+        auto const bytes{integer_varint_bytes(
+            types.declarations()
+                .packed_named_codes.value[types.declarations().packed_named_codes.index(code)],
+            types.definitions()
+                .integer_varints.encoding[types.definitions().integer_varints.index(varint)])};
         minimum_bytes = std::min(minimum_bytes, bytes);
         maximum_bytes = std::max(maximum_bytes, bytes);
     }
 
     IntegerVarintAnalysis result{
         .type = type,
-        .source_type = varint.source.type,
-        .encoding = varint.encoding,
+        .source_type = types.occurrences().type[types.occurrences().index(
+            types.definitions()
+                .integer_varints.source[types.definitions().integer_varints.index(varint)])],
+        .encoding =
+            types.definitions()
+                .integer_varints.encoding[types.definitions().integer_varints.index(varint)],
         .minimum_encoded_bytes = minimum_bytes,
         .maximum_encoded_bytes = maximum_bytes,
         .element_count = element_count,
@@ -965,8 +1401,9 @@ auto Analyzer::compare_integer_varint(lispb::schema::TypeGraph const& types,
     if (!result.compatible_source) {
         result.diagnostics.push_back(
             {DiagnosticSeverity::error,
-             "Integer varint representations '" + types.type(first).identity.name + "' and '" +
-                 types.type(second).identity.name +
+             "Integer varint representations '" +
+                 std::string{types.strings().view(types.name(first))} + "' and '" +
+                 std::string{types.strings().view(types.name(second))} +
                  "' have different semantic sources and cannot be compared."});
         return result;
     }
@@ -991,8 +1428,12 @@ auto Analyzer::analyze_integer_varint_distribution(
     lispb::schema::TypeId const type,
     std::span<IntegerVarintDistributionEntry const> const entries,
     std::uint64_t const selected_element_count) -> IntegerVarintDistributionAnalysis {
-    auto const& varint{std::get<lispb::schema::IntegerVarintType>(types.type(type).definition)};
-    auto const& source{*lispb::schema::integer_domain(types.type(varint.source.type))};
+    auto const& varint{types.definition(type)};
+    auto const source{*lispb::schema::integer_domain(
+        types,
+        types.occurrences().type[types.occurrences().index(
+            types.definitions()
+                .integer_varints.source[types.definitions().integer_varints.index(varint)])])};
     IntegerVarintDistributionAnalysis result{.type = type,
                                              .valid_entry_count = 0,
                                              .total_weight = 0,
@@ -1009,20 +1450,40 @@ auto Analyzer::analyze_integer_varint_distribution(
     auto numerical_bytes{0.0L};
     for (auto const& entry : entries) {
         auto const in_live_range{
-            codegen::packed_integer_less_equal(source.minimum_value, entry.value) &&
-            codegen::packed_integer_less_equal(entry.value, source.maximum_value)};
+            lispb::codegen::packed_integer_less_equal(
+                types.definitions()
+                    .integer_scalars
+                    .minimum_value[types.definitions().integer_scalars.index(source)],
+                entry.value) &&
+            lispb::codegen::packed_integer_less_equal(
+                entry.value,
+                types.definitions()
+                    .integer_scalars
+                    .maximum_value[types.definitions().integer_scalars.index(source)])};
         auto const named{std::ranges::any_of(
-            source.named_codes, [&](auto const& code) { return code.value == entry.value; })};
+            types.declarations().items(
+                types.definitions()
+                    .integer_scalars
+                    .named_codes[types.definitions().integer_scalars.index(source)]),
+            [&](auto const code_id) {
+                return types.declarations()
+                           .packed_named_codes
+                           .value[types.declarations().packed_named_codes.index(code_id)] ==
+                       entry.value;
+            })};
         if (!in_live_range && !named) {
             result.diagnostics.push_back({DiagnosticSeverity::error,
                                           "Distribution value " +
-                                              codegen::format_packed_integer(entry.value) +
+                                              lispb::codegen::format_packed_integer(entry.value) +
                                               " is outside the semantic source domain."});
             continue;
         }
 
         ++result.valid_entry_count;
-        auto const bytes{integer_varint_bytes(entry.value, varint.encoding)};
+        auto const bytes{integer_varint_bytes(
+            entry.value,
+            types.definitions()
+                .integer_varints.encoding[types.definitions().integer_varints.index(varint)])};
         auto const weighted_bytes{checked_multiply(entry.weight, bytes)};
         result.entries.push_back({.value = entry.value,
                                   .weight = entry.weight,
@@ -1071,15 +1532,18 @@ auto Analyzer::compare_integer_varint_distribution(
     lispb::schema::TypeId const second,
     std::span<IntegerVarintDistributionEntry const> const entries,
     std::uint64_t const selected_element_count) -> IntegerVarintDistributionComparison {
-    auto const& first_varint{
-        std::get<lispb::schema::IntegerVarintType>(types.type(first).definition)};
-    auto const& second_varint{
-        std::get<lispb::schema::IntegerVarintType>(types.type(second).definition)};
+    auto const& first_varint{types.definition(first)};
+    auto const& second_varint{types.definition(second)};
     IntegerVarintDistributionComparison result{
         .first = analyze_integer_varint_distribution(types, first, entries, selected_element_count),
         .second =
             analyze_integer_varint_distribution(types, second, entries, selected_element_count),
-        .compatible_source = first_varint.source.type == second_varint.source.type,
+        .compatible_source = types.occurrences().type[types.occurrences().index(
+                                 types.definitions().integer_varints.source
+                                     [types.definitions().integer_varints.index(first_varint)])] ==
+                             types.occurrences().type[types.occurrences().index(
+                                 types.definitions().integer_varints.source
+                                     [types.definitions().integer_varints.index(second_varint)])],
         .total_encoded_byte_delta = std::nullopt,
         .expected_bytes_per_value_delta = std::nullopt,
         .expected_selected_bytes_delta = std::nullopt,
@@ -1087,8 +1551,9 @@ auto Analyzer::compare_integer_varint_distribution(
     if (!result.compatible_source) {
         result.diagnostics.push_back(
             {DiagnosticSeverity::error,
-             "Integer varint distributions for '" + types.type(first).identity.name + "' and '" +
-                 types.type(second).identity.name +
+             "Integer varint distributions for '" +
+                 std::string{types.strings().view(types.name(first))} + "' and '" +
+                 std::string{types.strings().view(types.name(second))} +
                  "' have different semantic sources and cannot be compared."});
         return result;
     }

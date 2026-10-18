@@ -1,6 +1,31 @@
 #include "analyzer_internal.hpp"
 
 #include <codegen/schema.h>
+#include <codegen/schema/module_handle.h>
+#include <codegen/schema/physical_type_form.h>
+#include <codegen/schema/physical_type_use.h>
+#include <lispb/project_loader.h>
+#include <lispb/schema/enum_types.h>
+#include <lispb/schema/external_types.h>
+#include <lispb/schema/indices.h>
+#include <lispb/schema/integer_scalar_types.h>
+#include <lispb/schema/packed_types.h>
+#include <lispb/schema/record_members.h>
+#include <lispb/schema/record_types.h>
+#include <lispb/schema/soa_types.h>
+#include <lispb/schema/tagged_union_alternatives.h>
+#include <lispb/schema/tagged_union_types.h>
+#include <lispb/schema/type_definitions.h>
+#include <lispb/schema/union_alternatives.h>
+#include <lispb/schema/union_types.h>
+
+#include <cstdint>
+#include <optional>
+#include <ranges>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace ioj::layout {
 
@@ -37,7 +62,7 @@ void PhysicalFactsResolver::check_supplied_layout(lispb::schema::TypeId const ty
                                                   std::optional<std::uint64_t>& size,
                                                   std::optional<std::uint64_t>& alignment,
                                                   std::vector<Diagnostic>& diagnostics) const {
-    auto const& spelling{types_.type(type).cpp_spelling};
+    auto const& spelling{std::string{types_.strings().view(types_.cpp_spelling(type))}};
     auto const supplied{abi_.find(spelling)};
     if (size.has_value() && alignment.has_value() && supplied.has_value() &&
         (supplied->size_bytes != *size || supplied->alignment_bytes != *alignment)) {
@@ -51,44 +76,60 @@ void PhysicalFactsResolver::check_supplied_layout(lispb::schema::TypeId const ty
     }
 }
 
-auto PhysicalFactsResolver::resolve(lispb::schema::ResolvedTypeRef const& use)
+auto PhysicalFactsResolver::resolve(lispb::schema::ResolvedOccurrenceId const use)
     -> PhysicalFactsResult {
     PhysicalFactsResult result{};
     std::vector<lispb::schema::TypeId> active;
-    result.facts = facts_for(use, active, result.diagnostics, use.cpp_type.spelling);
+    result.facts = facts_for(use,
+                             active,
+                             result.diagnostics,
+                             std::string{types_.cpp_types().spelling(
+                                 types_.occurrences().cpp_type[types_.occurrences().index(use)])});
     return result;
 }
 
 auto PhysicalFactsResolver::resolve(lispb::schema::TypeId const type) -> PhysicalFactsResult {
     PhysicalFactsResult result{};
-    auto const& node{types_.type(type)};
-    if (node.cpp_spelling.empty()) {
-        result.diagnostics.push_back(
-            {DiagnosticSeverity::warning,
-             "Logical layout schema '" + node.identity.name + "' has no C++ owner."});
+    auto const& node{type};
+    if (std::string{types_.strings().view(types_.cpp_spelling(node))}.empty()) {
+        result.diagnostics.push_back({DiagnosticSeverity::warning,
+                                      "Logical layout schema '" +
+                                          std::string{types_.strings().view(types_.name(node))} +
+                                          "' has no C++ owner."});
         return result;
     }
     std::vector<lispb::schema::TypeId> active;
-    result.facts = facts_for(type, active, result.diagnostics, types_.type(type).cpp_spelling);
+    result.facts = facts_for(type,
+                             active,
+                             result.diagnostics,
+                             std::string{types_.strings().view(types_.cpp_spelling(type))});
     return result;
 }
 
-auto PhysicalFactsResolver::resolve_spelling(std::string const& spelling, std::string const& module)
+auto PhysicalFactsResolver::resolve_spelling(std::string const& spelling,
+                                             lispb::codegen::ModuleHandle const module)
     -> PhysicalFactsResult {
-    codegen::TypeRef const reference{spelling, {}, std::nullopt};
-    auto resolved{codegen::resolve_type_use(reference, {})};
-    auto const target{types_.find_reference(reference, module)};
-    lispb::schema::ResolvedTypeRef use{.type = target.value_or(lispb::schema::TypeId{}),
-                                       .cpp_type = std::move(resolved.cpp_type),
-                                       .physical = std::move(resolved.physical)};
-    use.physical.names_semantic_type = target.has_value();
-    return resolve(use);
+    auto const cpp_type{types_.cpp_types().intern(spelling)};
+    auto const target{types_.find_named(types_.strings().find(spelling), module)};
+    auto physical{lispb::codegen::classify_physical_type_use(types_.cpp_types(), cpp_type)};
+    physical.names_semantic_type = target.has_value();
+    PhysicalFactsResult result;
+    std::vector<lispb::schema::TypeId> active;
+    result.facts = facts_for(target.value_or(lispb::schema::TypeId{}),
+                             cpp_type,
+                             physical.form,
+                             physical.object_spelling,
+                             physical.names_semantic_type,
+                             active,
+                             result.diagnostics,
+                             spelling);
+    return result;
 }
 
 auto PhysicalFactsResolver::lookup(std::string const& spelling,
                                    std::vector<Diagnostic>& diagnostics,
                                    std::string const& context) const -> std::optional<TypeFacts> {
-    auto const normalized{codegen::native_spelling(spelling)};
+    auto const normalized{lispb::codegen::native_spelling(spelling)};
     auto facts{abi_.find(normalized)};
     if (!facts.has_value()) {
         diagnostics.push_back({DiagnosticSeverity::warning,
@@ -99,24 +140,45 @@ auto PhysicalFactsResolver::lookup(std::string const& spelling,
     return facts;
 }
 
-auto PhysicalFactsResolver::facts_for(lispb::schema::ResolvedTypeRef const& use,
+auto PhysicalFactsResolver::facts_for(lispb::schema::ResolvedOccurrenceId const use,
                                       std::vector<lispb::schema::TypeId>& active,
                                       std::vector<Diagnostic>& diagnostics,
                                       std::string const& context) -> std::optional<TypeFacts> {
-    auto const& physical{use.physical};
-    if (physical.form == codegen::PhysicalTypeForm::unsupported) {
-        diagnostics.push_back({DiagnosticSeverity::warning, context + ": " + physical.diagnostic});
+    auto const row{types_.occurrences().index(use)};
+    return facts_for(types_.occurrences().type[row],
+                     types_.occurrences().cpp_type[row],
+                     types_.occurrences().physical_form[row],
+                     types_.occurrences().object_spelling[row],
+                     types_.occurrences().names_semantic_type[row] != 0,
+                     active,
+                     diagnostics,
+                     context);
+}
+
+auto PhysicalFactsResolver::facts_for(lispb::schema::TypeId const semantic_type,
+                                      lispb::codegen::CppTypeId const cpp_type,
+                                      lispb::codegen::PhysicalTypeForm const form,
+                                      lispb::StringId const object_spelling,
+                                      bool const names_semantic_type,
+                                      std::vector<lispb::schema::TypeId>& active,
+                                      std::vector<Diagnostic>& diagnostics,
+                                      std::string const& context) -> std::optional<TypeFacts> {
+    if (form == lispb::codegen::PhysicalTypeForm::unsupported) {
+        diagnostics.push_back(
+            {DiagnosticSeverity::warning,
+             context + ": " +
+                 lispb::codegen::physical_type_diagnostic(types_.cpp_types(), cpp_type)});
         return std::nullopt;
     }
-    if (physical.form == codegen::PhysicalTypeForm::lvalue_reference ||
-        physical.form == codegen::PhysicalTypeForm::rvalue_reference) {
+    if (form == lispb::codegen::PhysicalTypeForm::lvalue_reference ||
+        form == lispb::codegen::PhysicalTypeForm::rvalue_reference) {
         diagnostics.push_back(
             {DiagnosticSeverity::warning,
              context + ": reference-member storage is not established by sizeof the referent."});
         return std::nullopt;
     }
-    if (physical.form == codegen::PhysicalTypeForm::object_pointer) {
-        if (auto exact{abi_.find(use.cpp_type.spelling)}) {
+    if (form == lispb::codegen::PhysicalTypeForm::object_pointer) {
+        if (auto exact{abi_.find(std::string{types_.cpp_types().spelling(cpp_type)})}) {
             return exact;
         }
         if (abi_.object_pointer_representation().has_value()) {
@@ -130,12 +192,13 @@ auto PhysicalFactsResolver::facts_for(lispb::schema::ResolvedTypeRef const& use,
                 return facts;
             }
         }
-        return lookup(use.cpp_type.spelling, diagnostics, context);
+        return lookup(std::string{types_.cpp_types().spelling(cpp_type)}, diagnostics, context);
     }
-    if (physical.names_semantic_type && use.type.valid()) {
-        return facts_for(use.type, active, diagnostics, context);
+    if (names_semantic_type && lispb::schema::is_valid(semantic_type)) {
+        return facts_for(semantic_type, active, diagnostics, context);
     }
-    return lookup(physical.object_spelling, diagnostics, context);
+    return lookup(
+        std::string{types_.cpp_types().strings().view(object_spelling)}, diagnostics, context);
 }
 
 auto PhysicalFactsResolver::facts_for(lispb::schema::TypeId const type,
@@ -150,7 +213,7 @@ auto PhysicalFactsResolver::facts_for(lispb::schema::TypeId const type,
     if (auto const cached{known_.find(type)}; cached != known_.end()) {
         return cached->second;
     }
-    auto const& node{types_.type(type)};
+    auto const& node{type};
     auto aggregate_facts = [&](auto nested) -> std::optional<TypeFacts> {
         for (auto& diagnostic : nested.diagnostics) {
             diagnostic.message = context + ": " + diagnostic.message;
@@ -163,8 +226,10 @@ auto PhysicalFactsResolver::facts_for(lispb::schema::TypeId const type,
                         .alignment_bytes = *nested.alignment_bytes,
                         .integer_signed = std::nullopt,
                         .unsigned_value_bits = std::nullopt,
-                        .provenance = "Derived from LispB '" + node.cpp_spelling +
-                                      "' using profile '" + abi_.name() + "'.",
+                        .provenance =
+                            "Derived from LispB '" +
+                            std::string{types_.strings().view(types_.cpp_spelling(node))} +
+                            "' using profile '" + abi_.name() + "'.",
                         .origin = FactOrigin::derived};
         check_supplied_layout(type, nested.size_bytes, nested.alignment_bytes, diagnostics);
         if (!nested.size_bytes.has_value()) {
@@ -173,57 +238,103 @@ auto PhysicalFactsResolver::facts_for(lispb::schema::TypeId const type,
         known_.emplace(type, facts);
         return facts;
     };
-    if (std::holds_alternative<lispb::schema::RecordType>(node.definition)) {
+    if (((types_.definition(node)).kind() == lispb::schema::TypeDefinitionKind::record)) {
         return aggregate_facts(analyze_record(type, active));
     }
-    if (std::holds_alternative<lispb::schema::UnionType>(node.definition)) {
+    if (((types_.definition(node)).kind() == lispb::schema::TypeDefinitionKind::union_type)) {
         return aggregate_facts(analyze_union(type, active));
     }
-    if (std::holds_alternative<lispb::schema::TaggedUnionType>(node.definition)) {
+    if (((types_.definition(node)).kind() == lispb::schema::TypeDefinitionKind::tagged_union)) {
         return aggregate_facts(analyze_tagged_union(type, active));
     }
-    if (auto const* external{std::get_if<lispb::schema::ExternalType>(&node.definition)}) {
-        auto const physical{codegen::classify_physical_type_use(external->cpp_type.spelling)};
-        return facts_for(lispb::schema::ResolvedTypeRef{.type = type,
-                                                        .cpp_type = external->cpp_type,
-                                                        .physical = physical},
+    if (auto const external{
+            ((types_.definition(node)).kind() == lispb::schema::TypeDefinitionKind::external
+                 ? std::optional{types_.definition(node)}
+                 : std::nullopt)}) {
+        auto const physical{lispb::codegen::classify_physical_type_use(
+            types_.cpp_types(),
+            types_.definitions()
+                .externals.cpp_type[types_.definitions().externals.index(*external)])};
+        return facts_for(type,
+                         types_.definitions()
+                             .externals.cpp_type[types_.definitions().externals.index(*external)],
+                         physical.form,
+                         physical.object_spelling,
+                         physical.names_semantic_type,
                          active,
                          diagnostics,
                          context);
     }
     active.push_back(type);
     std::optional<TypeFacts> facts;
-    if (auto const* enumeration{std::get_if<lispb::schema::EnumType>(&node.definition)}) {
-        if (enumeration->underlying_type.has_value()) {
-            facts = facts_for(*enumeration->underlying_type, active, diagnostics, context);
-        } else if (auto const backing{derived_enum_backing_type(*enumeration)}) {
-            facts = lookup(*backing, diagnostics, context);
-        }
-    } else if (auto const* packed{std::get_if<lispb::schema::PackedType>(&node.definition)}) {
-        auto const overridden{variant_ != nullptr &&
-                              variant_->overrides.packed_storage_types.contains(type)};
-        if (overridden) {
-            codegen::TypeRef const reference{
-                variant_->overrides.packed_storage_types.at(type), {}, std::nullopt};
-            auto resolved{codegen::resolve_type_use(reference, {})};
-            auto const target{types_.find_reference(reference, node.identity.module_name)};
-            resolved.physical.names_semantic_type = target.has_value();
+    if (auto const enumeration{
+            ((types_.definition(node)).kind() == lispb::schema::TypeDefinitionKind::enumeration
+                 ? std::optional{types_.definition(node)}
+                 : std::nullopt)}) {
+        if (lispb::schema::is_valid(
+                types_.definitions()
+                    .enums.underlying_type[types_.definitions().enums.index(*enumeration)])) {
             facts = facts_for(
-                lispb::schema::ResolvedTypeRef{.type = target.value_or(lispb::schema::TypeId{}),
-                                               .cpp_type = std::move(resolved.cpp_type),
-                                               .physical = std::move(resolved.physical)},
+                types_.definitions()
+                    .enums.underlying_type[types_.definitions().enums.index(*enumeration)],
                 active,
                 diagnostics,
                 context);
-        } else {
-            facts = facts_for(packed->storage_type, active, diagnostics, context);
+        } else if (auto const backing{derived_enum_backing_type(types_, *enumeration)}) {
+            facts = lookup(*backing, diagnostics, context);
         }
-    } else if (auto const* scalar{std::get_if<lispb::schema::IntegerScalarType>(&node.definition)};
-               scalar != nullptr && scalar->cpp_representation.has_value()) {
-        facts = facts_for(*scalar->cpp_representation, active, diagnostics, context);
-    } else if (auto const* soa{std::get_if<lispb::schema::SoaType>(&node.definition)};
-               soa != nullptr && !node.cpp_spelling.empty()) {
-        facts = lookup(node.cpp_spelling, diagnostics, context);
+    } else if (auto const packed{
+                   ((types_.definition(node)).kind() == lispb::schema::TypeDefinitionKind::packed
+                        ? std::optional{types_.definition(node)}
+                        : std::nullopt)}) {
+        auto const overridden{variant_ != nullptr &&
+                              variant_->overrides.packed_storage_types.contains(type)};
+        if (overridden) {
+            auto const& spelling{variant_->overrides.packed_storage_types.at(type)};
+            auto const cpp_type{types_.cpp_types().intern(spelling)};
+            auto physical{lispb::codegen::classify_physical_type_use(types_.cpp_types(), cpp_type)};
+            auto const target{
+                types_.find_named(types_.strings().find(spelling), types_.module(node))};
+            physical.names_semantic_type = target.has_value();
+            facts = facts_for(target.value_or(lispb::schema::TypeId{}),
+                              cpp_type,
+                              physical.form,
+                              physical.object_spelling,
+                              physical.names_semantic_type,
+                              active,
+                              diagnostics,
+                              context);
+        } else {
+            facts = facts_for(types_.definitions()
+                                  .packed.storage_type[types_.definitions().packed.index(*packed)],
+                              active,
+                              diagnostics,
+                              context);
+        }
+    } else if (auto const scalar{((types_.definition(node)).kind() ==
+                                          lispb::schema::TypeDefinitionKind::integer_scalar
+                                      ? std::optional{types_.definition(node)}
+                                      : std::nullopt)};
+               static_cast<bool>(scalar) &&
+               lispb::schema::is_valid(
+                   types_.definitions()
+                       .integer_scalars
+                       .cpp_representation[types_.definitions().integer_scalars.index(*scalar)])) {
+        facts =
+            facts_for(types_.definitions()
+                          .integer_scalars
+                          .cpp_representation[types_.definitions().integer_scalars.index(*scalar)],
+                      active,
+                      diagnostics,
+                      context);
+    } else if (auto const soa{
+                   ((types_.definition(node)).kind() == lispb::schema::TypeDefinitionKind::soa
+                        ? std::optional{types_.definition(node)}
+                        : std::nullopt)};
+               static_cast<bool>(soa) &&
+               !std::string{types_.strings().view(types_.cpp_spelling(node))}.empty()) {
+        facts = lookup(
+            std::string{types_.strings().view(types_.cpp_spelling(node))}, diagnostics, context);
     } else {
         diagnostics.push_back({DiagnosticSeverity::warning,
                                context + " has no supported complete-object representation."});
@@ -247,17 +358,20 @@ auto PhysicalFactsResolver::analyze_record(lispb::schema::TypeId const type,
                           .alignment_bytes = std::nullopt,
                           .diagnostics = {},
                           .aggregate = {}};
-    auto const& node{types_.type(type)};
-    auto const* record{std::get_if<lispb::schema::RecordType>(&node.definition)};
-    if (record == nullptr) {
+    auto const& node{type};
+    auto const record{((types_.definition(node)).kind() == lispb::schema::TypeDefinitionKind::record
+                           ? std::optional{types_.definition(node)}
+                           : std::nullopt)};
+    if (!record) {
         result.diagnostics.push_back(
             {DiagnosticSeverity::error, "Selected semantic type is not a record."});
         return result;
     }
     if (std::ranges::find(active, type) != active.end()) {
-        result.diagnostics.push_back(
-            {DiagnosticSeverity::error,
-             "Illegal by-value record cycle involving '" + node.identity.name + "'."});
+        result.diagnostics.push_back({DiagnosticSeverity::error,
+                                      "Illegal by-value record cycle involving '" +
+                                          std::string{types_.strings().view(types_.name(node))} +
+                                          "'."});
         return result;
     }
     active.push_back(type);
@@ -266,18 +380,36 @@ auto PhysicalFactsResolver::analyze_record(lispb::schema::TypeId const type,
     std::uint64_t payload{};
     std::uint64_t internal_padding{};
     std::uint64_t record_alignment{1};
-    result.members.reserve(record->members.size());
-    for (auto const& member : record->members) {
-        auto member_result{RecordMemberAnalysis{.name = member.name,
-                                                .semantic_type = member.semantic_type.type,
-                                                .element_count = member.count.value_or(1),
-                                                .element_facts = std::nullopt,
-                                                .offset_bytes = std::nullopt,
-                                                .extent_bytes = std::nullopt,
-                                                .padding_before_bytes = std::nullopt}};
-        auto const context{"Record '" + node.identity.name + "' member '" + member.name + "'"};
-        member_result.element_facts =
-            facts_for(member.semantic_type, active, result.diagnostics, context);
+    result.members.reserve(types_.definitions().records.members_of(*record).size());
+    for (auto const member_id : types_.definitions().records.members_of(*record)) {
+        auto const member{member_id};
+        auto member_result{RecordMemberAnalysis{
+            .name = std::string{types_.strings().view(
+                types_.definitions()
+                    .record_members.name[types_.definitions().record_members.index(member)])},
+            .semantic_type = types_.occurrences().type[types_.occurrences().index(
+                types_.definitions().record_members.semantic_type
+                    [types_.definitions().record_members.index(member)])],
+            .element_count =
+                types_.definitions()
+                    .record_members.count[types_.definitions().record_members.index(member)]
+                    .value_or(1),
+            .element_facts = std::nullopt,
+            .offset_bytes = std::nullopt,
+            .extent_bytes = std::nullopt,
+            .padding_before_bytes = std::nullopt}};
+        auto const context{
+            "Record '" + std::string{types_.strings().view(types_.name(node))} + "' member '" +
+            std::string{types_.strings().view(
+                types_.definitions()
+                    .record_members.name[types_.definitions().record_members.index(member)])} +
+            "'"};
+        member_result.element_facts = facts_for(
+            types_.definitions()
+                .record_members.semantic_type[types_.definitions().record_members.index(member)],
+            active,
+            result.diagnostics,
+            context);
         if (!member_result.element_facts.has_value()) {
             offset.reset();
             result.members.push_back(std::move(member_result));
@@ -331,7 +463,7 @@ auto PhysicalFactsResolver::analyze_record(lispb::schema::TypeId const type,
     }
 
     if (offset.has_value()) {
-        if (record->members.empty()) {
+        if (types_.definitions().records.members_of(*record).empty()) {
             result.payload_bytes = 0;
             result.internal_padding_bytes = 0;
             result.tail_padding_bytes = 0;
@@ -366,17 +498,21 @@ auto PhysicalFactsResolver::analyze_union(lispb::schema::TypeId const type,
                          .alignment_bytes = std::nullopt,
                          .diagnostics = {},
                          .aggregate = {}};
-    auto const& node{types_.type(type)};
-    auto const* union_type{std::get_if<lispb::schema::UnionType>(&node.definition)};
-    if (union_type == nullptr) {
+    auto const& node{type};
+    auto const union_type{
+        ((types_.definition(node)).kind() == lispb::schema::TypeDefinitionKind::union_type
+             ? std::optional{types_.definition(node)}
+             : std::nullopt)};
+    if (!union_type) {
         result.diagnostics.push_back(
             {DiagnosticSeverity::error, "Selected semantic type is not a union."});
         return result;
     }
     if (std::ranges::find(active, type) != active.end()) {
-        result.diagnostics.push_back(
-            {DiagnosticSeverity::error,
-             "Illegal by-value aggregate cycle involving '" + node.identity.name + "'."});
+        result.diagnostics.push_back({DiagnosticSeverity::error,
+                                      "Illegal by-value aggregate cycle involving '" +
+                                          std::string{types_.strings().view(types_.name(node))} +
+                                          "'."});
         return result;
     }
     active.push_back(type);
@@ -384,20 +520,39 @@ auto PhysicalFactsResolver::analyze_union(lispb::schema::TypeId const type,
     std::uint64_t largest_extent{};
     std::uint64_t union_alignment{1};
     bool complete{true};
-    result.alternatives.reserve(union_type->alternatives.size());
-    for (auto const& alternative : union_type->alternatives) {
-        auto alternative_result{
-            UnionAlternativeAnalysis{.name = alternative.name,
-                                     .semantic_type = alternative.semantic_type.type,
-                                     .element_count = alternative.count.value_or(1),
-                                     .element_facts = std::nullopt,
-                                     .extent_bytes = std::nullopt,
-                                     .slack_bytes = std::nullopt,
-                                     .total_slack_bytes = std::nullopt}};
-        auto const context{"Union '" + node.identity.name + "' alternative '" + alternative.name +
-                           "'"};
-        alternative_result.element_facts =
-            facts_for(alternative.semantic_type, active, result.diagnostics, context);
+    result.alternatives.reserve(types_.definitions().unions.alternatives_of(*union_type).size());
+    for (auto const alternative_id : types_.definitions().unions.alternatives_of(*union_type)) {
+        auto const alternative{alternative_id};
+        auto alternative_result{UnionAlternativeAnalysis{
+            .name = std::string{types_.strings().view(
+                types_.definitions()
+                    .union_alternatives
+                    .name[types_.definitions().union_alternatives.index(alternative)])},
+            .semantic_type = types_.occurrences().type[types_.occurrences().index(
+                types_.definitions().union_alternatives.semantic_type
+                    [types_.definitions().union_alternatives.index(alternative)])],
+            .element_count = types_.definitions()
+                                 .union_alternatives
+                                 .count[types_.definitions().union_alternatives.index(alternative)]
+                                 .value_or(1),
+            .element_facts = std::nullopt,
+            .extent_bytes = std::nullopt,
+            .slack_bytes = std::nullopt,
+            .total_slack_bytes = std::nullopt}};
+        auto const context{
+            "Union '" + std::string{types_.strings().view(types_.name(node))} + "' alternative '" +
+            std::string{types_.strings().view(
+                types_.definitions()
+                    .union_alternatives
+                    .name[types_.definitions().union_alternatives.index(alternative)])} +
+            "'"};
+        alternative_result.element_facts = facts_for(
+            types_.definitions()
+                .union_alternatives
+                .semantic_type[types_.definitions().union_alternatives.index(alternative)],
+            active,
+            result.diagnostics,
+            context);
         if (!alternative_result.element_facts.has_value()) {
             complete = false;
             result.alternatives.push_back(std::move(alternative_result));
@@ -465,63 +620,112 @@ auto PhysicalFactsResolver::analyze_tagged_union(lispb::schema::TypeId const typ
                                .count_sentinel_tag = std::nullopt,
                                .diagnostics = {},
                                .aggregate = {}};
-    auto const& node{types_.type(type)};
-    auto const* tagged{std::get_if<lispb::schema::TaggedUnionType>(&node.definition)};
-    if (tagged == nullptr) {
+    auto const& node{type};
+    auto const tagged{
+        ((types_.definition(node)).kind() == lispb::schema::TypeDefinitionKind::tagged_union
+             ? std::optional{types_.definition(node)}
+             : std::nullopt)};
+    if (!tagged) {
         result.diagnostics.push_back(
             {DiagnosticSeverity::error, "Selected semantic type is not a tagged union."});
         return result;
     }
-    result.discriminant_type = tagged->discriminant.type;
-    auto const& discriminant_node{types_.type(tagged->discriminant.type)};
-    auto const* enumeration{std::get_if<lispb::schema::EnumType>(&discriminant_node.definition)};
-    if (enumeration != nullptr) {
+    result.discriminant_type = types_.occurrences().type[types_.occurrences().index(
+        types_.definitions()
+            .tagged_unions.discriminant[types_.definitions().tagged_unions.index(*tagged)])];
+    auto const& discriminant_node{types_.occurrences().type[types_.occurrences().index(
+        types_.definitions()
+            .tagged_unions.discriminant[types_.definitions().tagged_unions.index(*tagged)])]};
+    auto const enumeration{((types_.definition(discriminant_node)).kind() ==
+                                    lispb::schema::TypeDefinitionKind::enumeration
+                                ? std::optional{types_.definition(discriminant_node)}
+                                : std::nullopt)};
+    if (static_cast<bool>(enumeration)) {
         std::set<std::string, std::less<>> mapped;
-        for (auto const& alternative : tagged->alternatives) {
-            mapped.insert(alternative.tag);
+        for (auto const alternative_id :
+             types_.definitions().tagged_unions.alternatives_of(*tagged)) {
+            auto const alternative{alternative_id};
+            mapped.insert(std::string{types_.strings().view(
+                types_.definitions()
+                    .tagged_union_alternatives
+                    .tag[types_.definitions().tagged_union_alternatives.index(alternative)])});
         }
-        for (auto const& enumerator : enumeration->enumerators) {
-            if (enumerator.count_sentinel) {
-                result.count_sentinel_tag = enumerator.name;
-            } else if (enumerator.sentinel) {
-                result.sentinel_tags.push_back(enumerator.name);
-            } else if (mapped.contains(enumerator.name)) {
-                result.mapped_live_tags.push_back(enumerator.name);
+        auto const& domains{types_.enum_domains()};
+        auto const domain{
+            types_.definitions().enums.domain[types_.definitions().enums.index(*enumeration)]};
+        auto const& enumerators{types_.declarations().enumerators};
+        for (auto const enumerator : domains.values(domain)) {
+            auto const row{enumerators.index(enumerator)};
+            auto name{std::string{types_.strings().view(enumerators.name[row])}};
+            if (enumerator == domains.count_value[domains.index(domain)]) {
+                result.count_sentinel_tag = std::move(name);
+            } else if (enumerators.sentinel[row]) {
+                result.sentinel_tags.push_back(std::move(name));
+            } else if (mapped.contains(name)) {
+                result.mapped_live_tags.push_back(std::move(name));
             } else {
-                result.unmapped_live_tags.push_back(enumerator.name);
+                result.unmapped_live_tags.push_back(std::move(name));
             }
         }
     }
     if (std::ranges::find(active, type) != active.end()) {
-        result.diagnostics.push_back(
-            {DiagnosticSeverity::error,
-             "Illegal by-value aggregate cycle involving '" + node.identity.name + "'."});
+        result.diagnostics.push_back({DiagnosticSeverity::error,
+                                      "Illegal by-value aggregate cycle involving '" +
+                                          std::string{types_.strings().view(types_.name(node))} +
+                                          "'."});
         return result;
     }
     active.push_back(type);
 
-    result.discriminant_facts = facts_for(tagged->discriminant,
-                                          active,
-                                          result.diagnostics,
-                                          "Tagged union '" + node.identity.name + "' discriminant");
+    result.discriminant_facts = facts_for(
+        types_.definitions()
+            .tagged_unions.discriminant[types_.definitions().tagged_unions.index(*tagged)],
+        active,
+        result.diagnostics,
+        "Tagged union '" + std::string{types_.strings().view(types_.name(node))} +
+            "' discriminant");
     std::uint64_t largest_extent{};
     std::uint64_t payload_alignment{1};
     bool payload_complete{true};
-    result.alternatives.reserve(tagged->alternatives.size());
-    for (auto const& alternative : tagged->alternatives) {
-        auto alternative_result{
-            TaggedUnionAlternativeAnalysis{.name = alternative.name,
-                                           .tag = alternative.tag,
-                                           .semantic_type = alternative.semantic_type.type,
-                                           .element_count = alternative.count.value_or(1),
-                                           .element_facts = std::nullopt,
-                                           .extent_bytes = std::nullopt,
-                                           .payload_slack_bytes = std::nullopt,
-                                           .total_payload_slack_bytes = std::nullopt}};
-        auto const context{"Tagged union '" + node.identity.name + "' alternative '" +
-                           alternative.name + "'"};
-        alternative_result.element_facts =
-            facts_for(alternative.semantic_type, active, result.diagnostics, context);
+    result.alternatives.reserve(types_.definitions().tagged_unions.alternatives_of(*tagged).size());
+    for (auto const alternative_id : types_.definitions().tagged_unions.alternatives_of(*tagged)) {
+        auto const alternative{alternative_id};
+        auto alternative_result{TaggedUnionAlternativeAnalysis{
+            .name = std::string{types_.strings().view(
+                types_.definitions()
+                    .tagged_union_alternatives
+                    .name[types_.definitions().tagged_union_alternatives.index(alternative)])},
+            .tag = std::string{types_.strings().view(
+                types_.definitions()
+                    .tagged_union_alternatives
+                    .tag[types_.definitions().tagged_union_alternatives.index(alternative)])},
+            .semantic_type = types_.occurrences().type[types_.occurrences().index(
+                types_.definitions().tagged_union_alternatives.semantic_type
+                    [types_.definitions().tagged_union_alternatives.index(alternative)])],
+            .element_count =
+                types_.definitions()
+                    .tagged_union_alternatives
+                    .count[types_.definitions().tagged_union_alternatives.index(alternative)]
+                    .value_or(1),
+            .element_facts = std::nullopt,
+            .extent_bytes = std::nullopt,
+            .payload_slack_bytes = std::nullopt,
+            .total_payload_slack_bytes = std::nullopt}};
+        auto const context{
+            "Tagged union '" + std::string{types_.strings().view(types_.name(node))} +
+            "' alternative '" +
+            std::string{types_.strings().view(
+                types_.definitions()
+                    .tagged_union_alternatives
+                    .name[types_.definitions().tagged_union_alternatives.index(alternative)])} +
+            "'"};
+        alternative_result.element_facts = facts_for(
+            types_.definitions()
+                .tagged_union_alternatives
+                .semantic_type[types_.definitions().tagged_union_alternatives.index(alternative)],
+            active,
+            result.diagnostics,
+            context);
         if (!alternative_result.element_facts.has_value()) {
             payload_complete = false;
             result.alternatives.push_back(std::move(alternative_result));

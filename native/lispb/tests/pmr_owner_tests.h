@@ -2,6 +2,7 @@
 
 #include "pmr_test_support.h"
 
+#include <cassert>
 #include <type_traits>
 #include <utility>
 

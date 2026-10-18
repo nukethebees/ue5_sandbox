@@ -4,9 +4,7 @@
 #pragma once
 
 #include <utility>
-
 namespace SlateGenerated {
-
 struct SSettingsSliderBuilder {
     using ThisClass = ::SSettingsSlider;
 
@@ -38,5 +36,4 @@ struct SSettingsSliderBuilder {
   private:
     ThisClass& self_;
 };
-
-}
+} // namespace SlateGenerated

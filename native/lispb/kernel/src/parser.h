@@ -1,14 +1,17 @@
 #pragma once
 
-#include "syntax.h"
-
+#include <codegen/sexpr/indices.h>
 #include <codegen/sexpr/reader.h>
+#include <codegen/sexpr/syntax.h>
+#include <kernel_codegen/document.h>
 
 #include <string_view>
 #include <vector>
 
 namespace kernel_codegen::detail {
 
-auto parse(std::string_view path, std::vector<codegen::sexpr::Form> forms) -> Document;
+void parse(lispb::codegen::sexpr::Syntax& syntax,
+           Document& document,
+           lispb::codegen::sexpr::SourceFileId file);
 
 }

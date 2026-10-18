@@ -1,10 +1,12 @@
 #pragma once
 
-namespace codegen {
+#include <cstdint>
 
-enum class SoaBackend {
+namespace lispb::codegen {
+
+enum class SoaBackend : std::uint8_t {
     unreal,
     standard_library,
 };
 
-} // namespace codegen
+} // namespace lispb::codegen

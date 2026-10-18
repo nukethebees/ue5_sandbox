@@ -1,61 +1,56 @@
+#include "compiler_test_context.h"
 #include "test_utilities.h"
 
+#include <codegen/ast/cpp_types.h>
+#include <codegen/ast/indices.h>
 #include <codegen/generator.h>
+#include <codegen/schema/declarations.h>
 #include <codegen/schema/schema_version.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/indices.h>
+#include <lispb/strings.h>
 
 #include <gtest/gtest.h>
 
-#include <map>
+#include <array>
+#include <span>
 #include <string>
+#include <string_view>
 #include <utility>
 
-namespace codegen {
+namespace lispb::codegen {
 namespace {
 
-auto render_fixed(std::vector<SoaSchema> schemas, TypeRegistry types = {}) -> std::string {
-    auto const files{render_modules(lower_modules(Manifest{
-        .schema_version = manifest_schema_version,
-        .types = std::move(types),
-        .modules = {NormalModuleSchema{
-            .settings = ModuleSettings{.name = "fixed", .header = "Fixed.h", .source = "Fixed.cpp"},
-            .declarations = {std::make_move_iterator(schemas.begin()),
-                             std::make_move_iterator(schemas.end())}}},
-    }))};
+auto render_fixed(CompilerTestContext& context,
+                  std::span<std::string_view const> const containers = {}) -> std::string {
+    std::string source{R"((module fixed :header "Fixed.h" :source "Fixed.cpp"
+        (struct FChild
+            (member names array FString)
+            (member weights array float)
+            (fixed TChildStorage))
+        (struct FRows :equivalent-type FRow
+            (member ids array int32)
+            (member children nested @child :fixed-schema FChild)
+            (fixed TRowsStorage :containers ()"};
+    if (containers.empty()) {
+        source += "TFixedRows";
+    } else {
+        for (auto const container : containers) {
+            source += std::string{container} + " ";
+        }
+    }
+    source += "))))";
+    auto const files{render_test_manifest(
+        context,
+        parse_test_manifest(
+            context, source, {{"child", context.storage.cpp_types.add("FChild")}}))};
     EXPECT_EQ(files.size(), 2);
     return files.front().content;
 }
 
-auto child_schema() -> SoaSchema {
-    return SoaSchema{
-        .name = "FChild",
-        .members =
-            {
-                SoaMemberSchema{"names", SoaMemberKind::array, TypeRef{"FString"}},
-                SoaMemberSchema{"weights", SoaMemberKind::array, TypeRef{"float"}},
-            },
-        .fixed = FixedSoaSchema{"TChildStorage", {}},
-    };
-}
-
-auto parent_schema(std::vector<std::string> containers = {"TFixedRows"}) -> SoaSchema {
-    return SoaSchema{
-        .name = "FRows",
-        .members =
-            {
-                SoaMemberSchema{"ids", SoaMemberKind::array, TypeRef{"int32"}},
-                SoaMemberSchema{"children", SoaMemberKind::nested, TypeRef{"@child"}, "FChild"},
-            },
-        .equivalent_type = TypeRef{"FRow"},
-        .fixed = FixedSoaSchema{"TRowsStorage", std::move(containers)},
-    };
-}
-
-auto fixed_types() -> TypeRegistry {
-    return {{"child", RegisteredTypeSchema{.cpp_type = CppType{"FChild"}}}};
-}
-
 TEST(FixedSoaLowering, PreservesRecursiveLeafOrderAndNestedStorage) {
-    auto const header{render_fixed({child_schema(), parent_schema()}, fixed_types())};
+    CompilerTestContext context;
+    auto const header{render_fixed(context)};
 
     EXPECT_NE(header.find("TChildStorage<Capacity> children_;"), std::string::npos);
     EXPECT_NE(header.find("template <typename TArg0, typename TArg1, typename TArg2>"),
@@ -76,8 +71,9 @@ TEST(FixedSoaLowering, PreservesRecursiveLeafOrderAndNestedStorage) {
 }
 
 TEST(FixedSoaLowering, GivesEachOwningContainerOneSizeAndFullValueSemantics) {
-    auto const header{render_fixed({child_schema(), parent_schema({"TFirstRows", "TSecondRows"})},
-                                   fixed_types())};
+    CompilerTestContext context;
+    auto const header{
+        render_fixed(context, std::array<std::string_view, 2>{"TFirstRows", "TSecondRows"})};
 
     EXPECT_EQ(occurrences(header, "size_type size_{};"), 2);
     for (auto const* container : {"TFirstRows", "TSecondRows"}) {
@@ -93,7 +89,8 @@ TEST(FixedSoaLowering, GivesEachOwningContainerOneSizeAndFullValueSemantics) {
 }
 
 TEST(FixedSoaLowering, EmitsCheckedEquivalentAccessAndBoundedMutation) {
-    auto const header{render_fixed({child_schema(), parent_schema()}, fixed_types())};
+    CompilerTestContext context;
+    auto const header{render_fixed(context)};
 
     EXPECT_NE(header.find("using equivalent_type = FRow;"), std::string::npos);
     EXPECT_NE(header.find("auto operator[](size_type const index) const -> equivalent_type"),
@@ -106,7 +103,8 @@ TEST(FixedSoaLowering, EmitsCheckedEquivalentAccessAndBoundedMutation) {
 }
 
 TEST(FixedSoaLowering, GeneratesNamedCapabilitiesForFixedOperations) {
-    auto const header{render_fixed({child_schema(), parent_schema()}, fixed_types())};
+    CompilerTestContext context;
+    auto const header{render_fixed(context)};
 
     EXPECT_NE(header.find("inline static constexpr bool supports_copy_construction"),
               std::string::npos);
@@ -134,4 +132,4 @@ TEST(FixedSoaLowering, GeneratesNamedCapabilitiesForFixedOperations) {
 }
 
 } // namespace
-} // namespace codegen
+} // namespace lispb::codegen

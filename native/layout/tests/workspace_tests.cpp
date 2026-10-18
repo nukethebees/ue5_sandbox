@@ -1,120 +1,55 @@
+#include "analyzer_test_fixtures.hpp"
 #include <ioj/layout/workspace.hpp>
 
 #include <codegen/schema/schema_version.h>
+#include <lispb/compiler_storage.h>
+#include <lispb/schema/type_graph.h>
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <filesystem>
+#include <optional>
+#include <string>
 
 namespace ioj::layout {
 namespace {
 
-auto enumeration(std::string name) -> codegen::EnumSchema {
-    return {.name = std::move(name),
-            .underlying_type =
-                codegen::TypeRef{.name = "std::uint8_t", .suffix = {}, .nested = std::nullopt},
-            .values = {{.name = "Value",
-                        .initializer = std::nullopt,
-                        .display_name = std::nullopt,
-                        .hidden = false,
-                        .serialized_name = std::nullopt}},
-            .count = std::nullopt,
-            .conversions = {},
-            .export_specifier = std::nullopt,
-            .unreal_projection = std::nullopt,
-            .bit_width = std::nullopt,
-            .reflection = codegen::EnumReflection::none,
-            .signedness = std::nullopt,
-            .enum_array = false,
-            .native_api = false,
-            .helpers = {}};
-}
-
-auto graph(bool const insert_before_target,
+auto graph(lispb::CompilerStorage& storage,
+           bool const insert_before_target,
            std::string packed_field = "value",
            std::string soa_column = "values",
            bool const change_packed_kind = false,
            bool const change_soa_kind = false) -> lispb::schema::TypeGraph {
-    std::vector<codegen::EnumSchema> enums;
-    enums.push_back(enumeration("First"));
+    std::string source{R"((module test :header "Test.h" :namespace test
+        (enum First std::uint8_t (value Value)))"};
     if (insert_before_target) {
-        enums.push_back(enumeration("Inserted"));
+        source += " (enum Inserted std::uint8_t (value Value))";
     }
-    enums.push_back(enumeration("Target"));
-    codegen::ModuleSettings settings{.name = "test",
-                                     .header = std::filesystem::path{"Test.h"},
-                                     .source = std::nullopt,
-                                     .header_include = std::nullopt,
-                                     .namespace_name = "test",
-                                     .include_order = {},
-                                     .prelude_lines = {}};
-    codegen::Manifest manifest{};
-    manifest.schema_version = codegen::manifest_schema_version;
-    manifest.modules.emplace_back(
-        codegen::NormalModuleSchema{.settings = std::move(settings),
-                                    .declarations = {std::make_move_iterator(enums.begin()),
-                                                     std::make_move_iterator(enums.end())},
-                                    .enum_helper_namespace = std::nullopt});
-
-    codegen::ModuleSettings packed_settings{};
-    packed_settings.name = "packed";
-    packed_settings.header = "Packed.h";
+    source += R"( (enum Target std::uint8_t (value Value)))
+        (module packed :header "Packed.h" )";
     if (change_packed_kind) {
-        manifest.modules.emplace_back(
-            codegen::NormalModuleSchema{.settings = std::move(packed_settings),
-                                        .declarations = {enumeration("Packet")},
-                                        .enum_helper_namespace = std::nullopt});
+        source += "(enum Packet std::uint8_t (value Value))";
     } else {
-        codegen::PackedValueSchema packed{};
-        packed.name = "Packet";
-        packed.storage_type.name = "std::uint8_t";
-        if (packed_field.empty()) {
-            packed_field = "other";
-        }
-        codegen::PackedFieldSchema field{};
-        field.name = std::move(packed_field);
-        field.type.name = "std::uint8_t";
-        field.bits = 8;
-        packed.segments.emplace_back(std::move(field));
-        manifest.modules.emplace_back(codegen::NormalModuleSchema{
-            .settings = std::move(packed_settings), .declarations = {std::move(packed)}});
+        source += "(packed-value Packet :storage std::uint8_t (field " +
+                  (packed_field.empty() ? "other" : packed_field) + " std::uint8_t :bits 8))";
     }
-
-    codegen::ModuleSettings soa_settings{};
-    soa_settings.name = "soa";
-    soa_settings.header = "Soa.h";
+    source += R"() (module soa :header "Soa.h" :backend standard-library )";
     if (change_soa_kind) {
-        manifest.modules.emplace_back(
-            codegen::NormalModuleSchema{.settings = std::move(soa_settings),
-                                        .declarations = {enumeration("Columns")},
-                                        .enum_helper_namespace = std::nullopt});
+        source += "(enum Columns std::uint8_t (value Value))";
     } else {
-        codegen::SoaSchema soa{};
-        soa.name = "Columns";
-        if (soa_column.empty()) {
-            soa_column = "other";
-        }
-        soa.members.push_back(codegen::SoaMemberSchema{
-            .name = std::move(soa_column),
-            .kind = codegen::SoaMemberKind::array,
-            .type = {.name = "std::uint32_t", .suffix = {}, .nested = std::nullopt},
-            .fixed_schema = std::nullopt,
-            .nested_schema = std::nullopt,
-            .mask_field = false,
-            .mask_dimensions = {},
-            .relationship = std::nullopt});
-        manifest.modules.emplace_back(
-            codegen::NormalModuleSchema{.settings = std::move(soa_settings),
-                                        .declarations = {std::move(soa)},
-                                        .soa_backend = codegen::SoaBackend::standard_library,
-                                        .soa_array_allocators = {}});
+        source += "(struct Columns (member " + (soa_column.empty() ? "other" : soa_column) +
+                  " array std::uint32_t))";
     }
-    return lispb::schema::resolve_type_graph(manifest);
+    source += ')';
+    return fixture_graph(storage, source);
 }
 
 TEST(LayoutWorkspace, CreatesDuplicatesResetsAndDeletesVariants) {
-    LayoutWorkspace workspace{graph(false)};
-    auto const schema{*workspace.types().find_declared("soa", "Columns")};
+    lispb::CompilerStorage storage;
+    auto types{graph(storage, false)};
+    LayoutWorkspace workspace{types};
+    auto const schema{*fixture_find(workspace.types(), "soa", "Columns")};
 
     EXPECT_FALSE(workspace.set_capacity(schema, 100));
     auto const first{workspace.create_variant("First")};
@@ -130,6 +65,7 @@ TEST(LayoutWorkspace, CreatesDuplicatesResetsAndDeletesVariants) {
 }
 
 TEST(LayoutWorkspace, OnlyChangesRevisionWhenStateChanges) {
+    lispb::CompilerStorage storage;
     LayoutWorkspace workspace;
     auto const variant{workspace.create_variant("Variant")};
     auto const initial_revision{workspace.revision()};
@@ -139,7 +75,8 @@ TEST(LayoutWorkspace, OnlyChangesRevisionWhenStateChanges) {
     EXPECT_FALSE(workspace.rename_variant(variant, "Variant"));
     EXPECT_EQ(workspace.revision(), initial_revision);
     EXPECT_EQ(workspace.graph_revision(), graph_revision);
-    workspace.replace_types(graph(false));
+    auto replacement_types_6{graph(storage, false)};
+    workspace.replace_types(replacement_types_6);
     EXPECT_EQ(workspace.graph_revision(), graph_revision + 1);
 }
 
@@ -157,9 +94,11 @@ TEST(LayoutWorkspace, TracksPositiveAnalysisElementCount) {
 }
 
 TEST(LayoutWorkspace, ResetsIndividualPlanningOverrides) {
-    LayoutWorkspace workspace{graph(false)};
-    auto const packed{*workspace.types().find_declared("packed", "Packet")};
-    auto const soa{*workspace.types().find_declared("soa", "Columns")};
+    lispb::CompilerStorage storage;
+    auto types{graph(storage, false)};
+    LayoutWorkspace workspace{types};
+    auto const packed{*fixture_find(workspace.types(), "packed", "Packet")};
+    auto const soa{*fixture_find(workspace.types(), "soa", "Columns")};
     workspace.create_variant("Variant");
 
     EXPECT_TRUE(workspace.set_packed_storage_type(packed, "std::uint64_t"));
@@ -174,9 +113,11 @@ TEST(LayoutWorkspace, ResetsIndividualPlanningOverrides) {
 }
 
 TEST(LayoutWorkspace, RemapsOverridesByStableIdentityWhenTypeIdsChange) {
-    LayoutWorkspace workspace{graph(false)};
-    auto const old_packed{workspace.types().find_declared("packed", "Packet")};
-    auto const old_soa{workspace.types().find_declared("soa", "Columns")};
+    lispb::CompilerStorage storage;
+    auto types{graph(storage, false)};
+    LayoutWorkspace workspace{types};
+    auto const old_packed{fixture_find(workspace.types(), "packed", "Packet")};
+    auto const old_soa{fixture_find(workspace.types(), "soa", "Columns")};
     ASSERT_TRUE(old_packed.has_value());
     ASSERT_TRUE(old_soa.has_value());
     workspace.create_variant("Variant");
@@ -185,10 +126,11 @@ TEST(LayoutWorkspace, RemapsOverridesByStableIdentityWhenTypeIdsChange) {
     ASSERT_TRUE(workspace.set_soa_column_type(*old_soa, "values", "std::uint16_t"));
     ASSERT_TRUE(workspace.set_capacity(*old_soa, 42));
 
-    workspace.replace_types(graph(true));
+    auto replacement_types_5{graph(storage, true)};
+    workspace.replace_types(replacement_types_5);
 
-    auto const new_packed{workspace.types().find_declared("packed", "Packet")};
-    auto const new_soa{workspace.types().find_declared("soa", "Columns")};
+    auto const new_packed{fixture_find(workspace.types(), "packed", "Packet")};
+    auto const new_soa{fixture_find(workspace.types(), "soa", "Columns")};
     ASSERT_TRUE(new_packed.has_value());
     ASSERT_TRUE(new_soa.has_value());
     EXPECT_NE(*new_packed, *old_packed);
@@ -206,46 +148,56 @@ TEST(LayoutWorkspace, RemapsOverridesByStableIdentityWhenTypeIdsChange) {
 }
 
 TEST(LayoutWorkspace, DropsDeletedOrRenamedMemberOverridesWithoutResurrection) {
-    LayoutWorkspace workspace{graph(false)};
-    auto const packed{*workspace.types().find_declared("packed", "Packet")};
-    auto const soa{*workspace.types().find_declared("soa", "Columns")};
+    lispb::CompilerStorage storage;
+    auto types{graph(storage, false)};
+    LayoutWorkspace workspace{types};
+    auto const packed{*fixture_find(workspace.types(), "packed", "Packet")};
+    auto const soa{*fixture_find(workspace.types(), "soa", "Columns")};
     workspace.create_variant("Variant");
     ASSERT_TRUE(workspace.set_packed_field_width(packed, "value", 7));
     ASSERT_TRUE(workspace.set_soa_column_type(soa, "values", "std::uint16_t"));
 
-    workspace.replace_types(graph(false, "", ""));
+    auto replacement_types_4{graph(storage, false, "", "")};
+    workspace.replace_types(replacement_types_4);
     EXPECT_TRUE(workspace.active_variant().overrides.packed_field_widths.empty());
     EXPECT_TRUE(workspace.active_variant().overrides.soa_column_types.empty());
-    workspace.replace_types(graph(false));
+    auto replacement_types_3{graph(storage, false)};
+    workspace.replace_types(replacement_types_3);
     EXPECT_TRUE(workspace.active_variant().overrides.packed_field_widths.empty());
     EXPECT_TRUE(workspace.active_variant().overrides.soa_column_types.empty());
 
     ASSERT_TRUE(workspace.set_packed_field_width(packed, "value", 7));
     ASSERT_TRUE(workspace.set_soa_column_type(soa, "values", "std::uint16_t"));
-    workspace.replace_types(graph(false, "renamed", "renamed"));
+    auto replacement_types_2{graph(storage, false, "renamed", "renamed")};
+    workspace.replace_types(replacement_types_2);
     EXPECT_TRUE(workspace.active_variant().overrides.packed_field_widths.empty());
     EXPECT_TRUE(workspace.active_variant().overrides.soa_column_types.empty());
 }
 
 TEST(LayoutWorkspace, DropsOverridesWhenOwnerChangesKind) {
-    LayoutWorkspace workspace{graph(false)};
-    auto const packed{*workspace.types().find_declared("packed", "Packet")};
-    auto const soa{*workspace.types().find_declared("soa", "Columns")};
+    lispb::CompilerStorage storage;
+    auto types{graph(storage, false)};
+    LayoutWorkspace workspace{types};
+    auto const packed{*fixture_find(workspace.types(), "packed", "Packet")};
+    auto const soa{*fixture_find(workspace.types(), "soa", "Columns")};
     workspace.create_variant("Variant");
     ASSERT_TRUE(workspace.set_packed_storage_type(packed, "std::uint16_t"));
     ASSERT_TRUE(workspace.set_packed_field_width(packed, "value", 7));
     ASSERT_TRUE(workspace.set_soa_column_type(soa, "values", "std::uint16_t"));
     ASSERT_TRUE(workspace.set_capacity(soa, 42));
 
-    workspace.replace_types(graph(false, "value", "values", true, true));
+    auto replacement_types_1{graph(storage, false, "value", "values", true, true)};
+    workspace.replace_types(replacement_types_1);
     EXPECT_EQ(workspace.active_variant().overrides, VariantOverrides{});
 }
 
 TEST(LayoutWorkspace, RejectsImpossibleOverrideOwnersAndMembers) {
-    LayoutWorkspace workspace{graph(false)};
-    auto const packed{*workspace.types().find_declared("packed", "Packet")};
-    auto const soa{*workspace.types().find_declared("soa", "Columns")};
-    auto const enumeration_id{*workspace.types().find_declared("test", "Target")};
+    lispb::CompilerStorage storage;
+    auto types{graph(storage, false)};
+    LayoutWorkspace workspace{types};
+    auto const packed{*fixture_find(workspace.types(), "packed", "Packet")};
+    auto const soa{*fixture_find(workspace.types(), "soa", "Columns")};
+    auto const enumeration_id{*fixture_find(workspace.types(), "test", "Target")};
     workspace.create_variant("Variant");
     auto const revision{workspace.revision()};
 

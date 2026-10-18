@@ -1,12 +1,11 @@
 #pragma once
 
-#include <codegen/sexpr/syntax.h>
+#include <codegen/sexpr/indices.h>
+#include <codegen/sexpr/token_range.h>
 
-#include <string_view>
-#include <vector>
+namespace lispb::codegen::sexpr {
+class Syntax;
 
-namespace codegen::sexpr {
-
-auto lex(std::string_view path, std::string_view source) -> std::vector<Token>;
+[[nodiscard]] auto lex(Syntax& syntax, SourceFileId file) -> TokenRange;
 
 }
