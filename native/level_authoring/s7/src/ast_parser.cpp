@@ -67,7 +67,7 @@ auto AstParser::symbol(s7::NodeIndex const node, std::string_view const node_pat
         return {};
     }
     std::string result{ast_.text(node)};
-    std::ranges::transform(result, result.begin(), to_ascii_lower);
+    std::ranges::transform(result, result.begin(), ioj::tolower);
     return result;
 }
 auto AstParser::team(s7::NodeIndex const node, std::string_view const node_path) -> Team {

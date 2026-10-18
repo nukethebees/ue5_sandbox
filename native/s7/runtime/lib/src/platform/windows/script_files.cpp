@@ -15,7 +15,7 @@
 
 namespace ioj::s7::detail {
 [[nodiscard]] auto path_key(std::string key) -> std::string {
-    std::ranges::transform(key, key.begin(), ioj::to_ascii_lower);
+    std::ranges::transform(key, key.begin(), ioj::tolower);
     return key;
 }
 
@@ -52,10 +52,9 @@ auto open_script_file(std::string_view const root_utf8, std::string_view const r
         }
         component_start = index + 1;
     }
-    if (path_size < 4 || !std::ranges::equal(requested_path.substr(path_size - 4),
-                                             std::string_view{".scm"},
-                                             {},
-                                             ioj::to_ascii_lower)) {
+    if (path_size < 4 ||
+        !std::ranges::equal(
+            requested_path.substr(path_size - 4), std::string_view{".scm"}, {}, ioj::tolower)) {
         return std::unexpected("load-script only accepts .scm files.");
     }
 

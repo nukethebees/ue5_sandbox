@@ -7,18 +7,17 @@
 
 namespace ioj::levels::authoring {
 auto is_canonical_symbol(std::string_view const value) -> bool {
-    return !value.empty() && is_ascii_lower(value.front()) &&
-           std::ranges::all_of(value, [](char const c) {
-               return is_ascii_lower(c) || is_ascii_digit(c) || c == '-';
-           });
+    return !value.empty() && ioj::islower(value.front()) &&
+           std::ranges::all_of(
+               value, [](char const c) { return ioj::islower(c) || ioj::isdigit(c) || c == '-'; });
 }
 
 auto canonical_symbol(std::string_view const text, std::string_view const fallback) -> std::string {
     assert(is_canonical_symbol(fallback));
     std::string result;
     for (auto const byte : text) {
-        auto const c{to_ascii_lower(byte)};
-        if (is_ascii_lower(c) || is_ascii_digit(c)) {
+        auto const c{ioj::tolower(byte)};
+        if (ioj::islower(c) || ioj::isdigit(c)) {
             result.push_back(c);
         } else if (!result.empty() && result.back() != '-') {
             result.push_back('-');
@@ -30,7 +29,7 @@ auto canonical_symbol(std::string_view const text, std::string_view const fallba
     if (result.empty()) {
         return std::string{fallback};
     }
-    if (!is_ascii_lower(result.front())) {
+    if (!ioj::islower(result.front())) {
         result = std::string{fallback} + '-' + result;
     }
     return result;
