@@ -6,6 +6,7 @@
 #include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/levels/fighter_spawn_slot_validation.h>
+#include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/level_initialisation_data.h>
 #include <ioj/sim/missions/mission_fail_reason.h>
 #include <ioj/sim/missions/mission_mode.h>
@@ -14,8 +15,8 @@
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/entities/TestEntity.h>
-#include <SpaceGame/levels/CompileLevelEvents.h>
 #include <SpaceGame/levels/LevelEntityResolution.h>
+#include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/missions/TestMissionModeConversion.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
@@ -25,6 +26,8 @@
 #include <SpaceGamePresentation/integration/RotatorConversion.h>
 #include <SpaceGamePresentation/integration/TransformConversion.h>
 #include <SpaceGamePresentation/integration/VectorConversion.h>
+
+#include <SandboxCoreEngine/strings.h>
 
 #include <Engine/StaticMesh.h>
 #include <Engine/StaticMeshSocket.h>
@@ -293,11 +296,11 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
                                      ::ioj::sim::collision::WorldAABBs static_bounds,
                                      UStaticMesh const* const player_collision_mesh)
     -> FLevelSimBuildResult {
-    auto const validation{validate_level(definition)};
-    if (!validation) {
+    auto const native{::ioj::levels::authoring::to_native(definition)};
+    if (!native) {
         FLevelStartErrors errors;
-        for (auto const& error : validation.errors) {
-            errors.add(error.message);
+        for (auto const& error : native.error()) {
+            errors.add(to_fstring(error.message));
         }
         return FLevelSimBuildResult{std::unexpect, MoveTemp(errors)};
     }
@@ -311,9 +314,13 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     data.static_bounds = MoveTemp(static_bounds);
     ::ioj::sim::SimClock clock;
     clock.initialise(clock_settings);
-    auto compiled{compile_level_events(definition, clock, data.capital_ships, data.turrets)};
+    auto compiled{::ioj::levels::compile_level(*native, clock, data.capital_ships, data.turrets)};
     if (!compiled) {
-        return FLevelSimBuildResult{std::unexpect, MoveTemp(compiled.error())};
+        FLevelStartErrors errors;
+        for (auto const& error : compiled.error()) {
+            errors.add(to_fstring(error));
+        }
+        return FLevelSimBuildResult{std::unexpect, MoveTemp(errors)};
     }
     data.level_events = MoveTemp(compiled.value());
     return result;

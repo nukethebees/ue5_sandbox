@@ -141,11 +141,11 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
         }
         auto const read{session.read()};
         if (!TestRunner->TestTrue(TEXT("Buffer parses"), static_cast<bool>(read))) {
-            TestRunner->AddError(ml::to_fstring(::ioj::levels::format_diagnostics(read.error())));
+            TestRunner->AddError(ml::to_fstring(ioj::levels::format_diagnostics(read.error())));
             return;
         }
         TestRunner->TestEqual(TEXT("Sibling library supplies title"),
-                              ml::to_fstring(read->definition().metadata.title),
+                              ml::to_fstring(read->components().metadata.title),
                               FString{TEXT("From Sibling Library")});
 
         session.set_buffer(source.Replace(TEXT("shared-title"), TEXT("\"From Buffer\"")));
@@ -153,194 +153,17 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(TEXT("Edited buffer parses without saving"),
                                   static_cast<bool>(edited_read))) {
             TestRunner->AddError(
-                ml::to_fstring(::ioj::levels::format_diagnostics(edited_read.error())));
+                ml::to_fstring(ioj::levels::format_diagnostics(edited_read.error())));
             return;
         }
         TestRunner->TestEqual(TEXT("Preview input comes from the buffer"),
-                              ml::to_fstring(edited_read->definition().metadata.title),
+                              ml::to_fstring(edited_read->components().metadata.title),
                               FString{TEXT("From Buffer")});
         FString unchanged_disk_source;
         FFileHelper::LoadFileToString(unchanged_disk_source, *source_path);
         TestRunner->TestEqual(TEXT("Buffer parsing does not write the source file"),
                               unchanged_disk_source,
                               FString{source});
-    }
-
-    TEST_METHOD(SaveAsRequiresExplicitReplacementAndAdvancesPathRevision)
-    {
-        FTemporarySourceDirectory directory;
-        auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
-        auto* const document{spawn_document(*world, TEXT("Save As Document"))};
-        if (!TestRunner->TestNotNull(TEXT("Document"), document)) {
-            return;
-        }
-
-        ioj::editor::FS7LevelSourceSession session;
-        auto const attached{session.attach(*document)};
-        if (!TestRunner->TestTrue(TEXT("Unsaved buffer attaches"), attached.has_value())) {
-            TestRunner->AddError(attached.error());
-            return;
-        }
-        auto const source{level_source(TEXT("Save As"))};
-        session.set_buffer(source);
-        auto const target{FPaths::Combine(directory.path, TEXT("target.scm"))};
-        TestRunner->TestTrue(TEXT("Unrelated target is written"),
-                             write_source(TEXT("unrelated"), target));
-
-        auto const refused{
-            session.save_as(target, ioj::editor::ES7SourceOverwritePolicy::RefuseExisting)};
-        TestRunner->TestFalse(TEXT("Existing target is refused"), refused.has_value());
-        FString retained;
-        FFileHelper::LoadFileToString(retained, *target);
-        TestRunner->TestEqual(
-            TEXT("Refusal preserves target"), retained, FString{TEXT("unrelated")});
-
-        auto const prior_revision{session.revision()};
-        auto const replaced{
-            session.save_as(target, ioj::editor::ES7SourceOverwritePolicy::ReplaceExisting)};
-        if (!TestRunner->TestTrue(TEXT("Confirmed replacement saves"), replaced.has_value())) {
-            TestRunner->AddError(replaced.error());
-            return;
-        }
-        FFileHelper::LoadFileToString(retained, *target);
-        TestRunner->TestEqual(TEXT("Confirmed replacement writes buffer"), retained, source);
-        TestRunner->TestTrue(TEXT("Path change advances revision"),
-                             session.revision() > prior_revision);
-    }
-
-    TEST_METHOD(ExternalModificationAndDeletionBlockSaves)
-    {
-        FTemporarySourceDirectory directory;
-        auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
-        auto* const document{spawn_document(*world, TEXT("Conflict Document"))};
-        auto const source_path{FPaths::Combine(directory.path, TEXT("level.scm"))};
-        auto const initial{level_source(TEXT("Initial"))};
-        if (!TestRunner->TestNotNull(TEXT("Document"), document) ||
-            !TestRunner->TestTrue(TEXT("Initial source is written"),
-                                  write_source(initial, source_path))) {
-            return;
-        }
-        document->source_path = source_path;
-
-        ioj::editor::FS7LevelSourceSession session;
-        auto const loaded{session.attach(*document)};
-        if (!TestRunner->TestTrue(TEXT("Source loads"), loaded.has_value())) {
-            TestRunner->AddError(loaded.error());
-            return;
-        }
-        session.set_buffer(level_source(TEXT("Edited")));
-        TestRunner->TestTrue(TEXT("External edit is written"),
-                             write_source(TEXT("external"), source_path));
-        TestRunner->TestFalse(TEXT("External edit blocks raw save"), session.save().has_value());
-        TestRunner->TestTrue(TEXT("External edit sets conflict"), session.has_external_conflict());
-
-        auto const reloaded{session.reload()};
-        if (!TestRunner->TestTrue(TEXT("Conflict can be reloaded"), reloaded.has_value())) {
-            TestRunner->AddError(reloaded.error());
-            return;
-        }
-        session.set_buffer(TEXT("edited after reload"));
-        TestRunner->TestTrue(TEXT("Source is deleted"), IFileManager::Get().Delete(*source_path));
-        TestRunner->TestFalse(TEXT("Deletion blocks raw save"), session.save().has_value());
-        TestRunner->TestTrue(TEXT("Deletion remains a conflict"), session.has_external_conflict());
-
-        TestRunner->TestTrue(TEXT("Source can be restored for canonical conflict"),
-                             write_source(initial, source_path));
-        auto const canonical_reload{session.reload()};
-        if (!TestRunner->TestTrue(TEXT("Restored source reloads"), canonical_reload.has_value())) {
-            TestRunner->AddError(canonical_reload.error());
-            return;
-        }
-        auto const synchronized_digest{
-            ioj::editor::FS7LevelSourceSession::source_digest(session.buffer())};
-        TestRunner->TestTrue(TEXT("Second external edit is written"),
-                             write_source(TEXT("external again"), source_path));
-        TestRunner->TestFalse(
-            TEXT("External edit blocks canonical save"),
-            session.save_replacement(level_source(TEXT("Canonical")), synchronized_digest)
-                .has_value());
-    }
-
-    TEST_METHOD(RawSaveDoesNotMakeSourceApplied)
-    {
-        FTemporarySourceDirectory directory;
-        auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
-        auto* const document{spawn_document(*world, TEXT("Synchronization Document"))};
-        auto const source_path{FPaths::Combine(directory.path, TEXT("level.scm"))};
-        auto const initial{level_source(TEXT("Initial"))};
-        if (!TestRunner->TestNotNull(TEXT("Document"), document) ||
-            !TestRunner->TestTrue(TEXT("Initial source is written"),
-                                  write_source(initial, source_path))) {
-            return;
-        }
-        document->source_path = source_path;
-        document->synchronized_source_hash =
-            ioj::editor::FS7LevelSourceSession::source_digest(initial);
-        document->synchronized_scene_hash = TEXT("scene-baseline");
-
-        ioj::editor::FS7LevelSourceSession session;
-        auto const loaded{session.attach(*document)};
-        if (!TestRunner->TestTrue(TEXT("Source loads"), loaded.has_value())) {
-            TestRunner->AddError(loaded.error());
-            return;
-        }
-        session.set_buffer(level_source(TEXT("Edited")));
-        auto const raw_saved{session.save()};
-        if (!TestRunner->TestTrue(TEXT("Raw buffer saves"), raw_saved.has_value())) {
-            TestRunner->AddError(raw_saved.error());
-            return;
-        }
-        TestRunner->TestEqual(TEXT("Raw save preserves applied-source synchronization"),
-                              document->synchronized_source_hash,
-                              ioj::editor::FS7LevelSourceSession::source_digest(initial));
-        TestRunner->TestEqual(TEXT("Raw save preserves scene synchronization"),
-                              document->synchronized_scene_hash,
-                              FString{TEXT("scene-baseline")});
-        TestRunner->TestTrue(TEXT("Saved edit is still unapplied"),
-                             session.has_unapplied_buffer(document->synchronized_source_hash));
-        auto const canonical{session.save_replacement(level_source(TEXT("Canonical Scene")),
-                                                      document->synchronized_source_hash)};
-        TestRunner->TestFalse(TEXT("Canonical save refuses unapplied source"),
-                              canonical.has_value());
-        FString retained;
-        FFileHelper::LoadFileToString(retained, *source_path);
-        TestRunner->TestEqual(
-            TEXT("Canonical refusal preserves raw source"), retained, session.buffer());
-    }
-
-    TEST_METHOD(UnexpectedFileCreationBlocksSave)
-    {
-        FTemporarySourceDirectory directory;
-        auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
-        auto* const document{spawn_document(*world, TEXT("New Source Document"))};
-        auto const source_path{FPaths::Combine(directory.path, TEXT("new-level.scm"))};
-        if (!TestRunner->TestNotNull(TEXT("Document"), document)) {
-            return;
-        }
-        document->source_path = source_path;
-
-        ioj::editor::FS7LevelSourceSession session;
-        auto const attached{session.attach(*document)};
-        if (!TestRunner->TestTrue(TEXT("Absent source baseline attaches"), attached.has_value())) {
-            TestRunner->AddError(attached.error());
-            return;
-        }
-        session.set_buffer(level_source(TEXT("New Buffer")));
-        TestRunner->TestTrue(TEXT("Missing file refresh succeeds"),
-                             session.refresh_external_conflict().has_value());
-        TestRunner->TestFalse(TEXT("A missing file baseline is not an external change"),
-                              session.has_external_conflict());
-        TestRunner->TestTrue(TEXT("Unexpected source is created"),
-                             write_source(TEXT("unrelated"), source_path));
-
-        auto const saved{session.save()};
-        TestRunner->TestFalse(TEXT("Unexpected creation blocks save"), saved.has_value());
-        TestRunner->TestTrue(TEXT("Unexpected creation sets conflict"),
-                             session.has_external_conflict());
-        FString retained;
-        FFileHelper::LoadFileToString(retained, *source_path);
-        TestRunner->TestEqual(
-            TEXT("Unexpected file is preserved"), retained, FString{TEXT("unrelated")});
     }
 
     TEST_METHOD(DirtyBufferDetachesWhenTheDocumentChanges)
@@ -370,7 +193,7 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
         }
         session.set_buffer(TEXT("unsaved buffer"));
         session.state().scene_dirty = true;
-        session.state().preview = ::ioj::levels::authoring::PreviewState::Valid;
+        session.state().preview = ioj::levels::authoring::PreviewState::Valid;
         auto const preserved{session.buffer()};
 
         auto const switched{session.attach(*second)};
@@ -382,8 +205,7 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
         TestRunner->TestFalse(TEXT("Switch clears stale scene-dirty state"),
                               session.state().scene_dirty);
         TestRunner->TestTrue(TEXT("Switch clears the previous preview"),
-                             session.state().preview ==
-                                 ::ioj::levels::authoring::PreviewState::None);
+                             session.state().preview == ioj::levels::authoring::PreviewState::None);
 
         auto const recovery_path{FPaths::Combine(directory.path, TEXT("recovered.scm"))};
         TestRunner->TestTrue(

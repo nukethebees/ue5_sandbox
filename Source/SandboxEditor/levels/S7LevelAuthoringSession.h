@@ -1,7 +1,7 @@
 #pragma once
 
-#include <ioj/levels/authoring/editor_level.h>
 #include <ioj/levels/authoring/scene_snapshot.h>
+#include <ioj/levels/level_definition.h>
 
 #include <CoreMinimal.h>
 
@@ -32,9 +32,9 @@ SANDBOXEDITOR_API auto repair_s7_level_bindings(ULevel& level, AS7LevelAuthoring
     -> std::expected<FS7LevelBindingRepairResult, FString>;
 SANDBOXEDITOR_API auto collect_s7_editor_level(ULevel const& level,
                                                AS7LevelAuthoringDocument const& document)
-    -> std::expected<::ioj::levels::authoring::EditorLevel, FString>;
+    -> std::expected<levels::LevelDefinition, FString>;
 // Check binding structure, but retain invalid numeric values and unresolved references for repair.
 SANDBOXEDITOR_API auto collect_s7_scene(ULevel const& level,
                                         AS7LevelAuthoringDocument const& document)
-    -> std::expected<::ioj::levels::authoring::SceneSnapshot, FString>;
+    -> std::expected<levels::authoring::SceneSnapshot, FString>;
 }

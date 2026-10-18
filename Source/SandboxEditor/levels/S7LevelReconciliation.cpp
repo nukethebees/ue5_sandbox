@@ -3,6 +3,7 @@
 #include "SandboxEditor/levels/S7LevelAuthoringActors.h"
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringSession.h"
+#include <ioj/levels/authoring/editor_support.h>
 #include <ioj/levels/authoring/scene_reconciliation.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
@@ -17,9 +18,9 @@ namespace ioj::editor {
 namespace s7_level_reconciliation_detail {
 auto make_changes(ULevel const& level,
                   AS7LevelAuthoringDocument const& document,
-                  ::ioj::levels::authoring::EditorLevel const& incoming)
-    -> std::expected<::ioj::levels::authoring::SyncPlan, FString> {
-    auto const& definition{incoming.definition()};
+                  levels::LevelDefinition const& incoming)
+    -> std::expected<levels::authoring::SyncPlan, FString> {
+    auto const& definition{incoming.components()};
     auto* const world{GEditor ? GEditor->GetEditorWorldContext().World() : nullptr};
     if (!IsValid(world) || world->IsGameWorld() || level.OwningWorld != world ||
         world->GetCurrentLevel() != &level || document.GetLevel() != &level) {
@@ -45,22 +46,26 @@ auto make_changes(ULevel const& level,
     if (!scene) {
         return std::unexpected{scene.error()};
     }
-    return ::ioj::levels::authoring::reconcile_scene(*scene, incoming);
+    return levels::authoring::reconcile_scene(*scene, incoming);
 }
 
-auto transform(::ioj::levels::EntitySpawnDefinition const& entity) -> FTransform {
+auto transform(levels::EntitySpawnDefinition const& entity) -> FTransform {
     return FTransform{FRotator{entity.rotation.pitch, entity.rotation.yaw, entity.rotation.roll},
                       FVector{entity.position.x(), entity.position.y(), entity.position.z()}};
 }
-auto name(::ioj::levels::EntityId const& id) -> FName {
+auto name(levels::EntityId const& id) -> FName {
     return FName{ml::to_fstring(id.value)};
 }
 }
 
 auto make_s7_level_sync_plan(ULevel const& level,
                              AS7LevelAuthoringDocument const& document,
-                             ::ioj::levels::authoring::EditorLevel definition)
+                             levels::LevelDefinition definition)
     -> std::expected<FS7LevelSyncPlan, FString> {
+    auto support{levels::authoring::check_editor_support(definition)};
+    if (!support) {
+        return std::unexpected{ml::to_fstring(levels::format_diagnostics(support.error()))};
+    }
     auto changes{s7_level_reconciliation_detail::make_changes(level, document, definition)};
     if (!changes) {
         return std::unexpected{changes.error()};
@@ -73,7 +78,7 @@ auto apply_s7_level_sync_plan(ULevel& level,
                               FS7LevelSyncPlan const& plan) -> std::expected<void, FString> {
     using namespace s7_level_reconciliation_detail;
     auto current{make_changes(level, document, plan.definition)};
-    auto const& definition{plan.definition.definition()};
+    auto const& definition{plan.definition.components()};
     if (!current) {
         return std::unexpected{current.error()};
     }
@@ -147,8 +152,7 @@ auto apply_s7_level_sync_plan(ULevel& level,
     }
 
     document.Modify();
-    auto const grid{
-        definition.collision_grid.value_or(::ioj::levels::LevelCollisionGridDefinition{})};
+    auto const grid{definition.collision_grid.value_or(levels::LevelCollisionGridDefinition{})};
     auto vector{[](std::optional<ml::Vector3d> const& value) -> FVector3f {
         return value ? FVector3f{static_cast<float>(value->x()),
                                  static_cast<float>(value->y()),
@@ -191,7 +195,7 @@ auto apply_s7_level_sync_plan(ULevel& level,
             document.mission.kill_count = *mission.kill_count;
         }
         auto append_actors = [&resolved](TArray<TObjectPtr<AActor>>& output,
-                                         std::vector<::ioj::levels::EntityId> const& ids) {
+                                         std::vector<levels::EntityId> const& ids) {
             for (auto const& id : ids) {
                 output.Add(resolved.FindChecked(name(id)));
             }

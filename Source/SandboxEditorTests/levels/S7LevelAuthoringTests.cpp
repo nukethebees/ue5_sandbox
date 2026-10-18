@@ -42,18 +42,21 @@
 
 namespace {
 auto emit_source(ml::FLevelDefinition const& definition) -> std::expected<FString, FString> {
-    auto checked{ioj::levels::authoring::to_native(definition)
-                     .and_then(ioj::levels::authoring::EditorLevel::make)};
+    auto checked{ioj::levels::authoring::to_native(definition)};
     if (!checked) {
         return std::unexpected{ml::to_fstring(ioj::levels::format_diagnostics(checked.error()))};
     }
-    return ml::to_fstring(ioj::levels::authoring::emit_editor_level_source(*checked));
+    auto source{ioj::levels::authoring::emit_editor_level_source(*checked)};
+    if (!source) {
+        return std::unexpected{ml::to_fstring(ioj::levels::format_diagnostics(source.error()))};
+    }
+    return ml::to_fstring(*source);
 }
 
 auto collect_level(ULevel const& level, AS7LevelAuthoringDocument const& document)
     -> std::expected<ml::FLevelDefinition, FString> {
     return ioj::editor::collect_s7_editor_level(level, document).transform([](auto const& checked) {
-        return ioj::levels::authoring::to_unreal(checked.definition());
+        return ioj::levels::authoring::to_unreal(checked);
     });
 }
 
@@ -61,8 +64,7 @@ auto make_plan(ULevel const& level,
                AS7LevelAuthoringDocument const& document,
                ml::FLevelDefinition const& definition)
     -> std::expected<ioj::editor::FS7LevelSyncPlan, FString> {
-    auto checked{ioj::levels::authoring::to_native(definition)
-                     .and_then(ioj::levels::authoring::EditorLevel::make)};
+    auto checked{ioj::levels::authoring::to_native(definition)};
     if (!checked) {
         return std::unexpected{ml::to_fstring(ioj::levels::format_diagnostics(checked.error()))};
     }
@@ -475,10 +477,10 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Authored cell size is written"),
                              source->Contains(TEXT(":cell-size")));
 
-        ::ioj::levels::authoring::FDefinitionReader reader;
+        ioj::levels::authoring::FDefinitionReader reader;
         auto const read{reader.read_level_source(*source)};
         if (!TestRunner->TestTrue(TEXT("Partial grid reads"), static_cast<bool>(read))) {
-            TestRunner->AddError(ml::to_fstring(::ioj::levels::format_diagnostics(read.error())));
+            TestRunner->AddError(ml::to_fstring(ioj::levels::format_diagnostics(read.error())));
             return;
         }
         auto const& grid{read->collision_grid};
@@ -889,7 +891,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(TEXT("Definition writes"), source.has_value())) {
             return;
         }
-        ::ioj::levels::authoring::FDefinitionReader reader;
+        ioj::levels::authoring::FDefinitionReader reader;
         auto const read{reader.read_level_source(*source)};
         if (!TestRunner->TestTrue(TEXT("Generated source reads"), static_cast<bool>(read))) {
             return;
@@ -989,7 +991,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
         TestRunner->TestEqual(TEXT("Mission mode is applied"),
                               collected->mission->mode,
-                              ::ioj::levels::LevelMissionMode::KillEnemiesWithinTime);
+                              ioj::levels::LevelMissionMode::KillEnemiesWithinTime);
         TestRunner->TestEqual(TEXT("Mission time is applied"),
                               collected->mission->time_limit_seconds.GetValue(),
                               60.0f);
@@ -1558,7 +1560,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         builder.set_camera({.target_entity_ids = {ml::FLevelEntityId{TEXT("add")}},
                             .offset_direction = FVector{-1.0, 0.0, 0.0},
                             .distance = 1000.0});
-        builder.set_mission({.mode = ::ioj::levels::LevelMissionMode::KillEnemies,
+        builder.set_mission({.mode = ioj::levels::LevelMissionMode::KillEnemies,
                              .kill_count = 1,
                              .hero_entity_ids = {ml::FLevelEntityId{TEXT("add")}},
                              .required_kill_entity_ids = {ml::FLevelEntityId{TEXT("replace")}}});

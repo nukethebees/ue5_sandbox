@@ -1,310 +1,147 @@
 #include "SandboxEditor/levels/S7LevelSourceSession.h"
 
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
+#include <ioj/files.h>
 #include <SpaceGameS7/level_script_catalog.h>
 
-#include <Containers/StringConv.h>
-#include <HAL/FileManager.h>
-#include <Misc/FileHelper.h>
-#include <Misc/Paths.h>
-#include <Misc/SecureHash.h>
+#include <SandboxCoreEngine/strings.h>
 
 namespace ioj::editor {
+namespace s7_source_session_detail {
+auto text(FStringView const source) -> std::string {
+    auto const utf8{FTCHARToUTF8{source.GetData(), source.Len()}};
+    return {utf8.Get(), static_cast<std::size_t>(utf8.Length())};
+}
+auto path(FStringView const source) -> std::filesystem::path {
+    return std::filesystem::path{*FString{source}};
+}
+auto result(std::expected<void, std::string> value) -> std::expected<void, FString> {
+    return value.transform_error([](auto const& error) { return ml::to_fstring(error); });
+}
+}
+using namespace s7_source_session_detail;
+
 auto FS7LevelSourceSession::attach(AS7LevelAuthoringDocument& document)
     -> std::expected<void, FString> {
-    auto const normalized_path{normalize_path(document.source_path)};
-    if (document_.Get() == &document && path_ == normalized_path) {
-        return {};
-    }
-    if (state_.dirty() || state_.recovery_required) {
+    if (document_.Get() != &document) {
         detach();
-        return std::unexpected{
-            TEXT("The source buffer has unsaved changes and was detached from the new document.")};
     }
-    auto const attached{load_attached(document, normalized_path)};
-    if (!attached) {
-        detach();
-        state_.disk_conflict = true;
-    }
-    return attached;
+    auto attached{session_.attach(s7_source_session_detail::path(document.source_path))};
+    document_ = attached ? &document : nullptr;
+    return result(std::move(attached));
 }
-
-auto FS7LevelSourceSession::load(AS7LevelAuthoringDocument& document, FStringView const path)
+auto FS7LevelSourceSession::load(AS7LevelAuthoringDocument& document, FStringView const source_path)
     -> std::expected<void, FString> {
-    if (state_.dirty() || state_.recovery_required) {
-        return std::unexpected{TEXT("Save or discard the edited source buffer before loading.")};
+    if (document_.Get() != &document) {
+        detach();
     }
-    auto const normalized_path{normalize_path(path)};
-    if (!IFileManager::Get().FileExists(*normalized_path)) {
-        return std::unexpected{
-            FString::Printf(TEXT("Could not read source file '%s'."), *normalized_path)};
+    auto loaded{session_.load(s7_source_session_detail::path(source_path))};
+    if (loaded) {
+        document_ = &document;
     }
-    return load_attached(document, path);
+    return result(std::move(loaded));
 }
-
 auto FS7LevelSourceSession::reload() -> std::expected<void, FString> {
-    auto* const attached_document{document_.Get()};
-    if (!IsValid(attached_document)) {
-        return std::unexpected{TEXT("The source buffer is not attached to a level document.")};
+    if (!document_.IsValid()) {
+        session_.detach();
     }
-    return load_attached(*attached_document, path_);
+    return result(session_.reload());
 }
-
 auto FS7LevelSourceSession::discard_and_attach(AS7LevelAuthoringDocument& document)
     -> std::expected<void, FString> {
-    return load_attached(document, document.source_path);
-}
-
-void FS7LevelSourceSession::set_buffer(FString buffer) {
-    if (buffer_ == buffer) {
-        return;
+    if (document_.Get() != &document) {
+        detach();
     }
-    buffer_ = MoveTemp(buffer);
-    state_.edited(TCHAR_TO_UTF8(*source_digest(buffer_)), buffer_.IsEmpty());
+    auto attached{
+        session_.discard_and_attach(s7_source_session_detail::path(document.source_path))};
+    if (attached) {
+        document_ = &document;
+    }
+    return result(std::move(attached));
 }
-
+void FS7LevelSourceSession::detach() {
+    session_.detach();
+    document_.Reset();
+}
+void FS7LevelSourceSession::set_buffer(FString source) {
+    session_.set_buffer(text(source));
+}
 auto FS7LevelSourceSession::save() -> std::expected<void, FString> {
-    if (!is_attached()) {
-        return std::unexpected{TEXT("Use Save Buffer As to recover the detached source buffer.")};
+    if (!document_.IsValid()) {
+        session_.detach();
     }
-    if (path_.IsEmpty()) {
-        return std::unexpected{TEXT("Choose a source path before saving the source buffer.")};
-    }
-    return write(buffer_, path_, ES7SourceOverwritePolicy::ReplaceExisting, false);
+    return result(session_.save());
 }
-
-auto FS7LevelSourceSession::save_as(FStringView const path,
+auto FS7LevelSourceSession::save_as(FStringView const source_path,
                                     ES7SourceOverwritePolicy const overwrite)
     -> std::expected<void, FString> {
-    return write(buffer_, path, overwrite, false);
+    if (!document_.IsValid()) {
+        session_.detach();
+    }
+    return result(session_.save_as(s7_source_session_detail::path(source_path), overwrite));
 }
-
-auto FS7LevelSourceSession::save_replacement(FString source,
-                                             FStringView const synchronized_source_digest)
+auto FS7LevelSourceSession::save_replacement(FString source, FStringView const synchronized_digest)
     -> std::expected<void, FString> {
-    if (has_unapplied_buffer(synchronized_source_digest)) {
-        return std::unexpected{
-            TEXT("The source buffer has unapplied edits; apply or discard them before saving "
-                 "canonical scene state.")};
-    }
-    if (path_.IsEmpty()) {
-        return std::unexpected{TEXT("Choose a source path before saving canonical scene state.")};
-    }
-    return write(source, path_, ES7SourceOverwritePolicy::ReplaceExisting, true);
+    return result(session_.save_replacement(text(source), text(synchronized_digest)));
 }
-
 auto FS7LevelSourceSession::save_replacement_as(FString source,
-                                                FStringView const path,
-                                                FStringView const synchronized_source_digest,
+                                                FStringView const source_path,
+                                                FStringView const synchronized_digest,
                                                 ES7SourceOverwritePolicy const overwrite)
     -> std::expected<void, FString> {
-    if (has_unapplied_buffer(synchronized_source_digest)) {
-        return std::unexpected{
-            TEXT("The source buffer has unapplied edits; apply or discard them before saving "
-                 "canonical scene state.")};
-    }
-    return write(source, path, overwrite, true);
+    return result(session_.save_replacement_as(text(source),
+                                               s7_source_session_detail::path(source_path),
+                                               text(synchronized_digest),
+                                               overwrite));
 }
-
-auto FS7LevelSourceSession::read() const
-    -> std::expected<::ioj::levels::authoring::EditorLevel, ::ioj::levels::Diagnostics> {
-    if (!is_attached()) {
-        return std::unexpected{::ioj::levels::Diagnostics{
-            {::ioj::levels::DiagnosticCode::ExpectedRecord,
-             "$",
-             "The source buffer is not attached to the current level."}}};
-    }
-    if (buffer_.TrimStartAndEnd().IsEmpty()) {
-        return std::unexpected{
-            ::ioj::levels::Diagnostics{{::ioj::levels::DiagnosticCode::ExpectedRecord,
-                                        "$",
-                                        "The S7 source buffer is empty. Use Save Canonical from "
-                                        "Scene to create a script from the current level."}}};
-    }
-    auto const source_directory{path_.IsEmpty()
-                                    ? ::ioj::levels::authoring::default_level_script_directory()
-                                    : FPaths::GetPath(path_)};
-    auto const library_root{FPaths::Combine(source_directory, TEXT("Libraries"))};
-    auto const utf8{FTCHARToUTF8{*buffer_, buffer_.Len()}};
-    return ::ioj::levels::authoring::DefinitionReader{std::filesystem::path{*library_root}}
-        .read_editor_level_source(
-            std::string_view{utf8.Get(), static_cast<std::size_t>(utf8.Length())});
-}
-
 auto FS7LevelSourceSession::refresh_external_conflict() -> std::expected<void, FString> {
-    if (path_.IsEmpty() || !is_attached()) {
-        return {};
+    if (!document_.IsValid()) {
+        session_.detach();
     }
-    auto const observed{observe_disk(path_)};
-    if (!observed) {
-        state_.disk_conflict = true;
-        return std::unexpected{observed.error()};
-    }
-    state_.observe(*observed);
-    return {};
+    return result(session_.refresh_external_conflict());
 }
-
 auto FS7LevelSourceSession::document() const -> AS7LevelAuthoringDocument* {
     return document_.Get();
 }
-
-auto FS7LevelSourceSession::path() const -> FString const& {
-    return path_;
+auto FS7LevelSourceSession::path() const -> FString {
+    return FString{session_.path().generic_wstring().c_str()};
 }
-
-auto FS7LevelSourceSession::buffer() const -> FString const& {
-    return buffer_;
+auto FS7LevelSourceSession::buffer() const -> FString {
+    return ml::to_fstring(session_.buffer());
 }
-
 auto FS7LevelSourceSession::revision() const -> uint64 {
-    return state_.revision;
+    return session_.state().revision;
 }
-
 auto FS7LevelSourceSession::is_attached() const -> bool {
-    return document_.IsValid();
+    return document_.IsValid() && session_.is_attached();
 }
-
 auto FS7LevelSourceSession::is_dirty() const -> bool {
-    return state_.dirty();
+    return session_.state().dirty();
 }
-
 auto FS7LevelSourceSession::has_external_conflict() const -> bool {
-    return state_.disk_conflict;
+    return session_.state().disk_conflict;
 }
-
-auto FS7LevelSourceSession::has_unapplied_buffer(FStringView const synchronized_source_digest) const
+auto FS7LevelSourceSession::has_unapplied_buffer(FStringView const synchronized_digest) const
     -> bool {
-    return state_.unapplied(TCHAR_TO_UTF8(*FString{synchronized_source_digest}));
+    return session_.state().unapplied(text(synchronized_digest));
 }
-
-void FS7LevelSourceSession::detach() {
-    if (document_.IsValid() || state_.scene_dirty ||
-        state_.preview != ::ioj::levels::authoring::PreviewState::None ||
-        (state_.dirty() && !state_.recovery_required)) {
-        state_.document_changed();
-    }
-    document_.Reset();
-}
-
 auto FS7LevelSourceSession::source_digest(FStringView const source) -> FString {
-    auto const utf8{FTCHARToUTF8{source.GetData(), source.Len()}};
-    uint8 digest[FSHA1::DigestSize]{};
-    FSHA1::HashBuffer(utf8.Get(), utf8.Length(), digest);
-    return BytesToHex(digest, UE_ARRAY_COUNT(digest));
+    return ml::to_fstring(levels::authoring::SourceSession::source_digest(text(source)));
 }
 
-auto FS7LevelSourceSession::normalize_path(FStringView const path) -> FString {
-    if (path.IsEmpty()) {
-        return {};
-    }
-    auto normalized{FPaths::ConvertRelativePathToFull(FString{path})};
-    FPaths::NormalizeFilename(normalized);
-    return normalized;
-}
-
-auto FS7LevelSourceSession::observe_disk(FStringView const path, FString* const output)
-    -> std::expected<FDiskState, FString> {
-    auto const owned_path{FString{path}};
-    if (!IFileManager::Get().FileExists(*owned_path)) {
-        return FDiskState{};
-    }
-    FString source;
-    if (!FFileHelper::LoadFileToString(source, *owned_path)) {
+auto FS7LevelSourceSession::read() const
+    -> std::expected<levels::LevelDefinition, levels::Diagnostics> {
+    if (!is_attached()) {
         return std::unexpected{
-            FString::Printf(TEXT("Could not read source file '%s'."), *owned_path)};
+            levels::Diagnostics{{levels::DiagnosticCode::ExpectedRecord,
+                                 "$",
+                                 "The source buffer is not attached to the current level."}}};
     }
-    auto const digest{std::string{TCHAR_TO_UTF8(*source_digest(source))}};
-    if (output) {
-        *output = MoveTemp(source);
-    }
-    return FDiskState{.exists = true, .digest = digest};
-}
-
-auto FS7LevelSourceSession::load_attached(AS7LevelAuthoringDocument& document,
-                                          FStringView const path) -> std::expected<void, FString> {
-    auto const normalized_path{normalize_path(path)};
-    FString loaded_buffer;
-    FDiskState loaded_disk;
-    if (!normalized_path.IsEmpty()) {
-        auto const observed{observe_disk(normalized_path, &loaded_buffer)};
-        if (!observed) {
-            return std::unexpected{observed.error()};
-        }
-        loaded_disk = *observed;
-    }
-
-    auto const source_changed{path_ != normalized_path || buffer_ != loaded_buffer};
-    if (document_.Get() != &document) {
-        state_.document_changed();
-    }
-    document_ = &document;
-    path_ = normalized_path;
-    buffer_ = MoveTemp(loaded_buffer);
-    state_.loaded(MoveTemp(loaded_disk),
-                  TCHAR_TO_UTF8(*source_digest(buffer_)),
-                  buffer_.IsEmpty(),
-                  source_changed);
-    return {};
-}
-
-auto FS7LevelSourceSession::verify_disk_baseline() -> std::expected<void, FString> {
-    auto const observed{observe_disk(path_)};
-    if (!observed) {
-        state_.disk_conflict = true;
-        return std::unexpected{observed.error()};
-    }
-    state_.observe(*observed);
-    if (state_.disk_conflict) {
-        return std::unexpected{
-            TEXT("The source file changed externally; reload it or choose another path.")};
-    }
-    return {};
-}
-
-auto FS7LevelSourceSession::write(FString const& source,
-                                  FStringView const target_path,
-                                  ES7SourceOverwritePolicy const overwrite,
-                                  bool const replace_buffer) -> std::expected<void, FString> {
-    if (source.TrimStartAndEnd().IsEmpty()) {
-        return std::unexpected{
-            TEXT("The S7 source buffer is empty. Use Save Canonical from Scene to create a "
-                 "script from the current level.")};
-    }
-    auto const normalized_path{normalize_path(target_path)};
-    if (normalized_path.IsEmpty()) {
-        return std::unexpected{TEXT("The source path is empty.")};
-    }
-
-    auto const same_path{normalized_path == path_};
-    if (same_path) {
-        auto const verified{verify_disk_baseline()};
-        if (!verified) {
-            return verified;
-        }
-    } else if (IFileManager::Get().FileExists(*normalized_path) &&
-               overwrite == ES7SourceOverwritePolicy::RefuseExisting) {
-        return std::unexpected{FString::Printf(
-            TEXT("Source file '%s' already exists; confirm replacement before saving."),
-            *normalized_path)};
-    }
-
-    if (!FFileHelper::SaveStringToFile(
-            source, *normalized_path, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM)) {
-        return std::unexpected{
-            FString::Printf(TEXT("Could not write source file '%s'."), *normalized_path)};
-    }
-
-    auto const source_changed{path_ != normalized_path || (replace_buffer && buffer_ != source)};
-    path_ = normalized_path;
-    if (replace_buffer) {
-        buffer_ = source;
-    }
-    auto const digest{replace_buffer ? std::string{TCHAR_TO_UTF8(*source_digest(source))}
-                                     : state_.buffer_digest};
-    if (replace_buffer) {
-        state_.edited(digest, buffer_.IsEmpty());
-    }
-    state_.saved(digest, source_changed);
-    return {};
+    auto const root{
+        session_.path().empty()
+            ? s7_source_session_detail::path(levels::authoring::default_level_script_directory())
+            : session_.path().parent_path()};
+    return levels::authoring::DefinitionReader{root / "Libraries"}.read_level_source(
+        session_.buffer());
 }
 }

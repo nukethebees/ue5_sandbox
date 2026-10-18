@@ -48,14 +48,11 @@ auto FLevelBuilder::finish() -> FLevelDefinition {
 auto validate_level(FLevelDefinition const& definition) -> FLevelValidationResult {
     FLevelValidationResult result;
     auto native_result{::ioj::levels::authoring::to_native(definition)};
-    auto validation{native_result ? ::ioj::levels::validate_level(*native_result)
-                                  : std::expected<void, ::ioj::levels::Diagnostics>{
-                                        std::unexpected{std::move(native_result.error())}}};
-    if (validation) {
+    if (native_result) {
         return result;
     }
-    result.errors.Reserve(static_cast<int32>(validation.error().size()));
-    for (auto& error : validation.error()) {
+    result.errors.Reserve(static_cast<int32>(native_result.error().size()));
+    for (auto& error : native_result.error()) {
         result.errors.Add({.code = error.code, .message = to_fstring(error.message)});
     }
     return result;

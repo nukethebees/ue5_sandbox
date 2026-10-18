@@ -15,8 +15,8 @@
 
 namespace ioj::editor {
 namespace s7_level_authoring_session_detail {
-using namespace ::ioj::levels;
-using namespace ::ioj::levels::authoring;
+using namespace levels;
+using namespace levels::authoring;
 
 auto text(FString const& value) -> std::string {
     auto const utf8{FTCHARToUTF8{*value, value.Len()}};
@@ -180,7 +180,7 @@ auto repair_s7_level_bindings(ULevel& level, AS7LevelAuthoringDocument& document
 }
 
 auto collect_s7_scene(ULevel const& level, AS7LevelAuthoringDocument const& document)
-    -> std::expected<::ioj::levels::authoring::SceneSnapshot, FString> {
+    -> std::expected<levels::authoring::SceneSnapshot, FString> {
     using namespace s7_level_authoring_session_detail;
     SceneSnapshot snapshot;
     auto& definition{snapshot.definition};
@@ -276,7 +276,7 @@ auto collect_s7_scene(ULevel const& level, AS7LevelAuthoringDocument const& docu
 }
 
 auto collect_s7_editor_level(ULevel const& level, AS7LevelAuthoringDocument const& document)
-    -> std::expected<::ioj::levels::authoring::EditorLevel, FString> {
+    -> std::expected<levels::LevelDefinition, FString> {
     using namespace s7_level_authoring_session_detail;
     auto const* const config{document.level_config.Get()};
     auto const* const canonical{ml::s7_level_config::load_canonical()};
@@ -304,7 +304,7 @@ auto collect_s7_editor_level(ULevel const& level, AS7LevelAuthoringDocument cons
         return std::unexpected{
             TEXT("Every viewpoint and mission reference must identify an adopted entity.")};
     }
-    auto checked{EditorLevel::make(MoveTemp(scene->definition))};
+    auto checked{LevelDefinition::make(MoveTemp(scene->definition))};
     if (!checked) {
         return std::unexpected{ml::to_fstring(format_diagnostics(checked.error()))};
     }

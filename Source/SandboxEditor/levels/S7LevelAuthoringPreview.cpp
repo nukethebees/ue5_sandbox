@@ -161,10 +161,14 @@ auto apply_s7_level_authoring_preview(ULevel& level,
     document.Modify();
     document.synchronized_source_hash = ml::to_fstring(source_session.state().buffer_digest);
     auto const definition{collect_s7_editor_level(level, document)};
-    document.synchronized_scene_hash =
-        definition ? FS7LevelSourceSession::source_digest(ml::to_fstring(
-                         ::ioj::levels::authoring::emit_editor_level_source(*definition)))
-                   : FString{};
+    document.synchronized_scene_hash.Empty();
+    if (definition) {
+        auto const source{levels::authoring::emit_editor_level_source(*definition)};
+        if (source) {
+            document.synchronized_scene_hash =
+                FS7LevelSourceSession::source_digest(ml::to_fstring(*source));
+        }
+    }
     return {};
 }
 }

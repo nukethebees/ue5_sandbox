@@ -89,7 +89,7 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
     FText status_{};
     FOnS7LevelAuthoringChanged changed_{};
     float refresh_elapsed_seconds_{};
-    TOptional<::ioj::levels::authoring::SceneSnapshot> observed_scene_{};
+    TOptional<ioj::levels::authoring::SceneSnapshot> observed_scene_{};
     FString observed_scene_digest_{};
     int32 observed_actor_count_{-1};
 };

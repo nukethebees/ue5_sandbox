@@ -123,6 +123,7 @@ add_unreal_automation_test(
     Sandbox.UnitTests.S7LevelDefinition
     Sandbox.UnitTests.LevelDefinition
     Sandbox.UnitTests.LevelScriptCatalog
+    Sandbox.UnitTests.LevelSimulation.ScheduledSpawnsAndObjectivesUseSimulationTicks
     Sandbox.UnitTests.SpaceGameLevelConfig.CollisionGridDimensionOverridesKeepUnspecifiedAssetValues
   LABELS s7-authoring
 )

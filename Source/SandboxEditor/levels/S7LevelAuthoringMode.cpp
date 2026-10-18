@@ -40,7 +40,7 @@ auto select_source_path(bool const save, FString const& suggested_filename) -> T
     }
     auto const parent{FSlateApplication::Get().FindBestParentWindowHandleForDialogs(nullptr)};
     TArray<FString> paths;
-    auto const directory{::ioj::levels::authoring::default_level_script_directory()};
+    auto const directory{levels::authoring::default_level_script_directory()};
     auto const selected{save ? desktop->SaveFileDialog(parent,
                                                        TEXT("Save Explicit S7 Level"),
                                                        directory,
@@ -108,9 +108,11 @@ auto selected_bound_entity(AS7LevelAuthoringDocument& document)
 }
 }
 
+namespace levels = ioj::levels;
+
 using namespace ioj::editor;
 using namespace ioj::editor::s7_level_authoring_mode_detail;
-using ::ioj::levels::authoring::PreviewState;
+using levels::authoring::PreviewState;
 
 FEditorModeID const US7LevelAuthoringMode::mode_id{TEXT("EM_SpaceGameLevelAuthoring")};
 
@@ -171,10 +173,14 @@ void US7LevelAuthoringMode::Tick(FEditorViewportClient* const viewport_client,
     if (!scene || !observed_scene_.IsSet() || *scene != *observed_scene_ ||
         observed_actor_count_ != level->Actors.Num()) {
         auto const definition{collect_s7_editor_level(*level, *document_)};
-        observed_scene_digest_ =
-            definition ? FS7LevelSourceSession::source_digest(ml::to_fstring(
-                             ::ioj::levels::authoring::emit_editor_level_source(*definition)))
-                       : FString{};
+        observed_scene_digest_.Empty();
+        if (definition) {
+            auto const source{levels::authoring::emit_editor_level_source(*definition)};
+            if (source) {
+                observed_scene_digest_ =
+                    FS7LevelSourceSession::source_digest(ml::to_fstring(*source));
+            }
+        }
         observed_scene_ = scene ? TOptional{*scene} : NullOpt;
         observed_actor_count_ = level->Actors.Num();
     }
@@ -771,8 +777,7 @@ void US7LevelAuthoringMode::preview_apply() {
     }
     auto read{source_session_.read()};
     if (!read) {
-        set_status(
-            FText::FromString(ml::to_fstring(::ioj::levels::format_diagnostics(read.error()))));
+        set_status(FText::FromString(ml::to_fstring(levels::format_diagnostics(read.error()))));
         preview_.Reset();
         source_session_.state().preview = PreviewState::None;
         changed_.Broadcast();
@@ -935,8 +940,13 @@ void US7LevelAuthoringMode::save_canonical_from_scene() {
         changed_.Broadcast();
         return;
     }
-    auto const source{
-        ml::to_fstring(::ioj::levels::authoring::emit_editor_level_source(*definition))};
+    auto const emitted{levels::authoring::emit_editor_level_source(*definition)};
+    if (!emitted) {
+        set_status(FText::FromString(ml::to_fstring(levels::format_diagnostics(emitted.error()))));
+        changed_.Broadcast();
+        return;
+    }
+    auto const source{ml::to_fstring(*emitted)};
 
     std::expected<void, FString> saved;
     if (source_session_.path().IsEmpty()) {
@@ -969,7 +979,7 @@ void US7LevelAuthoringMode::save_canonical_from_scene() {
     document_->synchronized_scene_hash = digest;
     set_status(FText::FromString(
         FString::Printf(TEXT("Saved canonical scene state with %d entities to %s."),
-                        static_cast<int32>(definition->definition().entities.size()),
+                        static_cast<int32>(definition->components().entities.size()),
                         *source_session_.path())));
     changed_.Broadcast();
 }

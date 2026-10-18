@@ -3,6 +3,7 @@
 #include <ioj/sim/collision/world_aabb_operations.h>
 #include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/lasers/laser_source.h>
+#include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/levels/level_sim.h>
 #include <ioj/sim/testing/laser_spawns.h>
@@ -12,8 +13,8 @@
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestNiagaraComponent.h>
 #include <SandboxTests/support/WorldlessSimulationTest.h>
-#include <SpaceGame/levels/CompileLevelEvents.h>
 #include <SpaceGame/levels/LevelDefinition.h>
+#include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
@@ -123,10 +124,11 @@ auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
         .time_seconds = 0.21,
         .required_kill_entity_ids = {enemy},
     });
-    auto const definition{builder.finish()};
+    auto const definition{ioj::levels::authoring::to_native(builder.finish())};
+    check(definition);
     ::ioj::sim::SimClock clock;
     clock.initialise(data.clock_settings);
-    auto compiled{ml::compile_level_events(definition, clock, data.capital_ships, data.turrets)};
+    auto compiled{ioj::levels::compile_level(*definition, clock, data.capital_ships, data.turrets)};
     check(compiled);
     data.level_events = MoveTemp(compiled.value());
     return data;

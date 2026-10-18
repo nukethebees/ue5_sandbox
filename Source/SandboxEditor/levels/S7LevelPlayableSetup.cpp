@@ -27,7 +27,7 @@ namespace s7_level_playable_setup_detail {
 inline constexpr TCHAR game_mode_class_path[]{
     TEXT("/Game/GameModes/BP_SpaceShipGameMode.BP_SpaceShipGameMode_C")};
 // Resolve the optional player only after collecting and validating the scene.
-auto find_player(AS7LevelAuthoringDocument const& document, ::ioj::levels::EntityId const& id)
+auto find_player(AS7LevelAuthoringDocument const& document, levels::EntityId const& id)
     -> ATestSpaceShip* {
     if (id.empty()) {
         return nullptr;
@@ -87,7 +87,7 @@ auto prepare_s7_level_for_pie(UWorld& world) -> std::expected<void, FString> {
     }
 
     ioj::FLevelLaunchOptions options;
-    options.control_context = definition->definition().camera ? EPlayerControlContext::Observer
+    options.control_context = definition->components().camera ? EPlayerControlContext::Observer
                                                               : EPlayerControlContext::Player;
     // Upgrade old authoring maps in the PIE copy without changing their saved actors.
     orchestrator->set_start_mode(EOrchestratorStartMode::AuthoredLevel);
@@ -97,10 +97,8 @@ auto prepare_s7_level_for_pie(UWorld& world) -> std::expected<void, FString> {
             return fail(TEXT("Could not remove a duplicated authoring actor before PIE."));
         }
     }
-    game->set_pending_level(::ioj::levels::authoring::to_unreal(definition->definition()),
-                            TEXT("PIE scene"),
-                            {},
-                            options);
+    game->set_pending_level(
+        levels::authoring::to_unreal(*definition), TEXT("PIE scene"), {}, options);
     return {};
 }
 
@@ -123,7 +121,7 @@ auto validate_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& docume
         return std::unexpected{definition.error()};
     }
     auto* const player{s7_level_playable_setup_detail::find_player(
-        document, definition->definition().player_entity_id)};
+        document, definition->components().player_entity_id)};
 
     TOptional<::ioj::sim::player::PlayerSpawnData> player_spawn;
     UStaticMesh const* player_mesh{};
@@ -140,13 +138,12 @@ auto validate_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& docume
     if (!effective_config->is_valid(true)) {
         return std::unexpected{TEXT("The authored collision-grid settings are invalid.")};
     }
-    auto const build{ml::make_level_simulation_init_data(
-        *effective_config,
-        {},
-        ::ioj::levels::authoring::to_unreal(definition->definition()),
-        MoveTemp(player_spawn),
-        {},
-        player_mesh)};
+    auto const build{ml::make_level_simulation_init_data(*effective_config,
+                                                         {},
+                                                         levels::authoring::to_unreal(*definition),
+                                                         MoveTemp(player_spawn),
+                                                         {},
+                                                         player_mesh)};
     if (!build) {
         return std::unexpected{build.error().format()};
     }

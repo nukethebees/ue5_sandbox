@@ -11,7 +11,7 @@
 class AS7LevelAuthoringDocument;
 
 namespace ioj::editor {
-enum class ES7SourceOverwritePolicy { RefuseExisting, ReplaceExisting };
+using ES7SourceOverwritePolicy = levels::authoring::SourceOverwritePolicy;
 
 class SANDBOXEDITOR_API FS7LevelSourceSession final {
   public:
@@ -34,40 +34,24 @@ class SANDBOXEDITOR_API FS7LevelSourceSession final {
                                            ES7SourceOverwritePolicy overwrite)
         -> std::expected<void, FString>;
 
-    [[nodiscard]] auto read() const
-        -> std::expected<::ioj::levels::authoring::EditorLevel, ::ioj::levels::Diagnostics>;
+    [[nodiscard]] auto read() const -> std::expected<levels::LevelDefinition, levels::Diagnostics>;
     [[nodiscard]] auto refresh_external_conflict() -> std::expected<void, FString>;
 
     [[nodiscard]] auto document() const -> AS7LevelAuthoringDocument*;
-    [[nodiscard]] auto path() const -> FString const&;
-    [[nodiscard]] auto buffer() const -> FString const&;
+    [[nodiscard]] auto path() const -> FString;
+    [[nodiscard]] auto buffer() const -> FString;
     [[nodiscard]] auto revision() const -> uint64;
     [[nodiscard]] auto is_attached() const -> bool;
     [[nodiscard]] auto is_dirty() const -> bool;
     [[nodiscard]] auto has_external_conflict() const -> bool;
     [[nodiscard]] auto has_unapplied_buffer(FStringView synchronized_source_digest) const -> bool;
     void detach();
-    auto state() -> ::ioj::levels::authoring::SourceSessionState& { return state_; }
-    auto state() const -> ::ioj::levels::authoring::SourceSessionState const& { return state_; }
+    auto state() -> levels::authoring::SourceSessionState& { return session_.state(); }
+    auto state() const -> levels::authoring::SourceSessionState const& { return session_.state(); }
 
     [[nodiscard]] static auto source_digest(FStringView source) -> FString;
   private:
-    using FDiskState = ::ioj::levels::authoring::SourceDiskState;
-
-    [[nodiscard]] static auto normalize_path(FStringView path) -> FString;
-    [[nodiscard]] static auto observe_disk(FStringView path, FString* source = nullptr)
-        -> std::expected<FDiskState, FString>;
-    [[nodiscard]] auto load_attached(AS7LevelAuthoringDocument& document, FStringView path)
-        -> std::expected<void, FString>;
-    [[nodiscard]] auto verify_disk_baseline() -> std::expected<void, FString>;
-    [[nodiscard]] auto write(FString const& source,
-                             FStringView target_path,
-                             ES7SourceOverwritePolicy overwrite,
-                             bool replace_buffer) -> std::expected<void, FString>;
-
     TWeakObjectPtr<AS7LevelAuthoringDocument> document_{};
-    FString path_{};
-    FString buffer_{};
-    ::ioj::levels::authoring::SourceSessionState state_{};
+    levels::authoring::SourceSession session_{};
 };
 }

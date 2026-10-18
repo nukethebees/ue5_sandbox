@@ -11,8 +11,8 @@
 #include <algorithm>
 
 namespace ioj::editor {
-auto s7_mission_mode(ETestMissionMode const mode) -> ::ioj::levels::LevelMissionMode {
-    using Mode = ::ioj::levels::LevelMissionMode;
+auto s7_mission_mode(ETestMissionMode const mode) -> levels::LevelMissionMode {
+    using Mode = levels::LevelMissionMode;
     switch (mode) {
         case ETestMissionMode::None:
             return Mode::Unspecified;
@@ -26,8 +26,8 @@ auto s7_mission_mode(ETestMissionMode const mode) -> ::ioj::levels::LevelMission
     checkNoEntry();
     return Mode::Unspecified;
 }
-auto s7_mission_mode(::ioj::levels::LevelMissionMode const mode) -> ETestMissionMode {
-    using Mode = ::ioj::levels::LevelMissionMode;
+auto s7_mission_mode(levels::LevelMissionMode const mode) -> ETestMissionMode {
+    using Mode = levels::LevelMissionMode;
     switch (mode) {
         case Mode::Unspecified:
             return ETestMissionMode::None;
@@ -105,12 +105,12 @@ void configure_s7_level_actor(AActor& actor,
 }
 
 auto canonical_s7_level_entity_id(FStringView const text, FStringView const fallback) -> FName {
-    return FName{ml::to_fstring(::ioj::levels::authoring::canonical_symbol(
+    return FName{ml::to_fstring(levels::authoring::canonical_symbol(
         TCHAR_TO_UTF8(*FString{text}), TCHAR_TO_UTF8(*FString{fallback})))};
 }
 
 auto is_canonical_s7_level_entity_id(FStringView const value) -> bool {
-    return ::ioj::levels::authoring::is_canonical_symbol(TCHAR_TO_UTF8(*FString{value}));
+    return levels::authoring::is_canonical_symbol(TCHAR_TO_UTF8(*FString{value}));
 }
 
 auto is_canonical_s7_level_entity_id(FName const id) -> bool {

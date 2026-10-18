@@ -59,7 +59,7 @@ auto to_native(ml::FLevelDefinition const& definition)
                                             "Level entity columns have inconsistent lengths"}}};
     }
 
-    LevelDefinition result;
+    LevelDefinition::Components result;
     Diagnostics errors;
     result.metadata.id = LevelId{to_utf8(definition.metadata.id.value)};
     result.metadata.title = to_utf8(definition.metadata.title);
@@ -157,10 +157,11 @@ auto to_native(ml::FLevelDefinition const& definition)
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
-    return result;
+    return LevelDefinition::make(std::move(result));
 }
 
-auto to_unreal(LevelDefinition const& definition) -> ml::FLevelDefinition {
+auto to_unreal(LevelDefinition const& level) -> ml::FLevelDefinition {
+    auto const& definition{level.components()};
     ml::FLevelBuilder builder;
     ml::FLevelMetadata metadata{
         .id = ml::FLevelId{to_fname(definition.metadata.id.value)},
