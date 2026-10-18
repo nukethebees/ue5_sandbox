@@ -2,11 +2,9 @@
 
 #include "platform/file_dialog.hpp"
 #include <ioj/layout/abi_profile.hpp>
+#include <ioj/layout/analysis_settings.hpp>
 #include <ioj/layout/analyzer/access_operation.hpp>
-#include <ioj/layout/analyzer/packed_analysis.hpp>
-#include <ioj/layout/analyzer/record_analysis.hpp>
 #include <ioj/layout/analyzer/soa_allocation_strategy.hpp>
-#include <ioj/layout/analyzer/soa_analysis.hpp>
 #include <ioj/layout/editor_session.hpp>
 
 #include <lispb/diagnostics.h>
@@ -19,6 +17,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <charconv>
 #include <sstream>
 #include <utility>
 
@@ -42,94 +41,99 @@ void comparison(char const* name,
     ImGui::Text("%s: %s / %s", name, number(first).c_str(), number(second).c_str());
 }
 
-void record_layout(layout::RecordAnalysis const& record) {
+void record_layout(layout::AnalysisStorage const& storage, layout::AggregateLayout const& record) {
     metric("Size (bytes)", record.size_bytes);
     metric("Alignment (bytes)", record.alignment_bytes);
     metric("Internal padding (bytes)", record.internal_padding_bytes);
     metric("Tail padding (bytes)", record.tail_padding_bytes);
-    metric("Total storage (bytes)", record.aggregate.total_storage_bytes);
     if (ImGui::BeginTable("record", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
         ImGui::TableSetupColumn("Member");
         ImGui::TableSetupColumn("Offset");
         ImGui::TableSetupColumn("Extent");
         ImGui::TableSetupColumn("Padding before");
         ImGui::TableHeadersRow();
-        for (auto const& member : record.members) {
+        auto const end{record.members.begin + record.members.count};
+        auto const& members{storage.components};
+        for (auto row{record.members.begin}; row < end; ++row) {
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
-            label(member.name);
+            label(members.name[row]);
             ImGui::TableNextColumn();
-            label(number(member.offset_bytes));
+            label(number(members.offset_bytes[row]));
             ImGui::TableNextColumn();
-            label(number(member.extent_bytes));
+            label(number(members.extent_bytes[row]));
             ImGui::TableNextColumn();
-            label(number(member.padding_before_bytes));
+            label(number(members.padding_before_bytes[row]));
         }
         ImGui::EndTable();
     }
 }
 
-void packed_layout(layout::PackedAnalysis const& packed) {
+void packed_layout(layout::AnalysisStorage const& storage, layout::PackedLayout const& packed) {
     ImGui::Text("Storage: %s", packed.storage_type.c_str());
     metric("Storage bits", packed.storage_bits);
     metric("Used bits", packed.bits_used);
     metric("Unused bits", packed.unused_bits);
     metric("Overflow bits", packed.overflow_bits);
-    metric("Total storage (bytes)", packed.aggregate.total_storage_bytes);
     if (ImGui::BeginTable("packed", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
         ImGui::TableSetupColumn("Field");
         ImGui::TableSetupColumn("Type");
         ImGui::TableSetupColumn("Bits");
         ImGui::TableSetupColumn("Low bit");
         ImGui::TableHeadersRow();
-        for (auto const& field : packed.fields) {
+        auto const end{packed.fields.begin + packed.fields.count};
+        auto const& fields{storage.fields};
+        for (auto row{packed.fields.begin}; row < end; ++row) {
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
-            label(field.name);
+            label(fields.name[row]);
             ImGui::TableNextColumn();
-            label(field.logical_type);
+            label(fields.logical_type[row]);
             ImGui::TableNextColumn();
-            label(std::to_string(field.bit_width));
+            label(std::to_string(fields.bit_width[row]));
             ImGui::TableNextColumn();
-            label(std::to_string(field.least_significant_bit));
+            label(std::to_string(fields.least_significant_bit[row]));
         }
         ImGui::EndTable();
     }
 }
 
-void soa_layout(layout::SoaAnalysis const& soa) {
+void soa_layout(layout::AnalysisStorage const& storage, layout::SoaLayout const& soa) {
     metric("Capacity", soa.capacity);
     metric("Bytes per element", soa.bytes_per_logical_element);
     metric("Payload (bytes)", soa.total_payload_bytes);
     metric("Allocation (bytes)", soa.total_allocation_bytes);
     metric("Alignment padding (bytes)", soa.total_alignment_padding_bytes);
-    metric("Minimum pages", soa.minimum_pages);
     if (ImGui::BeginTable("soa", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
         ImGui::TableSetupColumn("Column");
         ImGui::TableSetupColumn("Type");
         ImGui::TableSetupColumn("Bytes");
-        ImGui::TableSetupColumn("Cache lines");
+        ImGui::TableSetupColumn("Allocation offset");
         ImGui::TableHeadersRow();
-        for (auto const& column : soa.columns) {
+        auto const end{soa.columns.begin + soa.columns.count};
+        auto const& columns{storage.columns};
+        for (auto row{soa.columns.begin}; row < end; ++row) {
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
-            label(column.name);
+            label(columns.name[row]);
             ImGui::TableNextColumn();
-            label(column.physical_type);
+            label(columns.physical_type[row]);
             ImGui::TableNextColumn();
-            label(number(column.total_bytes));
+            label(number(columns.total_bytes[row]));
             ImGui::TableNextColumn();
-            label(number(column.minimum_cache_lines));
+            label(number(columns.allocation_offset_bytes[row]));
         }
         ImGui::EndTable();
     }
 }
+
 }
 
 PlannerUi::PlannerUi(layout::EditorSession& editor,
                      std::filesystem::path project_path,
                      std::string target_name)
     : editor_{editor}
+    , controller_{editor}
     , project_path_{std::move(project_path)}
     , target_name_{std::move(target_name)}
     , project_input_{project_path_.string()}
@@ -137,7 +141,8 @@ PlannerUi::PlannerUi(layout::EditorSession& editor,
 
 PlannerUi::PlannerUi(layout::EditorSession& editor, layout::Document document)
     : editor_{editor}
-    , document_{std::move(document)}
+    , controller_{editor, std::move(document)}
+    , document_{controller_.document()}
     , project_path_{document_->project_path()}
     , target_name_{document_->target_name()}
     , project_input_{project_path_.string()}
@@ -240,89 +245,63 @@ void PlannerUi::settings_write_all(ImGuiContext*,
         "Project=%s\nTarget=%s\n\n", ui.project_input_.c_str(), ui.target_input_.c_str());
 }
 
-auto PlannerUi::open_project() -> bool {
-    if (editor_modified_ || source_modified_ || (document_ && document_->dirty())) {
-        status_ = "Save or undo the current edits before opening another project.";
-        return false;
+void PlannerUi::open_project() {
+    if (editor_modified_ || source_modified_) {
+        status_ = "Apply or revert the current drafts before opening another project.";
+        return;
     }
-
-    auto next{editor_.load(project_input_, target_input_)};
-    auto const valid{next.valid()};
-    document_ = std::move(next);
-    project_path_ = project_input_;
-    target_name_ = target_input_;
-    selected_module_.clear();
-    selected_declaration_.clear();
-    selected_id_.reset();
+    controller_.open(project_input_, target_input_);
+    creating_declaration_ = false;
     selected_source_.clear();
     new_source_text_.clear();
     new_source_path_.clear();
-    observed_revision_.reset();
-    analysis_ = layout::PlannerAnalysisSession{};
-    synchronize();
-    ImGui::MarkIniSettingsDirty();
-    frame_changed_ = true;
-    return valid;
 }
 
 void PlannerUi::new_project() {
-    if (editor_modified_ || source_modified_ || (document_ && document_->dirty())) {
-        status_ = "Save or undo the current edits before creating another project.";
+    if (editor_modified_ || source_modified_) {
+        status_ = "Apply or revert the current drafts before creating another project.";
         return;
     }
-    document_ = editor_.from_source(R"((module game :header "Game.h" :backend standard-library))");
-    analysis_ = layout::PlannerAnalysisSession{};
+    controller_.new_document();
+    project_input_.clear();
+    target_input_ = "game";
     selected_module_ = "game";
     selected_declaration_.clear();
-    selected_id_.reset();
-    project_path_.clear();
     selected_source_.clear();
     new_source_text_.clear();
     new_source_path_.clear();
-    project_input_.clear();
-    target_name_ = "game";
-    target_input_ = target_name_;
     editor_source_.clear();
     creating_declaration_ = true;
-    observed_revision_.reset();
-    synchronize();
-    status_ = "Set the project path and target, then use Save as.";
 }
 
 void PlannerUi::save_as() {
-    if (document_->save_as(project_input_, target_input_)) {
-        project_path_ = document_->project_path();
-        target_name_ = document_->target_name();
-        status_ = "Saved.";
-        ImGui::MarkIniSettingsDirty();
-    } else {
-        status_ = "Save failed; see Diagnostics.";
-    }
+    controller_.save_as(project_input_, target_input_);
 }
 
 void PlannerUi::select_declaration(std::string module, std::string name) {
-    selected_module_ = std::move(module);
-    selected_declaration_ = std::move(name);
+    controller_.select_declaration(std::move(module), std::move(name));
     creating_declaration_ = false;
     editor_modified_ = false;
-    auto const declaration{
-        document_->query().module(selected_module_).declaration(selected_declaration_)};
-    editor_source_ = declaration.source().value_or("");
-
-    auto const& types{document_->types()};
-    auto const selected{document_->find_type(selected_module_, selected_declaration_)};
-    selected_id_ = selected ? document_->find_declaration(types.identity(*selected)) : std::nullopt;
-    analysis_.edit_inputs().selection.select_type(types, selected);
-    frame_changed_ = true;
 }
 
 void PlannerUi::synchronize() {
-    if (!document_ || !document_->valid() || observed_revision_ == document_->revision()) {
+    document_ = controller_.document();
+    if (!document_ || !document_->valid()) {
         return;
     }
-
-    analysis_.replace_types(*document_, std::nullopt);
-    observed_revision_ = document_->revision();
+    project_path_ = document_->project_path();
+    target_name_ = document_->target_name();
+    if (!creating_declaration_) {
+        selected_module_ = controller_.selected_module();
+        selected_declaration_ = controller_.selected_declaration();
+        if (!editor_modified_) {
+            editor_source_ = document_->query()
+                                 .module(selected_module_)
+                                 .declaration(selected_declaration_)
+                                 .source()
+                                 .value_or("");
+        }
+    }
     if (!selected_source_.empty() && !source_modified_) {
         new_source_text_.clear();
         for (auto const& source : document_->sources()) {
@@ -332,46 +311,15 @@ void PlannerUi::synchronize() {
             }
         }
     }
-    if (!selected_declaration_.empty()) {
-        auto const retained{selected_id_};
-        if (retained) {
-            if (auto const type{document_->declaration_type(*retained)}) {
-                auto const& types{document_->types()};
-                selected_module_ = types.strings().view(types.module_name(*type));
-                selected_declaration_ = types.strings().view(types.name(*type));
-            }
-        }
-        select_declaration(selected_module_, selected_declaration_);
-        if (!selected_id_) {
-            selected_id_ = retained;
-        }
-    } else if (!creating_declaration_) {
-        for (auto const& module : document_->query().modules()) {
-            auto const declarations{module.declarations()};
-            if (!declarations.empty()) {
-                select_declaration(std::string{module.name()},
-                                   std::string{declarations.front().name()});
-                break;
-            }
-        }
-    }
-    frame_changed_ = true;
 }
 
-auto PlannerUi::commit(layout::Transaction const& transaction) -> bool {
-    if (!document_->commit(transaction)) {
-        status_ = "The transaction was rejected; see Diagnostics.";
-        frame_changed_ = true;
-        return false;
-    }
-    status_.clear();
-    synchronize();
-    return true;
+void PlannerUi::commit(layout::Transaction transaction) {
+    controller_.submit(std::move(transaction));
+    apply_requested_ = true;
 }
 
 auto PlannerUi::draw() -> bool {
     frame_changed_ = false;
-    synchronize();
     auto const dockspace{ImGui::DockSpaceOverViewport()};
     if (!std::exchange(layout_initialized_, true) &&
         !ImGui::FindWindowSettingsByID(ImHashStr("Project"))) {
@@ -397,11 +345,36 @@ auto PlannerUi::draw() -> bool {
     draw_editor();
     if (document_ && document_->valid()) {
         draw_variants();
-        analysis_.refresh(&*document_);
         draw_analysis();
     }
     draw_diagnostics();
     draw_close_confirmation();
+    if (controller_.drain()) {
+        if (apply_requested_) {
+            if (controller_.last_edit_succeeded().value_or(false)) {
+                if (declaration_apply_requested_) {
+                    editor_modified_ = false;
+                    creating_declaration_ = false;
+                }
+                if (source_apply_requested_) {
+                    source_modified_ = false;
+                }
+                if (source_after_edit_) {
+                    selected_source_ = std::move(*source_after_edit_);
+                }
+                status_.clear();
+            } else {
+                status_ = "The transaction was rejected; see Diagnostics.";
+            }
+            source_after_edit_.reset();
+            apply_requested_ = false;
+            declaration_apply_requested_ = false;
+            source_apply_requested_ = false;
+        }
+        synchronize();
+        ImGui::MarkIniSettingsDirty();
+        frame_changed_ = true;
+    }
     return frame_changed_;
 }
 
@@ -414,7 +387,7 @@ void PlannerUi::draw_menu() {
             new_project();
         }
         if (ImGui::MenuItem("Save", "Ctrl+S", false, document_ && document_->valid())) {
-            status_ = document_->save() ? "Saved." : "Save failed; see Diagnostics.";
+            controller_.save();
         }
         if (ImGui::MenuItem("Save as", nullptr, false, document_ && document_->valid())) {
             save_as();
@@ -426,26 +399,24 @@ void PlannerUi::draw_menu() {
     }
     if (ImGui::BeginMenu("Edit")) {
         if (ImGui::MenuItem("Undo", "Ctrl+Z", false, document_ && document_->can_undo())) {
-            document_->undo();
-            synchronize();
+            controller_.undo();
         }
         if (ImGui::MenuItem("Redo", "Ctrl+Y", false, document_ && document_->can_redo())) {
-            document_->redo();
-            synchronize();
+            controller_.redo();
         }
         ImGui::EndMenu();
     }
     ImGui::EndMainMenuBar();
 
     if (document_ && !ImGui::GetIO().WantTextInput) {
-        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z) && document_->undo()) {
-            synchronize();
+        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z)) {
+            controller_.undo();
         }
-        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y) && document_->redo()) {
-            synchronize();
+        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y)) {
+            controller_.redo();
         }
         if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S)) {
-            status_ = document_->save() ? "Saved." : "Save failed; see Diagnostics.";
+            controller_.save();
         }
     }
 }
@@ -493,7 +464,7 @@ void PlannerUi::draw_project() {
             if (ImGui::Button("New declaration")) {
                 selected_module_ = name;
                 selected_declaration_.clear();
-                selected_id_.reset();
+                controller_.select_declaration(name, "");
                 editor_source_.clear();
                 creating_declaration_ = true;
                 editor_modified_ = false;
@@ -517,37 +488,33 @@ void PlannerUi::draw_project() {
         if (ImGui::Button("Add source")) {
             auto transaction{document_->transaction()};
             transaction.add_source(new_source_path_, new_source_text_);
-            if (commit(transaction)) {
-                source_modified_ = false;
-            }
+            source_apply_requested_ = true;
+            source_after_edit_ = new_source_path_;
+            commit(std::move(transaction));
         }
         ImGui::BeginDisabled(selected_source_.empty());
         if (ImGui::Button("Apply source")) {
             auto transaction{document_->transaction()};
             transaction.replace_source(selected_source_, new_source_text_);
-            if (commit(transaction)) {
-                source_modified_ = false;
-            }
+            source_apply_requested_ = true;
+            commit(std::move(transaction));
         }
         ImGui::SameLine();
         if (ImGui::Button("Revert source draft")) {
             source_modified_ = false;
-            observed_revision_.reset();
             synchronize();
         }
         if (ImGui::Button("Rename selected source")) {
             auto transaction{document_->transaction()};
             transaction.rename_source(selected_source_, new_source_path_);
-            if (commit(transaction)) {
-                selected_source_ = new_source_path_;
-            }
+            source_after_edit_ = new_source_path_;
+            commit(std::move(transaction));
         }
         if (ImGui::Button("Remove selected source")) {
             auto transaction{document_->transaction()};
             transaction.remove_source(selected_source_);
-            if (commit(transaction)) {
-                selected_source_.clear();
-            }
+            source_after_edit_ = "";
+            commit(std::move(transaction));
         }
         ImGui::EndDisabled();
     }
@@ -557,7 +524,7 @@ void PlannerUi::draw_project() {
         if (ImGui::Button("Create module")) {
             auto transaction{document_->transaction()};
             transaction.create_module(new_module_source_, new_module_);
-            commit(transaction);
+            commit(std::move(transaction));
         }
     }
     if (!selected_module_.empty() && ImGui::CollapsingHeader("Selected module")) {
@@ -566,14 +533,13 @@ void PlannerUi::draw_project() {
         if (ImGui::Button("Rename module")) {
             auto transaction{document_->transaction()};
             transaction.rename_module(selected_module_, module_name_input_);
-            if (commit(transaction)) {
-                selected_module_ = module_name_input_;
-            }
+            commit(std::move(transaction));
+            select_declaration(module_name_input_, selected_declaration_);
         }
         if (ImGui::Button("Delete module")) {
             auto transaction{document_->transaction()};
             transaction.delete_module(selected_module_);
-            commit(transaction);
+            commit(std::move(transaction));
         }
     }
     ImGui::End();
@@ -595,6 +561,7 @@ void PlannerUi::draw_editor() {
         "##declaration", &editor_source_, {-1.0F, 320.0F}, ImGuiInputTextFlags_AllowTabInput);
     if (ImGui::Button("Apply")) {
         auto const creating{creating_declaration_};
+        declaration_apply_requested_ = true;
         auto transaction{document_->transaction()};
         if (creating_declaration_) {
             transaction.create_declaration(selected_module_, editor_source_);
@@ -602,13 +569,9 @@ void PlannerUi::draw_editor() {
             transaction.replace_declaration(
                 selected_module_, selected_declaration_, editor_source_);
         }
-        if (commit(transaction)) {
-            editor_modified_ = false;
-            if (creating) {
-                auto const declarations{document_->query().module(selected_module_).declarations()};
-                assert(!declarations.empty());
-                select_declaration(selected_module_, std::string{declarations.back().name()});
-            }
+        commit(std::move(transaction));
+        if (creating) {
+            controller_.select_created_declaration(selected_module_);
         }
     }
     if (!creating_declaration_) {
@@ -620,7 +583,7 @@ void PlannerUi::draw_editor() {
         if (ImGui::Button("Delete")) {
             auto transaction{document_->transaction()};
             transaction.delete_declaration(selected_module_, selected_declaration_);
-            commit(transaction);
+            commit(std::move(transaction));
         }
         if (ImGui::CollapsingHeader("Rename, duplicate or move")) {
             ImGui::InputText("New name", &declaration_name_input_);
@@ -628,27 +591,24 @@ void PlannerUi::draw_editor() {
                 auto transaction{document_->transaction()};
                 transaction.rename_declaration(
                     selected_module_, selected_declaration_, declaration_name_input_);
-                if (commit(transaction)) {
-                    select_declaration(selected_module_, declaration_name_input_);
-                }
+                commit(std::move(transaction));
+                select_declaration(selected_module_, declaration_name_input_);
             }
             ImGui::SameLine();
             if (ImGui::Button("Duplicate")) {
                 auto transaction{document_->transaction()};
                 transaction.duplicate_declaration(
                     selected_module_, selected_declaration_, declaration_name_input_);
-                if (commit(transaction)) {
-                    select_declaration(selected_module_, declaration_name_input_);
-                }
+                commit(std::move(transaction));
+                select_declaration(selected_module_, declaration_name_input_);
             }
             ImGui::InputText("Destination module", &destination_module_);
             if (ImGui::Button("Move")) {
                 auto transaction{document_->transaction()};
                 transaction.move_declaration(
                     selected_module_, selected_declaration_, destination_module_);
-                if (commit(transaction)) {
-                    select_declaration(destination_module_, selected_declaration_);
-                }
+                commit(std::move(transaction));
+                select_declaration(destination_module_, selected_declaration_);
             }
         }
     }
@@ -660,19 +620,19 @@ void PlannerUi::draw_editor() {
             auto transaction{document_->transaction()};
             transaction.set_field_bits(
                 selected_module_, selected_declaration_, override_member_, override_bits_);
-            commit(transaction);
+            commit(std::move(transaction));
         }
         ImGui::InputText("Type", &override_type_);
         if (ImGui::Button("Set member type")) {
             auto transaction{document_->transaction()};
             transaction.set_member_type(
                 selected_module_, selected_declaration_, override_member_, override_type_);
-            commit(transaction);
+            commit(std::move(transaction));
         }
         if (ImGui::Button("Set packed storage")) {
             auto transaction{document_->transaction()};
             transaction.set_packed_storage(selected_module_, selected_declaration_, override_type_);
-            commit(transaction);
+            commit(std::move(transaction));
         }
     }
     ImGui::End();
@@ -680,197 +640,236 @@ void PlannerUi::draw_editor() {
 
 void PlannerUi::draw_analysis() {
     ImGui::Begin("Layout");
-    auto elements{analysis_.inputs().workspace.element_count()};
+    auto const& settings{document_->analysis_settings()};
+    auto elements{settings.element_count};
     if (ImGui::InputScalar("Element count", ImGuiDataType_U64, &elements) && elements > 0) {
-        analysis_.edit_inputs().workspace.set_element_count(elements);
-        analysis_.refresh(&*document_);
+        auto transaction{document_->transaction()};
+        transaction.set_element_count(elements);
+        controller_.submit(std::move(transaction));
     }
-    auto contiguous{analysis_.inputs().soa_allocation_strategy ==
+    auto capacity{settings.default_soa_capacity};
+    if (ImGui::InputScalar("Default SoA capacity", ImGuiDataType_U64, &capacity) && capacity > 0) {
+        auto transaction{document_->transaction()};
+        transaction.set_default_soa_capacity(capacity);
+        controller_.submit(std::move(transaction));
+    }
+    auto contiguous{settings.soa_allocation_strategy ==
                     layout::SoaAllocationStrategy::aligned_contiguous};
     if (ImGui::Checkbox("Contiguous SoA allocation", &contiguous)) {
-        analysis_.edit_inputs().soa_allocation_strategy =
+        auto transaction{document_->transaction()};
+        transaction.set_soa_allocation_strategy(
             contiguous ? layout::SoaAllocationStrategy::aligned_contiguous
-                       : layout::SoaAllocationStrategy::separate_columns;
-        analysis_.refresh(&*document_);
+                       : layout::SoaAllocationStrategy::separate_columns);
+        controller_.submit(std::move(transaction));
     }
+
+    auto const& storage{controller_.analysis()};
     if (ImGui::CollapsingHeader("Access workload")) {
-        auto operation{static_cast<int>(analysis_.inputs().access_operation)};
+        auto operation{static_cast<int>(settings.access_operation)};
         if (ImGui::Combo("Operation", &operation, "Read\0Write\0Read and write\0")) {
-            analysis_.edit_inputs().access_operation =
-                static_cast<layout::AccessOperation>(operation);
+            auto transaction{document_->transaction()};
+            transaction.set_access_operation(static_cast<layout::AccessOperation>(operation));
+            if (auto const selected{controller_.selected_type()}) {
+                auto const id{document_->find_declaration(document_->types().identity(*selected))};
+                if (id) {
+                    if (auto const found{settings.access_sets.find(*id)};
+                        found != settings.access_sets.end()) {
+                        auto accesses{found->second};
+                        for (auto& [name, access] : accesses) {
+                            access = static_cast<layout::AccessOperation>(operation);
+                        }
+                        transaction.set_access_set(
+                            selected_module_, selected_declaration_, accesses);
+                    }
+                }
+            }
+            controller_.submit(std::move(transaction));
         }
-        auto multiplicity{analysis_.inputs().access_multiplicity};
+        auto multiplicity{settings.access_multiplicity};
         if (ImGui::InputScalar("Accesses per element", ImGuiDataType_U64, &multiplicity) &&
             multiplicity > 0) {
-            analysis_.edit_inputs().access_multiplicity = multiplicity;
+            auto transaction{document_->transaction()};
+            transaction.set_access_multiplicity(multiplicity);
+            controller_.submit(std::move(transaction));
         }
-        auto const& selection{analysis_.inputs().selection};
+        std::string selected_member;
+        if (auto const selected{controller_.selected_type()}) {
+            auto const id{document_->find_declaration(document_->types().identity(*selected))};
+            if (id) {
+                if (auto const found{settings.access_sets.find(*id)};
+                    found != settings.access_sets.end() && !found->second.empty()) {
+                    selected_member = found->second.begin()->first;
+                }
+            }
+        }
         if (ImGui::BeginCombo("Accessed member",
-                              selection.field.empty() ? "None" : selection.field.c_str())) {
-            auto const& values{analysis_.results()};
-            if (ImGui::Selectable("None", selection.field.empty())) {
-                analysis_.edit_inputs().selection.field.clear();
+                              selected_member.empty() ? "None" : selected_member.c_str())) {
+            auto const choose{[&](std::string_view name) {
+                if (ImGui::Selectable(name.empty() ? "None" : std::string{name}.c_str(),
+                                      selected_member == name)) {
+                    auto transaction{document_->transaction()};
+                    layout::AccessSet accesses;
+                    if (!name.empty()) {
+                        accesses.emplace(name, settings.access_operation);
+                    }
+                    transaction.set_access_set(selected_module_, selected_declaration_, accesses);
+                    controller_.submit(std::move(transaction));
+                }
+            }};
+            if (!selected_declaration_.empty()) {
+                choose("");
             }
-            if (values.active_packed) {
-                for (auto const& field : values.active_packed->fields) {
-                    if (ImGui::Selectable(field.name.c_str(), selection.field == field.name)) {
-                        analysis_.edit_inputs().selection.field = field.name;
+            if (!storage.runs.empty()) {
+                auto const row{storage.runs.front().analysis.value};
+                if (auto const& packed{storage.types.packed[row]}) {
+                    auto const end{packed->fields.begin + packed->fields.count};
+                    for (auto index{packed->fields.begin}; index < end; ++index) {
+                        choose(storage.fields.name[index]);
                     }
                 }
-            }
-            if (values.record_analysis) {
-                for (auto const& member : values.record_analysis->members) {
-                    if (ImGui::Selectable(member.name.c_str(), selection.field == member.name)) {
-                        analysis_.edit_inputs().selection.field = member.name;
+                if (auto const& record{storage.types.aggregate[row]}) {
+                    auto const end{record->members.begin + record->members.count};
+                    for (auto index{record->members.begin}; index < end; ++index) {
+                        choose(storage.components.name[index]);
                     }
                 }
-            }
-            if (values.active_soa) {
-                for (auto const& column : values.active_soa->columns) {
-                    if (ImGui::Selectable(column.name.c_str(), selection.field == column.name)) {
-                        analysis_.edit_inputs().selection.field = column.name;
+                if (auto const& soa{storage.types.soa[row]}) {
+                    auto const end{soa->columns.begin + soa->columns.count};
+                    for (auto index{soa->columns.begin}; index < end; ++index) {
+                        choose(storage.columns.name[index]);
                     }
                 }
             }
             ImGui::EndCombo();
         }
-        analysis_.refresh(&*document_);
     }
+    draw_distribution();
     if (ImGui::CollapsingHeader("Target profiles")) {
         ImGui::InputText("Primary profile", &profile_path_);
         if (ImGui::Button("Load primary profile")) {
             auto profile{layout::load_abi_profile(profile_path_)};
             if (profile) {
-                analysis_.set_primary_abi(std::move(*profile));
+                auto transaction{document_->transaction()};
+                transaction.set_abi_profile(*profile);
+                controller_.submit(std::move(transaction));
             } else {
                 editor_.record_error(profile.error().message);
             }
         }
         ImGui::SameLine();
         if (ImGui::Button("Use host profile")) {
-            analysis_.set_primary_abi(layout::AbiProfile::host_common());
+            auto transaction{document_->transaction()};
+            transaction.set_abi_profile(layout::AbiProfile::host_common());
+            controller_.submit(std::move(transaction));
         }
         ImGui::InputText("Comparison profile", &comparison_profile_path_);
         if (ImGui::Button("Load comparison profile")) {
             auto profile{layout::load_abi_profile(comparison_profile_path_)};
             if (profile) {
-                analysis_.set_comparison_abi(std::move(*profile));
+                auto transaction{document_->transaction()};
+                transaction.set_comparison_abi_profile(*profile);
+                controller_.submit(std::move(transaction));
             } else {
                 editor_.record_error(profile.error().message);
             }
         }
-        analysis_.refresh(&*document_);
     }
 
-    auto const& results{analysis_.results()};
-    if (results.active_packed) {
-        packed_layout(*results.active_packed);
-    }
-    if (results.record_analysis) {
-        record_layout(*results.record_analysis);
-    }
-    if (results.active_soa) {
-        soa_layout(*results.active_soa);
-    }
-    if (results.union_analysis) {
-        metric("Union size (bytes)", results.union_analysis->size_bytes);
-        metric("Union alignment (bytes)", results.union_analysis->alignment_bytes);
-    }
-    if (results.tagged_union_analysis) {
-        metric("Tagged union size (bytes)", results.tagged_union_analysis->size_bytes);
-        metric("Tagged union alignment (bytes)", results.tagged_union_analysis->alignment_bytes);
-    }
-    if (results.enum_domain) {
-        metric("Enum live values", results.enum_domain->live_value_count);
-        metric("Enum effective width", results.enum_domain->effective_bit_width);
-        metric("Enum backing bits", results.enum_domain->backing_bits);
-    }
-    if (results.integer_scalar_analysis) {
-        metric("Integer effective width", results.integer_scalar_analysis->effective_bit_width);
-        metric("Integer required width", results.integer_scalar_analysis->minimum_required_bits);
-        metric("Integer unused codes", results.integer_scalar_analysis->unused_codes);
-    }
-    if (results.linear_quantized_analysis) {
-        auto const& value{*results.linear_quantized_analysis};
-        metric("Quantized width", value.encoded_storage_bits);
-        ImGui::Text("Resolution: %.9g", static_cast<double>(value.resolution));
-        ImGui::Text("Maximum rounding error: %.9g",
-                    static_cast<double>(value.maximum_rounding_error));
-    }
-    if (results.integer_varint_analysis) {
-        metric("Minimum encoded bytes", results.integer_varint_analysis->minimum_encoded_bytes);
-        metric("Maximum encoded bytes", results.integer_varint_analysis->maximum_encoded_bytes);
-        metric("Maximum total bytes", results.integer_varint_analysis->maximum_total_bytes);
-    }
-    if (results.fixed_point_analysis) {
-        metric("Fixed point bits", results.fixed_point_analysis->total_bits);
-        ImGui::Text("Resolution: %.9g",
-                    static_cast<double>(results.fixed_point_analysis->resolution));
-    }
-    if (results.mini_float_analysis) {
-        metric("Mini float bits", results.mini_float_analysis->total_bits);
-        ImGui::Text(
-            "Maximum relative rounding error: %.9g",
-            static_cast<double>(results.mini_float_analysis->maximum_relative_rounding_error));
-    }
-    if (results.optional_sentinel_analysis) {
-        metric("Optional sentinel bits", results.optional_sentinel_analysis->encoded_storage_bits);
-    }
-    if (results.optional_presence_bit_analysis) {
-        metric("Optional presence bits",
-               results.optional_presence_bit_analysis->encoded_storage_bits);
-    }
-    if (results.packed_access_analysis) {
-        ImGui::SeparatorText("Packed access");
-        metric("Useful bits", results.packed_access_analysis->useful_bits);
-        metric("Cache bytes touched", results.packed_access_analysis->minimum_cache_bytes_touched);
-        metric("Pages touched", results.packed_access_analysis->minimum_pages_touched);
-    }
-    if (results.record_access_analysis) {
-        ImGui::SeparatorText("Record access");
-        metric("Useful bytes", results.record_access_analysis->useful_bytes);
-        metric("Cache bytes touched", results.record_access_analysis->cache_bytes_touched);
-        metric("Pages touched", results.record_access_analysis->pages_touched);
-    }
-    if (results.soa_access_analysis) {
-        ImGui::SeparatorText("SoA access");
-        metric("Useful bytes", results.soa_access_analysis->useful_bytes);
-        metric("Cache bytes touched", results.soa_access_analysis->minimum_cache_bytes_touched);
-        metric("Pages touched", results.soa_access_analysis->minimum_pages_touched);
-    }
+    if (!storage.runs.empty()) {
+        auto const& run{storage.runs.front()};
+        auto const row{run.analysis.value};
+        auto const& totals{storage.totals.front()};
+        metric("Total storage (bytes)", totals.total_storage_bytes);
+        metric("Minimum cache lines", totals.minimum_cache_lines);
+        metric("Minimum pages", totals.minimum_pages);
+        if (auto const& value{storage.types.packed[row]}) {
+            packed_layout(storage, *value);
+        }
+        if (auto const& value{storage.types.aggregate[row]}) {
+            record_layout(storage, *value);
+        }
+        if (auto const& value{storage.types.soa[row]}) {
+            soa_layout(storage, *value);
+        }
+        if (auto const& value{storage.types.enum_backing[row]}) {
+            metric("Enum backing bits", value->backing_bits);
+        }
 
-    if (ImGui::CollapsingHeader("Target comparison")) {
-        ImGui::Text("%s / %s",
-                    analysis_.primary_abi().name().c_str(),
-                    analysis_.comparison_abi().name().c_str());
-        if (results.packed_target_comparison) {
-            comparison("Packed storage bytes",
-                       results.packed_target_comparison->first.aggregate.total_storage_bytes,
-                       results.packed_target_comparison->second.aggregate.total_storage_bytes);
+        auto const scalar{storage.scalars.find(storage.types.schema_type[row])};
+        {
+            if (auto const& value{storage.scalars.enum_domain[scalar]}) {
+                metric("Enum live values", value->live_value_count);
+                metric("Enum effective width", value->effective_bit_width);
+            }
+            if (auto const& value{storage.scalars.integer_domain[scalar]}) {
+                metric("Integer effective width", value->effective_bit_width);
+                metric("Integer required width", value->minimum_required_bits);
+                metric("Integer unused codes", value->unused_codes);
+            }
+            if (auto const& value{storage.scalars.quantized_encoding[scalar]}) {
+                metric("Quantized width", value->encoded_storage_bits);
+                ImGui::Text("Resolution: %.9g", static_cast<double>(value->resolution));
+                ImGui::Text("Maximum rounding error: %.9g",
+                            static_cast<double>(value->maximum_rounding_error));
+            }
+            if (auto const& value{storage.scalars.varint_encoding[scalar]}) {
+                metric("Minimum encoded bytes", value->minimum_encoded_bytes);
+                metric("Maximum encoded bytes", value->maximum_encoded_bytes);
+                metric("Maximum total bytes", totals.maximum_total_bytes);
+            }
+            if (auto const& value{storage.scalars.fixed_encoding[scalar]}) {
+                metric("Fixed point bits", value->total_bits);
+                ImGui::Text("Resolution: %.9g", static_cast<double>(value->resolution));
+            }
+            if (auto const& value{storage.scalars.float_encoding[scalar]}) {
+                metric("Mini float bits", value->total_bits);
+                ImGui::Text("Maximum relative rounding error: %.9g",
+                            static_cast<double>(value->maximum_relative_rounding_error));
+            }
+            if (auto const& value{storage.scalars.optional_sentinel_encoding[scalar]}) {
+                metric("Optional sentinel bits", value->encoded_storage_bits);
+            }
+            if (auto const& value{storage.scalars.optional_presence_encoding[scalar]}) {
+                metric("Optional presence bits", value->encoded_storage_bits);
+            }
         }
-        if (results.record_target_comparison) {
-            comparison("Record size",
-                       results.record_target_comparison->first.size_bytes,
-                       results.record_target_comparison->second.size_bytes);
+        if (run.access) {
+            auto const access{run.access->value};
+            ImGui::SeparatorText("Access footprint");
+            metric("Useful bits", storage.workloads.bits[access].useful);
+            metric("Useful bytes", storage.workloads.bytes[access].useful);
+            metric("Cache bytes touched", storage.workloads.cache[access].bytes);
+            metric("Pages touched", storage.workloads.pages[access].count);
         }
-        if (results.soa_target_comparison) {
-            comparison("SoA allocation bytes",
-                       results.soa_target_comparison->first.total_allocation_bytes,
-                       results.soa_target_comparison->second.total_allocation_bytes);
+        if (run.distribution) {
+            auto const distribution{run.distribution->value};
+            auto const& values{storage.distributions};
+            ImGui::SeparatorText("Distribution");
+            metric("Total weight", values.total_weight[distribution]);
+            if (values.expected_extent_bytes[distribution]) {
+                ImGui::Text("Expected extent (bytes): %.9g",
+                            static_cast<double>(*values.expected_extent_bytes[distribution]));
+            }
+            if (values.expected_slack_bytes[distribution]) {
+                ImGui::Text("Expected slack (bytes): %.9g",
+                            static_cast<double>(*values.expected_slack_bytes[distribution]));
+            }
         }
-        if (results.union_target_comparison) {
-            comparison("Union size",
-                       results.union_target_comparison->first.size_bytes,
-                       results.union_target_comparison->second.size_bytes);
-        }
-        if (results.tagged_union_target_comparison) {
-            comparison("Tagged union size",
-                       results.tagged_union_target_comparison->first.size_bytes,
-                       results.tagged_union_target_comparison->second.size_bytes);
+        if (settings.comparison_abi && ImGui::CollapsingHeader("Target comparison")) {
+            ImGui::Text(
+                "%s / %s", settings.abi.name().c_str(), settings.comparison_abi->name().c_str());
+            comparison("Total storage bytes",
+                       totals.total_storage_bytes,
+                       storage.totals[1].total_storage_bytes);
+            auto const second{storage.runs[1].analysis.value};
+            if (storage.types.soa[row] && storage.types.soa[second]) {
+                comparison("SoA allocation bytes",
+                           storage.types.soa[row]->total_allocation_bytes,
+                           storage.types.soa[second]->total_allocation_bytes);
+            }
         }
     }
-
-    if (auto const selected{analysis_.inputs().selection.type};
+    if (auto const selected{controller_.selected_type()};
         selected && ImGui::CollapsingHeader("Dependencies")) {
         auto const& types{document_->types()};
         for (auto const dependency : types.dependencies_of(*selected)) {
@@ -884,14 +883,121 @@ void PlannerUi::draw_analysis() {
     ImGui::End();
 }
 
+void PlannerUi::draw_distribution() {
+    if (selected_declaration_.empty() || !ImGui::CollapsingHeader("Value distribution")) {
+        return;
+    }
+    ImGui::Combo("Distribution kind",
+                 &distribution_kind_,
+                 "Varint values\0Union alternatives\0Tagged union tags\0");
+    auto const selected{controller_.selected_type()};
+    if (selected) {
+        auto const id{document_->find_declaration(document_->types().identity(*selected))};
+        auto const& settings{document_->analysis_settings()};
+        if (id && distribution_kind_ == 0) {
+            if (auto const found{settings.varint_distributions.find(*id)};
+                found != settings.varint_distributions.end()) {
+                for (auto const& entry : found->second) {
+                    ImGui::Text("%s: %llu",
+                                lispb::codegen::format_packed_integer(entry.value).c_str(),
+                                static_cast<unsigned long long>(entry.weight));
+                }
+            }
+        } else if (id && distribution_kind_ == 1) {
+            if (auto const found{settings.union_distributions.find(*id)};
+                found != settings.union_distributions.end()) {
+                for (auto const& entry : found->second) {
+                    ImGui::Text("%s: %llu",
+                                entry.alternative_name.c_str(),
+                                static_cast<unsigned long long>(entry.weight));
+                }
+            }
+        } else if (id) {
+            if (auto const found{settings.tagged_union_distributions.find(*id)};
+                found != settings.tagged_union_distributions.end()) {
+                for (auto const& entry : found->second) {
+                    ImGui::Text("%s: %llu",
+                                entry.tag.c_str(),
+                                static_cast<unsigned long long>(entry.weight));
+                }
+            }
+        }
+    }
+    ImGui::TextWrapped("Enter one value or name and a positive weight per line. An empty list "
+                       "clears the distribution.");
+    ImGui::InputTextMultiline("Samples", &distribution_source_, {-1.0F, 100.0F});
+    if (!ImGui::Button("Apply distribution")) {
+        return;
+    }
+
+    std::vector<layout::IntegerVarintDistributionEntry> integers;
+    std::vector<layout::UnionDistributionEntry> alternatives;
+    std::vector<layout::TaggedUnionDistributionEntry> tags;
+    std::istringstream input{distribution_source_};
+    std::string line;
+    while (std::getline(input, line)) {
+        if (line.find_first_not_of(" \t\r") == std::string::npos) {
+            continue;
+        }
+        std::istringstream row{line};
+        std::string name;
+        std::string weight_text;
+        std::uint64_t weight{};
+        std::string extra;
+        if (!(row >> name >> weight_text) || row >> extra) {
+            editor_.record_error(
+                "Each distribution row requires a value or name followed by a positive weight.");
+            return;
+        }
+        auto const parsed_weight{
+            std::from_chars(weight_text.data(), weight_text.data() + weight_text.size(), weight)};
+        if (parsed_weight.ec != std::errc{} ||
+            parsed_weight.ptr != weight_text.data() + weight_text.size() || weight == 0) {
+            editor_.record_error("Distribution weights must be positive integers.");
+            return;
+        }
+        if (distribution_kind_ == 0) {
+            auto digits{std::string_view{name}};
+            auto const negative{digits.starts_with('-')};
+            if (negative) {
+                digits.remove_prefix(1);
+            }
+            std::uint64_t magnitude{};
+            auto const parsed{
+                std::from_chars(digits.data(), digits.data() + digits.size(), magnitude)};
+            if (parsed.ec != std::errc{} || parsed.ptr != digits.data() + digits.size()) {
+                editor_.record_error("Varint distribution values must be integers.");
+                return;
+            }
+            integers.push_back(
+                {lispb::codegen::PackedIntegerValue::from_parts(negative, magnitude), weight});
+        } else if (distribution_kind_ == 1) {
+            alternatives.push_back({name, weight});
+        } else {
+            tags.push_back({name, weight});
+        }
+    }
+
+    auto transaction{document_->transaction()};
+    if (distribution_kind_ == 0) {
+        transaction.set_varint_distribution(selected_module_, selected_declaration_, integers);
+    } else if (distribution_kind_ == 1) {
+        transaction.set_union_distribution(selected_module_, selected_declaration_, alternatives);
+    } else {
+        transaction.set_tagged_union_distribution(selected_module_, selected_declaration_, tags);
+    }
+    controller_.submit(std::move(transaction));
+}
+
 void PlannerUi::draw_variants() {
     ImGui::Begin("Variants");
-    auto const active{analysis_.inputs().workspace.active_variant_id()};
-    for (auto const& variant : analysis_.inputs().workspace.variants()) {
-        ImGui::PushID(static_cast<int>(variant.id.value));
-        if (ImGui::Selectable(variant.name.c_str(), active == variant.id)) {
-            analysis_.edit_inputs().workspace.select_variant(variant.id);
-            variant_name_ = variant.name;
+    auto const active{controller_.active_variant()};
+    auto const& variants{document_->variants()};
+    for (auto const variant : variants.ids()) {
+        ImGui::PushID(static_cast<int>(variant.value));
+        if (ImGui::Selectable(variants.name(variant).c_str(), active == variant)) {
+            controller_.select_variant(variant);
+            variant_name_ = variants.name(variant);
         }
         ImGui::PopID();
     }
@@ -899,37 +1005,33 @@ void PlannerUi::draw_variants() {
     if (ImGui::Button("Create")) {
         auto transaction{document_->transaction()};
         transaction.create_variant(variant_name_);
-        if (commit(transaction)) {
-            auto const id{analysis_.inputs().workspace.variants().back().id};
-            analysis_.edit_inputs().workspace.select_variant(id);
-        }
+        commit(std::move(transaction));
+        controller_.select_created_variant();
     }
     ImGui::SameLine();
     if (ImGui::Button("Duplicate")) {
         auto transaction{document_->transaction()};
         transaction.duplicate_variant(active, variant_name_);
-        if (commit(transaction)) {
-            auto const id{analysis_.inputs().workspace.variants().back().id};
-            analysis_.edit_inputs().workspace.select_variant(id);
-        }
+        commit(std::move(transaction));
+        controller_.select_created_variant();
     }
     ImGui::BeginDisabled(active == layout::VariantId{});
     if (ImGui::Button("Rename")) {
         auto transaction{document_->transaction()};
         transaction.rename_variant(active, variant_name_);
-        commit(transaction);
+        commit(std::move(transaction));
     }
     ImGui::SameLine();
     if (ImGui::Button("Reset overrides")) {
         auto transaction{document_->transaction()};
         transaction.reset_variant(active);
-        commit(transaction);
+        commit(std::move(transaction));
     }
     ImGui::SameLine();
     if (ImGui::Button("Delete variant")) {
         auto transaction{document_->transaction()};
         transaction.delete_variant(active);
-        commit(transaction);
+        commit(std::move(transaction));
     }
 
     ImGui::BeginDisabled(selected_declaration_.empty());
@@ -944,7 +1046,7 @@ void PlannerUi::draw_variants() {
                                            selected_declaration_,
                                            override_member_,
                                            static_cast<std::uint32_t>(override_bits_));
-        commit(transaction);
+        commit(std::move(transaction));
     }
     ImGui::EndDisabled();
     ImGui::InputText("Physical type", &override_type_);
@@ -952,56 +1054,51 @@ void PlannerUi::draw_variants() {
         auto transaction{document_->transaction()};
         transaction.set_variant_packed_storage(
             active, selected_module_, selected_declaration_, override_type_);
-        commit(transaction);
+        commit(std::move(transaction));
     }
     if (ImGui::Button("Override column type")) {
         auto transaction{document_->transaction()};
         transaction.set_variant_member_type(
             active, selected_module_, selected_declaration_, override_member_, override_type_);
-        commit(transaction);
+        commit(std::move(transaction));
     }
     ImGui::InputScalar("Capacity", ImGuiDataType_U64, &override_capacity_);
     if (ImGui::Button("Override capacity")) {
         auto transaction{document_->transaction()};
         transaction.set_variant_capacity(
             active, selected_module_, selected_declaration_, override_capacity_);
-        commit(transaction);
+        commit(std::move(transaction));
     }
     ImGui::EndDisabled();
     ImGui::EndDisabled();
 
     if (ImGui::CollapsingHeader("Compare variants")) {
-        auto const draw_picker{[&](char const* name, layout::VariantId selected, bool first) {
-            auto const* variant{analysis_.inputs().workspace.variant(selected)};
-            assert(variant);
-            if (ImGui::BeginCombo(name, variant->name.c_str())) {
-                for (auto const& candidate : analysis_.inputs().workspace.variants()) {
-                    if (ImGui::Selectable(candidate.name.c_str(), selected == candidate.id)) {
-                        auto& inputs{analysis_.edit_inputs()};
-                        if (first) {
-                            inputs.comparison_a_variant_id = candidate.id;
-                        } else {
-                            inputs.comparison_b_variant_id = candidate.id;
-                            inputs.comparison_b_follows_active = false;
-                        }
+        auto const draw_picker{[&](char const* name, bool first) {
+            auto const selected{controller_.comparison_variant(first)};
+            if (ImGui::BeginCombo(name, variants.name(selected).c_str())) {
+                for (auto const candidate : variants.ids()) {
+                    if (ImGui::Selectable(variants.name(candidate).c_str(),
+                                          selected == candidate)) {
+                        controller_.select_comparison_variant(first, candidate);
                     }
                 }
                 ImGui::EndCombo();
             }
         }};
-        draw_picker("First", analysis_.inputs().comparison_a_variant_id, true);
-        draw_picker("Second", analysis_.inputs().comparison_b_variant_id, false);
-        analysis_.refresh(&*document_);
-        auto const& result{analysis_.results()};
-        if (result.comparison_a_packed && result.comparison_b_packed) {
-            comparison("Packed storage bytes",
-                       result.comparison_a_packed->aggregate.total_storage_bytes,
-                       result.comparison_b_packed->aggregate.total_storage_bytes);
-        }
-        if (result.comparison_a_soa && result.comparison_b_soa) {
-            comparison("SoA allocation bytes",
-                       result.comparison_a_soa->total_allocation_bytes,
-                       result.comparison_b_soa->total_allocation_bytes);
+        draw_picker("First", true);
+        draw_picker("Second", false);
+        auto const& storage{controller_.analysis()};
+        if (!storage.runs.empty()) {
+            comparison("Total storage bytes",
+                       storage.totals[2].total_storage_bytes,
+                       storage.totals[3].total_storage_bytes);
+            auto const first{storage.runs[2].analysis.value};
+            auto const second{storage.runs[3].analysis.value};
+            if (storage.types.soa[first] && storage.types.soa[second]) {
+                comparison("SoA allocation bytes",
+                           storage.types.soa[first]->total_allocation_bytes,
+                           storage.types.soa[second]->total_allocation_bytes);
+            }
         }
     }
     ImGui::End();

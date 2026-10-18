@@ -2,8 +2,7 @@
 
 #include "window_size.hpp"
 #include <ioj/layout/document.hpp>
-#include <ioj/layout/planner_session.hpp>
-#include <ioj/layout/revision.hpp>
+#include <ioj/layout/planner_controller.hpp>
 
 #include <cstdint>
 #include <filesystem>
@@ -43,31 +42,30 @@ class PlannerUi {
     static void settings_read_line(ImGuiContext*, ImGuiSettingsHandler*, void*, char const*);
     static void settings_write_all(ImGuiContext*, ImGuiSettingsHandler*, ImGuiTextBuffer*);
 
-    auto open_project() -> bool;
+    void open_project();
     void new_project();
     void save_as();
     void select_declaration(std::string module, std::string name);
     void synchronize();
-    auto commit(layout::Transaction const& transaction) -> bool;
+    void commit(layout::Transaction transaction);
     void draw_menu();
     void draw_project();
     void draw_editor();
     void draw_analysis();
+    void draw_distribution();
     void draw_variants();
     void draw_diagnostics();
     void draw_close_confirmation();
 
     layout::EditorSession& editor_;
-    std::optional<layout::Document> document_;
-    layout::PlannerAnalysisSession analysis_;
+    layout::PlannerController controller_;
+    layout::Document* document_{};
     FileDialog* file_dialog_{};
     std::filesystem::path project_path_;
     std::string target_name_;
     std::optional<WindowSize> window_size_;
-    std::optional<layout::Revision> observed_revision_;
     std::string selected_module_;
     std::string selected_declaration_;
-    std::optional<lispb::schema::DeclarationId> selected_id_;
     std::string editor_source_;
     std::string project_input_;
     std::string target_input_;
@@ -84,6 +82,8 @@ class PlannerUi {
     std::string filter_;
     std::string profile_path_;
     std::string comparison_profile_path_;
+    std::string distribution_source_;
+    int distribution_kind_{};
     std::string variant_name_;
     std::string override_member_;
     std::string override_type_;
@@ -92,6 +92,10 @@ class PlannerUi {
     bool creating_declaration_{};
     bool editor_modified_{};
     bool source_modified_{};
+    bool apply_requested_{};
+    bool declaration_apply_requested_{};
+    bool source_apply_requested_{};
+    std::optional<std::string> source_after_edit_;
     bool close_requested_{};
     bool close_confirmed_{};
     bool frame_changed_{};
