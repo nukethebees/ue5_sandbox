@@ -59,7 +59,7 @@ auto to_native(ioj::FLevelDefinition const& definition)
                                             "Level entity columns have inconsistent lengths"}}};
     }
 
-    LevelDefinition::Components result;
+    LevelDefinitionComponents result;
     Diagnostics errors;
     result.metadata.id = LevelId{to_utf8(definition.metadata.id.value)};
     result.metadata.title = to_utf8(definition.metadata.title);

@@ -12,7 +12,7 @@ struct SceneEntityProperties {
 // Ephemeral observation, not a validated level. Properties parallel definition.entities.
 // The adapter checks actor validity/uniqueness; unresolved references remain diagnosable.
 struct SceneSnapshot {
-    LevelDefinition::Components definition{};
+    LevelDefinitionComponents definition{};
     std::vector<SceneEntityProperties> properties{};
     bool viewpoint_valid{true};
     bool mission_references_valid{true};

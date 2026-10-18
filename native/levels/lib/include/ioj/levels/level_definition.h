@@ -1,41 +1,26 @@
 #pragma once
 
 #include <ioj/levels/diagnostics.h>
-#include <ioj/levels/entity_spawn_definition.h>
-#include <ioj/levels/level_camera_definition.h>
-#include <ioj/levels/level_collision_grid_definition.h>
-#include <ioj/levels/level_metadata.h>
-#include <ioj/levels/level_mission_definition.h>
-#include <ioj/levels/level_mission_objective_event.h>
+#include <ioj/levels/level_definition_components.h>
 
 #include <optional>
 #include <utility>
 #include <vector>
 
 namespace ioj::levels {
+// Own a validated definition. Construction verifies values and cross-component references.
 class LevelDefinition {
   public:
-    // Assemble mutable components before construction. No LevelDefinition exists
-    // until component values and cross-component references have passed validation.
-    struct Components {
-        LevelMetadata metadata{};
-        std::vector<LevelId> unlock_level_ids{};
-        EntityId player_entity_id{};
-        std::optional<LevelCameraDefinition> camera{};
-        std::optional<LevelCollisionGridDefinition> collision_grid{};
-        std::optional<LevelMissionDefinition> mission{};
-        std::vector<LevelMissionObjectiveEvent> mission_events{};
-        std::vector<EntitySpawnDefinition> entities{};
-    };
-
-    [[nodiscard]] static auto make(Components components)
+    [[nodiscard]] static auto make(LevelDefinitionComponents components)
         -> std::expected<LevelDefinition, Diagnostics>;
 
-    [[nodiscard]] auto components() const -> Components const& { return components_; }
+    [[nodiscard]] auto components() const -> LevelDefinitionComponents const& {
+        return components_;
+    }
   private:
-    explicit LevelDefinition(Components components)
+    explicit LevelDefinition(LevelDefinitionComponents components)
         : components_{std::move(components)} {}
-    Components components_;
+    LevelDefinitionComponents components_;
 };
 
 // Return distinct teams from initial and scheduled entities, in enum order.

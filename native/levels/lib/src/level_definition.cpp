@@ -17,7 +17,8 @@ auto participating_teams(LevelDefinition const& definition) -> std::vector<Team>
     return result;
 }
 
-auto LevelDefinition::make(Components definition) -> std::expected<LevelDefinition, Diagnostics> {
+auto LevelDefinition::make(LevelDefinitionComponents definition)
+    -> std::expected<LevelDefinition, Diagnostics> {
     Diagnostics result;
     if (definition.metadata.id.empty()) {
         result.emplace_back(

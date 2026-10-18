@@ -22,15 +22,15 @@ auto emit_source(LevelDefinition const& level) -> std::expected<std::string, Dia
     return emit_editor_level_source(level);
 }
 
-auto emit_source(LevelDefinition::Components definition)
+auto emit_source(LevelDefinitionComponents definition)
     -> std::expected<std::string, Diagnostics> {
     return LevelDefinition::make(std::move(definition)).and_then([](LevelDefinition const& level) {
         return emit_editor_level_source(level);
     });
 }
 
-auto make_level(std::string id, std::vector<LevelId> unlocks = {}) -> LevelDefinition::Components {
-    LevelDefinition::Components result{
+auto make_level(std::string id, std::vector<LevelId> unlocks = {}) -> LevelDefinitionComponents {
+    LevelDefinitionComponents result{
         .metadata = {.id = LevelId{std::move(id)}, .title = "Test Level"},
         .unlock_level_ids = std::move(unlocks),
         .player_entity_id = EntityId{"player"},
@@ -77,7 +77,7 @@ static_assert(!std::is_convertible_v<EntityId, Team>);
 static_assert(!std::is_convertible_v<std::string, LevelId>);
 static_assert(!std::is_default_constructible_v<LevelDefinition>);
 static_assert(std::is_same_v<decltype(std::declval<LevelDefinition&>().components()),
-                             LevelDefinition::Components const&>);
+                             LevelDefinitionComponents const&>);
 
 TEST(NativeLevelDefinition, VerifiesComponentsBeforeConstructionAndOwnsThem) {
     auto components{make_level("owned")};

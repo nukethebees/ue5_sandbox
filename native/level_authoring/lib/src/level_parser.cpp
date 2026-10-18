@@ -244,7 +244,7 @@ auto unlocks(AstParser& parser,
 
 auto parse_level(s7::Ast const& ast, s7::NodeIndex const root) -> LevelDefinitionReadResult {
     AstParser parser{ast};
-    LevelDefinition::Components result;
+    LevelDefinitionComponents result;
     auto const fields{parser.record(root, RecordKind::Level, "level")};
     for (auto const& field : fields) {
         switch (field.property) {

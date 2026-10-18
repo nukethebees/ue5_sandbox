@@ -25,7 +25,7 @@ struct MissionTickValues {
     std::vector<std::int32_t> kill_target_increases{};
 };
 
-auto entity_index(LevelDefinition::Components const& definition, EntityId const& id)
+auto entity_index(LevelDefinitionComponents const& definition, EntityId const& id)
     -> sim::LevelEntityIndex {
     auto const found{std::ranges::find(definition.entities, id, &EntitySpawnDefinition::id)};
     assert(found != definition.entities.end());
@@ -33,7 +33,7 @@ auto entity_index(LevelDefinition::Components const& definition, EntityId const&
 }
 
 void append_indices(std::vector<std::int32_t>& output,
-                    LevelDefinition::Components const& definition,
+                    LevelDefinitionComponents const& definition,
                     std::vector<EntityId> const& ids) {
     for (auto const& id : ids) {
         output.push_back(static_cast<std::int32_t>(entity_index(definition, id)));

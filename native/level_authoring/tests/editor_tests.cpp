@@ -11,7 +11,7 @@
 
 namespace ioj::levels::authoring::tests {
 namespace {
-auto reconcile(SceneSnapshot const& observed, LevelDefinition::Components incoming)
+auto reconcile(SceneSnapshot const& observed, LevelDefinitionComponents incoming)
     -> std::expected<SyncPlan, Diagnostics> {
     return LevelDefinition::make(std::move(incoming)).transform([&](LevelDefinition const& level) {
         return reconcile_scene(observed, level);
@@ -31,7 +31,7 @@ auto scene() -> SceneSnapshot {
 
 struct EntityCase {
     char const* name;
-    std::function<void(SceneSnapshot&, LevelDefinition::Components&)> edit;
+    std::function<void(SceneSnapshot&, LevelDefinitionComponents&)> edit;
     SyncAction action;
     bool configure;
     bool relabel;

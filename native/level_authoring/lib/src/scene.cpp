@@ -74,7 +74,7 @@ auto operator==(LevelCollisionGridDefinition const& lhs, LevelCollisionGridDefin
     return lhs.level_size == rhs.level_size && lhs.cell_size == rhs.cell_size;
 }
 
-auto same_viewpoint(LevelDefinition::Components const& lhs, LevelDefinition::Components const& rhs)
+auto same_viewpoint(LevelDefinitionComponents const& lhs, LevelDefinitionComponents const& rhs)
     -> bool {
     return lhs.player_entity_id == rhs.player_entity_id && lhs.camera == rhs.camera;
 }
@@ -94,7 +94,7 @@ auto operator==(SceneEntityProperties const& lhs, SceneEntityProperties const& r
 }
 
 auto document_changes(SceneSnapshot const& scene,
-                      LevelDefinition::Components const& incoming,
+                      LevelDefinitionComponents const& incoming,
                       bool const repair_invalid = true) -> SyncPlan {
     auto const& current{scene.definition};
     return {.collision_grid_changed =
