@@ -7,7 +7,12 @@ class SMultiLineEditableTextBox;
 class STextBlock;
 class US7LevelAuthoringMode;
 
+namespace SlateGenerated {
+struct SS7LevelScriptEditorBuilder;
+}
+
 class SS7LevelScriptEditor final : public SCompoundWidget {
+    friend struct SlateGenerated::SS7LevelScriptEditorBuilder;
   public:
     SLATE_BEGIN_ARGS(SS7LevelScriptEditor) {}
     SLATE_END_ARGS()
@@ -24,6 +29,7 @@ class SS7LevelScriptEditor final : public SCompoundWidget {
     void on_source_changed(FText const& source);
     [[nodiscard]] auto active_mode() const -> US7LevelAuthoringMode*;
     [[nodiscard]] auto state_text() const -> FText;
+    [[nodiscard]] auto reload_text() const -> FText;
     [[nodiscard]] auto can_load_source() const -> bool;
     [[nodiscard]] auto can_reload_source() const -> bool;
     [[nodiscard]] auto can_preview_buffer() const -> bool;

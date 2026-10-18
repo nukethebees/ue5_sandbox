@@ -81,6 +81,10 @@
   (slate slate-core-widgets
     :sources ("Plugins/SandboxUI/Source/SandboxUI/Private/widgets/CoreWidgets.lispb")
     :output-root (project-path "Plugins/SandboxUI/Source/SandboxUI/Private/widgets/generated"))
+
+  (slate slate-s7-script-editor
+    :sources ("Source/SandboxEditor/levels/S7LevelScriptEditor.lispb")
+    :output-root (project-path "Source/SandboxEditor/levels/generated"))
   (slate slate-ui-showcase
     :sources ("Plugins/SandboxUI/Source/SandboxUIExamples/Private/SandboxUIShowcase.lispb")
     :output-root (project-path "Plugins/SandboxUI/Source/SandboxUIExamples/Private/generated"))
@@ -185,6 +189,7 @@
 
   (group slate-production
     :targets (
+      slate-s7-script-editor
       slate-core-widgets
       slate-ui-showcase
       slate-heatmap-benchmark

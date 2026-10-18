@@ -2,14 +2,17 @@
 
 #include "SandboxEditor/levels/S7LevelAuthoringMode.h"
 
+#include <SandboxUI/slate/SlateSlots.h>
+
 #include <EditorModeManager.h>
 #include <Widgets/Input/SButton.h>
 #include <Widgets/Input/SMultiLineEditableTextBox.h>
 #include <Widgets/Layout/SBorder.h>
-#include <Widgets/Layout/SScrollBox.h>
-#include <Widgets/Layout/SUniformGridPanel.h>
+#include <Widgets/Layout/SSpacer.h>
 #include <Widgets/SBoxPanel.h>
 #include <Widgets/Text/STextBlock.h>
+
+#include "generated/SS7LevelScriptEditor.slate.generated.h"
 
 #define LOCTEXT_NAMESPACE "SS7LevelScriptEditor"
 
@@ -18,60 +21,7 @@ SS7LevelScriptEditor::~SS7LevelScriptEditor() {
 }
 
 void SS7LevelScriptEditor::Construct(FArguments const& arguments) {
-    ChildSlot[SNew(SVerticalBox) +
-              SVerticalBox::Slot().AutoHeight().Padding(
-                  4.0f)[SNew(SUniformGridPanel).SlotPadding(2.0f) +
-                        SUniformGridPanel::Slot(
-                            0, 0)[SNew(SButton)
-                                      .Text(LOCTEXT("Load", "Load Source"))
-                                      .IsEnabled(this, &SS7LevelScriptEditor::can_load_source)
-                                      .OnClicked(this, &SS7LevelScriptEditor::load_source)] +
-                        SUniformGridPanel::Slot(
-                            1, 0)[SNew(SButton)
-                                      .Text_Lambda([this] {
-                                          auto const* mode{active_mode()};
-                                          return IsValid(mode) &&
-                                                         mode->script_editor_state().detached
-                                                   ? LOCTEXT("Recover", "Discard and Attach")
-                                                   : LOCTEXT("Reload", "Reload/Revert");
-                                      })
-                                      .IsEnabled(this, &SS7LevelScriptEditor::can_reload_source)
-                                      .OnClicked(this, &SS7LevelScriptEditor::reload_source)] +
-                        SUniformGridPanel::Slot(
-                            0, 1)[SNew(SButton)
-                                      .Text(LOCTEXT("Preview", "Preview Buffer"))
-                                      .IsEnabled(this, &SS7LevelScriptEditor::can_preview_buffer)
-                                      .OnClicked(this, &SS7LevelScriptEditor::preview_buffer)] +
-                        SUniformGridPanel::Slot(
-                            1, 1)[SNew(SButton)
-                                      .Text(LOCTEXT("Apply", "Apply Preview"))
-                                      .IsEnabled(this, &SS7LevelScriptEditor::can_apply_preview)
-                                      .OnClicked(this, &SS7LevelScriptEditor::apply_preview)] +
-                        SUniformGridPanel::Slot(
-                            0, 2)[SNew(SButton)
-                                      .Text(LOCTEXT("Save", "Save Buffer"))
-                                      .IsEnabled(this, &SS7LevelScriptEditor::can_save_buffer)
-                                      .OnClicked(this, &SS7LevelScriptEditor::save_buffer)] +
-                        SUniformGridPanel::Slot(
-                            1, 2)[SNew(SButton)
-                                      .Text(LOCTEXT("SaveAs", "Save Buffer As"))
-                                      .IsEnabled(this, &SS7LevelScriptEditor::can_save_buffer_as)
-                                      .OnClicked(this, &SS7LevelScriptEditor::save_buffer_as)] +
-                        SUniformGridPanel::Slot(
-                            0, 3)[SNew(SButton)
-                                      .Text(LOCTEXT("SaveCanonical", "Save Canonical from Scene"))
-                                      .IsEnabled(this, &SS7LevelScriptEditor::can_save_canonical)
-                                      .OnClicked(this, &SS7LevelScriptEditor::save_canonical)]] +
-              SVerticalBox::Slot().AutoHeight().Padding(
-                  4.0f, 0.0f)[SAssignNew(state_, STextBlock).AutoWrapText(true)] +
-              SVerticalBox::Slot().FillHeight(1.0f).Padding(
-                  4.0f)[SAssignNew(source_, SMultiLineEditableTextBox)
-                            .AutoWrapText(false)
-                            .OnTextChanged(this, &SS7LevelScriptEditor::on_source_changed)] +
-              SVerticalBox::Slot().AutoHeight().Padding(
-                  4.0f)[SNew(SBorder)[SAssignNew(status_, SMultiLineEditableTextBox)
-                                          .IsReadOnly(true)
-                                          .AutoWrapText(true)]]];
+    ChildSlot[SlateGenerated::SS7LevelScriptEditorBuilder{*this}.BuildRoot()];
 
     bind_active_mode();
     refresh();
@@ -146,6 +96,13 @@ auto SS7LevelScriptEditor::active_mode() const -> US7LevelAuthoringMode* {
     auto* const active_mode{Cast<US7LevelAuthoringMode>(
         GLevelEditorModeTools().GetActiveScriptableMode(US7LevelAuthoringMode::mode_id))};
     return mode == active_mode ? mode : nullptr;
+}
+
+auto SS7LevelScriptEditor::reload_text() const -> FText {
+    auto const* mode{active_mode()};
+    return IsValid(mode) && mode->script_editor_state().detached
+             ? LOCTEXT("Recover", "Discard and Attach")
+             : LOCTEXT("Reload", "Reload/Revert");
 }
 
 auto SS7LevelScriptEditor::state_text() const -> FText {

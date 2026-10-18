@@ -1,0 +1,44 @@
+(defmacro s7-action (id label enabled clicked)
+  (SButton
+    :Text (loc "SS7LevelScriptEditor" $id $label)
+    :IsEnabled (method $enabled)
+    :OnClicked (method $clicked)))
+
+(defmacro s7-row (left right)
+  (auto
+    (hbox
+      (fill :padding 2 $left)
+      (fill :padding 2 $right))))
+
+(widget-class SS7LevelScriptEditor
+  (function BuildRoot
+    (params)
+    (vbox
+      (auto :padding 4
+        (vbox
+          (s7-row
+            (s7-action "Load" "Load Source" can_load_source load_source)
+            (SButton
+              :Text (method reload_text)
+              :IsEnabled (method can_reload_source)
+              :OnClicked (method reload_source)))
+          (s7-row
+            (s7-action "Preview" "Preview Buffer" can_preview_buffer preview_buffer)
+            (s7-action "Apply" "Apply Preview" can_apply_preview apply_preview))
+          (s7-row
+            (s7-action "Save" "Save Buffer" can_save_buffer save_buffer)
+            (s7-action "SaveAs" "Save Buffer As" can_save_buffer_as save_buffer_as))
+          (s7-row
+            (s7-action "SaveCanonical" "Save Canonical from Scene" can_save_canonical save_canonical)
+            (SSpacer))))
+      (auto :padding (4 0)
+        (assign state_ STextBlock :AutoWrapText true))
+      (fill :padding 4
+        (assign source_ SMultiLineEditableTextBox
+          :AutoWrapText false
+          :OnTextChanged (method on_source_changed)))
+      (auto :padding 4
+        (SBorder
+          (assign status_ SMultiLineEditableTextBox
+            :IsReadOnly true
+            :AutoWrapText true))))))
