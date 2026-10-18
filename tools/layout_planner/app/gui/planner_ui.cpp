@@ -3,6 +3,7 @@
 #include "../platform/file_dialog.hpp"
 #include "planner_ui_support.hpp"
 #include <ioj/layout/planner_type.hpp>
+#include <ioj/layout/string_set.hpp>
 
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/fixed_point_value.h>
@@ -56,7 +57,6 @@
 #include <iterator>
 #include <optional>
 #include <ranges>
-#include <set>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -384,7 +384,7 @@ auto known_or_unknown(std::string const& value) -> char const* {
 }
 
 auto type_fact_sources(AbiProfile const& abi) -> std::string {
-    std::set<std::string, std::less<>> sources;
+    layout::StringSet sources;
     bool has_unknown{};
     for (auto const& [spelling, facts] : abi.types()) {
         static_cast<void>(spelling);

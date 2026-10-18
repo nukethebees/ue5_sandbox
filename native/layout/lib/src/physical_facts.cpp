@@ -1,4 +1,5 @@
 #include "analyzer_internal.hpp"
+#include <ioj/layout/string_set.hpp>
 
 #include <codegen/schema.h>
 #include <codegen/schema/module_handle.h>
@@ -22,7 +23,6 @@
 #include <cstdint>
 #include <optional>
 #include <ranges>
-#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -641,7 +641,7 @@ auto PhysicalFactsResolver::analyze_tagged_union(lispb::schema::TypeId const typ
                                 ? std::optional{types_.definition(discriminant_node)}
                                 : std::nullopt)};
     if (static_cast<bool>(enumeration)) {
-        std::set<std::string, std::less<>> mapped;
+        StringSet mapped;
         for (auto const alternative_id :
              types_.definitions().tagged_unions.alternatives_of(*tagged)) {
             auto const alternative{alternative_id};

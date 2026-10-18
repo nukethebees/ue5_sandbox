@@ -1,4 +1,5 @@
 #include "analyzer_internal.hpp"
+#include <ioj/layout/string_set.hpp>
 
 #include <codegen/schema/soa_backend.h>
 #include <codegen/schema/soa_member_kind.h>
@@ -12,7 +13,6 @@
 #include <cstdint>
 #include <optional>
 #include <ranges>
-#include <set>
 #include <span>
 #include <string>
 #include <string_view>
@@ -312,7 +312,7 @@ auto Analyzer::compare_soa_targets(SoaAnalysis const& first, SoaAnalysis const& 
         return result;
     }
 
-    std::set<std::string, std::less<>> names;
+    StringSet names;
     for (std::size_t index{}; index < first.columns.size(); ++index) {
         auto const& first_column{first.columns[index]};
         auto const& second_column{second.columns[index]};
@@ -486,7 +486,7 @@ auto Analyzer::analyze_soa_access(SoaAnalysis const& soa,
         result.capacity_slack_payload_bytes =
             *result.allocated_capacity_payload_bytes - *result.full_logical_payload_bytes;
     }
-    std::set<std::string, std::less<>> unique_names;
+    StringSet unique_names;
     std::vector<std::pair<std::uint64_t, std::uint64_t>> accessed_intervals;
     std::vector<std::pair<std::uint64_t, std::uint64_t>> read_intervals;
     std::vector<std::pair<std::uint64_t, std::uint64_t>> write_intervals;
@@ -1014,10 +1014,8 @@ auto Analyzer::compare_record_soa_access(RecordAccessAnalysis const& record,
              "AoS and SoA access analyses use different access multiplicities."});
         return result;
     }
-    auto const record_names{
-        std::set<std::string, std::less<>>{record.member_names.begin(), record.member_names.end()}};
-    auto const soa_names{
-        std::set<std::string, std::less<>>{soa.column_names.begin(), soa.column_names.end()}};
+    auto const record_names{StringSet{record.member_names.begin(), record.member_names.end()}};
+    auto const soa_names{StringSet{soa.column_names.begin(), soa.column_names.end()}};
     if (record_names != soa_names) {
         result.diagnostics.push_back(
             {DiagnosticSeverity::error,
@@ -1169,10 +1167,8 @@ auto Analyzer::compare_soa_access(SoaAccessAnalysis const& first, SoaAccessAnaly
              "Compared SoA access analyses use different access multiplicities."});
         return result;
     }
-    auto const first_names{
-        std::set<std::string, std::less<>>{first.column_names.begin(), first.column_names.end()}};
-    auto const second_names{
-        std::set<std::string, std::less<>>{second.column_names.begin(), second.column_names.end()}};
+    auto const first_names{StringSet{first.column_names.begin(), first.column_names.end()}};
+    auto const second_names{StringSet{second.column_names.begin(), second.column_names.end()}};
     if (first_names.size() != first.column_names.size() ||
         second_names.size() != second.column_names.size() || first_names != second_names) {
         result.diagnostics.push_back(
@@ -1181,10 +1177,10 @@ auto Analyzer::compare_soa_access(SoaAccessAnalysis const& first, SoaAccessAnaly
         return result;
     }
     auto detail_names = [](std::span<SoaColumnAccessAnalysis const> const columns) {
-        std::set<std::string, std::less<>> names;
+        StringSet names;
         for (auto const& column : columns) {
             if (!names.insert(column.name).second) {
-                return std::optional<std::set<std::string, std::less<>>>{};
+                return std::optional<StringSet>{};
             }
         }
         return std::optional{std::move(names)};

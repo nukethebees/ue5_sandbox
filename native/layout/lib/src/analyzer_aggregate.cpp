@@ -1,11 +1,11 @@
 #include "analyzer_internal.hpp"
+#include <ioj/layout/string_set.hpp>
 
 #include <lispb/schema/indices.h>
 
 #include <cstdint>
 #include <optional>
 #include <ranges>
-#include <set>
 #include <span>
 #include <string>
 
@@ -125,11 +125,11 @@ auto Analyzer::compare_record_targets(RecordAnalysis const& first, RecordAnalysi
         return result;
     }
 
-    std::set<std::string, std::less<>> expected_names;
+    StringSet expected_names;
     for (auto const& member : first.members) {
         expected_names.insert(member.name);
     }
-    std::set<std::string, std::less<>> second_names;
+    StringSet second_names;
     for (auto const& member : second.members) {
         second_names.insert(member.name);
     }
@@ -319,11 +319,11 @@ auto Analyzer::compare_union_targets(UnionAnalysis const& first, UnionAnalysis c
         return result;
     }
 
-    std::set<std::string, std::less<>> first_names;
+    StringSet first_names;
     for (auto const& alternative : first.alternatives) {
         first_names.insert(alternative.name);
     }
-    std::set<std::string, std::less<>> second_names;
+    StringSet second_names;
     for (auto const& alternative : second.alternatives) {
         second_names.insert(alternative.name);
     }
@@ -541,14 +541,14 @@ auto Analyzer::compare_tagged_union_targets(TaggedUnionAnalysis const& first,
         return result;
     }
 
-    std::set<std::string, std::less<>> first_names;
-    std::set<std::string, std::less<>> first_tags;
+    StringSet first_names;
+    StringSet first_tags;
     for (auto const& alternative : first.alternatives) {
         first_names.insert(alternative.name);
         first_tags.insert(alternative.tag);
     }
-    std::set<std::string, std::less<>> second_names;
-    std::set<std::string, std::less<>> second_tags;
+    StringSet second_names;
+    StringSet second_tags;
     for (auto const& alternative : second.alternatives) {
         second_names.insert(alternative.name);
         second_tags.insert(alternative.tag);
@@ -679,7 +679,7 @@ auto Analyzer::analyze_union_distribution(UnionAnalysis const& analysis,
                                      .expected_selected_slack_bytes = std::nullopt,
                                      .entries = {},
                                      .diagnostics = {}};
-    std::set<std::string, std::less<>> seen_alternatives;
+    StringSet seen_alternatives;
     auto exact_weight_overflow_reported{false};
     auto exact_extent_overflow_reported{false};
     auto exact_slack_overflow_reported{false};
@@ -807,11 +807,11 @@ auto Analyzer::compare_union_distributions(UnionDistributionAnalysis const& firs
         return result;
     }
 
-    std::set<std::string, std::less<>> first_names;
+    StringSet first_names;
     for (auto const& entry : first.entries) {
         first_names.insert(entry.alternative_name);
     }
-    std::set<std::string, std::less<>> second_names;
+    StringSet second_names;
     for (auto const& entry : second.entries) {
         second_names.insert(entry.alternative_name);
     }
@@ -889,7 +889,7 @@ auto Analyzer::analyze_tagged_union_distribution(
                                            .expected_selected_payload_slack_bytes = std::nullopt,
                                            .entries = {},
                                            .diagnostics = {}};
-    std::set<std::string, std::less<>> seen_tags;
+    StringSet seen_tags;
     auto exact_weight_overflow_reported{false};
     auto exact_extent_overflow_reported{false};
     auto exact_slack_overflow_reported{false};
@@ -1032,11 +1032,11 @@ auto Analyzer::compare_tagged_union_distributions(TaggedUnionDistributionAnalysi
         return result;
     }
 
-    std::set<std::string, std::less<>> first_tags;
+    StringSet first_tags;
     for (auto const& entry : first.entries) {
         first_tags.insert(entry.tag);
     }
-    std::set<std::string, std::less<>> second_tags;
+    StringSet second_tags;
     for (auto const& entry : second.entries) {
         second_tags.insert(entry.tag);
     }

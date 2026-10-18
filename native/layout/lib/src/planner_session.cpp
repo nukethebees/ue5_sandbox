@@ -1,5 +1,7 @@
 #include <ioj/layout/planner_session.hpp>
 
+#include <ioj/layout/string_set.hpp>
+
 #include <codegen/schema.h>
 #include <codegen/schema/tagged_union_alternative_schemas.h>
 #include <codegen/schema/tagged_union_schemas.h>
@@ -32,7 +34,6 @@
 #include <map>
 #include <optional>
 #include <ranges>
-#include <set>
 #include <span>
 #include <string>
 #include <utility>
@@ -53,8 +54,8 @@ auto same_profile(AbiProfile const& first, AbiProfile const& second) -> bool {
 auto reconcile_weight_keys(std::map<std::string, std::uint64_t>& weights,
                            std::span<std::string const> previous_keys,
                            std::vector<std::string> const& current_keys) -> bool {
-    std::set<std::string, std::less<>> previous{previous_keys.begin(), previous_keys.end()};
-    std::set<std::string, std::less<>> current{current_keys.begin(), current_keys.end()};
+    StringSet previous{previous_keys.begin(), previous_keys.end()};
+    StringSet current{current_keys.begin(), current_keys.end()};
     std::vector<std::string> removed;
     std::vector<std::string> added;
     std::ranges::set_difference(previous, current, std::back_inserter(removed));

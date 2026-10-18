@@ -1,4 +1,5 @@
 #include "analyzer_internal.hpp"
+#include <ioj/layout/string_set.hpp>
 
 namespace ioj::layout {
 
@@ -45,7 +46,7 @@ auto Analyzer::analyze_record_access(RecordAnalysis const& record,
             {DiagnosticSeverity::error, "Record has incomplete target layout facts."});
     }
 
-    std::set<std::string, std::less<>> unique_names;
+    StringSet unique_names;
     std::vector<std::pair<std::uint64_t, std::uint64_t>> member_layouts;
     std::vector<std::pair<std::uint64_t, std::uint64_t>> read_member_layouts;
     std::vector<std::pair<std::uint64_t, std::uint64_t>> write_member_layouts;
@@ -334,7 +335,7 @@ auto Analyzer::compare_record_access(RecordAccessAnalysis const& first,
     }
 
     auto unique_names{[](auto const& values, auto const projection) {
-        std::set<std::string, std::less<>> names;
+        StringSet names;
         for (auto const& value : values) {
             names.insert(projection(value));
         }

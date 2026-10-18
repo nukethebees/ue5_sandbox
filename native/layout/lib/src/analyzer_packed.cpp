@@ -1,4 +1,5 @@
 #include "analyzer_internal.hpp"
+#include <ioj/layout/string_set.hpp>
 
 #include <codegen/schema/packed_bit_order.h>
 #include <codegen/schema/packed_field_kind.h>
@@ -20,7 +21,6 @@
 #include <limits>
 #include <optional>
 #include <ranges>
-#include <set>
 #include <span>
 #include <string>
 #include <utility>
@@ -730,7 +730,7 @@ auto Analyzer::compare_packed_targets(PackedAnalysis const& first, PackedAnalysi
         }
         return true;
     };
-    std::set<std::string, std::less<>> names;
+    StringSet names;
     for (std::size_t index{}; index < first.fields.size(); ++index) {
         auto const& first_field{first.fields[index]};
         auto const& second_field{second.fields[index]};
@@ -879,7 +879,7 @@ auto Analyzer::analyze_packed_access(PackedAnalysis const& packed,
                                       "Packed storage footprint is Unknown."});
     }
 
-    std::set<std::string, std::less<>> unique_names;
+    StringSet unique_names;
     std::uint64_t useful_bits_per_element{};
     std::uint64_t read_bits_per_element{};
     std::uint64_t write_bits_per_element{};
@@ -1204,10 +1204,8 @@ auto Analyzer::compare_packed_access(PackedAccessAnalysis const& first,
              "Compared packed access analyses use different access multiplicities."});
         return result;
     }
-    auto const first_names{
-        std::set<std::string, std::less<>>{first.field_names.begin(), first.field_names.end()}};
-    auto const second_names{
-        std::set<std::string, std::less<>>{second.field_names.begin(), second.field_names.end()}};
+    auto const first_names{StringSet{first.field_names.begin(), first.field_names.end()}};
+    auto const second_names{StringSet{second.field_names.begin(), second.field_names.end()}};
     if (first_names != second_names) {
         result.diagnostics.push_back(
             {DiagnosticSeverity::error,

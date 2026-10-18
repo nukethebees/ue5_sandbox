@@ -1,11 +1,12 @@
 #include <ioj/layout/abi_profile.hpp>
 
+#include <ioj/layout/string_set.hpp>
+
 #include <charconv>
 #include <cstdint>
 #include <fstream>
 #include <iomanip>
 #include <limits>
-#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string_view>
@@ -80,7 +81,7 @@ auto profile_has_representation_cycle(
     std::map<std::string, std::string, std::less<>> const& representations) -> bool {
     for (auto const& [source, target] : representations) {
         static_cast<void>(target);
-        std::set<std::string, std::less<>> visited;
+        StringSet visited;
         auto current{source};
         auto found{representations.find(current)};
         while (found != representations.end()) {
@@ -237,7 +238,7 @@ void AbiProfile::set_identity(AbiProfileIdentity identity) {
 }
 
 auto AbiProfile::find(std::string const& spelling) const -> std::optional<TypeFacts> {
-    std::set<std::string, std::less<>> visited;
+    StringSet visited;
     auto current{spelling};
     while (visited.insert(current).second) {
         if (auto const found{types_.find(current)}; found != types_.end()) {
@@ -284,10 +285,10 @@ auto parse_abi_profile(std::string_view const source)
     std::optional<std::string> object_pointer_representation;
     std::string profile_name;
     AbiProfileIdentity identity;
-    std::set<std::string, std::less<>> identity_fields;
+    StringSet identity_fields;
     std::map<std::string, TypeFacts, std::less<>> types;
     std::map<std::string, std::string, std::less<>> representations;
-    std::set<std::string, std::less<>> memory_fields;
+    StringSet memory_fields;
     MemoryFacts memory;
 
     while (std::getline(source_stream, line)) {

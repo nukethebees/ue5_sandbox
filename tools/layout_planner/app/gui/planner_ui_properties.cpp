@@ -1,4 +1,5 @@
 #include "planner_ui_properties_common.hpp"
+#include <ioj/layout/string_set.hpp>
 
 #include <codegen/ast/cpp_types.h>
 #include <codegen/schema/declaration_handle.h>
@@ -38,7 +39,6 @@
 #include <map>
 #include <optional>
 #include <ranges>
-#include <set>
 #include <span>
 #include <string>
 #include <type_traits>
@@ -147,7 +147,7 @@ auto PlannerUi::draw_type_picker(lispb::IdentifierId const module_name, TypeIden
         return text;
     }};
     auto const filter{lowercase(type_picker_filter_.data())};
-    std::set<std::string, std::less<>> seen;
+    layout::StringSet seen;
     std::optional<std::string> selected;
     auto draw_candidate = [&](std::string reference, std::string const& description) {
         if (!seen.insert(reference).second) {

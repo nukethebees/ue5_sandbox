@@ -1,4 +1,5 @@
 #include "analyzer_internal.hpp"
+#include <ioj/layout/string_set.hpp>
 
 #include <codegen/schema/fixed_point_rounding.h>
 #include <codegen/schema/packed_integer_value.h>
@@ -22,7 +23,6 @@
 #include <limits>
 #include <optional>
 #include <ranges>
-#include <set>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -302,8 +302,8 @@ auto Analyzer::compare_enum_targets(EnumDomainAnalysis const& first,
         return result;
     }
 
-    std::set<std::string, std::less<>> first_names;
-    std::set<std::string, std::less<>> second_names;
+    StringSet first_names;
+    StringSet second_names;
     for (auto const& enumerator : first.enumerators) {
         first_names.insert(enumerator.name);
     }

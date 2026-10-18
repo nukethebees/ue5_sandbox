@@ -1,6 +1,7 @@
 #pragma once
 #include <ioj/layout/analyzer.hpp>
 #include <ioj/layout/physical_facts.hpp>
+#include <ioj/layout/string_set.hpp>
 
 #include <codegen/ast/cpp_types.h>
 #include <codegen/schema.h>
@@ -27,7 +28,6 @@
 #include <numeric>
 #include <optional>
 #include <ranges>
-#include <set>
 #include <span>
 #include <string>
 #include <string_view>
@@ -527,7 +527,7 @@ inline auto access_includes_write(AccessOperation const operation) -> bool {
     return operation != AccessOperation::read;
 }
 
-inline auto accept_unique_access(std::set<std::string, std::less<>>& names,
+inline auto accept_unique_access(StringSet& names,
                                  std::span<AccessIntent const> const accepted,
                                  std::vector<Diagnostic>& diagnostics,
                                  AccessIntent const& access,
