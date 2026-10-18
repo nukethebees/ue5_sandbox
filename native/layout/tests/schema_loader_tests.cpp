@@ -249,5 +249,32 @@ TEST(DocumentFiles, LeavesUneditedFilesAndRegistryIncludesUntouched) {
     EXPECT_EQ(files.read("types.lispb"), registry);
     EXPECT_EQ(files.read("common/scalars.lispb"), included);
 }
+
+TEST(DocumentFiles, HistoryUsesCapturedInputsAfterProjectAndRegistryFilesChange) {
+    EditorSession editor;
+    DocumentFiles files;
+    files.write("types.lispb", R"((include "common/scalars.lispb"))");
+    files.write("common/scalars.lispb", R"((type byte :spelling "std::uint8_t"
+        (integer :signed false :bit-width 8)))");
+    files.write("game.lispb", R"((module game :header "Game.h"
+        (record Value (member code @byte))))");
+    auto document{editor.load(files.path("project.lispb"), "game")};
+    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
+    auto const original{document.declaration_source("game", "Value")};
+    for (auto const path : {"project.lispb", "types.lispb", "common/scalars.lispb", "game.lispb"}) {
+        files.write(path, "(invalid external replacement");
+    }
+    auto edit{document.transaction()};
+    edit.add_member("game", "Value", "next", "@byte");
+    ASSERT_TRUE(document.commit(edit)) << diagnostic_messages(editor);
+    auto const changed{document.declaration_source("game", "Value")};
+    EXPECT_NE(changed, original);
+    ASSERT_TRUE(document.undo()) << diagnostic_messages(editor);
+    EXPECT_EQ(document.declaration_source("game", "Value"), original);
+    ASSERT_TRUE(document.redo()) << diagnostic_messages(editor);
+    EXPECT_EQ(document.declaration_source("game", "Value"), changed);
+    EXPECT_FALSE(document.save());
+    EXPECT_EQ(files.read("game.lispb"), "(invalid external replacement");
+}
 } // namespace
 } // namespace ioj::layout

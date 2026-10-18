@@ -79,5 +79,19 @@ TEST_F(PlannerUiTest, ChangedDocumentRequiresCloseConfirmation) {
     EXPECT_FALSE(ui.take_close_confirmation());
     draw(ui);
 }
+
+TEST_F(PlannerUiTest, UnchangedFramesDoNotRepeatAnalysisDiagnostics) {
+    layout::EditorSession editor;
+    auto document{editor.from_source(R"((module game :header "Game.h"
+        (record Value (member value UnknownExternal))))")};
+    ASSERT_TRUE(document.valid());
+    PlannerUi ui{editor, std::move(document)};
+    draw(ui);
+    auto const count{editor.diagnostics().size()};
+    ASSERT_GT(count, 0);
+    draw(ui);
+    draw(ui);
+    EXPECT_EQ(editor.diagnostics().size(), count);
+}
 }
 }

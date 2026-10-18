@@ -1,12 +1,5 @@
 #include "analyzer_test_fixtures.hpp"
 #include <ioj/layout/abi_profile.hpp>
-#include <ioj/layout/analyzer/access_intent.hpp>
-#include <ioj/layout/analyzer/access_operation.hpp>
-#include <ioj/layout/analyzer/analyzer.hpp>
-#include <ioj/layout/analyzer/packed_access_analysis.hpp>
-#include <ioj/layout/analyzer/packed_analysis.hpp>
-#include <ioj/layout/analyzer/packed_target_comparison.hpp>
-#include <ioj/layout/analyzer/relationship_target_facts.hpp>
 #include <ioj/layout/editor_session.hpp>
 #include <ioj/layout/resolved_variant.hpp>
 
@@ -20,7 +13,9 @@ TEST_P(PackedAnalysisTest, ReportsPhysicalAndSemanticFacts) {
     auto const& test{GetParam()};
     auto const document{editor.from_source(test.source)};
     ASSERT_TRUE(document.valid());
-    test.verify(document);
+    AnalysisStorage storage;
+    AnalysisContext context{document, storage};
+    test.verify(context);
 }
 
 AnalysisCase const cases[]{
@@ -29,59 +24,54 @@ AnalysisCase const cases[]{
         (packed-value Value :storage std::uint32_t
           (field index std::uint32_t :bits 20)
           (reserved future :bits 4) (field kind std::uint8_t :bits 4))))",
-     [](Document const& doc) {
-         auto const result{Analyzer::analyze_packed(doc.types(),
-                                                    doc.find_type("game", "Value").value(),
-                                                    ResolvedVariant{},
-                                                    AbiProfile::host_common(),
-                                                    100)};
+     [](AnalysisContext& context) {
+         auto const run{run_analysis(context, "Value", {.element_count = 100})};
+         auto const& result{context.storage.types.packed[run.analysis.value].value()};
+         auto const& fields{context.storage.fields};
          EXPECT_EQ(result.storage_bits, 32);
          EXPECT_EQ(result.payload_bits, 24);
          EXPECT_EQ(result.reserved_bits, 4);
          EXPECT_EQ(result.unused_bits, 4);
-         ASSERT_EQ(result.fields.size(), 3);
-         EXPECT_EQ(result.fields[0].most_significant_bit, 19);
-         EXPECT_EQ(result.fields[0].maximum_unsigned_value, 1048575);
-         EXPECT_TRUE(result.fields[1].reserved);
-         EXPECT_EQ(result.fields[2].least_significant_bit, 24);
-         EXPECT_EQ(result.aggregate.total_storage_bytes, 400);
-         EXPECT_EQ(result.aggregate.total_reserved_bits, 400);
-         EXPECT_EQ(result.aggregate.total_unused_bits, 400);
-         EXPECT_TRUE(result.diagnostics.empty());
+         ASSERT_EQ(result.fields.count, 3);
+         EXPECT_EQ(fields.most_significant_bit[result.fields.begin], 19);
+         EXPECT_EQ(fields.maximum_unsigned_value[result.fields.begin], 1048575);
+         EXPECT_TRUE(fields.reserved[result.fields.begin + 1]);
+         EXPECT_EQ(fields.least_significant_bit[result.fields.begin + 2], 24);
+         EXPECT_EQ(context.storage.totals[0].total_storage_bytes, 400);
+         EXPECT_EQ(context.storage.totals[0].total_reserved_bits, 400);
+         EXPECT_EQ(context.storage.totals[0].total_unused_bits, 400);
+         EXPECT_FALSE(has_analysis_diagnostics(context));
      }},
     {"MostSignificantFirst",
      R"((module game :header "Game.h"
         (packed-value Value :storage std::uint32_t :byte-order big :bit-order msb-first
           (field index std::uint32_t :bits 20) (reserved future :bits 4)
           (field kind std::uint8_t :bits 8))))",
-     [](Document const& doc) {
-         auto const result{Analyzer::analyze_packed(doc.types(),
-                                                    doc.find_type("game", "Value").value(),
-                                                    ResolvedVariant{},
-                                                    AbiProfile::host_common())};
+     [](AnalysisContext& context) {
+         auto const run{run_analysis(context)};
+         auto const& result{context.storage.types.packed[run.analysis.value].value()};
+         auto const& fields{context.storage.fields};
          EXPECT_EQ(result.byte_order, lispb::codegen::PackedByteOrder::big_endian);
-         EXPECT_EQ(result.fields[0].least_significant_bit, 12);
-         EXPECT_EQ(result.fields[0].most_significant_bit, 31);
-         EXPECT_EQ(result.fields[1].least_significant_bit, 8);
-         EXPECT_EQ(result.fields[2].least_significant_bit, 0);
+         EXPECT_EQ(fields.least_significant_bit[result.fields.begin], 12);
+         EXPECT_EQ(fields.most_significant_bit[result.fields.begin], 31);
+         EXPECT_EQ(fields.least_significant_bit[result.fields.begin + 1], 8);
+         EXPECT_EQ(fields.least_significant_bit[result.fields.begin + 2], 0);
      }},
     {"SignedDomain",
      R"((module game :header "Game.h"
         (packed-value Value :storage std::uint32_t
           (field delta std::int32_t :bits auto :kind signed :minimum -100 :maximum 100
             (code Invalid :value -128 :sentinel true)))))",
-     [](Document const& doc) {
-         auto const result{Analyzer::analyze_packed(doc.types(),
-                                                    doc.find_type("game", "Value").value(),
-                                                    ResolvedVariant{},
-                                                    AbiProfile::host_common())};
-         auto const& field{result.fields.front()};
-         EXPECT_EQ(field.bit_width, 8);
-         EXPECT_EQ(field.minimum_signed_value, -128);
-         EXPECT_EQ(field.maximum_signed_value, 127);
-         EXPECT_EQ(field.semantic_value_count, 201);
-         EXPECT_EQ(field.sentinel_code_count, 1);
-         EXPECT_EQ(field.unused_codes, 54);
+     [](AnalysisContext& context) {
+         auto const run{run_analysis(context)};
+         auto const field{context.storage.types.packed[run.analysis.value]->fields.begin};
+         auto const& fields{context.storage.fields};
+         EXPECT_EQ(fields.bit_width[field], 8);
+         EXPECT_EQ(fields.minimum_signed_value[field], -128);
+         EXPECT_EQ(fields.maximum_signed_value[field], 127);
+         EXPECT_EQ(fields.semantic_value_count[field], 201);
+         EXPECT_EQ(fields.sentinel_code_count[field], 1);
+         EXPECT_EQ(fields.unused_codes[field], 54);
      }},
     {"RepresentedFields",
      R"((module game :header "Game.h"
@@ -91,68 +81,75 @@ AnalysisCase const cases[]{
         (packed-value Value :storage std::uint32_t
           (field health Quantized :bits auto :kind linear-quantized)
           (field speed Velocity :bits auto :kind fixed-point))))",
-     [](Document const& doc) {
-         auto const result{Analyzer::analyze_packed(doc.types(),
-                                                    doc.find_type("game", "Value").value(),
-                                                    ResolvedVariant{},
-                                                    AbiProfile::host_common())};
+     [](AnalysisContext& context) {
+         auto const run{run_analysis(context)};
+         auto const& result{context.storage.types.packed[run.analysis.value].value()};
          EXPECT_EQ(result.payload_bits, 20);
-         ASSERT_TRUE(result.fields[0].linear_quantized);
-         EXPECT_EQ(result.fields[0].linear_quantized->reserved_code_count, 2);
-         ASSERT_TRUE(result.fields[1].fixed_point);
-         EXPECT_EQ(result.fields[1].fixed_point->resolution, 0.0625L);
+         auto const& scalars{context.storage.scalars};
+         auto const health{
+             scalars.find(context.storage.fields.semantic_type[result.fields.begin].value())};
+         auto const speed{
+             scalars.find(context.storage.fields.semantic_type[result.fields.begin + 1].value())};
+         ASSERT_TRUE(scalars.quantized_encoding[health]);
+         EXPECT_EQ(scalars.quantized_encoding[health]->reserved_code_count, 2);
+         ASSERT_TRUE(scalars.fixed_encoding[speed]);
+         EXPECT_EQ(scalars.fixed_encoding[speed]->resolution, 0.0625L);
      }},
     {"TargetComparison",
      R"((module game :header "Game.h"
         (packed-value Value :storage std::uint32_t (field value std::uint32_t :bits 24))))",
-     [](Document const& doc) {
-         auto const type{doc.find_type("game", "Value").value()};
-         auto wide{AbiProfile::host_common()};
+     [](AnalysisContext& context) {
+         auto const type{context.document.find_type("game", "Value").value()};
+         auto const abi{AbiProfile::host_common()};
+         auto wide{abi};
          wide.set("std::uint32_t",
                   {.size_bytes = 8,
                    .alignment_bytes = 8,
                    .integer_signed = false,
                    .unsigned_value_bits = 32,
                    .provenance = {}});
-         auto const first{Analyzer::analyze_packed(
-             doc.types(), type, ResolvedVariant{}, AbiProfile::host_common(), 100)};
-         auto const second{
-             Analyzer::analyze_packed(doc.types(), type, ResolvedVariant{}, wide, 100)};
-         auto const comparison{Analyzer::compare_packed_targets(first, second)};
-         EXPECT_EQ(comparison.storage_size_delta->magnitude, 4);
-         EXPECT_EQ(comparison.total_storage_delta->magnitude, 400);
-         EXPECT_EQ(comparison.unused_bit_delta->magnitude, 32);
-         auto const unknown{Analyzer::analyze_packed(
-             doc.types(), type, ResolvedVariant{}, AbiProfile{"unknown"}, 100)};
-         EXPECT_FALSE(unknown.storage_bits);
-         EXPECT_FALSE(Analyzer::compare_packed_targets(first, unknown).storage_size_delta);
-         auto const overflow{Analyzer::analyze_packed(doc.types(),
-                                                      type,
-                                                      ResolvedVariant{},
-                                                      AbiProfile::host_common(),
-                                                      std::numeric_limits<std::uint64_t>::max())};
-         EXPECT_FALSE(overflow.aggregate.total_storage_bytes);
-         EXPECT_FALSE(overflow.diagnostics.empty());
+         AbiProfile const unknown{"unknown"};
+         std::array const requests{
+             AnalysisRequest{.type = type, .abi = &abi, .element_count = 100},
+             AnalysisRequest{.type = type, .abi = &wide, .element_count = 100},
+             AnalysisRequest{.type = type, .abi = &unknown, .element_count = 100},
+             AnalysisRequest{.type = type,
+                             .abi = &abi,
+                             .element_count = std::numeric_limits<std::uint64_t>::max()}};
+         Analyzer::analyze(context, requests);
+         auto const& storage{context.storage};
+         auto const& first{storage.types.packed[storage.runs[0].analysis.value].value()};
+         auto const& second{storage.types.packed[storage.runs[1].analysis.value].value()};
+         EXPECT_EQ(second.storage_facts->size_bytes - first.storage_facts->size_bytes, 4);
+         EXPECT_EQ(*storage.totals[1].total_storage_bytes - *storage.totals[0].total_storage_bytes,
+                   400);
+         EXPECT_EQ(*second.unused_bits - *first.unused_bits, 32);
+         auto const& missing{storage.types.packed[storage.runs[2].analysis.value].value()};
+         EXPECT_FALSE(missing.storage_bits);
+         EXPECT_FALSE(missing.storage_facts);
+         EXPECT_FALSE(storage.totals[3].total_storage_bytes);
+         EXPECT_TRUE(has_analysis_diagnostics(context));
      }},
     {"SelectedAccess",
      R"((module game :header "Game.h"
         (packed-value Value :storage std::uint32_t
           (field index std::uint32_t :bits 20) (reserved future :bits 4)
           (field kind std::uint8_t :bits 8))))",
-     [](Document const& doc) {
-         auto const abi{AbiProfile::host_common()};
-         auto const packed{Analyzer::analyze_packed(
-             doc.types(), doc.find_type("game", "Value").value(), ResolvedVariant{}, abi, 100)};
-         std::array const accesses{AccessIntent{"kind", AccessOperation::read}};
-         auto const result{Analyzer::analyze_packed_access(packed, accesses, abi, 3)};
-         EXPECT_EQ(result.useful_bits, 800);
-         EXPECT_EQ(result.logical_read_useful_bits, 2400);
-         EXPECT_EQ(result.storage_footprint_bytes, 400);
-         EXPECT_EQ(result.unselected_field_bits, 2000);
-         EXPECT_EQ(result.reserved_region_bits, 400);
-         EXPECT_EQ(result.minimum_cache_lines_touched, 7);
-         std::array const invalid{AccessIntent{"future", AccessOperation::read}};
-         EXPECT_FALSE(Analyzer::analyze_packed_access(packed, invalid, abi).diagnostics.empty());
+     [](AnalysisContext& context) {
+         AccessSet const accesses{{"kind", AccessOperation::read}};
+         auto const run{run_analysis(
+             context, "Value", {.element_count = 100, .multiplicity = 3, .accesses = &accesses})};
+         auto const row{run.access->value};
+         auto const& result{context.storage.workloads};
+         EXPECT_EQ(result.bits[row].useful, 800);
+         EXPECT_EQ(result.bits[row].logical_read, 2400);
+         EXPECT_EQ(result.storage_bytes[row], 400);
+         EXPECT_EQ(result.packed_waste[row].unselected_field_bits, 2000);
+         EXPECT_EQ(result.packed_waste[row].reserved_bits, 400);
+         EXPECT_EQ(result.cache[row].count, 7);
+         AccessSet const invalid{{"future", AccessOperation::read}};
+         run_analysis(context, "Value", {.element_count = 100, .accesses = &invalid});
+         EXPECT_TRUE(has_analysis_diagnostics(context));
      }}};
 
 INSTANTIATE_TEST_SUITE_P(Source,
@@ -181,17 +178,13 @@ TEST_P(RelationshipCapacityTest, DerivesWidthFromTargetExtent) {
                       std::string{test.relation} + " Entities))))"};
     auto const document{editor.from_source(source)};
     ASSERT_TRUE(document.valid());
-    std::array const targets{RelationshipTargetFacts{
-        document.find_type("game", "Entities").value(), test.extent, test.extent}};
-    auto const result{Analyzer::analyze_packed(document.types(),
-                                               document.find_type("game", "Handle").value(),
-                                               ResolvedVariant{},
-                                               AbiProfile::host_common(),
-                                               1,
-                                               targets)};
-    auto const& field{result.fields.front()};
-    EXPECT_EQ(field.relationship_minimum_required_bits, test.expected_bits);
-    EXPECT_EQ(field.relationship_width_sufficient, test.expected_bits <= 8);
+    AnalysisStorage storage;
+    AnalysisContext context{document, storage};
+    run_analysis(context, "Handle", {.default_capacity = test.extent});
+    ASSERT_EQ(storage.relationships.metrics.size(), 1);
+    auto const& metrics{storage.relationships.metrics[0].value()};
+    EXPECT_EQ(metrics.minimum_required_bits, test.expected_bits);
+    EXPECT_EQ(metrics.width_sufficient, test.expected_bits <= 8);
 }
 
 INSTANTIATE_TEST_SUITE_P(Extents,

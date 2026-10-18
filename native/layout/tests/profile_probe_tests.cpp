@@ -1,9 +1,12 @@
 #include "document_test_support.hpp"
 #include <ioj/layout/abi_profile.hpp>
+#include <ioj/layout/analysis/analysis_context.hpp>
+#include <ioj/layout/analysis/analysis_request.hpp>
+#include <ioj/layout/analysis/analysis_storage.hpp>
+#include <ioj/layout/analysis/analyzer.hpp>
 #include <ioj/layout/document.hpp>
 #include <ioj/layout/editor_session.hpp>
 #include <ioj/layout/external_dependency.hpp>
-#include <ioj/layout/physical_facts.hpp>
 #include <ioj/layout/profile_probe.hpp>
 
 #include <lispb/strings.h>
@@ -159,23 +162,30 @@ type "void*" 8 8 non-integer unknown "generic target representation" compiler-pr
 )")};
     ASSERT_TRUE(profile);
     ASSERT_FALSE(profile->object_pointer_representation());
-    auto const document{editor.from_source("")};
+    auto const document{editor.from_source(R"((module test :header "Test.h"
+        (record Value (member exact "Opaque*") (member deep "Opaque**"))))")};
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
-    auto const& types{document.types()};
-    auto const exact{PhysicalFactsResolver{types, *profile}.resolve_spelling("Opaque*")};
-    ASSERT_TRUE(exact.facts);
-    EXPECT_EQ(exact.facts->size_bytes, 16);
-    EXPECT_EQ(exact.facts->alignment_bytes, 8);
-    EXPECT_EQ(exact.facts->origin, FactOrigin::compiler_probe);
-    EXPECT_EQ(exact.facts->provenance, "exact target measurement");
-    EXPECT_FALSE((PhysicalFactsResolver{types, *profile}.resolve_spelling("Opaque**").facts));
+    std::array requests{
+        AnalysisRequest{.type = *document.find_type("test", "Value"), .abi = &*profile}};
+    AnalysisStorage storage;
+    AnalysisContext context{document, storage};
+    Analyzer::analyze(context, requests);
+    auto const exact{storage.components.element_facts[0]};
+    ASSERT_TRUE(exact);
+    EXPECT_EQ(exact->size_bytes, 16);
+    EXPECT_EQ(exact->alignment_bytes, 8);
+    EXPECT_EQ(exact->origin, FactOrigin::compiler_probe);
+    EXPECT_EQ(exact->provenance, "exact target measurement");
+    EXPECT_FALSE(storage.components.element_facts[1]);
     profile->set_object_pointer_representation("void*");
-    auto const preferred{PhysicalFactsResolver{types, *profile}.resolve_spelling("Opaque*")};
-    ASSERT_TRUE(preferred.facts);
-    EXPECT_EQ(preferred.facts->size_bytes, 16);
-    EXPECT_EQ(preferred.facts->origin, FactOrigin::compiler_probe);
+    Analyzer::analyze(context, requests);
+    EXPECT_EQ(storage.components.element_facts[0], exact);
+    ASSERT_TRUE(storage.components.element_facts[1]);
+    EXPECT_EQ(storage.components.element_facts[1]->size_bytes, 8);
     AbiProfile const other{"other target"};
-    EXPECT_FALSE((PhysicalFactsResolver{types, other}.resolve_spelling("Opaque*").facts));
+    requests.front().abi = &other;
+    Analyzer::analyze(context, requests);
+    EXPECT_FALSE(storage.components.element_facts[0]);
 }
 
 }

@@ -15,8 +15,7 @@ target_sources(native-layout-tests PRIVATE
   frame_pacer_tests.cpp
   graph_view_tests.cpp
   planner_type_tests.cpp
-  planner_selection_tests.cpp
-  planner_session_tests.cpp
+  planner_controller_tests.cpp
   schema_loader_tests.cpp
   workspace_tests.cpp
 )

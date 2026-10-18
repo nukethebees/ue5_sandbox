@@ -1,12 +1,11 @@
 #include <ioj/layout/document.hpp>
 #include <ioj/layout/editor_session.hpp>
-#include <ioj/layout/planner_session.hpp>
-#include <ioj/layout/workspace.hpp>
 
 #include <lispb/strings.h>
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <string_view>
 
 namespace ioj::layout {
@@ -63,19 +62,15 @@ TEST(DocumentVariants, MixedSchemaAndVariantEditsUndoAsOneTransaction) {
     edit.set_variant_member_type(variant, "game", "Ships", "values", "std::uint16_t");
     edit.set_variant_capacity(variant, "game", "Ships", 42);
     ASSERT_TRUE(doc.commit(edit));
-    LayoutWorkspace workspace;
-    workspace.bind(doc);
-    ASSERT_TRUE(workspace.select_variant(variant));
-    auto const state{doc.find_type("game", "State").value()};
-    auto const ships{doc.find_type("game", "Ships").value()};
-    EXPECT_EQ(workspace.active_variant().overrides.packed_storage_types.at(state), "std::uint32_t");
-    EXPECT_EQ(workspace.active_variant().overrides.packed_field_widths.at(
-                  {state, doc.types().strings().find("health")}),
-              20);
-    EXPECT_EQ(workspace.active_variant().overrides.soa_column_types.at(
-                  {ships, doc.types().strings().find("values")}),
-              "std::uint16_t");
-    EXPECT_EQ(workspace.active_variant().overrides.capacities.at(ships), 42);
+    auto const& settings{doc.variants().settings(variant)};
+    ASSERT_EQ(settings.packed_storage.size(), 1);
+    ASSERT_EQ(settings.field_widths.size(), 1);
+    ASSERT_EQ(settings.column_spelling.size(), 1);
+    ASSERT_EQ(settings.capacities.size(), 1);
+    EXPECT_EQ(settings.packed_storage.front(), "std::uint32_t");
+    EXPECT_EQ(settings.field_widths.front(), 20);
+    EXPECT_EQ(settings.column_spelling.front(), "std::uint16_t");
+    EXPECT_EQ(settings.capacities.front(), 42);
     ASSERT_TRUE(doc.undo());
     EXPECT_EQ(doc.query().module("game").packed_value("State").field("health").bits(), 8);
     EXPECT_EQ(doc.variants().settings(variant), VariantSettings{});
@@ -95,29 +90,71 @@ TEST(DocumentVariants, ResolvesOverridesAfterRenameAndAllowsSpeculativeOverflow)
     edit.set_variant_field_bits(variant, "game", "State", "health", 24);
     edit.rename_declaration("game", "State", "Renamed");
     ASSERT_TRUE(doc.commit(edit));
-    PlannerAnalysisSession session{doc.types()};
-    session.edit_inputs().selection.select_type(doc.types(), doc.find_type("game", "Renamed"));
-    ASSERT_TRUE(session.refresh(&doc));
-    ASSERT_TRUE(session.edit_inputs().workspace.select_variant(variant));
-    ASSERT_TRUE(session.refresh(&doc));
-    ASSERT_TRUE(session.results().active_packed);
-    EXPECT_EQ(session.results().active_packed->overflow_bits, 8);
-    EXPECT_EQ(session.results().active_packed->bits_used, 24);
+    auto const renamed{doc.find_type("game", "Renamed").value()};
+    auto const declaration{doc.find_declaration(doc.types().identity(renamed)).value()};
+    EXPECT_EQ(doc.variants().settings(variant).field_types.front(), declaration);
+    EXPECT_EQ(doc.variants().settings(variant).field_widths.front(), 24);
     EXPECT_EQ(doc.query().module("game").packed_value("Renamed").field("health").bits(), 8);
 }
 
-TEST(LayoutWorkspace, TracksAnalysisElementCountSeparatelyFromDocumentHistory) {
+TEST(DocumentSettings, AllAnalysisInputsShareSchemaHistory) {
     EditorSession editor;
     auto doc{editor.from_source(source)};
     ASSERT_TRUE(doc.valid());
-    LayoutWorkspace workspace;
-    workspace.bind(doc);
-    EXPECT_EQ(workspace.element_count(), 1);
-    EXPECT_FALSE(workspace.set_element_count(1));
-    EXPECT_TRUE(workspace.set_element_count(100'000));
-    EXPECT_EQ(workspace.element_count(), 100'000);
-    EXPECT_FALSE(doc.can_undo());
+    auto const original_abi{std::string{doc.analysis_settings().abi.name()}};
+    auto edit{doc.transaction()};
+    edit.set_element_count(100'000);
+    edit.set_default_soa_capacity(500);
+    edit.set_access_operation(AccessOperation::read_write);
+    edit.set_access_multiplicity(8);
+    edit.set_soa_allocation_strategy(SoaAllocationStrategy::aligned_contiguous);
+    edit.set_abi_profile(AbiProfile{"unknown target"});
+    edit.set_comparison_abi_profile(AbiProfile::host_common());
+    edit.set_access_set("game", "Ships", {{"values", AccessOperation::write}});
+    ASSERT_TRUE(doc.commit(edit));
+    auto const& settings{doc.analysis_settings()};
+    EXPECT_EQ(settings.element_count, 100'000);
+    EXPECT_EQ(settings.default_soa_capacity, 500);
+    EXPECT_EQ(settings.access_operation, AccessOperation::read_write);
+    EXPECT_EQ(settings.access_multiplicity, 8);
+    EXPECT_EQ(settings.soa_allocation_strategy, SoaAllocationStrategy::aligned_contiguous);
+    EXPECT_EQ(settings.abi.name(), "unknown target");
+    ASSERT_TRUE(settings.comparison_abi);
+    EXPECT_EQ(settings.access_sets.begin()->second.at("values"), AccessOperation::write);
     EXPECT_FALSE(doc.dirty());
+    ASSERT_TRUE(doc.undo());
+    EXPECT_EQ(doc.analysis_settings().element_count, 1);
+    EXPECT_EQ(doc.analysis_settings().abi.name(), original_abi);
+    EXPECT_FALSE(doc.analysis_settings().comparison_abi);
+    EXPECT_TRUE(doc.analysis_settings().access_sets.empty());
+    ASSERT_TRUE(doc.redo());
+    EXPECT_EQ(doc.analysis_settings().element_count, 100'000);
+    EXPECT_EQ(doc.analysis_settings().access_multiplicity, 8);
+}
+
+TEST(DocumentSettings, DistributionOwnersSurviveRenameAndRestoreAfterDeletion) {
+    EditorSession editor;
+    auto doc{editor.from_source(R"((module game :header "Game.h"
+        (union Payload (alternative small std::uint8_t) (alternative large std::uint32_t))))")};
+    ASSERT_TRUE(doc.valid());
+    auto const type{doc.find_type("game", "Payload").value()};
+    auto const owner{doc.find_declaration(doc.types().identity(type)).value()};
+    std::array const weights{UnionDistributionEntry{"small", 3},
+                             UnionDistributionEntry{"large", 1}};
+    auto edit{doc.transaction()};
+    edit.set_union_distribution("game", "Payload", weights);
+    edit.rename_declaration("game", "Payload", "Message");
+    ASSERT_TRUE(doc.commit(edit));
+    EXPECT_EQ(doc.analysis_settings().union_distributions.at(owner).front().weight, 3);
+    auto remove{doc.transaction()};
+    remove.delete_declaration("game", "Message");
+    ASSERT_TRUE(doc.commit(remove));
+    EXPECT_TRUE(doc.analysis_settings().union_distributions.empty());
+    ASSERT_TRUE(doc.undo());
+    EXPECT_EQ(doc.analysis_settings().union_distributions.at(owner).back().weight, 1);
+    ASSERT_TRUE(doc.undo());
+    EXPECT_TRUE(doc.analysis_settings().union_distributions.empty());
+    EXPECT_TRUE(doc.find_type("game", "Payload"));
 }
 } // namespace
 } // namespace ioj::layout

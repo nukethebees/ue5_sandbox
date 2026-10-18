@@ -1,7 +1,6 @@
 #include <ioj/layout/abi_profile.hpp>
 #include <ioj/layout/document.hpp>
 #include <ioj/layout/editor_session.hpp>
-#include <ioj/layout/physical_facts.hpp>
 #include <ioj/layout/profile_probe.hpp>
 
 #include <lispb/strings.h>
@@ -58,9 +57,6 @@ auto main(int argc, char** argv) -> int {
         return 1;
     }
     auto const facts{profile->find("std::array<float, 3>")};
-    auto const document{editor.from_source("")};
-    auto const& types{document.types()};
-    ioj::layout::PhysicalFactsResolver resolver{types, *profile};
     for (auto const& [spelling, size, alignment] :
          {std::tuple{"std::array<float, 3>*",
                      sizeof(std::array<float, 3>*),
@@ -71,10 +67,9 @@ auto main(int argc, char** argv) -> int {
           std::tuple{"std::array<float, 3> const*",
                      sizeof(std::array<float, 3> const*),
                      alignof(std::array<float, 3> const*)}}) {
-        auto const pointer{resolver.resolve_spelling(spelling)};
-        if (!pointer.facts || pointer.facts->size_bytes != size ||
-            pointer.facts->alignment_bytes != alignment ||
-            pointer.facts->origin != ioj::layout::FactOrigin::compiler_probe) {
+        auto const pointer{profile->find(spelling)};
+        if (!pointer || pointer->size_bytes != size || pointer->alignment_bytes != alignment ||
+            pointer->origin != ioj::layout::FactOrigin::compiler_probe) {
             std::cerr << "Exact pointer measurement missing without generic ABI policy: "
                       << spelling << '\n';
             return 1;

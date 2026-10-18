@@ -1,15 +1,5 @@
 #include "analyzer_test_fixtures.hpp"
 #include <ioj/layout/abi_profile.hpp>
-#include <ioj/layout/analyzer/access_intent.hpp>
-#include <ioj/layout/analyzer/access_operation.hpp>
-#include <ioj/layout/analyzer/analyzer.hpp>
-#include <ioj/layout/analyzer/record_access_analysis.hpp>
-#include <ioj/layout/analyzer/record_analysis.hpp>
-#include <ioj/layout/analyzer/record_soa_access_comparison.hpp>
-#include <ioj/layout/analyzer/soa_access_analysis.hpp>
-#include <ioj/layout/analyzer/soa_allocation_strategy.hpp>
-#include <ioj/layout/analyzer/soa_analysis.hpp>
-#include <ioj/layout/analyzer/soa_target_comparison.hpp>
 #include <ioj/layout/editor_session.hpp>
 #include <ioj/layout/resolved_variant.hpp>
 
@@ -23,7 +13,9 @@ TEST_P(SoaAnalysisTest, ReportsColumnsAllocationsAndAccess) {
     auto const& test{GetParam()};
     auto const document{editor.from_source(test.source)};
     ASSERT_TRUE(document.valid());
-    test.verify(document);
+    AnalysisStorage storage;
+    AnalysisContext context{document, storage};
+    test.verify(context);
 }
 
 AnalysisCase const cases[]{
@@ -31,123 +23,143 @@ AnalysisCase const cases[]{
      R"((module game :header "Game.h" :backend standard-library
         (record Pair (member x float) (member y float))
         (struct Value (member pairs array Pair))))",
-     [](Document const& doc) {
-         auto const result{Analyzer::analyze_soa(doc.types(),
-                                                 doc.find_type("game", "Value").value(),
-                                                 ResolvedVariant{},
-                                                 AbiProfile::host_common(),
-                                                 3)};
+     [](AnalysisContext& context) {
+         auto const run{run_analysis(context, "Value", {.default_capacity = 3})};
+         auto const& result{context.storage.types.soa[run.analysis.value].value()};
          EXPECT_EQ(result.total_payload_bytes, 24);
-         EXPECT_EQ(result.columns.front().type_facts->alignment_bytes, alignof(float));
+         EXPECT_EQ(context.storage.columns.type_facts[result.columns.begin]->alignment_bytes,
+                   alignof(float));
      }},
     {"UnknownMiddleColumn",
      R"((module game :header "Game.h" :backend standard-library
         (struct Value (member first array float) (member unknown array Opaque)
           (member last array double))))",
-     [](Document const& doc) {
-         auto const result{Analyzer::analyze_soa(doc.types(),
-                                                 doc.find_type("game", "Value").value(),
-                                                 ResolvedVariant{},
-                                                 AbiProfile::host_common(),
-                                                 3,
-                                                 SoaAllocationStrategy::aligned_contiguous)};
-         EXPECT_EQ(result.columns[0].allocation_offset_bytes, 0);
-         EXPECT_FALSE(result.columns[1].allocation_offset_bytes);
-         EXPECT_FALSE(result.columns[2].allocation_offset_bytes);
-         EXPECT_EQ(result.columns[2].total_bytes, 24);
+     [](AnalysisContext& context) {
+         auto const run{
+             run_analysis(context,
+                          "Value",
+                          {.default_capacity = 3,
+                           .allocation_strategy = SoaAllocationStrategy::aligned_contiguous})};
+         auto const& result{context.storage.types.soa[run.analysis.value].value()};
+         auto const& columns{context.storage.columns};
+         EXPECT_EQ(columns.allocation_offset_bytes[result.columns.begin], 0);
+         EXPECT_FALSE(columns.allocation_offset_bytes[result.columns.begin + 1]);
+         EXPECT_FALSE(columns.allocation_offset_bytes[result.columns.begin + 2]);
+         EXPECT_EQ(columns.total_bytes[result.columns.begin + 2], 24);
          EXPECT_FALSE(result.total_allocation_bytes);
      }},
     {"AllocationStrategies",
      R"((module game :header "Game.h" :backend standard-library
         (struct Value (member small array std::uint8_t) (member wide array std::uint32_t))))",
-     [](Document const& doc) {
-         auto const type{doc.find_type("game", "Value").value()};
+     [](AnalysisContext& context) {
+         auto const type{context.document.find_type("game", "Value").value()};
          auto const abi{AbiProfile::host_common()};
-         auto const separate{Analyzer::analyze_soa(doc.types(), type, ResolvedVariant{}, abi, 3)};
-         auto const contiguous{Analyzer::analyze_soa(doc.types(),
-                                                     type,
-                                                     ResolvedVariant{},
-                                                     abi,
-                                                     3,
-                                                     SoaAllocationStrategy::aligned_contiguous)};
+         std::array const requests{
+             AnalysisRequest{.type = type, .abi = &abi, .default_capacity = 3},
+             AnalysisRequest{.type = type,
+                             .abi = &abi,
+                             .default_capacity = 3,
+                             .allocation_strategy = SoaAllocationStrategy::aligned_contiguous}};
+         Analyzer::analyze(context, requests);
+         auto const& storage{context.storage};
+         auto const& separate{storage.types.soa[storage.runs[0].analysis.value].value()};
+         auto const& contiguous{storage.types.soa[storage.runs[1].analysis.value].value()};
          EXPECT_EQ(separate.allocation_count, 2);
          EXPECT_EQ(separate.total_payload_bytes, 15);
          EXPECT_EQ(contiguous.allocation_count, 1);
-         EXPECT_EQ(contiguous.columns[1].allocation_offset_bytes, 4);
-         EXPECT_EQ(contiguous.columns[1].padding_before_bytes, 1);
+         EXPECT_EQ(storage.columns.allocation_offset_bytes[contiguous.columns.begin + 1], 4);
+         EXPECT_EQ(storage.columns.padding_before_bytes[contiguous.columns.begin + 1], 1);
          EXPECT_EQ(contiguous.total_allocation_bytes, 16);
      }},
     {"ColumnOverflow",
      R"((module game :header "Game.h" :backend standard-library
         (struct Value (member values array double))))",
-     [](Document const& doc) {
-         auto const result{Analyzer::analyze_soa(doc.types(),
-                                                 doc.find_type("game", "Value").value(),
-                                                 ResolvedVariant{},
-                                                 AbiProfile::host_common(),
-                                                 std::numeric_limits<std::uint64_t>::max())};
+     [](AnalysisContext& context) {
+         auto const run{run_analysis(
+             context, "Value", {.default_capacity = std::numeric_limits<std::uint64_t>::max()})};
+         auto const& result{context.storage.types.soa[run.analysis.value].value()};
          EXPECT_FALSE(result.total_payload_bytes);
-         EXPECT_FALSE(result.columns[0].total_bytes);
-         EXPECT_FALSE(result.diagnostics.empty());
+         EXPECT_FALSE(context.storage.columns.total_bytes[result.columns.begin]);
+         EXPECT_TRUE(has_analysis_diagnostics(context));
      }},
     {"TargetComparison",
      R"((module game :header "Game.h" :backend standard-library
         (struct Value (member small array std::uint8_t) (member wide array std::uint32_t))))",
-     [](Document const& doc) {
-         auto const type{doc.find_type("game", "Value").value()};
-         auto wide{AbiProfile::host_common()};
+     [](AnalysisContext& context) {
+         auto const type{context.document.find_type("game", "Value").value()};
+         auto const abi{AbiProfile::host_common()};
+         auto wide{abi};
          wide.set("std::uint32_t",
                   {.size_bytes = 8,
                    .alignment_bytes = 8,
                    .integer_signed = false,
                    .unsigned_value_bits = 32,
                    .provenance = {}});
-         auto const first{Analyzer::analyze_soa(
-             doc.types(), type, ResolvedVariant{}, AbiProfile::host_common(), 3)};
-         auto const second{Analyzer::analyze_soa(doc.types(), type, ResolvedVariant{}, wide, 3)};
-         auto const comparison{Analyzer::compare_soa_targets(first, second)};
-         EXPECT_EQ(comparison.columns[1].total_byte_delta->magnitude, 12);
-         auto const unknown{
-             Analyzer::analyze_soa(doc.types(), type, ResolvedVariant{}, AbiProfile{"unknown"}, 3)};
-         EXPECT_FALSE(Analyzer::compare_soa_targets(first, unknown).columns[1].total_byte_delta);
+         AbiProfile const unknown{"unknown"};
+         std::array const requests{
+             AnalysisRequest{.type = type, .abi = &abi, .default_capacity = 3},
+             AnalysisRequest{.type = type, .abi = &wide, .default_capacity = 3},
+             AnalysisRequest{.type = type, .abi = &unknown, .default_capacity = 3}};
+         Analyzer::analyze(context, requests);
+         auto const& storage{context.storage};
+         auto const first{storage.types.soa[storage.runs[0].analysis.value]->columns.begin + 1};
+         auto const second{storage.types.soa[storage.runs[1].analysis.value]->columns.begin + 1};
+         auto const missing{storage.types.soa[storage.runs[2].analysis.value]->columns.begin + 1};
+         EXPECT_EQ(*storage.columns.total_bytes[second] - *storage.columns.total_bytes[first], 12);
+         EXPECT_FALSE(storage.columns.total_bytes[missing]);
      }},
     {"SelectedWorkload",
      R"((module game :header "Game.h" :backend standard-library
         (struct Value (member x array float) (member y array float) (member z array float))))",
-     [](Document const& doc) {
-         auto const abi{AbiProfile::host_common()};
-         auto const result{Analyzer::analyze_soa(
-             doc.types(), doc.find_type("game", "Value").value(), ResolvedVariant{}, abi, 100)};
-         std::array const accesses{AccessIntent{"x", AccessOperation::read}};
-         auto const access{Analyzer::analyze_soa_access(result, accesses, abi, 10, 3)};
-         EXPECT_EQ(access.useful_bytes, 40);
-         EXPECT_EQ(access.logical_read_useful_bytes, 120);
-         EXPECT_EQ(access.unselected_payload_bytes, 80);
-         EXPECT_EQ(access.capacity_slack_payload_bytes, 1080);
-         EXPECT_EQ(access.minimum_cache_lines_touched, 1);
-         auto const too_many{Analyzer::analyze_soa_access(result, accesses, abi, 101)};
-         EXPECT_FALSE(too_many.diagnostics.empty());
-         std::array const missing{AccessIntent{"missing", AccessOperation::read}};
-         EXPECT_FALSE(Analyzer::analyze_soa_access(result, missing, abi, 10).diagnostics.empty());
+     [](AnalysisContext& context) {
+         AccessSet const accesses{{"x", AccessOperation::read}};
+         auto const run{run_analysis(context,
+                                     "Value",
+                                     {.element_count = 10,
+                                      .default_capacity = 100,
+                                      .multiplicity = 3,
+                                      .accesses = &accesses})};
+         auto const row{run.access->value};
+         auto const& access{context.storage.workloads};
+         EXPECT_EQ(access.bytes[row].useful, 40);
+         EXPECT_EQ(access.bytes[row].logical_read, 120);
+         EXPECT_EQ(access.unselected_payload_bytes[row], 80);
+         EXPECT_EQ(access.capacity_slack_bytes[row], 1080);
+         EXPECT_EQ(access.cache[row].count, 1);
+         run_analysis(context,
+                      "Value",
+                      {.element_count = 101, .default_capacity = 100, .accesses = &accesses});
+         EXPECT_TRUE(has_analysis_diagnostics(context));
+         AccessSet const missing{{"missing", AccessOperation::read}};
+         run_analysis(context,
+                      "Value",
+                      {.element_count = 10, .default_capacity = 100, .accesses = &missing});
+         EXPECT_TRUE(has_analysis_diagnostics(context));
      }},
     {"RecordSoaComparison",
      R"((module game :header "Game.h" :backend standard-library
         (record Row (member x float) (member y float) (member z float))
         (struct Columns (member x array float) (member y array float) (member z array float))))",
-     [](Document const& doc) {
+     [](AnalysisContext& context) {
+         auto const& doc{context.document};
          auto const abi{AbiProfile::host_common()};
-         auto const record{
-             Analyzer::analyze_record(doc.types(), doc.find_type("game", "Row").value(), abi, 100)};
-         auto const soa{Analyzer::analyze_soa(
-             doc.types(), doc.find_type("game", "Columns").value(), ResolvedVariant{}, abi, 100)};
-         std::array const accesses{AccessIntent{"x", AccessOperation::read}};
-         auto const record_access{Analyzer::analyze_record_access(record, accesses, abi)};
-         auto const soa_access{Analyzer::analyze_soa_access(soa, accesses, abi, 100)};
-         EXPECT_EQ(record_access.useful_bytes, soa_access.useful_bytes);
-         EXPECT_GT(record_access.cache_lines_touched.value(),
-                   soa_access.minimum_cache_lines_touched.value());
-         auto const comparison{Analyzer::compare_record_soa_access(record_access, soa_access)};
-         EXPECT_TRUE(comparison.diagnostics.empty());
+         AccessSet const accesses{{"x", AccessOperation::read}};
+         std::array const requests{AnalysisRequest{.type = doc.find_type("game", "Row").value(),
+                                                   .abi = &abi,
+                                                   .element_count = 100,
+                                                   .accesses = &accesses},
+                                   AnalysisRequest{.type = doc.find_type("game", "Columns").value(),
+                                                   .abi = &abi,
+                                                   .element_count = 100,
+                                                   .default_capacity = 100,
+                                                   .accesses = &accesses}};
+         Analyzer::analyze(context, requests);
+         auto const record{context.storage.runs[0].access->value};
+         auto const soa{context.storage.runs[1].access->value};
+         auto const& access{context.storage.workloads};
+         EXPECT_EQ(access.bytes[record].useful, access.bytes[soa].useful);
+         EXPECT_GT(access.cache[record].count.value(), access.cache[soa].count.value());
+         EXPECT_FALSE(has_analysis_diagnostics(context));
      }}};
 
 INSTANTIATE_TEST_SUITE_P(Source,
@@ -172,15 +184,23 @@ TEST_P(SoaCapacityTest, ScalesPayloadAndMemoryRegions) {
                           .l2_cache_bytes = 8192,
                           .l3_cache_bytes = 16384,
                           .provenance = "test memory"});
-    auto const result{Analyzer::analyze_soa(
-        doc.types(), doc.find_type("game", "Value").value(), ResolvedVariant{}, abi, capacity)};
+    AnalysisStorage storage;
+    AnalysisContext context{doc, storage};
+    AccessSet const accesses{{"x", AccessOperation::read}};
+    auto const run{run_analysis(context,
+                                "Value",
+                                {.abi = &abi,
+                                 .element_count = capacity,
+                                 .default_capacity = capacity,
+                                 .accesses = &accesses})};
+    auto const& result{storage.types.soa[run.analysis.value].value()};
     EXPECT_EQ(result.bytes_per_logical_element, 12);
     EXPECT_EQ(result.total_payload_bytes, 12 * capacity);
-    EXPECT_EQ(result.columns[0].minimum_cache_lines, (4 * capacity + 63) / 64);
-    EXPECT_EQ(result.minimum_pages, 3 * ((4 * capacity + 4095) / 4096));
-    EXPECT_EQ(result.cache_capacity.fits_l1_data, 12 * capacity <= 4096);
-    EXPECT_EQ(result.cache_capacity.fits_l2, 12 * capacity <= 8192);
-    EXPECT_EQ(result.cache_capacity.fits_l3, 12 * capacity <= 16384);
+    EXPECT_EQ(storage.workloads.cache[run.access->value].count, (4 * capacity + 63) / 64);
+    EXPECT_EQ(storage.totals[0].minimum_pages, 3 * ((4 * capacity + 4095) / 4096));
+    EXPECT_EQ(storage.totals[0].cache_capacity.fits_l1_data, 12 * capacity <= 4096);
+    EXPECT_EQ(storage.totals[0].cache_capacity.fits_l2, 12 * capacity <= 8192);
+    EXPECT_EQ(storage.totals[0].cache_capacity.fits_l3, 12 * capacity <= 16384);
 }
 
 INSTANTIATE_TEST_SUITE_P(

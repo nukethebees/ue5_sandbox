@@ -1,6 +1,6 @@
 #include <ioj/layout/document.hpp>
 #include <ioj/layout/editor_session.hpp>
-#include <ioj/layout/planner_session.hpp>
+#include <ioj/layout/planner_controller.hpp>
 
 #include <lispb/diagnostics.h>
 
@@ -13,6 +13,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #if defined(_WIN32)
@@ -69,29 +70,29 @@ void report_failure(EditorSession const& editor) {
     }
 }
 
-auto run(char const* project, char const* target) -> int {
+auto run(char const* project, char const* target, int seconds) -> int {
     EditorSession editor;
-    auto const deadline{Clock::now() + std::chrono::seconds{170}};
-    auto document{editor.load(project, target)};
-    if (!document.valid()) {
+    auto const deadline{Clock::now() + std::chrono::seconds{seconds}};
+    auto loaded{editor.load(project, target)};
+    if (!loaded.valid()) {
         report_failure(editor);
         return 1;
     }
-    auto const selected{document.find_type("sandbox_ismc_render", "PackedTransform")};
+    auto const selected{loaded.find_type("sandbox_ismc_render", "PackedTransform")};
     if (!selected) {
         std::cerr << "Expected sandbox_ismc_render/PackedTransform in the repository target.\n";
         return 1;
     }
-    PlannerAnalysisSession session{document.types()};
-    session.edit_inputs().selection.select_type(document.types(), selected);
-    session.refresh(&document);
+    PlannerController controller{editor, std::move(loaded)};
+    auto& document{*controller.document()};
+    controller.select_declaration("sandbox_ismc_render", "PackedTransform");
     auto create{document.transaction()};
     create.create_variant("Benchmark");
-    if (!document.commit(create)) {
+    controller.submit(std::move(create));
+    if (!controller.drain() || controller.last_edit_succeeded() != true) {
         report_failure(editor);
         return 1;
     }
-    session.refresh(&document);
     auto const variant{document.variants().ids().back()};
     report_memory("loaded");
 
@@ -122,42 +123,49 @@ auto run(char const* project, char const* target) -> int {
                 break;
         }
         auto const start{Clock::now()};
-        if (!document.commit(transaction)) {
+        controller.submit(std::move(transaction));
+        if (!controller.drain() || controller.last_edit_succeeded() != true) {
             report_failure(editor);
             return 1;
         }
-        session.refresh(&document);
         commits.push_back(std::chrono::duration<double, std::milli>{Clock::now() - start}.count());
     }
     report_samples("commit+analysis", commits);
     report_memory("history");
 
     for (std::size_t row{}; row < commits.size() && Clock::now() < deadline; ++row) {
+        if (!document.can_undo()) {
+            return 1;
+        }
         auto const start{Clock::now()};
-        if (!document.undo()) {
+        controller.undo();
+        if (!controller.drain()) {
             report_failure(editor);
             return 1;
         }
-        session.refresh(&document);
         undos.push_back(std::chrono::duration<double, std::milli>{Clock::now() - start}.count());
     }
     report_samples("undo+analysis", undos);
     report_memory("undone");
 
     for (std::size_t row{}; row < undos.size() && Clock::now() < deadline; ++row) {
+        if (!document.can_redo()) {
+            return 1;
+        }
         auto const start{Clock::now()};
-        if (!document.redo()) {
+        controller.redo();
+        if (!controller.drain()) {
             report_failure(editor);
             return 1;
         }
-        session.refresh(&document);
         redos.push_back(std::chrono::duration<double, std::milli>{Clock::now() - start}.count());
     }
     report_samples("redo+analysis", redos);
     report_memory("redone");
     if (commits.size() != transactions || undos.size() != transactions ||
         redos.size() != transactions) {
-        std::cerr << "Benchmark exceeded its 170-second budget; results are incomplete.\n";
+        std::cerr << "Benchmark exceeded its " << seconds
+                  << "-second budget; results are incomplete.\n";
         return 2;
     }
     return 0;
@@ -165,13 +173,19 @@ auto run(char const* project, char const* target) -> int {
 }
 
 auto main(int argc, char** argv) -> int {
-    if (argc < 2 || argc > 3) {
-        std::cerr << "Usage: native-layout-document-benchmark <project.lispb> [sandbox-code]\n";
+    if (argc < 2 || argc > 4) {
+        std::cerr << "Usage: native-layout-document-benchmark <project.lispb> [sandbox-code] "
+                     "[seconds:1..80]\n";
         return 1;
     }
     std::cout << std::fixed << std::setprecision(3);
     try {
-        return ioj::layout::benchmark::run(argv[1], argc == 3 ? argv[2] : "sandbox-code");
+        auto const seconds{argc == 4 ? std::stoi(argv[3]) : 80};
+        if (seconds < 1 || seconds > 80) {
+            std::cerr << "The benchmark budget must be between 1 and 80 seconds.\n";
+            return 1;
+        }
+        return ioj::layout::benchmark::run(argv[1], argc >= 3 ? argv[2] : "sandbox-code", seconds);
     } catch (std::exception const& error) {
         std::cerr << error.what() << '\n';
         return 1;

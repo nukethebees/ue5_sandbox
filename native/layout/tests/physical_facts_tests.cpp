@@ -1,36 +1,27 @@
+#include "document_test_support.hpp"
 #include <ioj/layout/abi_profile.hpp>
-#include <ioj/layout/analyzer/analyzer.hpp>
-#include <ioj/layout/analyzer/record_analysis.hpp>
-#include <ioj/layout/analyzer/soa_analysis.hpp>
-#include <ioj/layout/document.hpp>
+#include <ioj/layout/analysis/analysis_context.hpp>
+#include <ioj/layout/analysis/analysis_request.hpp>
+#include <ioj/layout/analysis/analysis_storage.hpp>
+#include <ioj/layout/analysis/analyzer.hpp>
 #include <ioj/layout/editor_session.hpp>
-#include <ioj/layout/physical_facts.hpp>
-#include <ioj/layout/resolved_variant.hpp>
-#include <ioj/layout/type_facts.hpp>
 
 #include <gtest/gtest.h>
 #include <native_soa_types.h>
 
+#include <array>
 #include <cstddef>
 #include <filesystem>
-#include <optional>
 #include <string>
 #include <tuple>
 
-namespace ioj::layout {
-namespace physical_facts_tests {
-
-auto physical_fixture(EditorSession& editor) -> Document {
-    return editor.load(std::filesystem::path{IOJ_SOURCE_DIR} / "lispb/project.lispb",
-                       "native-soa-fixture");
-}
-
+namespace ioj::layout::physical_facts_tests {
 TEST(PhysicalFacts, GeneratedCppAgreesForPointersNestedRecordsAndAlignedExternalMembers) {
-    EditorSession editor;
     using namespace ml::native_soa_fixture;
-    auto const document{physical_fixture(editor)};
-    ASSERT_TRUE(document.valid());
-    auto const& types{document.types()};
+    EditorSession editor;
+    auto document{editor.load(std::filesystem::path{IOJ_SOURCE_DIR} / "lispb/project.lispb",
+                              "native-soa-fixture")};
+    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto profile{AbiProfile::host_common()};
     TypeFacts aligned{};
     aligned.size_bytes = sizeof(Aligned32);
@@ -38,105 +29,117 @@ TEST(PhysicalFacts, GeneratedCppAgreesForPointersNestedRecordsAndAlignedExternal
     aligned.origin = FactOrigin::compiler_probe;
     aligned.provenance = "compiled differential fixture";
     profile.set("Aligned32", aligned);
-    PhysicalFactsResolver resolver{types, profile};
+    AnalysisStorage storage;
+    AnalysisContext context{document, storage};
     for (auto const& [name, size, alignment] :
          {std::tuple{"Pair", sizeof(Pair), alignof(Pair)},
           std::tuple{"Node", sizeof(Node), alignof(Node)},
           std::tuple{"First", sizeof(First), alignof(First)},
           std::tuple{"Second", sizeof(Second), alignof(Second)},
           std::tuple{"Envelope", sizeof(Envelope), alignof(Envelope)}}) {
-        auto const facts{resolver.resolve(*document.find_type("native_soa_fixture", name))};
-        ASSERT_TRUE(facts.facts.has_value()) << name;
-        EXPECT_EQ(facts.facts->size_bytes, size) << name;
-        EXPECT_EQ(facts.facts->alignment_bytes, alignment) << name;
-        EXPECT_EQ(facts.facts->origin, FactOrigin::derived);
+        SCOPED_TRACE(name);
+        std::array requests{AnalysisRequest{.type = *document.find_type("native_soa_fixture", name),
+                                            .abi = &profile}};
+        Analyzer::analyze(context, requests);
+        auto const& facts{storage.types.physical[storage.runs.front().analysis.value]};
+        ASSERT_TRUE(facts);
+        EXPECT_EQ(facts->size_bytes, size);
+        EXPECT_EQ(facts->alignment_bytes, alignment);
+        EXPECT_EQ(facts->origin, FactOrigin::derived);
     }
-    auto const envelope{
-        resolver.analyze_record(*document.find_type("native_soa_fixture", "Envelope"))};
-    EXPECT_EQ(envelope.members[0].offset_bytes, offsetof(Envelope, pairs));
-    EXPECT_EQ(envelope.members[1].offset_bytes, offsetof(Envelope, node));
-    EXPECT_EQ(envelope.members[2].offset_bytes, offsetof(Envelope, aligned));
-    auto const rows{Analyzer::analyze_soa(types,
-                                          *document.find_type("native_soa_fixture", "PairRows"),
-                                          ResolvedVariant{},
-                                          profile,
-                                          7)};
+    auto const envelope{storage.runs.front().analysis};
+    auto const first{storage.types.aggregate[envelope.value]->members.begin};
+    EXPECT_EQ(storage.components.offset_bytes[first], offsetof(Envelope, pairs));
+    EXPECT_EQ(storage.components.offset_bytes[first + 1], offsetof(Envelope, node));
+    EXPECT_EQ(storage.components.offset_bytes[first + 2], offsetof(Envelope, aligned));
+    std::array requests{
+        AnalysisRequest{.type = *document.find_type("native_soa_fixture", "PairRows"),
+                        .abi = &profile,
+                        .element_count = 7,
+                        .default_capacity = 7}};
+    Analyzer::analyze(context, requests);
+    auto const first_column{storage.types.soa[storage.runs.front().analysis.value]->columns.begin};
     PairRows generated;
     generated.set_num(7);
-    EXPECT_EQ(rows.columns[0].total_bytes, generated.pairs.size() * sizeof(generated.pairs[0]));
-    EXPECT_EQ(rows.columns[1].total_bytes, generated.pointers.size() * sizeof(Node*));
+    EXPECT_EQ(storage.columns.total_bytes[first_column],
+              generated.pairs.size() * sizeof(generated.pairs[0]));
+    EXPECT_EQ(storage.columns.total_bytes[first_column + 1],
+              generated.pointers.size() * sizeof(Node*));
 }
 
 TEST(PhysicalFacts, SingleOnlySchemasUseOwnerFactsAndLayoutsHaveNoPhysicalObject) {
-    EditorSession editor;
     using namespace ml::native_soa_fixture;
-    auto const document{physical_fixture(editor)};
-    ASSERT_TRUE(document.valid());
-    auto const& types{document.types()};
-    auto profile{AbiProfile::host_common()};
-    TypeFacts const owner_facts{.size_bytes = sizeof(ApiOwner),
-                                .alignment_bytes = alignof(ApiOwner),
-                                .integer_signed = std::nullopt,
-                                .unsigned_value_bits = std::nullopt,
-                                .provenance = "compiled compact owner",
-                                .origin = FactOrigin::compiler_probe};
-    profile.set("ml::native_soa_fixture::ApiOwner", owner_facts);
-    PhysicalFactsResolver resolver{types, profile};
-    auto const logical{document.find_type("native_soa_fixture", "ApiRows")};
-    ASSERT_TRUE(logical);
-    auto const facts{resolver.resolve(*logical)};
-    ASSERT_TRUE(facts.facts);
-    EXPECT_EQ(facts.facts->size_bytes, sizeof(ApiOwner));
-    auto const layout{document.find_type("native_soa_fixture", "ApiCoordinates")};
-    ASSERT_TRUE(layout);
-    auto const absent{resolver.resolve(*layout)};
-    EXPECT_FALSE(absent.facts);
-    ASSERT_FALSE(absent.diagnostics.empty());
-    EXPECT_NE(absent.diagnostics.front().message.find("has no C++ owner"), std::string::npos);
-}
-
-TEST(PhysicalFacts, MissingPointeeFactsDoNotBlockPointersAndProfilesStaySeparate) {
     EditorSession editor;
-    auto const document{editor.from_source("")};
+    auto document{editor.load(std::filesystem::path{IOJ_SOURCE_DIR} / "lispb/project.lispb",
+                              "native-soa-fixture")};
     ASSERT_TRUE(document.valid());
-    auto const& types{document.types()};
     auto profile{AbiProfile::host_common()};
-    PhysicalFactsResolver known{types, profile};
-    EXPECT_TRUE(known.resolve_spelling("Opaque*").facts.has_value());
-    AbiProfile other{"other target"};
-    PhysicalFactsResolver unknown{types, other};
-    auto const missing{unknown.resolve_spelling("Opaque*")};
-    EXPECT_FALSE(missing.facts.has_value());
-    ASSERT_FALSE(missing.diagnostics.empty());
-    EXPECT_EQ(missing.diagnostics.front().missing_physical_type, "Opaque*");
-    EXPECT_FALSE(known.resolve_spelling("Opaque").facts.has_value());
-}
-
-TEST(PhysicalFacts, UnsupportedUsesAndReferenceStorageRemainUnknown) {
-    EditorSession editor;
-    auto const document{editor.from_source("")};
-    ASSERT_TRUE(document.valid());
-    auto const& types{document.types()};
-    auto profile{AbiProfile::host_common()};
-    PhysicalFactsResolver resolver{types, profile};
-    for (auto const spelling : {"float[3]", "float(*)()", "float&", "float&&", "float Owner::*"}) {
-        auto const result{resolver.resolve_spelling(spelling)};
-        EXPECT_FALSE(result.facts.has_value()) << spelling;
-        EXPECT_FALSE(result.diagnostics.empty()) << spelling;
-    }
     TypeFacts owner{};
-    owner.size_bytes = 32;
-    owner.alignment_bytes = 8;
-    profile.set("Owner", owner);
-    PhysicalFactsResolver nested{types, profile};
-    EXPECT_FALSE(nested.resolve_spelling("Owner::Inner").facts.has_value());
+    owner.size_bytes = sizeof(ApiOwner);
+    owner.alignment_bytes = alignof(ApiOwner);
+    owner.origin = FactOrigin::compiler_probe;
+    profile.set("ml::native_soa_fixture::ApiOwner", owner);
+    std::array requests{
+        AnalysisRequest{.type = *document.find_type("native_soa_fixture", "ApiRows"),
+                        .abi = &profile},
+        AnalysisRequest{.type = *document.find_type("native_soa_fixture", "ApiCoordinates"),
+                        .abi = &profile}};
+    AnalysisStorage storage;
+    AnalysisContext context{document, storage};
+    Analyzer::analyze(context, requests);
+    auto const& facts{storage.types.physical[storage.runs[0].analysis.value]};
+    ASSERT_TRUE(facts);
+    EXPECT_EQ(facts->size_bytes, sizeof(ApiOwner));
+    EXPECT_FALSE(storage.types.physical[storage.runs[1].analysis.value]);
+    EXPECT_GT(editor.diagnostics().size(), 0);
 }
+
+struct PhysicalCase {
+    char const* name;
+    char const* spelling;
+    bool known;
+    char const* declaration{""};
+};
+class PhysicalSpelling : public testing::TestWithParam<PhysicalCase> {};
+TEST_P(PhysicalSpelling, DoesNotGuessUnsupportedOrMissingRepresentations) {
+    EditorSession editor;
+    auto const& test{GetParam()};
+    auto document{editor.from_source(std::string{R"((module test :header "Test.h" )"} +
+                                     test.declaration + R"((record Value (member value ")" +
+                                     test.spelling + "\")))")};
+    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
+    auto const profile{AbiProfile::host_common()};
+    std::array requests{
+        AnalysisRequest{.type = *document.find_type("test", "Value"), .abi = &profile}};
+    AnalysisStorage storage;
+    AnalysisContext context{document, storage};
+    Analyzer::analyze(context, requests);
+    auto const& facts{storage.types.physical[storage.runs.front().analysis.value]};
+    EXPECT_EQ(facts.has_value(), test.known);
+    EXPECT_EQ(editor.diagnostics().size() == 0, test.known);
+}
+INSTANTIATE_TEST_SUITE_P(
+    Uses,
+    PhysicalSpelling,
+    testing::Values(PhysicalCase{"Pointer", "Opaque*", true},
+                    PhysicalCase{"UnknownValue", "Opaque", false},
+                    PhysicalCase{"Array", "float[3]", false},
+                    PhysicalCase{"FunctionPointer", "float(*)()", false},
+                    PhysicalCase{"Reference", "float&", false},
+                    PhysicalCase{"RvalueReference", "float&&", false},
+                    PhysicalCase{"MemberPointer", "float Owner::*", false},
+                    PhysicalCase{"NestedUnknown", "Owner::Inner", false},
+                    PhysicalCase{"LogicalValue",
+                                 "Logical",
+                                 false,
+                                 "(integer-scalar Logical :signed false :minimum 0 :maximum 100)"}),
+    [](auto const& info) { return info.param.name; });
 
 TEST(PhysicalFacts, PointerPolicyRetainsManualEvidence) {
     EditorSession editor;
-    auto const document{editor.from_source("")};
+    auto document{editor.from_source(
+        R"((module test :header "Test.h" (record Value (member value "Opaque*"))))")};
     ASSERT_TRUE(document.valid());
-    auto const& types{document.types()};
     AbiProfile profile{"assumed target"};
     TypeFacts pointer{};
     pointer.size_bytes = 8;
@@ -145,29 +148,35 @@ TEST(PhysicalFacts, PointerPolicyRetainsManualEvidence) {
     pointer.provenance = "Unverified SDK assumption";
     profile.set("void*", pointer);
     profile.set_object_pointer_representation("void*");
-    auto const result{PhysicalFactsResolver{types, profile}.resolve_spelling("Opaque*")};
-    ASSERT_TRUE(result.facts);
-    EXPECT_EQ(result.facts->origin, FactOrigin::manual_assumption);
-    EXPECT_TRUE(result.facts->provenance.contains(pointer.provenance));
+    std::array requests{
+        AnalysisRequest{.type = *document.find_type("test", "Value"), .abi = &profile}};
+    AnalysisStorage storage;
+    AnalysisContext context{document, storage};
+    Analyzer::analyze(context, requests);
+    ASSERT_TRUE(storage.components.element_facts.front());
+    EXPECT_EQ(storage.components.element_facts.front()->origin, FactOrigin::manual_assumption);
+    EXPECT_TRUE(storage.components.element_facts.front()->provenance.contains(pointer.provenance));
 }
 
 TEST(PhysicalFacts, SuppliedFactsCannotSilentlyReplaceGeneratedLayout) {
     EditorSession editor;
-    auto const document{physical_fixture(editor)};
+    auto document{editor.from_source(
+        R"((module test :header "Test.h" (record Value (member value float))))")};
     ASSERT_TRUE(document.valid());
-    auto const& types{document.types()};
     auto profile{AbiProfile::host_common()};
     TypeFacts incorrect{};
     incorrect.size_bytes = 64;
     incorrect.alignment_bytes = 8;
-    profile.set("ml::native_soa_fixture::Pair", incorrect);
-    auto const pair{*document.find_type("native_soa_fixture", "Pair")};
-    auto const result{PhysicalFactsResolver{types, profile}.resolve(pair)};
-    EXPECT_FALSE(result.facts.has_value());
-    ASSERT_FALSE(result.diagnostics.empty());
-    EXPECT_EQ(result.diagnostics.front().severity, DiagnosticSeverity::error);
-    EXPECT_FALSE(Analyzer::analyze_record(types, pair, profile).size_bytes.has_value());
+    profile.set("Value", incorrect);
+    std::array requests{
+        AnalysisRequest{.type = *document.find_type("test", "Value"), .abi = &profile}};
+    AnalysisStorage storage;
+    AnalysisContext context{document, storage};
+    Analyzer::analyze(context, requests);
+    EXPECT_FALSE(storage.types.physical[storage.runs.front().analysis.value]);
+    ASSERT_GT(editor.diagnostics().size(), 0);
+    EXPECT_EQ(editor.diagnostics().severity(
+                  lispb::DiagnosticId{static_cast<std::uint32_t>(editor.diagnostics().size() - 1)}),
+              lispb::DiagnosticSeverity::error);
 }
-
-} // namespace
-} // namespace ioj::layout
+}

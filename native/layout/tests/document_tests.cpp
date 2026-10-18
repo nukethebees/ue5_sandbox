@@ -226,10 +226,14 @@ TEST(DocumentHistory, FailedCommitPreservesRedoAndDiagnosticsAccumulate) {
     EXPECT_FALSE(doc.commit(invalid));
     EXPECT_TRUE(doc.can_redo());
     auto const errors{editor.diagnostics().size()};
-    EXPECT_GT(errors, 0);
+    ASSERT_GT(errors, 0);
+    auto const message{editor.format_diagnostic(lispb::DiagnosticId{0})};
+    auto const operation{editor.diagnostics().operation(lispb::DiagnosticId{0})};
     ASSERT_TRUE(doc.redo());
     EXPECT_EQ(editor.diagnostics().size(), errors);
     EXPECT_EQ(editor.last_diagnostic_begin(), errors);
+    EXPECT_EQ(editor.format_diagnostic(lispb::DiagnosticId{0}), message);
+    EXPECT_EQ(editor.diagnostics().operation(lispb::DiagnosticId{0}), operation);
     EXPECT_EQ(health_bits(doc), 4);
     ASSERT_TRUE(doc.undo());
     auto branch{doc.transaction()};
@@ -239,21 +243,21 @@ TEST(DocumentHistory, FailedCommitPreservesRedoAndDiagnosticsAccumulate) {
     EXPECT_EQ(health_bits(doc), 6);
 }
 
-TEST(DocumentHistory, NoOpDoesNotConsumeHistoryAndStaleTransactionsFail) {
+TEST(DocumentHistory, QueuedTransactionsResolveNamesInExecutionOrder) {
     EditorSession editor;
     auto doc{editor.from_source(source)};
     ASSERT_TRUE(doc.valid()) << diagnostic_messages(editor);
-    auto stale{doc.transaction()};
-    auto noop{doc.transaction()};
-    noop.set_field_bits("game", "ShipState", "health", 8);
-    ASSERT_TRUE(doc.commit(noop)) << diagnostic_messages(editor);
-    EXPECT_FALSE(doc.can_undo());
-    EXPECT_EQ(doc.revision(), 0);
+    auto rename{doc.transaction()};
+    rename.rename_declaration("game", "ShipState", "State");
     auto edit{doc.transaction()};
-    edit.set_field_bits("game", "ShipState", "health", 4);
+    edit.set_field_bits("game", "State", "health", 4);
+    ASSERT_TRUE(doc.commit(rename)) << diagnostic_messages(editor);
     ASSERT_TRUE(doc.commit(edit)) << diagnostic_messages(editor);
-    EXPECT_FALSE(doc.commit(stale));
-    EXPECT_EQ(health_bits(doc), 4);
+    EXPECT_EQ(doc.query().module("game").packed_value("State").field("health").bits(), 4);
+    ASSERT_TRUE(doc.undo());
+    EXPECT_EQ(doc.query().module("game").packed_value("State").field("health").bits(), 8);
+    ASSERT_TRUE(doc.undo());
+    EXPECT_EQ(health_bits(doc), 8);
 }
 
 TEST(DocumentQueries, MissingNamesPropagateWithoutErrors) {
@@ -312,17 +316,18 @@ TEST(EditorSession, DocumentMovesPreserveQueuedTransactionsAndHistory) {
     EXPECT_EQ(health_bits(replacement), 6);
 }
 
-TEST(EditorSession, DocumentsShareStringsAndRetainIndependentHistories) {
+TEST(EditorSession, DocumentsRetainIndependentHistoriesAndOutputs) {
     EditorSession editor;
     auto first{editor.from_source(source)};
     auto second{editor.from_source(source)};
     ASSERT_TRUE(first.valid()) << diagnostic_messages(editor);
     ASSERT_TRUE(second.valid()) << diagnostic_messages(editor);
-    EXPECT_EQ(&first.types().strings(), &second.types().strings());
+    auto const second_source{second.sources()};
     auto first_edit{first.transaction()};
     first_edit.set_field_bits("game", "ShipState", "health", 4);
     ASSERT_TRUE(first.commit(first_edit)) << diagnostic_messages(editor);
     EXPECT_EQ(health_bits(second), 8);
+    EXPECT_EQ(second.sources().front().text, second_source.front().text);
     EXPECT_FALSE(second.can_undo());
     auto second_edit{second.transaction()};
     second_edit.set_field_bits("game", "ShipState", "health", 6);
@@ -371,7 +376,7 @@ TEST_P(DocumentDeclaration, CreatesAndRoundTripsAuthoredDeclaration) {
     ASSERT_TRUE(doc.commit(tx)) << diagnostic_messages(editor);
     ASSERT_TRUE(doc.find_type("game", "Created"));
     auto const sources{doc.sources()};
-    auto reloaded{editor.from_sources(sources)};
+    auto reloaded{editor.from_source(sources.front().text)};
     ASSERT_TRUE(reloaded.valid()) << diagnostic_messages(editor);
     EXPECT_TRUE(reloaded.find_type("game", "Created"));
     EXPECT_EQ(reloaded.declaration_source("game", "Created"),
@@ -550,13 +555,23 @@ TEST(DocumentEdit, NamespaceMoveRetainsOutgoingAndIncomingReferences) {
         (module second :header "Second.h" :namespace beta
             (record Value (member y double))))")};
     ASSERT_TRUE(doc.valid()) << diagnostic_messages(editor);
+    auto const holder{
+        doc.find_declaration(doc.types().identity(*doc.find_type("first", "Holder")))};
     auto tx{doc.transaction()};
     tx.move_declaration("first", "Holder", "second");
     ASSERT_TRUE(doc.commit(tx)) << diagnostic_messages(editor);
     EXPECT_FALSE(doc.find_type("first", "Holder"));
     EXPECT_TRUE(doc.find_type("second", "Holder"));
+    EXPECT_EQ(doc.find_declaration(doc.types().identity(*doc.find_type("second", "Holder"))),
+              holder);
     EXPECT_NE(doc.declaration_source("second", "Holder")->find("alpha::Value"), std::string::npos);
     EXPECT_NE(doc.declaration_source("first", "User")->find("beta::Holder"), std::string::npos);
+    ASSERT_TRUE(doc.undo());
+    EXPECT_EQ(doc.find_declaration(doc.types().identity(*doc.find_type("first", "Holder"))),
+              holder);
+    ASSERT_TRUE(doc.redo());
+    EXPECT_EQ(doc.find_declaration(doc.types().identity(*doc.find_type("second", "Holder"))),
+              holder);
 }
 
 TEST(DocumentEdit, ReplacementRenamesReferencedDeclaration) {
@@ -606,7 +621,7 @@ TEST(DocumentEdit, WholeSourceReplacementSupportsAllModuleKindsAndRejectsInvalid
     EXPECT_EQ(health_bits(doc), 8);
 }
 
-TEST(DocumentEdit, SourceReadsReuseStoredTextAcrossSharedSessionGrowth) {
+TEST(DocumentEdit, RenderedSourcesOwnTheirTextAcrossSessionGrowthAndReplay) {
     EditorSession editor;
     auto doc{editor.from_source(source)};
     ASSERT_TRUE(doc.valid()) << diagnostic_messages(editor);
@@ -614,28 +629,20 @@ TEST(DocumentEdit, SourceReadsReuseStoredTextAcrossSharedSessionGrowth) {
     auto tx{doc.transaction()};
     tx.set_field_bits("game", "ShipState", "health", 4);
     ASSERT_TRUE(doc.commit(tx));
-    auto const edited{std::string{doc.sources().front().text}};
-    EXPECT_NE(edited, original);
-    EXPECT_TRUE(edited.contains(":bits 4"));
-    auto const stored_bytes{editor.storage().strings.byte_size()};
-    for (int repeat{}; repeat < 8; ++repeat) {
-        EXPECT_EQ(doc.sources().front().text, edited);
-        EXPECT_TRUE(doc.dirty());
-    }
-    EXPECT_EQ(editor.storage().strings.byte_size(), stored_bytes);
+    auto const edited{doc.sources()};
+    EXPECT_NE(edited.front().text, original);
+    EXPECT_TRUE(edited.front().text.contains(":bits 4"));
 
     auto other{editor.from_source(";" + std::string(32768, 'x') +
                                   "\n(module other :header \"Other.h\" (record Other))")};
     ASSERT_TRUE(other.valid()) << diagnostic_messages(editor);
-    EXPECT_GT(editor.storage().strings.byte_size(), stored_bytes);
-    auto const grown_bytes{editor.storage().strings.byte_size()};
     EXPECT_EQ(doc.sources().front().path, "document.lispb");
-    EXPECT_EQ(doc.sources().front().text, edited);
+    EXPECT_EQ(doc.sources().front().text, edited.front().text);
     EXPECT_TRUE(doc.dirty());
-    EXPECT_EQ(editor.storage().strings.byte_size(), grown_bytes);
     ASSERT_TRUE(doc.undo());
     EXPECT_FALSE(doc.dirty());
     EXPECT_EQ(doc.sources().front().text, original);
+    EXPECT_TRUE(edited.front().text.contains(":bits 4"));
     EXPECT_EQ(health_bits(doc), 8);
 }
 }

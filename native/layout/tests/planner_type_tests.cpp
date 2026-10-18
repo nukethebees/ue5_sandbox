@@ -1,17 +1,18 @@
 #include "document_test_support.hpp"
 #include <ioj/layout/abi_profile.hpp>
+#include <ioj/layout/analysis/analysis_context.hpp>
+#include <ioj/layout/analysis/analysis_request.hpp>
+#include <ioj/layout/analysis/analysis_storage.hpp>
+#include <ioj/layout/analysis/analyzer.hpp>
 #include <ioj/layout/declaration_capabilities.hpp>
 #include <ioj/layout/document.hpp>
 #include <ioj/layout/editor_session.hpp>
-#include <ioj/layout/external_dependency.hpp>
-#include <ioj/layout/layout_status.hpp>
-#include <ioj/layout/planner_session.hpp>
-#include <ioj/layout/resolved_variant.hpp>
 #include <ioj/layout/type_facts.hpp>
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <limits>
 #include <string>
@@ -96,159 +97,88 @@ INSTANTIATE_TEST_SUITE_P(
                        "unreal"}),
     [](auto const& info) { return info.param.name; });
 
-struct StatusCase {
-    char const* name;
-    char const* source;
-    LayoutStatus known;
-    LayoutStatus unknown;
-};
-
-class DeclarationStatusTest : public testing::TestWithParam<StatusCase> {};
-
-TEST_P(DeclarationStatusTest, DistinguishesUnknownFactsFromErrors) {
+TEST(AnalysisBatch, ReusesPhysicalRowsAcrossCountsAndSeparatesAbiScenarios) {
     EditorSession editor;
-    auto const& test{GetParam()};
-    auto const document{editor.from_source(test.source)};
+    auto document{editor.from_source(R"((module test :header "Test.h"
+        (record Value (member value std::uint32_t))))")};
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
-    auto const type{document.find_type("test", "Value")};
-    ASSERT_TRUE(type);
-    EXPECT_EQ(declaration_status(
-                  document.types(), *type, ResolvedVariant{}, AbiProfile::host_common(), 64),
-              test.known);
-    EXPECT_EQ(
-        declaration_status(document.types(), *type, ResolvedVariant{}, AbiProfile{"unknown"}, 64),
-        test.unknown);
+    auto const type{document.find_type("test", "Value").value()};
+    auto const known{AbiProfile::host_common()};
+    AbiProfile const unknown{"unknown"};
+    std::array requests{AnalysisRequest{.type = type, .abi = &known, .element_count = 10},
+                        AnalysisRequest{.type = type, .abi = &known, .element_count = 20},
+                        AnalysisRequest{.type = type, .abi = &unknown, .element_count = 10}};
+    AnalysisStorage storage;
+    AnalysisContext context{document, storage};
+    Analyzer::analyze(context, requests);
+    ASSERT_EQ(storage.runs.size(), 3);
+    auto const first{storage.runs[0].analysis};
+    auto const second{storage.runs[1].analysis};
+    auto const third{storage.runs[2].analysis};
+    EXPECT_EQ(first, second);
+    EXPECT_NE(first, third);
+    EXPECT_EQ(storage.totals[0].total_storage_bytes, 40);
+    EXPECT_EQ(storage.totals[1].total_storage_bytes, 80);
+    EXPECT_FALSE(storage.totals[2].total_storage_bytes);
+    EXPECT_EQ(std::ranges::count(storage.components.parent, first), 1);
+    EXPECT_FALSE(storage.types.physical[third.value]);
+    ASSERT_GT(editor.diagnostics().size(), 0);
+    auto const errors{editor.diagnostics().size()};
+    storage.clear();
+    EXPECT_TRUE(storage.types.schema_type.empty());
+    EXPECT_TRUE(storage.runs.empty());
+    EXPECT_EQ(editor.diagnostics().size(), errors);
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    Declarations,
-    DeclarationStatusTest,
-    testing::Values(
-        StatusCase{
-            "Packed",
-            R"((module test :header "Test.h" (packed-value Value :storage std::uint8_t (field value std::uint8_t :bits 8))))",
-            LayoutStatus::available,
-            LayoutStatus::unknown},
-        StatusCase{
-            "Semantic",
-            R"((module test :header "Test.h" (integer-scalar Value :signed false :minimum 0 :maximum 10)))",
-            LayoutStatus::available,
-            LayoutStatus::available},
-        StatusCase{
-            "TaggedUnion",
-            R"((module test :header "Test.h" (enum Kind std::uint8_t (value First)) (tagged-union Value :discriminant Kind (alternative first std::uint32_t :tag First))))",
-            LayoutStatus::available,
-            LayoutStatus::unknown},
-        StatusCase{
-            "OpaqueColumn",
-            R"((module test :header "Test.h" :backend standard-library (struct Value (member opaque array UnknownColumnType))))",
-            LayoutStatus::unknown,
-            LayoutStatus::unknown}),
-    [](auto const& info) { return info.param.name; });
-
-TEST(PlannerType, ExternalFactsUnblockValuesOnlyOnTheActiveTarget) {
+TEST(AnalysisBatch, ExternalFactsApplyOnlyToTheirRequestedTarget) {
     EditorSession editor;
-    auto const document{editor.from_source(R"(
-        (module test :header "Test.h"
-            (record Value (member value OpaqueVector))
-            (record Pointer (member value (type-ref OpaqueVector :suffix "*")))))")};
-    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
-    auto const& types{document.types()};
-    auto const external{external_dependencies(types).front().types.front()};
-    PlannerAnalysisSession session{types};
-    session.edit_inputs().selection.select_type(types, external);
-    ASSERT_TRUE(session.refresh(nullptr));
-    ASSERT_TRUE(session.results().external_type);
-    EXPECT_FALSE(session.results().external_type->physical.facts);
-    EXPECT_EQ(session.results().external_type->blocked_declarations.size(), 1);
+    auto document{editor.from_source(R"((module test :header "Test.h"
+        (record Value (member value OpaqueVector))))")};
+    ASSERT_TRUE(document.valid());
+    auto const type{document.find_type("test", "Value").value()};
+    auto supplied{AbiProfile::host_common()};
     TypeFacts facts{};
-    facts.size_bytes = 3;
-    facts.alignment_bytes = 4;
-    EXPECT_FALSE(session.set_external_type_facts(external, facts));
     facts.size_bytes = 12;
-    facts.origin = FactOrigin::compiler_probe;
+    facts.alignment_bytes = 4;
+    facts.origin = FactOrigin::manual_assumption;
     facts.provenance = "SDK assumption";
-    ASSERT_TRUE(session.set_external_type_facts(external, facts));
-    ASSERT_TRUE(session.refresh(nullptr));
-    auto const& result{*session.results().external_type};
-    ASSERT_TRUE(result.physical.facts);
-    EXPECT_FALSE(result.semantics_known);
-    EXPECT_TRUE(result.blocked_declarations.empty());
-    EXPECT_EQ(result.physical.facts->origin, FactOrigin::manual_assumption);
-    EXPECT_EQ(result.physical.facts->provenance, "SDK assumption");
-    EXPECT_EQ(session.status(external), LayoutStatus::available);
-    EXPECT_FALSE(session.comparison_abi().find("OpaqueVector"));
-    auto const imported{parse_abi_profile(serialize_abi_profile(session.primary_abi()))};
-    ASSERT_TRUE(imported);
-    EXPECT_EQ(imported->find("OpaqueVector"), result.physical.facts);
-    session.set_primary_abi(AbiProfile::host_common());
-    ASSERT_TRUE(session.refresh(nullptr));
-    EXPECT_FALSE(session.results().external_type->physical.facts);
+    supplied.set("OpaqueVector", facts);
+    auto const unknown{AbiProfile::host_common()};
+    std::array requests{AnalysisRequest{.type = type, .abi = &supplied},
+                        AnalysisRequest{.type = type, .abi = &unknown}};
+    AnalysisStorage storage;
+    AnalysisContext context{document, storage};
+    Analyzer::analyze(context, requests);
+    ASSERT_EQ(storage.runs.size(), 2);
+    EXPECT_EQ(storage.types.physical[storage.runs[0].analysis.value]->size_bytes, 12);
+    EXPECT_FALSE(storage.types.physical[storage.runs[1].analysis.value]);
+    EXPECT_FALSE(unknown.find("OpaqueVector"));
 }
 
-TEST(PlannerType, SwitchingUnsupportedBackendClearsPhysicalResults) {
+TEST(AnalysisBatch, VariantOverflowDoesNotAlterAuthoredSchema) {
     EditorSession editor;
-    auto const document{editor.from_source(R"(
-        (module standard :header "Standard.h" :backend standard-library
-            (struct Columns (member values array float)))
-        (module unreal :header "Unreal.h" :source "Unreal.cpp" :backend unreal
-            (struct Columns (member values array float))))")};
-    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
-    PlannerAnalysisSession session{document.types()};
-    for (auto const module : {"standard", "unreal", "standard"}) {
-        ASSERT_TRUE(session.edit_inputs().selection.select_type(
-            document.types(), document.find_type(module, "Columns")));
-        ASSERT_TRUE(session.refresh(nullptr));
-        EXPECT_EQ(session.results().active_soa.has_value(), std::string_view{module} == "standard");
-        EXPECT_EQ(session.results().baseline_soa.has_value(),
-                  std::string_view{module} == "standard");
-    }
-}
-
-TEST(PlannerType, StatusTracksVariantRelationshipCapacity) {
-    EditorSession editor;
-    auto document{editor.from_source(R"(
-        (module entities :header "Entities.h" :backend standard-library
-            (struct Entities (member values array std::uint8_t)))
-        (module test :header "Test.h"
-            (packed-value Value :storage std::uint64_t
-                (field value std::uint64_t :bits 17 (relation index_into Entities)))))")};
-    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
-    auto const type{*document.find_type("test", "Value")};
-    PlannerAnalysisSession session{document.types()};
-    EXPECT_EQ(session.status(type), LayoutStatus::available);
+    auto document{editor.from_source(R"((module test :header "Test.h"
+        (packed-value Value :storage std::uint8_t (field value std::uint8_t :bits 8))))")};
+    ASSERT_TRUE(document.valid());
     auto create{document.transaction()};
-    create.create_variant("narrow");
-    ASSERT_TRUE(document.commit(create)) << diagnostic_messages(editor);
+    create.create_variant("Wide");
+    ASSERT_TRUE(document.commit(create));
     auto const variant{document.variants().ids().back()};
     auto edit{document.transaction()};
-    edit.set_variant_field_bits(variant, "test", "Value", "value", 8);
-    ASSERT_TRUE(document.commit(edit)) << diagnostic_messages(editor);
-    session.edit_inputs().selection.select_type(document.types(), type);
-    ASSERT_TRUE(session.refresh(&document));
-    ASSERT_TRUE(session.edit_inputs().workspace.select_variant(variant));
-    ASSERT_TRUE(session.refresh(&document));
-    EXPECT_EQ(session.status(type), LayoutStatus::error);
-    ASSERT_TRUE(session.results().active_packed);
-    EXPECT_TRUE(std::ranges::any_of(
-        session.results().active_packed->diagnostics,
-        [](auto const& diagnostic) { return diagnostic.severity == DiagnosticSeverity::error; }));
+    edit.set_variant_field_bits(variant, "test", "Value", "value", 16);
+    ASSERT_TRUE(document.commit(edit));
+    auto const type{document.find_type("test", "Value").value()};
+    auto const abi{AbiProfile::host_common()};
+    std::array requests{AnalysisRequest{.type = type, .abi = &abi},
+                        AnalysisRequest{.type = type, .abi = &abi, .variant = variant}};
+    AnalysisStorage storage;
+    AnalysisContext context{document, storage};
+    Analyzer::analyze(context, requests);
+    ASSERT_EQ(storage.runs.size(), 2);
+    EXPECT_EQ(storage.types.packed[storage.runs[0].analysis.value]->overflow_bits, 0);
+    EXPECT_EQ(storage.types.packed[storage.runs[1].analysis.value]->overflow_bits, 8);
+    EXPECT_GT(editor.diagnostics().size(), 0);
+    EXPECT_EQ(document.query().module("test").packed_value("Value").field("value").bits(), 8);
 }
-
-TEST(PlannerType, VarintStatusUsesSelectedElementCount) {
-    EditorSession editor;
-    auto const document{editor.from_source(R"(
-        (module test :header "Test.h"
-            (integer-scalar Source :signed false :minimum 0 :maximum 16384)
-            (integer-varint Value :source Source :encoding unsigned)))")};
-    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
-    auto const type{*document.find_type("test", "Value")};
-    PlannerAnalysisSession session{document.types()};
-    EXPECT_EQ(session.status(type), LayoutStatus::available);
-    ASSERT_TRUE(session.edit_inputs().workspace.set_element_count(
-        (std::numeric_limits<std::uint64_t>::max)()));
-    EXPECT_EQ(session.status(type), LayoutStatus::error);
-}
-
 }
 }
