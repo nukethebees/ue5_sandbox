@@ -15,7 +15,7 @@ namespace ioj::sim::tests {
 class BulkRangeQueries : public ::testing::Test {
   protected:
     BulkRangeQueries() {
-        for (auto const type : ioj::EnumTraits<EntityType>::values) {
+        for (auto const type : EnumTraits<EntityType>::values) {
             bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
         }
         queries.initialise({{8, 8, 8}, {{100.f, 100.f, 100.f}}}, bounds);
@@ -44,14 +44,14 @@ class BulkRangeQueries : public ::testing::Test {
         auto const locations{origins.get_const_view()};
         auto const directions{output.directions.get_const_view()};
         std::array<EntityId, 512> reference;
-        alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
+        alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
             reference_backing{};
-        ioj::FrameMemoryResource reference_memory{reference_backing};
+        FrameMemoryResource reference_memory{reference_backing};
         auto const reference_view{std::span{reference}};
         std::uint32_t offset{};
         auto const request_count{origins.num()};
         for (std::uint32_t index{}; index < request_count; ++index) {
-            ioj::FrameScratchScope reference_scope{reference_memory};
+            FrameScratchScope reference_scope{reference_memory};
             SCOPED_TRACE(index);
             auto const range{output.ranges[index]};
             ASSERT_EQ(range.offset, offset);
@@ -69,8 +69,8 @@ class BulkRangeQueries : public ::testing::Test {
                 auto const state{observe_entity(owners, id)};
                 ASSERT_TRUE(state);
                 auto const delta{state->location - locations[index]};
-                EXPECT_FLOAT_EQ(output.distances[match], ioj::size(delta));
-                auto const direction{ioj::native_math::safe_normal(delta, 1.e-8f)};
+                EXPECT_FLOAT_EQ(output.distances[match], size(delta));
+                auto const direction{native_math::safe_normal(delta, 1.e-8f)};
                 EXPECT_FLOAT_EQ(directions[match].x(), direction.x());
                 EXPECT_FLOAT_EQ(directions[match].y(), direction.y());
                 EXPECT_FLOAT_EQ(directions[match].z(), direction.z());
@@ -86,12 +86,11 @@ class BulkRangeQueries : public ::testing::Test {
     CollisionAgentStorage owners;
     SpatialQueryManager queries{owners.entity_tables};
     collision::EntityAABBs bounds;
-    alignas(
-        ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 1024 * 1024> backing{};
-    ioj::FrameMemoryResource memory{backing};
-    ioj::FrameScratchScope scope{memory};
+    alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 1024 * 1024> backing{};
+    FrameMemoryResource memory{backing};
+    FrameScratchScope scope{memory};
     FrameVectors3f origins{&memory};
-    ioj::FrameArray<Team> teams{&memory};
+    FrameArray<Team> teams{&memory};
 };
 
 TEST_F(BulkRangeQueries, OverlappingAndDisjointRequestsMatchScalarQueriesInInputOrder) {
@@ -102,7 +101,7 @@ TEST_F(BulkRangeQueries, OverlappingAndDisjointRequestsMatchScalarQueriesInInput
                        static_cast<float>(index / 45) * 110.f - 165.f}},
                      {},
                      100,
-                     static_cast<Team>(index % ioj::enum_count<Team>()));
+                     static_cast<Team>(index % enum_count<Team>()));
     }
     owners.spawn(EntityType::CapitalShip, {});
     owners.spawn(EntityType::Turret, {}, {}, 100, Team::Red);
@@ -114,7 +113,7 @@ TEST_F(BulkRangeQueries, OverlappingAndDisjointRequestsMatchScalarQueriesInInput
         request({{static_cast<float>(index % 10) * 110.f - 440.f,
                   static_cast<float>((index / 10) % 3) * 140.f - 140.f,
                   0.f}},
-                static_cast<Team>(index % ioj::enum_count<Team>()));
+                static_cast<Team>(index % enum_count<Team>()));
     }
     request({{2000.f, 0.f, 0.f}}, Team::White);
     FrameRangeQueryResults output{&memory};

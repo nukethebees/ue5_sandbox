@@ -9,13 +9,13 @@
 namespace ioj {
 auto direction_to_rotation(Vector3f const direction) noexcept -> Rotator3f {
     Rotator3f rotation{};
-    ioj::native_math::to_rotations(&rotation.pitch,
-                                   &rotation.yaw,
-                                   &rotation.roll,
-                                   &direction.x(),
-                                   &direction.y(),
-                                   &direction.z(),
-                                   1);
+    native_math::to_rotations(&rotation.pitch,
+                              &rotation.yaw,
+                              &rotation.roll,
+                              &direction.x(),
+                              &direction.y(),
+                              &direction.z(),
+                              1);
     return rotation;
 }
 
@@ -27,13 +27,13 @@ auto to_quaternion(Rotator3f const rotation) noexcept -> Quaternion4f {
     float cy{};
     float sr{};
     float cr{};
-    ioj::native_math::sin_cos(std::fmod(rotation.pitch, 360.f) * half_radians_per_degree, sp, cp);
-    ioj::native_math::sin_cos(std::fmod(rotation.yaw, 360.f) * half_radians_per_degree, sy, cy);
-    ioj::native_math::sin_cos(std::fmod(rotation.roll, 360.f) * half_radians_per_degree, sr, cr);
-    return ioj::Quaternion4f{cr * sp * sy - sr * cp * cy,
-                             -cr * sp * cy - sr * cp * sy,
-                             cr * cp * sy - sr * sp * cy,
-                             cr * cp * cy + sr * sp * sy};
+    native_math::sin_cos(std::fmod(rotation.pitch, 360.f) * half_radians_per_degree, sp, cp);
+    native_math::sin_cos(std::fmod(rotation.yaw, 360.f) * half_radians_per_degree, sy, cy);
+    native_math::sin_cos(std::fmod(rotation.roll, 360.f) * half_radians_per_degree, sr, cr);
+    return Quaternion4f{cr * sp * sy - sr * cp * cy,
+                        -cr * sp * cy - sr * cp * sy,
+                        cr * cp * sy - sr * sp * cy,
+                        cr * cp * cy + sr * sp * sy};
 }
 
 auto forward_direction(Rotator3f const rotation) noexcept -> Vector3f {
@@ -42,10 +42,9 @@ auto forward_direction(Rotator3f const rotation) noexcept -> Vector3f {
     float cos_pitch{};
     float sin_yaw{};
     float cos_yaw{};
-    ioj::native_math::sin_cos(
+    native_math::sin_cos(
         std::fmod(rotation.pitch, 360.f) * radians_per_degree, sin_pitch, cos_pitch);
-    ioj::native_math::sin_cos(
-        std::fmod(rotation.yaw, 360.f) * radians_per_degree, sin_yaw, cos_yaw);
-    return ioj::Vector3f{cos_pitch * cos_yaw, cos_pitch * sin_yaw, sin_pitch};
+    native_math::sin_cos(std::fmod(rotation.yaw, 360.f) * radians_per_degree, sin_yaw, cos_yaw);
+    return Vector3f{cos_pitch * cos_yaw, cos_pitch * sin_yaw, sin_pitch};
 }
 }

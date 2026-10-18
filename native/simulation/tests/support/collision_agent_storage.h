@@ -310,7 +310,7 @@ struct CollisionAgentStorage {
     SpinnerEntityData spinners;
     std::vector<EntityId> player_ids;
     Transform3d player_transform;
-    ioj::Vector3d player_velocity{};
+    Vector3d player_velocity{};
     Team player_team{};
 };
 

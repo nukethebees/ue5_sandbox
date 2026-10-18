@@ -13,8 +13,8 @@
 
 namespace ioj::sim::tests {
 TEST(NativeEnums, EntityTypeNamesAndSerializedNamesRemainStable) {
-    EXPECT_EQ(ioj::enum_count<EntityType>(), 5U);
-    for (auto const value : ioj::EnumTraits<EntityType>::values) {
+    EXPECT_EQ(enum_count<EntityType>(), 5U);
+    for (auto const value : EnumTraits<EntityType>::values) {
         EXPECT_FALSE(to_string(value).empty());
     }
     EXPECT_EQ(std::to_underlying(EntityType::PlayerShip), 0U);
@@ -24,13 +24,13 @@ TEST(NativeEnums, EntityTypeNamesAndSerializedNamesRemainStable) {
     EXPECT_EQ(to_serialized_string(EntityType::CapitalShip), "capital_ship");
     EXPECT_EQ(to_serialized_string(EntityType::Fighter), "capital_ship_fighter");
     EXPECT_EQ(to_serialized_string(EntityType::TubeSpinner), "tube_spinner");
-    EXPECT_EQ(to_serialized_string(static_cast<EntityType>(ioj::enum_count<EntityType>())),
+    EXPECT_EQ(to_serialized_string(static_cast<EntityType>(enum_count<EntityType>())),
               "<invalid EntityType>");
 }
 
 TEST(NativeEnums, TeamSerializedNamesRoundTrip) {
-    EXPECT_EQ(ioj::enum_count<Team>(), 6U);
-    for (auto const value : ioj::EnumTraits<Team>::values) {
+    EXPECT_EQ(enum_count<Team>(), 6U);
+    for (auto const value : EnumTraits<Team>::values) {
         EXPECT_FALSE(to_string(value).empty());
         EXPECT_EQ(try_parse_serialized_team(to_serialized_string(value)), value);
     }
@@ -42,7 +42,7 @@ TEST(NativeEnums, TeamSerializedNamesRoundTrip) {
     EXPECT_EQ(to_serialized_string(Team::Blue), "blue");
     EXPECT_EQ(to_serialized_string(Team::Orange), "orange");
     EXPECT_EQ(to_serialized_string(Team::Yellow), "yellow");
-    EXPECT_EQ(to_serialized_string(static_cast<Team>(ioj::enum_count<Team>())), "<invalid Team>");
+    EXPECT_EQ(to_serialized_string(static_cast<Team>(enum_count<Team>())), "<invalid Team>");
     EXPECT_FALSE(try_parse_serialized_team("count").has_value());
 }
 
@@ -107,7 +107,7 @@ TEST(NativeEnums, PersistedEnumNumericValuesRemainStable) {
     EXPECT_EQ(std::to_underlying(EntityType::CapitalShip), 2U);
     EXPECT_EQ(std::to_underlying(EntityType::Fighter), 3U);
     EXPECT_EQ(std::to_underlying(EntityType::TubeSpinner), 4U);
-    EXPECT_EQ(ioj::enum_count<EntityType>(), 5U);
+    EXPECT_EQ(enum_count<EntityType>(), 5U);
 
     EXPECT_EQ(std::to_underlying(Team::White), 0U);
     EXPECT_EQ(std::to_underlying(Team::Red), 1U);
@@ -115,7 +115,7 @@ TEST(NativeEnums, PersistedEnumNumericValuesRemainStable) {
     EXPECT_EQ(std::to_underlying(Team::Blue), 3U);
     EXPECT_EQ(std::to_underlying(Team::Orange), 4U);
     EXPECT_EQ(std::to_underlying(Team::Yellow), 5U);
-    EXPECT_EQ(ioj::enum_count<Team>(), 6U);
+    EXPECT_EQ(enum_count<Team>(), 6U);
 
     EXPECT_EQ(std::to_underlying(MissionMode::None), 0U);
     EXPECT_EQ(std::to_underlying(MissionMode::SurviveTime), 1U);
@@ -142,7 +142,7 @@ TEST(NativeEnums, PersistedEnumNumericValuesRemainStable) {
 }
 
 TEST(NativeEnums, PlayerEnumsPreserveHudNamesAndFireRateCount) {
-    EXPECT_EQ(ioj::enum_count<ShipFireRate>(), 3U);
+    EXPECT_EQ(enum_count<ShipFireRate>(), 3U);
     EXPECT_EQ(to_string(ShipFireRate::Single), "Single");
     EXPECT_EQ(to_string(ShipFireRate::Burst3), "Burst3");
     EXPECT_EQ(to_string(ShipFireRate::FullAuto), "FullAuto");

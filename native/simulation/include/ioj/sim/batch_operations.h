@@ -26,6 +26,6 @@ void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
                            std::vector<std::uint32_t>& local_indices_to_remove,
                            EntityDeathInfo& entity_death_info,
                            EntityLedger& ledger,
-                           ioj::FrameMemoryResource* scratch_resource);
+                           FrameMemoryResource* scratch_resource);
 
 }

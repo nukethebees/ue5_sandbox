@@ -63,10 +63,10 @@ void Sim::prepare_tick(float const dt) {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::prepare_tick");
     clear_tick_buffers();
     auto const entities{this->entities.get_view()};
-    ioj::tick_countdowns(entities.fighter_spawn_timers(), dt);
+    tick_countdowns(entities.fighter_spawn_timers(), dt);
     update_entity_lookup_table();
 }
-void Sim::think(float const, ioj::FrameMemoryResource* const scratch_resource) {
+void Sim::think(float const, FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::think");
 
     auto const entities{this->entities.get_view()};
@@ -74,8 +74,8 @@ void Sim::think(float const, ioj::FrameMemoryResource* const scratch_resource) {
     auto const teams{entities.teams()};
 
     auto const target_count{static_cast<std::uint32_t>(target_ids.size())};
-    ioj::FrameArray<std::uint32_t> order{scratch_resource};
-    ioj::FrameArray<EntityInstanceHandle> targets{scratch_resource};
+    FrameArray<std::uint32_t> order{scratch_resource};
+    FrameArray<EntityInstanceHandle> targets{scratch_resource};
     order.set_num(target_count);
     targets.set_num(target_count);
     entity_tables_.lookups.lookup_handles(target_ids, order, targets);
@@ -85,7 +85,7 @@ void Sim::think(float const, ioj::FrameMemoryResource* const scratch_resource) {
             target_ids[index] = {};
         }
     }
-    ioj::FrameArray<std::uint32_t> indices_without_targets{scratch_resource};
+    FrameArray<std::uint32_t> indices_without_targets{scratch_resource};
     auto const n_capitals{static_cast<std::uint32_t>(target_ids.size())};
     indices_without_targets.reserve(n_capitals);
     for (std::uint32_t index{}; index < n_capitals; ++index) {
@@ -104,19 +104,19 @@ void Sim::resolve_fighters_of_dying_capitals() {
     sort_and_deduplicate_removal_indices(local_indices_to_remove);
     reassign_fighters_of_dying_capital();
 }
-void Sim::resolve_damage_events(ioj::FrameMemoryResource* const scratch_resource) {
+void Sim::resolve_damage_events(FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::resolve_damage_events");
     auto const entities{this->entities.get_view()};
     auto const healths{entity_tables_.health.get_view<EntityType::CapitalShip>(entities.num())};
-    ioj::sim::resolve_damage_events(combat_events_.events_for(EntityType::CapitalShip),
-                                    entity_tables_.lookups.for_type(EntityType::CapitalShip),
-                                    entities.entity_ids(),
-                                    entities.view_locations().get_const_view(),
-                                    healths,
-                                    local_indices_to_remove,
-                                    entity_death_info,
-                                    ledger_,
-                                    scratch_resource);
+    sim::resolve_damage_events(combat_events_.events_for(EntityType::CapitalShip),
+                               entity_tables_.lookups.for_type(EntityType::CapitalShip),
+                               entities.entity_ids(),
+                               entities.view_locations().get_const_view(),
+                               healths,
+                               local_indices_to_remove,
+                               entity_death_info,
+                               ledger_,
+                               scratch_resource);
 }
 void Sim::publish_deaths() {
     ledger_.record_deaths(entity_death_info.get_const_view(), clock_.get_completed_ticks());
@@ -268,20 +268,20 @@ void Sim::spawn_ships(LevelCapitalSpawnEvents::ConstView const spawn_data) {
 auto Sim::get_fighter_spawn_slots() const noexcept -> std::uint32_t {
     return config.fighter_spawn_slots;
 }
-void Sim::queue_fighter_spawns(ioj::FrameMemoryResource* const scratch_resource) {
+void Sim::queue_fighter_spawns(FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::queue_fighter_spawns");
     if (!diagnostics_enabled_) {}
 
     auto const entities{this->entities.get_view()};
 
     auto const n_capital_ships{get_num_instances()};
-    ioj::FrameArray<std::uint32_t> ships_ready_to_spawn_fighters_indices{scratch_resource};
+    FrameArray<std::uint32_t> ships_ready_to_spawn_fighters_indices{scratch_resource};
     ships_ready_to_spawn_fighters_indices.set_num(n_capital_ships);
     ships_ready_to_spawn_fighters_indices.set_num(
-        ioj::kernel::collect_indices_less_equal(entities.fighter_spawn_timers().data(),
-                                                n_capital_ships,
-                                                0.f,
-                                                ships_ready_to_spawn_fighters_indices.data()));
+        kernel::collect_indices_less_equal(entities.fighter_spawn_timers().data(),
+                                           n_capital_ships,
+                                           0.f,
+                                           ships_ready_to_spawn_fighters_indices.data()));
     auto const target_ids{entities.target_ids()};
 
     for (auto remaining{ships_ready_to_spawn_fighters_indices.num()}; remaining > 0; --remaining) {
@@ -327,7 +327,7 @@ void Sim::queue_fighter_spawns(ioj::FrameMemoryResource* const scratch_resource)
         spawn_timers[capital_index] = spawn_cooldowns[capital_index];
     }
 }
-void Sim::refresh_fighter_ids(ioj::FrameMemoryResource* const scratch_resource) {
+void Sim::refresh_fighter_ids(FrameMemoryResource* const scratch_resource) {
     auto const membership_revision{fighters_interface.get_membership_revision()};
     auto const layout_revision{fighters_interface.get_layout_revision()};
     if (fighter_ids_current_ && fighter_membership_revision_ == membership_revision &&
@@ -341,12 +341,12 @@ void Sim::refresh_fighter_ids(ioj::FrameMemoryResource* const scratch_resource) 
     auto const healths{fighters_interface.get_healths()};
     auto const capital_count{entities.num()};
     auto const fighter_count{static_cast<std::uint32_t>(ids.size())};
-    ioj::FrameArray<std::uint32_t> counts{scratch_resource};
-    ioj::FrameArray<std::uint32_t> owners{scratch_resource};
+    FrameArray<std::uint32_t> counts{scratch_resource};
+    FrameArray<std::uint32_t> owners{scratch_resource};
     counts.set_num(capital_count);
     owners.set_num(fighter_count);
     auto const capital_ids{entities.entity_ids()};
-    ioj::FrameArray<std::uint32_t> capital_order{scratch_resource};
+    FrameArray<std::uint32_t> capital_order{scratch_resource};
     capital_order.set_num(capital_count);
     std::iota(capital_order.begin(), capital_order.end(), 0u);
     std::ranges::sort(capital_order, {}, [&](auto const row) { return capital_ids[row]; });
@@ -398,14 +398,14 @@ void Sim::refresh_fighter_ids(ioj::FrameMemoryResource* const scratch_resource) 
 /* **************************************** */
 // Orders
 /* **************************************** */
-void Sim::queue_fighter_orders(ioj::FrameMemoryResource* const scratch_resource) {
+void Sim::queue_fighter_orders(FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::queue_fighter_orders");
 
     auto const n_capitals{get_num_instances()};
     auto const fighter_targets{fighters_interface.get_target_ids()};
     auto const target_count{static_cast<std::uint32_t>(fighter_targets.size())};
-    ioj::FrameArray<std::uint32_t> order{scratch_resource};
-    ioj::FrameArray<EntityInstanceHandle> targets{scratch_resource};
+    FrameArray<std::uint32_t> order{scratch_resource};
+    FrameArray<EntityInstanceHandle> targets{scratch_resource};
     order.set_num(target_count);
     targets.set_num(target_count);
     entity_tables_.lookups.lookup_handles(fighter_targets, order, targets);
@@ -479,7 +479,7 @@ void Sim::reassign_fighters_of_dying_capital() {
     auto const entities{this->entities.get_const_view()};
     auto const capital_healths{
         entity_tables_.health.get_const_view<EntityType::CapitalShip>(entities.num())};
-    ioj::EnumArray<Team, EntityId> replacements{};
+    EnumArray<Team, EntityId> replacements{};
     auto const count{entities.num()};
     auto const teams{entities.teams()};
     auto const entity_ids{entities.entity_ids()};

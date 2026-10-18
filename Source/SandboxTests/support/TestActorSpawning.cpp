@@ -58,7 +58,7 @@ void resolve_proxy_entity_bindings(FProxyEntityMap const& proxy_entities,
         }
 
         int32 matches{0};
-        ::ioj::sim::EntityId const* matched_id{nullptr};
+        sim::EntityId const* matched_id{nullptr};
         for (auto const& [actor, id] : proxy_entities) {
             auto const* const entity{Cast<ITestEntity>(actor)};
             if (!entity || entity->get_test_name() != binding.test_name) {

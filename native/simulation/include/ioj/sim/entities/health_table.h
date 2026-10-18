@@ -24,7 +24,7 @@ struct Layout {
 };
 inline constexpr auto layout{[] {
     Layout result;
-    for (auto const type : ioj::EnumTraits<EntityType>::values) {
+    for (auto const type : EnumTraits<EntityType>::values) {
         result.capacities[type] = has_health(type) ? entity_lifetime_capacities[type] : 0;
         result.offsets[type] = result.capacity;
         result.capacity += result.capacities[type];
@@ -114,10 +114,10 @@ class HealthTable {
     void initialise_rows(EntityFrameIndex const first,
                          std::span<Health const> const initial_values) {
         [[maybe_unused]] auto const count{static_cast<EntityFrameIndex>(initial_values.size())};
-        assert(ioj::range_fits(first,
-                               count,
-                               EntityInstanceHandle::index_minimum,
-                               EntityInstanceHandle::index_maximum));
+        assert(range_fits(first,
+                          count,
+                          EntityInstanceHandle::index_minimum,
+                          EntityInstanceHandle::index_maximum));
         assert(first + count <= health_storage::layout.capacities[Type]);
         constexpr auto base{health_storage::layout.offsets[Type]};
         std::ranges::copy(initial_values, values_.begin() + base + first);
@@ -127,10 +127,10 @@ class HealthTable {
     void initialise_rows(EntityFrameIndex const first,
                          EntityFrameIndex const count,
                          Health const initial_value) {
-        assert(ioj::range_fits(first,
-                               count,
-                               EntityInstanceHandle::index_minimum,
-                               EntityInstanceHandle::index_maximum));
+        assert(range_fits(first,
+                          count,
+                          EntityInstanceHandle::index_minimum,
+                          EntityInstanceHandle::index_maximum));
         assert(first + count <= health_storage::layout.capacities[Type]);
         constexpr auto base{health_storage::layout.offsets[Type]};
         std::fill_n(values_.begin() + base + first, count, initial_value);

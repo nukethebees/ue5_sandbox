@@ -46,7 +46,7 @@ struct Vector3SoAView {
 
     auto operator[](size_type const index) const noexcept -> equivalent_type {
         assert(index < count_);
-        return ioj::Vector3f{xs_[index], ys_[index], zs_[index]};
+        return Vector3f{xs_[index], ys_[index], zs_[index]};
     }
     void set(size_type const index, equivalent_type const value) const noexcept
         requires (!std::is_const_v<T>)

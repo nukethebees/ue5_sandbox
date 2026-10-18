@@ -42,7 +42,7 @@ void write(std::ostream& out, char const* path, T const value) {
 template <typename Vector>
 void write_vector3(std::ostream& out,
                    char const* function,
-                   ::ioj::sim::EntityType const type,
+                   sim::EntityType const type,
                    Vector const value) {
     auto output{std::ostreambuf_iterator<char>{out}};
     std::format_to(output,
@@ -55,7 +55,7 @@ void write_vector3(std::ostream& out,
                    value.z());
 }
 
-void transform(std::ostream& out, std::string const& path, ::ioj::Transform3d const& value) {
+void transform(std::ostream& out, std::string const& path, Transform3d const& value) {
     auto output{std::ostreambuf_iterator<char>{out}};
     std::format_to(output,
                    "    {} = {{{{{:.17e}, {:.17e}, {:.17e}, {:.17e}}}, "
@@ -74,9 +74,7 @@ void transform(std::ostream& out, std::string const& path, ::ioj::Transform3d co
                    value.scale.z());
 }
 
-void transform_components(std::ostream& out,
-                          std::string const& path,
-                          ::ioj::Transform3d const& value) {
+void transform_components(std::ostream& out, std::string const& path, Transform3d const& value) {
     write(out, (path + ".location.x()").c_str(), value.location.x());
     write(out, (path + ".location.y()").c_str(), value.location.y());
     write(out, (path + ".location.z()").c_str(), value.location.z());
@@ -89,7 +87,7 @@ void transform_components(std::ostream& out,
     write(out, (path + ".scale.z()").c_str(), value.scale.z());
 }
 
-void vector3f(std::ostream& out, char const* path, ::ioj::Vector3f const value) {
+void vector3f(std::ostream& out, char const* path, Vector3f const value) {
     auto output{std::ostreambuf_iterator<char>{out}};
     std::format_to(output,
                    "    {} = {{{{{:.9e}f, {:.9e}f, {:.9e}f}}}};\n",

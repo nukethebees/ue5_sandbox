@@ -31,8 +31,8 @@ struct Buffers {
         for (std::size_t index{}; index < count; ++index) {
             positions[index] = {
                 262144 + offset(random), -262144 + offset(random), 1000000 + offset(random)};
-            auto const q{ioj::normalized(
-                ioj::Quaternion4f{normal(random), normal(random), normal(random), normal(random)})};
+            auto const q{normalized(
+                Quaternion4f{normal(random), normal(random), normal(random), normal(random)})};
             rotations[index] = {q.x(), q.y(), q.z(), q.w()};
         }
     }
@@ -55,9 +55,8 @@ auto run(benchmark::State& state) -> void {
     }
     TransformInput const input{std::as_bytes(std::span{buffers.positions}),
                                std::as_bytes(std::span{buffers.rotations})};
-    PackingParameters const parameters{ioj::Vector3f{262144, -262144, 1000000},
-                                       ioj::Vector3f{31, -57, 123},
-                                       ioj::Vector3f{100, 17, 300}};
+    PackingParameters const parameters{
+        Vector3f{262144, -262144, 1000000}, Vector3f{31, -57, 123}, Vector3f{100, 17, 300}};
     TransformPacker const packer{
         parameters,
         operation == Operation::TransformBounds ? BoundsMode::Calculate : BoundsMode::Skip,

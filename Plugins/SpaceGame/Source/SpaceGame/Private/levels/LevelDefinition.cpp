@@ -47,7 +47,7 @@ auto FLevelBuilder::finish() -> FLevelDraft {
 
 auto validate_level(FLevelDraft const& definition) -> FLevelValidationResult {
     FLevelValidationResult result;
-    auto native_result{::ioj::levels::authoring::to_native(definition)};
+    auto native_result{levels::authoring::to_native(definition)};
     if (native_result) {
         return result;
     }

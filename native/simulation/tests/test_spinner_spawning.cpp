@@ -33,11 +33,11 @@ struct SpinnerSpawnTestAccess {
     }
     static void rotate(Sim& simulation,
                        float const yaw_delta,
-                       ioj::FrameMemoryResource* const scratch_resource) {
+                       FrameMemoryResource* const scratch_resource) {
         simulation.planned_yaw_delta_ = yaw_delta;
         simulation.apply_movement(scratch_resource);
     }
-    static auto cooldowns(Sim& simulation) -> ioj::TickCountdownView<std::int16_t> {
+    static auto cooldowns(Sim& simulation) -> TickCountdownView<std::int16_t> {
         return {simulation.entities.get_view().laser_cooldowns(),
                 simulation.cooldown_restart_ticks_};
     }
@@ -56,8 +56,8 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
     SpatialQueryManager queries{tables};
     GameMemory game_memory{{.root_capacity_bytes = 2 * 1024 * 1024}};
     auto frame_block{
-        game_memory.acquire_block(1024 * 1024, ioj::FrameMemoryResource::backing_alignment)};
-    ioj::FrameMemoryResource frame_memory{
+        game_memory.acquire_block(1024 * 1024, FrameMemoryResource::backing_alignment)};
+    FrameMemoryResource frame_memory{
         std::span<std::byte>{frame_block.data(), frame_block.size_bytes()}};
     lasers::Sim lasers{clock, combat_events, queries};
     spinners::Sim simulation{clock, ledger, tables, lasers};
@@ -119,7 +119,7 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
     ASSERT_EQ((std::int16_t{23}), (entities.laser_cooldowns()[5]));
 
     {
-        ioj::FrameScratchScope scratch_scope{frame_memory};
+        FrameScratchScope scratch_scope{frame_memory};
         Access::rotate(simulation, 5.f, &frame_memory);
     }
     auto const rotated_entities{entity_storage.get_const_view()};

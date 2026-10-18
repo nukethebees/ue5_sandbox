@@ -22,7 +22,7 @@ class FEntityInterfaceScenario final : public FSimulationTestScenario {
     TimeSeriesData<int32> capital_proxy_counts;
     TimeSeriesData<int32> turret_proxy_counts;
     TimeSeriesData<int32> spinner_proxy_counts;
-    TimeSeriesData<TArray<::ioj::sim::EntityId>> capital_target_ids;
+    TimeSeriesData<TArray<sim::EntityId>> capital_target_ids;
     TimeSeriesData<TArray<uint8>> capital_target_alive;
     TObjectPtr<USpaceGameLevelConfig> level_config{nullptr};
 };

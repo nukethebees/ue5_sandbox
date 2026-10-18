@@ -96,7 +96,7 @@ Sim::Sim(SimClock const& clock,
 void Sim::begin_play() {
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::begin_play");
 
-    state_.physical.velocity = ioj::Vector3d{};
+    state_.physical.velocity = Vector3d{};
     state_.resources.thrust_energy = config.thrust_energy_max;
     reset_flight_model_controller(state_, get_active_flight_model_config());
 
@@ -152,7 +152,7 @@ void Sim::generate_fire_commands() {
     update_laser_firing();
 }
 
-void Sim::resolve_damage_events(ioj::FrameMemoryResource* const scratch_resource) {
+void Sim::resolve_damage_events(FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::resolve_damage_events");
 
     auto const damage_events{combat_events_.events_for(EntityType::PlayerShip)};
@@ -160,7 +160,7 @@ void Sim::resolve_damage_events(ioj::FrameMemoryResource* const scratch_resource
     auto health{health_table_.get_const_view<EntityType::PlayerShip>(1).health(0)};
     EntityId killer{};
     auto const damage_count{damage_events.num()};
-    ioj::FrameArray<Health> applied_damages{scratch_resource};
+    FrameArray<Health> applied_damages{scratch_resource};
     applied_damages.set_num(damage_count);
     std::ranges::fill(applied_damages, Health{});
     [[maybe_unused]] auto const damaged_entities{damage_events.damaged_entities()};
@@ -301,7 +301,7 @@ void Sim::set_up_input(float const input) noexcept {
     flight_intent_.translation.z() = std::clamp(input, -1.f, 1.f);
 }
 
-void Sim::set_ship_2d_control(ioj::Vector2d const input) {
+void Sim::set_ship_2d_control(Vector2d const input) {
     if (!sampling_target_speed_) {
         return;
     }
@@ -494,7 +494,7 @@ void Sim::materialize_fire_command() {
             break;
         }
         default: {
-            ioj::fatal_error("Unhandled player laser mode.");
+            fatal_error("Unhandled player laser mode.");
         }
     }
 }
@@ -529,20 +529,20 @@ void Sim::upgrade_laser() noexcept {
 
 void Sim::select_next_laser_fire_rate() noexcept {
     set_laser_fire_rate(static_cast<ShipFireRate>((static_cast<unsigned>(laser_fire_rate) + 1) %
-                                                  ioj::enum_count<ShipFireRate>()));
+                                                  enum_count<ShipFireRate>()));
 }
 
 void Sim::select_previous_laser_fire_rate() noexcept {
     set_laser_fire_rate(static_cast<ShipFireRate>(
-        (static_cast<unsigned>(laser_fire_rate) + ioj::enum_count<ShipFireRate>() - 1) %
-        ioj::enum_count<ShipFireRate>()));
+        (static_cast<unsigned>(laser_fire_rate) + enum_count<ShipFireRate>() - 1) %
+        enum_count<ShipFireRate>()));
 }
 
 void Sim::set_laser_fire_rate(ShipFireRate const value) noexcept {
     laser_fire_rate = value;
     switch (laser_fire_rate) {
         default: {
-            ioj::fatal_error("Invalid player laser fire rate.");
+            fatal_error("Invalid player laser fire rate.");
         }
         case ShipFireRate::Single: {
             lasers_per_burst = 1;
@@ -615,7 +615,7 @@ auto Sim::get_kills() const -> std::int32_t {
 }
 
 auto Sim::get_speed() const noexcept -> float {
-    return static_cast<float>(ioj::size(state_.physical.velocity));
+    return static_cast<float>(size(state_.physical.velocity));
 }
 
 auto Sim::energy_is_full() const -> bool {
@@ -641,7 +641,7 @@ auto Sim::get_laser_effective_range() const noexcept -> float {
 void Sim::sample_speed() {
     speed_samples[speed_sample_index] = {
         std::clamp(simulation_clock.get_simulation_time(), 0.0, 1e9),
-        std::clamp(ioj::size(state_.physical.velocity), 0.0, 100e3)};
+        std::clamp(size(state_.physical.velocity), 0.0, 100e3)};
     ++speed_sample_index;
     if (speed_sample_index >= speed_sample_max) {
         speed_sample_index = 0;
@@ -663,6 +663,6 @@ void Sim::configure_speed_sampling() {
     speed_sample_max = static_cast<std::uint32_t>(sample_count);
     speed_sample_tick_period = static_cast<std::int32_t>(sample_tick_period);
     speed_sample_ticks_remaining = speed_sample_tick_period;
-    speed_samples.assign(static_cast<std::size_t>(speed_sample_max), ioj::Vector2d{});
+    speed_samples.assign(static_cast<std::size_t>(speed_sample_max), Vector2d{});
 }
 } // namespace player

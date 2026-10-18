@@ -47,7 +47,7 @@ FLevelLoaderCameraScenario::FLevelLoaderCameraScenario(FSimulationTestContext& c
 void FLevelLoaderCameraScenario::load_fixture() {
     initialise_test_driver();
 
-    ::ioj::levels::authoring::FDefinitionReader reader;
+    levels::authoring::FDefinitionReader reader;
     auto const script_path{
         FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"), TEXT("FleetOverview.scm"))};
     auto const scripted_definition{reader.read_level_file(script_path)};
@@ -178,8 +178,8 @@ void FLevelLoaderCameraScenario::sample_runtime(ATestBatchOrchestrator& orchestr
     auto const& counts{orchestrator.get_entity_ledger().get_combat_telemetry().spawned};
     auto const blue{std::to_underlying(ETestTeam::Blue)};
     auto const red{std::to_underlying(ETestTeam::Red)};
-    auto const capital{std::to_underlying(::ioj::sim::EntityType::CapitalShip)};
-    auto const turret{std::to_underlying(::ioj::sim::EntityType::Turret)};
+    auto const capital{std::to_underlying(sim::EntityType::CapitalShip)};
+    auto const turret{std::to_underlying(sim::EntityType::Turret)};
     entity_counts_.add(test_driver->get_time(),
                        static_cast<int32>(counts[blue][capital] + counts[blue][turret] +
                                           counts[red][capital] + counts[red][turret]));
@@ -219,11 +219,11 @@ void FLevelLoaderCameraScenario::sample_modal_transitions() {
     sample.pause_open = FPlayerControllerTestAccess::has_modal(*controller);
     sample.pause_rejects_activation = rejects_activation();
     sample.pause_suspended =
-        orchestrator.get_state() == ::ioj::sim::OrchestratorState::Paused &&
+        orchestrator.get_state() == sim::OrchestratorState::Paused &&
         controller->get_active_control_context() == EPlayerControlContext::None;
     sample.hud_hidden = hud->GetVisibility() == ESlateVisibility::Collapsed;
     FPlayerControllerTestAccess::toggle_pause(*controller);
-    sample.pause_resumed = orchestrator.get_state() == ::ioj::sim::OrchestratorState::Running &&
+    sample.pause_resumed = orchestrator.get_state() == sim::OrchestratorState::Running &&
                            !FPlayerControllerTestAccess::has_modal(*controller) &&
                            controller->is_observer_movement_enabled();
 
@@ -235,13 +235,12 @@ void FLevelLoaderCameraScenario::sample_modal_transitions() {
     sample.completion_open = FPlayerControllerTestAccess::has_modal(*controller);
     sample.completion_rejects_activation = rejects_activation();
     sample.completion_suspended =
-        orchestrator.get_state() == ::ioj::sim::OrchestratorState::Paused &&
+        orchestrator.get_state() == sim::OrchestratorState::Paused &&
         controller->get_active_control_context() == EPlayerControlContext::None;
     FPlayerControllerTestAccess::close_completion(*controller);
-    sample.completion_resumed =
-        orchestrator.get_state() == ::ioj::sim::OrchestratorState::Running &&
-        !FPlayerControllerTestAccess::has_modal(*controller) &&
-        controller->is_observer_movement_enabled();
+    sample.completion_resumed = orchestrator.get_state() == sim::OrchestratorState::Running &&
+                                !FPlayerControllerTestAccess::has_modal(*controller) &&
+                                controller->is_observer_movement_enabled();
     sample.hud_restored = hud->GetVisibility() == visibility;
     sample.input_restored = component->GetActionEventBindings().Num() == binding_count;
     modal_samples_.add(test_driver->get_time(), sample);
@@ -270,7 +269,7 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
                      count_actors<ATestSpaceShip>(context_.world),
                      TEXT("Rejected headless load creates no player"));
 
-    ::ioj::levels::authoring::FDefinitionReader reader;
+    levels::authoring::FDefinitionReader reader;
     auto const script_path{
         FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"), TEXT("FleetOverview.scm"))};
     auto const definition{reader.read_level_file(script_path)};
@@ -365,7 +364,7 @@ void FLevelLoaderScenario::load_fixture() {
     FLevelLoader loader{context_.orchestrator};
 
     auto invalid_definition{example_levels::make_example_draft()};
-    invalid_definition.entities.teams[1] = static_cast<::ioj::Team>(255);
+    invalid_definition.entities.teams[1] = static_cast<Team>(255);
     auto const invalid_result{levels::authoring::to_native(invalid_definition)};
     checks.is_true(!static_cast<bool>(invalid_result), TEXT("Invalid definition is rejected"));
     checks.are_equal(
@@ -376,11 +375,10 @@ void FLevelLoaderScenario::load_fixture() {
     checks.are_equal(0,
                      count_actors<ATestStaticTurretsProxy>(context_.world),
                      TEXT("Rejected load spawns no turrets"));
-    checks.is_true(context_.orchestrator.get_state() ==
-                       ::ioj::sim::OrchestratorState::Uninitialised,
+    checks.is_true(context_.orchestrator.get_state() == sim::OrchestratorState::Uninitialised,
                    TEXT("Rejected load leaves orchestrator uninitialised"));
 
-    ::ioj::levels::authoring::FDefinitionReader reader;
+    levels::authoring::FDefinitionReader reader;
     auto const script_path{
         FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"), TEXT("BorderSkirmish.scm"))};
     auto const scripted_definition{reader.read_level_file(script_path)};
@@ -440,9 +438,9 @@ void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) 
     auto const counts{ledger.count_alive_per_team_and_type()};
     auto const blue{std::to_underlying(ETestTeam::Blue)};
     auto const red{std::to_underlying(ETestTeam::Red)};
-    auto const player_type{std::to_underlying(::ioj::sim::EntityType::PlayerShip)};
-    auto const capital_type{std::to_underlying(::ioj::sim::EntityType::CapitalShip)};
-    auto const turret_type{std::to_underlying(::ioj::sim::EntityType::Turret)};
+    auto const player_type{std::to_underlying(sim::EntityType::PlayerShip)};
+    auto const capital_type{std::to_underlying(sim::EntityType::CapitalShip)};
+    auto const turret_type{std::to_underlying(sim::EntityType::Turret)};
 
     FSample sample{
         .authored_entities = counts[blue][player_type] + counts[blue][capital_type] +
@@ -451,8 +449,8 @@ void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) 
         .blue_capitals = counts[blue][capital_type],
         .red_capitals = counts[red][capital_type],
         .red_turrets = counts[red][turret_type],
-        .mission_mode = ioj::to_unreal(mission.get_mission_mode()),
-        .mission_state = ioj::to_unreal(mission.get_mission_state()),
+        .mission_mode = to_unreal(mission.get_mission_mode()),
+        .mission_state = to_unreal(mission.get_mission_state()),
         .mission_kill_target = mission.get_kill_target(),
         .mission_heroes = static_cast<int32>(mission.get_hero_entity_ids().size()),
         .mission_survivors = static_cast<int32>(mission.get_entity_ids_that_must_survive().size()),
@@ -467,8 +465,8 @@ void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) 
     auto const capitals{level->get_capital_ships().get_entities()};
     auto const capital_count{capitals.num()};
     for (uint32 i{}; i < capital_count; ++i) {
-        auto const position{ioj::to_unreal(::ioj::vector_at(capitals.view_locations(), i))};
-        auto const team{ioj::to_unreal(capitals.teams()[i])};
+        auto const position{to_unreal(vector_at(capitals.view_locations(), i))};
+        auto const team{to_unreal(capitals.teams()[i])};
         if (team == ETestTeam::Blue) {
             sample.blue_capital_position = position;
         } else if (team == ETestTeam::Red) {
@@ -478,8 +476,8 @@ void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) 
     auto const turrets{level->get_turrets().get_entities()};
     auto const turret_count{turrets.num()};
     for (uint32 i{}; i < turret_count; ++i) {
-        if (ioj::to_unreal(turrets.teams()[i]) == ETestTeam::Red) {
-            auto const position{ioj::to_unreal(::ioj::vector_at(turrets.view_locations(), i))};
+        if (to_unreal(turrets.teams()[i]) == ETestTeam::Red) {
+            auto const position{to_unreal(vector_at(turrets.view_locations(), i))};
             sample.red_turret_position = position;
         }
     }
@@ -583,12 +581,12 @@ void FLevelLoaderScenario::sample_controller_lifecycle() {
     FPlayerControllerTestAccess::toggle_pause(*controller);
     controller->UnPossess();
     sample.unpossessed_while_paused =
-        orchestrator.get_state() == ::ioj::sim::OrchestratorState::Paused &&
+        orchestrator.get_state() == sim::OrchestratorState::Paused &&
         !IsValid(controller->GetPawn()) &&
         controller->get_active_control_context() == EPlayerControlContext::None;
     FPlayerControllerTestAccess::toggle_pause(*controller);
     sample.resumed_without_ship =
-        orchestrator.get_state() == ::ioj::sim::OrchestratorState::Running &&
+        orchestrator.get_state() == sim::OrchestratorState::Running &&
         controller->get_active_control_context() == EPlayerControlContext::None;
     controller->Possess(ship);
     sample.possession_enabled_ship =
@@ -598,11 +596,11 @@ void FLevelLoaderScenario::sample_controller_lifecycle() {
     controller->UnPossess();
     controller->Possess(ship);
     sample.possession_stayed_suspended =
-        orchestrator.get_state() == ::ioj::sim::OrchestratorState::Paused &&
+        orchestrator.get_state() == sim::OrchestratorState::Paused &&
         controller->get_active_control_context() == EPlayerControlContext::None;
     FPlayerControllerTestAccess::toggle_pause(*controller);
     sample.resumed_with_ship =
-        orchestrator.get_state() == ::ioj::sim::OrchestratorState::Running &&
+        orchestrator.get_state() == sim::OrchestratorState::Running &&
         controller->get_active_control_context() == EPlayerControlContext::Player;
     sample.bindings_restored = component->GetActionEventBindings().Num() == binding_count;
     control_samples_.add(test_driver->get_time(), sample);

@@ -31,7 +31,7 @@ class FTestPlayerShipDeathScenario final : public FSimulationTestScenario {
     void check_player_ship_death();
 
     TWeakObjectPtr<ATestSpaceShip> player_ship{nullptr};
-    ::ioj::sim::EntityId player_ship_id{};
+    sim::EntityId player_ship_id{};
     TimeSeriesData<FSimulationSample> samples;
 };
 }

@@ -26,7 +26,7 @@ struct SPACEGAME_API FLevelProgressSummary {
     int32 best_kills{};
 };
 
-SPACEGAME_API auto summarize_level_progress(ioj::FLevelId level_id,
+SPACEGAME_API auto summarize_level_progress(FLevelId level_id,
                                             TConstArrayView<FScoreRecord> records)
     -> FLevelProgressSummary;
 }

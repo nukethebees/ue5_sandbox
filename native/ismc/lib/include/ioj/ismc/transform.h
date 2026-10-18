@@ -21,7 +21,7 @@ inline constexpr float quaternion_component_limit{0.7071067811865475244f};
 inline constexpr float rotation_error_chord{0.006f};
 
 [[nodiscard]] inline auto is_normalized_quaternion(Quaternion4f quaternion) noexcept -> bool {
-    auto const squared{ioj::dot(quaternion, quaternion)};
+    auto const squared{dot(quaternion, quaternion)};
     return std::abs(squared - 1.0f) <= 1.0e-4f;
 }
 
@@ -58,7 +58,7 @@ inline constexpr float rotation_error_chord{0.006f};
 
 // Reference/debug entry point for arbitrary nonzero quaternions, not the render hot path.
 [[nodiscard]] inline auto pack_quat32(Quaternion4f quaternion) noexcept -> std::optional<Quat32> {
-    auto const squared{ioj::dot(quaternion, quaternion)};
+    auto const squared{dot(quaternion, quaternion)};
     if (!std::isfinite(squared) || squared < 1.0e-12f) {
         return std::nullopt;
     }
@@ -66,7 +66,7 @@ inline constexpr float rotation_error_chord{0.006f};
 }
 
 [[nodiscard]] inline auto unpack_quat32(Quat32 packed) noexcept -> Quaternion4f {
-    auto quaternion{ioj::Quaternion4f{0.0f, 0.0f, 0.0f, 0.0f}};
+    auto quaternion{Quaternion4f{0.0f, 0.0f, 0.0f, 0.0f}};
     auto const largest{packed.bits & 3U};
     auto shift{2U};
     auto squared{0.0f};

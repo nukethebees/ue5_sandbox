@@ -88,15 +88,15 @@ auto get_aabb(UStaticMesh const& mesh) -> FBox {
 }
 
 void clear_aabb(EntityAABBs& aabbs, sim::EntityType const type) {
-    aabbs.set_centre(type, ioj::Vector3f{0.f, 0.f, 0.f});
-    aabbs.set_half_extents(type, ioj::Vector3f{0.f, 0.f, 0.f});
+    aabbs.set_centre(type, Vector3f{0.f, 0.f, 0.f});
+    aabbs.set_half_extents(type, Vector3f{0.f, 0.f, 0.f});
 }
 
 void set_mesh_aabb(EntityAABBs& aabbs,
                    sim::EntityType const type,
                    TCHAR const* const entity_name,
                    UStaticMesh const* const mesh,
-                   ioj::FLevelStartErrors& errors) {
+                   FLevelStartErrors& errors) {
     clear_aabb(aabbs, type);
 
     if (!IsValid(mesh)) {
@@ -116,16 +116,16 @@ void set_mesh_aabb(EntityAABBs& aabbs,
     FVector3f const centre{aabb.GetCenter()};
     FVector3f const half_extents{aabb.GetExtent()};
 
-    aabbs.set_centre(type, ioj::Vector3f{centre.X, centre.Y, centre.Z});
-    aabbs.set_half_extents(type, ioj::Vector3f{half_extents.X, half_extents.Y, half_extents.Z});
+    aabbs.set_centre(type, Vector3f{centre.X, centre.Y, centre.Z});
+    aabbs.set_half_extents(type, Vector3f{half_extents.X, half_extents.Y, half_extents.Z});
 }
 
 auto has_unsupported_geometry(FKAggregateGeom const& geometry) -> bool {
-    return ioj::any_non_empty(geometry.TaperedCapsuleElems,
-                              geometry.LevelSetElems,
-                              geometry.SkinnedLevelSetElems,
-                              geometry.MLLevelSetElems,
-                              geometry.SkinnedTriangleMeshElems);
+    return any_non_empty(geometry.TaperedCapsuleElems,
+                         geometry.LevelSetElems,
+                         geometry.SkinnedLevelSetElems,
+                         geometry.MLLevelSetElems,
+                         geometry.SkinnedTriangleMeshElems);
 }
 
 struct FStaticCollisionComponentData {
@@ -186,8 +186,8 @@ auto extract_static_collision_component(UPrimitiveComponent& component,
     FVector3f const max_point{aabb.Max};
     auto const [min_coord, max_coord]{
         sim::collision::to_cell_coord_bounds(grid_geometry,
-                                             ioj::Vector3f{min_point.X, min_point.Y, min_point.Z},
-                                             ioj::Vector3f{max_point.X, max_point.Y, max_point.Z})};
+                                             Vector3f{min_point.X, min_point.Y, min_point.Z},
+                                             Vector3f{max_point.X, max_point.Y, max_point.Z})};
     if (min_point.ContainsNaN() || max_point.ContainsNaN() ||
         !sim::collision::is_cell_coord_in_bounds(grid_geometry, min_coord) ||
         !sim::collision::is_cell_coord_in_bounds(grid_geometry, max_coord)) {
@@ -207,9 +207,9 @@ auto FLevelCollisionHost::extract_entity_bounds(EntityMeshes const& meshes)
     -> FEntityBoundsExtractionResult {
     FEntityBoundsExtractionResult result{std::in_place};
     auto& bounds{result.value()};
-    ioj::FLevelStartErrors errors;
-    for (auto const entity_type : ioj::EnumTraits<sim::EntityType>::values) {
-        auto const entity_name{ioj::to_fstring(sim::to_string(entity_type))};
+    FLevelStartErrors errors;
+    for (auto const entity_type : EnumTraits<sim::EntityType>::values) {
+        auto const entity_name{to_fstring(sim::to_string(entity_type))};
         set_mesh_aabb(bounds, entity_type, *entity_name, meshes[entity_type], errors);
     }
     if (errors.has_errors()) {
@@ -255,10 +255,10 @@ auto FLevelCollisionHost::initialise_static_geometry(
             continue;
         }
 
-        if (ioj::actor_is_any(*actor, config.omitted_collision_actor_classes)) {
+        if (actor_is_any(*actor, config.omitted_collision_actor_classes)) {
             continue;
         }
-        if (!ioj::actor_is_any(*actor, config.harvested_collision_actor_classes)) {
+        if (!actor_is_any(*actor, config.harvested_collision_actor_classes)) {
             ++unexpected_actor_count;
             UE_LOG(LogSandbox,
                    Warning,

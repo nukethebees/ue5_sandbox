@@ -40,7 +40,7 @@ void run_worldless_fighters_standby_transition(tests::SimulationFixture const& c
         std::vector<Vector3f> velocities{};
         std::vector<EntityId> parents{};
     };
-    ioj::TimeSeriesData<Sample> samples;
+    TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim&) {
         Sample sample{.capital_count = capitals.get_num_instances()};
         auto const tasks{fighters.get_tasks()};
@@ -81,7 +81,7 @@ void run_worldless_fighters_standby_transition(tests::SimulationFixture const& c
         if (after.parents[i].is_valid()) {
             EXPECT_EQ(fighters::Sim::Task::Standby, after.tasks[i])
                 << "Owned fighter transitioned to standby";
-            EXPECT_LE(ioj::size(after.velocities[i] - Vector3f{}), 0.f)
+            EXPECT_LE(size(after.velocities[i] - Vector3f{}), 0.f)
                 << "Standby fighter velocity is zero";
             ++standby_fighters;
         } else {

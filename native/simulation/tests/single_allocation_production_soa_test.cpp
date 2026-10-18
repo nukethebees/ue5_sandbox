@@ -63,8 +63,8 @@ TEST(NativeSimulation, ProductionSingleAllocationNestedViewsAndAppend) {
     FighterEntityData fighters;
     fighters.add_defaulted(2);
     auto fighter_columns{fighters.get_view()};
-    set_vector(fighter_columns.view_locations(), 0, ioj::Vector3f{1.f, 2.f, 3.f});
-    set_vector(fighter_columns.view_locations(), 1, ioj::Vector3f{4.f, 5.f, 6.f});
+    set_vector(fighter_columns.view_locations(), 0, Vector3f{1.f, 2.f, 3.f});
+    set_vector(fighter_columns.view_locations(), 1, Vector3f{4.f, 5.f, 6.f});
     fighter_columns.integral_biases()[0] = 11;
     fighter_columns.integral_biases()[1] = 22;
 
@@ -77,7 +77,7 @@ TEST(NativeSimulation, ProductionSingleAllocationNestedViewsAndAppend) {
     lasers::LaserEntities lasers;
     lasers.add_defaulted(2);
     auto laser_columns{lasers.get_view()};
-    set_vector(laser_columns.view_locations(), 0, ioj::Vector3f{10.f, 20.f, 30.f});
+    set_vector(laser_columns.view_locations(), 0, Vector3f{10.f, 20.f, 30.f});
     set_rotation(laser_columns.view_rotations(), 0, Rotator3f{1.f, 2.f, 3.f});
     laser_columns.damages()[0] = 40;
     lasers.remove_at_swap(0, 1);
@@ -94,7 +94,7 @@ TEST(NativeSimulation, SpinnerAndLaserHitSingleAllocationRowsStaySynchronized) {
     auto const yaws{spinner_columns.yaws()};
     auto const fire_point_indices{spinner_columns.next_fire_point_indices()};
     for (std::uint32_t index{}; index < spinner_count; ++index) {
-        set_vector(spinner_locations, index, ioj::Vector3f{static_cast<float>(index), 2.f, 3.f});
+        set_vector(spinner_locations, index, Vector3f{static_cast<float>(index), 2.f, 3.f});
         yaws[index] = static_cast<float>(index * 2);
         fire_point_indices[index] = index;
     }
@@ -118,8 +118,8 @@ TEST(NativeSimulation, SpinnerAndLaserHitSingleAllocationRowsStaySynchronized) {
     auto const emission_directions{hit_columns.view_emission_directions()};
     auto const sources{hit_columns.sources()};
     for (std::uint32_t index{}; index < hit_count; ++index) {
-        set_vector(hit_locations, index, ioj::Vector3f{static_cast<float>(index), 4.f, 5.f});
-        set_vector(emission_directions, index, ioj::Vector3f{0.f, 1.f, 0.f});
+        set_vector(hit_locations, index, Vector3f{static_cast<float>(index), 4.f, 5.f});
+        set_vector(emission_directions, index, Vector3f{0.f, 1.f, 0.f});
         sources[index] = {Team::Blue, EntityType::Turret};
     }
 
@@ -135,24 +135,22 @@ TEST(NativeSimulation, SpinnerAndLaserHitSingleAllocationRowsStaySynchronized) {
 TEST(NativeSimulation, LaserFrameOutputAccumulatesBatchesAndReusesStorage) {
     GameMemory game_memory{{.root_capacity_bytes = 2 * 1024 * 1024}};
     auto frame_block{
-        game_memory.acquire_block(1024 * 1024, ioj::FrameMemoryResource::backing_alignment)};
-    ioj::FrameMemoryResource frame_memory{
+        game_memory.acquire_block(1024 * 1024, FrameMemoryResource::backing_alignment)};
+    FrameMemoryResource frame_memory{
         std::span<std::byte>{frame_block.data(), frame_block.size_bytes()}};
-    ioj::FrameScratchScope scratch_scope{frame_memory};
+    FrameScratchScope scratch_scope{frame_memory};
     auto* const scratch_resource{&frame_memory};
     lasers::FrameHitDetails first_batch{scratch_resource};
     for (std::int32_t index{}; index < 65; ++index) {
-        first_batch.add(ioj::Vector3f{static_cast<float>(index), 1.f, 2.f},
-                        ioj::Vector3f{0.f, 1.f, 0.f},
+        first_batch.add(Vector3f{static_cast<float>(index), 1.f, 2.f},
+                        Vector3f{0.f, 1.f, 0.f},
                         {Team::Green, EntityType::Fighter});
     }
     lasers::FrameHitDetails second_batch{scratch_resource};
-    second_batch.add(ioj::Vector3f{100.f, 3.f, 4.f},
-                     ioj::Vector3f{1.f, 0.f, 0.f},
-                     {Team::Red, EntityType::CapitalShip});
-    second_batch.add(ioj::Vector3f{101.f, 3.f, 4.f},
-                     ioj::Vector3f{1.f, 0.f, 0.f},
-                     {Team::Red, EntityType::CapitalShip});
+    second_batch.add(
+        Vector3f{100.f, 3.f, 4.f}, Vector3f{1.f, 0.f, 0.f}, {Team::Red, EntityType::CapitalShip});
+    second_batch.add(
+        Vector3f{101.f, 3.f, 4.f}, Vector3f{1.f, 0.f, 0.f}, {Team::Red, EntityType::CapitalShip});
 
     lasers::FrameOutput output;
     output.append_hits(first_batch, 7);
@@ -188,23 +186,20 @@ TEST(NativeSimulation, LevelEventSingleAllocationStoragePreservesOrderAcrossMove
         events.schedule.capital_spawns.add_defaulted(1);
         auto const capitals{events.schedule.capital_spawns.get_view()};
         capitals.entity_indices()[index] = index;
-        set_vector(
-            capitals.view_locations(), index, ioj::Vector3f{static_cast<float>(index), 1.f, 2.f});
+        set_vector(capitals.view_locations(), index, Vector3f{static_cast<float>(index), 1.f, 2.f});
         capitals.teams()[index] = Team::Green;
         capitals.healths()[index] = 1000 + index;
 
         events.schedule.turret_spawns.add_defaulted(1);
         auto const turrets{events.schedule.turret_spawns.get_view()};
         turrets.entity_indices()[index] = index + 100;
-        set_vector(
-            turrets.view_locations(), index, ioj::Vector3f{static_cast<float>(index), 3.f, 4.f});
+        set_vector(turrets.view_locations(), index, Vector3f{static_cast<float>(index), 3.f, 4.f});
         turrets.laser_damages()[index] = index * 2;
 
         events.schedule.spinner_spawns.add_defaulted(1);
         auto const spinners{events.schedule.spinner_spawns.get_view()};
         spinners.entity_indices()[index] = index + 200;
-        set_vector(
-            spinners.view_locations(), index, ioj::Vector3f{static_cast<float>(index), 5.f, 6.f});
+        set_vector(spinners.view_locations(), index, Vector3f{static_cast<float>(index), 5.f, 6.f});
         spinners.yaws()[index] = static_cast<float>(index * 3);
         spinners.initial_fire_point_indices()[index] = index;
     }

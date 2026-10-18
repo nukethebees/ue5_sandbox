@@ -11,6 +11,6 @@ struct Rotator3d {
 
     auto operator==(Rotator3d const&) const -> bool = default;
 };
-auto to_quaternion(Rotator3d rotation) noexcept -> ioj::Quaternion4d;
-auto to_rotator(ioj::Quaternion4d q) noexcept -> Rotator3d;
+auto to_quaternion(Rotator3d rotation) noexcept -> Quaternion4d;
+auto to_rotator(Quaternion4d q) noexcept -> Rotator3d;
 }

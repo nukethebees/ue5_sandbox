@@ -17,8 +17,8 @@ class FTestCapitalShipProxyScenario final : public FSimulationTestScenario {
     void resolve_proxy_ids(FProxyEntityMap const& proxy_entities);
     void check_proxy_healths();
 
-    ::ioj::sim::EntityId default_health_id{};
-    ::ioj::sim::EntityId overridden_health_id{};
+    sim::EntityId default_health_id{};
+    sim::EntityId overridden_health_id{};
     int32 default_health{0};
     int32 overridden_health{0};
     bool proxy_ids_bound{false};

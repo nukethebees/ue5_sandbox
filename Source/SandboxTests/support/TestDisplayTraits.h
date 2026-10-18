@@ -33,7 +33,7 @@ struct TestDisplayTraits {
                 std::to_underlying(value));
         } else {
             static_assert(is_uenum<T>, "Test display formatting is not defined for this type.");
-            return FStringFormatArg{ioj::to_string_without_type_prefix(value)};
+            return FStringFormatArg{to_string_without_type_prefix(value)};
         }
     }
 };

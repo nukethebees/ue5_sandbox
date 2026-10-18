@@ -12,7 +12,7 @@ namespace ioj::sim::tests {
 class UniqueCellMembership : public ::testing::Test {
   protected:
     UniqueCellMembership() {
-        for (auto const type : ioj::EnumTraits<EntityType>::values) {
+        for (auto const type : EnumTraits<EntityType>::values) {
             bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
         }
         queries.initialise({{8, 8, 8}, {{100.f, 100.f, 100.f}}}, bounds);
@@ -26,10 +26,10 @@ class UniqueCellMembership : public ::testing::Test {
     CollisionAgentStorage owners;
     SpatialQueryManager queries{owners.entity_tables};
     collision::EntityAABBs bounds;
-    alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024> backing{};
-    ioj::FrameMemoryResource memory{backing};
-    ioj::FrameScratchScope scope{memory};
-    ioj::FrameArray<EntityId> output{&memory};
+    alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024> backing{};
+    FrameMemoryResource memory{backing};
+    FrameScratchScope scope{memory};
+    FrameArray<EntityId> output{&memory};
 };
 
 TEST_F(UniqueCellMembership, EmptyInputAndEmptyCellsReplacePreviousOutput) {

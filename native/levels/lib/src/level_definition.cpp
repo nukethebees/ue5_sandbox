@@ -31,7 +31,7 @@ auto LevelDefinition::make(LevelDefinitionComponents definition)
         result.emplace_back(
             DiagnosticCode::MissingLevelId, "level.id", "Level definition has no stable id");
     }
-    if (ioj::blank(definition.metadata.title)) {
+    if (blank(definition.metadata.title)) {
         result.emplace_back(
             DiagnosticCode::MissingTitle, "level.title", "Level definition has no title");
     }

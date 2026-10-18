@@ -114,18 +114,18 @@ TEST(EntityId, InvalidRepresentationAndDomainArePreserved) {
 TEST(EntityId, AssertsWhenConstructionViolatesThePackedDomain) {
     EXPECT_DEATH(
         static_cast<void>(EntityId(EntityId::index_field::value_mask + 1, EntityType::Turret)), "");
-    EXPECT_DEATH(
-        static_cast<void>(EntityId(0, static_cast<EntityType>(ioj::enum_count<EntityType>()))), "");
+    EXPECT_DEATH(static_cast<void>(EntityId(0, static_cast<EntityType>(enum_count<EntityType>()))),
+                 "");
 }
 
 TEST(EntityId, AllocationRangeDetectsExhaustionWithoutWrapping) {
     constexpr auto minimum{EntityId::index_minimum};
     constexpr auto maximum{EntityId::index_maximum};
-    EXPECT_TRUE(ioj::range_fits(0u, 0u, minimum, maximum));
-    EXPECT_TRUE(ioj::range_fits(0u, maximum + 1, minimum, maximum));
-    EXPECT_TRUE(ioj::range_fits(maximum, 1u, minimum, maximum));
-    EXPECT_FALSE(ioj::range_fits(maximum, 2u, minimum, maximum));
-    EXPECT_FALSE(ioj::range_fits(maximum + 1, 1u, minimum, maximum));
+    EXPECT_TRUE(range_fits(0u, 0u, minimum, maximum));
+    EXPECT_TRUE(range_fits(0u, maximum + 1, minimum, maximum));
+    EXPECT_TRUE(range_fits(maximum, 1u, minimum, maximum));
+    EXPECT_FALSE(range_fits(maximum, 2u, minimum, maximum));
+    EXPECT_FALSE(range_fits(maximum + 1, 1u, minimum, maximum));
 }
 } // namespace
 } // namespace ioj::sim::tests

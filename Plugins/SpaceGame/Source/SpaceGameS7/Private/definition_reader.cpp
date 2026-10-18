@@ -26,12 +26,12 @@ auto convert_campaign_result(CampaignDefinitionReadResult native) -> FCampaignDe
     if (!native) {
         return FCampaignDefinitionReadResult{std::unexpect, std::move(native.error())};
     }
-    ioj::FCampaignDefinition result;
-    result.id = ioj::FCampaignId{FName{ioj::to_fstring(native->id.value)}};
-    result.title = ioj::to_fstring(native->title);
+    FCampaignDefinition result;
+    result.id = FCampaignId{FName{to_fstring(native->id.value)}};
+    result.title = to_fstring(native->title);
     result.level_ids.Reserve(static_cast<int32>(native->level_ids.size()));
     for (auto const& id : native->level_ids) {
-        result.level_ids.Add(ioj::FLevelId{FName{ioj::to_fstring(id.value)}});
+        result.level_ids.Add(FLevelId{FName{to_fstring(id.value)}});
     }
     return result;
 }

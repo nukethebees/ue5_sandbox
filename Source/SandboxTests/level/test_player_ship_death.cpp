@@ -38,7 +38,7 @@ void FTestPlayerShipDeathScenario::run() {
 void FTestPlayerShipDeathScenario::player_ship_pre_begin_play(UWorld& world,
                                                               USpaceGameLevelConfig const& config) {
     auto* const spawned_player_ship{
-        ioj::spawn_player_ship(world, config.classes.player_ship_class, &config.player_ship)};
+        spawn_player_ship(world, config.classes.player_ship_class, &config.player_ship)};
     if (!checks.is_valid(spawned_player_ship, TEXT("Player ship is spawned"))) {
         return;
     }
@@ -72,7 +72,7 @@ void FTestPlayerShipDeathScenario::queue_player_ship_death() {
 
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
-    std::vector<::ioj::sim::EntityId> const targets{player_ship_id};
+    std::vector<sim::EntityId> const targets{player_ship_id};
     test_driver->timeline.then_after(kill_time,
                                      [this, targets] { test_driver->queue_kills(targets); });
 
@@ -92,21 +92,20 @@ void FTestPlayerShipDeathScenario::on_end_tick(ATestBatchOrchestrator&) {
 
     auto const* const controller{
         Cast<ASpaceGamePlayerController>(context_.world.GetFirstPlayerController())};
-    samples.add(test_driver->get_time(),
-                FSimulationSample{
-                    !::ioj::sim::entity_is_alive(*test_driver->orchestrator.get_level_simulation(),
-                                                 player_ship_id),
-                    IsValid(player_ship.Get()),
-                    unique_entities.life_state()[test_driver->get_ledger().get_history_index(
-                        player_ship_id)] == ::ioj::sim::LifeState::Alive,
-                    IsValid(controller) && IsValid(controller->GetPawn()),
-                    IsValid(controller) &&
-                        controller->get_active_control_context() == EPlayerControlContext::Player});
+    samples.add(
+        test_driver->get_time(),
+        FSimulationSample{!sim::entity_is_alive(*test_driver->orchestrator.get_level_simulation(),
+                                                player_ship_id),
+                          IsValid(player_ship.Get()),
+                          unique_entities.life_state()[test_driver->get_ledger().get_history_index(
+                              player_ship_id)] == sim::LifeState::Alive,
+                          IsValid(controller) && IsValid(controller->GetPawn()),
+                          IsValid(controller) && controller->get_active_control_context() ==
+                                                     EPlayerControlContext::Player});
 }
 
 void FTestPlayerShipDeathScenario::check_player_ship_death() {
-    ioj::check_samples_recorded(
-        samples.num(), checks, TEXT("Player-death simulation samples recorded"));
+    check_samples_recorded(samples.num(), checks, TEXT("Player-death simulation samples recorded"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
     auto const& sample{samples.last_value()};

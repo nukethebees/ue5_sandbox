@@ -29,7 +29,7 @@ TestSimulationDriver::TestSimulationDriver(UWorld& world, ATestBatchOrchestrator
 }
 
 auto TestSimulationDriver::from_world(UWorld& world) -> TestSimulationDriver {
-    auto* orchestrator{ioj::get_first_actor<ATestBatchOrchestrator>(world)};
+    auto* orchestrator{get_first_actor<ATestBatchOrchestrator>(world)};
     if (!IsValid(orchestrator)) {
         UE_LOG(LogSandboxTest, Fatal, TEXT("orchestrator is nullptr"));
     }
@@ -57,12 +57,12 @@ auto TestSimulationDriver::get_fighters() const -> ::ioj::sim::fighters::Sim con
     return *simulation;
 }
 
-void TestSimulationDriver::queue_damage(std::span<::ioj::sim::EntityId const> const targets,
+void TestSimulationDriver::queue_damage(std::span<sim::EntityId const> const targets,
                                         int32 const damage,
-                                        ::ioj::sim::EntityId const instigator) {
+                                        sim::EntityId const instigator) {
     auto const n{static_cast<int32>(targets.size())};
 
-    ::ioj::sim::DirectDamageEvents damage_events;
+    sim::DirectDamageEvents damage_events;
     damage_events.reserve(n);
     for (auto const target : targets) {
         damage_events.add(target, damage, instigator);
@@ -71,9 +71,9 @@ void TestSimulationDriver::queue_damage(std::span<::ioj::sim::EntityId const> co
     FTestBatchOrchestratorTestAccess::queue_direct_damage_events(orchestrator,
                                                                  damage_events.get_const_view());
 }
-void TestSimulationDriver::queue_kills(std::span<::ioj::sim::EntityId const> const targets,
-                                       ::ioj::sim::EntityId const instigator) {
-    ::ioj::sim::DirectDamageEvents events;
+void TestSimulationDriver::queue_kills(std::span<sim::EntityId const> const targets,
+                                       sim::EntityId const instigator) {
+    sim::DirectDamageEvents events;
     events.reserve(static_cast<int32>(targets.size()));
     for (auto const id : targets) {
         events.add(id, std::numeric_limits<int32>::max(), instigator);

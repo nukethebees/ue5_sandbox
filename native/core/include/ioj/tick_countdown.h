@@ -91,7 +91,7 @@ class TickCountdown {
     }
 
     void tick() noexcept {
-        ioj::tick_countdowns<counter_type>(counters(), cleaner_counter_, clean_interval_);
+        tick_countdowns<counter_type>(counters(), cleaner_counter_, clean_interval_);
     }
 
     [[nodiscard]] auto is_ready(size_type const index) const noexcept -> bool {
@@ -115,7 +115,7 @@ class TickCountdown {
 
     void consume(size_type const index) noexcept { (void)try_consume(index); }
 
-    void consume() noexcept { ioj::consume_ready_countdowns(counters(), tick_value_); }
+    void consume() noexcept { consume_ready_countdowns(counters(), tick_value_); }
 
     void reset() {
         counters_.clear();

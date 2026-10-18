@@ -24,7 +24,7 @@ inline auto to_native(FTransform const& value) -> ::ioj::Transform3d {
             to_native(value.GetLocation()),
             to_native(value.GetScale3D())};
 }
-inline auto to_unreal(::ioj::Transform3d const& value) -> FTransform {
+inline auto to_unreal(Transform3d const& value) -> FTransform {
     return {FQuat{value.rotation.x(), value.rotation.y(), value.rotation.z(), value.rotation.w()},
             to_unreal(value.location),
             to_unreal(value.scale)};

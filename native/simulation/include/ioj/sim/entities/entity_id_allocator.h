@@ -13,15 +13,14 @@ class EntityIdAllocator {
     inline static constexpr std::uint32_t invalid_index{std::numeric_limits<std::uint32_t>::max()};
     [[nodiscard]] auto allocate(EntityType const type, std::uint32_t const history_row)
         -> EntityId {
-        if (std::to_underlying(type) >= ioj::enum_count<EntityType>()) {
-            ioj::fatal_error("Cannot allocate an entity ID with an invalid type");
+        if (std::to_underlying(type) >= enum_count<EntityType>()) {
+            fatal_error("Cannot allocate an entity ID with an invalid type");
         }
         auto& count{issued_counts_[type]};
         if (count == entity_lifetime_capacities[type]) {
-            ioj::fatal_error(
-                std::format("Entity type {} exhausted its level lifetime ID budget ({})",
-                            static_cast<unsigned>(type),
-                            count));
+            fatal_error(std::format("Entity type {} exhausted its level lifetime ID budget ({})",
+                                    static_cast<unsigned>(type),
+                                    count));
         }
         auto const id{EntityId(count, type)};
         history_rows_[type].push_back(history_row);
@@ -51,6 +50,6 @@ class EntityIdAllocator {
     }
   private:
     EntityTypeSizes issued_counts_{};
-    ioj::EnumArray<EntityType, std::vector<std::uint32_t>> history_rows_;
+    EnumArray<EntityType, std::vector<std::uint32_t>> history_rows_;
 };
 }

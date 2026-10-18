@@ -51,7 +51,7 @@ struct FSoACommonMixin {
     template <SupportsApplyArrays Self>
     void validate_array_sizes(this Self const& self) {
         self.apply_arrays(
-            [](auto const&... arrays) { ioj::fatal_if_nums_not_equal({ioj::num(arrays)...}); });
+            [](auto const&... arrays) { fatal_if_nums_not_equal({ioj::num(arrays)...}); });
     }
 
     template <SupportsApplyArrays Self>

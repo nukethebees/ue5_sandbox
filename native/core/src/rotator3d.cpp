@@ -5,7 +5,7 @@
 #include <numbers>
 
 namespace ioj {
-auto to_quaternion(Rotator3d const rotation) noexcept -> ioj::Quaternion4d {
+auto to_quaternion(Rotator3d const rotation) noexcept -> Quaternion4d {
     auto const half_radians{std::numbers::pi / 360.0};
     auto const pitch{std::fmod(rotation.pitch, 360.0) * half_radians};
     auto const yaw{std::fmod(rotation.yaw, 360.0) * half_radians};
@@ -21,7 +21,7 @@ auto to_quaternion(Rotator3d const rotation) noexcept -> ioj::Quaternion4d {
             cr * cp * sy - sr * sp * cy,
             cr * cp * cy + sr * sp * sy};
 }
-auto to_rotator(ioj::Quaternion4d const q) noexcept -> Rotator3d {
+auto to_rotator(Quaternion4d const q) noexcept -> Rotator3d {
     auto const degrees{180.0 / std::numbers::pi};
     auto const singularity{q.z() * q.x() - q.w() * q.y()};
     if (std::abs(singularity) > 0.4999995) {

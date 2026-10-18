@@ -10,7 +10,7 @@
 namespace ioj::radar_source {
 inline constexpr float hex_inradius{0.8660254f};
 
-auto glyph(::ioj::sim::EntityType const type) -> ERadarGlyph {
+auto glyph(sim::EntityType const type) -> ERadarGlyph {
     switch (type) {
         case ::ioj::sim::EntityType::PlayerShip: {
             return ERadarGlyph::Player;
@@ -38,7 +38,7 @@ auto colour(ETestTeam const team, ETestTeam const player_team, FRadarContactColo
     return team == player_team ? colours.friendly : colours.hostile;
 }
 
-auto size_scale(::ioj::sim::EntityType const type) -> float {
+auto size_scale(sim::EntityType const type) -> float {
     switch (type) {
         case ::ioj::sim::EntityType::CapitalShip: {
             return 1.1f;

@@ -84,17 +84,17 @@ namespace ioj::hud_manager {
 struct FMissionStaticDataCache {
     bool operator==(FMissionStaticDataCache const& other) const noexcept = default;
 
-    ::ioj::sim::MissionMode mission_mode{::ioj::sim::MissionMode::None};
-    TArray<::ioj::sim::EntityId> surviving_entity_ids;
-    TArray<::ioj::sim::EntityType> surviving_entity_types;
-    TArray<::ioj::sim::EntityId> required_kill_entity_ids;
-    TArray<::ioj::sim::EntityType> required_kill_entity_types;
+    sim::MissionMode mission_mode{sim::MissionMode::None};
+    TArray<sim::EntityId> surviving_entity_ids;
+    TArray<sim::EntityType> surviving_entity_types;
+    TArray<sim::EntityId> required_kill_entity_ids;
+    TArray<sim::EntityType> required_kill_entity_types;
 };
 
 struct FMissionStatusDataCache {
     bool operator==(FMissionStatusDataCache const& other) const noexcept = default;
 
-    ::ioj::sim::MissionState mission_state{::ioj::sim::MissionState::NotStarted};
+    sim::MissionState mission_state{sim::MissionState::NotStarted};
     float mission_stopwatch{0.f};
     float time_remaining{0.f};
     int32 enemies_remaining{0};
@@ -112,14 +112,14 @@ struct FMissionDataCache {
 struct FEntityCountDataCache {
     bool operator==(FEntityCountDataCache const& other) const noexcept = default;
 
-    ::ioj::sim::telemetry::EntityCounts alive_per_team_and_type{};
+    sim::telemetry::EntityCounts alive_per_team_and_type{};
 };
 
 struct FKillDataCache {
     bool operator==(FKillDataCache const& other) const noexcept = default;
 
-    ioj::ship_hud::FTopKillerEntries top_killers;
-    ioj::ship_hud::FTeamKillMatrix team_kill_matrix;
+    ship_hud::FTopKillerEntries top_killers;
+    ship_hud::FTeamKillMatrix team_kill_matrix;
 };
 
 struct FPlayerStatusDataCache {
@@ -131,20 +131,20 @@ struct FPlayerStatusDataCache {
     float target_speed{0.f};
     float energy{1.f};
     int32 points{0};
-    ::ioj::sim::ShipFireRate fire_rate{::ioj::sim::ShipFireRate::Single};
+    sim::ShipFireRate fire_rate{sim::ShipFireRate::Single};
 };
 
 struct FPlayerFlightDataCache {
     bool operator==(FPlayerFlightDataCache const& other) const noexcept = default;
 
     bool has_player_ship{false};
-    ioj::ship_hud::FFlightVectorDebugData flight_vector_debug{};
+    ship_hud::FFlightVectorDebugData flight_vector_debug{};
     FVector ship_velocity{};
     FVector target_velocity{};
-    ::ioj::sim::player::FlightModelPreset flight_model_preset{};
+    sim::player::FlightModelPreset flight_model_preset{};
     bool flight_model_customized{};
     float throttle{};
-    ::ioj::sim::player::BoostBrakeState boost_brake_state{};
+    sim::player::BoostBrakeState boost_brake_state{};
     FVector crosshair_origin{};
     FVector crosshair_direction{};
     FString selected_mapping_context;

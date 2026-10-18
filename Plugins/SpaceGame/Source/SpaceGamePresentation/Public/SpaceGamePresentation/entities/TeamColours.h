@@ -8,13 +8,13 @@
 #include <utility>
 
 namespace ioj {
-inline constexpr int32 test_team_count{ioj::enum_count<ETestTeam>()};
+inline constexpr int32 test_team_count{enum_count<ETestTeam>()};
 
 template <typename T>
 using TStaticTeamArray = TStaticArray<T, test_team_count>;
 
 constexpr bool is_valid(ETestTeam const team) {
-    return std::to_underlying(team) < ioj::enum_count<ETestTeam>();
+    return std::to_underlying(team) < enum_count<ETestTeam>();
 }
 }
 

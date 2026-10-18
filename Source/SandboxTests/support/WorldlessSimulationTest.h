@@ -20,22 +20,21 @@ auto make_worldless_simulation_test_data(USpaceGameLevelConfig const& config)
 auto make_worldless_player_spawn(USpaceGameLevelConfig const& config,
                                  FTransform const& transform = FTransform::Identity)
     -> ::ioj::sim::player::PlayerSpawnData;
-auto add_worldless_player_spawn(::ioj::sim::LevelSimInitData& data,
-                                ::ioj::sim::player::PlayerSpawnData spawn) -> uint32;
-auto
-    add_worldless_capital_spawn(::ioj::sim::LevelSimInitData& data,
-                                FVector3f location,
-                                ETestTeam team,
-                                uint32 target_entity_index = ::ioj::sim::invalid_level_entity_index,
-                                float initial_spawn_delay = 0.f,
-                                float spawn_cooldown = 60.f,
-                                int32 health = INDEX_NONE) -> uint32;
+auto add_worldless_player_spawn(sim::LevelSimInitData& data, sim::player::PlayerSpawnData spawn)
+    -> uint32;
+auto add_worldless_capital_spawn(sim::LevelSimInitData& data,
+                                 FVector3f location,
+                                 ETestTeam team,
+                                 uint32 target_entity_index = sim::invalid_level_entity_index,
+                                 float initial_spawn_delay = 0.f,
+                                 float spawn_cooldown = 60.f,
+                                 int32 health = INDEX_NONE) -> uint32;
 
 class FWorldlessSimulationTest {
   public:
-    using time_type = ::ioj::sim::LevelSim::time_type;
+    using time_type = sim::LevelSim::time_type;
 
-    explicit FWorldlessSimulationTest(::ioj::sim::LevelSimInitData data);
+    explicit FWorldlessSimulationTest(sim::LevelSimInitData data);
     FWorldlessSimulationTest(FWorldlessSimulationTest const&) = delete;
     FWorldlessSimulationTest(FWorldlessSimulationTest&&) = delete;
     auto operator=(FWorldlessSimulationTest const&) -> FWorldlessSimulationTest& = delete;
@@ -49,18 +48,17 @@ class FWorldlessSimulationTest {
     auto get_time() const -> time_type { return simulation_.get_clock().get_simulation_time(); }
 
     void finish_initialisation();
-    void queue_damage(std::span<::ioj::sim::EntityId const> targets,
+    void queue_damage(std::span<sim::EntityId const> targets,
                       int32 damage,
-                      ::ioj::sim::EntityId instigator = {});
-    void queue_kills(std::span<::ioj::sim::EntityId const> targets,
-                     ::ioj::sim::EntityId instigator = {});
+                      sim::EntityId instigator = {});
+    void queue_kills(std::span<sim::EntityId const> targets, sim::EntityId instigator = {});
     void advance(time_type dt);
     auto run_until_timeline_finished(time_type maximum_time) -> bool;
 
-    TFunction<void(::ioj::sim::LevelSim&)> on_end_tick;
+    TFunction<void(sim::LevelSim&)> on_end_tick;
     FTestTimeline timeline;
   private:
-    ::ioj::sim::GameMemory game_memory_;
-    ::ioj::sim::LevelSim simulation_;
+    sim::GameMemory game_memory_;
+    sim::LevelSim simulation_;
 };
 }

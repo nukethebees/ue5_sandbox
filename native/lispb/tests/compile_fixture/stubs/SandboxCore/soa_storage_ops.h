@@ -12,8 +12,7 @@ namespace ioj::soa_ops {
 
 template <typename View>
 void validate_array_sizes(View const& view) {
-    view.apply_arrays(
-        [](auto const&... columns) { ioj::fatal_if_nums_not_equal({ioj::num(columns)...}); });
+    view.apply_arrays([](auto const&... columns) { fatal_if_nums_not_equal({num(columns)...}); });
 }
 
 template <typename Soa>
@@ -66,7 +65,7 @@ void sort(Soa& value, Compare&& compare, TArrayView<int32> scratch_indices) {
     value.validate_array_sizes();
     auto const n{value.num()};
     check(scratch_indices.Num() == n);
-    ioj::fill_indices(scratch_indices);
+    fill_indices(scratch_indices);
     scratch_indices.Sort(
         [&value, &compare](int32 const lhs, int32 const rhs) { return compare(value, lhs, rhs); });
     apply_permutation(value, scratch_indices);
@@ -77,7 +76,7 @@ void sort(Soa& value, TArrayView<int32> scratch_indices) {
     value.validate_array_sizes();
     auto const n{value.num()};
     check(scratch_indices.Num() == n);
-    ioj::fill_indices(scratch_indices);
+    fill_indices(scratch_indices);
     scratch_indices.Sort(
         [&value](int32 const lhs, int32 const rhs) { return Compare(value, lhs, rhs); });
     apply_permutation(value, scratch_indices);

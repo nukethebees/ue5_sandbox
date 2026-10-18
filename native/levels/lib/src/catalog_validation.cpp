@@ -51,8 +51,8 @@ auto validate_level_catalog(std::span<LevelCatalogEntry const> const entries)
         if (!inserted) {
             auto const message{std::format("Level id '{}' is declared in '{}' and '{}'",
                                            id.value,
-                                           ioj::path_to_utf8(entries[found->second].source_path),
-                                           ioj::path_to_utf8(entries[index].source_path))};
+                                           path_to_utf8(entries[found->second].source_path),
+                                           path_to_utf8(entries[index].source_path))};
             add_issue(states[index], DiagnosticCode::DuplicateLevelId, message);
             add_issue(states[found->second], DiagnosticCode::DuplicateLevelId, message);
         }

@@ -12,7 +12,7 @@ auto get_abs_angle_from_fwd_vector(FVector standing_pt, FVector fwd, AActor cons
     -> double {
     auto const to_target{target.GetActorLocation() - standing_pt};
     auto const to_target_norm{to_target.GetSafeNormal()};
-    auto const angle_between{ioj::get_angle_between_norm_lines(fwd, to_target_norm)};
+    auto const angle_between{get_angle_between_norm_lines(fwd, to_target_norm)};
 
     return angle_between;
 }

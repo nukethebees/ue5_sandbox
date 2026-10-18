@@ -78,11 +78,11 @@ class PeriodicTickCountdown {
         return remaining_ticks_[to_index(index)];
     }
 
-    void tick() noexcept { ioj::tick_periodic_countdowns(remaining_ticks()); }
+    void tick() noexcept { tick_periodic_countdowns(remaining_ticks()); }
 
     void tick(counter_type const num_ticks) noexcept {
         assert(num_ticks >= 0);
-        ioj::tick_periodic_countdowns(remaining_ticks(), num_ticks);
+        tick_periodic_countdowns(remaining_ticks(), num_ticks);
     }
 
     [[nodiscard]] auto is_ready(size_type const index) const noexcept -> bool {

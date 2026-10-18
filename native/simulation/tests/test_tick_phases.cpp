@@ -15,14 +15,14 @@ auto make_world() -> LevelSimInitData {
     data.lasers.n_preallocated_instances = 8;
     data.overlap_response.damage_per_overlap_detection = 25;
 
-    for (auto const type : ioj::EnumTraits<EntityType>::values) {
+    for (auto const type : EnumTraits<EntityType>::values) {
         data.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
 
     return data;
 }
 
-void add_moving_player(LevelSimInitData& data, ioj::Vector3d const location = {}) {
+void add_moving_player(LevelSimInitData& data, Vector3d const location = {}) {
     player::PlayerSpawnData spawn{};
     spawn.transform.location = location;
     spawn.flight_models.initial_slot = player::FlightModelSlot::Left;
@@ -287,7 +287,7 @@ TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverl
         LevelMissionEventType::MustSurvive, std::array{static_cast<std::int32_t>(turret_index)}));
 
     auto& mission{data.level_events.initialisation.mission.emplace()};
-    mission.mode = ::ioj::levels::LevelMissionMode::SurviveTime;
+    mission.mode = levels::LevelMissionMode::SurviveTime;
     mission.time_limit_seconds = 10.f;
     mission.save_results = false;
     mission.must_survive_entity_indices = {static_cast<std::int32_t>(capital_index)};
@@ -443,7 +443,7 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
             {.location = {0.0, 500.0, 0.0}}};
 
         auto& mission{data.level_events.initialisation.mission.emplace()};
-        mission.mode = ::ioj::levels::LevelMissionMode::KillEnemies;
+        mission.mode = levels::LevelMissionMode::KillEnemies;
         mission.kill_count = 1;
         mission.save_results = false;
         mission.hero_entity_indices = {static_cast<std::int32_t>(second)};

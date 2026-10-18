@@ -122,7 +122,7 @@ template <typename T, std::size_t N>
 }
 template <typename T>
 [[nodiscard]] auto dot(Vector<T, 3> const a, Vector<T, 3> const b) noexcept -> T {
-    return ioj::native_math::dot_product(a.x(), a.y(), a.z(), b.x(), b.y(), b.z());
+    return native_math::dot_product(a.x(), a.y(), a.z(), b.x(), b.y(), b.z());
 }
 template <typename T, std::size_t N>
 [[nodiscard]] auto size_squared(Vector<T, N> const value) noexcept -> T {

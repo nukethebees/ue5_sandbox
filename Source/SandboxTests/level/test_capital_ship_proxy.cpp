@@ -34,10 +34,9 @@ void FTestCapitalShipProxyScenario::spawn_proxies(UWorld& world,
     default_health = capital_config->max_health;
     overridden_health = default_health + 1234;
 
-    ioj::spawn_capital_proxy(
-        world, config, checks, default_health_capital_name, FVector::ZeroVector);
+    spawn_capital_proxy(world, config, checks, default_health_capital_name, FVector::ZeroVector);
 
-    auto* const overridden_health_proxy{ioj::spawn_capital_proxy(
+    auto* const overridden_health_proxy{spawn_capital_proxy(
         world, config, checks, overridden_health_capital_name, FVector{2000.f, 0.f, 0.f})};
     if (!IsValid(overridden_health_proxy)) {
         return;
@@ -51,11 +50,11 @@ void FTestCapitalShipProxyScenario::spawn_proxies(UWorld& world,
 void FTestCapitalShipProxyScenario::resolve_proxy_ids(FProxyEntityMap const& proxy_entities) {
     checks.are_equal(proxy_entities.Num(), 2, TEXT("Correct number of proxies"));
 
-    TArray<ioj::FProxyEntityBinding> const bindings{
+    TArray<FProxyEntityBinding> const bindings{
         {.test_name = default_health_capital_name, .id = &default_health_id},
         {.test_name = overridden_health_capital_name, .id = &overridden_health_id},
     };
-    ioj::resolve_proxy_entity_bindings(proxy_entities, bindings, checks);
+    resolve_proxy_entity_bindings(proxy_entities, bindings, checks);
 
     checks.is_true(default_health_id.is_valid(), TEXT("Nullopt-health capital proxy is bound"));
     checks.is_true(overridden_health_id.is_valid(),
@@ -78,17 +77,17 @@ void FTestCapitalShipProxyScenario::check_proxy_healths() {
 
     checks.are_equal(
         2u, capitals.get_num_instances(), TEXT("Two capital ships are spawned from the proxies"));
-    checks.is_true(::ioj::sim::entity_is_alive(simulation, default_health_id),
+    checks.is_true(sim::entity_is_alive(simulation, default_health_id),
                    TEXT("Default-health proxy ID is alive"));
-    checks.is_true(::ioj::sim::entity_is_alive(simulation, overridden_health_id),
+    checks.is_true(sim::entity_is_alive(simulation, overridden_health_id),
                    TEXT("Overridden-health proxy ID is alive"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
     checks.are_equal(default_health,
-                     ::ioj::sim::observe_entity(simulation, default_health_id)->health,
+                     sim::observe_entity(simulation, default_health_id)->health,
                      TEXT("Nullopt proxy health uses the capital-ship config"));
     checks.are_equal(overridden_health,
-                     ::ioj::sim::observe_entity(simulation, overridden_health_id)->health,
+                     sim::observe_entity(simulation, overridden_health_id)->health,
                      TEXT("Proxy health overrides the capital-ship config"));
 
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);

@@ -5,8 +5,8 @@
 
 #include <expected>
 namespace ioj::levels::authoring {
-using FLevelDefinitionReadResult = std::expected<ioj::levels::LevelDefinition, Diagnostics>;
-using FCampaignDefinitionReadResult = std::expected<ioj::FCampaignDefinition, Diagnostics>;
+using FLevelDefinitionReadResult = std::expected<levels::LevelDefinition, Diagnostics>;
+using FCampaignDefinitionReadResult = std::expected<FCampaignDefinition, Diagnostics>;
 class SPACEGAMES7_API FDefinitionReader {
   public:
     FDefinitionReader() = default;

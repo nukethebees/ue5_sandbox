@@ -7,8 +7,8 @@
 
 namespace ioj::sim {
 struct LevelTelemetrySnapshot {
-    using ActiveEntityCountData = ioj::XYSeriesData<SimTick, std::int32_t>;
-    using CumulativeKillCountData = ioj::XYSeriesData<SimTick, std::int32_t>;
+    using ActiveEntityCountData = XYSeriesData<SimTick, std::int32_t>;
+    using CumulativeKillCountData = XYSeriesData<SimTick, std::int32_t>;
 
     double elapsed_seconds{0.0};
     double tick_period{0.0};

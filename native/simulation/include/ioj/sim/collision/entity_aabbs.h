@@ -21,14 +21,14 @@ struct EntityAABBs {
     }
 
     [[nodiscard]] constexpr auto get_centre(EntityType const type) const noexcept -> Vector3f {
-        return ioj::Vector3f{centre_xs_[type], centre_ys_[type], centre_zs_[type]};
+        return Vector3f{centre_xs_[type], centre_ys_[type], centre_zs_[type]};
     }
     [[nodiscard]] constexpr auto get_half_extents(EntityType const type) const noexcept
         -> Vector3f {
-        return ioj::Vector3f{half_extent_xs_[type], half_extent_ys_[type], half_extent_zs_[type]};
+        return Vector3f{half_extent_xs_[type], half_extent_ys_[type], half_extent_zs_[type]};
     }
   private:
-    using Values = ioj::EnumArray<EntityType, float>;
+    using Values = EnumArray<EntityType, float>;
 
     Values centre_xs_{};
     Values centre_ys_{};

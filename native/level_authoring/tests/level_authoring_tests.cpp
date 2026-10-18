@@ -286,7 +286,7 @@ TEST(NativeLevelAuthoringFiles, ReadsEmptyBinaryAndLargeFilesWithExplicitErrors)
         std::ofstream empty_file{path, std::ios::binary};
         ASSERT_TRUE(empty_file);
     }
-    EXPECT_EQ(ioj::read_file(path), "");
+    EXPECT_EQ(read_file(path), "");
     std::string bytes(20000, 'x');
     bytes[100] = '\0';
     bytes[8191] = '\r';
@@ -295,10 +295,10 @@ TEST(NativeLevelAuthoringFiles, ReadsEmptyBinaryAndLargeFilesWithExplicitErrors)
         std::ofstream output{path, std::ios::binary};
         output.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
     }
-    EXPECT_EQ(ioj::read_file(path), bytes);
-    auto const missing{ioj::read_file(directory.path() / "missing.dat")};
+    EXPECT_EQ(read_file(path), bytes);
+    auto const missing{read_file(directory.path() / "missing.dat")};
     ASSERT_FALSE(missing);
-    EXPECT_EQ(missing.error().code, ioj::FileReadErrorCode::OpenFailed);
+    EXPECT_EQ(missing.error().code, FileReadErrorCode::OpenFailed);
     EXPECT_TRUE(missing.error().system_error);
 }
 TEST(NativeLevelAuthoringCampaignReader, DecodesAndValidatesCampaignData) {
@@ -545,10 +545,10 @@ TEST(NativeLevelAuthoringCollisionGrid, PreservesIndependentOverridesAcrossSourc
             definition.collision_grid.emplace();
         }
         if ((mask & 1) != 0) {
-            definition.collision_grid->level_size = ioj::Vector3d{20000, 20000, 20000};
+            definition.collision_grid->level_size = Vector3d{20000, 20000, 20000};
         }
         if ((mask & 2) != 0) {
-            definition.collision_grid->cell_size = ioj::Vector3d{5000, 5000, 5000};
+            definition.collision_grid->cell_size = Vector3d{5000, 5000, 5000};
         }
         auto const source{emit_source(definition)};
         ASSERT_TRUE(source) << format_diagnostics(source.error());

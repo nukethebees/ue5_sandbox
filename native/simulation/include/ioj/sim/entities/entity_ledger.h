@@ -85,6 +85,6 @@ class EntityLedger {
     EntityHistory history_;
     EntityIdAllocator ids_;
     CombatStatistics statistics_;
-    std::array<std::vector<HistoryIndex>, ioj::enum_count<EntityType>()> frame_deaths_;
+    std::array<std::vector<HistoryIndex>, enum_count<EntityType>()> frame_deaths_;
 };
 }

@@ -26,7 +26,7 @@ auto GameMemory::acquire_block(std::size_t const size_bytes, std::size_t const a
     auto block{try_acquire_block(size_bytes, alignment)};
     if (!block) {
         auto const stats{root_arena_.get_statistics()};
-        ioj::fatal_error(
+        fatal_error(
             std::format("Game memory exhausted: requested={} alignment={} claimed={} capacity={}",
                         size_bytes,
                         alignment,

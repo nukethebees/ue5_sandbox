@@ -270,7 +270,7 @@ auto USpaceGameUiTheme::compile() const -> FGameUiStyle {
     compiled.chrome_.modal_overlay = make_brush(palette_.modal_overlay);
     compiled.chrome_.scroll_bar = make_scroll_bar_style(palette_);
 
-    for (std::size_t index{}; index < ioj::enum_count<EGameUiIcon>(); ++index) {
+    for (std::size_t index{}; index < enum_count<EGameUiIcon>(); ++index) {
         auto const icon{static_cast<EGameUiIcon>(index)};
         compiled.icons_[icon] = make_icon(icon);
     }

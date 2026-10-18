@@ -50,14 +50,14 @@ class CollisionSystem {
     // Overlap detection
     /* **************************************** */
     auto detect_overlaps(std::span<EntityId const> overlap_candidates,
-                         ioj::FrameMemoryResource* const scratch_resource) -> DetectedOverlapsView;
+                         FrameMemoryResource* const scratch_resource) -> DetectedOverlapsView;
     void collect_overlaps_for_candidates(std::span<EntityId const> overlap_candidates,
                                          EntityEntityOverlaps& entity_overlaps,
                                          EntityStaticOverlaps& static_overlaps,
-                                         ioj::FrameMemoryResource* const scratch_resource);
+                                         FrameMemoryResource* const scratch_resource);
     void finalize_overlaps(EntityEntityOverlaps& entity_overlaps,
                            EntityStaticOverlaps& static_overlaps,
-                           ioj::FrameMemoryResource* const scratch_resource);
+                           FrameMemoryResource* const scratch_resource);
 
     /* **************************************** */
     // Events and bounds

@@ -15,14 +15,14 @@ auto near(double const lhs, double const rhs) -> bool {
 auto same_number(double const lhs, double const rhs) -> bool {
     return lhs == rhs || (std::isnan(lhs) && std::isnan(rhs));
 }
-auto same_vector(ioj::Vector3d const& lhs, ioj::Vector3d const& rhs) -> bool {
+auto same_vector(Vector3d const& lhs, Vector3d const& rhs) -> bool {
     return same_number(lhs.x(), rhs.x()) && same_number(lhs.y(), rhs.y()) &&
            same_number(lhs.z(), rhs.z());
 }
-auto near_vector(ioj::Vector3d const& lhs, ioj::Vector3d const& rhs) -> bool {
+auto near_vector(Vector3d const& lhs, Vector3d const& rhs) -> bool {
     return near(lhs.x(), rhs.x()) && near(lhs.y(), rhs.y()) && near(lhs.z(), rhs.z());
 }
-auto quaternion(ioj::Rotator3d const r) -> std::array<double, 4> {
+auto quaternion(Rotator3d const r) -> std::array<double, 4> {
     auto const half_radians{std::numbers::pi / 360.0};
     auto const cp{std::cos(r.pitch * half_radians)}, sp{std::sin(r.pitch * half_radians)};
     auto const cy{std::cos(r.yaw * half_radians)}, sy{std::sin(r.yaw * half_radians)};
@@ -32,7 +32,7 @@ auto quaternion(ioj::Rotator3d const r) -> std::array<double, 4> {
             cr * cp * sy - sr * sp * cy,
             cr * cp * cy + sr * sp * sy};
 }
-auto same_rotation(ioj::Rotator3d const lhs, ioj::Rotator3d const rhs) -> bool {
+auto same_rotation(Rotator3d const lhs, Rotator3d const rhs) -> bool {
     auto const a{quaternion(lhs)}, b{quaternion(rhs)};
     bool equal{true}, negated{true};
     for (std::size_t i{}; i < a.size(); ++i) {
@@ -57,8 +57,7 @@ auto operator==(LevelCameraDefinition const& lhs, LevelCameraDefinition const& r
            same_number(lhs.distance, rhs.distance);
 }
 
-auto operator==(std::optional<ioj::Vector3d> const& lhs, std::optional<ioj::Vector3d> const& rhs)
-    -> bool {
+auto operator==(std::optional<Vector3d> const& lhs, std::optional<Vector3d> const& rhs) -> bool {
     return lhs.has_value() == rhs.has_value() && (!lhs || same_vector(*lhs, *rhs));
 }
 

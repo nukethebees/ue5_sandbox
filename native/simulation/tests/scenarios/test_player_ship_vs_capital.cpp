@@ -19,7 +19,7 @@ void run_worldless_player_ship_vs_capital(tests::SimulationFixture const& config
         data,
         tests::make_player_spawn(config,
                                  Transform3d{.rotation = to_quaternion(Rotator3d{0.f, -90.f, 0.f}),
-                                             .location = ioj::Vector3d{19850.f, 1300.f, 980.f}}))};
+                                             .location = Vector3d{19850.f, 1300.f, 980.f}}))};
     data.player->health.health = player_vs_capital_test::collision_resilient_health;
     tests::add_capital_spawn(
         data, Vector3f{{-22020.f, 2170.f, 4360.f}}, Team::Green, player_index, 0.f, 120.f);
@@ -32,18 +32,18 @@ void run_worldless_player_ship_vs_capital(tests::SimulationFixture const& config
     harness.get_simulation().get_player_ship_commands()->start_boost();
     auto const player_id{player->unique_entity_id};
     struct Sample {
-        ioj::Vector3d player_location;
-        ioj::Vector3d accessor_location;
+        Vector3d player_location;
+        Vector3d accessor_location;
         std::vector<Vector3f> fighter_target_locations{};
         std::vector<Vector3f> fighter_locations{};
     };
-    ioj::TimeSeriesData<Sample> samples;
+    TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim&) {
         Sample sample{.player_location = player->get_physical_state().transform.location,
                       .accessor_location = [&] {
                           auto const location{
                               observe_entity(harness.get_simulation(), player_id)->location};
-                          return ioj::Vector3d{location.x(), location.y(), location.z()};
+                          return Vector3d{location.x(), location.y(), location.z()};
                       }()};
         sample.fighter_target_locations = tests::copy_vectors(fighters.get_target_locations());
         sample.fighter_locations = tests::copy_vectors(fighters.get_locations());
@@ -61,11 +61,11 @@ void run_worldless_player_ship_vs_capital(tests::SimulationFixture const& config
     auto const& tracked{samples.nearest_value(0.6)};
     auto const& before_end{samples.nearest_value(5.1)};
     auto const& end{samples.nearest_value(5.6)};
-    EXPECT_LE((ioj::size(settled.player_location - settled.accessor_location)), 1.0)
+    EXPECT_LE((size(settled.player_location - settled.accessor_location)), 1.0)
         << "Accessor and player locations match initially";
-    EXPECT_LE((ioj::size(tracked.player_location - tracked.accessor_location)), 1.0)
+    EXPECT_LE((size(tracked.player_location - tracked.accessor_location)), 1.0)
         << "Accessor and player locations match after movement";
-    EXPECT_GT((ioj::size(settled.player_location - tracked.player_location)), 1.0)
+    EXPECT_GT((size(settled.player_location - tracked.player_location)), 1.0)
         << "Player ship moves";
     EXPECT_GT(static_cast<std::int32_t>(tracked.fighter_target_locations.size()), std::int32_t{0})
         << "Fighters have target locations";
@@ -81,14 +81,12 @@ void run_worldless_player_ship_vs_capital(tests::SimulationFixture const& config
     auto const count{static_cast<std::int32_t>(end.fighter_locations.size())};
     for (std::int32_t i{}; i < count; ++i) {
         SCOPED_TRACE(::testing::Message() << "index " << i);
-        EXPECT_GT(ioj::size(tracked.fighter_target_locations[i] - end.fighter_target_locations[i]),
-                  1.f)
+        EXPECT_GT(size(tracked.fighter_target_locations[i] - end.fighter_target_locations[i]), 1.f)
             << "Fighter target follows player";
-        EXPECT_GT(ioj::size(before_end.fighter_locations[i] - end.fighter_locations[i]), 500.f)
+        EXPECT_GT(size(before_end.fighter_locations[i] - end.fighter_locations[i]), 500.f)
             << "Fighter moves late in simulation";
-        EXPECT_GT(
-            ioj::size(before_end.fighter_target_locations[i] - end.fighter_target_locations[i]),
-            500.f)
+        EXPECT_GT(size(before_end.fighter_target_locations[i] - end.fighter_target_locations[i]),
+                  500.f)
             << "Fighter target updates late in simulation";
     }
 }

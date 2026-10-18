@@ -30,7 +30,7 @@ auto make_s7_observer_camera_transform(ULevel const& level,
         target_positions.Add(target->GetActorLocation());
     }
 
-    auto const transform{ioj::make_observer_camera_transform(
+    auto const transform{make_observer_camera_transform(
         target_positions, document.camera.offset_direction, document.camera.distance)};
     if (!transform.IsSet()) {
         return std::unexpected{TEXT(

@@ -33,7 +33,7 @@ class FTestHUDManagerScenario final : public FSimulationTestScenario {
         int32 registered_hud_count{0};
     };
     struct FDefenceSample {
-        ::ioj::sim::MissionState mission_state{::ioj::sim::MissionState::NotStarted};
+        sim::MissionState mission_state{sim::MissionState::NotStarted};
         int32 defended_entity_health{INDEX_NONE};
         int32 required_kill_entity_health{INDEX_NONE};
         float mission_stopwatch{0.f};

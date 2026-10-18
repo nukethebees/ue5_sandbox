@@ -65,7 +65,7 @@ auto spawn_player(UWorld& world,
                   levels::EntitySpawnDefinition const& entity,
                   FSpawnedActorTransaction& transaction,
                   FLevelLoadResult& result) -> ATestSpaceShip* {
-    auto const team{ioj::to_unreal(entity.team)};
+    auto const team{to_unreal(entity.team)};
     auto const transform{
         FTransform{FRotator{entity.rotation.pitch, entity.rotation.yaw, entity.rotation.roll},
                    FVector{entity.position.x(), entity.position.y(), entity.position.z()}}};
@@ -147,7 +147,7 @@ auto FLevelLoader::load(levels::LevelDefinition const& definition,
     -> FLevelLoadResult {
     FLevelLoadResult result;
 
-    if (orchestrator_.get_state() != ::ioj::sim::OrchestratorState::Uninitialised) {
+    if (orchestrator_.get_state() != sim::OrchestratorState::Uninitialised) {
         add_error(result,
                   ELevelLoadErrorCode::InvalidOrchestratorState,
                   TEXT("Level loader requires an uninitialised orchestrator"));

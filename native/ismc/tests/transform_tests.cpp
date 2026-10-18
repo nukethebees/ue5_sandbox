@@ -28,10 +28,10 @@ auto angular_error(Quaternion4f original, Quaternion4f decoded) -> double {
 }
 
 TEST(SandboxISMCPacking, GoldenQuaternionsAndSignEquivalence) {
-    EXPECT_EQ(Quaternion4f{}, (ioj::Quaternion4f{0, 0, 0, 1}));
+    EXPECT_EQ(Quaternion4f{}, (Quaternion4f{0, 0, 0, 1}));
     EXPECT_EQ(pack_normalized_quat32(Quaternion4f{}).bits, 0x80200803U);
     for (auto index{0U}; index < 4; ++index) {
-        auto quaternion{ioj::Quaternion4f{0, 0, 0, 0}};
+        auto quaternion{Quaternion4f{0, 0, 0, 0}};
         quaternion[index] = 1.0f;
         auto const packed{pack_quat32(quaternion)};
         ASSERT_TRUE(packed.has_value());
@@ -39,29 +39,29 @@ TEST(SandboxISMCPacking, GoldenQuaternionsAndSignEquivalence) {
         EXPECT_EQ(pack_quat32((quaternion * -1.0f))->bits, packed->bits);
         EXPECT_LT(angular_error(quaternion, unpack_quat32(*packed)), 0.15);
     }
-    auto const boundary{pack_quat32(
-        ioj::Quaternion4f{quaternion_component_limit, -quaternion_component_limit, 0, 0})};
+    auto const boundary{
+        pack_quat32(Quaternion4f{quaternion_component_limit, -quaternion_component_limit, 0, 0})};
     ASSERT_TRUE(boundary.has_value());
     EXPECT_EQ(boundary->bits, 0x80200000U);
-    EXPECT_EQ(pack_quat32(ioj::Quaternion4f{0.5f, 0.5f, 0.5f, 0.5f})->bits, 0xda769da4U);
+    EXPECT_EQ(pack_quat32(Quaternion4f{0.5f, 0.5f, 0.5f, 0.5f})->bits, 0xda769da4U);
 }
 
 TEST(SandboxISMCPacking, AxesNearHalfTurnsAndArbitraryRotations) {
     for (auto axis{0U}; axis < 3; ++axis) {
         for (auto const angle : {0.0f, 0.001f, 1.0f, 1.5707963f, 3.14158f, 3.1415927f, 3.14160f}) {
-            auto quaternion{ioj::Quaternion4f{0, 0, 0, std::cos(angle * 0.5f)}};
+            auto quaternion{Quaternion4f{0, 0, 0, std::cos(angle * 0.5f)}};
             quaternion[axis] = std::sin(angle * 0.5f);
             auto const packed{pack_quat32(quaternion)};
             ASSERT_TRUE(packed.has_value());
             EXPECT_LT(angular_error(quaternion, unpack_quat32(*packed)), 0.3);
         }
     }
-    EXPECT_FALSE(pack_quat32(ioj::Quaternion4f{0, 0, 0, 0}).has_value());
-    EXPECT_FALSE(pack_quat32(ioj::Quaternion4f{std::numeric_limits<float>::infinity(), 0, 0, 1})
-                     .has_value());
-    EXPECT_FALSE(pack_quat32(ioj::Quaternion4f{0, 0, 0, std::numeric_limits<float>::quiet_NaN()})
-                     .has_value());
-    auto const nonunit{ioj::Quaternion4f{1, -2, 3, -4}};
+    EXPECT_FALSE(pack_quat32(Quaternion4f{0, 0, 0, 0}).has_value());
+    EXPECT_FALSE(
+        pack_quat32(Quaternion4f{std::numeric_limits<float>::infinity(), 0, 0, 1}).has_value());
+    EXPECT_FALSE(
+        pack_quat32(Quaternion4f{0, 0, 0, std::numeric_limits<float>::quiet_NaN()}).has_value());
+    auto const nonunit{Quaternion4f{1, -2, 3, -4}};
     EXPECT_LT(angular_error(nonunit, unpack_quat32(*pack_quat32(nonunit))), 0.3);
 }
 
@@ -71,8 +71,8 @@ TEST(SandboxISMCPacking, RandomQuaternionRoundTrips) {
     double maximum{};
     constexpr auto count{2048};
     for (auto index{0}; index < count; ++index) {
-        auto const quaternion{ioj::normalized(
-            ioj::Quaternion4f{normal(random), normal(random), normal(random), normal(random)})};
+        auto const quaternion{normalized(
+            Quaternion4f{normal(random), normal(random), normal(random), normal(random)})};
         auto const packed{pack_normalized_quat32(quaternion)};
         EXPECT_EQ(pack_normalized_quat32((quaternion * -1.0f)).bits, packed.bits);
         auto const error{angular_error(quaternion, unpack_quat32(packed))};
@@ -133,14 +133,14 @@ TEST(SandboxISMCPacking, ScalarBatchPreservesPaddingAndBoundsUseSourceGeometry) 
     for (auto& packed : output) {
         packed.reserved = 0xbeef;
     }
-    PackingParameters const parameters{{}, ioj::Vector3f{2, -3, 4}, ioj::Vector3f{5, 6, 7}};
+    PackingParameters const parameters{{}, Vector3f{2, -3, 4}, Vector3f{5, 6, 7}};
     TransformBounds bounds{};
     TransformPacker const packer{parameters, BoundsMode::Calculate, PackingBackend::Scalar};
     bounds = packer.pack_transforms(
         {std::as_bytes(std::span{positions}), std::as_bytes(std::span{rotations})}, output);
     EXPECT_FALSE(bounds.empty());
-    EXPECT_EQ(bounds.minimum, (ioj::Vector3f{-4, -34, 6}));
-    EXPECT_EQ(bounds.maximum, (ioj::Vector3f{24, 8, 42}));
+    EXPECT_EQ(bounds.minimum, (Vector3f{-4, -34, 6}));
+    EXPECT_EQ(bounds.maximum, (Vector3f{24, 8, 42}));
     for (auto const& packed : output) {
         EXPECT_EQ(packed.reserved, 0xbeef);
         EXPECT_EQ(packed.rotation.bits, 0x80200803U);
@@ -151,13 +151,13 @@ TEST(SandboxISMCPacking, ScalarBatchPreservesPaddingAndBoundsUseSourceGeometry) 
 }
 
 TEST(SandboxISMCPacking, NormalizedEncoderContractAndComponentEdges) {
-    EXPECT_TRUE(is_normalized_quaternion(ioj::Quaternion4f{0, 0, 0, 1}));
-    EXPECT_FALSE(is_normalized_quaternion(ioj::Quaternion4f{0, 0, 0, 0}));
-    EXPECT_FALSE(is_normalized_quaternion(ioj::Quaternion4f{0, 0, 0, 1.001f}));
-    EXPECT_FALSE(is_normalized_quaternion(
-        ioj::Quaternion4f{0, 0, 0, std::numeric_limits<float>::quiet_NaN()}));
-    EXPECT_FALSE(is_normalized_quaternion(
-        ioj::Quaternion4f{0, 0, 0, std::numeric_limits<float>::infinity()}));
+    EXPECT_TRUE(is_normalized_quaternion(Quaternion4f{0, 0, 0, 1}));
+    EXPECT_FALSE(is_normalized_quaternion(Quaternion4f{0, 0, 0, 0}));
+    EXPECT_FALSE(is_normalized_quaternion(Quaternion4f{0, 0, 0, 1.001f}));
+    EXPECT_FALSE(
+        is_normalized_quaternion(Quaternion4f{0, 0, 0, std::numeric_limits<float>::quiet_NaN()}));
+    EXPECT_FALSE(
+        is_normalized_quaternion(Quaternion4f{0, 0, 0, std::numeric_limits<float>::infinity()}));
     for (auto const direction : {-1.0f, 0.0f, 1.0f}) {
         EXPECT_EQ(
             quantize_quaternion_component(std::nextafter(-quaternion_component_limit, direction)),
@@ -166,21 +166,20 @@ TEST(SandboxISMCPacking, NormalizedEncoderContractAndComponentEdges) {
             quantize_quaternion_component(std::nextafter(quaternion_component_limit, direction)),
             1023U);
     }
-    EXPECT_EQ(pack_normalized_quat32(ioj::Quaternion4f{0, 0, 0, 1}).bits, 0x80200803U);
-    EXPECT_EQ(pack_normalized_quat32(ioj::Quaternion4f{0.5f, 0.5f, 0.5f, 0.5f}).bits, 0xda769da4U);
+    EXPECT_EQ(pack_normalized_quat32(Quaternion4f{0, 0, 0, 1}).bits, 0x80200803U);
+    EXPECT_EQ(pack_normalized_quat32(Quaternion4f{0.5f, 0.5f, 0.5f, 0.5f}).bits, 0xda769da4U);
 }
 
 TEST(SandboxISMCPacking, PositionDomainChoosesAnAlignedCentreAndRejectsExcessRange) {
-    auto const root{position_root(ioj::Vector3f{-480000, -1608, 1600000},
-                                  ioj::Vector3f{480000, 1624, 1600320})};
+    auto const root{
+        position_root(Vector3f{-480000, -1608, 1600000}, Vector3f{480000, 1624, 1600320})};
     ASSERT_TRUE(root.has_value());
-    EXPECT_EQ(*root, (ioj::Vector3f{0, 16, 1600160}));
+    EXPECT_EQ(*root, (Vector3f{0, 16, 1600160}));
+    EXPECT_FALSE(position_root(Vector3f{-524288, 0, 0}, Vector3f{524288, 0, 0}).has_value());
+    EXPECT_FALSE(position_root(Vector3f{1, 0, 0}, Vector3f{0, 0, 0}).has_value());
     EXPECT_FALSE(
-        position_root(ioj::Vector3f{-524288, 0, 0}, ioj::Vector3f{524288, 0, 0}).has_value());
-    EXPECT_FALSE(position_root(ioj::Vector3f{1, 0, 0}, ioj::Vector3f{0, 0, 0}).has_value());
-    EXPECT_FALSE(position_root(ioj::Vector3f{0, 0, 0},
-                               ioj::Vector3f{std::numeric_limits<float>::infinity(), 0, 0})
-                     .has_value());
+        position_root(Vector3f{0, 0, 0}, Vector3f{std::numeric_limits<float>::infinity(), 0, 0})
+            .has_value());
 }
 
 TEST(SandboxISMCPacking, LittleEndianGpuWords) {

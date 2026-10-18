@@ -43,10 +43,10 @@ TEST(DamageQueue, GroupsMixedOwnerEventsAndFiltersRetiredRecipients) {
     queue.append(second.get_const_view());
     first.get_view().damage_amounts()[0] = 999;
 
-    alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
-    ioj::FrameMemoryResource frame_memory{backing};
+    alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
+    FrameMemoryResource frame_memory{backing};
     {
-        ioj::FrameScratchScope scratch_scope{frame_memory};
+        FrameScratchScope scratch_scope{frame_memory};
         queue.prepare(indexes, &frame_memory);
     }
 
@@ -101,10 +101,10 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
     auto const fighter_type{std::to_underlying(EntityType::Fighter)};
     EXPECT_EQ(ledger.get_combat_telemetry().hits[red][turret_type], 0u);
 
-    alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
-    ioj::FrameMemoryResource frame_memory{backing};
+    alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
+    FrameMemoryResource frame_memory{backing};
     {
-        ioj::FrameScratchScope scratch_scope{frame_memory};
+        FrameScratchScope scratch_scope{frame_memory};
         events.prepare(indexes, &frame_memory);
     }
     ASSERT_EQ(events.all_events().num(), 3);
@@ -118,7 +118,7 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
     Vectors3f locations;
     locations.set_num(1);
     {
-        ioj::FrameScratchScope scratch_scope{frame_memory};
+        FrameScratchScope scratch_scope{frame_memory};
         resolve_damage_events(events.events_for(EntityType::Fighter),
                               indexes.for_type(EntityType::Fighter),
                               ids,

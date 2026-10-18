@@ -29,10 +29,10 @@ class EntityLookupTable {
                       Health const maximum = 1) {
         assert(teams.empty() || teams.size() == ids.size());
         assert(healths.empty() || healths.size() == ids.size());
-        assert(ioj::range_fits<std::size_t>(0,
-                                            ids.size(),
-                                            EntityInstanceHandle::index_minimum,
-                                            EntityInstanceHandle::index_maximum));
+        assert(range_fits<std::size_t>(0,
+                                       ids.size(),
+                                       EntityInstanceHandle::index_minimum,
+                                       EntityInstanceHandle::index_maximum));
         auto const count{ids.size()};
         row_count_ = static_cast<std::uint32_t>(count);
         [[maybe_unused]] auto const handle_count{handles_.size()};
@@ -106,7 +106,7 @@ class EntityLookupTables {
                    EntityLookupTable{EntityType::TubeSpinner}}} {}
 
     [[nodiscard]] auto for_type(EntityType const type) -> EntityLookupTable& {
-        assert(std::to_underlying(type) < ioj::enum_count<EntityType>());
+        assert(std::to_underlying(type) < enum_count<EntityType>());
         return tables_[type];
     }
 
@@ -123,7 +123,7 @@ class EntityLookupTables {
     [[nodiscard]] auto permits_lookup() const noexcept -> bool { return clock_.permits_lookup(); }
 
     [[nodiscard]] auto for_type(EntityType const type) const -> EntityLookupTable const& {
-        assert(std::to_underlying(type) < ioj::enum_count<EntityType>());
+        assert(std::to_underlying(type) < enum_count<EntityType>());
         return tables_[type];
     }
 
@@ -170,6 +170,6 @@ class EntityLookupTables {
     }
   private:
     SimClock const& clock_;
-    ioj::EnumArray<EntityType, EntityLookupTable> tables_;
+    EnumArray<EntityType, EntityLookupTable> tables_;
 };
 }

@@ -140,8 +140,8 @@ TEST(EntityMotion, CopiesMixedTypesAndReportsMissingEntitiesWithoutChangingIds) 
     SpatialQueryManager queries{owners.entity_tables};
     queries.initialise({{10, 10, 10}, {{100, 100, 100}}}, {});
     owners.refresh(queries);
-    alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
-    ioj::FrameMemoryResource scratch{backing};
+    alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
+    FrameMemoryResource scratch{backing};
     queries.copy_entity_locations(ids, locations.get_view(), &scratch);
     EXPECT_EQ(ids, original);
     std::array<EntityInstanceHandle, ids.size()> handles;
@@ -176,9 +176,9 @@ TEST(EntityMotion, CopiesMixedTypesAndReportsMissingEntitiesWithoutChangingIds) 
 }
 
 TEST(EntityLookupTables, ResolutionHealthChangesBeforeHandlesRetire) {
-    alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
-    ioj::FrameMemoryResource scratch{backing};
-    ioj::FrameScratchScope scratch_scope{scratch};
+    alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
+    FrameMemoryResource scratch{backing};
+    FrameScratchScope scratch_scope{scratch};
     CollisionAgentStorage owners;
     auto const id{owners.spawn(EntityType::Fighter, {{10, 0, 0}})};
     owners.publish();

@@ -45,8 +45,8 @@ auto summarize(FString backend, FString stage, int32 const resolution, TArray<do
             .resolution = resolution,
             .sample_count = samples.Num(),
             .minimum_microseconds = samples[0],
-            .median_microseconds = ioj::ui::benchmark::percentile(samples, 0.5),
-            .percentile_95_microseconds = ioj::ui::benchmark::percentile(samples, 0.95),
+            .median_microseconds = ui::benchmark::percentile(samples, 0.5),
+            .percentile_95_microseconds = ui::benchmark::percentile(samples, 0.95),
             .maximum_microseconds = samples.Last()};
 }
 }

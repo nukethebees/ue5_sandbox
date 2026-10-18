@@ -11,7 +11,7 @@ namespace ioj::sim::lasers {
 struct FrameOutput {
     void reset();
     template <typename Source>
-        requires ioj::soa_storage_detail::AppendableTo<Source, LaserHitDetails>
+        requires soa_storage_detail::AppendableTo<Source, LaserHitDetails>
     void append_hits(Source const& new_hits, SimTick const tick) {
         auto const count{new_hits.num()};
         hits.append_from(new_hits);

@@ -22,16 +22,16 @@ struct BenchmarkResult {
     double requested_seconds{};
     double tick_rate_hz{};
     std::uint32_t game_speed{};
-    ioj::sim::SimTick requested_ticks{};
-    ioj::sim::SimTick completed_ticks{};
+    sim::SimTick requested_ticks{};
+    sim::SimTick completed_ticks{};
     std::uint64_t advance_calls{};
     double completed_seconds{};
     double elapsed_seconds{};
     double total_elapsed_seconds{};
-    ioj::sim::SimTick saturation_ticks{};
-    ioj::sim::SimTick warmup_ticks{};
-    ioj::sim::SimTick measured_ticks{};
-    ioj::sim::SimTick total_simulation_ticks{};
+    sim::SimTick saturation_ticks{};
+    sim::SimTick warmup_ticks{};
+    sim::SimTick measured_ticks{};
+    sim::SimTick total_simulation_ticks{};
     double median_tick_microseconds{};
     double p95_tick_microseconds{};
     double p99_tick_microseconds{};
@@ -73,8 +73,7 @@ struct BenchmarkResult {
     bool tracy_enabled{};
 };
 
-[[nodiscard]] auto calculate_tick_count(double seconds)
-    -> std::expected<ioj::sim::SimTick, std::string>;
+[[nodiscard]] auto calculate_tick_count(double seconds) -> std::expected<sim::SimTick, std::string>;
 [[nodiscard]] auto run_benchmark(BenchmarkOptions const& options,
                                  ProfilerReadyCallback profiler_ready = nullptr)
     -> std::expected<BenchmarkResult, std::string>;

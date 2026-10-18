@@ -86,7 +86,7 @@ void check_describable_actors_are_visible_to_hitscan() {
             continue;
         }
 
-        auto const actor_name{ioj::get_best_display_name(*actor)};
+        auto const actor_name{get_best_display_name(*actor)};
 
         if (!describable_actor_can_be_hitcan(*actor)) {
             LOG(Warning, "%s cannot be seen.", *actor_name);
@@ -108,7 +108,7 @@ bool describable_actor_can_be_hitcan(AActor& actor) {
             continue;
         }
 
-        auto const response{prim_comp->GetCollisionResponseToChannel(ioj::collision::description)};
+        auto const response{prim_comp->GetCollisionResponseToChannel(collision::description)};
         if (response == ECollisionResponse::ECR_Block) {
             return true;
         }

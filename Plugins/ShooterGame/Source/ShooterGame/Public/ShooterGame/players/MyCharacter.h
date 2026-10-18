@@ -52,7 +52,7 @@ class ADroppableWaypoint;
 
 namespace ioj {
 namespace AMyCharacter {
-inline static constexpr int32 camera_count{ioj::enum_count<ECharacterCameraMode>()};
+inline static constexpr int32 camera_count{enum_count<ECharacterCameraMode>()};
 inline static constexpr FCameraConfig camera_configs[camera_count] = {
     {ECharacterCameraMode::FirstPerson, "Camera", false, true},
     {ECharacterCameraMode::ThirdPerson, "ThirdPersonCamera", true, true}};

@@ -33,7 +33,7 @@ struct LevelSimTestAccess {
             parent, replacement);
     }
     static void refresh_fighter_membership(LevelSim& simulation,
-                                           ioj::FrameMemoryResource* const scratch_resource) {
+                                           FrameMemoryResource* const scratch_resource) {
         simulation.capital_ships_simulation_.refresh_fighter_ids(scratch_resource);
     }
     static void set_fighter_parent(LevelSim& simulation, EntityId fighter, EntityId parent) {
@@ -49,7 +49,7 @@ struct LevelSimTestAccess {
         SimClockTestAccess::set_phase(simulation.clock_, previous_phase);
     }
     static void resolve_ship_damage(LevelSim& simulation,
-                                    ioj::FrameMemoryResource* const scratch_resource) {
+                                    FrameMemoryResource* const scratch_resource) {
         auto const previous_phase{simulation.clock_.phase()};
         SimClockTestAccess::set_phase(simulation.clock_, SimulationPhase::Resolution);
         simulation.combat_events_.prepare(simulation.entity_tables_.lookups, scratch_resource);
@@ -97,8 +97,7 @@ struct LevelSimTestAccess {
         data.attack_reposition_countdowns()[index] = 0;
         data.navigation_update_countdowns_remaining_ticks()[index] = 1;
     }
-    static void think_fighters(LevelSim& simulation,
-                               ioj::FrameMemoryResource* const scratch_resource) {
+    static void think_fighters(LevelSim& simulation, FrameMemoryResource* const scratch_resource) {
         auto const previous_phase{simulation.clock_.phase()};
         SimClockTestAccess::set_phase(simulation.clock_, SimulationPhase::Thinking);
         simulation.fighters_simulation_.think(
@@ -116,7 +115,7 @@ struct LevelSimTestAccess {
         simulation.refresh_spatial_index();
     }
     static void refresh_fighter_targets_and_plan(LevelSim& simulation,
-                                                 ioj::FrameMemoryResource* const scratch_resource) {
+                                                 FrameMemoryResource* const scratch_resource) {
         auto const previous_phase{simulation.clock_.phase()};
         SimClockTestAccess::set_phase(simulation.clock_, SimulationPhase::Thinking);
         auto& fighters{simulation.fighters_simulation_};

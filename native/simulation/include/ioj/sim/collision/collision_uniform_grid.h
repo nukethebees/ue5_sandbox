@@ -95,7 +95,7 @@ struct CollisionUniformGrid {
     // Replace output with unique grid members in ascending ID order. Cells must be in bounds;
     // repeated cells are allowed. Membership reflects the last grid rebuild, not current health.
     void collect_unique_entities_in_cells(std::span<CellCoord const> cells,
-                                          ioj::FrameArray<EntityId>& out_entities) const;
+                                          FrameArray<EntityId>& out_entities) const;
 
     struct OverlapCounts {
         std::uint32_t entities{};

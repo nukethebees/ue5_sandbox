@@ -47,7 +47,7 @@ class LevelTelemetryBlockHistory {
         Block(memory::Block memory_block, std::uint32_t capacity);
 
         memory::Block memory_block{};
-        ioj::native_soa::StorageState storage{};
+        native_soa::StorageState storage{};
     };
 
     auto acquire_or_reuse_next_block() -> Block&;

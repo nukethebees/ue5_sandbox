@@ -24,11 +24,8 @@ auto validate_fighter_spawn_slots(sim::CapitalShipSimConfig const& capital_confi
                                   sim::FighterSimConfig const& fighter_config,
                                   sim::collision::EntityAABBs const& entity_bounds)
     -> std::vector<FighterSpawnSlotValidationError> {
-    auto const capital_bounds{
-        sim::collision::make_entity_world_bounds(entity_bounds,
-                                                 sim::EntityType::CapitalShip,
-                                                 {},
-                                                 ioj::Quaternion4f{0.0f, 0.0f, 0.0f, 1.0f})};
+    auto const capital_bounds{sim::collision::make_entity_world_bounds(
+        entity_bounds, sim::EntityType::CapitalShip, {}, Quaternion4f{0.0f, 0.0f, 0.0f, 1.0f})};
     auto const clearance{fighter_config.avoidance_clearance_buffer};
     auto const& slots{capital_config.fighter_spawn_slots_relative_transforms};
     std::vector<sim::collision::WorldAABB> fighter_bounds;
@@ -41,8 +38,8 @@ auto validate_fighter_spawn_slots(sim::CapitalShipSimConfig const& capital_confi
         fighter_bounds.push_back(sim::collision::make_entity_world_bounds(
             entity_bounds,
             sim::EntityType::Fighter,
-            ioj::to_float(slot.location),
-            ioj::to_quaternion(ioj::to_float(ioj::to_rotator(slot.rotation)))));
+            to_float(slot.location),
+            to_quaternion(to_float(to_rotator(slot.rotation)))));
         if (intersects(capital_bounds, fighter_bounds.back(), 0.0f, clearance)) {
             errors.push_back({.kind = FighterSpawnSlotValidationErrorKind::IntersectsCapital,
                               .first_slot = static_cast<FighterSpawnSlotIndex>(index),

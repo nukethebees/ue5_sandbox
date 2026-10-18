@@ -6,7 +6,7 @@
 namespace ioj::sim::collision {
 namespace {
 auto absolute(Vector3f const vector) noexcept -> Vector3f {
-    return ioj::Vector3f{std::abs(vector.x()), std::abs(vector.y()), std::abs(vector.z())};
+    return Vector3f{std::abs(vector.x()), std::abs(vector.y()), std::abs(vector.z())};
 }
 }
 
@@ -16,10 +16,9 @@ auto make_entity_world_bounds(EntityAABBs const& bounds,
                               Quaternion4f const orientation) noexcept -> WorldAABB {
     auto const centre{position + rotate_vector(orientation, bounds.get_centre(type))};
     auto const local_extent{bounds.get_half_extents(type)};
-    auto const extent{
-        absolute(rotate_vector(orientation, ioj::Vector3f{local_extent.x(), 0.0f, 0.0f})) +
-        absolute(rotate_vector(orientation, ioj::Vector3f{0.0f, local_extent.y(), 0.0f})) +
-        absolute(rotate_vector(orientation, ioj::Vector3f{0.0f, 0.0f, local_extent.z()}))};
+    auto const extent{absolute(rotate_vector(orientation, Vector3f{local_extent.x(), 0.0f, 0.0f})) +
+                      absolute(rotate_vector(orientation, Vector3f{0.0f, local_extent.y(), 0.0f})) +
+                      absolute(rotate_vector(orientation, Vector3f{0.0f, 0.0f, local_extent.z()}))};
     return {centre - extent, centre + extent};
 }
 

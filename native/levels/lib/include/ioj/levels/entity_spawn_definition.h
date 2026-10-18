@@ -13,8 +13,8 @@ struct EntitySpawnDefinition {
     EntityId id{};
     EntityArchetype archetype{EntityArchetype::PlayerFighter};
     Team team{};
-    ioj::Vector3d position{};
-    ioj::Rotator3d rotation{};
+    Vector3d position{};
+    Rotator3d rotation{};
     double spawn_time_seconds{};
 };
 }

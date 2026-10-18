@@ -73,8 +73,8 @@ using soa_storage_detail::source_data;
 
 template <typename Destination, typename Source>
 auto is_external_source(Destination const& destination, Source const& source) -> bool {
-    auto const address{ioj::address_cast(source.data())};
-    auto const begin{ioj::address_cast(destination.data())};
+    auto const address{address_cast(source.data())};
+    auto const begin{address_cast(destination.data())};
     return address < begin || address >= begin + destination.size() * sizeof(*destination.data());
 }
 

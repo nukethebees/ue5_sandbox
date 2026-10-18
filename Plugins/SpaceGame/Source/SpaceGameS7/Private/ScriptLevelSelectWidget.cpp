@@ -22,10 +22,10 @@ using ioj::levels::authoring::ELevelCatalogCategory;
 using ioj::levels::authoring::FLevelScriptEntry;
 using ioj::levels::authoring::load_level_script_catalog;
 
-auto level_completion_indicator_state(ioj::FLevelProgressSummary const& progress,
+auto level_completion_indicator_state(FLevelProgressSummary const& progress,
                                       TOptional<float> const par_time_seconds)
     -> ELevelCompletionIndicatorState {
-    if (progress.state != ioj::ELevelProgressState::Completed) {
+    if (progress.state != ELevelProgressState::Completed) {
         return ELevelCompletionIndicatorState::Incomplete;
     }
     if (par_time_seconds.IsSet() && progress.best_completion_time_seconds >= 0.0f &&
@@ -37,24 +37,24 @@ auto level_completion_indicator_state(ioj::FLevelProgressSummary const& progress
 
 namespace {
 auto progress_label(levels::LevelDefinition const& definition,
-                    ioj::FLevelProgressSummary const& progress) -> FString {
+                    FLevelProgressSummary const& progress) -> FString {
     if (!definition.mission().has_value()) {
         return TEXT("No objective");
     }
 
     switch (progress.state) {
-        case ioj::ELevelProgressState::Completed:
+        case ELevelProgressState::Completed:
             return TEXT("Completed");
-        case ioj::ELevelProgressState::Attempted:
+        case ELevelProgressState::Attempted:
             return TEXT("Attempted");
-        case ioj::ELevelProgressState::NotAttempted:
+        case ELevelProgressState::NotAttempted:
             return TEXT("Not attempted");
     }
     checkNoEntry();
     return {};
 }
 
-auto level_details(FLevelScriptEntry const& entry, ioj::FLevelProgressSummary const& progress)
+auto level_details(FLevelScriptEntry const& entry, FLevelProgressSummary const& progress)
     -> FString {
     check(entry.definition.IsSet());
     auto const& definition{entry.definition.GetValue()};
@@ -167,13 +167,13 @@ void UScriptLevelSelectWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
     auto* const game_instance{GetGameInstance()};
-    game_ = IsValid(game_instance) ? game_instance->GetSubsystem<ioj::UGameSubsystem>() : nullptr;
+    game_ = IsValid(game_instance) ? game_instance->GetSubsystem<UGameSubsystem>() : nullptr;
     if (!IsValid(game_)) {
         UE_LOG(LogSandboxUI,
                Warning,
                TEXT("UScriptLevelSelectWidget: Game subsystem is unavailable; using the "
                     "default UI theme."));
-        auto const* const default_theme{GetDefault<ioj::USpaceGameUiTheme>()};
+        auto const* const default_theme{GetDefault<USpaceGameUiTheme>()};
         check(IsValid(default_theme));
         fallback_style_ = default_theme->compile();
     }
@@ -298,7 +298,7 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
             if (entry) {
                 auto const id{levels::authoring::to_unreal(entry.definition->metadata().id)};
                 auto const progress{IsValid(save_subsystem) ? save_subsystem->get_level_progress(id)
-                                                            : ioj::FLevelProgressSummary{}};
+                                                            : FLevelProgressSummary{}};
                 indicator_state = level_completion_indicator_state(
                     progress,
                     entry.definition->metadata().par_time_seconds
@@ -460,7 +460,7 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
         auto const progress{IsValid(save_subsystem)
                                 ? save_subsystem->get_level_progress(
                                       levels::authoring::to_unreal(entry.definition->metadata().id))
-                                : ioj::FLevelProgressSummary{}};
+                                : FLevelProgressSummary{}};
         auto const evaluator{make_unlock_evaluator(entries_, save_subsystem)};
         auto const unlock_status{evaluator.evaluate(entry.definition.GetValue())};
         view_state_.description =
@@ -490,7 +490,7 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
 void UScriptLevelSelectWidget::handle_launch() {
     auto const time_scale{active_category_ != ELevelCatalogCategory::Mission
                               ? get_active_playerless_time_scale()
-                              : TOptional<double>{ioj::level_launch::default_time_scale}};
+                              : TOptional<double>{level_launch::default_time_scale}};
     if (!time_scale.IsSet()) {
         return;
     }
@@ -499,19 +499,18 @@ void UScriptLevelSelectWidget::handle_launch() {
     auto const* const save_subsystem{
         IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>() : nullptr};
     auto const launch_mode{IsValid(save_subsystem) && save_subsystem->start_levels_paused()
-                               ? ioj::ELevelLaunchMode::Paused
-                               : ioj::ELevelLaunchMode::Running};
-    ioj::FLevelLaunchOptions options{
+                               ? ELevelLaunchMode::Paused
+                               : ELevelLaunchMode::Running};
+    FLevelLaunchOptions options{
         .launch_mode = launch_mode,
         .requested_time_scale = time_scale.GetValue(),
     };
     if (active_category_ != ELevelCatalogCategory::Mission) {
-        options.presentation_mode = battle_simulation_only_
-                                      ? ioj::ELevelPresentationMode::SimulationOnly
-                                      : ioj::ELevelPresentationMode::Visual;
+        options.presentation_mode = battle_simulation_only_ ? ELevelPresentationMode::SimulationOnly
+                                                            : ELevelPresentationMode::Visual;
         options.simulated_duration_seconds = battle_duration_;
         options.stop_when_battle_resolved = true;
-        options.results_navigation = ioj::ELevelResultsNavigation::Telemetry;
+        options.results_navigation = ELevelResultsNavigation::Telemetry;
     }
     launch_selected_level(MoveTemp(options));
 }
@@ -537,7 +536,7 @@ void UScriptLevelSelectWidget::publish_catalog() {
     }
 }
 
-void UScriptLevelSelectWidget::launch_selected_level(ioj::FLevelLaunchOptions options) {
+void UScriptLevelSelectWidget::launch_selected_level(FLevelLaunchOptions options) {
     if (!entries_.IsValidIndex(selected_entry_index_) || !entries_[selected_entry_index_]) {
         return;
     }
@@ -571,7 +570,7 @@ void UScriptLevelSelectWidget::launch_selected_level(ioj::FLevelLaunchOptions op
                                                                : EPlayerControlContext::Observer;
     game_->set_pending_level(MoveTemp(definition), entry.path, source_sha256(entry.path), options);
     view_state_.can_launch = false;
-    if (options.launch_mode == ioj::ELevelLaunchMode::Paused) {
+    if (options.launch_mode == ELevelLaunchMode::Paused) {
         view_state_.status =
             NSLOCTEXT("LevelSelect", "StagingPaused", "STAGING LEVEL IN PAUSED STATE...");
     } else if (options.control_context == EPlayerControlContext::Benchmark) {

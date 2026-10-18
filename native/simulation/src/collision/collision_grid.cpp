@@ -30,7 +30,7 @@ auto to_closed_max_cell(float const value,
     return to_cell(value, cell_dimension, half_grid_extent);
 }
 auto grid_half_size(GridGeometry const geometry) noexcept -> Vector3f {
-    return ioj::Vector3f{
+    return Vector3f{
         static_cast<float>(geometry.dimensions.x()) * geometry.cell_dimensions.x() * 0.5f,
         static_cast<float>(geometry.dimensions.y()) * geometry.cell_dimensions.y() * 0.5f,
         static_cast<float>(geometry.dimensions.z()) * geometry.cell_dimensions.z() * 0.5f};
@@ -50,14 +50,14 @@ auto is_configured(GridGeometry const geometry) noexcept -> bool {
         return false;
     }
 
-    return ioj::levels::grid_cell_count_fits(
+    return levels::grid_cell_count_fits(
         geometry.dimensions.x(), geometry.dimensions.y(), geometry.dimensions.z());
 }
 auto calculate_grid_dimensions(Vector3f const grid_size, Vector3f const cell_size) noexcept
     -> CellCoord {
-    return {ioj::levels::grid_axis_count(grid_size.x(), cell_size.x()),
-            ioj::levels::grid_axis_count(grid_size.y(), cell_size.y()),
-            ioj::levels::grid_axis_count(grid_size.z(), cell_size.z())};
+    return {levels::grid_axis_count(grid_size.x(), cell_size.x()),
+            levels::grid_axis_count(grid_size.y(), cell_size.y()),
+            levels::grid_axis_count(grid_size.z(), cell_size.z())};
 }
 auto num_cells(GridGeometry const geometry) noexcept -> GridCellCount {
     return geometry.dimensions.x() * geometry.dimensions.y() * geometry.dimensions.z();
@@ -103,7 +103,7 @@ auto to_cell_min(int const coordinate,
 }
 auto to_cell_min(GridGeometry const geometry, CellCoord const coordinate) noexcept -> Vector3f {
     auto const half_size{grid_half_size(geometry)};
-    return ioj::Vector3f{
+    return Vector3f{
         static_cast<float>(coordinate.x()) * geometry.cell_dimensions.x() - half_size.x(),
         static_cast<float>(coordinate.y()) * geometry.cell_dimensions.y() - half_size.y(),
         static_cast<float>(coordinate.z()) * geometry.cell_dimensions.z() - half_size.z()};

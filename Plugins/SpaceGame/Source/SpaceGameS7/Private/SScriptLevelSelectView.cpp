@@ -160,7 +160,7 @@ auto SScriptLevelSelectView::OnKeyDown(FGeometry const& geometry, FKeyEvent cons
 }
 
 auto SScriptLevelSelectView::build_header() -> TSharedRef<SWidget> {
-    auto const mission_button{SAssignNew(mission_category_button_, ioj::SGameButton)
+    auto const mission_button{SAssignNew(mission_category_button_, SGameButton)
                                   .Style(&style_->button(EGameButtonStyle::Secondary))
                                   .Text(NSLOCTEXT("LevelSelect", "Missions", "MISSIONS"))
                                   .Selected(true)
@@ -168,13 +168,13 @@ auto SScriptLevelSelectView::build_header() -> TSharedRef<SWidget> {
                                              &SScriptLevelSelectView::handle_category_selected,
                                              ELevelCatalogCategory::Mission)};
     auto const battle_viewer_button{
-        SAssignNew(battle_viewer_category_button_, ioj::SGameButton)
+        SAssignNew(battle_viewer_category_button_, SGameButton)
             .Style(&style_->button(EGameButtonStyle::Secondary))
             .Text(NSLOCTEXT("LevelSelect", "BattleViewer", "BATTLE VIEWER"))
             .OnClicked(this,
                        &SScriptLevelSelectView::handle_category_selected,
                        ELevelCatalogCategory::BattleViewer)};
-    auto const benchmark_button{SAssignNew(benchmark_category_button_, ioj::SGameButton)
+    auto const benchmark_button{SAssignNew(benchmark_category_button_, SGameButton)
                                     .Style(&style_->button(EGameButtonStyle::Secondary))
                                     .Text(NSLOCTEXT("LevelSelect", "Benchmarks", "BENCHMARKS"))
                                     .OnClicked(this,
@@ -214,7 +214,7 @@ auto SScriptLevelSelectView::build_details() -> TSharedRef<SWidget> {
                                                  .AutoWrapText(false)]]]};
 
     auto const launch{SNew(SBox).WidthOverride(
-        180.0f)[SAssignNew(launch_button_, ioj::SGameButton)
+        180.0f)[SAssignNew(launch_button_, SGameButton)
                     .Style(&style_->button(EGameButtonStyle::Primary))
                     .Text(this, &SScriptLevelSelectView::launch_text)
                     .OnClicked(this, &SScriptLevelSelectView::handle_action, on_launch_)]};
@@ -322,7 +322,7 @@ auto SScriptLevelSelectView::build_details() -> TSharedRef<SWidget> {
                                            .TextStyle(&style_->text(EGameTextStyle::BodySecondary))
                                            .AutoWrapText(true)] +
              SVerticalBox::Slot().AutoHeight().Padding(
-                 FMargin{0.0f, 8.0f})[SNew(ioj::SHiveSectionHeader)
+                 FMargin{0.0f, 8.0f})[SNew(SHiveSectionHeader)
                                           .Style(style_)
                                           .Text(this, &SScriptLevelSelectView::directive_title)] +
              SVerticalBox::Slot().FillHeight(1.0f)[script_panel] +
@@ -399,7 +399,7 @@ void SScriptLevelSelectView::handle_battle_speed_changed(FText const& text) {
     value_text.TrimStartAndEndInline();
     auto const numeric{value_text.IsNumeric()};
     auto const value{numeric ? FCString::Atod(*value_text) : 0.0};
-    battle_speed_valid_ = numeric && ioj::level_launch::is_valid_time_scale(value);
+    battle_speed_valid_ = numeric && level_launch::is_valid_time_scale(value);
     battle_speed_error_->SetVisibility(battle_speed_valid_ ? EVisibility::Collapsed
                                                            : EVisibility::HitTestInvisible);
     update_launch_availability();
@@ -455,10 +455,10 @@ void SScriptLevelSelectView::rebuild_catalog(FLevelSelectViewState const& state)
                                  ? style_->palette().honey
                              : completed ? style_->palette().completion
                                          : style_->palette().text_secondary};
-        TSharedPtr<ioj::SGameButton> button;
+        TSharedPtr<SGameButton> button;
         catalog_rows_->AddSlot().AutoHeight().Padding(
             FMargin{0.0f, 0.0f, 0.0f, style_->chrome().navigation_spacing})
-            [SAssignNew(button, ioj::SGameButton)
+            [SAssignNew(button, SGameButton)
                  .Style(&style_->button(EGameButtonStyle::Secondary))
                  .Icon(icon)
                  .IconTint(icon_tint)

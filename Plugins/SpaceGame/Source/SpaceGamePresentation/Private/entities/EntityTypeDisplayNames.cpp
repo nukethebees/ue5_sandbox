@@ -1,7 +1,7 @@
 #include "SpaceGamePresentation/entities/EntityTypeDisplayNames.h"
 
 namespace ioj::entity_type_display_names::Private {
-auto get_entity_name(::ioj::sim::EntityType const type,
+auto get_entity_name(sim::EntityType const type,
                      TCHAR const* const player_ship,
                      TCHAR const* const turret,
                      TCHAR const* const capital_ship,
@@ -37,7 +37,7 @@ auto get_entity_name(::ioj::sim::EntityType const type,
 }
 
 namespace ioj {
-auto get_entity_display_name(::ioj::sim::EntityType const type) -> FString const& {
+auto get_entity_display_name(sim::EntityType const type) -> FString const& {
     return entity_type_display_names::Private::get_entity_name(type,
                                                                TEXT("Player Ship"),
                                                                TEXT("Turret"),
@@ -46,7 +46,7 @@ auto get_entity_display_name(::ioj::sim::EntityType const type) -> FString const
                                                                TEXT("Tube Spinner"));
 }
 
-auto get_entity_class_name(::ioj::sim::EntityType const type) -> FString const& {
+auto get_entity_class_name(sim::EntityType const type) -> FString const& {
     return entity_type_display_names::Private::get_entity_name(type,
                                                                TEXT("PlayerShip"),
                                                                TEXT("Turret"),
@@ -55,7 +55,7 @@ auto get_entity_class_name(::ioj::sim::EntityType const type) -> FString const& 
                                                                TEXT("TubeSpinner"));
 }
 
-auto get_entity_short_name(::ioj::sim::EntityType const type) -> FString const& {
+auto get_entity_short_name(sim::EntityType const type) -> FString const& {
     return entity_type_display_names::Private::get_entity_name(
         type, TEXT("Player"), TEXT("Turret"), TEXT("Capital"), TEXT("Fighter"), TEXT("Spinner"));
 }

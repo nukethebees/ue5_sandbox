@@ -174,16 +174,15 @@ void Sim::prepare_tick(float const) {
     clear_tick_buffers();
 
     auto const entities{this->entities.get_view()};
-    ioj::tick_countdowns<std::int16_t>(entities.laser_cooldowns(), cooldown_cleaner_, 16384);
-    ioj::tick_periodic_countdowns<std::int16_t>(
-        entities.target_refresh_countdowns_remaining_ticks());
+    tick_countdowns<std::int16_t>(entities.laser_cooldowns(), cooldown_cleaner_, 16384);
+    tick_periodic_countdowns<std::int16_t>(entities.target_refresh_countdowns_remaining_ticks());
     update_entity_lookup_table();
 }
-void Sim::refresh_target_data(ioj::FrameMemoryResource* const scratch_resource) {
+void Sim::refresh_target_data(FrameMemoryResource* const scratch_resource) {
     auto const entities{this->entities.get_view()};
     auto const count{entities.num()};
     auto const target_ids{entities.target_ids()};
-    ioj::FrameArray<EntityInstanceHandle> targets{scratch_resource};
+    FrameArray<EntityInstanceHandle> targets{scratch_resource};
     targets.set_num(count);
     spatial_query_manager.copy_entity_motion(target_ids,
                                              entities.view_target_locations(),
@@ -196,31 +195,31 @@ void Sim::refresh_target_data(ioj::FrameMemoryResource* const scratch_resource) 
         }
     }
 }
-void Sim::think(float const, ioj::FrameMemoryResource* const scratch_resource) {
+void Sim::think(float const, FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::think");
     refresh_target_data(scratch_resource);
     perform_search(scratch_resource);
     refresh_target_data(scratch_resource);
 }
-void Sim::generate_fire_commands(ioj::FrameMemoryResource* const scratch_resource) {
+void Sim::generate_fire_commands(FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::generate_fire_commands");
 
     fire_at_enemies(scratch_resource);
 }
-void Sim::resolve_damage_events(ioj::FrameMemoryResource* const scratch_resource) {
+void Sim::resolve_damage_events(FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::resolve_damage_events");
 
     auto const entities{this->entities.get_view()};
     auto const healths{entity_tables_.health.get_view<EntityType::Turret>(entities.num())};
-    ioj::sim::resolve_damage_events(combat_events_.events_for(EntityType::Turret),
-                                    entity_tables_.lookups.for_type(EntityType::Turret),
-                                    entities.entity_ids(),
-                                    entities.view_locations().get_const_view(),
-                                    healths,
-                                    local_indices_to_remove,
-                                    entity_death_info,
-                                    ledger_,
-                                    scratch_resource);
+    sim::resolve_damage_events(combat_events_.events_for(EntityType::Turret),
+                               entity_tables_.lookups.for_type(EntityType::Turret),
+                               entities.entity_ids(),
+                               entities.view_locations().get_const_view(),
+                               healths,
+                               local_indices_to_remove,
+                               entity_death_info,
+                               ledger_,
+                               scratch_resource);
     auto const locations{entities.view_locations()};
 
     for (auto const index : local_indices_to_remove) {
@@ -269,7 +268,7 @@ auto Sim::get_target_ids() const -> std::span<EntityId const> {
 /* **************************************** */
 // Searching
 /* **************************************** */
-void Sim::perform_search(ioj::FrameMemoryResource* const scratch_resource) {
+void Sim::perform_search(FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::perform_search");
 
     auto const n_turrets{get_num_instances()};
@@ -279,7 +278,7 @@ void Sim::perform_search(ioj::FrameMemoryResource* const scratch_resource) {
 
     auto const radius{config.detection_radius};
 
-    ioj::parallel_for(
+    parallel_for(
         n_turrets,
         [this, radius, scratch_resource](std::uint32_t const begin, std::uint32_t const end) {
             perform_search_on_slice(begin, end, radius, scratch_resource);
@@ -288,14 +287,14 @@ void Sim::perform_search(ioj::FrameMemoryResource* const scratch_resource) {
 void Sim::perform_search_on_slice(std::uint32_t const begin,
                                   std::uint32_t const end,
                                   float const radius,
-                                  ioj::FrameMemoryResource* const scratch_resource) {
+                                  FrameMemoryResource* const scratch_resource) {
     std::array<float, 128> candidate_xs;
     std::array<float, 128> candidate_ys;
     std::array<float, 128> candidate_zs;
-    ioj::FixedArray<LineQueryResult, 128> has_line_of_sight;
+    FixedArray<LineQueryResult, 128> has_line_of_sight;
     auto const entities{this->entities.get_view()};
 
-    ioj::PeriodicTickCountdownView<std::int16_t> const refresh_countdowns{
+    PeriodicTickCountdownView<std::int16_t> const refresh_countdowns{
         entities.target_refresh_countdowns_remaining_ticks(),
         entities.target_refresh_countdowns_periods()};
     auto const current_targets{entities.target_ids()};
@@ -303,7 +302,7 @@ void Sim::perform_search_on_slice(std::uint32_t const begin,
     auto const turret_teams{entities.teams()};
     auto const fire_point_locations{entities.view_fire_point_locations()};
     auto const integral_biases{entities.integral_biases()};
-    ioj::FixedArray<EntityId, 128> target_ids;
+    FixedArray<EntityId, 128> target_ids;
     auto const target_capacity{target_ids.capacity_view()};
 
     for (std::uint32_t i{begin}; i < end; ++i) {
@@ -343,8 +342,7 @@ void Sim::perform_search_on_slice(std::uint32_t const begin,
             if (target_count > 0) {
                 auto const target_offset{static_cast<std::uint32_t>(
                     integral_biases[i] % static_cast<std::uint32_t>(target_count))};
-                auto const loop_bounds{
-                    ioj::make_rotated_loop_bounds(0, target_count, target_offset)};
+                auto const loop_bounds{make_rotated_loop_bounds(0, target_count, target_offset)};
                 for (auto const bounds : loop_bounds) {
                     for (auto candidate_index{bounds.begin}; candidate_index < bounds.end;
                          ++candidate_index) {
@@ -369,12 +367,12 @@ void Sim::perform_search_on_slice(std::uint32_t const begin,
 /* **************************************** */
 // Attacking
 /* **************************************** */
-void Sim::fire_at_enemies(ioj::FrameMemoryResource* const scratch_resource) {
+void Sim::fire_at_enemies(FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::fire_at_enemies");
 
     auto const count{get_num_instances()};
-    ioj::FrameArray<std::uint32_t> candidate_indices{scratch_resource};
-    ioj::FrameArray<EntityId> hit_ids{scratch_resource};
+    FrameArray<std::uint32_t> candidate_indices{scratch_resource};
+    FrameArray<EntityId> hit_ids{scratch_resource};
     FrameVectors3f starts{scratch_resource};
     FrameVectors3f ends{scratch_resource};
     candidate_indices.reserve(count);
@@ -385,7 +383,7 @@ void Sim::fire_at_enemies(ioj::FrameMemoryResource* const scratch_resource) {
     auto const disengage_radius{get_disengage_radius()};
     auto const disengage_radius_squared{disengage_radius * disengage_radius};
     auto cooldowns{
-        ioj::TickCountdownView<std::int16_t>{entities.laser_cooldowns(), cooldown_restart_ticks_}};
+        TickCountdownView<std::int16_t>{entities.laser_cooldowns(), cooldown_restart_ticks_}};
     auto const target_ids{entities.target_ids()};
     auto const locations{entities.view_locations()};
     auto const target_locations{entities.view_target_locations()};
@@ -400,7 +398,7 @@ void Sim::fire_at_enemies(ioj::FrameMemoryResource* const scratch_resource) {
         if (!cooldowns.is_ready(element)) {
             continue;
         }
-        if (ioj::size_squared(vector_at(locations, index) - vector_at(target_locations, index)) >=
+        if (size_squared(vector_at(locations, index) - vector_at(target_locations, index)) >=
             disengage_radius_squared) {
             target = {};
             continue;
@@ -454,21 +452,21 @@ void Sim::fire_at_enemies(ioj::FrameMemoryResource* const scratch_resource) {
         auto const location{vector_at(fire_point_locations, index)};
         auto const target_location{vector_at(target_locations, index)};
         auto const target_velocity{vector_at(target_velocities, index)};
-        auto const intercept_time{ioj::solve_intercept_time(
+        auto const intercept_time{solve_intercept_time(
             location, target_location, target_velocity, config.laser.projectile_speed)};
-        auto const direction{ioj::native_math::safe_normal(
+        auto const direction{native_math::safe_normal(
             target_location + target_velocity * intercept_time - location, 1.e-8f)};
         Rotator3f rotation{};
-        ioj::native_math::to_rotations(&rotation.pitch,
-                                       &rotation.yaw,
-                                       &rotation.roll,
-                                       &direction.x(),
-                                       &direction.y(),
-                                       &direction.z(),
-                                       1);
+        native_math::to_rotations(&rotation.pitch,
+                                  &rotation.yaw,
+                                  &rotation.roll,
+                                  &direction.x(),
+                                  &direction.y(),
+                                  &direction.z(),
+                                  1);
         set_vector(laser_locations, candidate, location);
         set_rotation(laser_rotations, candidate, rotation);
-        set_vector(laser_velocities, candidate, ioj::Vector3f{0.f, 0.f, 0.f});
+        set_vector(laser_velocities, candidate, Vector3f{0.f, 0.f, 0.f});
         damages[candidate] = laser_damages[element];
         laser_ids[candidate] = entity_ids[element];
         laser_sources[candidate] = {teams[element], EntityType::Turret};

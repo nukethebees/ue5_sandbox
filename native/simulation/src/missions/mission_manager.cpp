@@ -36,7 +36,7 @@ auto get_level_entity_id(std::span<EntityId const> const level_entity_ids,
 /* **************************************** */
 // Construction and lifecycle
 /* **************************************** */
-void MissionManager::begin_play(ioj::FrameMemoryResource* const scratch_resource) {
+void MissionManager::begin_play(FrameMemoryResource* const scratch_resource) {
     prepare_objectives(scratch_resource);
 
     switch (mission_mode) {
@@ -46,8 +46,8 @@ void MissionManager::begin_play(ioj::FrameMemoryResource* const scratch_resource
         }
         case MissionMode::SurviveTime: {
             if (entity_ids_that_must_survive.empty()) {
-                ioj::log_error("MissionManager: SurviveTime requires at least one entity that "
-                               "must survive");
+                log_error("MissionManager: SurviveTime requires at least one entity that "
+                          "must survive");
                 set_mission_state(MissionState::Disabled);
                 break;
             }
@@ -59,7 +59,7 @@ void MissionManager::begin_play(ioj::FrameMemoryResource* const scratch_resource
             [[fallthrough]];
         case MissionMode::KillEnemies: {
             if (hero_entity_ids.empty()) {
-                ioj::log_error("MissionManager: Kill missions require at least one hero entity");
+                log_error("MissionManager: Kill missions require at least one hero entity");
                 set_mission_state(MissionState::Disabled);
                 break;
             }
@@ -75,7 +75,7 @@ void MissionManager::begin_play(ioj::FrameMemoryResource* const scratch_resource
         }
 
         default: {
-            ioj::fatal_error("MissionManager: Unhandled MissionMode.");
+            fatal_error("MissionManager: Unhandled MissionMode.");
         }
     }
 }
@@ -119,8 +119,8 @@ void MissionManager::initialise_level_mission(LevelMissionInitialisationData con
         set_target_time(data.time_limit_seconds.value());
     }
 
-    if (data.mode == ::ioj::levels::LevelMissionMode::KillEnemies ||
-        data.mode == ::ioj::levels::LevelMissionMode::KillEnemiesWithinTime) {
+    if (data.mode == levels::LevelMissionMode::KillEnemies ||
+        data.mode == levels::LevelMissionMode::KillEnemiesWithinTime) {
         set_kill_target(data.kill_count.value_or(0) +
                         kill_target_increase_before_level_initialisation_);
     }
@@ -179,8 +179,8 @@ void MissionManager::consume_level_events(LevelMissionEventGroups::ConstView con
                 break;
             }
             default: {
-                ioj::fatal_error(std::format("Unsupported level mission event type: {}",
-                                             static_cast<std::int32_t>(types[index])));
+                fatal_error(std::format("Unsupported level mission event type: {}",
+                                        static_cast<std::int32_t>(types[index])));
             }
         }
     }
@@ -247,7 +247,7 @@ void MissionManager::add_hero_entity(EntityId id) {
 
 void MissionManager::add_entity_that_must_survive(EntityId id) {
     if (!has_health(id.entity_type())) {
-        ioj::fatal_error("Survival objectives require an entity with health");
+        fatal_error("Survival objectives require an entity with health");
     }
     assert(mission_state == MissionState::NotStarted || mission_state == MissionState::Running);
     assert(entity_ledger.is_valid_unique_id(id));
@@ -259,7 +259,7 @@ void MissionManager::add_entity_that_must_survive(EntityId id) {
 
 void MissionManager::add_entity_required_to_kill(EntityId id) {
     if (!has_health(id.entity_type())) {
-        ioj::fatal_error("Required-kill objectives require an entity with health");
+        fatal_error("Required-kill objectives require an entity with health");
     }
     assert(mission_state == MissionState::NotStarted || mission_state == MissionState::Running);
     assert(entity_ledger.is_valid_unique_id(id));
@@ -290,12 +290,12 @@ void MissionManager::objective_event_dispatched() {
 /* **************************************** */
 // Tick and state transitions
 /* **************************************** */
-void MissionManager::mission_tick(ioj::FrameMemoryResource* const scratch_resource) {
+void MissionManager::mission_tick(FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("MissionManager::mission_tick");
 
     switch (mission_state) {
         case MissionState::NotStarted: {
-            ioj::fatal_error("MissionManager ticking but not started.");
+            fatal_error("MissionManager ticking but not started.");
         }
         case MissionState::Running: {
             break;
@@ -306,7 +306,7 @@ void MissionManager::mission_tick(ioj::FrameMemoryResource* const scratch_resour
             return;
         }
         default: {
-            ioj::fatal_error("MissionManager: Unhandled MissionState.");
+            fatal_error("MissionManager: Unhandled MissionState.");
         }
     }
 
@@ -338,7 +338,7 @@ void MissionManager::mission_tick(ioj::FrameMemoryResource* const scratch_resour
             break;
         }
         default: {
-            ioj::fatal_error("MissionManager: Unhandled MissionMode.");
+            fatal_error("MissionManager: Unhandled MissionMode.");
         }
     }
 }
@@ -380,7 +380,7 @@ void MissionManager::set_mission_state(MissionState const new_state,
             return;
         }
         default: {
-            ioj::fatal_error("MissionManager: Unhandled MissionState.");
+            fatal_error("MissionManager: Unhandled MissionState.");
         }
     }
 }
@@ -431,10 +431,10 @@ void MissionManager::update_mission_kills() {
 /* **************************************** */
 void MissionManager::update_objective_health(std::span<EntityId const> const ids,
                                              std::span<ShipHealth> const output,
-                                             ioj::FrameMemoryResource* const scratch_resource) {
+                                             FrameMemoryResource* const scratch_resource) {
     auto const count{static_cast<EntityTypeRuns::Count>(ids.size())};
-    ioj::FrameArray<EntityTypeRuns::Offset> order{scratch_resource};
-    ioj::FrameArray<EntityInstanceHandle> handles{scratch_resource};
+    FrameArray<EntityTypeRuns::Offset> order{scratch_resource};
+    FrameArray<EntityInstanceHandle> handles{scratch_resource};
     order.set_num(count);
     handles.set_num(count);
     auto const runs{entity_tables_.lookups.lookup_handles(ids, order, handles)};
@@ -457,7 +457,7 @@ void MissionManager::update_objective_health(std::span<EntityId const> const ids
         }
     }
 }
-void MissionManager::prepare_objectives(ioj::FrameMemoryResource* const scratch_resource) {
+void MissionManager::prepare_objectives(FrameMemoryResource* const scratch_resource) {
     auto initialise_pending = [&](auto const& ids, auto& healths) {
         auto const first{healths.size()};
         healths.resize(ids.size());

@@ -7,7 +7,7 @@
 #include <Misc/Optional.h>
 
 namespace ioj {
-using EResolvedLevelArchetype = ::ioj::levels::EntityArchetype;
+using EResolvedLevelArchetype = levels::EntityArchetype;
 
 inline auto resolve_level_archetype(FEntityArchetypeId const id)
     -> TOptional<EResolvedLevelArchetype> {

@@ -33,7 +33,7 @@ auto find_player(AS7LevelAuthoringDocument const& document, levels::EntityId con
         return nullptr;
     }
     auto const* const binding{document.entities.FindByPredicate(
-        [name = FName{ioj::to_fstring(id.value)}](auto const& candidate) {
+        [name = FName{to_fstring(id.value)}](auto const& candidate) {
             return candidate.id == name;
         })};
     check(binding);
@@ -81,12 +81,12 @@ auto prepare_s7_level_for_pie(UWorld& world) -> std::expected<void, FString> {
     if (!definition) {
         return fail(definition.error());
     }
-    auto* const game{ioj::UGameSubsystem::get(world.GetGameInstance())};
+    auto* const game{UGameSubsystem::get(world.GetGameInstance())};
     if (!IsValid(game)) {
         return fail(TEXT("The PIE game subsystem is unavailable."));
     }
 
-    ioj::FLevelLaunchOptions options;
+    FLevelLaunchOptions options;
     options.control_context =
         definition->camera() ? EPlayerControlContext::Observer : EPlayerControlContext::Player;
     // Upgrade old authoring maps in the PIE copy without changing their saved actors.
@@ -122,7 +122,7 @@ auto validate_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& docume
     auto* const player{
         s7_level_playable_setup_detail::find_player(document, definition->player_entity_id())};
 
-    TOptional<::ioj::sim::player::PlayerSpawnData> player_spawn;
+    TOptional<sim::player::PlayerSpawnData> player_spawn;
     UStaticMesh const* player_mesh{};
     if (player) {
         player_spawn.Emplace(player->make_spawn_data());
@@ -137,7 +137,7 @@ auto validate_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& docume
     if (!effective_config->is_valid(true)) {
         return std::unexpected{TEXT("The authored collision-grid settings are invalid.")};
     }
-    auto const build{ioj::make_level_simulation_init_data(
+    auto const build{make_level_simulation_init_data(
         *effective_config, {}, *definition, MoveTemp(player_spawn), {}, player_mesh)};
     if (!build) {
         return std::unexpected{build.error().format()};

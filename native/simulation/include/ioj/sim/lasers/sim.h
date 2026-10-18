@@ -64,7 +64,7 @@ struct Sim {
     void begin_play();
     void commit_spawns();
     void cleanup_entities();
-    void simulate(float dt, ioj::FrameMemoryResource* const scratch_resource);
+    void simulate(float dt, FrameMemoryResource* const scratch_resource);
     void finish_action();
 
     /* **************************************** */
@@ -76,9 +76,9 @@ struct Sim {
     /* **************************************** */
     // Movement and collision
     /* **************************************** */
-    void expire_instances(float dt, ioj::FrameMemoryResource* const scratch_resource);
+    void expire_instances(float dt, FrameMemoryResource* const scratch_resource);
     void update_locations(float dt);
-    void handle_collisions(float dt, ioj::FrameMemoryResource* const scratch_resource);
+    void handle_collisions(float dt, FrameMemoryResource* const scratch_resource);
     void remove_instances(std::span<LaserIndex const> indices);
 
     /* **************************************** */

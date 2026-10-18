@@ -15,7 +15,7 @@ class CountdownTimers {
   public:
     using size_type = std::uint32_t;
 
-    void tick(float const dt) noexcept { ioj::tick_countdowns(remaining_times(), dt); }
+    void tick(float const dt) noexcept { tick_countdowns(remaining_times(), dt); }
 
     void reset() noexcept { remaining_times_.clear(); }
 
@@ -133,7 +133,7 @@ class PeriodicCountdownTimers {
   public:
     using size_type = std::uint32_t;
 
-    void tick(float const dt) noexcept { ioj::tick_countdowns(remaining_times(), dt); }
+    void tick(float const dt) noexcept { tick_countdowns(remaining_times(), dt); }
 
     [[nodiscard]] auto expired(size_type const index) const noexcept -> bool {
         return remaining_times_[to_index(index)] <= 0.f;

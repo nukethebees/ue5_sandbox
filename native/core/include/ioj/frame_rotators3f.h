@@ -40,8 +40,8 @@ struct FrameRotators3f {
         assert(rolls_.num() == num());
     }
   private:
-    ioj::FrameArray<float> pitches_;
-    ioj::FrameArray<float> yaws_;
-    ioj::FrameArray<float> rolls_;
+    FrameArray<float> pitches_;
+    FrameArray<float> yaws_;
+    FrameArray<float> rolls_;
 };
 } // namespace ioj

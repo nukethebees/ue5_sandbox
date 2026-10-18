@@ -17,16 +17,16 @@ class ATestStaticTurretsProxy;
 class ATestTubeSpinnerProxy;
 
 namespace ioj {
-using FLevelSimBuildResult = std::expected<::ioj::sim::LevelSimInitData, FLevelStartErrors>;
+using FLevelSimBuildResult = std::expected<sim::LevelSimInitData, FLevelStartErrors>;
 
 struct FProxyLevelSimBuild {
-    ::ioj::sim::LevelSimInitData data;
+    sim::LevelSimInitData data;
     TArray<FTransform> initial_turret_transforms;
     TArray<ATestCapitalShipProxy*> capital_proxies;
     TArray<ATestStaticTurretsProxy*> turret_proxies;
     TArray<ATestTubeSpinnerProxy*> spinner_proxies;
 
-    auto bind_proxy_entities(::ioj::sim::LevelSim const& simulation) const -> FProxyEntityMap;
+    auto bind_proxy_entities(sim::LevelSim const& simulation) const -> FProxyEntityMap;
     void destroy_proxy_actors() const;
 };
 
@@ -34,26 +34,27 @@ using FProxyLevelSimBuildResult = std::expected<FProxyLevelSimBuild, FLevelStart
 
 SPACEGAME_API auto
     make_level_simulation_init_data(USpaceGameLevelConfig const& config,
-                                    ::ioj::sim::FixedTickLoop const& clock_settings = {},
-                                    TOptional<::ioj::sim::player::PlayerSpawnData> player = NullOpt,
+                                    sim::FixedTickLoop const& clock_settings = {},
+                                    TOptional<sim::player::PlayerSpawnData> player = NullOpt,
                                     UStaticMesh const* player_collision_mesh = nullptr)
         -> FLevelSimBuildResult;
 
 SPACEGAME_API auto
     make_level_simulation_init_data(USpaceGameLevelConfig const& config,
-                                    ::ioj::sim::FixedTickLoop const& clock_settings,
+                                    sim::FixedTickLoop const& clock_settings,
                                     levels::LevelDefinition const& definition,
-                                    TOptional<::ioj::sim::player::PlayerSpawnData> player = NullOpt,
-                                    ::ioj::sim::collision::WorldAABBs static_bounds = {},
+                                    TOptional<sim::player::PlayerSpawnData> player = NullOpt,
+                                    sim::collision::WorldAABBs static_bounds = {},
                                     UStaticMesh const* player_collision_mesh = nullptr)
         -> FLevelSimBuildResult;
 
-SPACEGAME_API auto make_proxy_level_simulation_init_data(
-    USpaceGameLevelConfig const& config,
-    ::ioj::sim::FixedTickLoop const& clock_settings,
-    UWorld& world,
-    ::FLevelMissionDefinition& mission_definition,
-    TOptional<::ioj::sim::player::PlayerSpawnData> player = NullOpt,
-    AActor const* player_actor = nullptr,
-    UStaticMesh const* player_collision_mesh = nullptr) -> FProxyLevelSimBuildResult;
+SPACEGAME_API auto
+    make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
+                                          sim::FixedTickLoop const& clock_settings,
+                                          UWorld& world,
+                                          ::FLevelMissionDefinition& mission_definition,
+                                          TOptional<sim::player::PlayerSpawnData> player = NullOpt,
+                                          AActor const* player_actor = nullptr,
+                                          UStaticMesh const* player_collision_mesh = nullptr)
+        -> FProxyLevelSimBuildResult;
 }

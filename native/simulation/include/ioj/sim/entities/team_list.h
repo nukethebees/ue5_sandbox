@@ -4,5 +4,5 @@
 #include <ioj/levels/team.h>
 
 namespace ioj::sim {
-using TeamList = ioj::FixedEnumArray<Team>;
+using TeamList = FixedEnumArray<Team>;
 }

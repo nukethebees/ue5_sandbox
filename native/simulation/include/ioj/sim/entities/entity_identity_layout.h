@@ -7,7 +7,7 @@
 #include <cstdint>
 
 namespace ioj::sim {
-using EntityTypeSizes = ioj::EnumArray<EntityType, std::uint32_t>;
+using EntityTypeSizes = EnumArray<EntityType, std::uint32_t>;
 
 inline constexpr EntityTypeSizes entity_lifetime_capacities{[] {
     EntityTypeSizes capacities;

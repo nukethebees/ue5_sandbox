@@ -22,7 +22,7 @@ auto make_world() -> LevelSimInitData {
         data, {{-2000.f, 0.f, 0.f}}, Team::Green, invalid_level_entity_index, 60.f, 60.f, 100);
     add_capital_spawn(
         data, {{2000.f, 0.f, 0.f}}, Team::Red, invalid_level_entity_index, 60.f, 60.f, 100);
-    for (auto const type : ioj::EnumTraits<EntityType>::values) {
+    for (auto const type : EnumTraits<EntityType>::values) {
         data.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
     return data;
@@ -63,7 +63,7 @@ class FighterMembershipRefresh : public ::testing::Test {
 
     auto refresh() -> std::uint64_t {
         auto const before{memory.get_stats().current_root_claim_count};
-        ioj::FrameScratchScope scope{memory};
+        FrameScratchScope scope{memory};
         LevelSimTestAccess::refresh_fighter_membership(simulation, &memory);
         return memory.get_stats().current_root_claim_count - before;
     }
@@ -108,7 +108,7 @@ class FighterMembershipRefresh : public ::testing::Test {
     }
 
     void resolve() {
-        ioj::FrameScratchScope scope{memory};
+        FrameScratchScope scope{memory};
         LevelSimTestAccess::resolve_ship_damage(simulation, &memory);
     }
 
@@ -124,8 +124,8 @@ class FighterMembershipRefresh : public ::testing::Test {
     EntityId second_parent;
     EntityId enemy;
     std::vector<EntityId> fighters;
-    alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024> backing{};
-    ioj::FrameMemoryResource memory{backing};
+    alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024> backing{};
+    FrameMemoryResource memory{backing};
 };
 
 TEST_F(FighterMembershipRefresh, RepeatedRefreshesAndUnchangedTickAllocateNothing) {
@@ -359,7 +359,7 @@ TEST_F(FighterMembershipRefresh, ReconstructedSimulationBuildsItsOwnEmptyCache) 
     GameMemory reconstructed_memory;
     LevelSim reconstructed{reconstructed_memory, make_world()};
     reconstructed.finish_initialisation();
-    ioj::FrameScratchScope scope{memory};
+    FrameScratchScope scope{memory};
     auto const before{memory.get_stats().current_root_claim_count};
     LevelSimTestAccess::refresh_fighter_membership(reconstructed, &memory);
     EXPECT_GT(memory.get_stats().current_root_claim_count, before);

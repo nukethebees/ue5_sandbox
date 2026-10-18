@@ -57,8 +57,7 @@ void FTestBatchOrchestratorSetupScenario::prepare_level() {
         auto& world{context_.world};
 
         TestRunner->TestTrue(TEXT("Paused test start mode defers orchestrator initialisation"),
-                             orchestrator->get_state() ==
-                                 ::ioj::sim::OrchestratorState::Uninitialised);
+                             orchestrator->get_state() == sim::OrchestratorState::Uninitialised);
         TestRunner->TestFalse(TEXT("Uninitialised orchestrator does not tick"),
                               orchestrator->IsActorTickEnabled());
 
@@ -80,7 +79,7 @@ void FTestBatchOrchestratorSetupScenario::prepare_level() {
         orchestrator->start_simulation();
 
         TestRunner->TestTrue(TEXT("Starting transitions the orchestrator to running"),
-                             orchestrator->get_state() == ::ioj::sim::OrchestratorState::Running);
+                             orchestrator->get_state() == sim::OrchestratorState::Running);
         TestRunner->TestTrue(TEXT("Running orchestrator ticks"),
                              orchestrator->IsActorTickEnabled());
         TestRunner->TestEqual(TEXT("Starting does not immediately advance simulation"),
@@ -99,11 +98,10 @@ void FTestBatchOrchestratorSetupScenario::simulation_clock_conversions() {
         TestRunner->TestEqual(
             TEXT("Reusable level is constructed once"), context_.level_construction_count, 1);
         TestRunner->TestTrue(TEXT("Reset leaves the orchestrator uninitialised"),
-                             orchestrator->get_state() ==
-                                 ::ioj::sim::OrchestratorState::Uninitialised);
+                             orchestrator->get_state() == sim::OrchestratorState::Uninitialised);
 
-        ::ioj::sim::SimClock clock;
-        clock.initialise(::ioj::sim::FixedTickLoop{});
+        sim::SimClock clock;
+        clock.initialise(sim::FixedTickLoop{});
 
         TestRunner->TestEqual(TEXT("Tick-rate frequency has a one-tick period"),
                               clock.frequency_to_tick_period(60.0),
@@ -138,7 +136,7 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
             return;
         }
         FTestBatchOrchestratorTestAccess::begin_telemetry_run(
-            orchestrator, ::ioj::sim::LevelTelemetryRunMetadata{.run_id = "frame-ordering"});
+            orchestrator, sim::LevelTelemetryRunMetadata{.run_id = "frame-ordering"});
         struct FFrameObservation {
             uint64 completed_ticks{};
             uint64 presented_tick{};
@@ -152,7 +150,7 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
                                       owner.get_level_presentation()->get_last_completed_tick()});
                 if (owner.get_completed_ticks() >= 6) {
                     FTestBatchOrchestratorTestAccess::complete_telemetry_run(
-                        owner, ::ioj::sim::LevelTelemetryRunEndReason::DurationReached);
+                        owner, sim::LevelTelemetryRunEndReason::DurationReached);
                 }
             }));
         auto const dt{orchestrator.get_level_simulation()->get_clock().get_tick_period()};
@@ -235,8 +233,7 @@ void FTestBatchOrchestratorSetupScenario::kill_telemetry_test_entity() {
     telemetry_samples_before_change = telemetry_manager.get_active_entity_count_data().num();
     kill_samples_before_change = telemetry_manager.get_cumulative_kill_count_data().num();
 
-    TStaticArray<::ioj::sim::EntityId, 1> const targets{
-        test_driver->get_player_ship().get_unique_id()};
+    TStaticArray<sim::EntityId, 1> const targets{test_driver->get_player_ship().get_unique_id()};
     test_driver->queue_kills(targets, targets[0]);
 }
 
@@ -249,7 +246,7 @@ void FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick(
     check(!entity_count_data.is_empty());
     check(!kill_count_data.is_empty());
 
-    auto const player_type{std::to_underlying(::ioj::sim::EntityType::PlayerShip)};
+    auto const player_type{std::to_underlying(sim::EntityType::PlayerShip)};
     auto const alive_entity_counts{test_driver->get_ledger().count_alive_per_team_and_type()};
 
     telemetry_observations.add(

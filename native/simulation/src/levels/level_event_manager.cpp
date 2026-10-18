@@ -69,7 +69,7 @@ void LevelEventManager::execute_tick(SimTick const tick) {
     }
     auto const execution_tick{schedule_.execution_ticks[next_event_index_]};
     if (execution_tick < tick) {
-        ioj::fatal_error("Level event dispatch skipped a scheduled tick");
+        fatal_error("Level event dispatch skipped a scheduled tick");
     }
     if (execution_tick != tick) {
         return;

@@ -65,7 +65,7 @@ void Sim::cleanup_entities() {
     pending_removals_.clear();
 }
 
-void Sim::simulate(float const dt, ioj::FrameMemoryResource* const scratch_resource) {
+void Sim::simulate(float const dt, FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("lasers::Sim::simulate");
 
     handle_collisions(dt, scratch_resource);
@@ -136,7 +136,7 @@ void Sim::process_pending_spawns() {
         auto const yaw{rotation.yaw * (std::numbers::pi_v<float> / 180.f)};
         auto const cos_pitch{std::cos(pitch)};
         auto const direction{
-            ioj::Vector3f{cos_pitch * std::cos(yaw), cos_pitch * std::sin(yaw), std::sin(pitch)}};
+            Vector3f{cos_pitch * std::cos(yaw), cos_pitch * std::sin(yaw), std::sin(pitch)}};
         auto const forward_velocity{direction * speed};
 
         set_vector(output_locations,
@@ -160,14 +160,14 @@ void Sim::process_pending_spawns() {
 /* **************************************** */
 // Movement and collision
 /* **************************************** */
-void Sim::expire_instances(float const dt, ioj::FrameMemoryResource* const scratch_resource) {
+void Sim::expire_instances(float const dt, FrameMemoryResource* const scratch_resource) {
     auto const entities{this->entities.get_view()};
     auto const lifetimes{entities.lifetimes_remaining()};
     auto const active{entities.active()};
 
-    ioj::subtract_in_place(std::span<float>{lifetimes}, dt);
+    subtract_in_place(std::span<float>{lifetimes}, dt);
 
-    ioj::FrameArray<std::uint32_t> expired_indices{scratch_resource};
+    FrameArray<std::uint32_t> expired_indices{scratch_resource};
     auto const count{entities.num()};
     expired_indices.reserve(count);
     for (auto remaining{count}; remaining > 0; --remaining) {
@@ -197,7 +197,7 @@ void Sim::update_locations(float const dt) {
         }
     }
 }
-void Sim::handle_collisions(float const dt, ioj::FrameMemoryResource* const scratch_resource) {
+void Sim::handle_collisions(float const dt, FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("lasers::Sim::handle_collisions");
 
     auto const n{entities.num()};
@@ -218,7 +218,7 @@ void Sim::handle_collisions(float const dt, ioj::FrameMemoryResource* const scra
     auto const lifetimes{entities.lifetimes_remaining()};
     auto const instigator_ids{entities.instigator_ids()};
 
-    ioj::parallel_for(n, [=, this](std::uint32_t const begin, std::uint32_t const end) {
+    parallel_for(n, [=, this](std::uint32_t const begin, std::uint32_t const end) {
         SANDBOX_PROFILE_SCOPE("trace_job");
 
         auto const trace_count{end - begin};
@@ -240,7 +240,7 @@ void Sim::handle_collisions(float const dt, ioj::FrameMemoryResource* const scra
             trace_locations, ends.get_const_view(), hits, ignored_entities);
     });
 
-    ioj::FrameArray<std::uint32_t> to_remove{scratch_resource};
+    FrameArray<std::uint32_t> to_remove{scratch_resource};
     FrameHitDetails hit_details{scratch_resource};
     DirectDamageEvents collision_damage_events{scratch_resource};
     auto const trace_hits{hit_storage.get_const_view()};
@@ -270,9 +270,9 @@ void Sim::handle_collisions(float const dt, ioj::FrameMemoryResource* const scra
         }
 
         auto const velocity{vector_at(velocities, entity_index)};
-        auto const length_squared{ioj::size_squared(velocity)};
+        auto const length_squared{size_squared(velocity)};
         auto const emission_direction{length_squared < safe_normal_tolerance
-                                          ? ioj::Vector3f{0.f, 0.f, -1.f}
+                                          ? Vector3f{0.f, 0.f, -1.f}
                                           : velocity * (-1.f / std::sqrt(length_squared))};
         hit_details.add(hit_locations[entity_index], emission_direction, sources[element]);
     }

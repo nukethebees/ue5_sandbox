@@ -60,26 +60,26 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
     if (needs_player) {
         add_worldless_player_spawn(data, make_worldless_player_spawn(config));
     }
-    uint32 first_capital_index{::ioj::sim::invalid_level_entity_index};
-    uint32 second_capital_index{::ioj::sim::invalid_level_entity_index};
+    uint32 first_capital_index{sim::invalid_level_entity_index};
+    uint32 second_capital_index{sim::invalid_level_entity_index};
     if (scenario == EHUDManagerScenario::EntityCountPollingContinuesWithoutHUD || needs_player) {
         first_capital_index = add_worldless_capital_spawn(data,
                                                           FVector3f{2000.f, 0.f, 0.f},
                                                           ETestTeam::Red,
-                                                          ::ioj::sim::invalid_level_entity_index,
+                                                          sim::invalid_level_entity_index,
                                                           60.f,
                                                           60.f);
     } else if (needs_defence) {
         first_capital_index = add_worldless_capital_spawn(data,
                                                           FVector3f::ZeroVector,
                                                           ETestTeam::Blue,
-                                                          ::ioj::sim::invalid_level_entity_index,
+                                                          sim::invalid_level_entity_index,
                                                           60.f,
                                                           60.f);
         second_capital_index = add_worldless_capital_spawn(data,
                                                            FVector3f{2000.f, 0.f, 0.f},
                                                            ETestTeam::Red,
-                                                           ::ioj::sim::invalid_level_entity_index,
+                                                           sim::invalid_level_entity_index,
                                                            60.f,
                                                            60.f);
     }
@@ -87,7 +87,7 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
     auto& mission_data{data.level_events.initialisation.mission.emplace()};
     if (needs_defence) {
         auto const capital_events{data.level_events.schedule.capital_spawns.get_const_view()};
-        mission_data.mode = ::ioj::levels::LevelMissionMode::SurviveTime;
+        mission_data.mode = levels::LevelMissionMode::SurviveTime;
         mission_data.time_limit_seconds = 10.f;
         mission_data.save_results = false;
         mission_data.must_survive_entity_indices.push_back(
@@ -100,11 +100,11 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
     auto& simulation{harness.get_simulation()};
     auto& mission{simulation.get_mission_manager()};
     auto const& capitals{simulation.get_capital_ships()};
-    auto const first_capital{first_capital_index == ::ioj::sim::invalid_level_entity_index
-                                 ? ::ioj::sim::EntityId{}
+    auto const first_capital{first_capital_index == sim::invalid_level_entity_index
+                                 ? sim::EntityId{}
                                  : capitals.get_id(first_capital_index)};
-    auto const second_capital{second_capital_index == ::ioj::sim::invalid_level_entity_index
-                                  ? ::ioj::sim::EntityId{}
+    auto const second_capital{second_capital_index == sim::invalid_level_entity_index
+                                  ? sim::EntityId{}
                                   : capitals.get_id(second_capital_index)};
     harness.finish_initialisation();
 
@@ -146,7 +146,7 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
         harness.timeline.then_after(
             0.1, [&] { harness.queue_kills(std::array{first_capital}, player_id); });
     }
-    harness.on_end_tick = [&](::ioj::sim::LevelSim&) { hud.force_sample(); };
+    harness.on_end_tick = [&](sim::LevelSim&) { hud.force_sample(); };
     harness.timeline.finish_at(0.35);
     test.TestTrue(TEXT("HUD cache timeline completes"), harness.run_until_timeline_finished(1.0));
 
@@ -156,9 +156,8 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
                          TEXT("Entity cache updates without a HUD"));
     } else if (scenario == EHUDManagerScenario::MissionAndDefenceDataUpdateWithoutHUD) {
         auto const& status{hud.get_mission_data().status_data};
-        checks.are_equal(::ioj::sim::MissionState::Failed,
-                         status.mission_state,
-                         TEXT("Defence failure is cached"));
+        checks.are_equal(
+            sim::MissionState::Failed, status.mission_state, TEXT("Defence failure is cached"));
         checks.is_true(status.surviving_entity_health[0].health <= 0,
                        TEXT("Destroyed survivor health is cached"));
         checks.is_true(status.required_kill_entity_health[0].health <= 0,
@@ -196,7 +195,7 @@ FTestHUDManagerScenario::FTestHUDManagerScenario(FSimulationTestContext& context
 
 void FTestHUDManagerScenario::on_tear_down() {
     check_headless_hud_manager_matches_simulation();
-    ioj::reset(checks, test_driver, headless_hud_manager);
+    reset(checks, test_driver, headless_hud_manager);
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -258,18 +257,18 @@ void FTestHUDManagerScenario::initial_caches_process_samples() {
 /* ------------------------------------------------------------------------------------------ */
 void FTestHUDManagerScenario::defence_pre_begin_play(UWorld& world,
                                                      USpaceGameLevelConfig const& config) {
-    auto* const defended{ioj::spawn_capital_proxy(
+    auto* const defended{spawn_capital_proxy(
         world, config, checks, FName{TEXT("defended_capital")}, FVector::ZeroVector)};
     if (!IsValid(defended)) {
         return;
     }
-    ioj::spawn_capital_proxy(
+    spawn_capital_proxy(
         world, config, checks, FName{TEXT("required_enemy_capital")}, FVector{2000.f, 0.f, 0.f});
 }
 
 void FTestHUDManagerScenario::configure_defence_mission(UWorld& world,
                                                         ATestBatchOrchestrator& orchestrator) {
-    auto const capitals{ioj::get_actors<ATestCapitalShipProxy>(world)};
+    auto const capitals{get_actors<ATestCapitalShipProxy>(world)};
     auto const find_capital{[&capitals](FName const test_name) {
         auto* const* const capital{
             capitals.FindByPredicate([test_name](ATestCapitalShipProxy const* const candidate) {
@@ -351,13 +350,12 @@ void FTestHUDManagerScenario::defence_on_tick(ATestBatchOrchestrator&) {
 }
 
 void FTestHUDManagerScenario::defence_process_samples() {
-    ioj::check_samples_recorded(defence_samples.num(), checks, TEXT("Defence samples recorded"));
+    check_samples_recorded(defence_samples.num(), checks, TEXT("Defence samples recorded"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
     auto const& sample{defence_samples.nearest_value(test_duration)};
-    checks.are_equal(::ioj::sim::MissionState::Failed,
-                     sample.mission_state,
-                     TEXT("Defence mission failure is cached"));
+    checks.are_equal(
+        sim::MissionState::Failed, sample.mission_state, TEXT("Defence mission failure is cached"));
     checks.is_less_equal_than(
         sample.defended_entity_health, 0, TEXT("Destroyed must-survive health is cached"));
     checks.is_less_equal_than(
@@ -401,7 +399,7 @@ void FTestHUDManagerScenario::mission_time_on_tick(ATestBatchOrchestrator& orche
 }
 
 void FTestHUDManagerScenario::mission_time_process_samples() {
-    ioj::check_samples_recorded(
+    check_samples_recorded(
         mission_time_samples.num(), checks, TEXT("Mission-time samples recorded"));
     if (mission_time_samples.is_empty()) {
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
@@ -426,22 +424,22 @@ void FTestHUDManagerScenario::mission_time_process_samples() {
 void FTestHUDManagerScenario::player_kill_pre_begin_play(UWorld& world,
                                                          USpaceGameLevelConfig const& config) {
     auto* const player_ship{
-        ioj::spawn_player_ship(world, config.classes.player_ship_class, &config.player_ship)};
+        spawn_player_ship(world, config.classes.player_ship_class, &config.player_ship)};
     if (!checks.is_valid(player_ship, TEXT("Player ship is spawned"))) {
         return;
     }
 
-    ioj::spawn_capital_proxy(world,
-                             config,
-                             checks,
-                             FName{TEXT("player_kill_target_capital")},
-                             FVector{2000.f, 0.f, 0.f});
+    spawn_capital_proxy(world,
+                        config,
+                        checks,
+                        FName{TEXT("player_kill_target_capital")},
+                        FVector{2000.f, 0.f, 0.f});
 }
 
 void FTestHUDManagerScenario::player_kill_begin() {
     initialise_test_driver();
 
-    auto* player_ship{ioj::get_first_actor<ATestSpaceShip>(test_driver->world)};
+    auto* player_ship{get_first_actor<ATestSpaceShip>(test_driver->world)};
     if (!checks.is_true(IsValid(player_ship), TEXT("Got player ship"))) {
         return;
     }
@@ -453,7 +451,7 @@ void FTestHUDManagerScenario::player_kill_begin() {
     auto const& capitals{test_driver->get_capital_ships()};
     check(capitals.get_num_instances() == 1);
 
-    std::array<::ioj::sim::EntityId, 1> const targets{capitals.get_entities().entity_ids()[0]};
+    std::array<sim::EntityId, 1> const targets{capitals.get_entities().entity_ids()[0]};
     auto const instigator{player_ship->get_unique_id()};
     test_driver->timeline.then_after(damage_queue_time, [this, targets, instigator] {
         test_driver->queue_kills(targets, instigator);
@@ -493,7 +491,7 @@ void FTestHUDManagerScenario::player_kill_on_tick(ATestBatchOrchestrator&) {
 }
 
 void FTestHUDManagerScenario::player_kill_process_samples() {
-    ioj::check_samples_recorded(player_samples.num(), checks, TEXT("Player samples recorded"));
+    check_samples_recorded(player_samples.num(), checks, TEXT("Player samples recorded"));
     if (player_samples.is_empty()) {
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
         return;
@@ -515,7 +513,7 @@ void FTestHUDManagerScenario::player_kill_process_samples() {
 // Registration
 /* ------------------------------------------------------------------------------------------ */
 void FTestHUDManagerScenario::registration_process_samples() {
-    auto* const player{ioj::spawn_player_ship(
+    auto* const player{spawn_player_ship(
         context_.world, context_.config.classes.player_ship_class, &context_.config.player_ship)};
     if (!checks.is_valid(player, TEXT("Player exists for overlay and radar collection"))) {
         return;
@@ -538,7 +536,7 @@ void FTestHUDManagerScenario::registration_process_samples() {
                      count_cached_entities(hud_manager),
                      TEXT("Cache exists before HUD registration"));
 
-    auto* const ui_data{ioj::test_batch_game_ui_data::get_data_asset()};
+    auto* const ui_data{test_batch_game_ui_data::get_data_asset()};
     auto* const player_controller{context_.world.GetFirstPlayerController()};
     auto const ui_data_loaded{checks.not_nullptr(ui_data, TEXT("HUD UI data loads"))};
     auto const player_controller_available{
@@ -591,7 +589,7 @@ void FTestHUDManagerScenario::registration_process_samples() {
 /* ------------------------------------------------------------------------------------------ */
 void FTestHUDManagerScenario::entity_count_pre_begin_play(UWorld& world,
                                                           USpaceGameLevelConfig const& config) {
-    ioj::spawn_capital_proxy(
+    spawn_capital_proxy(
         world, config, checks, FName{TEXT("entity_count_capital")}, FVector::ZeroVector);
 }
 
@@ -608,7 +606,7 @@ void FTestHUDManagerScenario::entity_count_begin() {
 
     auto const& capitals{test_driver->get_capital_ships()};
     check(capitals.get_num_instances() == 1);
-    std::array<::ioj::sim::EntityId, 1> const targets{capitals.get_id(0)};
+    std::array<sim::EntityId, 1> const targets{capitals.get_id(0)};
     test_driver->timeline.then_after(damage_queue_time,
                                      [this, targets] { test_driver->queue_kills(targets); });
     begin_timed_sampling(test_duration,
@@ -626,7 +624,7 @@ void FTestHUDManagerScenario::entity_count_on_tick(ATestBatchOrchestrator& orche
 }
 
 void FTestHUDManagerScenario::entity_count_process_samples() {
-    ioj::check_samples_recorded(
+    check_samples_recorded(
         entity_count_samples.num(), checks, TEXT("Entity-count samples recorded"));
     if (entity_count_samples.is_empty()) {
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
@@ -659,7 +657,7 @@ auto FTestHUDManagerScenario::initialise_headless_hud_manager() -> bool {
         return false;
     }
 
-    if (orchestrator->get_state() == ::ioj::sim::OrchestratorState::Uninitialised) {
+    if (orchestrator->get_state() == sim::OrchestratorState::Uninitialised) {
         orchestrator->start_simulation();
     }
 
@@ -729,8 +727,7 @@ void FTestHUDManagerScenario::check_headless_hud_manager_matches_simulation() {
 }
 
 void FTestHUDManagerScenario::check_mission_data_equal(
-    ioj::hud_manager::FMissionDataCache const& local,
-    ioj::hud_manager::FMissionDataCache const& simulation) {
+    hud_manager::FMissionDataCache const& local, hud_manager::FMissionDataCache const& simulation) {
     auto const& local_static_data{local.static_data};
     auto const& simulation_static_data{simulation.static_data};
     checks.are_equal(local_static_data.mission_mode,
@@ -808,8 +805,8 @@ void FTestHUDManagerScenario::check_mission_data_equal(
 
 #if WITH_EDITOR
 void FTestHUDManagerScenario::check_sampled_speed_data_equal(
-    ioj::hud_manager::FSampledSpeedDataCache const& local,
-    ioj::hud_manager::FSampledSpeedDataCache const& simulation) {
+    hud_manager::FSampledSpeedDataCache const& local,
+    hud_manager::FSampledSpeedDataCache const& simulation) {
     constexpr double sampled_speed_tolerance{1e-6};
     auto const local_sample_count{local.samples.Num()};
     auto const simulation_sample_count{simulation.samples.Num()};
@@ -829,8 +826,8 @@ void FTestHUDManagerScenario::check_sampled_speed_data_equal(
 auto FTestHUDManagerScenario::count_cached_entities(FHUDManager const& manager) -> int32 {
     int32 total{0};
     auto const& counts{manager.get_entity_count_data().alive_per_team_and_type};
-    constexpr int32 n_teams{ioj::enum_count<ETestTeam>()};
-    constexpr int32 n_types{ioj::enum_count<::ioj::sim::EntityType>()};
+    constexpr int32 n_teams{enum_count<ETestTeam>()};
+    constexpr int32 n_types{enum_count<sim::EntityType>()};
     for (int32 team{0}; team < n_teams; ++team) {
         for (int32 type{0}; type < n_types; ++type) {
             total += counts[team][type];

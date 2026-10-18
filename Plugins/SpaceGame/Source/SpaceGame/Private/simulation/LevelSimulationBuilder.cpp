@@ -63,7 +63,7 @@ auto compile_proxy_mission(::FLevelMissionDefinition const& definition,
         checkNoEntry();
         return ::ioj::levels::LevelMissionMode::Unspecified;
     }()};
-    ::ioj::sim::LevelMissionInitialisationData result{
+    sim::LevelMissionInitialisationData result{
         .mode = mode,
         .time_limit_seconds = definition.target_time,
         .kill_count = definition.kill_target,
@@ -114,20 +114,20 @@ void destroy_proxy_actors(TArray<TProxy*> const& proxies) {
 }
 
 auto proxy_fits_collision_grid(AActor const& actor,
-                               ::ioj::sim::EntityType const type,
-                               ::ioj::sim::LevelSimInitData const& data,
+                               sim::EntityType const type,
+                               sim::LevelSimInitData const& data,
                                USpaceGameLevelConfig const& config,
                                FLevelStartErrors& errors) -> bool {
     auto const transform{actor.GetActorTransform()};
-    auto const bounds{::ioj::sim::collision::make_entity_world_bounds(
+    auto const bounds{sim::collision::make_entity_world_bounds(
         data.entity_bounds,
         type,
-        ioj::to_native(FVector3f{transform.GetLocation()}),
-        ioj::to_quaternion(ioj::to_native(FRotator3f{transform.Rotator()})))};
+        to_native(FVector3f{transform.GetLocation()}),
+        to_quaternion(to_native(FRotator3f{transform.Rotator()})))};
     auto const coordinates{
-        ::ioj::sim::collision::to_cell_coord_bounds(data.grid_geometry, bounds.min, bounds.max)};
-    if (::ioj::sim::collision::is_cell_coord_in_bounds(data.grid_geometry, coordinates.min) &&
-        ::ioj::sim::collision::is_cell_coord_in_bounds(data.grid_geometry, coordinates.max)) {
+        sim::collision::to_cell_coord_bounds(data.grid_geometry, bounds.min, bounds.max)};
+    if (sim::collision::is_cell_coord_in_bounds(data.grid_geometry, coordinates.min) &&
+        sim::collision::is_cell_coord_in_bounds(data.grid_geometry, coordinates.max)) {
         return true;
     }
 
@@ -135,8 +135,8 @@ auto proxy_fits_collision_grid(AActor const& actor,
     auto const half_size{FVector3f{grid.dimensions.x() * grid.cell_dimensions.x() * 0.5f,
                                    grid.dimensions.y() * grid.cell_dimensions.y() * 0.5f,
                                    grid.dimensions.z() * grid.cell_dimensions.z() * 0.5f}};
-    auto const min{ioj::to_unreal(bounds.min)};
-    auto const max{ioj::to_unreal(bounds.max)};
+    auto const min{to_unreal(bounds.min)};
+    auto const max{to_unreal(bounds.max)};
     errors.add(FString::Printf(
         TEXT("Actor '%s' has collision bounds %s to %s outside the grid (%s to %s) in '%s'. "
              "Increase collision_grid.grid_size or move the actor."),
@@ -150,20 +150,20 @@ auto proxy_fits_collision_grid(AActor const& actor,
 }
 
 void append_fighter_spawn_slot_errors(
-    std::vector<::ioj::levels::FighterSpawnSlotValidationError> const& validation_errors,
-    ::ioj::sim::CapitalShipSimConfig const& capital_config,
+    std::vector<levels::FighterSpawnSlotValidationError> const& validation_errors,
+    sim::CapitalShipSimConfig const& capital_config,
     FLevelStartErrors& errors) {
     for (auto const& error : validation_errors) {
         switch (error.kind) {
             case ::ioj::levels::FighterSpawnSlotValidationErrorKind::IntersectsCapital: {
-                auto const location{ioj::to_float(
+                auto const location{to_float(
                     capital_config.fighter_spawn_slots_relative_transforms[error.first_slot]
                         .location)};
                 errors.add(FString::Printf(
                     TEXT("fighter spawn slot %d at %s intersects the capital collision bounds plus "
                          "fighter clearance"),
                     error.first_slot,
-                    *ioj::to_unreal(location).ToString()));
+                    *to_unreal(location).ToString()));
                 break;
             }
             case ::ioj::levels::FighterSpawnSlotValidationErrorKind::SlotsOverlap:
@@ -178,19 +178,19 @@ void append_fighter_spawn_slot_errors(
     }
 }
 
-void validate_fighter_spawn_slots(::ioj::sim::CapitalShipSimConfig const& capital_config,
-                                  ::ioj::sim::FighterSimConfig const& fighter_config,
-                                  ::ioj::sim::collision::EntityAABBs const& entity_bounds,
+void validate_fighter_spawn_slots(sim::CapitalShipSimConfig const& capital_config,
+                                  sim::FighterSimConfig const& fighter_config,
+                                  sim::collision::EntityAABBs const& entity_bounds,
                                   FLevelStartErrors& errors) {
     append_fighter_spawn_slot_errors(
-        ::ioj::levels::validate_fighter_spawn_slots(capital_config, fighter_config, entity_bounds),
+        levels::validate_fighter_spawn_slots(capital_config, fighter_config, entity_bounds),
         capital_config,
         errors);
 }
 }
 
 namespace ioj {
-auto FProxyLevelSimBuild::bind_proxy_entities(::ioj::sim::LevelSim const& simulation) const
+auto FProxyLevelSimBuild::bind_proxy_entities(sim::LevelSim const& simulation) const
     -> FProxyEntityMap {
     auto const capital_count{capital_proxies.Num()};
     auto const capital_entities{simulation.get_capital_ships().get_entities()};
@@ -224,8 +224,8 @@ void FProxyLevelSimBuild::destroy_proxy_actors() const {
 }
 
 auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
-                                     ::ioj::sim::FixedTickLoop const& clock_settings,
-                                     TOptional<::ioj::sim::player::PlayerSpawnData> player,
+                                     sim::FixedTickLoop const& clock_settings,
+                                     TOptional<sim::player::PlayerSpawnData> player,
                                      UStaticMesh const* const player_collision_mesh)
     -> FLevelSimBuildResult {
     FLevelStartErrors errors;
@@ -266,15 +266,15 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
         IsValid(socket) ? static_cast<float>(socket->RelativeLocation.Size()) : 0.f;
     auto const dimensions{config.collision_grid.calculate_grid_dimensions()};
     data.grid_geometry = {{dimensions.X, dimensions.Y, dimensions.Z},
-                          ioj::to_native(config.collision_grid.cell_size)};
+                          to_native(config.collision_grid.cell_size)};
 
-    ioj::FLevelCollisionHost::EntityMeshes meshes{};
-    meshes[::ioj::sim::EntityType::PlayerShip] = player_collision_mesh;
-    meshes[::ioj::sim::EntityType::CapitalShip] = config.capital_ships.mesh;
-    meshes[::ioj::sim::EntityType::Fighter] = config.fighters.mesh;
-    meshes[::ioj::sim::EntityType::Turret] = config.turrets.mesh;
-    meshes[::ioj::sim::EntityType::TubeSpinner] = config.tube_spinners.mesh;
-    auto bounds{ioj::FLevelCollisionHost::extract_entity_bounds(meshes)};
+    FLevelCollisionHost::EntityMeshes meshes{};
+    meshes[sim::EntityType::PlayerShip] = player_collision_mesh;
+    meshes[sim::EntityType::CapitalShip] = config.capital_ships.mesh;
+    meshes[sim::EntityType::Fighter] = config.fighters.mesh;
+    meshes[sim::EntityType::Turret] = config.turrets.mesh;
+    meshes[sim::EntityType::TubeSpinner] = config.tube_spinners.mesh;
+    auto bounds{FLevelCollisionHost::extract_entity_bounds(meshes)};
     if (!bounds) {
         return FLevelSimBuildResult{std::unexpect, MoveTemp(bounds.error())};
     }
@@ -290,10 +290,10 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
 }
 
 auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
-                                     ::ioj::sim::FixedTickLoop const& clock_settings,
+                                     sim::FixedTickLoop const& clock_settings,
                                      levels::LevelDefinition const& definition,
-                                     TOptional<::ioj::sim::player::PlayerSpawnData> player,
-                                     ::ioj::sim::collision::WorldAABBs static_bounds,
+                                     TOptional<sim::player::PlayerSpawnData> player,
+                                     sim::collision::WorldAABBs static_bounds,
                                      UStaticMesh const* const player_collision_mesh)
     -> FLevelSimBuildResult {
     auto result{make_level_simulation_init_data(
@@ -303,10 +303,9 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     }
     auto& data{result.value()};
     data.static_bounds = MoveTemp(static_bounds);
-    ::ioj::sim::SimClock clock;
+    sim::SimClock clock;
     clock.initialise(clock_settings);
-    auto compiled{
-        ::ioj::levels::compile_level(definition, clock, data.capital_ships, data.turrets)};
+    auto compiled{levels::compile_level(definition, clock, data.capital_ships, data.turrets)};
     if (!compiled) {
         FLevelStartErrors errors;
         for (auto const& error : compiled.error()) {
@@ -319,10 +318,10 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
 }
 
 auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
-                                           ::ioj::sim::FixedTickLoop const& clock_settings,
+                                           sim::FixedTickLoop const& clock_settings,
                                            UWorld& world,
                                            ::FLevelMissionDefinition& mission_definition,
-                                           TOptional<::ioj::sim::player::PlayerSpawnData> player,
+                                           TOptional<sim::player::PlayerSpawnData> player,
                                            AActor const* const player_actor,
                                            UStaticMesh const* const player_collision_mesh)
     -> FProxyLevelSimBuildResult {
@@ -360,19 +359,17 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
         auto const count{build.capital_proxies.Num()};
         auto const default_spawn_cooldown{config.capital_ships.spawn_delay};
         auto& storage{spawns.capital_spawns};
-        spawns.add_initial_spawn_group(::ioj::sim::EntityType::CapitalShip, 0, count);
+        spawns.add_initial_spawn_group(sim::EntityType::CapitalShip, 0, count);
         storage.add_defaulted(count);
         auto const events{storage.get_view()};
         for (int32 i{}; i < count; ++i) {
             auto const* const proxy{build.capital_proxies[i]};
             auto const& transform{proxy->GetActorTransform()};
             events.entity_indices()[i] = allocate_entity_index(*proxy);
-            events.target_entity_indices()[i] = ::ioj::sim::invalid_level_entity_index;
-            ::ioj::set_vector(
-                events.view_locations(), i, ioj::to_native(FVector3f{transform.GetLocation()}));
-            ioj::set_rotation(
-                events.view_rotations(), i, ioj::to_native(FRotator3f{transform.Rotator()}));
-            events.teams()[i] = ioj::to_native(proxy->get_team());
+            events.target_entity_indices()[i] = sim::invalid_level_entity_index;
+            set_vector(events.view_locations(), i, to_native(FVector3f{transform.GetLocation()}));
+            set_rotation(events.view_rotations(), i, to_native(FRotator3f{transform.Rotator()}));
+            events.teams()[i] = to_native(proxy->get_team());
             events.healths()[i] = proxy->get_health().Get(config.capital_ships.max_health);
             events.initial_fighter_spawn_delays()[i] = proxy->get_initial_spawn_delay().Get(0.f);
             events.fighter_spawn_cooldowns()[i] =
@@ -382,7 +379,7 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
     {
         auto const count{build.turret_proxies.Num()};
         auto& storage{spawns.turret_spawns};
-        spawns.add_initial_spawn_group(::ioj::sim::EntityType::Turret, 0, count);
+        spawns.add_initial_spawn_group(sim::EntityType::Turret, 0, count);
         storage.add_defaulted(count);
         auto const events{storage.get_view()};
         build.initial_turret_transforms.Reserve(count);
@@ -391,11 +388,9 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
             auto const transform{proxy->GetActorTransform()};
             build.initial_turret_transforms.Add(transform);
             events.entity_indices()[i] = allocate_entity_index(*proxy);
-            ::ioj::set_vector(
-                events.view_locations(), i, ioj::to_native(FVector3f{transform.GetLocation()}));
-            ioj::set_rotation(
-                events.view_rotations(), i, ioj::to_native(FRotator3f{transform.Rotator()}));
-            events.teams()[i] = ioj::to_native(proxy->get_team());
+            set_vector(events.view_locations(), i, to_native(FVector3f{transform.GetLocation()}));
+            set_rotation(events.view_rotations(), i, to_native(FRotator3f{transform.Rotator()}));
+            events.teams()[i] = to_native(proxy->get_team());
             events.healths()[i] = proxy->get_health().Get(config.turrets.max_health);
             events.laser_damages()[i] = proxy->get_laser_damage().Get(config.turrets.laser.damage);
         }
@@ -403,15 +398,14 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
     {
         auto const count{build.spinner_proxies.Num()};
         auto& storage{spawns.spinner_spawns};
-        spawns.add_initial_spawn_group(::ioj::sim::EntityType::TubeSpinner, 0, count);
+        spawns.add_initial_spawn_group(sim::EntityType::TubeSpinner, 0, count);
         storage.add_defaulted(count);
         auto const events{storage.get_view()};
         for (int32 i{}; i < count; ++i) {
             auto const* const proxy{build.spinner_proxies[i]};
             auto const& transform{proxy->GetActorTransform()};
             events.entity_indices()[i] = allocate_entity_index(*proxy);
-            ::ioj::set_vector(
-                events.view_locations(), i, ioj::to_native(FVector3f{transform.GetLocation()}));
+            set_vector(events.view_locations(), i, to_native(FVector3f{transform.GetLocation()}));
             events.yaws()[i] = transform.Rotator().Yaw;
             events.initial_fire_point_indices()[i] = proxy->get_initial_active_fire_point();
         }
@@ -437,25 +431,25 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
         level_simulation_builder::compile_proxy_mission(mission_definition, entity_indices);
 
     FLevelStartErrors bounds_errors;
-    auto const fits{[&](AActor const& actor, ::ioj::sim::EntityType const type) {
+    auto const fits{[&](AActor const& actor, sim::EntityType const type) {
         return level_simulation_builder::proxy_fits_collision_grid(
             actor, type, build.data, config, bounds_errors);
     }};
-    if (build.data.player.has_value() && !fits(*player_actor, ::ioj::sim::EntityType::PlayerShip)) {
+    if (build.data.player.has_value() && !fits(*player_actor, sim::EntityType::PlayerShip)) {
         return FProxyLevelSimBuildResult{std::unexpect, MoveTemp(bounds_errors)};
     }
     for (auto const* const proxy : build.capital_proxies) {
-        if (!fits(*proxy, ::ioj::sim::EntityType::CapitalShip)) {
+        if (!fits(*proxy, sim::EntityType::CapitalShip)) {
             return FProxyLevelSimBuildResult{std::unexpect, MoveTemp(bounds_errors)};
         }
     }
     for (auto const* const proxy : build.turret_proxies) {
-        if (!fits(*proxy, ::ioj::sim::EntityType::Turret)) {
+        if (!fits(*proxy, sim::EntityType::Turret)) {
             return FProxyLevelSimBuildResult{std::unexpect, MoveTemp(bounds_errors)};
         }
     }
     for (auto const* const proxy : build.spinner_proxies) {
-        if (!fits(*proxy, ::ioj::sim::EntityType::TubeSpinner)) {
+        if (!fits(*proxy, sim::EntityType::TubeSpinner)) {
             return FProxyLevelSimBuildResult{std::unexpect, MoveTemp(bounds_errors)};
         }
     }

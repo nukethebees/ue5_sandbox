@@ -46,7 +46,7 @@ LevelTelemetryBlockHistory::LevelTelemetryBlockHistory(GameMemory& memory,
           level_telemetry_block_history_detail::capacity_for_bytes(config.block_bytes)} {
     using Layout = telemetry::HistoryRowsSingleLayout;
     if (rows_per_block_ < Layout::capacity_granularity) {
-        ioj::fatal_error(
+        fatal_error(
             std::format("Telemetry block budget of {} bytes cannot hold the minimum {} rows",
                         config_.block_bytes,
                         Layout::capacity_granularity));

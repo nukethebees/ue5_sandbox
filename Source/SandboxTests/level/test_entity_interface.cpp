@@ -132,7 +132,7 @@ void FEntityInterfaceScenario::sample_values() {
     spinner_proxy_counts.add(time, get_actors<ATestTubeSpinnerProxy>(context_.world).Num());
 
     auto const* const capitals{test_driver->orchestrator.get_capital_ships()};
-    TArray<::ioj::sim::EntityId> target_ids;
+    TArray<sim::EntityId> target_ids;
     auto const handles{capitals->get_target_ids()};
     target_ids.Append(handles.data(), static_cast<int32>(handles.size()));
     capital_target_ids.add(time, MoveTemp(target_ids));
@@ -140,7 +140,7 @@ void FEntityInterfaceScenario::sample_values() {
     TArray<uint8> target_alive;
     auto const& simulation{*test_driver->orchestrator.get_level_simulation()};
     for (auto const handle : capitals->get_target_ids()) {
-        target_alive.Add(::ioj::sim::entity_is_alive(simulation, handle));
+        target_alive.Add(sim::entity_is_alive(simulation, handle));
     }
     capital_target_alive.add(time, MoveTemp(target_alive));
 }

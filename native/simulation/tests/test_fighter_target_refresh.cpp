@@ -20,7 +20,7 @@ auto make_world() -> LevelSimInitData {
         data, {{-1000.f, -1000.f, 0.f}}, Team::Green, invalid_level_entity_index, 60.f, 60.f, 100);
     add_capital_spawn(
         data, {{-2000.f, 0.f, 0.f}}, Team::Red, invalid_level_entity_index, 60.f, 60.f, 100);
-    for (auto const type : ioj::EnumTraits<EntityType>::values) {
+    for (auto const type : EnumTraits<EntityType>::values) {
         data.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
     data.entity_bounds.set_half_extents(EntityType::CapitalShip, {{100.f, 100.f, 100.f}});
@@ -59,14 +59,14 @@ class FighterTargetRefresh : public ::testing::Test {
 
     auto think() -> std::uint64_t {
         auto const before{memory.get_stats().current_root_claim_count};
-        ioj::FrameScratchScope scope{memory};
+        FrameScratchScope scope{memory};
         LevelSimTestAccess::think_fighters(simulation, &memory);
         return memory.get_stats().current_root_claim_count - before;
     }
 
     auto single_refresh_and_plan() -> std::uint64_t {
         auto const before{memory.get_stats().current_root_claim_count};
-        ioj::FrameScratchScope scope{memory};
+        FrameScratchScope scope{memory};
         LevelSimTestAccess::refresh_fighter_targets_and_plan(simulation, &memory);
         return memory.get_stats().current_root_claim_count - before;
     }
@@ -86,15 +86,14 @@ class FighterTargetRefresh : public ::testing::Test {
         auto const next_location{vector_at(entities.view_locations(), index) +
                                  vector_at(entities.view_movement_directions(), index) *
                                      entities.move_distances()[index]};
-        EXPECT_FLOAT_EQ(entities.target_distances()[index],
-                        ioj::size(state->location - next_location));
+        EXPECT_FLOAT_EQ(entities.target_distances()[index], size(state->location - next_location));
         EXPECT_FLOAT_EQ(entities.target_distance_sq()[index],
-                        ioj::size_squared(state->location - next_location));
+                        size_squared(state->location - next_location));
         auto const intercept{state->location + state->velocity * entities.intercept_times()[index]};
         expect_vector(vector_at(entities.view_desired_aiming_directions(), index),
-                      ioj::native_math::safe_normal(
+                      native_math::safe_normal(
                           intercept - vector_at(entities.view_locations(), index), 1.e-8f));
-        auto const direction{ioj::native_math::safe_normal(offset, 1.e-8f)};
+        auto const direction{native_math::safe_normal(offset, 1.e-8f)};
         expect_vector(vector_at(entities.view_desired_move_locations(), index),
                       state->location - direction * (1000.f * AttackDistanceBand{}.desired_ratio));
     }
@@ -118,20 +117,19 @@ class FighterTargetRefresh : public ::testing::Test {
         auto const next_location{vector_at(entities.view_locations(), index) +
                                  vector_at(entities.view_movement_directions(), index) *
                                      entities.move_distances()[index]};
-        EXPECT_FLOAT_EQ(entities.target_distances()[index], ioj::size(next_location));
-        EXPECT_FLOAT_EQ(entities.target_distance_sq()[index], ioj::size_squared(next_location));
+        EXPECT_FLOAT_EQ(entities.target_distances()[index], size(next_location));
+        EXPECT_FLOAT_EQ(entities.target_distance_sq()[index], size_squared(next_location));
         expect_vector(
             vector_at(entities.view_desired_aiming_directions(), index),
-            ioj::native_math::safe_normal(-vector_at(entities.view_locations(), index), 1.e-8f));
+            native_math::safe_normal(-vector_at(entities.view_locations(), index), 1.e-8f));
     }
 
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, make_world()};
     EntityId fighter;
     EntityId target;
-    alignas(
-        ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 256 * 1024> backing{};
-    ioj::FrameMemoryResource memory{backing};
+    alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 256 * 1024> backing{};
+    FrameMemoryResource memory{backing};
 };
 
 TEST_F(FighterTargetRefresh, UnchangedTargetUsesOneRefreshAndReadsCurrentKinematics) {

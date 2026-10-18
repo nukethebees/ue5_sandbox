@@ -216,9 +216,8 @@ void check_traces(TraceFixture const& fixture, std::span<ExpectedTrace const> co
 
         std::string const location_description{" resolves expected hit location" +
                                                ::testing::PrintToString(trace_case.name)};
-        EXPECT_LE(
-            ioj::size(trace_case.expected_location - hits.get_const_view().view_locations()[i]),
-            hit_location_tolerance)
+        EXPECT_LE(size(trace_case.expected_location - hits.get_const_view().view_locations()[i]),
+                  hit_location_tolerance)
             << location_description;
     }
 }
@@ -238,17 +237,17 @@ void run_worldless_collision_uniform_grid_membership(tests::SimulationFixture co
     auto data{tests::make_simulation_data(config)};
     auto const player_index{tests::add_player_spawn(
         data,
-        tests::make_player_spawn(config,
-                                 Transform3d{.rotation = ioj::Quaternion4d{},
-                                             .location = ioj::Vector3d{-1500.f, -1500.f, 0.f}}))};
+        tests::make_player_spawn(
+            config,
+            Transform3d{.rotation = Quaternion4d{}, .location = Vector3d{-1500.f, -1500.f, 0.f}}))};
     tests::add_capital_spawn(data,
                              Vector3f{{-500.f, -500.f, 0.f}},
                              Team::Blue,
                              player_index,
                              0.f,
                              data.capital_ships.spawn_delay);
-    tests::add_turret_spawn(data, ioj::Vector3f{500.f, 500.f, 0.f}, {}, Team::Blue);
-    tests::add_spinner_spawn(data, ioj::Vector3f{1500.f, 1500.f, 0.f}, 0.f, 0);
+    tests::add_turret_spawn(data, Vector3f{500.f, 500.f, 0.f}, {}, Team::Blue);
+    tests::add_spinner_spawn(data, Vector3f{1500.f, 1500.f, 0.f}, 0.f, 0);
 
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
@@ -264,7 +263,7 @@ void run_worldless_collision_uniform_grid_membership(tests::SimulationFixture co
         return;
     }
 
-    ioj::EnumArray<EntityType, EntityId> expected_ids{};
+    EnumArray<EntityType, EntityId> expected_ids{};
     expected_ids[EntityType::PlayerShip] = player->unique_entity_id;
     expected_ids[EntityType::Turret] = simulation.get_turrets().get_entities().entity_ids()[0];
     expected_ids[EntityType::CapitalShip] = simulation.get_capital_ships().get_id(0);
@@ -275,7 +274,7 @@ void run_worldless_collision_uniform_grid_membership(tests::SimulationFixture co
     auto const& grid{SpatialQueryManagerTestAccess::uniform_grid(spatial_queries)};
     auto const& entity_aabbs{SpatialQueryManagerTestAccess::entity_aabbs(spatial_queries)};
 
-    for (auto const entity_type : ioj::EnumTraits<EntityType>::values) {
+    for (auto const entity_type : EnumTraits<EntityType>::values) {
         auto const id{expected_ids[entity_type]};
         EXPECT_TRUE(entity_is_alive(simulation, id))
             << "Expected collision-grid entity is alive" << ::testing::PrintToString(entity_type);
@@ -402,7 +401,7 @@ void CollisionUniformGridTraceRunner::test_hits_and_misses() {
 
         EXPECT_EQ(fixture.handles[0], hits.get_const_view().entities()[i])
             << "Trace resolves expected entity";
-        EXPECT_LE(ioj::size(expected_locations[i] - hits.get_const_view().view_locations()[i]),
+        EXPECT_LE(size(expected_locations[i] - hits.get_const_view().view_locations()[i]),
                   hit_location_tolerance)
             << "Trace resolves expected hit location";
     }
@@ -447,7 +446,7 @@ void CollisionUniformGridTraceRunner::test_returns_nearest_hit() {
         << "Trace through two AABBs records a hit";
     EXPECT_EQ(fixture.handles[1], hits.get_const_view().entities()[0])
         << "Trace returns nearest intersecting entity";
-    EXPECT_LE(ioj::size(expected_near_contact - hits.get_const_view().view_locations()[0]),
+    EXPECT_LE(size(expected_near_contact - hits.get_const_view().view_locations()[0]),
               hit_location_tolerance)
         << "Trace returns nearest intersection location";
 }
@@ -470,8 +469,7 @@ void CollisionUniformGridTraceRunner::test_handles_zero_length_traces() {
         << "Stationary point inside AABB records a hit";
     EXPECT_EQ(fixture.handles[0], hits.get_const_view().entities()[0])
         << "Stationary point resolves containing entity";
-    EXPECT_LE(ioj::size(starts[0] - hits.get_const_view().view_locations()[0]),
-              hit_location_tolerance)
+    EXPECT_LE(size(starts[0] - hits.get_const_view().view_locations()[0]), hit_location_tolerance)
         << "Stationary point hit location is the trace point";
     EXPECT_EQ(TraceHit{0}, hits.get_const_view().hits()[1])
         << "Stationary point outside AABB does not record a hit";
@@ -498,7 +496,7 @@ void CollisionUniformGridTraceRunner::test_includes_negative_endpoint_boundary()
 
     EXPECT_EQ(fixture.handles[0], hits.get_const_view().entities()[0])
         << "Endpoint trace resolves touched entity";
-    EXPECT_LE(ioj::size(boundary_contact - hits.get_const_view().view_locations()[0]),
+    EXPECT_LE(size(boundary_contact - hits.get_const_view().view_locations()[0]),
               hit_location_tolerance)
         << "Endpoint trace returns boundary contact location";
 }
@@ -520,17 +518,16 @@ void CollisionUniformGridTraceRunner::test_applies_aabb_centre() {
     EXPECT_EQ(TraceHit{0}, rotated_hits.get_const_view().hits()[1])
         << "Trace misses old unrotated box";
     EXPECT_LE(
-        ioj::size(Vector3f{{-5.f, 150.f, 0.f}} - rotated_hits.get_const_view().view_locations()[0]),
+        size(Vector3f{{-5.f, 150.f, 0.f}} - rotated_hits.get_const_view().view_locations()[0]),
         0.001f)
         << "Rotated box has swapped extents";
     auto const swept{run_sweeps(rotated, rotated_starts, rotated_ends, Vector3f{{2.f, 2.f, 2.f}})};
     EXPECT_EQ(TraceHit{1}, swept.get_const_view().hits()[0]) << "Sweep uses rotated cached box";
-    EXPECT_LE(ioj::size(Vector3f{{-7.f, 150.f, 0.f}} - swept.get_const_view().view_locations()[0]),
+    EXPECT_LE(size(Vector3f{{-7.f, 150.f, 0.f}} - swept.get_const_view().view_locations()[0]),
               0.001f)
         << "Sweep expands rotated world bounds";
     auto const cached{rotated.grid.get_entity_world_bounds()};
-    EXPECT_LE(ioj::size(Vector3f{{-5.f, 130.f, -10.f}} - collision::min_point_at(cached, 0)),
-              0.001f)
+    EXPECT_LE(size(Vector3f{{-5.f, 130.f, -10.f}} - collision::min_point_at(cached, 0)), 0.001f)
         << "Visualisation reads the same rotated cached bounds";
 
     rotated.update_entities(std::vector<Vector3f>{Vector3f{}}, std::vector<std::uint8_t>{1});
@@ -568,7 +565,7 @@ void CollisionUniformGridTraceRunner::test_applies_aabb_centre() {
 
     EXPECT_EQ(fixture.handles[0], hits.get_const_view().entities()[0])
         << "Trace resolves locally centred entity";
-    EXPECT_LE(ioj::size(expected_contact - hits.get_const_view().view_locations()[0]),
+    EXPECT_LE(size(expected_contact - hits.get_const_view().view_locations()[0]),
               hit_location_tolerance)
         << "Trace applies local AABB centre to hit location";
 
@@ -631,9 +628,8 @@ void CollisionUniformGridTraceRunner::test_applies_aabb_centre() {
             << "Mixed entity-type trace resolves its entity";
         auto const world_centre{mixed_locations[i] + local_centres[i]};
         auto const expected_type_contact{world_centre - Vector3f{{0.f, half_extents[i].y(), 0.f}}};
-        EXPECT_LE(
-            ioj::size(expected_type_contact - mixed_hits.get_const_view().view_locations()[i]),
-            hit_location_tolerance)
+        EXPECT_LE(size(expected_type_contact - mixed_hits.get_const_view().view_locations()[i]),
+                  hit_location_tolerance)
             << "Mixed entity-type trace applies its AABB row";
     }
 }
@@ -1457,9 +1453,8 @@ void CollisionUniformGridTraceRunner::test_deterministic_reference_sweep() {
                 << "Reference sweep trace resolves nearest entity";
             auto const expected_location{
                 (starts[i_trace] + (ends[i_trace] - starts[i_trace]) * nearest_t)};
-            EXPECT_LE(
-                ioj::size(expected_location - hits.get_const_view().view_locations()[i_trace]),
-                hit_location_tolerance)
+            EXPECT_LE(size(expected_location - hits.get_const_view().view_locations()[i_trace]),
+                      hit_location_tolerance)
                 << "Reference sweep trace resolves nearest location";
         }
 
@@ -1530,8 +1525,8 @@ void CollisionUniformGridTraceRunner::test_invariance_properties() {
                 EXPECT_EQ(baseline_hits.get_const_view().entities()[i].raw_value(),
                           candidate_hits.get_const_view().entities()[i].raw_value())
                     << description;
-                EXPECT_LE(ioj::size(baseline_hits.get_const_view().view_locations()[i] -
-                                    candidate_hits.get_const_view().view_locations()[i]),
+                EXPECT_LE(size(baseline_hits.get_const_view().view_locations()[i] -
+                               candidate_hits.get_const_view().view_locations()[i]),
                           hit_location_tolerance)
                     << description;
             }
@@ -1568,8 +1563,8 @@ void CollisionUniformGridTraceRunner::test_invariance_properties() {
         EXPECT_EQ(baseline_hits.get_const_view().entities()[source_index],
                   permuted_hits.get_const_view().entities()[i])
             << "Trace permutation preserves entity";
-        EXPECT_LE(ioj::size(baseline_hits.get_const_view().view_locations()[source_index] -
-                            permuted_hits.get_const_view().view_locations()[i]),
+        EXPECT_LE(size(baseline_hits.get_const_view().view_locations()[source_index] -
+                       permuted_hits.get_const_view().view_locations()[i]),
                   hit_location_tolerance)
             << "Trace permutation preserves location";
     }
@@ -1588,8 +1583,8 @@ void CollisionUniformGridTraceRunner::test_invariance_properties() {
         EXPECT_EQ(baseline_hit_flags[i], reversed_hit_flags[i])
             << "Entity insertion order preserves hit flag";
         if (baseline_hit_flags[i] != 0 && reversed_hit_flags[i] != 0) {
-            EXPECT_LE(ioj::size(baseline_hits.get_const_view().view_locations()[i] -
-                                reversed_hits.get_const_view().view_locations()[i]),
+            EXPECT_LE(size(baseline_hits.get_const_view().view_locations()[i] -
+                           reversed_hits.get_const_view().view_locations()[i]),
                       hit_location_tolerance)
                 << "Entity insertion order preserves nearest location";
         }
@@ -1618,8 +1613,8 @@ void CollisionUniformGridTraceRunner::test_invariance_properties() {
             EXPECT_EQ(baseline_hits.get_const_view().entities()[i].raw_value(),
                       translated_hits.get_const_view().entities()[i].raw_value())
                 << "Whole-cell translation preserves entity";
-            EXPECT_LE(ioj::size(baseline_hits.get_const_view().view_locations()[i] + translation -
-                                translated_hits.get_const_view().view_locations()[i]),
+            EXPECT_LE(size(baseline_hits.get_const_view().view_locations()[i] + translation -
+                           translated_hits.get_const_view().view_locations()[i]),
                       hit_location_tolerance)
                 << "Whole-cell translation preserves location";
         }
@@ -1787,9 +1782,8 @@ void CollisionUniformGridTraceRunner::test_static_geometry() {
         << "Static hit has no dynamic entity";
     EXPECT_EQ(0, static_hits.get_const_view().static_geometry_indices()[0])
         << "Static hit identifies canonical static geometry";
-    EXPECT_LE(
-        ioj::size(Vector3f{{-60.f, 0.f, 0.f}} - static_hits.get_const_view().view_locations()[0]),
-        hit_location_tolerance)
+    EXPECT_LE(size(Vector3f{{-60.f, 0.f, 0.f}} - static_hits.get_const_view().view_locations()[0]),
+              hit_location_tolerance)
         << "Static hit reports nearest entry point";
 
     set_static_aabb({{-60.f, 100.f, -10.f}}, {{-40.f, 120.f, 10.f}});
@@ -1802,9 +1796,8 @@ void CollisionUniformGridTraceRunner::test_static_geometry() {
         run_sweeps(fixture, offset_starts, offset_ends, Vector3f{{20.f, 20.f, 20.f}})};
     EXPECT_EQ(TraceHit{1}, sweep_hits.get_const_view().hits()[0])
         << "AABB sweep detects static geometry";
-    EXPECT_LE(
-        ioj::size(Vector3f{{-80.f, 80.f, 0.f}} - sweep_hits.get_const_view().view_locations()[0]),
-        hit_location_tolerance)
+    EXPECT_LE(size(Vector3f{{-80.f, 80.f, 0.f}} - sweep_hits.get_const_view().view_locations()[0]),
+              hit_location_tolerance)
         << "AABB sweep reports expanded entry point";
 
     std::vector<Vector3f> const fighter_locations{{{-100.f, 0.f, 0.f}}};

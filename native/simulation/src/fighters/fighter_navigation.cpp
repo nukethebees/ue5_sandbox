@@ -32,7 +32,7 @@ auto is_nearly_zero(Vector3f const vector) noexcept -> bool {
 }
 
 auto clamp_to_unit_size(Vector3f const vector) noexcept -> Vector3f {
-    auto const length_squared{ioj::dot(vector, vector)};
+    auto const length_squared{dot(vector, vector)};
     if (length_squared > 1.0f) {
         return vector * (1.0f / std::sqrt(length_squared));
     }
@@ -49,10 +49,10 @@ constexpr auto combine_hashes(std::uint32_t const first, std::uint32_t const sec
 auto make_avoidance_frame(Vector3f const preferred_direction, float const float_bias) noexcept
     -> AvoidanceFrame {
     auto const reference_axis{std::abs(preferred_direction.z()) < 0.9f
-                                  ? ioj::Vector3f{0.0f, 0.0f, 1.0f}
-                                  : ioj::Vector3f{0.0f, 1.0f, 0.0f}};
-    auto const first_lateral{safe_normal(ioj::cross(reference_axis, preferred_direction))};
-    auto const second_lateral{safe_normal(ioj::cross(preferred_direction, first_lateral))};
+                                  ? Vector3f{0.0f, 0.0f, 1.0f}
+                                  : Vector3f{0.0f, 1.0f, 0.0f}};
+    auto const first_lateral{safe_normal(cross(reference_axis, preferred_direction))};
+    auto const second_lateral{safe_normal(cross(preferred_direction, first_lateral))};
     auto const roll_angle{float_bias * two_pi};
     float roll_sin;
     float roll_cos;
@@ -152,7 +152,7 @@ auto make_coincident_separation_direction(EntityId const self, EntityId const ot
     float angle_sin;
     float angle_cos;
     sin_cos(angle, angle_sin, angle_cos);
-    auto const direction{ioj::Vector3f{radial * angle_cos, radial * angle_sin, z}};
+    auto const direction{Vector3f{radial * angle_cos, radial * angle_sin, z}};
     return self == first ? direction : -direction;
 }
 
@@ -215,7 +215,7 @@ auto observe_separation(Vector3f const fighter_location,
 
     std::array<Vector3f, separation_neighbour_limit> directions_to_neighbours;
     std::array<float, separation_neighbour_limit> neighbour_weights;
-    auto separation_observation{ioj::Vector3f{0.0f, 0.0f, 0.0f}};
+    auto separation_observation{Vector3f{0.0f, 0.0f, 0.0f}};
     auto closest_distance_squared{no_neighbour_distance_squared};
     auto const neighbour_count{static_cast<std::uint32_t>(neighbours.size())};
     for (std::uint32_t neighbour_index{}; neighbour_index < neighbour_count; ++neighbour_index) {
@@ -223,7 +223,7 @@ auto observe_separation(Vector3f const fighter_location,
         auto const neighbour{neighbours[element]};
         auto const neighbour_location{neighbour.location};
         auto const offset{fighter_location - neighbour_location};
-        auto const distance_squared{ioj::dot(offset, offset)};
+        auto const distance_squared{dot(offset, offset)};
         closest_distance_squared = std::min(closest_distance_squared, distance_squared);
 
         float distance{};
@@ -250,19 +250,19 @@ auto observe_separation(Vector3f const fighter_location,
         std::array<Vector3f, avoidance_direction_count> candidates;
         make_avoidance_directions(frame, candidates);
         auto const memory_direction{safe_normal(retained_memory)};
-        auto const memory_strength{std::sqrt(ioj::dot(retained_memory, retained_memory))};
+        auto const memory_strength{std::sqrt(dot(retained_memory, retained_memory))};
         auto const candidate_score{[&](Vector3f const candidate) {
             float crowd_penalty{};
             for (std::uint32_t neighbour_index{}; neighbour_index < neighbour_count;
                  ++neighbour_index) {
                 auto const element{static_cast<std::size_t>(neighbour_index)};
                 auto const towards_dot{
-                    std::max(0.0f, ioj::dot(candidate, directions_to_neighbours[element]))};
+                    std::max(0.0f, dot(candidate, directions_to_neighbours[element]))};
                 crowd_penalty += neighbour_weights[element] * towards_dot * towards_dot;
             }
-            return ioj::dot(candidate, goal_direction) * crowd_goal_score_weight -
+            return dot(candidate, goal_direction) * crowd_goal_score_weight -
                    crowd_penalty * parameters.separation_strength +
-                   ioj::dot(candidate, memory_direction) * memory_strength *
+                   dot(candidate, memory_direction) * memory_strength *
                        steering_memory_score_weight;
         }};
 

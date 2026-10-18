@@ -9,7 +9,7 @@
 namespace ioj::sim {
 namespace {
 auto add_worldless_capital(LevelSimInitData& data,
-                           ioj::Vector3d const location,
+                           Vector3d const location,
                            Team const team = Team::White) -> std::uint32_t {
     auto const row{data.level_events.schedule.capital_spawns.num()};
     tests::add_capital_spawn(
@@ -27,21 +27,20 @@ void run_worldless_mission_manager_scenario(tests::SimulationFixture const& conf
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     auto const hero_index{add_worldless_capital(
         data,
-        ioj::Vector3d{-2000.f, 0.f, 0.f},
+        Vector3d{-2000.f, 0.f, 0.f},
         scenario == Scenario::AutomaticKillTarget ? Team::Green : Team::White)};
     std::uint32_t ordinary_enemy_index{invalid_level_entity_index};
     std::uint32_t required_enemy_index{invalid_level_entity_index};
     if (scenario == Scenario::KillEnemies || scenario == Scenario::KillEnemiesWithinTime) {
-        ordinary_enemy_index = add_worldless_capital(data, ioj::Vector3d{2000.f, 0.f, 0.f});
+        ordinary_enemy_index = add_worldless_capital(data, Vector3d{2000.f, 0.f, 0.f});
     } else if (scenario == Scenario::RequiredKillsObjective) {
-        ordinary_enemy_index = add_worldless_capital(data, ioj::Vector3d{2000.f, 0.f, 0.f});
-        required_enemy_index = add_worldless_capital(data, ioj::Vector3d{4000.f, 0.f, 0.f});
+        ordinary_enemy_index = add_worldless_capital(data, Vector3d{2000.f, 0.f, 0.f});
+        required_enemy_index = add_worldless_capital(data, Vector3d{4000.f, 0.f, 0.f});
     } else if (scenario == Scenario::RequiredKillsTimeElapsed) {
-        required_enemy_index = add_worldless_capital(data, ioj::Vector3d{2000.f, 0.f, 0.f});
+        required_enemy_index = add_worldless_capital(data, Vector3d{2000.f, 0.f, 0.f});
     } else if (scenario == Scenario::AutomaticKillTarget) {
-        ordinary_enemy_index =
-            add_worldless_capital(data, ioj::Vector3d{2000.f, 0.f, 0.f}, Team::Red);
-        add_worldless_capital(data, ioj::Vector3d{4000.f, 0.f, 0.f}, Team::Red);
+        ordinary_enemy_index = add_worldless_capital(data, Vector3d{2000.f, 0.f, 0.f}, Team::Red);
+        add_worldless_capital(data, Vector3d{4000.f, 0.f, 0.f}, Team::Red);
     }
 
     auto& mission{data.level_events.initialisation.mission.emplace()};
@@ -56,17 +55,17 @@ void run_worldless_mission_manager_scenario(tests::SimulationFixture const& conf
     }};
     switch (scenario) {
         case Scenario::SurviveTime:
-            mission.mode = ::ioj::levels::LevelMissionMode::SurviveTime;
+            mission.mode = levels::LevelMissionMode::SurviveTime;
             mission.time_limit_seconds = 0.1f;
             add_survivor();
             break;
         case Scenario::KillEnemies:
-            mission.mode = ::ioj::levels::LevelMissionMode::KillEnemies;
+            mission.mode = levels::LevelMissionMode::KillEnemies;
             mission.kill_count = 1;
             add_hero();
             break;
         case Scenario::KillEnemiesWithinTime:
-            mission.mode = ::ioj::levels::LevelMissionMode::KillEnemiesWithinTime;
+            mission.mode = levels::LevelMissionMode::KillEnemiesWithinTime;
             mission.time_limit_seconds = 0.1f;
             mission.kill_count = 1;
             add_hero();
@@ -74,24 +73,24 @@ void run_worldless_mission_manager_scenario(tests::SimulationFixture const& conf
         case Scenario::DefenceObjective:
         case Scenario::SuccessIsTerminal:
         case Scenario::ExplicitCompletionIsLatched:
-            mission.mode = ::ioj::levels::LevelMissionMode::SurviveTime;
+            mission.mode = levels::LevelMissionMode::SurviveTime;
             mission.time_limit_seconds = scenario == Scenario::SuccessIsTerminal ? 0.1f : 10.f;
             add_survivor();
             break;
         case Scenario::RequiredKillsObjective:
-            mission.mode = ::ioj::levels::LevelMissionMode::KillEnemies;
+            mission.mode = levels::LevelMissionMode::KillEnemies;
             mission.kill_count = 1;
             add_hero();
             add_required_enemy();
             break;
         case Scenario::RequiredKillsTimeElapsed:
-            mission.mode = ::ioj::levels::LevelMissionMode::SurviveTime;
+            mission.mode = levels::LevelMissionMode::SurviveTime;
             mission.time_limit_seconds = 0.1f;
             add_survivor();
             add_required_enemy();
             break;
         case Scenario::AutomaticKillTarget:
-            mission.mode = ::ioj::levels::LevelMissionMode::KillEnemies;
+            mission.mode = levels::LevelMissionMode::KillEnemies;
             mission.kill_count = 0;
             add_hero();
             break;
@@ -123,7 +122,7 @@ void run_worldless_mission_manager_scenario(tests::SimulationFixture const& conf
         std::int32_t survivor_health{};
         std::int32_t required_health{};
     };
-    ioj::TimeSeriesData<Sample> samples;
+    TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim&) {
         Sample sample;
         sample.state = manager.get_mission_state();

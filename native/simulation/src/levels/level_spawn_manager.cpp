@@ -65,8 +65,8 @@ void LevelSpawnManager::spawn(LevelSpawnGroups::ConstView const groups) {
                 break;
             }
             default: {
-                ioj::fatal_error(std::format("Unsupported level spawn entity type: {}",
-                                             std::to_underlying(types[index])));
+                fatal_error(std::format("Unsupported level spawn entity type: {}",
+                                        std::to_underlying(types[index])));
             }
         }
     }

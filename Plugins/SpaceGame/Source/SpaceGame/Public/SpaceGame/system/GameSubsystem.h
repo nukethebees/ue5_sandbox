@@ -105,7 +105,7 @@ struct SPACEGAME_API FLevelLaunchOptions {
 };
 
 struct SPACEGAME_API FPendingLevelDefinition {
-    ioj::levels::LevelDefinition definition;
+    levels::LevelDefinition definition;
     FString source_path{};
     FString source_sha256{};
     FLevelLaunchOptions options{};
@@ -152,7 +152,7 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     /* **************************************** */
     // Level launch and navigation
     /* **************************************** */
-    void set_pending_level(ioj::levels::LevelDefinition definition,
+    void set_pending_level(levels::LevelDefinition definition,
                            FString source_path,
                            FString source_sha256,
                            FLevelLaunchOptions options = {});

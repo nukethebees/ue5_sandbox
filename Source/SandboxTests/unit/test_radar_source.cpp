@@ -13,10 +13,10 @@
 #include <vector>
 
 namespace ioj::test_radar_source {
-auto make_view(ioj::tests::FDisplayEntityTestData const& entities,
-               std::span<::ioj::sim::EntityId const> ids = {})
-    -> std::vector<::ioj::presentation::AgentDisplayBatch> {
-    std::vector<::ioj::presentation::AgentDisplayBatch> batches;
+auto make_view(tests::FDisplayEntityTestData const& entities,
+               std::span<sim::EntityId const> ids = {})
+    -> std::vector<presentation::AgentDisplayBatch> {
+    std::vector<presentation::AgentDisplayBatch> batches;
     auto const count{entities.num()};
     batches.reserve(count);
     for (int32 i{}; i < count; ++i) {
@@ -24,24 +24,24 @@ auto make_view(ioj::tests::FDisplayEntityTestData const& entities,
                            ids.empty() ? ids : ids.subspan(i, 1),
                            entities.motion.get_const_view(i, 1).view_locations(),
                            entities.motion.get_const_view(i, 1).view_velocities(),
-                           ::ioj::sim::HealthConstView{std::span{entities.healths}.subspan(i, 1)},
+                           sim::HealthConstView{std::span{entities.healths}.subspan(i, 1)},
                            std::span{entities.teams}.subspan(i, 1)});
     }
     return batches;
 }
 
-void add_entity(ioj::tests::FDisplayEntityTestData& entities,
+void add_entity(tests::FDisplayEntityTestData& entities,
                 FVector3f const location,
                 ETestTeam const team,
-                ::ioj::sim::EntityType const type,
+                sim::EntityType const type,
                 bool const alive = true) {
     auto const index{entities.num()};
     entities.add_defaulted(1);
-    ::ioj::set_vector(entities.motion.get_view().view_locations(), index, ioj::to_native(location));
-    entities.teams[index] = ioj::to_native(team);
+    set_vector(entities.motion.get_view().view_locations(), index, to_native(location));
+    entities.teams[index] = to_native(team);
     entities.entity_types[index] = type;
     auto const owner{
-        ::ioj::sim::EntityId(static_cast<std::uint32_t>(index), entities.entity_types[index])};
+        sim::EntityId(static_cast<std::uint32_t>(index), entities.entity_types[index])};
     entities.add_health(index, owner, alive ? 100 : 0);
 }
 

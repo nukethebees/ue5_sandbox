@@ -33,7 +33,7 @@ struct SeriesView {
     std::span<float const> y;
 };
 
-using Point2d = ioj::Vector2d;
+using Point2d = Vector2d;
 using Point2f = ioj::Point2f;
 
 struct LayoutSettings {

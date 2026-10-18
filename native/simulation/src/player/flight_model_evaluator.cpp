@@ -12,12 +12,12 @@ struct AxisRuntime {
     float& persistent_target_speed;
     float axis_input;
     float accelerator_input;
-    ioj::Vector3d ship_axis;
-    ioj::Vector3d world_axis;
+    Vector3d ship_axis;
+    Vector3d world_axis;
 };
 
 [[nodiscard]] auto axis_vector(AxisRuntime const& axis, ReferenceFrame const frame) noexcept
-    -> ioj::Vector3d {
+    -> Vector3d {
     return frame == ReferenceFrame::Ship ? axis.ship_axis : axis.world_axis;
 }
 
@@ -27,10 +27,10 @@ struct AxisRuntime {
                                                                        : axis.axis_input;
 }
 
-void seed_axis_responses(ioj::Vector3d const& velocity,
+void seed_axis_responses(Vector3d const& velocity,
                          TranslationAxisConfig const& config,
-                         ioj::Vector3d const& ship_axis,
-                         ioj::Vector3d const& world_axis,
+                         Vector3d const& ship_axis,
+                         Vector3d const& world_axis,
                          bool const reset_acceleration,
                          ScalarResponse& manual,
                          ScalarResponse& automatic) noexcept {
@@ -42,7 +42,7 @@ void seed_axis_responses(ioj::Vector3d const& velocity,
         }
         auto const direction{channel.reference_frame == ReferenceFrame::Ship ? ship_axis
                                                                              : world_axis};
-        response.reset(targets_velocity ? static_cast<float>(ioj::dot(velocity, direction)) : 0.f);
+        response.reset(targets_velocity ? static_cast<float>(dot(velocity, direction)) : 0.f);
     };
     seed(config.manual, manual);
     seed(config.automatic, automatic);
@@ -110,8 +110,8 @@ void apply_target_channel(float const dt,
                           float const input,
                           float const persistent_target,
                           ScalarResponse& response,
-                          ioj::Vector3d const axis,
-                          ioj::Vector3d& velocity) noexcept {
+                          Vector3d const axis,
+                          Vector3d& velocity) noexcept {
     if (semantic != TranslationSemantic::TargetVelocity &&
         semantic != TranslationSemantic::TargetSpeed) {
         return;
@@ -121,7 +121,7 @@ void apply_target_channel(float const dt,
     if (semantic == TranslationSemantic::TargetSpeed && !automatic) {
         target = clamp_target_speed(persistent_target, drive);
     }
-    auto const current{static_cast<float>(ioj::dot(velocity, axis))};
+    auto const current{static_cast<float>(dot(velocity, axis))};
     auto const controlled{std::clamp(response.update(dt, target, response_config),
                                      -drive.negative_speed_limit,
                                      drive.positive_speed_limit)};
@@ -134,8 +134,8 @@ void apply_acceleration_channel(float const dt,
                                 TranslationDriveConfig const& drive,
                                 float const input,
                                 ScalarResponse& response,
-                                ioj::Vector3d const axis,
-                                ioj::Vector3d& velocity) noexcept {
+                                Vector3d const axis,
+                                Vector3d& velocity) noexcept {
     if (channel.semantic != TranslationSemantic::Acceleration) {
         return;
     }
@@ -147,13 +147,13 @@ void apply_acceleration_channel(float const dt,
 
     auto const acceleration{input * acceleration_for(input, drive)};
     auto const smoothed{response.update(dt, acceleration, response_config)};
-    auto const component{ioj::dot(velocity, axis)};
+    auto const component{dot(velocity, axis)};
     auto const limit{limit_for(input, drive)};
     if (std::isfinite(limit) && std::abs(component) >= limit && component * smoothed > 0.0) {
         return;
     }
     velocity += axis * (smoothed * dt);
-    auto const updated_component{ioj::dot(velocity, axis)};
+    auto const updated_component{dot(velocity, axis)};
     auto const limited_component{std::clamp(updated_component,
                                             -static_cast<double>(drive.negative_speed_limit),
                                             static_cast<double>(drive.positive_speed_limit))};
@@ -164,7 +164,7 @@ void integrate_axis(float const dt,
                     bool const boosting,
                     BoostConfig const& boost,
                     AxisRuntime& axis,
-                    ioj::Vector3d& velocity) noexcept {
+                    Vector3d& velocity) noexcept {
     auto const& drive{selected_drive(axis, boosting)};
     auto const manual_input{channel_input(axis, axis.config.manual)};
     auto const manual_axis{axis_vector(axis, axis.config.manual.reference_frame)};
@@ -212,8 +212,8 @@ void integrate_axis(float const dt,
                                automatic_axis,
                                velocity);
 
-    auto move_component_toward_zero = [&](ioj::Vector3d const& direction, float const rate) {
-        auto const component{ioj::dot(velocity, direction)};
+    auto move_component_toward_zero = [&](Vector3d const& direction, float const rate) {
+        auto const component{dot(velocity, direction)};
         auto const maximum_change{static_cast<double>(rate * dt)};
         auto const new_component{
             std::clamp(0.0, component - maximum_change, component + maximum_change)};
@@ -240,7 +240,7 @@ void integrate_axis(float const dt,
 
 void apply_brake(float const dt, BrakeConfig const& brake, PlayerSimulationState& state) noexcept {
     auto& velocity{state.physical.velocity};
-    auto const speed{static_cast<float>(ioj::size(velocity))};
+    auto const speed{static_cast<float>(size(velocity))};
     if (speed <= brake.target_speed || speed <= 1.e-8f) {
         return;
     }
@@ -256,7 +256,7 @@ void apply_facing_coupling(float const dt,
                            FacingVelocityConfig const& config,
                            ScalarResponse& response,
                            PhysicalMovementState& physical) noexcept {
-    auto const speed{ioj::size(physical.velocity)};
+    auto const speed{size(physical.velocity)};
     if (speed <= 1.e-8 || config.mode == FacingVelocityCoupling::Independent) {
         return;
     }
@@ -268,11 +268,11 @@ void apply_facing_coupling(float const dt,
     }
     auto const alignment_rate{
         std::max(0.f, response.update(dt, config.alignment_rate, config.response))};
-    physical.velocity = ioj::move_towards(physical.velocity, target, alignment_rate * dt);
+    physical.velocity = move_towards(physical.velocity, target, alignment_rate * dt);
 }
 
-void apply_resultant_limit(float const limit, ioj::Vector3d& velocity) noexcept {
-    auto const speed{ioj::size(velocity)};
+void apply_resultant_limit(float const limit, Vector3d& velocity) noexcept {
+    auto const speed{size(velocity)};
     if (!std::isfinite(limit) || speed <= limit || speed <= 1.e-8) {
         return;
     }
@@ -397,7 +397,7 @@ void integrate_flight_model(float const dt,
                                             controller.angular_velocity.z())};
     physical.transform.rotation =
         physical.transform.rotation * to_quaternion(Rotator3d{pitch, yaw, roll});
-    ioj::normalize(physical.transform.rotation);
+    normalize(physical.transform.rotation);
 
     if (std::abs(intent.rotation.x()) > 1.e-8) {
         controller.time_since_rotation_input.x() = 0.0;
@@ -442,7 +442,7 @@ void integrate_flight_model(float const dt,
                     static_cast<float>(intent.translation.x()),
                     intent.accelerator,
                     physical.transform.forward(),
-                    ioj::Vector3d{1.0, 0.0, 0.0}},
+                    Vector3d{1.0, 0.0, 0.0}},
         AxisRuntime{config.translation.right,
                     controller.right_manual_response,
                     controller.right_automatic_response,
@@ -450,7 +450,7 @@ void integrate_flight_model(float const dt,
                     static_cast<float>(intent.translation.y()),
                     intent.accelerator,
                     physical.transform.right(),
-                    ioj::Vector3d{0.0, 1.0, 0.0}},
+                    Vector3d{0.0, 1.0, 0.0}},
         AxisRuntime{config.translation.up,
                     controller.up_manual_response,
                     controller.up_automatic_response,
@@ -458,7 +458,7 @@ void integrate_flight_model(float const dt,
                     static_cast<float>(intent.translation.z()),
                     intent.accelerator,
                     physical.transform.transform_vector_no_scale({0.0, 0.0, 1.0}),
-                    ioj::Vector3d{0.0, 0.0, 1.0}},
+                    Vector3d{0.0, 0.0, 1.0}},
     };
     auto const braking{controller.effective_action == BoostBrakeState::Brake ||
                        controller.effective_action == BoostBrakeState::EmergencyBrake};

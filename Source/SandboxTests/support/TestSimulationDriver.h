@@ -38,11 +38,10 @@ struct TestSimulationDriver {
     auto get_capital_ships() const -> ::ioj::sim::capital_ships::Sim const&;
     auto get_fighters() const -> ::ioj::sim::fighters::Sim const&;
 
-    void queue_damage(std::span<::ioj::sim::EntityId const> targets,
+    void queue_damage(std::span<sim::EntityId const> targets,
                       int32 damage,
-                      ::ioj::sim::EntityId instigator = {});
-    void queue_kills(std::span<::ioj::sim::EntityId const> targets,
-                     ::ioj::sim::EntityId instigator = {});
+                      sim::EntityId instigator = {});
+    void queue_kills(std::span<sim::EntityId const> targets, sim::EntityId instigator = {});
     bool should_export_results() const;
 
     void set_time_scale(time_type scale);

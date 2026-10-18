@@ -19,7 +19,7 @@ TEST(SimulationSchema, PreservesHealthAndFighterOrderRepresentations) {
     static_assert(static_cast<std::uint8_t>(FighterTask::Standby) == 0);
     static_assert(static_cast<std::uint8_t>(FighterTask::MoveToDestination) == 1);
     static_assert(static_cast<std::uint8_t>(FighterTask::Attack) == 2);
-    static_assert(ioj::enum_count<FighterTask>() == 3);
+    static_assert(enum_count<FighterTask>() == 3);
     for (std::uint8_t raw{}; raw < 4; ++raw) {
         auto const order{FighterOrder::from_raw(raw)};
         EXPECT_EQ(order.task(), raw & 1);
@@ -68,7 +68,7 @@ auto make_cap_battle(std::span<Team const> const capital_teams,
         // NOLINTEND(ioj-loop-view-accessor-call)
     }
 
-    for (auto const type : ioj::EnumTraits<EntityType>::values) {
+    for (auto const type : EnumTraits<EntityType>::values) {
         data.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
     return data;

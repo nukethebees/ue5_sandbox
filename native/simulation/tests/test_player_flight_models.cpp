@@ -32,7 +32,7 @@ auto make_data(player::FlightModelPreset const preset) -> LevelSimInitData {
     data.frame_memory_capacity_bytes = 1024 * 1024;
     data.capital_ships.fighter_spawn_slots = 0;
     data.clock_settings.tick_rate = 60.0;
-    for (auto const type : ioj::EnumTraits<EntityType>::values) {
+    for (auto const type : EnumTraits<EntityType>::values) {
         data.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
 
@@ -64,18 +64,17 @@ auto mutable_player_sim(LevelSim& simulation) -> player::Sim& {
     return LevelSimTestAccess::player_simulation(simulation);
 }
 
-void set_test_turn(player::CommandInterface* const commands, ioj::Vector2d const direction) {
+void set_test_turn(player::CommandInterface* const commands, Vector2d const direction) {
     commands->set_yaw_input(static_cast<float>(direction.x()));
     commands->set_pitch_input(static_cast<float>(direction.y()));
 }
 
-auto velocity(LevelSim& simulation) -> ioj::Vector3d {
+auto velocity(LevelSim& simulation) -> Vector3d {
     return player_sim(simulation).get_physical_state().velocity;
 }
 
-void expect_velocity_near(ioj::Vector3d const& actual,
-                          ioj::Vector3d const& expected,
-                          double const tolerance) {
+void
+    expect_velocity_near(Vector3d const& actual, Vector3d const& expected, double const tolerance) {
     EXPECT_NEAR(actual.x(), expected.x(), tolerance);
     EXPECT_NEAR(actual.y(), expected.y(), tolerance);
     EXPECT_NEAR(actual.z(), expected.z(), tolerance);
@@ -93,7 +92,7 @@ auto brake_speed_after_tick(player::ResponseConfig const& response, float const 
     player::seed_flight_model_responses(state, config);
     state.controller.effective_action = player::BoostBrakeState::Brake;
     player::integrate_flight_model(0.25f, config, {}, state);
-    return ioj::size(state.physical.velocity);
+    return size(state.physical.velocity);
 }
 }
 
@@ -107,7 +106,7 @@ TEST(NativeSimulationFlightModels, StarfoxConvergesToCruiseAndSupportsBoostAndBr
     simulation.get_player_ship_commands()->set_forward_input(-1.f);
     simulation.get_player_ship_commands()->set_up_input(1.f);
     advance_ticks(simulation, 600);
-    auto const cruise_speed{ioj::size(velocity(simulation))};
+    auto const cruise_speed{size(velocity(simulation))};
     EXPECT_NEAR(cruise_speed, 12000.0, 2.0);
     EXPECT_NEAR(velocity(simulation).y(), 0.0, 1.e-6);
     EXPECT_NEAR(velocity(simulation).z(), 0.0, 1.e-6);
@@ -118,7 +117,7 @@ TEST(NativeSimulationFlightModels, StarfoxConvergesToCruiseAndSupportsBoostAndBr
     advance_ticks(simulation, 180);
     EXPECT_EQ(player_sim(simulation).get_controller_state().effective_action,
               player::BoostBrakeState::Boost);
-    EXPECT_GT(ioj::size(velocity(simulation)), cruise_speed);
+    EXPECT_GT(size(velocity(simulation)), cruise_speed);
     EXPECT_LT(player_sim(simulation).get_energy(), 1.f);
 
     simulation.get_player_ship_commands()->set_accelerator(0.f);
@@ -126,7 +125,7 @@ TEST(NativeSimulationFlightModels, StarfoxConvergesToCruiseAndSupportsBoostAndBr
     auto const energy_before_brake{player_sim(simulation).get_energy()};
     simulation.get_player_ship_commands()->start_brake();
     advance_ticks(simulation, 180);
-    EXPECT_LT(ioj::size(velocity(simulation)), cruise_speed);
+    EXPECT_LT(size(velocity(simulation)), cruise_speed);
     EXPECT_LT(player_sim(simulation).get_energy(), energy_before_brake);
 }
 
@@ -145,7 +144,7 @@ TEST(NativeSimulationFlightModels, StarfoxEmergencyBrakeIsStrongerThanNormalBrak
     advance_ticks(normal, 30);
     advance_ticks(emergency, 30);
 
-    EXPECT_LT(ioj::size(velocity(emergency)), ioj::size(velocity(normal)));
+    EXPECT_LT(size(velocity(emergency)), size(velocity(normal)));
 }
 
 TEST(NativeSimulationFlightModels, FighterAcceleratesOnlyWithInputAndThenDrags) {
@@ -153,16 +152,16 @@ TEST(NativeSimulationFlightModels, FighterAcceleratesOnlyWithInputAndThenDrags) 
     LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Fighter)};
     start(simulation);
     advance_ticks(simulation, 60);
-    EXPECT_NEAR(ioj::size(velocity(simulation)), 0.0, 1.e-6);
+    EXPECT_NEAR(size(velocity(simulation)), 0.0, 1.e-6);
 
     simulation.get_player_ship_commands()->set_accelerator(1.f);
     advance_ticks(simulation, 30);
-    auto const accelerated{ioj::size(velocity(simulation))};
+    auto const accelerated{size(velocity(simulation))};
     EXPECT_GT(accelerated, 0.0);
 
     simulation.get_player_ship_commands()->set_accelerator(0.f);
     advance_ticks(simulation, 30);
-    EXPECT_LT(ioj::size(velocity(simulation)), accelerated);
+    EXPECT_LT(size(velocity(simulation)), accelerated);
 }
 
 TEST(NativeSimulationFlightModels, FighterBoostAndBrakeRemainOrthogonal) {
@@ -177,12 +176,12 @@ TEST(NativeSimulationFlightModels, FighterBoostAndBrakeRemainOrthogonal) {
     boosted.get_player_ship_commands()->start_boost();
     advance_ticks(normal, 30);
     advance_ticks(boosted, 30);
-    EXPECT_GT(ioj::size(velocity(boosted)), ioj::size(velocity(normal)));
+    EXPECT_GT(size(velocity(boosted)), size(velocity(normal)));
 
-    auto const before_brake{ioj::size(velocity(boosted))};
+    auto const before_brake{size(velocity(boosted))};
     boosted.get_player_ship_commands()->start_brake();
     advance_ticks(boosted, 10);
-    EXPECT_LT(ioj::size(velocity(boosted)), before_brake);
+    EXPECT_LT(size(velocity(boosted)), before_brake);
     EXPECT_EQ(player_sim(boosted).get_controller_state().effective_action,
               player::BoostBrakeState::Brake);
 }
@@ -256,9 +255,9 @@ TEST(NativeSimulationFlightModels, SkaterCanFaceBackwardWhilePreservingForwardTr
     advance_ticks(simulation, 180);
 
     expect_velocity_near(velocity(simulation), preserved, 1.e-5);
-    EXPECT_LT(ioj::dot(velocity(simulation),
-                       player_sim(simulation).get_physical_state().transform.forward()),
-              0.0);
+    EXPECT_LT(
+        dot(velocity(simulation), player_sim(simulation).get_physical_state().transform.forward()),
+        0.0);
 }
 
 TEST(NativeSimulationFlightModels, SkaterBrakeAndEmergencyBrakeReduceWithoutReversing) {
@@ -274,14 +273,14 @@ TEST(NativeSimulationFlightModels, SkaterBrakeAndEmergencyBrakeReduceWithoutReve
         simulation->get_player_ship_commands()->set_accelerator(0.f);
     }
 
-    auto const before{ioj::size(velocity(brake))};
+    auto const before{size(velocity(brake))};
     brake.get_player_ship_commands()->start_brake();
     emergency.get_player_ship_commands()->start_emergency_brake();
     advance_ticks(brake, 10);
     advance_ticks(emergency, 10);
-    EXPECT_LT(ioj::size(velocity(brake)), before);
+    EXPECT_LT(size(velocity(brake)), before);
     EXPECT_GE(velocity(brake).x(), 0.0);
-    EXPECT_LT(ioj::size(velocity(emergency)), ioj::size(velocity(brake)));
+    EXPECT_LT(size(velocity(emergency)), size(velocity(brake)));
     EXPECT_GE(velocity(emergency).x(), 0.0);
 }
 
@@ -303,7 +302,7 @@ TEST(NativeSimulationFlightModels, GunshipControlsThreeAxesAndStabilizesNeutralI
     commands->set_right_input(0.f);
     commands->set_up_input(0.f);
     advance_ticks(simulation, 120);
-    EXPECT_NEAR(ioj::size(velocity(simulation)), 0.0, 1.e-4);
+    EXPECT_NEAR(size(velocity(simulation)), 0.0, 1.e-4);
 }
 
 TEST(NativeSimulationFlightModels, GunshipRotationRemainsIndependentOfTranslationControl) {
@@ -383,7 +382,7 @@ TEST(NativeSimulationFlightModels, SwitchingClearsPersistentTargetsAndSamplingSt
     commands->select_flight_model_slot(player::FlightModelSlot::Up);
 
     EXPECT_FALSE(player_sim(simulation).is_sampling_target_speed());
-    EXPECT_EQ(player_sim(simulation).get_sampled_target_speed_scale(), ioj::Vector2d{});
+    EXPECT_EQ(player_sim(simulation).get_sampled_target_speed_scale(), Vector2d{});
     EXPECT_EQ(player_sim(simulation).get_controller_state().persistent_forward_target_speed, 0.f);
     EXPECT_EQ(player_sim(simulation).get_controller_state().persistent_right_target_speed, 0.f);
     EXPECT_EQ(player_sim(simulation).get_controller_state().persistent_up_target_speed, 0.f);
@@ -927,7 +926,7 @@ TEST(NativeSimulationFlightModels, SkaterUnlimitedResultantCapPreservesExistingC
 
     EXPECT_NEAR(state.physical.velocity.x(), 8000.0, 1.e-5);
     EXPECT_GT(state.physical.velocity.y(), 0.0);
-    EXPECT_GT(ioj::size(state.physical.velocity), 8000.0);
+    EXPECT_GT(size(state.physical.velocity), 8000.0);
 }
 
 TEST(NativeSimulationFlightModels, RotationStabilizationDelayIsIndependentPerAxis) {

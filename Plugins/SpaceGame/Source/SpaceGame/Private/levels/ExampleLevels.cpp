@@ -11,7 +11,7 @@ auto make_example_draft() -> FLevelDraft {
     auto const player_id{builder.add_entity(FEntitySpawnDefinition{
         .id = FLevelEntityId{FName{TEXT("player")}},
         .archetype = level_archetypes::player_fighter,
-        .team = ::ioj::Team::Blue,
+        .team = Team::Blue,
         .position = FVector{0.0, -25000.0, 1000.0},
         .rotation = FRotator{0.0, 90.0, 0.0},
     })};
@@ -19,24 +19,24 @@ auto make_example_draft() -> FLevelDraft {
     auto const blue_capital_id{builder.add_entity(FEntitySpawnDefinition{
         .id = FLevelEntityId{FName{TEXT("blue-capital")}},
         .archetype = level_archetypes::capital_ship,
-        .team = ::ioj::Team::Blue,
+        .team = Team::Blue,
         .position = FVector{-40000.0, 0.0, 0.0},
     })};
     auto const red_capital_id{builder.add_entity(FEntitySpawnDefinition{
         .id = FLevelEntityId{FName{TEXT("red-capital")}},
         .archetype = level_archetypes::capital_ship,
-        .team = ::ioj::Team::Red,
+        .team = Team::Red,
         .position = FVector{40000.0, 0.0, 0.0},
     })};
     builder.add_entity(FEntitySpawnDefinition{
         .id = FLevelEntityId{FName{TEXT("red-turret")}},
         .archetype = level_archetypes::static_turret,
-        .team = ::ioj::Team::Red,
+        .team = Team::Red,
         .position = FVector{30000.0, 15000.0, 0.0},
         .rotation = FRotator{0.0, 180.0, 0.0},
     });
     builder.set_mission(FLevelMissionDefinition{
-        .mode = ::ioj::levels::LevelMissionMode::KillEnemies,
+        .mode = levels::LevelMissionMode::KillEnemies,
         .hero_entity_ids = {player_id, blue_capital_id},
         .must_survive_entity_ids = {blue_capital_id},
         .required_kill_entity_ids = {red_capital_id},

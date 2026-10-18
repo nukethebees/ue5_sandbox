@@ -13,9 +13,9 @@ auto Transform3d::operator*(Transform3d const& parent) const -> Transform3d {
         return result;
     }
 
-    std::array<ioj::Vector3d, 3> axes{ioj::Vector3d{scale.x(), 0.0, 0.0},
-                                      ioj::Vector3d{0.0, scale.y(), 0.0},
-                                      ioj::Vector3d{0.0, 0.0, scale.z()}};
+    std::array<Vector3d, 3> axes{Vector3d{scale.x(), 0.0, 0.0},
+                                 Vector3d{0.0, scale.y(), 0.0},
+                                 Vector3d{0.0, 0.0, scale.z()}};
     std::array const signs{result.scale.x() < 0.0 ? -1.0 : 1.0,
                            result.scale.y() < 0.0 ? -1.0 : 1.0,
                            result.scale.z() < 0.0 ? -1.0 : 1.0};
@@ -23,7 +23,7 @@ auto Transform3d::operator*(Transform3d const& parent) const -> Transform3d {
     for (std::size_t i{}; i < axis_count; ++i) {
         auto& axis{axes[i]};
         axis = rotate_vector(parent.rotation, parent.scale * rotate_vector(rotation, axis));
-        auto const squared{ioj::size_squared(axis)};
+        auto const squared{size_squared(axis)};
         axis = axis * (squared > 1.e-8 ? signs[i] / std::sqrt(squared) : signs[i]);
         if (std::abs(axis.x()) <= 1.e-4 && std::abs(axis.y()) <= 1.e-4 &&
             std::abs(axis.z()) <= 1.e-4) {
@@ -59,7 +59,7 @@ auto Transform3d::operator*(Transform3d const& parent) const -> Transform3d {
         xyz[k] = (matrix[k][i] + matrix[i][k]) * factor;
         result.rotation = {xyz[0], xyz[1], xyz[2], (matrix[k][j] - matrix[j][k]) * factor};
     }
-    ioj::normalize(result.rotation);
+    normalize(result.rotation);
     return result;
 }
 }

@@ -23,7 +23,7 @@ struct SPACEGAME_API FLevelMetadata {
 struct SPACEGAME_API FEntitySpawnDefinition {
     FLevelEntityId id{};
     FEntityArchetypeId archetype{};
-    ::ioj::Team team{};
+    Team team{};
     FVector position{FVector::ZeroVector};
     FRotator rotation{FRotator::ZeroRotator};
     double spawn_time_seconds{};
@@ -41,7 +41,7 @@ struct SPACEGAME_API FLevelCollisionGridDefinition {
 };
 
 struct SPACEGAME_API FLevelMissionDefinition {
-    ::ioj::levels::LevelMissionMode mode{::ioj::levels::LevelMissionMode::Unspecified};
+    levels::LevelMissionMode mode{levels::LevelMissionMode::Unspecified};
     TOptional<float> time_limit_seconds{NullOpt};
     TOptional<int32> kill_count{NullOpt};
     TArray<FLevelEntityId> hero_entity_ids{};
@@ -91,7 +91,7 @@ class SPACEGAME_API FLevelBuilder {
     FLevelDraft definition_{};
 };
 
-using ELevelValidationErrorCode = ::ioj::levels::DiagnosticCode;
+using ELevelValidationErrorCode = levels::DiagnosticCode;
 
 struct SPACEGAME_API FLevelValidationError {
     ELevelValidationErrorCode code{};
