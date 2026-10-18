@@ -3,15 +3,12 @@
 
 #pragma once
 
+#include "ioj/ismc/quat32.h"
 #include "ioj/vector.h"
 
 #include <cstdint>
 
 namespace ioj::ismc {
-struct Quat32 {
-    std::uint32_t bits{};
-};
-
 struct PackedTransform {
     ioj::Vector<std::int16_t, 3> position{};
 

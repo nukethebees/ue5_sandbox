@@ -31,6 +31,7 @@ Plugins/SpaceGame/Source/SpaceGameSimulation/Private/levels/LevelDefinitionSoA.c
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/levels/LevelDefinitionSoA.h
 native/core/include/ioj/rotators3f.h
 native/core/include/ioj/vectors3f.h
+native/ismc/lib/include/ioj/ismc/quat32.h
 native/ismc/lib/include/ioj/ismc/render.h
 native/level_authoring/lib/include/ioj/levels/authoring/grammar.h
 native/levels/lib/include/ioj/levels/diagnostic_code.h
