@@ -140,8 +140,7 @@ auto soa_set_function(LoweringContext& context,
         return std::nullopt;
     }
 
-    std::vector<FunctionParameterId> parameters{
-        ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("index"))};
+    std::vector<FunctionParameterId> parameters{ir.parameter("int32 const", "index")};
     NodeListBuilder body{ir};
     for (auto const member : members) {
         auto const argument{"new_" +
@@ -152,7 +151,7 @@ auto soa_set_function(LoweringContext& context,
                                resolved_store.element_type[resolved_store.index(member)],
                                ir.types.parameter_passing(
                                    resolved_store.element_type[resolved_store.index(member)])),
-                ir.strings.intern(argument)));
+                argument));
             body.add(ir.assignment(
                 ir.subscript(
                     ir.named(context.text(resolved_store.name[resolved_store.index(member)])),
@@ -175,14 +174,14 @@ auto soa_set_function(LoweringContext& context,
                            ir.types.operation_parameter_passing(
                                resolved_store.container_type[resolved_store.index(member)],
                                TypeOperation::set_element)),
-            ir.strings.intern(argument)));
+            argument));
         body.add(ir.expression_statement(
             ir.call(ir.member_access(
                         ir.named(context.text(resolved_store.name[resolved_store.index(member)])),
                         *operation),
                     {ir.named("index"), ir.named(argument)})));
     }
-    auto const created_function{ir.function(ir.strings.intern("set"), ir.types.intern("void"))};
+    auto const created_function{ir.function("set", "void")};
     ir.set_function_parameters(created_function, std::move(parameters));
     ir.set_function_body(created_function, body.build());
     ir.set_function_receiver(created_function,
@@ -206,8 +205,7 @@ auto soa_add_function(LoweringContext& context,
 
     std::vector<FunctionParameterId> parameters;
     NodeListBuilder body{ir};
-    body.add(ir.variable(
-        ir.types.intern("auto const"), ir.strings.intern("index"), ir.call(ir.named("num"))));
+    body.add(ir.variable("auto const", "index", ir.call(ir.named("num"))));
     for (auto const member : members) {
         auto const argument{"new_" +
                             context.text(resolved_store.name[resolved_store.index(member)])};
@@ -217,7 +215,7 @@ auto soa_add_function(LoweringContext& context,
                                resolved_store.element_type[resolved_store.index(member)],
                                ir.types.parameter_passing(
                                    resolved_store.element_type[resolved_store.index(member)])),
-                ir.strings.intern(argument)));
+                argument));
             body.add(ir.expression_statement(ir.call(
                 ir.member_access(
                     ir.named(context.text(resolved_store.name[resolved_store.index(member)])),
@@ -240,7 +238,7 @@ auto soa_add_function(LoweringContext& context,
                            ir.types.operation_parameter_passing(
                                resolved_store.container_type[resolved_store.index(member)],
                                TypeOperation::add_element)),
-            ir.strings.intern(argument)));
+            argument));
         body.add(ir.expression_statement(
             ir.call(ir.member_access(
                         ir.named(context.text(resolved_store.name[resolved_store.index(member)])),
@@ -248,7 +246,7 @@ auto soa_add_function(LoweringContext& context,
                     {ir.named(argument)})));
     }
     body.add(ir.return_statement(ir.named("index")));
-    auto const created_function{ir.function(ir.strings.intern("add"), ir.types.intern("auto"))};
+    auto const created_function{ir.function("add", "auto")};
     ir.set_function_parameters(created_function, std::move(parameters));
     ir.set_function_body(created_function, body.build());
     ir.set_function_return_type(created_function, ir.types.intern("int32"), ReturnSyntax::trailing);
@@ -270,19 +268,15 @@ auto soa_storage_functions(LoweringContext& context,
     };
     if (contains(StorageOperation::reset)) {
         result.push_back([&] {
-            auto const created_function{
-                ir.function(ir.strings.intern("reset"), ir.types.intern("void"))};
+            auto const created_function{ir.function("reset", "void")};
             ir.set_function_body(created_function, storage_operation_body(context, "reset"));
             return created_function;
         }());
     }
     if (contains(StorageOperation::reserve)) {
         result.push_back([&] {
-            auto const created_function{
-                ir.function(ir.strings.intern("reserve"), ir.types.intern("void"))};
-            ir.set_function_parameters(
-                created_function,
-                {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))});
+            auto const created_function{ir.function("reserve", "void")};
+            ir.set_function_parameters(created_function, {ir.parameter("int32 const", "count")});
             ir.set_function_body(created_function,
                                  storage_operation_body(context, "reserve", {"count"}));
             return created_function;
@@ -290,11 +284,8 @@ auto soa_storage_functions(LoweringContext& context,
     }
     if (contains(StorageOperation::add_uninitialised)) {
         result.push_back([&] {
-            auto const created_function{
-                ir.function(ir.strings.intern("add_uninitialised"), ir.types.intern("void"))};
-            ir.set_function_parameters(
-                created_function,
-                {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))});
+            auto const created_function{ir.function("add_uninitialised", "void")};
+            ir.set_function_parameters(created_function, {ir.parameter("int32 const", "count")});
             ir.set_function_body(created_function,
                                  storage_operation_body(context, "add_uninitialised", {"count"}));
             return created_function;
@@ -302,11 +293,8 @@ auto soa_storage_functions(LoweringContext& context,
     }
     if (contains(StorageOperation::add_defaulted)) {
         result.push_back([&] {
-            auto const created_function{
-                ir.function(ir.strings.intern("add_defaulted"), ir.types.intern("void"))};
-            ir.set_function_parameters(
-                created_function,
-                {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))});
+            auto const created_function{ir.function("add_defaulted", "void")};
+            ir.set_function_parameters(created_function, {ir.parameter("int32 const", "count")});
             ir.set_function_body(created_function,
                                  storage_operation_body(context, "add_defaulted", {"count"}));
             return created_function;
@@ -318,16 +306,15 @@ auto soa_storage_functions(LoweringContext& context,
                       : storage_operation_body(
                             context, "remove_at_swap", {"index", "count", "allow_shrinking"})};
         result.push_back([&] {
-            auto const created_function{
-                ir.function(ir.strings.intern("remove_at_swap"), ir.types.intern("void"))};
+            auto const created_function{ir.function("remove_at_swap", "void")};
             ir.set_function_parameters(
                 created_function,
-                {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("index")),
-                 ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count")),
+                {ir.parameter("int32 const", "index"),
+                 ir.parameter("int32 const", "count"),
                  ir.parameter(ir.types.intern("EAllowShrinking const",
                                               {ir.types.dependency("EAllowShrinking",
                                                                    "Containers/AllowShrinking.h")}),
-                              ir.strings.intern("allow_shrinking"))});
+                              "allow_shrinking")});
             ir.set_function_body(created_function, std::move(body));
             ir.function_flags(created_function).set_is_inline(true);
             ir.function_flags(created_function).set_define_in_header(true);
@@ -336,15 +323,14 @@ auto soa_storage_functions(LoweringContext& context,
     }
     if (contains(StorageOperation::set_num)) {
         result.push_back([&] {
-            auto const created_function{
-                ir.function(ir.strings.intern("set_num"), ir.types.intern("void"))};
+            auto const created_function{ir.function("set_num", "void")};
             ir.set_function_parameters(
                 created_function,
-                {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count")),
+                {ir.parameter("int32 const", "count"),
                  ir.parameter(ir.types.intern("EAllowShrinking const",
                                               {ir.types.dependency("EAllowShrinking",
                                                                    "Containers/AllowShrinking.h")}),
-                              ir.strings.intern("allow_shrinking"))});
+                              "allow_shrinking")});
             ir.set_function_body(
                 created_function,
                 storage_operation_body(context, "set_num", {"count", "allow_shrinking"}));
@@ -374,13 +360,11 @@ auto soa_storage_functions(LoweringContext& context,
                 {destination, ir.named("dst_i"), source, ir.named("src_i"), ir.named("count")})));
         }
         result.push_back([&] {
-            auto const created_function{
-                ir.function(ir.strings.intern("copy_element"), ir.types.intern("void"))};
-            ir.set_function_parameters(
-                created_function,
-                {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("dst_i")),
-                 ir.parameter(ir.types.intern("Other const&"), ir.strings.intern("other")),
-                 ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("src_i"))});
+            auto const created_function{ir.function("copy_element", "void")};
+            ir.set_function_parameters(created_function,
+                                       {ir.parameter("int32 const", "dst_i"),
+                                        ir.parameter("Other const&", "other"),
+                                        ir.parameter("int32 const", "src_i")});
             ir.set_function_body(created_function, copy_one.build());
             ir.function_flags(created_function).set_is_inline(true);
             ir.function_flags(created_function).set_define_in_header(true);
@@ -390,14 +374,12 @@ auto soa_storage_functions(LoweringContext& context,
             return created_function;
         }());
         result.push_back([&] {
-            auto const created_function{
-                ir.function(ir.strings.intern("copy_elements"), ir.types.intern("void"))};
-            ir.set_function_parameters(
-                created_function,
-                {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("dst_i")),
-                 ir.parameter(ir.types.intern("Other const&"), ir.strings.intern("other")),
-                 ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("src_i")),
-                 ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))});
+            auto const created_function{ir.function("copy_elements", "void")};
+            ir.set_function_parameters(created_function,
+                                       {ir.parameter("int32 const", "dst_i"),
+                                        ir.parameter("Other const&", "other"),
+                                        ir.parameter("int32 const", "src_i"),
+                                        ir.parameter("int32 const", "count")});
             ir.set_function_body(created_function, copy_range.build());
             ir.function_flags(created_function).set_is_inline(true);
             ir.function_flags(created_function).set_define_in_header(true);
@@ -407,17 +389,13 @@ auto soa_storage_functions(LoweringContext& context,
             return created_function;
         }());
         result.push_back([&] {
-            auto const created_function{
-                ir.function(ir.strings.intern("copy_to_tail"), ir.types.intern("void"))};
-            ir.set_function_parameters(
-                created_function,
-                {ir.parameter(ir.types.intern("Other const&"), ir.strings.intern("other"))});
+            auto const created_function{ir.function("copy_to_tail", "void")};
+            ir.set_function_parameters(created_function, {ir.parameter("Other const&", "other")});
             ir.set_function_body(
                 created_function,
                 {
-                    ir.variable(ir.types.intern("auto const"),
-                                ir.strings.intern("count"),
-                                ir.call(ir.member_access(ir.named("other"), "num"))),
+                    ir.variable(
+                        "auto const", "count", ir.call(ir.member_access(ir.named("other"), "num"))),
                     ir.expression_statement(
                         ir.call(ir.named("check", {ir.types.dependency("check", "CoreMinimal.h")}),
                                 {ir.binary(BinaryOperator::greater_equal,
@@ -461,11 +439,8 @@ auto soa_storage_functions(LoweringContext& context,
             calls.add(ir.expression_statement(invocation));
         }
         result.push_back([&] {
-            auto const created_function{
-                ir.function(ir.strings.intern("append_from"), ir.types.intern("void"))};
-            ir.set_function_parameters(
-                created_function,
-                {ir.parameter(ir.types.intern("Other const&"), ir.strings.intern("other"))});
+            auto const created_function{ir.function("append_from", "void")};
+            ir.set_function_parameters(created_function, {ir.parameter("Other const&", "other")});
             ir.set_function_body(created_function, calls.build());
             ir.function_flags(created_function).set_is_inline(true);
             ir.function_flags(created_function).set_define_in_header(true);
@@ -493,27 +468,25 @@ auto soa_permutation_functions(LoweringContext& context, std::span<ResolvedMembe
     auto const apply_body{storage_operation_body(context, "apply_permutation", {"indices"})};
     return {
         [&] {
-            auto const created_function{
-                ir.function(ir.strings.intern("apply_permutation"), ir.types.intern("void"))};
+            auto const created_function{ir.function("apply_permutation", "void")};
             ir.set_function_parameters(
                 created_function,
                 {ir.parameter(
                     ir.types.intern("TArrayView<int32>",
                                     {ir.types.dependency("TArrayView", "Containers/ArrayView.h")}),
-                    ir.strings.intern("indices"))});
+                    "indices")});
             ir.set_function_body(created_function, apply_body);
             return created_function;
         }(),
         [&] {
-            auto const created_function{
-                ir.function(ir.strings.intern("sort"), ir.types.intern("void"))};
+            auto const created_function{ir.function("sort", "void")};
             ir.set_function_parameters(
                 created_function,
-                {ir.parameter(ir.types.intern("Compare&&"), ir.strings.intern("compare")),
+                {ir.parameter("Compare&&", "compare"),
                  ir.parameter(
                      ir.types.intern("TArrayView<int32>",
                                      {ir.types.dependency("TArrayView", "Containers/ArrayView.h")}),
-                     ir.strings.intern("scratch_indices"))});
+                     "scratch_indices")});
             ir.set_function_body(
                 created_function,
                 {ir.expression_statement(ir.call(
@@ -535,14 +508,13 @@ auto soa_permutation_functions(LoweringContext& context, std::span<ResolvedMembe
             return created_function;
         }(),
         [&] {
-            auto const created_function{
-                ir.function(ir.strings.intern("sort"), ir.types.intern("void"))};
+            auto const created_function{ir.function("sort", "void")};
             ir.set_function_parameters(
                 created_function,
                 {ir.parameter(
                     ir.types.intern("TArrayView<int32>",
                                     {ir.types.dependency("TArrayView", "Containers/ArrayView.h")}),
-                    ir.strings.intern("scratch_indices"))});
+                    "scratch_indices")});
             ir.set_function_body(
                 created_function,
                 {ir.expression_statement(ir.call(

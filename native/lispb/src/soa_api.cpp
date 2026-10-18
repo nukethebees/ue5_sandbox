@@ -280,14 +280,12 @@ auto lower_soa_api(LoweringContext& context,
         }
         header
             .add(ir.header_function([&] {
-                auto const created_function{
-                    ir.function(ir.strings.intern("operator[]"), ir.types.intern("auto"))};
+                auto const created_function{ir.function("operator[]", "auto")};
                 ir.set_function_parameters(
                     created_function,
-                    {ir.parameter(ir.types.intern(backend == SoaBackend::standard_library
-                                                      ? "std::uint32_t"
-                                                      : "std::int32_t"),
-                                  ir.strings.intern("index"))});
+                    {ir.parameter(backend == SoaBackend::standard_library ? "std::uint32_t"
+                                                                          : "std::int32_t",
+                                  "index")});
                 ir.set_function_body(created_function, {ir.raw("return " + expression + ";")});
                 ir.set_function_return_type(
                     created_function, ir.types.intern("equivalent_type"), ReturnSyntax::trailing);

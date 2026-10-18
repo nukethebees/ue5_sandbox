@@ -100,14 +100,14 @@ auto lower_vector_storage_operations(LoweringContext& context, DeclarationHandle
         std::vector<FunctionParameterId> parameters;
         std::vector<Expr> arguments{self};
         if (operation == StorageOperation::remove_at_swap) {
-            parameters.push_back(ir.parameter(size_type, ir.strings.intern("index")));
+            parameters.push_back(ir.parameter(size_type, "index"));
             arguments.push_back(ir.named("index"));
         }
         if (operation != StorageOperation::reset) {
-            parameters.push_back(ir.parameter(size_type, ir.strings.intern("count")));
+            parameters.push_back(ir.parameter(size_type, "count"));
             arguments.push_back(ir.named("count"));
         }
-        auto const function{ir.function(ir.strings.intern(name), void_type)};
+        auto const function{ir.function(name, void_type)};
         ir.set_function_parameters(function, parameters);
         ir.set_function_body(
             function,
@@ -119,10 +119,9 @@ auto lower_vector_storage_operations(LoweringContext& context, DeclarationHandle
         functions.push_back(ir.lines(1));
     }
 
-    auto const permutation{ir.function(ir.strings.intern("apply_permutation"), void_type)};
+    auto const permutation{ir.function("apply_permutation", void_type)};
     ir.set_function_parameters(permutation,
-                               {ir.parameter(ir.types.intern("std::span<std::int32_t> const"),
-                                             ir.strings.intern("indices"))});
+                               {ir.parameter("std::span<std::int32_t> const", "indices")});
     ir.set_function_body(permutation,
                          {ir.expression_statement(ir.call(
                              ir.named("ioj::native_soa::vector_storage_ops::apply_permutation"),
@@ -299,10 +298,9 @@ auto lower_native_soa(LoweringContext& context,
     auto const void_type{ir.types.intern("void")};
     auto each_column = [&](Nodes const& body, bool const immutable) {
         flush();
-        auto const function{ir.function(ir.strings.intern("each_column"), void_type)};
+        auto const function{ir.function("each_column", void_type)};
         ir.set_function_template(function, fn_template);
-        ir.set_function_parameters(function,
-                                   {ir.parameter(fn_parameter_type, ir.strings.intern("fn"))});
+        ir.set_function_parameters(function, {ir.parameter(fn_parameter_type, "fn")});
         ir.set_function_body(function, body);
         ir.set_function_receiver(
             function, immutable ? FunctionReceiver::const_ : FunctionReceiver::unqualified);
@@ -584,14 +582,12 @@ auto is_empty() const noexcept -> bool {{ return num() == 0; }}
     record_members.insert(
         record_members.end(), storage_operations.begin(), storage_operations.end());
     auto const compare_type{ir.types.intern("Compare")};
-    auto const sort{ir.function(ir.strings.intern("sort"), void_type)};
+    auto const sort{ir.function("sort", void_type)};
     ir.set_function_template(
         sort, ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Compare"))}));
-    ir.set_function_parameters(
-        sort,
-        {ir.parameter(ir.types.derive(compare_type, "Compare&&"), ir.strings.intern("compare")),
-         ir.parameter(ir.types.intern("std::span<std::int32_t> const"),
-                      ir.strings.intern("scratch_indices"))});
+    ir.set_function_parameters(sort,
+                               {ir.parameter(ir.types.derive(compare_type, "Compare&&"), "compare"),
+                                ir.parameter("std::span<std::int32_t> const", "scratch_indices")});
     auto const forward_compare{
         ir.call(ir.template_id(ir.named("std::forward"), {ir.type_reference(compare_type)}),
                 {ir.named("compare")})};
@@ -713,10 +709,10 @@ auto right(size_type const count) const -> ConstView { assert(count <= num()); r
         auto const other_template{
             ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Other"))})};
         auto const index_type{ir.types.intern("size_type const")};
-        auto const destination_index{ir.parameter(index_type, ir.strings.intern("dst_index"))};
-        auto const other{ir.parameter(ir.types.intern("Other const&"), ir.strings.intern("other"))};
-        auto const source_index{ir.parameter(index_type, ir.strings.intern("src_index"))};
-        auto const copy_element{ir.function(ir.strings.intern("copy_element"), void_type)};
+        auto const destination_index{ir.parameter(index_type, "dst_index")};
+        auto const other{ir.parameter("Other const&", "other")};
+        auto const source_index{ir.parameter(index_type, "src_index")};
+        auto const copy_element{ir.function("copy_element", void_type)};
         ir.set_function_template(copy_element, other_template);
         ir.set_function_parameters(copy_element, {destination_index, other, source_index});
         Nodes copy_body;
@@ -731,11 +727,10 @@ auto right(size_type const count) const -> ConstView { assert(count <= num()); r
             auto const size_type{ir.types.intern("std::size_t")};
             auto const auto_const{ir.types.intern("auto const")};
             copy_body.push_back(ir.variable(auto_const,
-                                            ir.strings.intern("destination_index"),
+                                            "destination_index",
                                             ir.static_cast_expr(size_type, ir.named("dst_index"))));
-            copy_body.push_back(ir.variable(auto_const,
-                                            ir.strings.intern("source_index"),
-                                            ir.static_cast_expr(size_type, ir.named("src_index"))));
+            copy_body.push_back(ir.variable(
+                auto_const, "source_index", ir.static_cast_expr(size_type, ir.named("src_index"))));
         }
         for (auto const member : layout_members) {
             auto const name{
@@ -762,13 +757,11 @@ auto right(size_type const count) const -> ConstView { assert(count <= num()); r
         record_members.push_back(ir.header_function(copy_element));
         record_members.push_back(ir.lines(1));
 
-        auto const copy_elements{ir.function(ir.strings.intern("copy_elements"), void_type)};
+        auto const copy_elements{ir.function("copy_elements", void_type)};
         ir.set_function_template(copy_elements, other_template);
-        ir.set_function_parameters(copy_elements,
-                                   {destination_index,
-                                    other,
-                                    source_index,
-                                    ir.parameter(index_type, ir.strings.intern("count"))});
+        ir.set_function_parameters(
+            copy_elements,
+            {destination_index, other, source_index, ir.parameter(index_type, "count")});
         auto const index{ir.named("i")};
         auto const copy_call{ir.expression_statement(
             ir.call(ir.named("copy_element"),
@@ -777,7 +770,7 @@ auto right(size_type const count) const -> ConstView { assert(count <= num()); r
                      ir.binary(BinaryOperator::add, ir.named("src_index"), index)}))};
         ir.set_function_body(
             copy_elements,
-            {ir.for_statement(ir.variable(ir.types.intern("size_type"), ir.strings.intern("i")),
+            {ir.for_statement(ir.variable("size_type", "i"),
                               ir.binary(BinaryOperator::less, index, ir.named("count")),
                               ir.unary(UnaryOperator::preincrement, index),
                               ir.block({copy_call}))});

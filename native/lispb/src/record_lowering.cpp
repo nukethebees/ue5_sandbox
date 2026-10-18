@@ -70,17 +70,15 @@ auto record_node(LoweringContext& context, DeclarationHandle record) -> NodeId {
             RecordComparison::three_way};
         members.add(ir.header_function([&] {
             auto const created_function{ir.function(
-                ir.strings.intern(three_way ? "operator<=>" : "operator=="),
+                three_way ? "operator<=>" : "operator==",
                 three_way ? ir.types.intern("auto", {ir.types.dependency("auto", "compare")})
                           : ir.types.intern("bool"))};
             ir.set_function_parameters(
                 created_function,
-                {ir.parameter(
-                    ir.types.intern(
-                        context.text(context.declarations.records
-                                         .name[context.declarations.records.index(record)]) +
-                        " const&"),
-                    ir.strings.intern(""))});
+                {ir.parameter(context.text(context.declarations.records
+                                               .name[context.declarations.records.index(record)]) +
+                                  " const&",
+                              "")});
             ir.set_function_receiver(created_function, FunctionReceiver::const_);
             if (context.declarations.records
                     .comparison_noexcept[context.declarations.records.index(record)]) {

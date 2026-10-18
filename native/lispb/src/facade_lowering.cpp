@@ -42,9 +42,9 @@ auto lower_facade_impl(LoweringContext& context, DeclarationHandle facade) -> De
     auto const binding{
         reference_target
             ? ir.constructor(declarations.facades.name[declarations.facades.index(facade)])
-            : ir.function(ir.strings.intern("bind"), ir.types.intern("void"))};
-    ir.set_function_parameters(
-        binding, {ir.parameter(qualify(ir, target_type, "&"), ir.strings.intern("new_target"))});
+            : ir.function("bind", "void")};
+    ir.set_function_parameters(binding,
+                               {ir.parameter(qualify(ir, target_type, "&"), "new_target")});
     ir.function_flags(binding).set_is_inline(!definitions_in_source);
     ir.function_flags(binding).set_define_in_header(!definitions_in_source);
     if (reference_target) {

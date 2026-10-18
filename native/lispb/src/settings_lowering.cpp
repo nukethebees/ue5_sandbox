@@ -155,7 +155,7 @@ auto build_functions(LoweringContext& context,
     auto const game_setting{ir.types.intern("EGameSetting const")};
     auto create = [&](std::string_view const name, std::string_view const return_type) {
         auto const type{ir.types.intern(return_type)};
-        auto const function{ir.function(ir.strings.intern(name), type)};
+        auto const function{ir.function(name, type)};
         ir.set_function_return_type(function, type, ReturnSyntax::trailing);
         ir.set_function_export_specifier(
             function, declarations.settings_modules.export_specifier[module_row]);
@@ -171,7 +171,7 @@ auto build_functions(LoweringContext& context,
     ir.set_function_body(descriptors, {ir.return_statement(ir.named("descriptors"))});
 
     auto const descriptor{create("game_setting_descriptor", "FGameSettingDescriptor const&")};
-    ir.set_function_parameters(descriptor, {ir.parameter(game_setting, ir.strings.intern("id"))});
+    ir.set_function_parameters(descriptor, {ir.parameter(game_setting, "id")});
     ir.set_function_body(
         descriptor,
         {ir.return_statement(ir.subscript(ir.named("descriptors"),
@@ -179,9 +179,7 @@ auto build_functions(LoweringContext& context,
 
     auto const getter{create("game_setting_value", "FGameSettingValue")};
     ir.set_function_parameters(
-        getter,
-        {ir.parameter(ir.types.intern(state_name + " const&"), ir.strings.intern("state")),
-         ir.parameter(game_setting, ir.strings.intern("id"))});
+        getter, {ir.parameter(state_name + " const&", "state"), ir.parameter(game_setting, "id")});
     std::vector<SwitchCaseId> getter_cases;
     for (auto const setting : settings) {
         auto const name{declarations.settings.name[declarations.settings.index(setting)]};
@@ -199,11 +197,10 @@ auto build_functions(LoweringContext& context,
                                                            ir.types.intern("FGameSettingValue")))});
 
     auto const setter{create("set_game_setting_value", "bool")};
-    ir.set_function_parameters(
-        setter,
-        {ir.parameter(ir.types.intern(state_name + "&"), ir.strings.intern("state")),
-         ir.parameter(game_setting, ir.strings.intern("id")),
-         ir.parameter(ir.types.intern("FGameSettingValue const&"), ir.strings.intern("value"))});
+    ir.set_function_parameters(setter,
+                               {ir.parameter(state_name + "&", "state"),
+                                ir.parameter(game_setting, "id"),
+                                ir.parameter("FGameSettingValue const&", "value")});
     std::vector<SwitchCaseId> setter_cases;
     auto const setting_count{settings.size()};
     for (std::size_t index{}; index < setting_count; ++index) {
@@ -212,8 +209,8 @@ auto build_functions(LoweringContext& context,
         setter_cases.push_back(ir.switch_case(
             ir.named("EGameSetting::" + title_case(context.text(name))),
             ir.block({
-                ir.variable(ir.types.intern("auto const*"),
-                            ir.strings.intern("typed_value"),
+                ir.variable("auto const*",
+                            "typed_value",
                             ir.call(ir.template_id(ir.named("std::get_if"),
                                                    {ir.type_reference(setting_types[index])}),
                                     {ir.unary(UnaryOperator::address_of, value)})),
@@ -254,12 +251,10 @@ auto settings_api(LoweringContext& context,
                 ir.call(ir.member_access(ir.call(ir.named("derived")), "settings_state")), name))});
         members.add(ir.header_function(getter), 2);
 
-        auto const setter{
-            ir.function(ir.strings.intern("set_" + context.text(name)), ir.types.intern("void"))};
+        auto const setter{ir.function("set_" + context.text(name), "void")};
         ir.function_flags(setter).set_define_in_header(true);
-        ir.set_function_parameters(setter,
-                                   {ir.parameter(qualify(ir, setting_types[index], " const"),
-                                                 ir.strings.intern("value"))});
+        ir.set_function_parameters(
+            setter, {ir.parameter(qualify(ir, setting_types[index], " const"), "value")});
         ir.set_function_body(
             setter,
             {ir.expression_statement(ir.call(
@@ -271,7 +266,7 @@ auto settings_api(LoweringContext& context,
     members.add(ir.access(Access::private_), 1);
     for (auto const is_const : {false, true}) {
         auto const derived_type{ir.types.intern(is_const ? "Derived const&" : "Derived&")};
-        auto const function{ir.function(ir.strings.intern("derived"), ir.types.intern("auto"))};
+        auto const function{ir.function("derived", "auto")};
         ir.set_function_return_type(function, derived_type, ReturnSyntax::trailing);
         ir.set_function_receiver(
             function, is_const ? FunctionReceiver::const_ : FunctionReceiver::unqualified);
@@ -419,7 +414,7 @@ auto build_header(LoweringContext& context,
             1);
     }
     auto const state_name{declarations.settings_modules.state_name[module_row]};
-    auto const equality{ir.function(ir.strings.intern("operator=="), ir.types.intern("bool"))};
+    auto const equality{ir.function("operator==", "bool")};
     ir.set_function_return_type(equality, ir.types.intern("bool"), ReturnSyntax::trailing);
     ir.set_function_parameters(
         equality, {ir.parameter(ir.types.intern(context.text(state_name) + " const&"))});

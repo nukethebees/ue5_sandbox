@@ -135,7 +135,7 @@ auto fixed_function(LoweringContext& context,
                     Expr requires_clause = {},
                     FunctionFormatting formatting = {}) -> FunctionId {
     auto& ir{context.ir};
-    auto const created_function{ir.function(ir.strings.intern(name), return_type)};
+    auto const created_function{ir.function(name, return_type)};
     ir.set_function_return_type(created_function, return_type, return_syntax);
     ir.set_function_receiver(created_function, receiver);
     ir.set_function_parameters(created_function, parameters);
@@ -282,8 +282,7 @@ auto fixed_container_lifecycle_nodes(LoweringContext& context,
     ir.set_function_defaulted(default_constructor);
 
     auto const copy_constructor{ir.constructor(identifier)};
-    ir.set_function_parameters(copy_constructor,
-                               {ir.parameter(const_reference, ir.strings.intern("other"))});
+    ir.set_function_parameters(copy_constructor, {ir.parameter(const_reference, "other")});
     ir.set_function_body(copy_constructor,
                          {ir.raw("for (size_type i{}; i < other.size_; ++i) {\n"
                                  "    storage_.copy_construct_at(size_, other.storage_, i);\n"
@@ -304,8 +303,7 @@ auto fixed_container_lifecycle_nodes(LoweringContext& context,
         FunctionDispositionPlacement::next_line;
 
     auto const move_constructor{ir.constructor(identifier)};
-    ir.set_function_parameters(move_constructor,
-                               {ir.parameter(move_reference, ir.strings.intern("other"))});
+    ir.set_function_parameters(move_constructor, {ir.parameter(move_reference, "other")});
     ir.set_function_body(move_constructor,
                          {ir.raw("for (size_type i{}; i < other.size_; ++i) {\n"
                                  "    storage_.move_construct_at(size_, other.storage_, i);\n"
@@ -333,22 +331,21 @@ auto fixed_container_lifecycle_nodes(LoweringContext& context,
     ir.function_flags(destructor).set_define_in_header(true);
     ir.function_formatting(destructor) = compact_function_formatting();
 
-    auto const copy_assignment{
-        fixed_function(context,
-                       "operator=",
-                       reference,
-                       {ir.parameter(const_reference, ir.strings.intern("other"))},
-                       "if (this != std::addressof(other)) {\n"
-                       "    reset();\n"
-                       "    append_from(other.get_const_view());\n"
-                       "}\n"
-                       "return *this;",
-                       FunctionReceiver::unqualified,
-                       ReturnSyntax::trailing,
-                       {},
-                       copy_constructible,
-                       expanded_constrained_function_formatting())};
-    auto const deleted_copy_assignment{ir.function(ir.strings.intern("operator="), reference)};
+    auto const copy_assignment{fixed_function(context,
+                                              "operator=",
+                                              reference,
+                                              {ir.parameter(const_reference, "other")},
+                                              "if (this != std::addressof(other)) {\n"
+                                              "    reset();\n"
+                                              "    append_from(other.get_const_view());\n"
+                                              "}\n"
+                                              "return *this;",
+                                              FunctionReceiver::unqualified,
+                                              ReturnSyntax::trailing,
+                                              {},
+                                              copy_constructible,
+                                              expanded_constrained_function_formatting())};
+    auto const deleted_copy_assignment{ir.function("operator=", reference)};
     ir.set_function_return_type(deleted_copy_assignment, reference, ReturnSyntax::trailing);
     ir.set_function_parameters(deleted_copy_assignment, {ir.parameter(const_reference)});
     ir.set_function_deleted(deleted_copy_assignment);
@@ -362,7 +359,7 @@ auto fixed_container_lifecycle_nodes(LoweringContext& context,
         fixed_function(context,
                        "operator=",
                        reference,
-                       {ir.parameter(move_reference, ir.strings.intern("other"))},
+                       {ir.parameter(move_reference, "other")},
                        "if (this != std::addressof(other)) {\n"
                        "    reset();\n"
                        "    for (size_type i{}; i < other.size_; ++i) {\n"
@@ -378,7 +375,7 @@ auto fixed_container_lifecycle_nodes(LoweringContext& context,
                        move_constructible,
                        expanded_constrained_function_formatting())};
     ir.set_function_conditional_noexcept(move_assignment, nothrow_move);
-    auto const deleted_move_assignment{ir.function(ir.strings.intern("operator="), reference)};
+    auto const deleted_move_assignment{ir.function("operator=", reference)};
     ir.set_function_return_type(deleted_move_assignment, reference, ReturnSyntax::trailing);
     ir.set_function_parameters(deleted_move_assignment, {ir.parameter(move_reference)});
     ir.set_function_deleted(deleted_move_assignment);
@@ -404,8 +401,7 @@ auto fixed_container_access_nodes(LoweringContext& context, DeclarationHandle sc
     auto& ir{context.ir};
     NodeListBuilder result{ir};
     result.add(ir.header_function([&] {
-        auto const created_function{
-            ir.function(ir.strings.intern("capacity"), ir.types.intern("size_type"))};
+        auto const created_function{ir.function("capacity", "size_type")};
         ir.set_function_body(created_function, {ir.raw("return capacity_value;")});
         ir.set_function_return_type(
             created_function, ir.types.intern("size_type"), ReturnSyntax::trailing);
@@ -458,8 +454,7 @@ auto fixed_container_access_nodes(LoweringContext& context, DeclarationHandle sc
         result,
         "get_view",
         ir.types.intern("View"),
-        {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("offset")),
-         ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))},
+        {ir.parameter("size_type const", "offset"), ir.parameter("size_type const", "count")},
         "check_view_range(offset, count); return storage_.get_view(offset, count);",
         FunctionReceiver::unqualified,
         ReturnSyntax::trailing);
@@ -476,8 +471,7 @@ auto fixed_container_access_nodes(LoweringContext& context, DeclarationHandle sc
         result,
         "get_view",
         ir.types.intern("ConstView"),
-        {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("offset")),
-         ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))},
+        {ir.parameter("size_type const", "offset"), ir.parameter("size_type const", "count")},
         "return get_const_view(offset, count);",
         FunctionReceiver::const_,
         ReturnSyntax::trailing);
@@ -494,8 +488,7 @@ auto fixed_container_access_nodes(LoweringContext& context, DeclarationHandle sc
         result,
         "get_const_view",
         ir.types.intern("ConstView"),
-        {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("offset")),
-         ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))},
+        {ir.parameter("size_type const", "offset"), ir.parameter("size_type const", "count")},
         "check_view_range(offset, count); return storage_.get_const_view(offset, count);",
         FunctionReceiver::const_,
         ReturnSyntax::trailing);
@@ -504,66 +497,60 @@ auto fixed_container_access_nodes(LoweringContext& context, DeclarationHandle sc
         result,
         "slice",
         ir.types.intern("View"),
-        {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("offset")),
-         ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))},
+        {ir.parameter("size_type const", "offset"), ir.parameter("size_type const", "count")},
         "return get_view(offset, count);",
         FunctionReceiver::unqualified,
         ReturnSyntax::trailing);
-    add_compact_function(
-        context,
-        result,
-        "left",
-        ir.types.intern("View"),
-        {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))},
-        "return slice(0, count);",
-        FunctionReceiver::unqualified,
-        ReturnSyntax::trailing);
-    add_compact_function(
-        context,
-        result,
-        "right",
-        ir.types.intern("View"),
-        {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))},
-        "return slice(size_ - count, count);",
-        FunctionReceiver::unqualified,
-        ReturnSyntax::trailing);
+    add_compact_function(context,
+                         result,
+                         "left",
+                         ir.types.intern("View"),
+                         {ir.parameter("size_type const", "count")},
+                         "return slice(0, count);",
+                         FunctionReceiver::unqualified,
+                         ReturnSyntax::trailing);
+    add_compact_function(context,
+                         result,
+                         "right",
+                         ir.types.intern("View"),
+                         {ir.parameter("size_type const", "count")},
+                         "return slice(size_ - count, count);",
+                         FunctionReceiver::unqualified,
+                         ReturnSyntax::trailing);
     add_compact_function(
         context,
         result,
         "slice",
         ir.types.intern("ConstView"),
-        {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("offset")),
-         ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))},
+        {ir.parameter("size_type const", "offset"), ir.parameter("size_type const", "count")},
         "return get_const_view(offset, count);",
         FunctionReceiver::const_,
         ReturnSyntax::trailing);
-    add_compact_function(
-        context,
-        result,
-        "left",
-        ir.types.intern("ConstView"),
-        {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))},
-        "return slice(0, count);",
-        FunctionReceiver::const_,
-        ReturnSyntax::trailing);
-    add_compact_function(
-        context,
-        result,
-        "right",
-        ir.types.intern("ConstView"),
-        {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))},
-        "return slice(size_ - count, count);",
-        FunctionReceiver::const_,
-        ReturnSyntax::trailing,
-        {},
-        {},
-        2);
+    add_compact_function(context,
+                         result,
+                         "left",
+                         ir.types.intern("ConstView"),
+                         {ir.parameter("size_type const", "count")},
+                         "return slice(0, count);",
+                         FunctionReceiver::const_,
+                         ReturnSyntax::trailing);
+    add_compact_function(context,
+                         result,
+                         "right",
+                         ir.types.intern("ConstView"),
+                         {ir.parameter("size_type const", "count")},
+                         "return slice(size_ - count, count);",
+                         FunctionReceiver::const_,
+                         ReturnSyntax::trailing,
+                         {},
+                         {},
+                         2);
     add_compact_function(
         context,
         result,
         "apply_arrays",
         ir.types.intern("decltype(auto)"),
-        {ir.parameter(ir.types.intern("TFunc&&"), ir.strings.intern("func"))},
+        {ir.parameter("TFunc&&", "func")},
         "auto view{get_view()}; return view.apply_arrays(std::forward<TFunc>(func));",
         FunctionReceiver::unqualified,
         ReturnSyntax::trailing,
@@ -573,7 +560,7 @@ auto fixed_container_access_nodes(LoweringContext& context, DeclarationHandle sc
         result,
         "apply_arrays",
         ir.types.intern("decltype(auto)"),
-        {ir.parameter(ir.types.intern("TFunc&&"), ir.strings.intern("func"))},
+        {ir.parameter("TFunc&&", "func")},
         "auto view{get_const_view()}; return view.apply_arrays(std::forward<TFunc>(func));",
         FunctionReceiver::const_,
         ReturnSyntax::trailing,
@@ -582,24 +569,21 @@ auto fixed_container_access_nodes(LoweringContext& context, DeclarationHandle sc
         2);
     if (context.declarations.soas.equivalent_type[context.declarations.soas.index(schema)]
             .has_value()) {
-        result.add(
-            ir.header_function(fixed_function(
-                context,
-                "operator[]",
-                ir.types.intern("equivalent_type"),
-                {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("index"))},
-                "return get_const_view()[index];",
-                FunctionReceiver::const_,
-                ReturnSyntax::trailing)),
-            1);
-        result.add(ir.header_function(fixed_function(
-            context,
-            "at",
-            ir.types.intern("equivalent_type"),
-            {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("index"))},
-            "check_index(index);\nreturn (*this)[index];",
-            FunctionReceiver::const_,
-            ReturnSyntax::trailing)));
+        result.add(ir.header_function(fixed_function(context,
+                                                     "operator[]",
+                                                     ir.types.intern("equivalent_type"),
+                                                     {ir.parameter("size_type const", "index")},
+                                                     "return get_const_view()[index];",
+                                                     FunctionReceiver::const_,
+                                                     ReturnSyntax::trailing)),
+                   1);
+        result.add(ir.header_function(fixed_function(context,
+                                                     "at",
+                                                     ir.types.intern("equivalent_type"),
+                                                     {ir.parameter("size_type const", "index")},
+                                                     "check_index(index);\nreturn (*this)[index];",
+                                                     FunctionReceiver::const_,
+                                                     ReturnSyntax::trailing)));
     }
     result.new_lines(2);
     return result.build();
@@ -654,13 +638,11 @@ auto fixed_container_set_nodes(LoweringContext& context,
     }
     if (equivalent_set_type.value != 0) {
         result.add(ir.header_function([&] {
-            auto const created_function{
-                ir.function(ir.strings.intern("set"), ir.types.intern("void"))};
+            auto const created_function{ir.function("set", "void")};
             ir.set_function_parameters(
                 created_function,
-                {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("i")),
-                 ir.parameter(qualify(ir, equivalent_set_type, " const"),
-                              ir.strings.intern("value"))});
+                {ir.parameter("int32 const", "i"),
+                 ir.parameter(qualify(ir, equivalent_set_type, " const"), "value")});
             ir.set_function_body(created_function,
                                  {ir.expression_statement(
                                      ir.call(ir.member_access(ir.call(ir.named("get_view")), "set"),
@@ -695,8 +677,7 @@ auto fixed_container_construction_nodes(LoweringContext& context, FixedLayoutId 
         template_parameters.push_back(
             ir.type_template_parameter(ir.strings.intern("TArg" + index_text)));
         argument_types.push_back(ir.type_reference(ir.types.intern("TArg" + index_text)));
-        parameters.push_back(ir.parameter(ir.types.intern("TArg" + index_text + "&&"),
-                                          ir.strings.intern("new_" + argument)));
+        parameters.push_back(ir.parameter("TArg" + index_text + "&&", "new_" + argument));
         forwarded.push_back("std::forward<TArg" + index_text + ">(new_" + argument + ")");
     }
     auto const function_template{ir.template_declaration(template_parameters)};
@@ -737,9 +718,7 @@ auto fixed_container_construction_nodes(LoweringContext& context, FixedLayoutId 
                          result,
                          "add_defaulted",
                          ir.types.intern("void"),
-                         {ir.parameter(ir.types.intern("size_type const"),
-                                       ir.strings.intern("count"),
-                                       ir.store_text("1"))},
+                         {ir.parameter("size_type const", "count", ir.store_text("1"))},
                          "check_has_sufficient_capacity(count); for (size_type i{}; i < count; "
                          "++i) { storage_.default_construct_at(size_); ++size_; }",
                          FunctionReceiver::unqualified,
@@ -751,7 +730,7 @@ auto fixed_container_construction_nodes(LoweringContext& context, FixedLayoutId 
         result,
         "set_num",
         ir.types.intern("void"),
-        {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("new_size"))},
+        {ir.parameter("size_type const", "new_size")},
         "check(new_size >= 0); check(new_size <= capacity()); if (new_size < size_) { "
         "destroy_from(new_size); return; } add_defaulted(new_size - size_);",
         FunctionReceiver::unqualified,
@@ -763,8 +742,7 @@ auto fixed_container_construction_nodes(LoweringContext& context, FixedLayoutId 
         result,
         "set_num",
         ir.types.intern("void"),
-        {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("new_size")),
-         ir.parameter(ir.types.intern("EAllowShrinking const"), {})},
+        {ir.parameter("size_type const", "new_size"), ir.parameter("EAllowShrinking const")},
         "set_num(new_size);",
         FunctionReceiver::unqualified,
         ReturnSyntax::direct,
@@ -780,29 +758,27 @@ auto fixed_container_construction_nodes(LoweringContext& context, FixedLayoutId 
                          ReturnSyntax::trailing,
                          {},
                          ir.named("supports_uninitialised_storage"));
-    add_compact_function(
-        context,
-        result,
-        "set_num_uninitialised",
-        ir.types.intern("void"),
-        {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("new_size"))},
-        "check(new_size >= 0); check(new_size <= capacity()); size_ = new_size;",
-        FunctionReceiver::unqualified,
-        ReturnSyntax::direct,
-        {},
-        ir.named("supports_uninitialised_storage"));
-    add_compact_function(
-        context,
-        result,
-        "add_uninitialised",
-        ir.types.intern("void"),
-        {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))},
-        "check_has_sufficient_capacity(count); size_ += count;",
-        FunctionReceiver::unqualified,
-        ReturnSyntax::direct,
-        {},
-        ir.named("supports_uninitialised_storage"),
-        2);
+    add_compact_function(context,
+                         result,
+                         "set_num_uninitialised",
+                         ir.types.intern("void"),
+                         {ir.parameter("size_type const", "new_size")},
+                         "check(new_size >= 0); check(new_size <= capacity()); size_ = new_size;",
+                         FunctionReceiver::unqualified,
+                         ReturnSyntax::direct,
+                         {},
+                         ir.named("supports_uninitialised_storage"));
+    add_compact_function(context,
+                         result,
+                         "add_uninitialised",
+                         ir.types.intern("void"),
+                         {ir.parameter("size_type const", "count")},
+                         "check_has_sufficient_capacity(count); size_ += count;",
+                         FunctionReceiver::unqualified,
+                         ReturnSyntax::direct,
+                         {},
+                         ir.named("supports_uninitialised_storage"),
+                         2);
     return result.build();
 }
 
@@ -819,21 +795,20 @@ auto fixed_container_mutation_nodes(LoweringContext& context) -> Nodes {
         context, result, "reset", ir.types.intern("void"), {}, "destroy_from(0);"));
     ir.set_function_noexcept(
         add_compact_function(context, result, "empty", ir.types.intern("void"), {}, "reset();"));
-    add_compact_function(
-        context,
-        result,
-        "reserve",
-        ir.types.intern("void"),
-        {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("requested_capacity"))},
-        "check(requested_capacity >= 0); check(requested_capacity <= capacity());",
-        FunctionReceiver::const_);
+    add_compact_function(context,
+                         result,
+                         "reserve",
+                         ir.types.intern("void"),
+                         {ir.parameter("size_type const", "requested_capacity")},
+                         "check(requested_capacity >= 0); check(requested_capacity <= capacity());",
+                         FunctionReceiver::const_);
     result.add(ir.header_function(fixed_function(
                    context,
                    "remove_at_swap",
                    ir.types.intern("void"),
-                   {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("index")),
-                    ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count")),
-                    ir.parameter(ir.types.intern("EAllowShrinking const"), {})},
+                   {ir.parameter("size_type const", "index"),
+                    ir.parameter("size_type const", "count"),
+                    ir.parameter("EAllowShrinking const")},
                    "check(index >= 0); check(count >= 0); check(index + count <= size_);\nif "
                    "(count == 0) { return; }\nauto const available_tail{size_ - (index + "
                    "count)};\nauto const move_count{count < available_tail ? count : "
@@ -846,9 +821,9 @@ auto fixed_container_mutation_nodes(LoweringContext& context) -> Nodes {
         result,
         "copy_element",
         ir.types.intern("void"),
-        {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("dst_index")),
-         ir.parameter(ir.types.intern("Other const&"), ir.strings.intern("other")),
-         ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("source_index"))},
+        {ir.parameter("size_type const", "dst_index"),
+         ir.parameter("Other const&", "other"),
+         ir.parameter("size_type const", "source_index")},
         "check_index(dst_index); auto const source{other.get_const_view()}; "
         "check(source_index >= 0); check(source_index < source.num()); "
         "storage_.copy_assign_from_view_at(dst_index, source, source_index);",
@@ -860,10 +835,10 @@ auto fixed_container_mutation_nodes(LoweringContext& context) -> Nodes {
         result,
         "copy_elements",
         ir.types.intern("void"),
-        {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("dst_index")),
-         ir.parameter(ir.types.intern("Other const&"), ir.strings.intern("other")),
-         ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("source_index")),
-         ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))},
+        {ir.parameter("size_type const", "dst_index"),
+         ir.parameter("Other const&", "other"),
+         ir.parameter("size_type const", "source_index"),
+         ir.parameter("size_type const", "count")},
         "check(dst_index >= 0); check(source_index >= 0); check(count >= 0); check(dst_index + "
         "count <= size_); auto const source{other.get_const_view()}; check(source_index + count <= "
         "source.num()); for (size_type i{}; i < count; ++i) { "
@@ -876,7 +851,7 @@ auto fixed_container_mutation_nodes(LoweringContext& context) -> Nodes {
         result,
         "append_from",
         ir.types.intern("void"),
-        {ir.parameter(ir.types.intern("Other const&"), ir.strings.intern("other"))},
+        {ir.parameter("Other const&", "other")},
         "auto const source{other.get_const_view()}; auto const count{source.num()}; "
         "check_has_sufficient_capacity(count); for (size_type i{}; i < count; ++i) { "
         "storage_.construct_from_view_at(size_, source, i); ++size_; }",
@@ -892,37 +867,34 @@ auto fixed_container_private_nodes(LoweringContext& context, DeclarationHandle s
     auto& ir{context.ir};
     NodeListBuilder result{ir};
     result.add(ir.access(Access::private_), 1);
-    add_compact_function(
-        context,
-        result,
-        "check_index",
-        ir.types.intern("void"),
-        {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("index"))},
-        "check(index >= 0); check(index < size_);",
-        FunctionReceiver::const_);
+    add_compact_function(context,
+                         result,
+                         "check_index",
+                         ir.types.intern("void"),
+                         {ir.parameter("size_type const", "index")},
+                         "check(index >= 0); check(index < size_);",
+                         FunctionReceiver::const_);
     add_compact_function(
         context,
         result,
         "check_view_range",
         ir.types.intern("void"),
-        {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("offset")),
-         ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))},
+        {ir.parameter("size_type const", "offset"), ir.parameter("size_type const", "count")},
         "check(offset >= 0); check(count >= 0); check(offset + count <= size_);",
         FunctionReceiver::const_);
-    add_compact_function(
-        context,
-        result,
-        "check_has_sufficient_capacity",
-        ir.types.intern("void"),
-        {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))},
-        "check(count >= 0); check(count <= capacity() - size_);",
-        FunctionReceiver::const_);
+    add_compact_function(context,
+                         result,
+                         "check_has_sufficient_capacity",
+                         ir.types.intern("void"),
+                         {ir.parameter("size_type const", "count")},
+                         "check(count >= 0); check(count <= capacity() - size_);",
+                         FunctionReceiver::const_);
     ir.set_function_noexcept(add_compact_function(
         context,
         result,
         "destroy_from",
         ir.types.intern("void"),
-        {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("first_index"))},
+        {ir.parameter("size_type const", "first_index")},
         "for (size_type i{size_}; i > first_index; --i) { storage_.destroy_at(i - "
         "1); } size_ = first_index;",
         FunctionReceiver::unqualified,

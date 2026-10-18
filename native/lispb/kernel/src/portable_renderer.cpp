@@ -82,7 +82,7 @@ auto parameters(lispb::codegen::CppIR& cpp,
         auto const type{
             cpp.types.intern(parameter_type(document, id, index, standard, raw, owning))};
         for (auto const& name : operand_names(document, id, index)) {
-            result.push_back(cpp.parameter(type, cpp.strings.intern(name)));
+            result.push_back(cpp.parameter(type, name));
         }
     }
     if (document.variants.kind(expanded.variant(id)) == VariantKind::out_of_place) {
@@ -93,13 +93,11 @@ auto parameters(lispb::codegen::CppIR& cpp,
                                        : "TArrayView<" + scalar + "> const"};
         auto const type{cpp.types.intern(spelling)};
         for (auto const& name : output_names(document, id)) {
-            result.push_back(cpp.parameter(type, cpp.strings.intern(name)));
+            result.push_back(cpp.parameter(type, name));
         }
     }
     if (raw) {
-        result.push_back(
-            cpp.parameter(cpp.types.intern(standard ? "std::size_t const" : "int32 const"),
-                          cpp.strings.intern("count")));
+        result.push_back(cpp.parameter(standard ? "std::size_t const" : "int32 const", "count"));
     }
     return result;
 }
@@ -209,8 +207,8 @@ auto raw_body(lispb::codegen::CppIR& cpp,
     }
     auto const index{cpp.named("i")};
     auto const initializer{
-        cpp.variable(cpp.types.intern(standard ? "std::size_t" : "int32"),
-                     cpp.strings.intern("i"),
+        cpp.variable(standard ? "std::size_t" : "int32",
+                     "i",
                      standard ? std::optional<lispb::codegen::Expr>{} : cpp.literal("0"))};
     auto const condition{
         cpp.binary(lispb::codegen::BinaryOperator::less, index, cpp.named("count"))};
@@ -316,8 +314,8 @@ auto public_body(lispb::codegen::CppIR& cpp,
     }
 
     auto const source{count_source(document, id)};
-    output.push_back(cpp.variable(cpp.types.intern(standard ? "auto const" : "int32 const"),
-                                  cpp.strings.intern("count"),
+    output.push_back(cpp.variable(standard ? "auto const" : "int32 const",
+                                  "count",
                                   member_call(cpp, source, standard ? "size" : "Num")));
     auto const arrays{array_names(document, id)};
     for (auto const& array : arrays) {
@@ -405,8 +403,7 @@ auto lower_portable(lispb::codegen::CppIR& cpp,
     auto const end{range.offset + range.count};
     for (auto variant_index{range.offset}; variant_index < end; ++variant_index) {
         auto const id{ExpandedVariantId{variant_index}};
-        auto const raw_function{
-            cpp.function(cpp.strings.intern(raw_name(document, id)), void_type)};
+        auto const raw_function{cpp.function(raw_name(document, id), void_type)};
         cpp.set_function_parameters(raw_function, parameters(cpp, document, id, standard, true));
         cpp.set_function_body(raw_function, raw_body(cpp, document, id, standard));
         cpp.set_function_noexcept(raw_function);

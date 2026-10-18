@@ -150,11 +150,8 @@ auto soa_equivalent_nodes(LoweringContext& context,
     NodeListBuilder result{ir};
     result.add(ir.using_declaration(ir.strings.intern("equivalent_type"), equivalent), 2)
         .add(ir.header_function([&] {
-            auto const created_function{
-                ir.function(ir.strings.intern("operator[]"), ir.types.intern("auto"))};
-            ir.set_function_parameters(
-                created_function,
-                {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("index"))});
+            auto const created_function{ir.function("operator[]", "auto")};
+            ir.set_function_parameters(created_function, {ir.parameter("int32 const", "index")});
             ir.set_function_body(created_function, {ir.return_statement(ir.init_list(values))});
             ir.set_function_return_type(created_function, equivalent, ReturnSyntax::trailing);
             ir.set_function_receiver(created_function, FunctionReceiver::const_);
@@ -164,11 +161,8 @@ auto soa_equivalent_nodes(LoweringContext& context,
         }()),
              1)
         .add(ir.header_function([&] {
-            auto const created_function{
-                ir.function(ir.strings.intern("at"), ir.types.intern("auto"))};
-            ir.set_function_parameters(
-                created_function,
-                {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("index"))});
+            auto const created_function{ir.function("at", "auto")};
+            ir.set_function_parameters(created_function, {ir.parameter("int32 const", "index")});
             ir.set_function_body(
                 created_function,
                 {
@@ -207,7 +201,7 @@ auto soa_view_functions(LoweringContext& context,
                    ReturnSyntax syntax,
                    bool const is_const = false,
                    bool const is_noexcept = false) {
-        auto const created_function{ir.function(ir.strings.intern(name), return_type)};
+        auto const created_function{ir.function(name, return_type)};
         ir.set_function_parameters(created_function, parameters);
         ir.set_function_body(created_function, body);
         ir.set_function_return_type(created_function, return_type, syntax);
@@ -237,8 +231,7 @@ auto soa_view_functions(LoweringContext& context,
         }
         add("get_view",
             ir.types.intern("View"),
-            {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("offset")),
-             ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))},
+            {ir.parameter("int32 const", "offset"), ir.parameter("int32 const", "count")},
             {ir.return_statement(ir.init_list(values, ir.types.intern("View")))},
             ReturnSyntax::trailing);
     }
@@ -255,8 +248,7 @@ auto soa_view_functions(LoweringContext& context,
     }
     add("get_view",
         ir.types.intern("ConstView"),
-        {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("offset")),
-         ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))},
+        {ir.parameter("int32 const", "offset"), ir.parameter("int32 const", "count")},
         {ir.return_statement(ir.init_list(const_values, ir.types.intern("ConstView")))},
         ReturnSyntax::trailing,
         true);
@@ -268,8 +260,7 @@ auto soa_view_functions(LoweringContext& context,
         true);
     add("get_const_view",
         ir.types.intern("ConstView"),
-        {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("offset")),
-         ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))},
+        {ir.parameter("int32 const", "offset"), ir.parameter("int32 const", "count")},
         {ir.return_statement(ir.init_list(const_values, ir.types.intern("ConstView")))},
         ReturnSyntax::trailing,
         true);
@@ -301,37 +292,35 @@ auto soa_view_functions(LoweringContext& context,
     if (!const_only) {
         add("slice",
             ir.types.intern("View"),
-            {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("offset")),
-             ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))},
+            {ir.parameter("int32 const", "offset"), ir.parameter("int32 const", "count")},
             return_call("get_view", {offset, count}),
             ReturnSyntax::trailing);
         add("left",
             ir.types.intern("View"),
-            {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))},
+            {ir.parameter("int32 const", "count")},
             return_call("slice", {ir.literal("0"), count}),
             ReturnSyntax::trailing);
         add("right",
             ir.types.intern("View"),
-            {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))},
+            {ir.parameter("int32 const", "count")},
             return_call("slice", {ir.binary(BinaryOperator::subtract, num, count), count}),
             ReturnSyntax::trailing);
     }
     add("slice",
         ir.types.intern("ConstView"),
-        {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("offset")),
-         ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))},
+        {ir.parameter("int32 const", "offset"), ir.parameter("int32 const", "count")},
         return_call("get_view", {offset, count}),
         ReturnSyntax::trailing,
         true);
     add("left",
         ir.types.intern("ConstView"),
-        {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))},
+        {ir.parameter("int32 const", "count")},
         return_call("slice", {ir.literal("0"), count}),
         ReturnSyntax::trailing,
         true);
     add("right",
         ir.types.intern("ConstView"),
-        {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))},
+        {ir.parameter("int32 const", "count")},
         return_call("slice", {ir.binary(BinaryOperator::subtract, num, count), count}),
         ReturnSyntax::trailing,
         true);

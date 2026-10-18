@@ -51,7 +51,7 @@ auto homogeneous_function(LoweringContext& context,
                           std::vector<TypeDependencyId> dependencies = {},
                           Expr requires_clause = {}) -> NodeId {
     auto& ir{context.ir};
-    auto const created_function{ir.function(ir.strings.intern(name), return_type)};
+    auto const created_function{ir.function(name, return_type)};
     ir.set_function_return_type(created_function, return_type, return_syntax);
     ir.set_function_receiver(created_function, receiver);
     ir.set_function_parameters(created_function, parameters);
@@ -147,15 +147,14 @@ auto homogeneous_view_node(LoweringContext& context,
                                   {},
                                   compact_function_formatting()),
              1)
-        .add(homogeneous_function(
-                 context,
-                 "get_view",
-                 ir.types.intern("View"),
-                 {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("offset")),
-                  ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))},
-                 "return get_view().slice(offset, count);",
-                 FunctionReceiver::unqualified,
-                 ReturnSyntax::trailing),
+        .add(homogeneous_function(context,
+                                  "get_view",
+                                  ir.types.intern("View"),
+                                  {ir.parameter("size_type const", "offset"),
+                                   ir.parameter("size_type const", "count")},
+                                  "return get_view().slice(offset, count);",
+                                  FunctionReceiver::unqualified,
+                                  ReturnSyntax::trailing),
              1)
         .add(homogeneous_function(context,
                                   "get_view",
@@ -167,15 +166,14 @@ auto homogeneous_view_node(LoweringContext& context,
                                   {},
                                   compact_function_formatting()),
              1)
-        .add(homogeneous_function(
-                 context,
-                 "get_view",
-                 ir.types.intern("ConstView"),
-                 {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("offset")),
-                  ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))},
-                 "return get_view().slice(offset, count);",
-                 FunctionReceiver::const_,
-                 ReturnSyntax::trailing),
+        .add(homogeneous_function(context,
+                                  "get_view",
+                                  ir.types.intern("ConstView"),
+                                  {ir.parameter("size_type const", "offset"),
+                                   ir.parameter("size_type const", "count")},
+                                  "return get_view().slice(offset, count);",
+                                  FunctionReceiver::const_,
+                                  ReturnSyntax::trailing),
              1)
         .add(homogeneous_function(context,
                                   "get_const_view",
@@ -187,21 +185,20 @@ auto homogeneous_view_node(LoweringContext& context,
                                   {},
                                   compact_function_formatting()),
              1)
-        .add(homogeneous_function(
-                 context,
-                 "get_const_view",
-                 ir.types.intern("ConstView"),
-                 {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("offset")),
-                  ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))},
-                 "return get_const_view().slice(offset, count);",
-                 FunctionReceiver::const_,
-                 ReturnSyntax::trailing),
+        .add(homogeneous_function(context,
+                                  "get_const_view",
+                                  ir.types.intern("ConstView"),
+                                  {ir.parameter("size_type const", "offset"),
+                                   ir.parameter("size_type const", "count")},
+                                  "return get_const_view().slice(offset, count);",
+                                  FunctionReceiver::const_,
+                                  ReturnSyntax::trailing),
              1)
         .add(homogeneous_function(
                  context,
                  "apply_arrays",
                  ir.types.intern("decltype(auto)"),
-                 {ir.parameter(ir.types.intern("TFunc&&"), ir.strings.intern("func"))},
+                 {ir.parameter("TFunc&&", "func")},
                  "return std::forward<TFunc>(func)(" + components + ");",
                  FunctionReceiver::unqualified,
                  ReturnSyntax::trailing,
@@ -213,7 +210,7 @@ auto homogeneous_view_node(LoweringContext& context,
                  context,
                  "apply_arrays",
                  ir.types.intern("decltype(auto)"),
-                 {ir.parameter(ir.types.intern("TFunc&&"), ir.strings.intern("func"))},
+                 {ir.parameter("TFunc&&", "func")},
                  "return std::forward<TFunc>(func)(" + components + ");",
                  FunctionReceiver::const_,
                  ReturnSyntax::trailing,
@@ -248,43 +245,39 @@ auto homogeneous_view_node(LoweringContext& context,
                                   {},
                                   compact_function_formatting()),
              1)
-        .add(homogeneous_function(
-                 context,
-                 "slice",
-                 ir.types.intern(view_name),
-                 {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("offset")),
-                  ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))},
-                 "return " + view_name + "{" + slice_values("Slice(offset, count)") + "};",
-                 FunctionReceiver::const_,
-                 ReturnSyntax::trailing),
+        .add(homogeneous_function(context,
+                                  "slice",
+                                  ir.types.intern(view_name),
+                                  {ir.parameter("size_type const", "offset"),
+                                   ir.parameter("size_type const", "count")},
+                                  "return " + view_name + "{" +
+                                      slice_values("Slice(offset, count)") + "};",
+                                  FunctionReceiver::const_,
+                                  ReturnSyntax::trailing),
              1)
-        .add(homogeneous_function(
-                 context,
-                 "left",
-                 ir.types.intern(view_name),
-                 {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))},
-                 "return " + view_name + "{" + slice_values("Left(count)") + "};",
-                 FunctionReceiver::const_,
-                 ReturnSyntax::trailing),
+        .add(homogeneous_function(context,
+                                  "left",
+                                  ir.types.intern(view_name),
+                                  {ir.parameter("size_type const", "count")},
+                                  "return " + view_name + "{" + slice_values("Left(count)") + "};",
+                                  FunctionReceiver::const_,
+                                  ReturnSyntax::trailing),
              1)
-        .add(homogeneous_function(
-            context,
-            "right",
-            ir.types.intern(view_name),
-            {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))},
-            "return " + view_name + "{" + slice_values("Right(count)") + "};",
-            FunctionReceiver::const_,
-            ReturnSyntax::trailing));
-    std::vector<FunctionParameterId> component_parameters{
-        ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("index"))};
+        .add(homogeneous_function(context,
+                                  "right",
+                                  ir.types.intern(view_name),
+                                  {ir.parameter("size_type const", "count")},
+                                  "return " + view_name + "{" + slice_values("Right(count)") + "};",
+                                  FunctionReceiver::const_,
+                                  ReturnSyntax::trailing));
+    std::vector<FunctionParameterId> component_parameters{ir.parameter("size_type const", "index")};
     std::vector<std::string> assignments;
     for (auto const component_id : context.declarations.items(
              context.declarations.homogeneous_layouts
                  .components[context.declarations.homogeneous_layouts.index(layout)])) {
         auto const component{context.text(component_id)};
         component_parameters.push_back(
-            ir.parameter(ir.types.intern("value_type const"),
-                         ir.strings.intern(std::string{component.front()})));
+            ir.parameter("value_type const", std::string{component.front()}));
         assignments.push_back(component + "[index] = " + component.front() + ";");
     }
     children.new_lines().add(homogeneous_function(context,
@@ -318,19 +311,19 @@ auto homogeneous_view_node(LoweringContext& context,
              ++index) {
             arguments.push_back("value." + input_member(index));
         }
-        children.new_lines().add(homogeneous_function(
-            context,
-            "set",
-            ir.types.intern("void"),
-            {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("index")),
-             ir.parameter(ir.types.intern("equivalent_type const&"), ir.strings.intern("value"))},
-            "set(index, " + join(arguments, ", ") + ");",
-            FunctionReceiver::const_,
-            ReturnSyntax::direct,
-            {},
-            {},
-            {},
-            mutable_elements));
+        children.new_lines().add(
+            homogeneous_function(context,
+                                 "set",
+                                 ir.types.intern("void"),
+                                 {ir.parameter("size_type const", "index"),
+                                  ir.parameter("equivalent_type const&", "value")},
+                                 "set(index, " + join(arguments, ", ") + ");",
+                                 FunctionReceiver::const_,
+                                 ReturnSyntax::direct,
+                                 {},
+                                 {},
+                                 {},
+                                 mutable_elements));
         std::vector<std::string> values;
         for (auto const component_id : context.declarations.items(
                  context.declarations.homogeneous_layouts
@@ -339,27 +332,25 @@ auto homogeneous_view_node(LoweringContext& context,
             values.push_back(component + ".GetData()[index]");
         }
         children.new_lines()
-            .add(homogeneous_function(
-                     context,
-                     "operator[]",
-                     ir.types.intern("equivalent_type"),
-                     {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("index"))},
-                     "return {" + join(values, ", ") + "};",
-                     FunctionReceiver::const_,
-                     ReturnSyntax::trailing),
+            .add(homogeneous_function(context,
+                                      "operator[]",
+                                      ir.types.intern("equivalent_type"),
+                                      {ir.parameter("size_type const", "index")},
+                                      "return {" + join(values, ", ") + "};",
+                                      FunctionReceiver::const_,
+                                      ReturnSyntax::trailing),
                  1)
-            .add(homogeneous_function(
-                context,
-                "at",
-                ir.types.intern("equivalent_type"),
-                {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("index"))},
-                "check(index >= 0);\ncheck(index < num());\n"
-                "return (*this)[index];",
-                FunctionReceiver::const_,
-                ReturnSyntax::trailing,
-                {},
-                {},
-                {ir.types.dependency("check", "CoreMinimal.h")}));
+            .add(homogeneous_function(context,
+                                      "at",
+                                      ir.types.intern("equivalent_type"),
+                                      {ir.parameter("size_type const", "index")},
+                                      "check(index >= 0);\ncheck(index < num());\n"
+                                      "return (*this)[index];",
+                                      FunctionReceiver::const_,
+                                      ReturnSyntax::trailing,
+                                      {},
+                                      {},
+                                      {ir.types.dependency("check", "CoreMinimal.h")}));
     }
     auto dependencies{
         std::vector<TypeDependencyId>{ir.types.dependency("TArrayView", "Containers/ArrayView.h"),

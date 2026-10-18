@@ -32,14 +32,13 @@ auto homogeneous_permutation_function(LoweringContext& context, DeclarationHandl
             ir.raw_expression("ioj::apply_permutation(" + component + ", indices)"),
             {ir.types.dependency("ioj::apply_permutation", "SandboxCore/soa_permutation.h")}));
     }
-    auto const created_function{
-        ir.function(ir.strings.intern("apply_permutation"), ir.types.intern("void"))};
+    auto const created_function{ir.function("apply_permutation", "void")};
     ir.set_function_parameters(
         created_function,
         {ir.parameter(
             ir.types.intern("TArrayView<int32>",
                             {ir.types.dependency("TArrayView", "Containers/ArrayView.h")}),
-            ir.strings.intern("indices"))});
+            "indices")});
     ir.set_function_body(created_function, body.build());
     return created_function;
 }

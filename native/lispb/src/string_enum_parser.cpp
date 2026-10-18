@@ -129,8 +129,8 @@ auto parser_body(CppIR& ir, Expr const input, std::span<StringEnumEntry const> c
                                                   {ir.string_literal(prefix)})),
                                  ir.block({ir.return_statement(ir.named("std::nullopt"))})),
                  2);
-        body.add(ir.variable(ir.types.intern("auto const"),
-                             ir.strings.intern("suffix"),
+        body.add(ir.variable("auto const",
+                             "suffix",
                              ir.call(ir.member_access(input, "substr"),
                                      {ir.literal(std::to_string(prefix.size()))})),
                  2);
@@ -158,7 +158,7 @@ auto lower_string_enum_parser(CppIR& ir,
                               std::string_view const enum_type,
                               std::string_view const parameter_name,
                               std::span<StringEnumEntry const> const entries) -> NodeId {
-    auto const function{ir.function(ir.strings.intern(function_name), ir.types.intern("auto"))};
+    auto const function{ir.function(function_name, "auto")};
     ir.set_function_return_type(function,
                                 ir.types.intern("std::optional<" + std::string{enum_type} + ">",
                                                 {ir.types.dependency("std::optional", "optional")}),
@@ -167,7 +167,7 @@ auto lower_string_enum_parser(CppIR& ir,
         function,
         {ir.parameter(ir.types.intern("std::string_view const",
                                       {ir.types.dependency("std::string_view", "string_view")}),
-                      ir.strings.intern(parameter_name))});
+                      parameter_name)});
     auto& flags{ir.function_flags(function)};
     flags.set_define_in_header(true);
     flags.set_is_constexpr(true);

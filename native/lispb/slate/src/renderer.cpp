@@ -78,9 +78,7 @@ class Renderer {
             children.push_back(ir_.using_declaration(ir_.strings.intern("ThisClass"),
                                                      ir_.types.intern("::" + owner)));
             auto const constructor{ir_.constructor(ir_.strings.intern(builder), true)};
-            ir_.set_function_parameters(
-                constructor,
-                {ir_.parameter(ir_.types.intern("ThisClass&"), ir_.strings.intern("self"))});
+            ir_.set_function_parameters(constructor, {ir_.parameter("ThisClass&", "self")});
             ir_.set_function_body(
                 constructor,
                 {},
@@ -136,8 +134,7 @@ class Renderer {
 
     auto render_function(FunctionId const function, bool const library) -> lispb::codegen::NodeId {
         auto const index{function.value};
-        auto const spec{ir_.function(ir_.strings.intern(text(document_.functions.names[index])),
-                                     ir_.types.intern("auto"))};
+        auto const spec{ir_.function(text(document_.functions.names[index]), "auto")};
         std::vector<lispb::codegen::FunctionParameterId> cpp_parameters;
         auto const parameters{document_.functions.parameters[index]};
         auto const parameter_end{parameters.begin + parameters.count};

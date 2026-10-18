@@ -109,11 +109,10 @@ auto lower_vector(LoweringContext& context, DeclarationHandle vector, SoaBackend
     auto equivalent_set = [&](bool const is_const) {
         std::vector<Expr> set_arguments{ir.named("i")};
         set_arguments.insert(set_arguments.end(), arguments.begin(), arguments.end());
-        auto const created_function{ir.function(ir.strings.intern("set"), ir.types.intern("void"))};
-        ir.set_function_parameters(
-            created_function,
-            {ir.parameter(index_type, ir.strings.intern("i")),
-             ir.parameter(qualify(ir, equivalent_type, " const"), ir.strings.intern("value"))});
+        auto const created_function{ir.function("set", "void")};
+        ir.set_function_parameters(created_function,
+                                   {ir.parameter(index_type, "i"),
+                                    ir.parameter(qualify(ir, equivalent_type, " const"), "value")});
         ir.set_function_body(created_function,
                              {ir.expression_statement(ir.call(ir.named("set"), set_arguments))});
         ir.set_function_receiver(
@@ -135,8 +134,7 @@ auto lower_vector(LoweringContext& context, DeclarationHandle vector, SoaBackend
         std::string const name{immutable ? "ConstData" : "Data"};
         prelude.add(ir.record(ir.strings.intern(name), fields.build(), RecordKind::struct_), 2);
         prelude.add(ir.header_function([&] {
-            auto const created_function{
-                ir.function(ir.strings.intern("get_data"), ir.types.intern("auto"))};
+            auto const created_function{ir.function("get_data", "auto")};
             ir.set_function_body(
                 created_function,
                 {ir.return_statement(ir.init_list(pointers, ir.types.intern(name)))});
@@ -156,11 +154,9 @@ auto lower_vector(LoweringContext& context, DeclarationHandle vector, SoaBackend
                                   ir.types.intern("TArray<value_type>::SizeType")),
              1)
         .add(ir.header_function([&] {
-            auto const created_function{
-                ir.function(ir.strings.intern("add"), ir.types.intern("auto"))};
-            ir.set_function_parameters(created_function,
-                                       {ir.parameter(qualify(ir, equivalent_type, " const&"),
-                                                     ir.strings.intern("value"))});
+            auto const created_function{ir.function("add", "auto")};
+            ir.set_function_parameters(
+                created_function, {ir.parameter(qualify(ir, equivalent_type, " const&"), "value")});
             ir.set_function_body(created_function,
                                  {ir.return_statement(ir.call(ir.named("add"), arguments))});
             ir.set_function_return_type(
@@ -181,8 +177,7 @@ auto lower_vector(LoweringContext& context, DeclarationHandle vector, SoaBackend
         std::vector<FunctionParameterId> parameters;
         if (has_count) {
             call_arguments.push_back(ir.named("count"));
-            parameters.push_back(
-                ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count")));
+            parameters.push_back(ir.parameter("size_type const", "count"));
         }
         NodeListBuilder body{ir};
         for (auto const component : components) {
@@ -190,8 +185,7 @@ auto lower_vector(LoweringContext& context, DeclarationHandle vector, SoaBackend
                 ir.call(ir.member_access(ir.named(component), method), call_arguments)));
         }
         prelude.add(ir.header_function([&] {
-            auto const created_function{
-                ir.function(ir.strings.intern(name), ir.types.intern("void"))};
+            auto const created_function{ir.function(name, "void")};
             ir.set_function_parameters(created_function, std::move(parameters));
             ir.set_function_body(created_function, body.build());
             ir.function_flags(created_function).set_is_inline(true);

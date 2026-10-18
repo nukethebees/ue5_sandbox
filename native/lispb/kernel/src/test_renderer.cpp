@@ -108,8 +108,7 @@ void append_case(lispb::codegen::CppIR& cpp,
     if (document.variants.kind(expanded.variant(id)) == VariantKind::out_of_place) {
         body.push_back(cpp.variable(array_type, destination));
     }
-    body.push_back(cpp.variable(
-        array_type, cpp.strings.intern("expected"), initializer(cpp, fixture.expected)));
+    body.push_back(cpp.variable(array_type, "expected", initializer(cpp, fixture.expected)));
 
     auto const function{cpp.named(document.text(document.emissions.cpp_namespace(emission)) + "::" +
                                   document.text(document.variants.name(expanded.variant(id))))};
@@ -121,7 +120,7 @@ void append_case(lispb::codegen::CppIR& cpp,
     auto const check{
         cpp.expression_statement(cpp.call(cpp.named("expect_value"), {actual, expected}))};
     body.push_back(cpp.for_statement(
-        cpp.variable(cpp.types.intern("std::size_t"), cpp.strings.intern("i")),
+        cpp.variable("std::size_t", "i"),
         cpp.binary(lispb::codegen::BinaryOperator::less, index, cpp.named("Count")),
         cpp.unary(lispb::codegen::UnaryOperator::preincrement, index),
         cpp.block({check})));
@@ -151,16 +150,13 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
     }
     file_nodes.new_lines(2);
     auto const suite{"Generated_" + document.text(document.modules.name(module))};
-    auto const expect_value{
-        cpp.function(cpp.strings.intern("expect_value"), cpp.types.intern("void"))};
+    auto const expect_value{cpp.function("expect_value", "void")};
     cpp.function_flags(expect_value).set_define_in_header(true);
     cpp.set_function_template(
         expect_value,
         cpp.template_declaration({cpp.type_template_parameter(cpp.strings.intern("T"))}));
     cpp.set_function_parameters(
-        expect_value,
-        {cpp.parameter(cpp.types.intern("T const"), cpp.strings.intern("actual")),
-         cpp.parameter(cpp.types.intern("T const"), cpp.strings.intern("expected"))});
+        expect_value, {cpp.parameter("T const", "actual"), cpp.parameter("T const", "expected")});
     cpp.set_function_body(expect_value, {cpp.raw(R"(if constexpr (std::is_floating_point_v<T>) {
     if (std::isnan(expected)) {
         EXPECT_TRUE(std::isnan(actual));

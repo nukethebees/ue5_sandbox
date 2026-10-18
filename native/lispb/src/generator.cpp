@@ -286,13 +286,12 @@ auto lower_scalar(detail::LoweringContext& context, DeclarationHandle scalar)
             auto const code_name{context.text(codes.name[code_row])};
             declarations.add(
                 ir.variable(constant_type,
-                            ir.strings.intern(scalar_name + "_" + code_name),
+                            scalar_name + "_" + code_name,
                             scalar_constant_expression(ir, cpp_type, codes.value[code_row])),
                 1);
         }
         if (scalars.cpp_emission[row] == IntegerScalarCppEmission::constants_with_names) {
-            auto const lookup{
-                ir.function(ir.strings.intern(scalar_name + "_name"), ir.types.intern("auto"))};
+            auto const lookup{ir.function(scalar_name + "_name", "auto")};
             ir.set_function_return_type(
                 lookup,
                 ir.types.intern("std::string_view",
@@ -302,7 +301,7 @@ auto lower_scalar(detail::LoweringContext& context, DeclarationHandle scalar)
                 lookup,
                 {ir.parameter(
                     ir.types.derive(cpp_type, std::string{ir.types.spelling(cpp_type)} + " const"),
-                    ir.strings.intern("value"))});
+                    "value")});
             auto& flags{ir.function_flags(lookup)};
             flags.set_define_in_header(true);
             flags.set_is_constexpr(true);

@@ -155,12 +155,9 @@ auto column_apply_arrays_function(CppIR& ir, std::vector<std::string> const& col
     for (auto const& column : columns) {
         arguments.push_back(ir.member_access(ir.named("self"), column));
     }
-    auto const created_function{
-        ir.function(ir.strings.intern("apply_arrays"), ir.types.intern("auto"))};
+    auto const created_function{ir.function("apply_arrays", "auto")};
     ir.set_function_parameters(
-        created_function,
-        {ir.parameter(ir.types.intern("this auto&&"), ir.strings.intern("self")),
-         ir.parameter(ir.types.intern("TFunc&&"), ir.strings.intern("func"))});
+        created_function, {ir.parameter("this auto&&", "self"), ir.parameter("TFunc&&", "func")});
     ir.set_function_body(created_function,
                          {ir.return_statement(call_array_callback(ir, arguments))});
     ir.set_function_return_type(
@@ -181,13 +178,11 @@ auto column_apply_array_pairs_function(CppIR& ir, std::vector<std::string> const
         arguments.push_back(ir.member_access(ir.named("self"), column));
         arguments.push_back(ir.member_access(ir.named("other"), column));
     }
-    auto const created_function{
-        ir.function(ir.strings.intern("apply_array_pairs"), ir.types.intern("auto"))};
-    ir.set_function_parameters(
-        created_function,
-        {ir.parameter(ir.types.intern("this Self&&"), ir.strings.intern("self")),
-         ir.parameter(ir.types.intern("Other&&"), ir.strings.intern("other")),
-         ir.parameter(ir.types.intern("TFunc&&"), ir.strings.intern("func"))});
+    auto const created_function{ir.function("apply_array_pairs", "auto")};
+    ir.set_function_parameters(created_function,
+                               {ir.parameter("this Self&&", "self"),
+                                ir.parameter("Other&&", "other"),
+                                ir.parameter("TFunc&&", "func")});
     ir.set_function_body(created_function,
                          {ir.return_statement(call_array_callback(ir, arguments))});
     ir.set_function_return_type(

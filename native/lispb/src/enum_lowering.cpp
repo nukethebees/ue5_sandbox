@@ -144,11 +144,8 @@ auto exact_lookup(LoweringContext& context, ModuleSettingsId settings, Declarati
                 context.text(
                     context.declarations.enums.name[context.declarations.enums.index(schema)]) +
                 ">")));
-    auto const created_function{ir.function(
-        ir.strings.intern(internal_name(context, schema, "name")), ir.types.intern("auto"))};
-    ir.set_function_parameters(
-        created_function,
-        {ir.parameter(ir.types.intern(enum_name + " const"), ir.strings.intern("value"))});
+    auto const created_function{ir.function(internal_name(context, schema, "name"), "auto")};
+    ir.set_function_parameters(created_function, {ir.parameter(enum_name + " const", "value")});
     ir.set_function_body(created_function, body.build());
     ir.set_function_return_type(
         created_function,
@@ -188,11 +185,8 @@ auto display_lookup(LoweringContext& context, ModuleSettingsId settings, Declara
     body.add(ir.return_statement(
         ir.call(ir.named(internal_name(context, schema, "name")), {ir.named("value")})));
     auto const created_function{
-        ir.function(ir.strings.intern(internal_name(context, schema, "display_name")),
-                    ir.types.intern("auto"))};
-    ir.set_function_parameters(
-        created_function,
-        {ir.parameter(ir.types.intern(enum_name + " const"), ir.strings.intern("value"))});
+        ir.function(internal_name(context, schema, "display_name"), "auto")};
+    ir.set_function_parameters(created_function, {ir.parameter(enum_name + " const", "value")});
     ir.set_function_body(created_function, body.build());
     ir.set_function_return_type(
         created_function,
@@ -241,11 +235,8 @@ auto serialized_lookup(LoweringContext& context,
                     context.declarations.enums.name[context.declarations.enums.index(schema)]) +
                 ">")));
     auto const created_function{
-        ir.function(ir.strings.intern(internal_name(context, schema, "serialized_name")),
-                    ir.types.intern("auto"))};
-    ir.set_function_parameters(
-        created_function,
-        {ir.parameter(ir.types.intern(enum_name + " const"), ir.strings.intern("value"))});
+        ir.function(internal_name(context, schema, "serialized_name"), "auto")};
+    ir.set_function_parameters(created_function, {ir.parameter(enum_name + " const", "value")});
     ir.set_function_body(created_function, body.build());
     ir.set_function_return_type(
         created_function,
@@ -289,14 +280,13 @@ auto serialized_parser(LoweringContext& context,
             1);
     }
     body.add(ir.return_statement(ir.literal("false")));
-    auto const created_function{
-        ir.function(ir.strings.intern("try_parse_serialized"), ir.types.intern("auto"))};
+    auto const created_function{ir.function("try_parse_serialized", "auto")};
     ir.set_function_parameters(
         created_function,
         {ir.parameter(ir.types.intern("FStringView const",
                                       {ir.types.dependency("FStringView const", "CoreMinimal.h")}),
-                      ir.strings.intern("value")),
-         ir.parameter(ir.types.intern(enum_name + "&"), ir.strings.intern("result"))});
+                      "value"),
+         ir.parameter(enum_name + "&", "result")});
     ir.set_function_body(created_function, body.build());
     ir.set_function_return_type(created_function, ir.types.intern("bool"), ReturnSyntax::trailing);
     ir.set_function_export_specifier(
@@ -343,9 +333,7 @@ auto conversion_function(LoweringContext& context,
             context, schema, serialized ? "serialized_name" : (display ? "display_name" : "name"))),
         {ir.named("value")})};
     auto const result{ir.function(IdentifierId{}, ir.types.intern("auto"))};
-    ir.set_function_parameters(
-        result,
-        {ir.parameter(ir.types.intern(parameter_type + " const"), ir.strings.intern("value"))});
+    ir.set_function_parameters(result, {ir.parameter(parameter_type + " const", "value")});
     ir.set_function_body(result, {ir.return_statement(lookup)});
     ir.set_function_export_specifier(
         result,
@@ -558,14 +546,13 @@ auto native_enum_string_function(LoweringContext& context,
         body.add(invalid);
     }
 
-    auto const function{ir.function(ir.strings.intern(function_name), ir.types.intern("auto"))};
+    auto const function{ir.function(function_name, "auto")};
     ir.set_function_return_type(
         function,
         ir.types.intern("std::string_view",
                         {ir.types.dependency("std::string_view", "string_view")}),
         ReturnSyntax::trailing);
-    ir.set_function_parameters(
-        function, {ir.parameter(ir.types.intern(name + " const"), ir.strings.intern("value"))});
+    ir.set_function_parameters(function, {ir.parameter(name + " const", "value")});
     auto& flags{ir.function_flags(function)};
     flags.set_define_in_header(true);
     flags.set_is_constexpr(true);
@@ -768,10 +755,9 @@ auto native_conversion_function(LoweringContext& context,
     }
 
     auto const target_type{ir.types.intern(target)};
-    auto const function{ir.function(ir.strings.intern(function_name), ir.types.intern("auto"))};
+    auto const function{ir.function(function_name, "auto")};
     ir.set_function_return_type(function, target_type, ReturnSyntax::trailing);
-    ir.set_function_parameters(
-        function, {ir.parameter(ir.types.intern(source + " const"), ir.strings.intern("value"))});
+    ir.set_function_parameters(function, {ir.parameter(source + " const", "value")});
     auto& flags{ir.function_flags(function)};
     flags.set_define_in_header(true);
     flags.set_is_constexpr(true);

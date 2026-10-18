@@ -115,15 +115,13 @@ auto storage_lifetime_nodes(LoweringContext& context, SingleAllocationModelId mo
     auto const resource_constructor{
         ir.constructor(model_store.owner_name[model_store_index], true)};
     ir.set_function_parameters(resource_constructor,
-                               {ir.parameter(ir.types.intern("std::pmr::memory_resource*"),
-                                             ir.strings.intern("resource"))});
+                               {ir.parameter("std::pmr::memory_resource*", "resource")});
     ir.set_function_noexcept(resource_constructor);
     ir.set_function_body(
         resource_constructor,
         {ir.raw("assert(resource != nullptr);")},
         {ir.member_initializer(ir.strings.intern("resource_"), ir.store_text("resource"))});
-    auto const resource_accessor{
-        ir.function(ir.strings.intern("get_memory_resource"), ir.types.intern("auto"))};
+    auto const resource_accessor{ir.function("get_memory_resource", "auto")};
     ir.set_function_body(resource_accessor, {ir.return_statement(ir.named("resource_"))});
     ir.set_function_return_type(
         resource_accessor, ir.types.intern("std::pmr::memory_resource*"), ReturnSyntax::trailing);
@@ -134,17 +132,12 @@ auto storage_lifetime_nodes(LoweringContext& context, SingleAllocationModelId mo
     auto const copy_constructor{ir.constructor(model_store.owner_name[model_store_index])};
     ir.set_function_parameters(
         copy_constructor,
-        {ir.parameter(
-            ir.types.intern(context.text(model_store.owner_name[model_store_index]) + " const&"),
-            ir.strings.intern(""))});
+        {ir.parameter(context.text(model_store.owner_name[model_store_index]) + " const&", "")});
     ir.set_function_deleted(copy_constructor);
-    auto const copy_assignment{
-        ir.function(ir.strings.intern("operator="), ir.types.intern("auto"))};
+    auto const copy_assignment{ir.function("operator=", "auto")};
     ir.set_function_parameters(
         copy_assignment,
-        {ir.parameter(
-            ir.types.intern(context.text(model_store.owner_name[model_store_index]) + " const&"),
-            ir.strings.intern(""))});
+        {ir.parameter(context.text(model_store.owner_name[model_store_index]) + " const&", "")});
     ir.set_function_return_type(
         copy_assignment,
         ir.types.intern(context.text(model_store.owner_name[model_store_index]) + "&"),
@@ -153,21 +146,16 @@ auto storage_lifetime_nodes(LoweringContext& context, SingleAllocationModelId mo
     auto const move_constructor{ir.constructor(model_store.owner_name[model_store_index])};
     ir.set_function_parameters(
         move_constructor,
-        {ir.parameter(
-            ir.types.intern(context.text(model_store.owner_name[model_store_index]) + "&&"),
-            ir.strings.intern("other"))});
+        {ir.parameter(context.text(model_store.owner_name[model_store_index]) + "&&", "other")});
     ir.set_function_noexcept(move_constructor);
     ir.set_function_body(
         move_constructor,
         {ir.raw("Operations::take_storage(*this, other);")},
         {ir.member_initializer(ir.strings.intern("resource_"), ir.store_text("other.resource_"))});
-    auto const move_assignment{
-        ir.function(ir.strings.intern("operator="), ir.types.intern("auto"))};
+    auto const move_assignment{ir.function("operator=", "auto")};
     ir.set_function_parameters(
         move_assignment,
-        {ir.parameter(
-            ir.types.intern(context.text(model_store.owner_name[model_store_index]) + "&&"),
-            ir.strings.intern("other"))});
+        {ir.parameter(context.text(model_store.owner_name[model_store_index]) + "&&", "other")});
     ir.set_function_body(move_assignment,
                          {ir.raw("return Operations::move_assign(*this, other);")});
     ir.set_function_return_type(
@@ -221,11 +209,8 @@ auto data_pointers_node(LoweringContext& context, SingleAllocationModelId model)
             ir.named("offset")));
     }
     children.new_lines(1).add(inline_function(context, [&] {
-        auto const created_function{
-            ir.function(ir.strings.intern("operator+"), ir.types.intern("auto"))};
-        ir.set_function_parameters(
-            created_function,
-            {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("offset"))});
+        auto const created_function{ir.function("operator+", "auto")};
+        ir.set_function_parameters(created_function, {ir.parameter("size_type const", "offset")});
         ir.set_function_body(
             created_function,
             {ir.if_statement(
@@ -253,9 +238,8 @@ auto data_pointers_node(LoweringContext& context, SingleAllocationModelId model)
 
 auto storage_access_nodes(LoweringContext& context, SingleAllocationModelId model) -> Nodes {
     auto& ir{context.ir};
-    auto const get_data{ir.function(ir.strings.intern("get_data"), ir.types.intern("auto"))};
-    ir.set_function_parameters(
-        get_data, {ir.parameter(ir.types.intern("this Self&"), ir.strings.intern("self"))});
+    auto const get_data{ir.function("get_data", "auto")};
+    ir.set_function_parameters(get_data, {ir.parameter("this Self&", "self")});
     ir.set_function_body(
         get_data,
         {ir.using_declaration(
@@ -275,11 +259,10 @@ auto storage_access_nodes(LoweringContext& context, SingleAllocationModelId mode
     ir.set_function_noexcept(get_data);
     ir.set_function_template(
         get_data, ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Self"))}));
-    auto const get_data_offset{ir.function(ir.strings.intern("get_data"), ir.types.intern("auto"))};
+    auto const get_data_offset{ir.function("get_data", "auto")};
     ir.set_function_parameters(
         get_data_offset,
-        {ir.parameter(ir.types.intern("this Self&"), ir.strings.intern("self")),
-         ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("offset"))});
+        {ir.parameter("this Self&", "self"), ir.parameter("size_type const", "offset")});
     ir.set_function_body(
         get_data_offset,
         {ir.return_statement(ir.binary(BinaryOperator::add,
@@ -313,12 +296,10 @@ auto column_pointer_nodes(LoweringContext& context, SingleAllocationModelId mode
                       context.text(column_store.layout_identifier[column_store.index(column)]))}));
     }
     make_data_body.add(ir.return_statement(ir.init_list(std::move(pointers))));
-    auto const make_data{
-        ir.function(ir.strings.intern("make_data_unchecked"), ir.types.intern("auto"))};
+    auto const make_data{ir.function("make_data_unchecked", "auto")};
     ir.set_function_parameters(
         make_data,
-        {ir.parameter(ir.types.intern("Byte* const"), ir.strings.intern("data")),
-         ir.parameter(ir.types.intern("byte_size_type const"), ir.strings.intern("blocks"))});
+        {ir.parameter("Byte* const", "data"), ir.parameter("byte_size_type const", "blocks")});
     ir.set_function_body(make_data, make_data_body.build());
     ir.set_function_return_type(
         make_data, ir.types.intern("DataPointers<Byte>"), ReturnSyntax::trailing);
@@ -327,8 +308,7 @@ auto column_pointer_nodes(LoweringContext& context, SingleAllocationModelId mode
     ir.set_function_template(
         make_data,
         ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Byte"))}));
-    auto const capacity_blocks{
-        ir.function(ir.strings.intern("capacity_blocks"), ir.types.intern("auto"))};
+    auto const capacity_blocks{ir.function("capacity_blocks", "auto")};
     ir.set_function_body(
         capacity_blocks,
         {ir.return_statement(ir.static_cast_expr(ir.types.intern("byte_size_type"),
@@ -360,8 +340,8 @@ auto default_construction_node(LoweringContext& context, SingleAllocationModelId
     body.add(ir.raw("using " + context.text(model_store.runtime_namespace[model_store_index]) +
                     "default_construct_n;"));
     body.add(
-        ir.variable(ir.types.intern("auto const"),
-                    ir.strings.intern("columns"),
+        ir.variable("auto const",
+                    "columns",
                     ir.binary(BinaryOperator::add,
                               ir.call(ir.named("make_data_unchecked"),
                                       {ir.named("data_"), ir.call(ir.named("capacity_blocks"))}),
@@ -376,12 +356,10 @@ auto default_construction_node(LoweringContext& context, SingleAllocationModelId
              ir.named("count")})));
     }
     return inline_function(context, [&] {
-        auto const created_function{
-            ir.function(ir.strings.intern("default_construct_columns"), ir.types.intern("void"))};
+        auto const created_function{ir.function("default_construct_columns", "void")};
         ir.set_function_parameters(
             created_function,
-            {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("first")),
-             ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("count"))});
+            {ir.parameter("size_type const", "first"), ir.parameter("size_type const", "count")});
         ir.set_function_body(created_function, body.build());
         return created_function;
     }());
@@ -393,13 +371,11 @@ auto column_copying_nodes(LoweringContext& context, SingleAllocationModelId mode
     auto& column_store{context.ir.lowering.single_allocation_columns};
     auto& ir{context.ir};
     auto swap_remove{compact_function(context, [&] {
-        auto const created_function{
-            ir.function(ir.strings.intern("swap_remove_columns"), ir.types.intern("void"))};
-        ir.set_function_parameters(
-            created_function,
-            {ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("index")),
-             ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("source")),
-             ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("move_count"))});
+        auto const created_function{ir.function("swap_remove_columns", "void")};
+        ir.set_function_parameters(created_function,
+                                   {ir.parameter("size_type const", "index"),
+                                    ir.parameter("size_type const", "source"),
+                                    ir.parameter("size_type const", "move_count")});
         ir.set_function_body(created_function,
                              {ir.expression_statement(ir.call(ir.named("copy_columns"),
                                                               {ir.call(ir.named("get_data")),
@@ -424,15 +400,11 @@ auto column_copying_nodes(LoweringContext& context, SingleAllocationModelId mode
                  context.text(column_store.flattened_identifier[column_store.index(column)]))})));
     }
     auto transfer{inline_function(context, [&] {
-        auto const created_function{
-            ir.function(ir.strings.intern("transfer_columns"), ir.types.intern("void"))};
-        ir.set_function_parameters(
-            created_function,
-            {ir.parameter(ir.types.intern("DataPointers<std::byte> const&"),
-                          ir.strings.intern("destination")),
-             ir.parameter(ir.types.intern("DataPointers<Byte> const&"),
-                          ir.strings.intern("source")),
-             ir.parameter(ir.types.intern("size_type"), ir.strings.intern("count"))});
+        auto const created_function{ir.function("transfer_columns", "void")};
+        ir.set_function_parameters(created_function,
+                                   {ir.parameter("DataPointers<std::byte> const&", "destination"),
+                                    ir.parameter("DataPointers<Byte> const&", "source"),
+                                    ir.parameter("size_type", "count")});
         ir.set_function_body(created_function, copy_body.build());
         ir.set_function_receiver(created_function, FunctionReceiver::static_);
         ir.set_function_template(
@@ -443,15 +415,12 @@ auto column_copying_nodes(LoweringContext& context, SingleAllocationModelId mode
         return created_function;
     }())};
     auto copy{compact_function(context, [&] {
-        auto const created_function{
-            ir.function(ir.strings.intern("copy_columns"), ir.types.intern("void"))};
-        ir.set_function_parameters(
-            created_function,
-            {ir.parameter(ir.types.intern("DataPointers<std::byte> const&"),
-                          ir.strings.intern("columns")),
-             ir.parameter(ir.types.intern("size_type"), ir.strings.intern("index")),
-             ir.parameter(ir.types.intern("size_type"), ir.strings.intern("source")),
-             ir.parameter(ir.types.intern("size_type"), ir.strings.intern("move_count"))});
+        auto const created_function{ir.function("copy_columns", "void")};
+        ir.set_function_parameters(created_function,
+                                   {ir.parameter("DataPointers<std::byte> const&", "columns"),
+                                    ir.parameter("size_type", "index"),
+                                    ir.parameter("size_type", "source"),
+                                    ir.parameter("size_type", "move_count")});
         ir.set_function_body(
             created_function,
             {ir.raw("transfer_columns<false>(columns + index, columns + source, move_count);")});
@@ -460,15 +429,11 @@ auto column_copying_nodes(LoweringContext& context, SingleAllocationModelId mode
     }())};
 
     auto remove_indices{inline_function(context, [&] {
-        auto const created_function{
-            ir.function(ir.strings.intern("swap_remove_indices"), ir.types.intern("void"))};
+        auto const created_function{ir.function("swap_remove_indices", "void")};
         ir.set_function_parameters(created_function,
-                                   {ir.parameter(ir.types.intern("std::span<size_type const>"),
-                                                 ir.strings.intern("indices"))});
+                                   {ir.parameter("std::span<size_type const>", "indices")});
         ir.set_function_body(created_function,
-                             {ir.variable(ir.types.intern("auto const"),
-                                          ir.strings.intern("columns"),
-                                          ir.call(ir.named("get_data"))),
+                             {ir.variable("auto const", "columns", ir.call(ir.named("get_data"))),
                               ir.expression_statement(ir.raw_expression(
                                   "ioj::soa_storage_detail::for_each_removal_run(num_, indices, "
                                   "[&](size_type index, size_type source, size_type count) { "
@@ -501,11 +466,8 @@ auto source_pointers_node(LoweringContext& context, SingleAllocationModelId mode
     }
     body.add(ir.return_statement(ir.init_list(std::move(pointers))));
     return inline_function(context, [&] {
-        auto const created_function{
-            ir.function(ir.strings.intern("source_pointers"), ir.types.intern("auto"))};
-        ir.set_function_parameters(
-            created_function,
-            {ir.parameter(ir.types.intern("Columns const&"), ir.strings.intern("source"))});
+        auto const created_function{ir.function("source_pointers", "auto")};
+        ir.set_function_parameters(created_function, {ir.parameter("Columns const&", "source")});
         ir.set_function_body(created_function, body.build());
         ir.set_function_return_type(created_function,
                                     ir.types.intern("DataPointers<std::byte const>"),
@@ -532,14 +494,12 @@ auto source_copy_node(LoweringContext& context,
     auto& ir{context.ir};
     return inline_function(context, [&] {
         auto const created_function{
-            ir.function(ir.strings.intern(overlapping ? "copy_columns_from" : "append_columns"),
-                        ir.types.intern("void"))};
-        ir.set_function_parameters(
-            created_function,
-            {ir.parameter(ir.types.intern("Columns const&"), ir.strings.intern("source")),
-             ir.parameter(ir.types.intern("size_type"), ir.strings.intern("source_first")),
-             ir.parameter(ir.types.intern("size_type"), ir.strings.intern("first")),
-             ir.parameter(ir.types.intern("size_type"), ir.strings.intern("count"))});
+            ir.function(overlapping ? "copy_columns_from" : "append_columns", "void")};
+        ir.set_function_parameters(created_function,
+                                   {ir.parameter("Columns const&", "source"),
+                                    ir.parameter("size_type", "source_first"),
+                                    ir.parameter("size_type", "first"),
+                                    ir.parameter("size_type", "count")});
         ir.set_function_body(
             created_function,
             {ir.raw(std::string{"transfer_columns<"} + (overlapping ? "true" : "false") +
@@ -561,34 +521,30 @@ auto source_copy_node(LoweringContext& context,
 auto live_column_copy_node(LoweringContext& context) -> NodeId {
     auto& ir{context.ir};
     NodeListBuilder copy_live{ir};
-    copy_live.add(ir.variable(ir.types.intern("auto const"),
-                              ir.strings.intern("old_blocks"),
-                              ir.call(ir.named("capacity_blocks"))));
-    copy_live.add(ir.variable(ir.types.intern("auto const"),
-                              ir.strings.intern("new_blocks"),
+    copy_live.add(ir.variable("auto const", "old_blocks", ir.call(ir.named("capacity_blocks"))));
+    copy_live.add(ir.variable("auto const",
+                              "new_blocks",
                               ir.static_cast_expr(ir.types.intern("byte_size_type"),
                                                   ir.binary(BinaryOperator::divide,
                                                             ir.named("new_capacity"),
                                                             ir.named("capacity_granularity")))));
     copy_live.add(ir.variable(
-        ir.types.intern("auto const"),
-        ir.strings.intern("source"),
+        "auto const",
+        "source",
         ir.call(ir.named("make_data_unchecked"),
                 {ir.static_cast_expr(ir.types.intern("std::byte const*"), ir.named("data_")),
                  ir.named("old_blocks")})));
     copy_live.add(ir.variable(
-        ir.types.intern("auto const"),
-        ir.strings.intern("destination"),
+        "auto const",
+        "destination",
         ir.call(ir.named("make_data_unchecked"), {ir.named("new_data"), ir.named("new_blocks")})));
     copy_live.add(ir.raw("transfer_columns<false>(destination, source, num_);"));
 
     return inline_function(context, [&] {
-        auto const created_function{
-            ir.function(ir.strings.intern("copy_live_columns"), ir.types.intern("void"))};
-        ir.set_function_parameters(
-            created_function,
-            {ir.parameter(ir.types.intern("std::byte* const"), ir.strings.intern("new_data")),
-             ir.parameter(ir.types.intern("size_type const"), ir.strings.intern("new_capacity"))});
+        auto const created_function{ir.function("copy_live_columns", "void")};
+        ir.set_function_parameters(created_function,
+                                   {ir.parameter("std::byte* const", "new_data"),
+                                    ir.parameter("size_type const", "new_capacity")});
         ir.set_function_body(created_function, copy_live.build());
         ir.set_function_noexcept(created_function);
         return created_function;
@@ -676,12 +632,9 @@ auto compact_view_node(LoweringContext& context,
                          [&] {
                              auto const created_function{ir.constructor(ir.strings.intern(name))};
                              ir.set_function_parameters(created_function,
-                                                        {ir.parameter(ir.types.intern("State*"),
-                                                                      ir.strings.intern("state")),
-                                                         ir.parameter(ir.types.intern("size_type"),
-                                                                      ir.strings.intern("offset")),
-                                                         ir.parameter(ir.types.intern("size_type"),
-                                                                      ir.strings.intern("count"))});
+                                                        {ir.parameter("State*", "state"),
+                                                         ir.parameter("size_type", "offset"),
+                                                         ir.parameter("size_type", "count")});
                              ir.set_function_body(
                                  created_function,
                                  {},
@@ -696,8 +649,7 @@ auto compact_view_node(LoweringContext& context,
          inline_function(context, [&] {
              auto const created_function{ir.constructor(ir.strings.intern(name))};
              ir.set_function_parameters(created_function,
-                                        {ir.parameter(ir.types.intern(name + "<false> const&"),
-                                                      ir.strings.intern("other"))});
+                                        {ir.parameter(name + "<false> const&", "other")});
              ir.set_function_template(
                  created_function,
                  ir.template_declaration({ir.value_template_parameter(
@@ -727,12 +679,10 @@ auto compact_view_node(LoweringContext& context,
                 auto const nested{nested_view(context, view, member, schemas)};
                 children.new_lines(1).add(compact_function(context, [&] {
                     auto const created_function{ir.function(
-                        ir.strings.intern(
-                            "view_" +
-                            context.text(
-                                context.declarations.soa_members
-                                    .name[context.declarations.soa_members.index(member)])),
-                        ir.types.intern("auto"))};
+                        "view_" +
+                            context.text(context.declarations.soa_members
+                                             .name[context.declarations.soa_members.index(member)]),
+                        "auto")};
                     ir.set_function_body(
                         created_function,
                         {ir.return_statement(ir.init_list(
@@ -795,11 +745,10 @@ auto compact_view_node(LoweringContext& context,
             }
             children.new_lines(1).add(compact_function(context, [&] {
                 auto const created_function{ir.function(
-                    ir.strings.intern(
-                        "view_" +
+                    "view_" +
                         context.text(context.declarations.soa_members
-                                         .name[context.declarations.soa_members.index(member)])),
-                    ir.types.intern("auto"))};
+                                         .name[context.declarations.soa_members.index(member)]),
+                    "auto")};
                 ir.set_function_body(
                     created_function,
                     {ir.raw(std::string{"using ioj::soa_storage_detail::"} +
@@ -855,7 +804,7 @@ auto compact_view_node(LoweringContext& context,
                                           prefix.size())};
         if (model_store.column_iteration_returns_result[model_store.index(model)]) {
             auto const name{"column_" + std::to_string(arguments.size())};
-            body.add(ir.variable(ir.types.intern("auto"), ir.strings.intern(name), accessor));
+            body.add(ir.variable("auto", name, accessor));
             arguments.push_back(ir.named(name));
         } else {
             body.add(ir.expression_statement(ir.call(ir.named("func"), {accessor})));
@@ -872,8 +821,7 @@ auto compact_view_node(LoweringContext& context,
             ir.types.intern(model_store.column_iteration_returns_result[model_store.index(model)]
                                 ? "auto"
                                 : "void"))};
-        ir.set_function_parameters(
-            created_function, {ir.parameter(ir.types.intern("Func&&"), ir.strings.intern("func"))});
+        ir.set_function_parameters(created_function, {ir.parameter("Func&&", "func")});
         ir.set_function_body(created_function, body.build());
         if (model_store.column_iteration_returns_result[model_store.index(model)]) {
             ir.set_function_return_type(
@@ -891,15 +839,13 @@ auto compact_view_node(LoweringContext& context,
         .add(compact_function(
             context,
             [&] {
-                auto const created_function{
-                    ir.function(ir.strings.intern("make_column_view"), ir.types.intern("auto"))};
+                auto const created_function{ir.function("make_column_view", "auto")};
                 ir.set_function_parameters(
                     created_function,
                     {ir.parameter(
-                        ir.types.intern(
-                            context.text(model_store.runtime_namespace[model_store.index(model)]) +
-                            "ColumnLayout<T> const&"),
-                        ir.strings.intern("layout"))});
+                        context.text(model_store.runtime_namespace[model_store.index(model)]) +
+                            "ColumnLayout<T> const&",
+                        "layout")});
                 ir.set_function_body(
                     created_function,
                     {ir.return_statement(ir.call(
@@ -1053,28 +999,24 @@ auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationMod
                         ir.named(context.text(model_store.runtime_namespace[model_store_index]) +
                                  "maximum_capacity"),
                         {ir.named("capacity_block_bound")})),
-                inline_function(context,
-                                [&] {
-                                    auto const created_function{
-                                        ir.function(ir.strings.intern("layout_bytes"),
-                                                    ir.types.intern("auto"))};
-                                    ir.set_function_parameters(
-                                        created_function,
-                                        {ir.parameter(ir.types.intern("byte_size_type"),
-                                                      ir.strings.intern("blocks"))});
-                                    ir.set_function_body(created_function,
-                                                         {ir.return_statement(ir.raw_expression(
-                                                             "blocks == 0 ? 0 : " + last_column +
-                                                             ".data_end(blocks)"))});
-                                    ir.set_function_return_type(created_function,
-                                                                ir.types.intern("byte_size_type"),
-                                                                ReturnSyntax::trailing);
-                                    ir.set_function_noexcept(created_function);
-                                    ir.set_function_receiver(created_function,
-                                                             FunctionReceiver::static_);
-                                    ir.function_flags(created_function).set_is_constexpr(true);
-                                    return created_function;
-                                }()),
+                inline_function(
+                    context,
+                    [&] {
+                        auto const created_function{ir.function("layout_bytes", "auto")};
+                        ir.set_function_parameters(created_function,
+                                                   {ir.parameter("byte_size_type", "blocks")});
+                        ir.set_function_body(
+                            created_function,
+                            {ir.return_statement(ir.raw_expression(
+                                "blocks == 0 ? 0 : " + last_column + ".data_end(blocks)"))});
+                        ir.set_function_return_type(created_function,
+                                                    ir.types.intern("byte_size_type"),
+                                                    ReturnSyntax::trailing);
+                        ir.set_function_noexcept(created_function);
+                        ir.set_function_receiver(created_function, FunctionReceiver::static_);
+                        ir.function_flags(created_function).set_is_constexpr(true);
+                        return created_function;
+                    }()),
             }))
         .new_lines(1)
         .add(ir.static_assertion(ir.store_text("max_capacity >= capacity_granularity"), {}));

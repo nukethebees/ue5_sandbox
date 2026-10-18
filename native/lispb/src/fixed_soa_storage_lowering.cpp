@@ -155,8 +155,7 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
         template_parameters.push_back(
             ir.type_template_parameter(ir.strings.intern("TArg" + std::to_string(index))));
         function_parameters.push_back(
-            ir.parameter(ir.types.intern("TArg" + std::to_string(index) + "&&"),
-                         ir.strings.intern("new_" + argument)));
+            ir.parameter("TArg" + std::to_string(index) + "&&", "new_" + argument));
         forwarded.push_back(
             ir.call(ir.template_id(
                         ir.named("std::forward", {ir.types.dependency("std::forward", "utility")}),
@@ -212,7 +211,7 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
                           ReturnSyntax return_syntax = ReturnSyntax::direct,
                           std::vector<TypeDependencyId> dependencies = {},
                           TemplateId function_template = {}) -> FunctionId {
-        auto const created_function{ir.function(ir.strings.intern(name), return_type)};
+        auto const created_function{ir.function(name, return_type)};
         ir.set_function_return_type(created_function, return_type, return_syntax);
         ir.set_function_receiver(created_function, receiver);
         ir.set_function_parameters(created_function, parameters);
@@ -234,8 +233,8 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
              2)
         .add(ir.header_function(function("get_view",
             ir.types.intern("View"),
-            {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("offset")),
-                       ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))},
+            {ir.parameter("int32 const","offset"),
+                       ir.parameter("int32 const","count")},
             Nodes{ir.return_statement(ir.init_list(mutable_views, ir.types.intern("View")))},
             FunctionReceiver::unqualified,
             ReturnSyntax::trailing,
@@ -243,8 +242,8 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
              1)
         .add(ir.header_function(function("get_const_view",
             ir.types.intern("ConstView"),
-            {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("offset")),
-                       ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("count"))},
+            {ir.parameter("int32 const","offset"),
+                       ir.parameter("int32 const","count")},
             Nodes{ir.return_statement(ir.init_list(const_views, ir.types.intern("ConstView")))},
             FunctionReceiver::const_,
             ReturnSyntax::trailing,
@@ -255,7 +254,7 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
             [&] {
                      auto parameters{function_parameters};
                      parameters.insert(parameters.begin(),
-                                       ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("index")));
+                                       ir.parameter("int32 const","index"));
                      return parameters;
                  }(),
             fixed_construct_nodes(context, layout, "arguments", forwarded),
@@ -266,21 +265,21 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
              2)
         .add(ir.header_function(function("default_construct_at",
             ir.types.intern("void"),
-            {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("index"))},
+            {ir.parameter("int32 const","index")},
             fixed_construct_nodes(context, layout, "default"))),
              2)
         .add(ir.header_function(function("copy_construct_at",
             ir.types.intern("void"),
-            {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("index")),
-                       ir.parameter(ir.types.intern(storage_name + " const&"), ir.strings.intern("other")),
-                       ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("other_index"))},
+            {ir.parameter("int32 const","index"),
+                       ir.parameter(storage_name + " const&","other"),
+                       ir.parameter("int32 const","other_index")},
             fixed_construct_nodes(context, layout, "copy"))),
              2)
         .add(ir.header_function(function("move_construct_at",
             ir.types.intern("void"),
-            {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("index")),
-                       ir.parameter(ir.types.intern(storage_name + "&"), ir.strings.intern("other")),
-                       ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("other_index"))},
+            {ir.parameter("int32 const","index"),
+                       ir.parameter(storage_name + "&","other"),
+                       ir.parameter("int32 const","other_index")},
             fixed_construct_nodes(context, layout, "move"),
             FunctionReceiver::unqualified,
             ReturnSyntax::direct,
@@ -288,9 +287,9 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
              2)
         .add(ir.header_function(function("construct_from_view_at",
             ir.types.intern("void"),
-            {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("index")),
-                       ir.parameter(ir.types.intern("SourceView const&"), ir.strings.intern("source")),
-                       ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("source_index"))},
+            {ir.parameter("int32 const","index"),
+                       ir.parameter("SourceView const&","source"),
+                       ir.parameter("int32 const","source_index")},
             fixed_construct_nodes(context, layout, "view"),
             FunctionReceiver::unqualified,
             ReturnSyntax::direct,
@@ -299,9 +298,9 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
              2)
         .add(ir.header_function(function("copy_assign_from_view_at",
             ir.types.intern("void"),
-            {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("dst_index")),
-                       ir.parameter(ir.types.intern("SourceView const&"), ir.strings.intern("source")),
-                       ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("source_index"))},
+            {ir.parameter("int32 const","dst_index"),
+                       ir.parameter("SourceView const&","source"),
+                       ir.parameter("int32 const","source_index")},
             copy_assign,
             FunctionReceiver::unqualified,
             ReturnSyntax::direct,
@@ -310,9 +309,9 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
              2)
         .add(ir.header_function(function("move_assign_at",
             ir.types.intern("void"),
-            {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("dst_index")),
-                       ir.parameter(ir.types.intern(storage_name + "&"), ir.strings.intern("other")),
-                       ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("source_index"))},
+            {ir.parameter("int32 const","dst_index"),
+                       ir.parameter(storage_name + "&","other"),
+                       ir.parameter("int32 const","source_index")},
             move_assign,
             FunctionReceiver::unqualified,
             ReturnSyntax::direct,
@@ -320,7 +319,7 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
              2)
         .add(ir.header_function([&] { auto const created{function("destroy_at",
             ir.types.intern("void"),
-            {ir.parameter(ir.types.intern("int32 const"), ir.strings.intern("index"))},
+            {ir.parameter("int32 const","index")},
             destroy)}; ir.set_function_noexcept(created); return created; }()),
              2);
     for (std::size_t index{0};

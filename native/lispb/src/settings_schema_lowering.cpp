@@ -63,8 +63,7 @@ auto visitor_function(LoweringContext& context,
                 ir.named("callback"), {member_expression(ir, context.text(members[index]))}))})));
     }
 
-    auto const visitor{
-        ir.function(ir.strings.intern("visit_" + stem + "_field"), ir.types.intern("bool"))};
+    auto const visitor{ir.function("visit_" + stem + "_field", "bool")};
     ir.set_function_template(
         visitor,
         ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Callback"))}));
@@ -73,9 +72,9 @@ auto visitor_function(LoweringContext& context,
         {ir.parameter(ir.types.intern(
                           context.text(target) + "&",
                           {ir.types.dependency(context.text(target), context.text(target_header))}),
-                      ir.strings.intern("target")),
-         ir.parameter(ir.types.intern(enum_name + " const"), ir.strings.intern("field")),
-         ir.parameter(ir.types.intern("Callback&&"), ir.strings.intern("callback"))});
+                      "target"),
+         ir.parameter(enum_name + " const", "field"),
+         ir.parameter("Callback&&", "callback")});
     ir.function_flags(visitor).set_define_in_header(true);
     ir.function_flags(visitor).set_is_nodiscard(true);
     ir.set_function_body(

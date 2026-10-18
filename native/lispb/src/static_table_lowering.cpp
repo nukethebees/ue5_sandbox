@@ -45,13 +45,12 @@ auto group_getter(LoweringContext& context, StaticTableGroupId group) -> NodeId 
         arguments.push_back(ir.subscript(ir.named(column), ir.named("index")));
     }
 
-    auto const created_function{ir.function(
-        ir.strings.intern("get_" + context.text(groups.name[row])), ir.types.intern("auto"))};
+    auto const created_function{ir.function("get_" + context.text(groups.name[row]), "auto")};
     ir.set_function_parameters(
         created_function,
         {ir.parameter(
             ir.types.intern("int32 const", {ir.types.dependency("int32 const", "CoreMinimal.h")}),
-            ir.strings.intern("index"))});
+            "index")});
     ir.set_function_body(created_function,
                          {ir.return_statement(ir.init_list(arguments, result_type))});
     ir.set_function_return_type(created_function, result_type, ReturnSyntax::trailing);
@@ -87,7 +86,7 @@ auto table_node(LoweringContext& context, DeclarationHandle table) -> NodeId {
     }
 
     children.add(ir.header_function([&] {
-        auto const created_function{ir.function(ir.strings.intern("num"), ir.types.intern("auto"))};
+        auto const created_function{ir.function("num", "auto")};
         ir.set_function_body(created_function, {ir.return_statement(ir.named("num_rows"))});
         ir.set_function_return_type(created_function, int32_type, ReturnSyntax::trailing);
         ir.set_function_noexcept(created_function);
