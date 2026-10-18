@@ -824,8 +824,8 @@ auto lower_enum(LoweringContext& context,
         }
         emission.header_prefix = prefix.build();
         NodeListBuilder declarations{ir};
-        declarations.append(native_enum_declaration(context, schema));
-        declarations.append(native_enum_parsers(context, schema));
+        declarations.append(
+            {native_enum_declaration(context, schema), native_enum_parsers(context, schema)});
         emission.header = declarations.build();
         if (has(NativeEnumHelper::traits) ||
             context.declarations.enums.enum_array[context.declarations.enums.index(schema)]) {

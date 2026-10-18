@@ -880,14 +880,14 @@ auto fixed_container_node(LoweringContext& context,
     auto& ir{context.ir};
     auto const& schema{layout_store.schema[layout_store.index(layout)]};
     NodeListBuilder children{ir};
-    children.append(fixed_container_prelude_nodes(context, schema))
-        .append(fixed_container_capability_nodes(context, layout))
-        .append(fixed_container_lifecycle_nodes(context, layout, name))
-        .append(fixed_container_access_nodes(context, schema))
-        .append(fixed_container_set_nodes(context, schema, equivalent_set_type))
-        .append(fixed_container_construction_nodes(context, layout))
-        .append(fixed_container_mutation_nodes(context))
-        .append(fixed_container_private_nodes(context, schema));
+    children.append({fixed_container_prelude_nodes(context, schema),
+                     fixed_container_capability_nodes(context, layout),
+                     fixed_container_lifecycle_nodes(context, layout, name),
+                     fixed_container_access_nodes(context, schema),
+                     fixed_container_set_nodes(context, schema, equivalent_set_type),
+                     fixed_container_construction_nodes(context, layout),
+                     fixed_container_mutation_nodes(context),
+                     fixed_container_private_nodes(context, schema)});
 
     auto const created_record{
         ir.record(ir.strings.intern(name), children.build(), RecordKind::struct_)};

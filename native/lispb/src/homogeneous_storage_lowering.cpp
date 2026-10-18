@@ -684,14 +684,13 @@ auto homogeneous_storage_node(LoweringContext& context,
         context.text(context.declarations.homogeneous_values
                          .suffix[context.declarations.homogeneous_values.index(value)])};
     NodeListBuilder children{ir};
-    children
-        .append(homogeneous_storage_prelude_nodes(
-            context, layout, value_type, equivalent_type, view_name))
-        .append(homogeneous_storage_access_nodes(context, layout))
-        .append(homogeneous_storage_copy_nodes(context, layout))
-        .append(homogeneous_storage_sort_nodes(context, permutation))
-        .append(homogeneous_storage_value_nodes(context, layout, value))
-        .append(homogeneous_storage_array_operation_nodes(context, layout));
+    children.append(
+        {homogeneous_storage_prelude_nodes(context, layout, value_type, equivalent_type, view_name),
+         homogeneous_storage_access_nodes(context, layout),
+         homogeneous_storage_copy_nodes(context, layout),
+         homogeneous_storage_sort_nodes(context, permutation),
+         homogeneous_storage_value_nodes(context, layout, value),
+         homogeneous_storage_array_operation_nodes(context, layout)});
 
     std::vector<TypeDependencyId> dependencies{
         ir.types.dependency("TArray", "Containers/Array.h"),

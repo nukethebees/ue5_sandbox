@@ -17,8 +17,14 @@ auto NodeListBuilder::add(NodeId value) -> NodeListBuilder& {
 auto NodeListBuilder::add(NodeId value, int trailing_newlines) -> NodeListBuilder& {
     return add(value).new_lines(trailing_newlines);
 }
-auto NodeListBuilder::append(Nodes values) -> NodeListBuilder& {
+auto NodeListBuilder::append(Nodes const& values) -> NodeListBuilder& {
     nodes_.insert(nodes_.end(), values.begin(), values.end());
+    return *this;
+}
+auto NodeListBuilder::append(std::initializer_list<Nodes> groups) -> NodeListBuilder& {
+    for (auto const& values : groups) {
+        append(values);
+    }
     return *this;
 }
 auto NodeListBuilder::new_lines(int count) -> NodeListBuilder& {
