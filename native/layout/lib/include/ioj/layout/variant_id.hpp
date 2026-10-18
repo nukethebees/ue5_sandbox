@@ -1,14 +1,10 @@
 #pragma once
 
-#include <compare>
-#include <cstdint>
+#include <lispb/index.h>
 
 namespace ioj::layout {
 
-struct VariantId {
-    auto operator<=>(VariantId const&) const = default;
-
-    std::uint64_t value{};
-};
+class Variants;
+using VariantId = lispb::Index<Variants>;
 
 }

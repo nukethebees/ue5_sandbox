@@ -3,9 +3,13 @@
 #include <ioj/layout/revision.hpp>
 #include <ioj/layout/transaction_kind.hpp>
 #include <ioj/layout/variant_id.hpp>
+#include <ioj/layout/instruction_id.hpp>
+#include <ioj/layout/analysis_settings.hpp>
+#include <lispb/indices.h>
 
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -18,7 +22,7 @@ namespace ioj::layout {
 class Document;
 class EditorSession;
 class DocumentState;
-// Names resolve in instruction order. A transaction belongs to its creating document revision.
+// Names resolve when executed, allowing transactions to be queued in document order.
 class Transaction {
   public:
     void set_field_bits(std::string_view module,
@@ -131,26 +135,45 @@ class Transaction {
                               std::string_view module,
                               std::string_view declaration,
                               std::optional<std::uint64_t> capacity);
+    void set_element_count(std::uint64_t value);
+    void set_default_soa_capacity(std::uint64_t value);
+    void set_access_operation(AccessOperation value);
+    void set_access_multiplicity(std::uint64_t value);
+    void set_soa_allocation_strategy(SoaAllocationStrategy value);
+    void set_abi_profile(AbiProfile const& profile);
+    void set_comparison_abi_profile(std::optional<AbiProfile> const& profile);
+    void set_access_set(std::string_view module, std::string_view declaration, AccessSet const& accesses);
+    void set_varint_distribution(std::string_view module, std::string_view declaration, std::span<IntegerVarintDistributionEntry const> entries);
+    void set_union_distribution(std::string_view module, std::string_view declaration, std::span<UnionDistributionEntry const> entries);
+    void set_tagged_union_distribution(std::string_view module, std::string_view declaration, std::span<TaggedUnionDistributionEntry const> entries);
   private:
     friend class Document;
-    Transaction(EditorSession const& session, DocumentId owner, Revision revision);
+    friend class DocumentState;
+    Transaction(EditorSession& session, DocumentId owner);
     void append(TransactionKind kind,
                 std::string_view module,
                 std::string_view declaration,
                 std::string_view member,
                 std::string_view text,
                 std::optional<std::uint64_t> number = 0);
-    void apply(DocumentState& state, lispb::codegen::Manifest& manifest) const;
-    EditorSession const* session_;
+    void apply(DocumentState& state, lispb::codegen::Manifest& manifest, std::size_t end) const;
+    void append(Transaction const& transaction);
+    void truncate(std::size_t count);
+    EditorSession* session_;
     DocumentId owner_;
-    Revision revision_;
     std::vector<TransactionKind> kinds_;
-    std::vector<std::string> modules_;
-    std::vector<std::string> declarations_;
-    std::vector<std::string> members_;
-    std::vector<std::string> texts_;
+    std::vector<InstructionId> ids_;
+    std::vector<lispb::IdentifierId> modules_;
+    std::vector<lispb::IdentifierId> declarations_;
+    std::vector<lispb::IdentifierId> members_;
+    std::vector<lispb::StringId> texts_;
     std::vector<std::optional<std::uint64_t>> numbers_;
     std::vector<VariantId> variant_ids_;
+    std::vector<std::size_t> payload_offsets_;
+    std::vector<std::size_t> payload_counts_;
+    std::vector<lispb::IdentifierId> payload_names_;
+    std::vector<std::uint64_t> payload_weights_;
+    std::vector<lispb::codegen::PackedIntegerValue> payload_values_;
 };
 
 }

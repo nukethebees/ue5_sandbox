@@ -1,202 +1,155 @@
 #include <ioj/layout/document.hpp>
-
 #include <ioj/layout/editor_session.hpp>
-
 #include <codegen/sexpr/source_error.h>
-#include <lispb/schema/type_graph.h>
 
 #include <cassert>
 #include <stdexcept>
+#include <utility>
 
 namespace ioj::layout {
-Document::Document(EditorSession& session)
-    : state_{session, session.allocate_document_id()} {}
-Document::~Document() = default;
-Document::Document(Document&&) noexcept = default;
-auto Document::operator=(Document&&) noexcept -> Document& = default;
-auto Document::valid() const -> bool {
-    return state_.valid;
+Document::Document(EditorSession& session, DocumentId id) : session_{&session}, id_{id} {}
+Document::~Document() {
+    if (id_.value != 0) { session_->release_document(id_); }
 }
+Document::Document(Document&& other) noexcept
+    : session_{other.session_}, id_{std::exchange(other.id_, DocumentId{})} {}
+auto Document::operator=(Document&& other) noexcept -> Document& {
+    if (this != &other) {
+        if (id_.value != 0) { session_->release_document(id_); }
+        session_ = other.session_;
+        id_ = std::exchange(other.id_, DocumentId{});
+    }
+    return *this;
+}
+auto Document::state() const -> DocumentState& { return session_->state(id_); }
+auto Document::valid() const -> bool { return id_.value != 0 && state().valid; }
+auto Document::id() const -> DocumentId { return id_; }
 auto Document::query() const -> lispb::schema::DocumentQuery {
     assert(valid());
-    return lispb::schema::DocumentQuery{state_.storage().declarations, state_.modules};
+    auto const& current{state()};
+    return {current.storage().declarations, current.modules};
 }
 auto Document::types() const -> lispb::schema::TypeGraph const& {
     assert(valid());
-    return state_.types;
+    return state().types;
 }
-auto Document::variants() const -> Variants const& {
-    return state_.variants;
-}
-auto Document::find_type(std::string_view module, std::string_view name) const
-    -> std::optional<lispb::schema::TypeId> {
+auto Document::variants() const -> Variants const& { return state().variants; }
+auto Document::analysis_settings() const -> AnalysisSettings const& { return state().analysis_settings; }
+auto Document::find_type(std::string_view module, std::string_view name) const -> std::optional<lispb::schema::TypeId> {
     auto const& graph{types()};
-    auto const& strings{state_.storage().strings};
+    auto const& strings{state().storage().strings};
     for (auto const type : graph.types()) {
-        if (strings.view(graph.module_name(type)) == module &&
-            strings.view(graph.name(type)) == name) {
-            return type;
-        }
+        if (strings.view(graph.module_name(type)) == module && strings.view(graph.name(type)) == name) { return type; }
     }
-    return std::nullopt;
+    return {};
 }
-auto Document::find_declaration(lispb::schema::TypeIdentity const& identity) const
-    -> std::optional<lispb::schema::DeclarationId> {
+auto Document::find_declaration(lispb::schema::TypeIdentity const& identity) const -> std::optional<lispb::schema::DeclarationId> {
     auto const type{types().find(identity)};
-    if (!type) {
-        return std::nullopt;
-    }
-    auto const found{state_.declaration_ids.find(types().source_declaration(*type))};
-    if (found == state_.declaration_ids.end()) {
-        return std::nullopt;
-    }
-    return found->second;
+    if (!type) { return {}; }
+    return state().declaration_ids.at(types().source_declaration(*type));
 }
-auto Document::declaration_type(lispb::schema::DeclarationId declaration) const
-    -> std::optional<lispb::schema::TypeId> {
+auto Document::declaration_type(lispb::schema::DeclarationId declaration) const -> std::optional<lispb::schema::TypeId> {
     auto const& graph{types()};
+    auto const& identities{state().declaration_ids};
     for (auto const type : graph.types()) {
-        auto const found{state_.declaration_ids.find(graph.source_declaration(type))};
-        if (found != state_.declaration_ids.end() && found->second == declaration) {
-            return type;
-        }
+        auto const found{identities.find(graph.source_declaration(type))};
+        if (found != identities.end() && found->second == declaration) { return type; }
     }
-    return std::nullopt;
+    return {};
 }
-auto Document::session() const -> EditorSession& {
-    return *state_.session;
-}
+auto Document::session() const -> EditorSession& { return *session_; }
 auto Document::transaction() const -> Transaction {
     assert(valid());
-    return Transaction{session(), state_.id, state_.revision};
+    return {*session_, id_};
 }
-auto Document::revision() const -> Revision {
-    return state_.revision;
-}
-auto Document::can_undo() const -> bool {
-    return state_.position != 0;
-}
-auto Document::can_redo() const -> bool {
-    return state_.position < state_.starts.size();
-}
+auto Document::revision() const -> Revision { return state().revision; }
+auto Document::can_undo() const -> bool { return state().position != 0; }
+auto Document::can_redo() const -> bool { return state().position < state().transaction_ends.size(); }
 
-auto Document::commit(Transaction const& transaction) -> bool {
-    assert(valid());
-    assert(transaction.session_ == state_.session && transaction.owner_ == state_.id);
-    auto& state{state_};
-    state.session->begin_operation();
-    if (transaction.revision_ != state.revision) {
-        state.session->record_error("Transaction belongs to an obsolete document revision");
-        return false;
-    }
-
-    auto candidate{state.manifest()};
-    auto previous_variants{state.variants};
-    auto previous_sources{state.source_order};
-    try {
-        transaction.apply(state, candidate);
-        auto const schema_changed{candidate.modules != state.modules};
-        auto const variants_changed{previous_variants != state.variants};
-        auto const sources_changed{previous_sources != state.source_order};
-        if (!schema_changed && !variants_changed && !sources_changed) {
-            return true;
-        }
-
-        std::optional<lispb::schema::TypeGraph> resolved;
-        if (schema_changed) {
-            resolved.emplace(lispb::schema::resolve_type_graph(candidate));
-        }
-        auto const& before{state.modules};
-        auto const& after{candidate.modules};
-        std::size_t first{};
-        while (first < before.size() && first < after.size() && before[first] == after[first]) {
-            ++first;
-        }
-        auto old_end{before.size()};
-        auto new_end{after.size()};
-        while (old_end > first && new_end > first && before[old_end - 1] == after[new_end - 1]) {
-            --old_end;
-            --new_end;
-        }
-
-        if (state.position < state.starts.size()) {
-            state.versions.resize(state.offsets[state.position]);
-            state.starts.resize(state.position);
-            state.removed.resize(state.position);
-            state.offsets.resize(state.position);
-            state.counts.resize(state.position);
-            state.variant_versions.resize(state.position);
-            state.source_versions.resize(state.position);
-        }
-        state.starts.push_back(first);
-        state.removed.push_back(old_end - first);
-        state.offsets.push_back(state.versions.size());
-        state.counts.push_back(new_end - first);
-        state.versions.insert(state.versions.end(),
-                              after.begin() + static_cast<std::ptrdiff_t>(first),
-                              after.begin() + static_cast<std::ptrdiff_t>(new_end));
-        state.variant_versions.push_back(
-            variants_changed ? std::make_shared<Variants const>(state.variants) : nullptr);
-        state.source_versions.push_back(
-            sources_changed
-                ? std::make_shared<std::vector<lispb::codegen::sexpr::SourceFileId> const>(
-                      state.source_order)
-                : nullptr);
-        state.modules = std::move(candidate.modules);
-        if (resolved) {
-            state.types = std::move(*resolved);
-        }
-        ++state.position;
-        ++state.revision;
-        return true;
-    } catch (lispb::codegen::sexpr::SourceError const&) {
-        // The parser already appended its diagnostic.
-    } catch (std::invalid_argument const& error) {
-        state.session->record_error(error.what());
-    }
-
-    state.variants = std::move(previous_variants);
-    state.source_order = std::move(previous_sources);
-    return false;
+auto Document::reconstruct(std::size_t position) -> lispb::codegen::Manifest {
+    auto& current{state()};
+    current.reset_workspace();
+    session_->set_instruction(std::nullopt);
+    current.restore_baseline();
+    auto candidate{current.manifest()};
+    if (position != 0) { current.history.apply(current, candidate, current.transaction_ends[position - 1]); }
+    return candidate;
 }
 auto Document::replay(std::size_t position) -> bool {
-    auto& state{state_};
-    state.session->begin_operation();
-    auto candidate{state.manifest()};
-    candidate.modules = state.baseline;
-    Variants const* variants{};
-    std::vector<lispb::codegen::sexpr::SourceFileId> const* sources{&state.baseline_sources};
-    for (std::size_t index{}; index < position; ++index) {
-        auto const start{candidate.modules.begin() +
-                         static_cast<std::ptrdiff_t>(state.starts[index])};
-        candidate.modules.erase(start, start + static_cast<std::ptrdiff_t>(state.removed[index]));
-        auto const versions{
-            std::span{state.versions}.subspan(state.offsets[index], state.counts[index])};
-        candidate.modules.insert(candidate.modules.begin() +
-                                     static_cast<std::ptrdiff_t>(state.starts[index]),
-                                 versions.begin(),
-                                 versions.end());
-        if (state.variant_versions[index]) {
-            variants = state.variant_versions[index].get();
-        }
-        if (state.source_versions[index]) {
-            sources = state.source_versions[index].get();
-        }
+    auto& current{state()};
+    try {
+        auto candidate{reconstruct(position)};
+        current.types = lispb::schema::resolve_type_graph(candidate);
+        current.modules = std::move(candidate.modules);
+        current.position = position;
+        current.valid = true;
+        session_->capture_diagnostics(id_);
+        session_->set_instruction(std::nullopt);
+        return true;
+    } catch (lispb::codegen::sexpr::SourceError const&) {
+        session_->capture_diagnostics(id_);
+    } catch (std::invalid_argument const& error) {
+        session_->capture_diagnostics(id_);
+        session_->record_error(error.what());
     }
-    if (candidate.modules != state.modules) {
-        state.types = lispb::schema::resolve_type_graph(candidate);
+    current.valid = false;
+    session_->set_instruction(std::nullopt);
+    return false;
+}
+auto Document::commit(Transaction const& transaction) -> bool {
+    assert(valid());
+    assert(transaction.session_ == session_ && transaction.owner_ == id_);
+    session_->begin_operation(id_);
+    if (transaction.kinds_.empty()) { return true; }
+
+    auto& current{state()};
+    auto const position{current.position};
+    try {
+        auto candidate{reconstruct(position)};
+        auto const previous_modules{candidate.modules};
+        auto const previous_sources{current.source_order};
+        current.changed = false;
+        transaction.apply(current, candidate, transaction.kinds_.size());
+        auto const changed{current.changed || candidate.modules != previous_modules || current.source_order != previous_sources};
+        current.types = lispb::schema::resolve_type_graph(candidate);
+        current.modules = std::move(candidate.modules);
+        current.valid = true;
+        session_->capture_diagnostics(id_);
+        session_->set_instruction(std::nullopt);
+        if (!changed) { return true; }
+
+        auto const retained{position == 0 ? 0 : current.transaction_ends[position - 1]};
+        current.history.truncate(retained);
+        current.transaction_ends.resize(position);
+        current.history.append(transaction);
+        current.transaction_ends.push_back(current.history.kinds_.size());
+        ++current.position;
+        ++current.revision;
+        return true;
+    } catch (lispb::codegen::sexpr::SourceError const&) {
+        session_->capture_diagnostics(id_);
+    } catch (std::invalid_argument const& error) {
+        session_->capture_diagnostics(id_);
+        session_->record_error(error.what());
     }
-    state.modules = std::move(candidate.modules);
-    state.variants = variants ? *variants : Variants{};
-    state.source_order = *sources;
-    state.position = position;
-    ++state.revision;
-    return true;
+
+    // Rebuild the accepted prefix; failed instructions never enter the history.
+    auto const restored{replay(position)};
+    assert(restored);
+    return false;
 }
 auto Document::undo() -> bool {
-    return can_undo() && replay(state_.position - 1);
+    if (!can_undo()) { return false; }
+    session_->begin_operation(id_);
+    auto const result{replay(state().position - 1)};
+    if (result) { ++state().revision; }
+    return result;
 }
 auto Document::redo() -> bool {
-    return can_redo() && replay(state_.position + 1);
+    if (!can_redo()) { return false; }
+    session_->begin_operation(id_);
+    auto const result{replay(state().position + 1)};
+    if (result) { ++state().revision; }
+    return result;
 }
 }

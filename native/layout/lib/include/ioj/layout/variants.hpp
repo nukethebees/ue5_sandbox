@@ -19,8 +19,8 @@ class Variants {
     auto contains(VariantId id) const -> bool;
     auto name(VariantId id) const -> std::string const&;
     auto settings(VariantId id) const -> VariantSettings const&;
-    auto create(std::string name) -> VariantId;
-    auto duplicate(VariantId source, std::string name) -> VariantId;
+    void create(VariantId id, std::string name);
+    void duplicate(VariantId source, VariantId destination, std::string name);
     void rename(VariantId id, std::string name);
     void reset(VariantId id);
     void erase(VariantId id);
@@ -50,7 +50,6 @@ class Variants {
     std::vector<VariantId> ids_{VariantId{}};
     std::vector<std::string> names_{"Baseline"};
     std::vector<VariantSettings> settings_{1};
-    VariantId next_id_{1};
 };
 
 }

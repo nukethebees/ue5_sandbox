@@ -4,6 +4,10 @@
 #include <ioj/layout/document_io_state.hpp>
 #include <ioj/layout/revision.hpp>
 #include <ioj/layout/variants.hpp>
+#include <ioj/layout/analysis_settings.hpp>
+#include <ioj/layout/transaction.hpp>
+#include <ioj/layout/frozen_sources.hpp>
+#include <ioj/layout/source_id.hpp>
 
 #include <codegen/schema/manifest.h>
 #include <codegen/schema/schema_version.h>
@@ -11,7 +15,7 @@
 #include <lispb/schema/source_comments.h>
 #include <lispb/schema/type_graph.h>
 
-#include <memory>
+#include <map>
 
 namespace ioj::layout {
 class EditorSession;
@@ -20,6 +24,8 @@ class DocumentState {
     DocumentState(EditorSession& session, DocumentId id);
     auto storage() const -> lispb::CompilerStorage&;
     auto manifest() const -> lispb::codegen::Manifest;
+    void reset_workspace();
+    void restore_baseline();
     auto register_declaration(lispb::codegen::DeclarationHandle declaration)
         -> lispb::schema::DeclarationId;
     void inherit_declaration(lispb::codegen::DeclarationHandle before,
@@ -37,28 +43,26 @@ class DocumentState {
     lispb::schema::TypeGraph types;
     lispb::schema::SourceComments comments;
     Variants variants;
+    AnalysisSettings analysis_settings;
     DocumentIoState io;
     std::map<lispb::codegen::DeclarationHandle, lispb::schema::DeclarationId> declaration_ids;
     lispb::schema::DeclarationId next_declaration_id{1};
-    std::vector<lispb::codegen::ModuleHandle> baseline;
-    std::optional<lispb::Project> project;
-    std::optional<lispb::TargetId> target;
-    std::filesystem::path project_path;
+    std::map<std::pair<InstructionId, std::uint32_t>, lispb::schema::DeclarationId> creation_ids;
+    InstructionId next_instruction_id{1};
+    InstructionId current_instruction_id{};
+    std::uint32_t creation_slot{};
+    std::uint32_t source_creation_slot{};
+    VariantId next_variant_id{1};
     std::map<lispb::codegen::ModuleHandle, lispb::codegen::sexpr::SourceFileId> source_files;
     std::vector<lispb::codegen::sexpr::SourceFileId> source_order;
-    std::vector<lispb::codegen::sexpr::SourceFileId> baseline_sources;
-
-    // Replay forward root splices; immutable schema versions share the compiler's SoA stores.
-    std::vector<std::size_t> starts;
-    std::vector<std::size_t> removed;
-    std::vector<std::size_t> offsets;
-    std::vector<std::size_t> counts;
-    std::vector<lispb::codegen::ModuleHandle> versions;
-    std::vector<std::shared_ptr<Variants const>> variant_versions;
-    std::vector<std::shared_ptr<std::vector<lispb::codegen::sexpr::SourceFileId> const>>
-        source_versions;
+    std::map<lispb::codegen::sexpr::SourceFileId, SourceId> source_ids;
+    std::map<lispb::codegen::sexpr::SourceFileId, lispb::codegen::sexpr::SourceFileId> render_origins;
+    FrozenSources baseline_sources;
+    Transaction history;
+    std::vector<std::size_t> transaction_ends;
     std::size_t position{};
     Revision revision{};
     bool valid{};
+    bool changed{};
 };
 }

@@ -30,20 +30,17 @@ auto Variants::edit(VariantId const id) -> VariantSettings& {
     assert(id != VariantId{});
     return settings_[index(id)];
 }
-auto Variants::create(std::string name) -> VariantId {
+void Variants::create(VariantId id, std::string name) {
     assert(!name.empty());
-    auto const id{next_id_};
-    ++next_id_.value;
+    assert(id.value != 0 && !contains(id));
     ids_.push_back(id);
     names_.push_back(std::move(name));
     settings_.emplace_back();
-    return id;
 }
-auto Variants::duplicate(VariantId const source, std::string name) -> VariantId {
+void Variants::duplicate(VariantId const source, VariantId id, std::string name) {
     auto copy{settings(source)};
-    auto const id{create(std::move(name))};
+    create(id, std::move(name));
     edit(id) = std::move(copy);
-    return id;
 }
 void Variants::rename(VariantId const id, std::string name) {
     assert(id != VariantId{} && !name.empty());

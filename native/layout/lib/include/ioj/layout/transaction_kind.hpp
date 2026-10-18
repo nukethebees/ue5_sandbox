@@ -44,7 +44,18 @@ enum class TransactionKind : std::uint8_t {
     variant_packed_storage,
     variant_field_bits,
     variant_member_type,
-    variant_capacity
+    variant_capacity,
+    element_count,
+    default_soa_capacity,
+    access_operation,
+    access_multiplicity,
+    soa_allocation_strategy,
+    abi_profile,
+    comparison_abi_profile,
+    access_set,
+    varint_distribution,
+    union_distribution,
+    tagged_union_distribution
 };
 
 }

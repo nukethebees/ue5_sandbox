@@ -1,6 +1,7 @@
 #include <ioj/layout/transaction.hpp>
 
 #include <ioj/layout/document_state.hpp>
+#include <ioj/layout/editor_session.hpp>
 
 #include <codegen/schema/declaration_schema.h>
 #include <codegen/schema/declarations.h>
@@ -316,23 +317,28 @@ void reorder(std::vector<Id>& values, std::size_t from, std::size_t to) {
 }
 }
 
-Transaction::Transaction(EditorSession const& session, DocumentId owner, Revision revision)
+Transaction::Transaction(EditorSession& session, DocumentId owner)
     : session_{&session}
-    , owner_{owner}
-    , revision_{revision} {}
+    , owner_{owner} {}
 void Transaction::append(TransactionKind kind,
                          std::string_view module,
                          std::string_view declaration,
                          std::string_view member,
                          std::string_view text,
                          std::optional<std::uint64_t> number) {
+    auto& state{session_->state(owner_)};
+    auto& strings{session_->command_strings()};
     kinds_.push_back(kind);
-    modules_.emplace_back(module);
-    declarations_.emplace_back(declaration);
-    members_.emplace_back(member);
-    texts_.emplace_back(text);
+    ids_.push_back(state.next_instruction_id);
+    ++state.next_instruction_id.value;
+    modules_.push_back(strings.intern(module));
+    declarations_.push_back(strings.intern(declaration));
+    members_.push_back(strings.intern(member));
+    texts_.push_back(strings.add(text));
     numbers_.push_back(number);
     variant_ids_.emplace_back();
+    payload_offsets_.push_back(payload_names_.size());
+    payload_counts_.push_back(0);
 }
 void Transaction::set_field_bits(std::string_view m,
                                  std::string_view d,
@@ -477,10 +483,12 @@ void Transaction::rename_source(std::string_view path, std::string_view destinat
 }
 void Transaction::create_variant(std::string_view name) {
     append(TransactionKind::variant_create, {}, {}, {}, name);
+    numbers_.back() = session_->state(owner_).next_variant_id.value++;
 }
 void Transaction::duplicate_variant(VariantId id, std::string_view name) {
     append(TransactionKind::variant_duplicate, {}, {}, {}, name);
     variant_ids_.back() = id;
+    numbers_.back() = session_->state(owner_).next_variant_id.value++;
 }
 void Transaction::rename_variant(VariantId id, std::string_view name) {
     append(TransactionKind::variant_rename, {}, {}, {}, name);
@@ -525,7 +533,87 @@ void Transaction::set_variant_capacity(VariantId id,
     variant_ids_.back() = id;
 }
 
-void Transaction::apply(DocumentState& state, Manifest& manifest) const {
+void Transaction::set_element_count(std::uint64_t value) { append(TransactionKind::element_count, {}, {}, {}, {}, value); }
+void Transaction::set_default_soa_capacity(std::uint64_t value) { append(TransactionKind::default_soa_capacity, {}, {}, {}, {}, value); }
+void Transaction::set_access_operation(AccessOperation value) { append(TransactionKind::access_operation, {}, {}, {}, {}, static_cast<std::uint64_t>(value)); }
+void Transaction::set_access_multiplicity(std::uint64_t value) { append(TransactionKind::access_multiplicity, {}, {}, {}, {}, value); }
+void Transaction::set_soa_allocation_strategy(SoaAllocationStrategy value) { append(TransactionKind::soa_allocation_strategy, {}, {}, {}, {}, static_cast<std::uint64_t>(value)); }
+void Transaction::set_abi_profile(AbiProfile const& profile) { append(TransactionKind::abi_profile, {}, {}, {}, serialize_abi_profile(profile)); }
+void Transaction::set_comparison_abi_profile(std::optional<AbiProfile> const& profile) { append(TransactionKind::comparison_abi_profile, {}, {}, {}, profile ? serialize_abi_profile(*profile) : std::string{}); }
+void Transaction::set_access_set(std::string_view module, std::string_view declaration, AccessSet const& accesses) {
+    append(TransactionKind::access_set, module, declaration, {}, {});
+    auto& strings{session_->command_strings()};
+    for (auto const& [name, operation] : accesses) {
+        payload_names_.push_back(strings.intern(name));
+        payload_weights_.push_back(static_cast<std::uint64_t>(operation));
+        payload_values_.emplace_back();
+    }
+    payload_counts_.back() = accesses.size();
+}
+void Transaction::set_varint_distribution(std::string_view module, std::string_view declaration, std::span<IntegerVarintDistributionEntry const> entries) {
+    append(TransactionKind::varint_distribution, module, declaration, {}, {});
+    for (auto const& entry : entries) {
+        payload_names_.emplace_back();
+        payload_weights_.push_back(entry.weight);
+        payload_values_.push_back(entry.value);
+    }
+    payload_counts_.back() = entries.size();
+}
+void Transaction::set_union_distribution(std::string_view module, std::string_view declaration, std::span<UnionDistributionEntry const> entries) {
+    append(TransactionKind::union_distribution, module, declaration, {}, {});
+    auto& strings{session_->command_strings()};
+    for (auto const& entry : entries) {
+        payload_names_.push_back(strings.intern(entry.alternative_name));
+        payload_weights_.push_back(entry.weight);
+        payload_values_.emplace_back();
+    }
+    payload_counts_.back() = entries.size();
+}
+void Transaction::set_tagged_union_distribution(std::string_view module, std::string_view declaration, std::span<TaggedUnionDistributionEntry const> entries) {
+    append(TransactionKind::tagged_union_distribution, module, declaration, {}, {});
+    auto& strings{session_->command_strings()};
+    for (auto const& entry : entries) {
+        payload_names_.push_back(strings.intern(entry.tag));
+        payload_weights_.push_back(entry.weight);
+        payload_values_.emplace_back();
+    }
+    payload_counts_.back() = entries.size();
+}
+void Transaction::append(Transaction const& transaction) {
+    assert(session_ == transaction.session_ && owner_ == transaction.owner_);
+    auto const payload_start{payload_names_.size()};
+    kinds_.insert(kinds_.end(), transaction.kinds_.begin(), transaction.kinds_.end());
+    ids_.insert(ids_.end(), transaction.ids_.begin(), transaction.ids_.end());
+    modules_.insert(modules_.end(), transaction.modules_.begin(), transaction.modules_.end());
+    declarations_.insert(declarations_.end(), transaction.declarations_.begin(), transaction.declarations_.end());
+    members_.insert(members_.end(), transaction.members_.begin(), transaction.members_.end());
+    texts_.insert(texts_.end(), transaction.texts_.begin(), transaction.texts_.end());
+    numbers_.insert(numbers_.end(), transaction.numbers_.begin(), transaction.numbers_.end());
+    variant_ids_.insert(variant_ids_.end(), transaction.variant_ids_.begin(), transaction.variant_ids_.end());
+    for (auto const offset : transaction.payload_offsets_) { payload_offsets_.push_back(payload_start + offset); }
+    payload_counts_.insert(payload_counts_.end(), transaction.payload_counts_.begin(), transaction.payload_counts_.end());
+    payload_names_.insert(payload_names_.end(), transaction.payload_names_.begin(), transaction.payload_names_.end());
+    payload_weights_.insert(payload_weights_.end(), transaction.payload_weights_.begin(), transaction.payload_weights_.end());
+    payload_values_.insert(payload_values_.end(), transaction.payload_values_.begin(), transaction.payload_values_.end());
+}
+void Transaction::truncate(std::size_t count) {
+    auto const payload_count{count == 0 ? 0 : payload_offsets_[count - 1] + payload_counts_[count - 1]};
+    kinds_.resize(count);
+    ids_.resize(count);
+    modules_.resize(count);
+    declarations_.resize(count);
+    members_.resize(count);
+    texts_.resize(count);
+    numbers_.resize(count);
+    variant_ids_.resize(count);
+    payload_offsets_.resize(count);
+    payload_counts_.resize(count);
+    payload_names_.resize(payload_count);
+    payload_weights_.resize(payload_count);
+    payload_values_.resize(payload_count);
+}
+
+void Transaction::apply(DocumentState& state, Manifest& manifest, std::size_t end) const {
     auto& store{state.storage().declarations};
     auto& strings{state.storage().strings};
     std::vector<std::string> removed_names;
@@ -534,6 +622,7 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
         [&](DeclarationHandle declaration, ModuleHandle module, bool erase_variants = true) {
             if (erase_variants) {
                 state.variants.erase_declaration(state.declaration_ids.at(declaration));
+                state.analysis_settings.erase_declaration(state.declaration_ids.at(declaration));
             }
             auto names{generated_cpp_names(store, declaration, module)};
             names.push_back(declaration_name(store, declaration));
@@ -542,12 +631,87 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
                 removed_namespaces.push_back(namespace_name(store, module));
             }
         };
-    auto const instruction_count{kinds_.size()};
+    auto const& durable_strings{session_->command_strings()};
+    auto const instruction_count{end};
+    assert(end <= kinds_.size());
     for (std::size_t instruction{}; instruction < instruction_count; ++instruction) {
+        session_->capture_diagnostics(state.id);
+        state.current_instruction_id = ids_[instruction];
+        state.creation_slot = 0;
+        state.source_creation_slot = 0;
+        session_->set_instruction(ids_[instruction]);
         auto const kind{kinds_[instruction]};
-        auto const& text{texts_[instruction]};
-        auto const& child_name{members_[instruction]};
+        auto const text{std::string{durable_strings.view(texts_[instruction])}};
+        auto const child_name{std::string{durable_strings.view(members_[instruction])}};
         auto const number{numbers_[instruction]};
+
+        if (kind >= TransactionKind::element_count) {
+            auto& settings{state.analysis_settings};
+            auto assign = [&](auto& destination, auto value) {
+                state.changed |= destination != value;
+                destination = value;
+            };
+            switch (kind) {
+                case TransactionKind::element_count: assign(settings.element_count, *number); break;
+                case TransactionKind::default_soa_capacity: assign(settings.default_soa_capacity, *number); break;
+                case TransactionKind::access_operation: assign(settings.access_operation, static_cast<AccessOperation>(*number)); break;
+                case TransactionKind::access_multiplicity: assign(settings.access_multiplicity, *number); break;
+                case TransactionKind::soa_allocation_strategy: assign(settings.soa_allocation_strategy, static_cast<SoaAllocationStrategy>(*number)); break;
+                case TransactionKind::abi_profile:
+                case TransactionKind::comparison_abi_profile: {
+                    if (kind == TransactionKind::comparison_abi_profile && text.empty()) {
+                        state.changed |= settings.comparison_abi.has_value();
+                        settings.comparison_abi.reset();
+                    } else {
+                        auto profile{parse_abi_profile(text)};
+                        if (!profile) { throw std::invalid_argument{"Invalid ABI profile: " + profile.error().message}; }
+                        if (kind == TransactionKind::abi_profile) {
+                            state.changed |= serialize_abi_profile(settings.abi) != text;
+                            settings.abi = std::move(*profile);
+                        } else {
+                            state.changed |= !settings.comparison_abi || serialize_abi_profile(*settings.comparison_abi) != text;
+                            settings.comparison_abi = std::move(*profile);
+                        }
+                    }
+                    break;
+                }
+                default: {
+                    auto const module{module_index(manifest, durable_strings.view(modules_[instruction]))};
+                    auto const declarations{declarations_of(store, manifest.modules[module])};
+                    auto const declaration{declarations[declaration_index(store, declarations, durable_strings.view(declarations_[instruction]))]};
+                    auto const identity{state.declaration_ids.at(declaration)};
+                    auto const offset{payload_offsets_[instruction]};
+                    auto const count{payload_counts_[instruction]};
+                    if (kind == TransactionKind::access_set) {
+                        AccessSet accesses;
+                        for (std::size_t entry{}; entry < count; ++entry) {
+                            accesses.emplace(std::string{durable_strings.view(payload_names_[offset + entry])}, static_cast<AccessOperation>(payload_weights_[offset + entry]));
+                        }
+                        state.changed |= settings.access_sets[identity] != accesses;
+                        if (accesses.empty()) { settings.access_sets.erase(identity); }
+                        else { settings.access_sets.insert_or_assign(identity, std::move(accesses)); }
+                    } else if (kind == TransactionKind::varint_distribution) {
+                        auto& entries{settings.varint_distributions[identity]};
+                        entries.clear();
+                        for (std::size_t entry{}; entry < count; ++entry) { entries.push_back({payload_values_[offset + entry], payload_weights_[offset + entry]}); }
+                        state.changed = true;
+                    } else if (kind == TransactionKind::union_distribution) {
+                        auto& entries{settings.union_distributions[identity]};
+                        entries.clear();
+                        for (std::size_t entry{}; entry < count; ++entry) { entries.push_back({std::string{durable_strings.view(payload_names_[offset + entry])}, payload_weights_[offset + entry]}); }
+                        state.changed = true;
+                    } else {
+                        assert(kind == TransactionKind::tagged_union_distribution);
+                        auto& entries{settings.tagged_union_distributions[identity]};
+                        entries.clear();
+                        for (std::size_t entry{}; entry < count; ++entry) { entries.push_back({std::string{durable_strings.view(payload_names_[offset + entry])}, payload_weights_[offset + entry]}); }
+                        state.changed = true;
+                    }
+                    break;
+                }
+            }
+            continue;
+        }
 
         if (kind == TransactionKind::source_add || kind == TransactionKind::source_replace ||
             kind == TransactionKind::source_remove || kind == TransactionKind::source_rename) {
@@ -556,7 +720,7 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
                               : kind == TransactionKind::source_replace ? "replace"
                               : kind == TransactionKind::source_remove  ? "remove"
                                                                         : "rename",
-                              modules_[instruction],
+                              durable_strings.view(modules_[instruction]),
                               text,
                               manifest);
             if (kind == TransactionKind::source_remove || kind == TransactionKind::source_replace) {
@@ -573,17 +737,19 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
             continue;
         }
         if (kind == TransactionKind::variant_create) {
-            static_cast<void>(state.variants.create(text));
+            state.variants.create(VariantId{static_cast<std::uint32_t>(*number)}, text);
+            state.changed = true;
             continue;
         }
-        if (kind >= TransactionKind::variant_duplicate) {
+        if (kind >= TransactionKind::variant_duplicate && kind <= TransactionKind::variant_capacity) {
+            state.changed = true;
             auto const id{variant_ids_[instruction]};
             if (!state.variants.contains(id) ||
                 (id == VariantId{} && kind != TransactionKind::variant_duplicate)) {
                 throw std::invalid_argument{"Expected an editable variant"};
             }
             if (kind == TransactionKind::variant_duplicate) {
-                static_cast<void>(state.variants.duplicate(id, text));
+                state.variants.duplicate(id, VariantId{static_cast<std::uint32_t>(*number)}, text);
                 continue;
             }
             if (kind == TransactionKind::variant_rename) {
@@ -598,10 +764,10 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
                 state.variants.reset(id);
                 continue;
             }
-            auto const module{module_index(manifest, modules_[instruction])};
+            auto const module{module_index(manifest, durable_strings.view(modules_[instruction]))};
             auto const values{declarations_of(store, manifest.modules[module])};
             auto const declaration{
-                values[declaration_index(store, values, declarations_[instruction])]};
+                values[declaration_index(store, values, durable_strings.view(declarations_[instruction]))]};
             auto const identity{state.declaration_ids.at(declaration)};
             if (kind == TransactionKind::variant_packed_storage ||
                 kind == TransactionKind::variant_field_bits) {
@@ -669,7 +835,8 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
             state.source_files.emplace(parsed.modules.front(), source);
             if (destination == state.source_order.end()) {
                 state.source_order.push_back(file);
-                state.io.source_origins.emplace(file, file);
+                    state.render_origins.emplace(file, file);
+                    state.source_ids.emplace(file, SourceId{state.current_instruction_id, ++state.source_creation_slot});
             }
             state.comments.capture(state.storage(), parsed.modules, parsed.file);
             for (auto declaration : declarations_of(store, parsed.modules.front())) {
@@ -677,7 +844,7 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
             }
             continue;
         }
-        auto const module{module_index(manifest, modules_[instruction])};
+        auto const module{module_index(manifest, durable_strings.view(modules_[instruction]))};
         auto const original_module{manifest.modules[module]};
         if (kind == TransactionKind::delete_module) {
             for (auto declaration : declarations_of(store, original_module)) {
@@ -704,7 +871,7 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
         auto values{declarations_of(store, original_module)};
         auto const index{kind == TransactionKind::create
                              ? values.size()
-                             : declaration_index(store, values, declarations_[instruction])};
+                             : declaration_index(store, values, durable_strings.view(declarations_[instruction]))};
         if (kind == TransactionKind::erase) {
             record_removed(values[index], original_module);
             values.erase(values.begin() + static_cast<std::ptrdiff_t>(index));
@@ -1002,11 +1169,13 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
         if (replacement != previous) {
             state.inherit_declaration(previous, replacement);
             if (kind == TransactionKind::rename_field || kind == TransactionKind::rename_member) {
+                state.analysis_settings.rename_member(state.declaration_ids.at(previous), child_name, text);
                 state.variants.rename_member(state.declaration_ids.at(previous),
                                              strings.intern_retained(child_name),
                                              strings.intern_retained(text));
             }
             if (kind == TransactionKind::delete_field || kind == TransactionKind::delete_member) {
+                state.analysis_settings.erase_member(state.declaration_ids.at(previous), child_name);
                 state.variants.erase_member(state.declaration_ids.at(previous),
                                             strings.intern_retained(child_name));
             }
