@@ -21,16 +21,14 @@ TEST(NativeCoreSpaceDustMath, NormalisesTuningIdempotently) {
     auto const normalised_again{ioj::space_dust::normalise_tuning(normalised)};
 
     EXPECT_EQ(normalised.particle_count, 0);
-    EXPECT_FLOAT_EQ(normalised.volume_dimensions.x(), 1.0f);
-    EXPECT_FLOAT_EQ(normalised.volume_dimensions.y(), 1.0f);
-    EXPECT_FLOAT_EQ(normalised.volume_dimensions.z(), 1.0f);
+    EXPECT_EQ(normalised.volume_dimensions, (ioj::Vector3f{1.0f, 1.0f, 1.0f}));
     EXPECT_FLOAT_EQ(normalised.brightness, 0.0f);
     EXPECT_GT(normalised.full_visible_speed, normalised.minimum_visible_speed);
     EXPECT_FLOAT_EQ(normalised.minimum_motion_pixels, 0.0f);
     EXPECT_GT(normalised.full_motion_pixels, normalised.minimum_motion_pixels);
     EXPECT_FLOAT_EQ(normalised.volume_edge_fade_fraction, 0.49f);
     EXPECT_EQ(normalised_again.particle_count, normalised.particle_count);
-    EXPECT_EQ(normalised_again.volume_dimensions.x(), normalised.volume_dimensions.x());
+    EXPECT_EQ(normalised_again.volume_dimensions, normalised.volume_dimensions);
     EXPECT_EQ(normalised_again.full_visible_speed, normalised.full_visible_speed);
     EXPECT_EQ(normalised_again.full_motion_pixels, normalised.full_motion_pixels);
 }
@@ -73,12 +71,8 @@ TEST(NativeCoreSpaceDustMath, WrapsLargeNegativeAndPeriodicLocations) {
     auto const repeated_phase{ioj::space_dust::make_translation_phase(
         {16'000'016'125.0, -12'000'012'250.0, 8'000'008'999.0}, dimensions)};
 
-    EXPECT_FLOAT_EQ(phase.x(), 125.0f);
-    EXPECT_FLOAT_EQ(phase.y(), 11750.0f);
-    EXPECT_FLOAT_EQ(phase.z(), 999.0f);
-    EXPECT_EQ(repeated_phase.x(), phase.x());
-    EXPECT_EQ(repeated_phase.y(), phase.y());
-    EXPECT_EQ(repeated_phase.z(), phase.z());
+    EXPECT_EQ(phase, (ioj::Vector3f{125.0f, 11750.0f, 999.0f}));
+    EXPECT_EQ(repeated_phase, phase);
 }
 
 TEST(NativeCoreSpaceDustMath, ProducesStableSeededPositionsInsideTheUnitCube) {
@@ -86,16 +80,12 @@ TEST(NativeCoreSpaceDustMath, ProducesStableSeededPositionsInsideTheUnitCube) {
     auto const repeated{ioj::space_dust::make_random_position(42u, 1337u)};
     auto const different_seed{ioj::space_dust::make_random_position(42u, 1338u)};
 
-    EXPECT_EQ(first.x(), repeated.x());
-    EXPECT_EQ(first.y(), repeated.y());
-    EXPECT_EQ(first.z(), repeated.z());
-    EXPECT_NE(first.x(), different_seed.x());
-    EXPECT_GE(first.x(), 0.0f);
-    EXPECT_LT(first.x(), 1.0f);
-    EXPECT_GE(first.y(), 0.0f);
-    EXPECT_LT(first.y(), 1.0f);
-    EXPECT_GE(first.z(), 0.0f);
-    EXPECT_LT(first.z(), 1.0f);
+    EXPECT_EQ(first, repeated);
+    EXPECT_NE(first, different_seed);
+    for (auto const component : first.elements) {
+        EXPECT_GE(component, 0.0f);
+        EXPECT_LT(component, 1.0f);
+    }
 }
 
 TEST(NativeCoreSpaceDustMath, ProducesStableBoundedParticleVariation) {

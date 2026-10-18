@@ -10,12 +10,9 @@ TEST(Vectors3f, VectorOperationsUseNativeOwnersAndViews) {
 
     multiply_in_place(vectors.get_view(), 2.0f);
 
-    EXPECT_FLOAT_EQ(vectors.xs[0], 2.0f);
-    EXPECT_FLOAT_EQ(vectors.ys[0], 4.0f);
-    EXPECT_FLOAT_EQ(vectors.zs[0], 6.0f);
-    EXPECT_FLOAT_EQ(vectors.xs[1], 8.0f);
-    EXPECT_FLOAT_EQ(vectors.ys[1], 10.0f);
-    EXPECT_FLOAT_EQ(vectors.zs[1], 12.0f);
+    auto const values{vectors.get_const_view()};
+    EXPECT_EQ(values[0], (Vector3f{2.0f, 4.0f, 6.0f}));
+    EXPECT_EQ(values[1], (Vector3f{8.0f, 10.0f, 12.0f}));
 }
 
 TEST(Vectors3f, ConvertsDirectionsToNativeRotators) {

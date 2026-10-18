@@ -342,14 +342,7 @@ TEST(NativeSimulationFlightModels, DirectSlotSelectionPreservesPhysicalStateAtBo
 
     EXPECT_EQ(sim_player.get_active_flight_model_slot(), player::FlightModelSlot::Up);
     EXPECT_EQ(sim_player.get_physical_state().transform.location, transform.location);
-    EXPECT_DOUBLE_EQ(sim_player.get_physical_state().transform.rotation.x(),
-                     transform.rotation.x());
-    EXPECT_DOUBLE_EQ(sim_player.get_physical_state().transform.rotation.y(),
-                     transform.rotation.y());
-    EXPECT_DOUBLE_EQ(sim_player.get_physical_state().transform.rotation.z(),
-                     transform.rotation.z());
-    EXPECT_DOUBLE_EQ(sim_player.get_physical_state().transform.rotation.w(),
-                     transform.rotation.w());
+    EXPECT_EQ(sim_player.get_physical_state().transform.rotation, transform.rotation);
     expect_velocity_near(sim_player.get_physical_state().velocity, before, 1.e-8);
     EXPECT_FLOAT_EQ(sim_player.get_energy(), energy);
     EXPECT_EQ(sim_player.get_health(), health);

@@ -77,8 +77,8 @@ class FighterTargetRefresh : public ::testing::Test {
         auto const state{observe_live_entity(simulation, expected)};
         ASSERT_TRUE(state);
         EXPECT_EQ(entities.target_ids()[index], expected);
-        expect_vector(vector_at(entities.view_target_locations(), index), state->location);
-        expect_vector(vector_at(entities.view_target_velocities(), index), state->velocity);
+        EXPECT_EQ(vector_at(entities.view_target_locations(), index), state->location);
+        EXPECT_EQ(vector_at(entities.view_target_velocities(), index), state->velocity);
         EXPECT_FLOAT_EQ(
             entities.target_radii()[index],
             simulation.get_spatial_query_manager().get_entity_type_radius(expected.entity_type()));
@@ -111,8 +111,8 @@ class FighterTargetRefresh : public ::testing::Test {
         auto const entities{simulation.get_fighters().get_entities()};
         auto const index{observe_entity_row(simulation, fighter)};
         EXPECT_FALSE(entities.target_ids()[index].is_valid());
-        expect_vector(vector_at(entities.view_target_locations(), index), {});
-        expect_vector(vector_at(entities.view_target_velocities(), index), {});
+        EXPECT_EQ(vector_at(entities.view_target_locations(), index), Vector3f{});
+        EXPECT_EQ(vector_at(entities.view_target_velocities(), index), Vector3f{});
         EXPECT_FLOAT_EQ(entities.target_radii()[index], 0.f);
         auto const next_location{vector_at(entities.view_locations(), index) +
                                  vector_at(entities.view_movement_directions(), index) *

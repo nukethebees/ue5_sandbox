@@ -23,10 +23,8 @@ TEST(GraphPlot, ResolvesRangesAndTransformsImplicitSeries) {
     auto const rendered{ioj::ui::graph::transform_points(
         points, x_range, y_range, 100.0f, 50.0f, ioj::ui::graph::Interpolation::Linear)};
     ASSERT_EQ(rendered.size(), 3);
-    EXPECT_EQ(rendered.front().x(), 0.0f);
-    EXPECT_EQ(rendered.front().y(), 50.0f);
-    EXPECT_EQ(rendered.back().x(), 100.0f);
-    EXPECT_EQ(rendered.back().y(), 0.0f);
+    EXPECT_EQ(rendered.front(), (ioj::Point2f{0.0f, 50.0f}));
+    EXPECT_EQ(rendered.back(), (ioj::Point2f{100.0f, 0.0f}));
     EXPECT_FALSE(decimated);
 }
 
@@ -35,8 +33,7 @@ TEST(GraphPlot, StepAfterAddsTransitionPoints) {
     auto const rendered{ioj::ui::graph::transform_points(
         points, {0.0, 1.0}, {2.0, 4.0}, 100.0f, 50.0f, ioj::ui::graph::Interpolation::StepAfter)};
     ASSERT_EQ(rendered.size(), 3);
-    EXPECT_EQ(rendered[1].x(), 100.0f);
-    EXPECT_EQ(rendered[1].y(), 50.0f);
+    EXPECT_EQ(rendered[1], (ioj::Point2f{100.0f, 50.0f}));
     EXPECT_EQ(rendered[2].y(), 0.0f);
 }
 
@@ -122,10 +119,8 @@ TEST(GraphPlot, ValidatesPortableLayoutSettings) {
     EXPECT_FALSE(ioj::ui::graph::is_valid_layout(invalid));
 
     auto const layout{ioj::ui::graph::make_plot_layout({320.0f, 180.0f}, {})};
-    EXPECT_EQ(layout.origin.x(), 54.0f);
-    EXPECT_EQ(layout.origin.y(), 12.0f);
-    EXPECT_EQ(layout.size.x(), 254.0f);
-    EXPECT_EQ(layout.size.y(), 142.0f);
+    EXPECT_EQ(layout.origin, (ioj::Point2f{54.0f, 12.0f}));
+    EXPECT_EQ(layout.size, (ioj::Vector2f{254.0f, 142.0f}));
 }
 
 TEST(GraphPlot, BuildsReadableTicksAndSupportsInversion) {
