@@ -8,6 +8,8 @@ struct Rotator3d {
     double pitch{};
     double yaw{};
     double roll{};
+
+    auto operator==(Rotator3d const&) const -> bool = default;
 };
 auto to_quaternion(Rotator3d rotation) noexcept -> ioj::Quaternion4d;
 auto to_rotator(ioj::Quaternion4d q) noexcept -> Rotator3d;
