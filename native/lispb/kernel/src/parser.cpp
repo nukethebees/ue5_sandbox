@@ -160,6 +160,21 @@ class Parser {
         auto const initial_modules{document_.modules.size()};
         std::set<lispb::IdentifierId> names;
         std::set<OutputPath> output_paths;
+        for (std::size_t index{}; index < initial_modules; ++index) {
+            auto const module{ModuleId{static_cast<std::uint32_t>(index)}};
+            names.insert(document_.modules.name(module));
+            for (auto const emission : document_.modules.emissions(module)) {
+                auto const profile{document_.emissions.profile(emission)};
+                output_paths.insert(
+                    {profile, document_.text(document_.emissions.header(emission))});
+                output_paths.insert(
+                    {profile, document_.text(document_.emissions.source(emission))});
+                if (auto const tests{document_.emissions.tests(emission)}) {
+                    output_paths.insert({profile, document_.text(*tests)});
+                }
+            }
+        }
+
         for (auto const form : syntax_.forms(forms_)) {
             auto module{parse_module(form)};
             if (!names.insert(document_.modules.name(module)).second) {

@@ -1,11 +1,14 @@
 #include <lispb/material_compiler.h>
 
+#include <ioj/format_writer.h>
+
 #include <codegen/sexpr/indices.h>
 #include <codegen/sexpr/sources.h>
 #include <codegen/sexpr/syntax.h>
 #include <lispb/compilation.h>
 #include <material_gen/BlendMode.h>
 #include <material_gen/CompiledMaterial.h>
+#include <material_gen/Diagnostic.h>
 #include <material_gen/MaterialDomain.h>
 #include <material_gen/MaterialFrontend.h>
 #include <material_gen/MaterialIR.h>
@@ -20,7 +23,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
-#include <format>
 #include <iterator>
 #include <optional>
 #include <span>
@@ -35,14 +37,14 @@ namespace {
 
 namespace fs = std::filesystem;
 
-struct ProjectTextureResolver {
+struct ProjectResolver {
     fs::path project_root;
     mutable std::vector<fs::path> dependencies;
 };
 
 auto resolve_texture(void const* const context, std::string_view const requested)
     -> std::optional<std::string> {
-    auto const& resolver{*static_cast<ProjectTextureResolver const*>(context)};
+    auto const& resolver{*static_cast<ProjectResolver const*>(context)};
     if (requested.empty() || requested.front() != '/') {
         return std::nullopt;
     }
@@ -78,6 +80,59 @@ auto resolve_texture(void const* const context, std::string_view const requested
     }
     auto const leaf_position{package_path.rfind('/')};
     return package_path + "." + package_path.substr(leaf_position + 1);
+}
+
+auto resolve_shader_include(ProjectResolver& resolver, std::string_view const requested) -> bool {
+    fs::path shader_file;
+    constexpr std::string_view plugin_prefix{"/Plugin/"};
+    constexpr std::string_view project_prefix{"/Project/"};
+    if (requested.starts_with(plugin_prefix)) {
+        auto const remaining{requested.substr(plugin_prefix.size())};
+        auto const separator{remaining.find('/')};
+        if (separator != std::string_view::npos) {
+            shader_file = resolver.project_root / "Plugins" / remaining.substr(0, separator) /
+                          "Shaders" / remaining.substr(separator + 1);
+        }
+    } else if (requested.starts_with(project_prefix)) {
+        shader_file = resolver.project_root / "Shaders" / requested.substr(project_prefix.size());
+    }
+
+    std::error_code error;
+    if (shader_file.empty() || !fs::is_regular_file(shader_file, error) || error) {
+        return false;
+    }
+    if (std::ranges::find(resolver.dependencies, shader_file) == resolver.dependencies.end()) {
+        resolver.dependencies.push_back(std::move(shader_file));
+    }
+    return true;
+}
+
+auto analyze_material(lispb::codegen::sexpr::Syntax& syntax,
+                      lispb::codegen::sexpr::SourceFileId const source,
+                      ProjectResolver& resolver,
+                      material_synth::MaterialIR& material)
+    -> std::vector<material_synth::Diagnostic> {
+    auto diagnostics{
+        material_synth::analyze(syntax, source, {&resolver, resolve_texture}, material)};
+    if (!diagnostics.empty()) {
+        return diagnostics;
+    }
+
+    auto const& nodes{material.nodes};
+    for (auto const node : nodes.handles()) {
+        if (nodes.kind(node) != material_synth::NodeKind::shader_call) {
+            continue;
+        }
+        auto const requested{material.text(nodes.shader_path(node))};
+        if (!resolve_shader_include(resolver, requested)) {
+            auto const span{nodes.span(node)};
+            diagnostics.push_back({std::string{material.text(span.path)},
+                                   span.line,
+                                   span.column,
+                                   "unresolved shader include '" + std::string{requested} + "'"});
+        }
+    }
+    return diagnostics;
 }
 
 auto type_name(material_synth::ValueType const type) -> std::string_view {
@@ -166,7 +221,12 @@ auto kind_name(material_synth::NodeKind const kind) -> std::string_view {
 
 auto dump_ir(material_synth::MaterialIR const& material) -> std::string {
     std::string result;
-    auto const out{std::back_inserter(result)};
+    ioj::FormatWriter write{std::back_inserter(result)};
+    auto const& settings{material.settings};
+    auto const& parameters{material.parameters};
+    auto const& nodes{material.nodes};
+    auto const& bindings{material.bindings};
+    auto const& outputs{material.outputs};
     auto quoted = [&result](std::string_view const text) {
         result += '"';
         for (auto const character : text) {
@@ -178,148 +238,128 @@ auto dump_ir(material_synth::MaterialIR const& material) -> std::string {
         result += '"';
     };
 
-    auto const domain{material.settings.domain == material_synth::MaterialDomain::ui ? "ui"
-                      : material.settings.domain == material_synth::MaterialDomain::surface
+    auto const domain{settings.domain == material_synth::MaterialDomain::ui ? "ui"
+                      : settings.domain == material_synth::MaterialDomain::surface
                           ? "surface"
                           : "post-process"};
-    auto const blend{
-        material.settings.blend_mode == material_synth::BlendMode::additive      ? "additive"
-        : material.settings.blend_mode == material_synth::BlendMode::translucent ? "translucent"
-        : material.settings.blend_mode == material_synth::BlendMode::opaque      ? "opaque"
-        : material.settings.blend_mode == material_synth::BlendMode::masked ? "masked"
-                                                                            : "alpha-composite"};
-    auto const shading{material.settings.shading_model == material_synth::ShadingModel::unlit
-                           ? "unlit"
-                           : "default-lit"};
-    std::format_to(
-        out,
-        "material {}\nasset {}\ndomain {}\nblend {}\nshading {}\n"
-        "two-sided {:d}\ndisable-depth-test {:d}\nused-with-instanced-static-meshes {:d}\n"
-        "used-with-particle-sprites {:d}\nadopt-existing {:d}\nopacity-mask-clip {:.6g}\n",
-        material.text(material.settings.name),
-        material.text(material.settings.package_path),
-        domain,
-        blend,
-        shading,
-        material.settings.two_sided,
-        material.settings.disable_depth_test,
-        material.settings.used_with_instanced_static_meshes,
-        material.settings.used_with_particle_sprites,
-        material.settings.adopt_existing,
-        material.settings.opacity_mask_clip_value);
+    auto const blend{settings.blend_mode == material_synth::BlendMode::additive      ? "additive"
+                     : settings.blend_mode == material_synth::BlendMode::translucent ? "translucent"
+                     : settings.blend_mode == material_synth::BlendMode::opaque      ? "opaque"
+                     : settings.blend_mode == material_synth::BlendMode::masked
+                         ? "masked"
+                         : "alpha-composite"};
+    auto const shading{
+        settings.shading_model == material_synth::ShadingModel::unlit ? "unlit" : "default-lit"};
+    write("material {}\nasset {}\ndomain {}\nblend {}\nshading {}\n"
+          "two-sided {:d}\ndisable-depth-test {:d}\nused-with-instanced-static-meshes {:d}\n"
+          "used-with-particle-sprites {:d}\nadopt-existing {:d}\nopacity-mask-clip {:.6g}\n",
+          material.text(settings.name),
+          material.text(settings.package_path),
+          domain,
+          blend,
+          shading,
+          settings.two_sided,
+          settings.disable_depth_test,
+          settings.used_with_instanced_static_meshes,
+          settings.used_with_particle_sprites,
+          settings.adopt_existing,
+          settings.opacity_mask_clip_value);
 
-    std::format_to(out, "parameters {}\n", material.parameters.size());
-    for (auto const parameter : material.parameters.handles()) {
+    write("parameters {}\n", parameters.size());
+    for (auto const parameter : parameters.handles()) {
         auto const index{parameter.value};
-        std::format_to(out,
-                       "  [{}] {} {} node={}",
-                       index,
-                       material.text(material.parameters.name[parameter.value]),
-                       type_name(material.parameters.type[parameter.value]),
-                       material.parameters.node[parameter.value].value);
-        if (material.parameters.type[parameter.value] == material_synth::ValueType::texture) {
-            auto const sampler{material.parameters.texture_sampler_type[parameter.value] ==
+        auto const type{parameters.type[index]};
+        write("  [{}] {} {} node={}",
+              index,
+              material.text(parameters.name[index]),
+              type_name(type),
+              parameters.node[index].value);
+        if (type == material_synth::ValueType::texture) {
+            auto const sampler{parameters.texture_sampler_type[index] ==
                                        material_synth::TextureSamplerType::linear_grayscale
                                    ? "linear-grayscale"
                                    : "linear-color"};
-            std::format_to(out,
-                           " default={} sampler={}",
-                           material.text(material.parameters.texture_path[parameter.value]),
-                           sampler);
+            write(" default={} sampler={}", material.text(parameters.texture_path[index]), sampler);
         } else {
             result += " default=[";
-            auto const components{
-                material_synth::component_count(material.parameters.type[parameter.value])};
+            auto const components{material_synth::component_count(type)};
             for (std::size_t component{}; component < components; ++component) {
-                std::format_to(out,
-                               "{}{:.6g}",
-                               component == 0 ? "" : ",",
-                               material.parameters.default_values[component][parameter.value]);
+                write("{}{:.6g}",
+                      component == 0 ? "" : ",",
+                      parameters.default_values[component][index]);
             }
             result += ']';
         }
         result += '\n';
     }
 
-    std::format_to(out, "nodes {}\n", material.nodes.size());
-    for (auto const node : material.nodes.handles()) {
+    write("nodes {}\n", nodes.size());
+    for (auto const node : nodes.handles()) {
         auto const index{node.value};
-        std::format_to(out,
-                       "  [{}] {} {} inputs=",
-                       index,
-                       kind_name(material.nodes.kind(node)),
-                       type_name(material.nodes.type(node)));
-        for (std::size_t input{}; input < material.nodes.inputs(node).size(); ++input) {
-            std::format_to(
-                out, "{}{}", input == 0 ? "[" : ",", material.nodes.inputs(node)[input].value);
+        auto const kind{nodes.kind(node)};
+        auto const inputs{nodes.inputs(node)};
+        auto const input_count{inputs.size()};
+        write("  [{}] {} {} inputs=", index, kind_name(kind), type_name(nodes.type(node)));
+        for (std::size_t input{}; input < input_count; ++input) {
+            write("{}{}", input == 0 ? "[" : ",", inputs[input].value);
         }
-        result += material.nodes.inputs(node).empty() ? "[]" : "]";
-        if (material.nodes.kind(node) == material_synth::NodeKind::constant) {
+        result += inputs.empty() ? "[]" : "]";
+        if (kind == material_synth::NodeKind::constant) {
             result += " value=[";
-            for (std::size_t component{}; component < material.nodes.component_count(node);
-                 ++component) {
-                std::format_to(out,
-                               "{}{:.6g}",
-                               component == 0 ? "" : ",",
-                               material.nodes.constant(node, component));
+            auto const component_count{nodes.component_count(node)};
+            for (std::size_t component{}; component < component_count; ++component) {
+                write("{}{:.6g}", component == 0 ? "" : ",", nodes.constant(node, component));
             }
             result += ']';
-        } else if (material.nodes.kind(node) == material_synth::NodeKind::parameter) {
-            std::format_to(out, " parameter={}", material.nodes.parameter(node).value);
-        } else if (material.nodes.kind(node) == material_synth::NodeKind::texture_coordinate) {
-            std::format_to(out, " coordinate={}", material.nodes.coordinate_index(node));
-        } else if (material.nodes.kind(node) ==
-                   material_synth::NodeKind::per_instance_custom_data) {
-            std::format_to(out, " data-index={}", material.nodes.instance_data_index(node));
-        } else if (material.nodes.kind(node) == material_synth::NodeKind::custom) {
+        } else if (kind == material_synth::NodeKind::parameter) {
+            write(" parameter={}", nodes.parameter(node).value);
+        } else if (kind == material_synth::NodeKind::texture_coordinate) {
+            write(" coordinate={}", nodes.coordinate_index(node));
+        } else if (kind == material_synth::NodeKind::per_instance_custom_data) {
+            write(" data-index={}", nodes.instance_data_index(node));
+        } else if (kind == material_synth::NodeKind::custom) {
             result += " description=";
-            quoted(material.text(material.nodes.description(node)));
+            quoted(material.text(nodes.description(node)));
             result += " code=";
-            quoted(material.text(material.nodes.code(node)));
-        } else if (material.nodes.kind(node) == material_synth::NodeKind::texture_object) {
+            quoted(material.text(nodes.code(node)));
+        } else if (kind == material_synth::NodeKind::texture_object) {
             result += " texture=";
-            quoted(material.text(material.nodes.texture_path(node)));
-        } else if (material.nodes.kind(node) == material_synth::NodeKind::component_mask) {
-            std::format_to(out, " mask={}", material.text(material.nodes.component_mask(node)));
-        } else if (material.nodes.kind(node) == material_synth::NodeKind::shader_call) {
+            quoted(material.text(nodes.texture_path(node)));
+        } else if (kind == material_synth::NodeKind::component_mask) {
+            write(" mask={}", material.text(nodes.component_mask(node)));
+        } else if (kind == material_synth::NodeKind::shader_call) {
             result += " include=";
-            quoted(material.text(material.nodes.shader_path(node)));
-            std::format_to(
-                out, " function={}", material.text(material.nodes.shader_function(node)));
+            quoted(material.text(nodes.shader_path(node)));
+            write(" function={}", material.text(nodes.shader_function(node)));
         }
-        std::format_to(out,
-                       " @ {}:{}:{}\n",
-                       material.text(material.nodes.span(node).path),
-                       material.nodes.span(node).line,
-                       material.nodes.span(node).column);
-        if (material.nodes.kind(node) == material_synth::NodeKind::custom ||
-            material.nodes.kind(node) == material_synth::NodeKind::shader_call) {
-            for (std::size_t input{}; input < material.nodes.custom_inputs(node).size(); ++input) {
-                auto const& custom_input{material.nodes.custom_inputs(node)[input]};
-                std::format_to(
-                    out,
-                    "    custom-input {} {} node={}\n",
-                    material.text(material.nodes.input_declarations.name[custom_input.value]),
-                    type_name(material.nodes.input_declarations.type[custom_input.value]),
-                    material.nodes.inputs(node)[input].value);
+        auto const span{nodes.span(node)};
+        write(" @ {}:{}:{}\n", material.text(span.path), span.line, span.column);
+        if (kind == material_synth::NodeKind::custom ||
+            kind == material_synth::NodeKind::shader_call) {
+            auto const custom_inputs{nodes.custom_inputs(node)};
+            auto const custom_input_count{custom_inputs.size()};
+            for (std::size_t input{}; input < custom_input_count; ++input) {
+                auto const custom_input{custom_inputs[input]};
+                write("    custom-input {} {} node={}\n",
+                      material.text(nodes.input_declarations.name[custom_input.value]),
+                      type_name(nodes.input_declarations.type[custom_input.value]),
+                      inputs[input].value);
             }
         }
     }
 
-    for (auto const binding : material.bindings.handles()) {
-        std::format_to(out,
-                       "binding {} node={}\n",
-                       material.text(material.bindings.name[binding.value]),
-                       material.bindings.node[binding.value].value);
+    for (auto const binding : bindings.handles()) {
+        write("binding {} node={}\n",
+              material.text(bindings.name[binding.value]),
+              bindings.node[binding.value].value);
     }
-    for (auto const output : material.outputs.handles()) {
-        std::format_to(out,
-                       "output {} node={}\n",
-                       material.text(material.outputs.name[output.value]),
-                       material.outputs.node[output.value].value);
+    for (auto const output : outputs.handles()) {
+        write("output {} node={}\n",
+              material.text(outputs.name[output.value]),
+              outputs.node[output.value].value);
     }
     for (auto const& dependency : material.texture_dependencies) {
-        std::format_to(out, "texture {}\n", material.text(dependency));
+        write("texture {}\n", material.text(dependency));
     }
     return result;
 }
@@ -336,58 +376,24 @@ void lispb::compile_material(lispb::codegen::sexpr::Syntax& syntax,
                              bool const emit) {
     auto const input{fs::absolute(input_path).lexically_normal()};
     auto const project_root{fs::absolute(project_root_path).lexically_normal()};
-    ProjectTextureResolver resolver{.project_root = project_root};
-    auto const analysis{
-        material_synth::analyze(syntax, source, {&resolver, resolve_texture}, material)};
+    ProjectResolver resolver{.project_root = project_root};
+    auto const analysis{analyze_material(syntax, source, resolver, material)};
     if (!analysis.empty()) {
         std::string diagnostics;
-        auto const out{std::back_inserter(diagnostics)};
+        ioj::FormatWriter write{std::back_inserter(diagnostics)};
         for (auto const& diagnostic : analysis) {
-            std::format_to(out,
-                           "{}:{}:{}: error: {}\n",
-                           diagnostic.path,
-                           diagnostic.line,
-                           diagnostic.column,
-                           diagnostic.message);
+            write("{}:{}:{}: error: {}\n",
+                  diagnostic.path,
+                  diagnostic.line,
+                  diagnostic.column,
+                  diagnostic.message);
         }
         throw std::runtime_error{diagnostics};
-    }
-
-    std::vector<fs::path> shader_dependencies;
-    for (auto const node : material.nodes.handles()) {
-        if (material.nodes.kind(node) != material_synth::NodeKind::shader_call) {
-            continue;
-        }
-        fs::path shader_file;
-        constexpr std::string_view plugin_prefix{"/Plugin/"};
-        constexpr std::string_view project_prefix{"/Project/"};
-        if (material.text(material.nodes.shader_path(node)).starts_with(plugin_prefix)) {
-            auto const remaining{
-                material.text(material.nodes.shader_path(node)).substr(plugin_prefix.size())};
-            auto const separator{remaining.find('/')};
-            if (separator != std::string_view::npos) {
-                shader_file = project_root / "Plugins" / remaining.substr(0, separator) /
-                              "Shaders" / remaining.substr(separator + 1);
-            }
-        } else if (material.text(material.nodes.shader_path(node)).starts_with(project_prefix)) {
-            shader_file =
-                project_root / "Shaders" /
-                material.text(material.nodes.shader_path(node)).substr(project_prefix.size());
-        }
-        std::error_code shader_error;
-        if (shader_file.empty() || !fs::is_regular_file(shader_file, shader_error) ||
-            shader_error) {
-            throw std::runtime_error{"Unable to resolve material shader include: " +
-                                     std::string{material.text(material.nodes.shader_path(node))}};
-        }
-        shader_dependencies.push_back(std::move(shader_file));
     }
 
     result.dependencies.push_back(input);
     result.dependencies.insert(
         result.dependencies.end(), resolver.dependencies.begin(), resolver.dependencies.end());
-    result.dependencies.insert(
-        result.dependencies.end(), shader_dependencies.begin(), shader_dependencies.end());
     if (!emit) {
         return;
     }

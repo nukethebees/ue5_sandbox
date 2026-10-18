@@ -62,4 +62,5 @@ static_assert(static_cast<int>(ETestMissionState::Failed) ==
               static_cast<int>(::ioj::sim::MissionState::Failed));
 static_assert(static_cast<int>(ETestMissionState::Disabled) ==
               static_cast<int>(::ioj::sim::MissionState::Disabled));
+
 } // namespace ioj

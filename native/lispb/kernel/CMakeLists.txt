@@ -10,6 +10,7 @@ add_library(kernel-codegen-lib
   src/renderer.cpp
   src/portable_renderer.cpp
   src/test_renderer.cpp
+  src/validation.cpp
 )
 set_target_properties(kernel-codegen-lib PROPERTIES UNITY_BUILD OFF)
 target_include_directories(kernel-codegen-lib PUBLIC include)

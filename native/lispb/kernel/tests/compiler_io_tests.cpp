@@ -1,6 +1,7 @@
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>
 #include <codegen/sexpr/indices.h>
+#include <codegen/sexpr/source_error.h>
 #include <codegen/sexpr/sources.h>
 #include <codegen/sexpr/syntax.h>
 #include <kernel_codegen/compiler.h>
@@ -150,7 +151,7 @@ TEST(KernelCompiler, RejectsOutputCollisionsAcrossInputs) {
     project.write("second.lispb", kernel_source);
 
     EXPECT_THROW(static_cast<void>(compile(project, {"first.lispb", "second.lispb"})),
-                 std::invalid_argument);
+                 lispb::codegen::sexpr::SourceError);
 }
 
 TEST(KernelCompiler, EmitsOnlyTheSelectedProfile) {

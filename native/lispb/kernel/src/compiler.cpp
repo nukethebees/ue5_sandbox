@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <span>
 #include <utility>
+#include <vector>
 
 namespace kernel_codegen {
 
@@ -31,14 +32,18 @@ void compile(lispb::codegen::sexpr::Syntax& syntax,
     }
 
     auto const module_count{document.modules.size()};
+    std::vector<detail::ModuleAnalysis> analyses;
+    analyses.reserve(module_count - first_module);
     for (auto index{first_module}; index < module_count; ++index) {
-        if (!generate) {
-            detail::validate(
-                document, detail::ModuleId{static_cast<std::uint32_t>(index)}, profile);
-            continue;
-        }
-        auto rendered{detail::render(
-            cpp, document, detail::ModuleId{static_cast<std::uint32_t>(index)}, profile)};
+        analyses.push_back(detail::analyze(
+            syntax, document, detail::ModuleId{static_cast<std::uint32_t>(index)}, profile));
+    }
+    if (!generate) {
+        return;
+    }
+
+    for (auto const& analysis : analyses) {
+        auto rendered{detail::render(cpp, document, analysis)};
         for (auto& artifact : rendered) {
             output.add_text(
                 std::move(artifact.path), std::move(artifact.content), artifact.format_generated);

@@ -36,7 +36,6 @@
 #include <cstddef>
 #include <filesystem>
 #include <format>
-#include <iterator>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -439,29 +438,20 @@ auto conversion_function(LoweringContext& context,
 auto annotation(LoweringContext& context, EnumeratorId value, bool const reflected)
     -> std::optional<std::string> {
     auto& ir{context.ir};
-    if (!reflected ||
-        (!context.declarations.enumerators
-              .display_name[context.declarations.enumerators.index(value)]
-              .has_value() &&
-         !context.declarations.enumerators.hidden[context.declarations.enumerators.index(value)])) {
+    auto const& enumerators{context.declarations.enumerators};
+    auto const row{enumerators.index(value)};
+    if (!reflected || (!enumerators.display_name[row] && !enumerators.hidden[row])) {
         return std::nullopt;
     }
     std::vector<std::string> metadata;
-    if (context.declarations.enumerators.display_name[context.declarations.enumerators.index(value)]
-            .has_value()) {
+    if (enumerators.display_name[row]) {
         metadata.push_back("DisplayName = " +
-                           ir.render(ir.string_literal(
-                               *context.declarations.enumerators
-                                    .display_name[context.declarations.enumerators.index(value)])));
+                           ir.render(ir.string_literal(*enumerators.display_name[row])));
     }
-    if (context.declarations.enumerators.hidden[context.declarations.enumerators.index(value)]) {
+    if (enumerators.hidden[row]) {
         metadata.emplace_back("Hidden");
     }
     return "UMETA(" + join(metadata, ", ") + ")";
-}
-
-auto native_string_literal(CppIR& ir, std::string_view const value) -> std::string {
-    return ir.render(ir.string_literal(value));
 }
 
 auto native_enum_name(LoweringContext& context, ModuleSettingsId settings, DeclarationHandle schema)
@@ -516,195 +506,103 @@ auto enum_underlying_type(LoweringContext& context, DeclarationHandle schema) ->
                 : "CoreMinimal.h")});
 }
 
-auto enum_bit_width_comment(LoweringContext& context, DeclarationHandle schema) -> std::string {
-    std::optional<std::uint8_t> const width{
-        context.declarations.enums.bit_width[context.declarations.enums.index(schema)].has_value()
-            ? std::optional<std::uint8_t>{*context.declarations.enums
-                                               .bit_width[context.declarations.enums.index(schema)]}
-            : context.semantic.enum_domains()
-                  .minimum_required_bits[context.semantic.enum_domains().index(
-                      context.semantic.enum_domains().find(schema))]};
-    return width.has_value() ? "// Logical bit width: " + std::to_string(*width) + ".\n"
-                             : "// Logical bit width depends on the enumerator expressions.\n";
+auto enum_bit_width_comment(LoweringContext& context, DeclarationHandle const schema) -> NodeId {
+    auto const& enums{context.declarations.enums};
+    auto const row{enums.index(schema)};
+    auto const& domains{context.semantic.enum_domains()};
+    auto const width{enums.bit_width[row].has_value()
+                         ? std::optional<std::uint8_t>{*enums.bit_width[row]}
+                         : domains.minimum_required_bits[domains.index(domains.find(schema))]};
+    return context.ir.line_comment(
+        width ? std::format("Logical bit width: {}.", *width)
+              : "Logical bit width depends on the enumerator expressions.");
 }
 
-auto native_enum_declaration(LoweringContext& context, DeclarationHandle schema) -> std::string {
+auto native_enum_string_function(LoweringContext& context,
+                                 DeclarationHandle const schema,
+                                 NativeEnumHelper const helper) -> NodeId {
     auto& ir{context.ir};
-    auto const underlying{ir.types.spelling(enum_underlying_type(context, schema))};
-    std::string output;
-    auto out{std::back_inserter(output)};
-    std::format_to(
-        out,
-        "using {}Underlying = {};\n\n",
-        context.text(context.declarations.enums.name[context.declarations.enums.index(schema)]),
-        underlying);
-    output.append(enum_bit_width_comment(context, schema));
-    std::format_to(
-        out,
-        "enum class {} : {}Underlying {{\n",
-        context.text(context.declarations.enums.name[context.declarations.enums.index(schema)]),
-        context.text(context.declarations.enums.name[context.declarations.enums.index(schema)]));
-    for (auto const value_id : context.declarations.items(
-             context.declarations.enums.values[context.declarations.enums.index(schema)])) {
-        auto const value{value_id};
-        std::format_to(out,
-                       "    {}",
-                       context.text(context.declarations.enumerators
-                                        .name[context.declarations.enumerators.index(value)]));
-        if (context.declarations.enumerators
-                .initializer[context.declarations.enumerators.index(value)]
-                .has_value()) {
-            std::format_to(
-                out,
-                " = {}",
-                context.text(*context.declarations.enumerators
-                                  .initializer[context.declarations.enumerators.index(value)]));
-        }
-        output.append(",\n");
-    }
-    output.append("};\n\n");
+    auto const& enums{context.declarations.enums};
+    auto const row{enums.index(schema)};
+    auto const name{context.text(enums.name[row])};
+    auto const& enumerators{context.declarations.enumerators};
+    auto const serialized{helper == NativeEnumHelper::to_serialized_string};
+    auto const display{helper == NativeEnumHelper::to_display_string};
+    auto const function_name{serialized ? "to_serialized_string"
+                             : display  ? "to_display_string"
+                                        : "to_string"};
 
-    if (std::ranges::contains(
-            context.declarations.items(
-                context.declarations.enums.helpers[context.declarations.enums.index(schema)]),
-            NativeEnumHelper::to_string)) {
-        std::format_to(
-            out,
-            "[[nodiscard]] constexpr auto to_string({} const value) noexcept -> std::string_view "
-            "{{\n",
-            context.text(
-                context.declarations.enums.name[context.declarations.enums.index(schema)]));
-        output.append("    switch (value) {\n");
-        for (auto const value_id : context.declarations.items(
-                 context.declarations.enums.values[context.declarations.enums.index(schema)])) {
-            auto const value{value_id};
-            std::format_to(
-                out,
-                "        case {}::{}: {{\n",
-                context.text(
-                    context.declarations.enums.name[context.declarations.enums.index(schema)]),
-                context.text(context.declarations.enumerators
-                                 .name[context.declarations.enumerators.index(value)]));
-            std::format_to(
-                out,
-                "            return {};\n",
-                native_string_literal(
-                    ir,
-                    context.text(context.declarations.enumerators
-                                     .name[context.declarations.enumerators.index(value)])));
-            output.append("        }\n");
+    std::vector<SwitchCaseId> cases;
+    for (auto const value : context.declarations.items(enums.values[row])) {
+        auto const value_row{enumerators.index(value)};
+        if (serialized && !enumerators.serialized_name[value_row]) {
+            continue;
         }
-        output.append("    }\n\n");
-        std::format_to(
-            out,
-            "    return {};\n",
-            native_string_literal(
-                ir,
-                "<invalid " +
-                    context.text(
-                        context.declarations.enums.name[context.declarations.enums.index(schema)]) +
-                    ">"));
-        output.append("}\n\n");
+        auto const value_name{context.text(enumerators.name[value_row])};
+        auto const text{
+            serialized ? context.text(*enumerators.serialized_name[value_row])
+            : display
+                ? context.optional_text(enumerators.display_name[value_row]).value_or(value_name)
+                : value_name};
+        cases.push_back(ir.switch_case(ir.named(name + "::" + value_name),
+                                       ir.block({ir.return_statement(ir.string_literal(text))})));
     }
 
-    if (std::ranges::contains(
-            context.declarations.items(
-                context.declarations.enums.helpers[context.declarations.enums.index(schema)]),
-            NativeEnumHelper::to_display_string)) {
-        std::format_to(
-            out,
-            "\n[[nodiscard]] constexpr auto to_display_string({} const value) noexcept -> "
-            "std::string_view {{\n",
-            context.text(
-                context.declarations.enums.name[context.declarations.enums.index(schema)]));
-        output.append("    switch (value) {\n");
-        for (auto const value_id : context.declarations.items(
-                 context.declarations.enums.values[context.declarations.enums.index(schema)])) {
-            auto const value{value_id};
-            std::format_to(
-                out,
-                "        case {}::{}: {{\n",
-                context.text(
-                    context.declarations.enums.name[context.declarations.enums.index(schema)]),
-                context.text(context.declarations.enumerators
-                                 .name[context.declarations.enumerators.index(value)]));
-            std::format_to(
-                out,
-                "            return {};\n",
-                native_string_literal(
-                    ir,
-                    context
-                        .optional_text(
-                            context.declarations.enumerators
-                                .display_name[context.declarations.enumerators.index(value)])
-                        .value_or(context.text(
-                            context.declarations.enumerators
-                                .name[context.declarations.enumerators.index(value)]))));
-            output.append("        }\n");
-        }
-        output.append("    }\n\n");
-        std::format_to(
-            out,
-            "    return {};\n}}\n",
-            native_string_literal(
-                ir,
-                "<invalid " +
-                    context.text(
-                        context.declarations.enums.name[context.declarations.enums.index(schema)]) +
-                    ">"));
+    auto const invalid{ir.return_statement(ir.string_literal("<invalid " + name + ">"))};
+    if (serialized) {
+        cases.push_back(ir.switch_case({}, ir.block({invalid})));
+    }
+    NodeListBuilder body{ir};
+    body.add(ir.switch_statement(ir.named("value"), cases), serialized ? 1 : 2);
+    if (!serialized) {
+        body.add(invalid);
     }
 
-    if (std::ranges::contains(
-            context.declarations.items(
-                context.declarations.enums.helpers[context.declarations.enums.index(schema)]),
-            NativeEnumHelper::to_serialized_string)) {
-        std::format_to(
-            out,
-            "\n[[nodiscard]] constexpr auto to_serialized_string({} const value) noexcept -> "
-            "std::string_view {{\n",
-            context.text(
-                context.declarations.enums.name[context.declarations.enums.index(schema)]));
-        output.append("    switch (value) {\n");
-        for (auto const value_id : context.declarations.items(
-                 context.declarations.enums.values[context.declarations.enums.index(schema)])) {
-            auto const value{value_id};
-            if (!context.declarations.enumerators
-                     .serialized_name[context.declarations.enumerators.index(value)]
-                     .has_value()) {
-                continue;
-            }
-            std::format_to(
-                out,
-                "        case {}::{}: {{\n",
-                context.text(
-                    context.declarations.enums.name[context.declarations.enums.index(schema)]),
-                context.text(context.declarations.enumerators
-                                 .name[context.declarations.enumerators.index(value)]));
-            std::format_to(
-                out,
-                "            return {};\n",
-                native_string_literal(
-                    ir,
-                    context.text(
-                        *context.declarations.enumerators
-                             .serialized_name[context.declarations.enumerators.index(value)])));
-            output.append("        }\n");
-        }
-        output.append("        default: {\n");
-        std::format_to(
-            out,
-            "            return {};\n",
-            native_string_literal(
-                ir,
-                "<invalid " +
-                    context.text(
-                        context.declarations.enums.name[context.declarations.enums.index(schema)]) +
-                    ">"));
-        output.append("        }\n");
-        output.append("    }\n\n");
-        output.append("}\n\n");
+    auto const function{ir.function(ir.strings.intern(function_name), ir.types.intern("auto"))};
+    ir.set_function_return_type(
+        function,
+        ir.types.intern("std::string_view",
+                        {ir.types.dependency("std::string_view", "string_view")}),
+        ReturnSyntax::trailing);
+    ir.set_function_parameters(
+        function, {ir.parameter(ir.types.intern(name + " const"), ir.strings.intern("value"))});
+    auto& flags{ir.function_flags(function)};
+    flags.set_define_in_header(true);
+    flags.set_is_constexpr(true);
+    flags.set_is_nodiscard(true);
+    ir.set_function_noexcept(function);
+    ir.set_function_body(function, body.build());
+    return ir.header_function(function);
+}
+
+auto native_enum_declaration(LoweringContext& context, DeclarationHandle const schema) -> Nodes {
+    auto& ir{context.ir};
+    auto const& enums{context.declarations.enums};
+    auto const row{enums.index(schema)};
+    auto const alias{context.text(enums.name[row]) + "Underlying"};
+    auto const& enumerators{context.declarations.enumerators};
+    std::vector<EnumValueId> values;
+    for (auto const value : context.declarations.items(enums.values[row])) {
+        auto const value_row{enumerators.index(value)};
+        values.push_back(
+            ir.enumerator(enumerators.name[value_row], enumerators.initializer[value_row]));
     }
-    return output;
+
+    NodeListBuilder declarations{ir};
+    declarations.add(
+        ir.using_declaration(ir.strings.intern(alias), enum_underlying_type(context, schema)), 2);
+    declarations.add(enum_bit_width_comment(context, schema), 1);
+    declarations.add(ir.enumeration(enums.name[row], ir.types.intern(alias), values), 2);
+
+    auto const helpers{context.declarations.items(enums.helpers[row])};
+    for (auto const helper : {NativeEnumHelper::to_string,
+                              NativeEnumHelper::to_display_string,
+                              NativeEnumHelper::to_serialized_string}) {
+        if (std::ranges::contains(helpers, helper)) {
+            declarations.add(native_enum_string_function(context, schema, helper), 2);
+        }
+    }
+    return declarations.build();
 }
 
 auto native_enum_parsers(LoweringContext& context, DeclarationHandle const schema) -> Nodes {
@@ -816,170 +714,106 @@ auto unreal_underlying_type(std::string_view const spelling) -> std::string {
 }
 
 auto unreal_projection_header(LoweringContext& context,
-                              DeclarationHandle schema,
-                              EnumUnrealProjectionId projection) -> Nodes {
+                              DeclarationHandle const schema,
+                              EnumUnrealProjectionId const projection) -> Nodes {
     auto& ir{context.ir};
-    std::string output;
-    auto out{std::back_inserter(output)};
-    auto const underlying{
-        unreal_underlying_type(ir.types.spelling(enum_underlying_type(context, schema)))};
-    output.append(enum_bit_width_comment(context, schema));
-    std::format_to(
-        out,
-        "{}\nenum class {} : {} {{\n",
-        (context.declarations.enum_unreal_projections
-                     .reflection[context.declarations.enum_unreal_projections.index(projection)] ==
-                 EnumReflection::blueprint
-             ? "UENUM(BlueprintType)"
-             : "UENUM()"),
-        context.text(context.declarations.enum_unreal_projections
-                         .name[context.declarations.enum_unreal_projections.index(projection)]),
-        underlying);
-    for (auto const value_id : context.declarations.items(
-             context.declarations.enums.values[context.declarations.enums.index(schema)])) {
-        auto const value{value_id};
-        std::format_to(out,
-                       "    {}",
-                       context.text(context.declarations.enumerators
-                                        .name[context.declarations.enumerators.index(value)]));
-        if (context.declarations.enumerators
-                .initializer[context.declarations.enumerators.index(value)]
-                .has_value()) {
-            std::format_to(
-                out,
-                " = {}",
-                context.text(*context.declarations.enumerators
-                                  .initializer[context.declarations.enumerators.index(value)]));
-        }
-        if (context.declarations.enumerators
-                .display_name[context.declarations.enumerators.index(value)]
-                .has_value() ||
-            context.declarations.enumerators
-                .hidden[context.declarations.enumerators.index(value)]) {
-            output.append(" UMETA(");
-            if (context.declarations.enumerators
-                    .display_name[context.declarations.enumerators.index(value)]
-                    .has_value()) {
-                std::format_to(
-                    out,
-                    "DisplayName = {}",
-                    native_string_literal(
-                        ir,
-                        context.text(
-                            *context.declarations.enumerators
-                                 .display_name[context.declarations.enumerators.index(value)])));
-            }
-            if (context.declarations.enumerators
-                    .display_name[context.declarations.enumerators.index(value)]
-                    .has_value() &&
-                context.declarations.enumerators
-                    .hidden[context.declarations.enumerators.index(value)]) {
-                output.append(", ");
-            }
-            if (context.declarations.enumerators
-                    .hidden[context.declarations.enumerators.index(value)]) {
-                output.append("Hidden");
-            }
-            output.append(")");
-        }
-        output.append(",\n");
+    auto const& projections{context.declarations.enum_unreal_projections};
+    auto const row{projections.index(projection)};
+    auto const name{context.text(projections.name[row])};
+    auto const underlying{ir.types.intern(
+        unreal_underlying_type(ir.types.spelling(enum_underlying_type(context, schema))))};
+    auto const& enums{context.declarations.enums};
+    auto const enum_row{enums.index(schema)};
+    auto const& enumerators{context.declarations.enumerators};
+    auto const enum_values{context.declarations.items(enums.values[enum_row])};
+    std::vector<EnumValueId> values;
+    values.reserve(enum_values.size());
+    for (auto const value : enum_values) {
+        auto const value_row{enumerators.index(value)};
+        values.push_back(ir.enumerator(enumerators.name[value_row],
+                                       enumerators.initializer[value_row],
+                                       ir.store_optional_text(annotation(context, value, true))));
     }
-    std::format_to(
-        out,
-        "}};\n\nusing {}Underlying = {};",
-        context.text(context.declarations.enum_unreal_projections
-                         .name[context.declarations.enum_unreal_projections.index(projection)]),
-        underlying);
-    NodeListBuilder result{ir};
-    result.add(ir.raw(output), 2);
-    if (context.declarations.enum_unreal_projections
-            .enum_array[context.declarations.enum_unreal_projections.index(projection)]) {
-        auto const enum_type{ir.types.intern(
-            "::" + context.text(
-                       context.declarations.enum_unreal_projections
-                           .name[context.declarations.enum_unreal_projections.index(projection)]))};
-        result.add(ir.namespace_node(
+
+    NodeListBuilder declarations{ir};
+    declarations.add(enum_bit_width_comment(context, schema), 1);
+    declarations.add(ir.raw(projections.reflection[row] == EnumReflection::blueprint
+                                ? "UENUM(BlueprintType)"
+                                : "UENUM()"),
+                     1);
+    declarations.add(ir.enumeration(projections.name[row], underlying, values), 2);
+    declarations.add(ir.using_declaration(ir.strings.intern(name + "Underlying"), underlying), 2);
+    if (projections.enum_array[row]) {
+        declarations.add(ir.namespace_node(
             ir.strings.intern("ioj"),
-            {enum_count_specialization(
-                ir,
-                enum_type,
-                context.declarations.enums.values[context.declarations.enums.index(schema)]
-                    .size())}));
+            {enum_count_specialization(ir, ir.types.intern("::" + name), enum_values.size())}));
     }
-    return result.build();
+    return declarations.build();
+}
+
+auto native_conversion_function(LoweringContext& context,
+                                std::string_view const function_name,
+                                std::string const& source,
+                                std::string const& target,
+                                std::span<EnumeratorId const> const values) -> NodeId {
+    auto& ir{context.ir};
+    auto const& enumerators{context.declarations.enumerators};
+    std::vector<SwitchCaseId> cases;
+    cases.reserve(values.size());
+    for (auto const value : values) {
+        auto const name{context.text(enumerators.name[enumerators.index(value)])};
+        cases.push_back(
+            ir.switch_case(ir.named(source + "::" + name),
+                           ir.block({ir.return_statement(ir.named(target + "::" + name))})));
+    }
+
+    auto const target_type{ir.types.intern(target)};
+    auto const function{ir.function(ir.strings.intern(function_name), ir.types.intern("auto"))};
+    ir.set_function_return_type(function, target_type, ReturnSyntax::trailing);
+    ir.set_function_parameters(
+        function, {ir.parameter(ir.types.intern(source + " const"), ir.strings.intern("value"))});
+    auto& flags{ir.function_flags(function)};
+    flags.set_define_in_header(true);
+    flags.set_is_constexpr(true);
+    flags.set_is_nodiscard(true);
+    ir.set_function_noexcept(function);
+    NodeListBuilder body{ir};
+    body.add(ir.switch_statement(ir.named("value"), cases), 2);
+    body.add(ir.return_statement(ir.static_cast_expr(target_type, ir.named("value"))));
+    ir.set_function_body(function, body.build());
+    return ir.header_function(function);
 }
 
 auto unreal_conversion_header(LoweringContext& context,
-                              ModuleSettingsId settings,
-                              DeclarationHandle schema,
-                              EnumUnrealProjectionId projection) -> std::string {
+                              ModuleSettingsId const settings,
+                              DeclarationHandle const schema,
+                              EnumUnrealProjectionId const projection) -> NodeId {
+    auto& ir{context.ir};
     auto const native_name{native_enum_name(context, settings, schema)};
-    std::string output;
-    auto out{std::back_inserter(output)};
-    std::format_to(
-        out,
-        "namespace ioj {{\n[[nodiscard]] constexpr auto to_native({} const value) noexcept -> {} "
-        "{{\n    switch (value) {{\n",
-        context.text(context.declarations.enum_unreal_projections
-                         .name[context.declarations.enum_unreal_projections.index(projection)]),
-        native_name);
-    for (auto const value_id : context.declarations.items(
-             context.declarations.enums.values[context.declarations.enums.index(schema)])) {
-        auto const value{value_id};
-        std::format_to(
-            out,
-            "        case {}::{}: {{\n            return {}::{};\n        }}\n",
-            context.text(context.declarations.enum_unreal_projections
-                             .name[context.declarations.enum_unreal_projections.index(projection)]),
-            context.text(context.declarations.enumerators
-                             .name[context.declarations.enumerators.index(value)]),
-            native_name,
-            context.text(context.declarations.enumerators
-                             .name[context.declarations.enumerators.index(value)]));
+    auto const& projections{context.declarations.enum_unreal_projections};
+    auto const projection_name{context.text(projections.name[projections.index(projection)])};
+    auto const& enums{context.declarations.enums};
+    auto const values{context.declarations.items(enums.values[enums.index(schema)])};
+
+    NodeListBuilder declarations{ir};
+    declarations.add(
+        native_conversion_function(context, "to_native", projection_name, native_name, values), 2);
+    declarations.add(
+        native_conversion_function(context, "to_unreal", native_name, projection_name, values), 2);
+    auto const& enumerators{context.declarations.enumerators};
+    for (auto const value : values) {
+        auto const name{context.text(enumerators.name[enumerators.index(value)])};
+        declarations.add(
+            ir.static_assertion(
+                ir.store_text(std::format("static_cast<int>({}::{}) == static_cast<int>({}::{})",
+                                          projection_name,
+                                          name,
+                                          native_name,
+                                          name)),
+                {}),
+            1);
     }
-    std::format_to(
-        out,
-        "    }}\n\n    return static_cast<{}>(value);\n}}\n\n[[nodiscard]] constexpr auto "
-        "to_unreal({} const value) noexcept -> {} {{\n    switch (value) {{\n",
-        native_name,
-        native_name,
-        context.text(context.declarations.enum_unreal_projections
-                         .name[context.declarations.enum_unreal_projections.index(projection)]));
-    for (auto const value_id : context.declarations.items(
-             context.declarations.enums.values[context.declarations.enums.index(schema)])) {
-        auto const value{value_id};
-        std::format_to(
-            out,
-            "        case {}::{}: {{\n            return {}::{};\n        }}\n",
-            native_name,
-            context.text(context.declarations.enumerators
-                             .name[context.declarations.enumerators.index(value)]),
-            context.text(context.declarations.enum_unreal_projections
-                             .name[context.declarations.enum_unreal_projections.index(projection)]),
-            context.text(context.declarations.enumerators
-                             .name[context.declarations.enumerators.index(value)]));
-    }
-    std::format_to(
-        out,
-        "    }}\n\n    return static_cast<{}>(value);\n}}\n\n",
-        context.text(context.declarations.enum_unreal_projections
-                         .name[context.declarations.enum_unreal_projections.index(projection)]));
-    for (auto const value_id : context.declarations.items(
-             context.declarations.enums.values[context.declarations.enums.index(schema)])) {
-        auto const value{value_id};
-        std::format_to(
-            out,
-            "static_assert(static_cast<int>({}::{}) == static_cast<int>({}::{}));\n",
-            context.text(context.declarations.enum_unreal_projections
-                             .name[context.declarations.enum_unreal_projections.index(projection)]),
-            context.text(context.declarations.enumerators
-                             .name[context.declarations.enumerators.index(value)]),
-            native_name,
-            context.text(context.declarations.enumerators
-                             .name[context.declarations.enumerators.index(value)]));
-    }
-    output.append("} // namespace ioj\n");
-    return output;
+    return ir.namespace_node(ir.strings.intern("ioj"), declarations.build());
 }
 
 } // namespace
@@ -999,29 +833,13 @@ auto lower_enum(LoweringContext& context,
                     context.declarations.enums.helpers[context.declarations.enums.index(schema)]),
                 helper);
         };
-        prefix.add(ir.include(ir.store_text("cstdint"), IncludeStyle::system), 2);
-        auto const parses_strings{has(NativeEnumHelper::try_parse) ||
-                                  has(NativeEnumHelper::try_parse_serialized)};
-        if (!parses_strings &&
-            std::ranges::any_of(
-                context.declarations.items(
-                    context.declarations.enums.helpers[context.declarations.enums.index(schema)]),
-                [](auto const helper) { return helper != NativeEnumHelper::traits; })) {
-            prefix.add(ir.include(ir.store_text("string_view"), IncludeStyle::system), 2);
-        }
-        if (has(NativeEnumHelper::traits)) {
-            prefix.add(ir.include(ir.store_text("array"), IncludeStyle::system), 2);
-        }
         if (has(NativeEnumHelper::traits) ||
             context.declarations.enums.enum_array[context.declarations.enums.index(schema)]) {
             prefix.add(ir.include(ir.store_text("ioj/enum_traits.h"), IncludeStyle::quoted), 2);
         }
-        if (context.declarations.enums.enum_array[context.declarations.enums.index(schema)]) {
-            prefix.add(ir.include(ir.store_text("cstddef"), IncludeStyle::system), 2);
-        }
         emission.header_prefix = prefix.build();
         NodeListBuilder declarations{ir};
-        declarations.add(ir.raw(native_enum_declaration(context, schema)), 2);
+        declarations.append(native_enum_declaration(context, schema));
         declarations.append(native_enum_parsers(context, schema));
         emission.header = declarations.build();
         if (has(NativeEnumHelper::traits) ||
@@ -1069,7 +887,7 @@ auto lower_enum(LoweringContext& context,
                 {ir.include(projections.native_header_include[projection_row],
                             IncludeStyle::quoted),
                  ir.include(projections.header_include[projection_row], IncludeStyle::quoted),
-                 ir.raw(unreal_conversion_header(context, settings, schema, projection))})};
+                 unreal_conversion_header(context, settings, schema, projection)})};
             ir.files.flags[ir.files.index(conversion_file)].set_clang_format_off(true);
             emission.additional_modules.push_back(
                 ir.modules.append(ir.strings.intern(module_name + "_conversion"), conversion_file));
@@ -1088,7 +906,7 @@ auto lower_enum(LoweringContext& context,
     if (!reflected) {
         declarations.add(ir.using_declaration(ir.strings.intern(underlying_alias), underlying), 2);
     }
-    declarations.add(ir.raw(enum_bit_width_comment(context, schema)), 1);
+    declarations.add(enum_bit_width_comment(context, schema), 1);
     if (reflected) {
         declarations.add(
             ir.raw(

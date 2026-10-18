@@ -54,4 +54,5 @@ static_assert(static_cast<int>(ETestMissionMode::KillEnemies) ==
               static_cast<int>(::ioj::sim::MissionMode::KillEnemies));
 static_assert(static_cast<int>(ETestMissionMode::KillEnemiesWithinTime) ==
               static_cast<int>(::ioj::sim::MissionMode::KillEnemiesWithinTime));
+
 } // namespace ioj

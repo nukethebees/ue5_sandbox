@@ -6,6 +6,7 @@
 #include <codegen/ast/cpp_types.h>
 #include <codegen/ast/indices.h>
 #include <codegen/ast/record_kind.h>
+#include <codegen/complete_dependencies.h>
 #include <codegen/schema.h>
 #include <codegen/schema/declaration_handle.h>
 #include <codegen/schema/declaration_kind.h>
@@ -202,9 +203,12 @@ class TypeGraphBuilder {
         codegen::detail::validate_manifest(manifest_, graph_);
         resolve_definitions(false);
         validate_nested_soa_types();
+        validate_standard_library_soa_columns();
         validate_vector_equivalents();
         validate_aggregate_cycles();
         build_edges();
+        codegen::detail::validate_complete_definition_cycles(
+            graph_, codegen::detail::complete_dependencies(graph_));
         return std::move(graph_);
     }
   private:
@@ -1738,6 +1742,45 @@ class TypeGraphBuilder {
                     .related_storage_name[graph_.definitions_.soas.index(*soa)]) {
                 visit(visit, TypeId{index});
             }
+        }
+    }
+
+    void validate_standard_library_soa_columns() const {
+        auto const& soas{graph_.definitions_.soas};
+        auto const& columns{graph_.definitions_.soa_columns};
+        auto const& occurrences{graph_.occurrences()};
+        std::set<TypeId> visited;
+        auto visit = [&](auto&& self, TypeId const type) -> void {
+            if (!visited.insert(type).second) {
+                return;
+            }
+            for (auto const column : soas.columns_of(graph_.definition(type))) {
+                auto const row{columns.index(column)};
+                if (columns.nested_type[row]) {
+                    self(self, *columns.nested_type[row]);
+                    continue;
+                }
+                auto const occurrence{columns.semantic_type[row]};
+                if (graph_.cpp_types().spelling(
+                        occurrences.cpp_type[occurrences.index(occurrence)]) == "bool") {
+                    throw std::invalid_argument{"Standard-library SoA requires contiguous columns; "
+                                                "std::vector<bool> is unsupported"};
+                }
+            }
+        };
+        for (auto const type : graph_.types()) {
+            auto const definition{graph_.definition(type)};
+            if (definition.kind() != TypeDefinitionKind::soa) {
+                continue;
+            }
+            auto const row{soas.index(definition)};
+            if (soas.backend[row] != codegen::SoaBackend::standard_library ||
+                soas.layout_only[row] ||
+                (soas.source_kind[row] == SoaSourceKind::structure &&
+                 !store_.soas.emits_vector_storage(graph_.source_declaration(type)))) {
+                continue;
+            }
+            visit(visit, type);
         }
     }
 

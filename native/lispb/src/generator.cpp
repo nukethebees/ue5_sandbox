@@ -47,7 +47,6 @@
 #include <codegen/schema/union_schemas.h>
 #include <codegen/schema/vector_soa_schemas.h>
 #include <codegen/source_loader.h>
-#include <codegen/type_dependency_edge.h>
 #include <lispb/compilation.h>
 #include <lispb/compiler_storage.h>
 #include <lispb/indices.h>
@@ -84,7 +83,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
-#include <format>
 #include <iterator>
 #include <limits>
 #include <map>
@@ -105,17 +103,11 @@ namespace {
 template <typename>
 inline constexpr bool unlowered_declaration_schema{false};
 
-auto is_record_signature(schema::TypeUseId const use, schema::TypeGraph const& graph) -> bool {
-    return graph.kind(use) != TypeReferenceKind::ordinary && graph.owner(use) &&
-           ((graph.definition(*graph.owner(use))).kind() ==
-            lispb::schema::TypeDefinitionKind::record);
-}
-
 auto generated_forward_declarations(CppIR& ir, ModuleHandle module, schema::TypeGraph const& graph)
     -> detail::DeclarationEmission {
     std::set<schema::TypeId> targets;
     for (auto const use : graph.type_uses()) {
-        auto const signature{is_record_signature(use, graph)};
+        auto const signature{detail::is_record_signature(use, graph)};
         if (graph.module(use) == module &&
             uses_forward_declaration(graph.target(use),
                                      graph,
@@ -150,111 +142,6 @@ auto generated_forward_declarations(CppIR& ir, ModuleHandle module, schema::Type
     return {.header_prefix = prefix.build(),
             .header = declarations.build(),
             .source_dependencies = false};
-}
-
-auto complete_dependencies(schema::TypeGraph const& graph) -> detail::CompleteDependencies {
-    using namespace lispb::schema;
-    std::vector<detail::TypeDependencyEdge> edges;
-    auto const& definitions{graph.definitions()};
-    auto const count{static_cast<std::uint32_t>(graph.types().size())};
-    for (std::uint32_t index{}; index < count; ++index) {
-        auto const owner{TypeId{index}};
-        auto dependency = [&](ResolvedOccurrenceId reference) {
-            if (!uses_forward_declaration(reference, graph)) {
-                edges.push_back(
-                    {owner, graph.occurrences().type[graph.occurrences().index(reference)]});
-            }
-        };
-        switch ((graph.definition(owner)).kind()) {
-            case lispb::schema::TypeDefinitionKind::record: {
-                for (auto const id : definitions.records.members_of(graph.definition(owner))) {
-                    dependency(definitions.record_members
-                                   .semantic_type[definitions.record_members.index(id)]);
-                }
-                break;
-            }
-            case lispb::schema::TypeDefinitionKind::soa: {
-                for (auto const id : definitions.soas.columns_of(graph.definition(owner))) {
-                    dependency(
-                        definitions.soa_columns.semantic_type[definitions.soa_columns.index(id)]);
-                }
-                break;
-            }
-            case lispb::schema::TypeDefinitionKind::union_type: {
-                for (auto const id : definitions.unions.alternatives_of(graph.definition(owner))) {
-                    dependency(definitions.union_alternatives
-                                   .semantic_type[definitions.union_alternatives.index(id)]);
-                }
-                break;
-            }
-            case lispb::schema::TypeDefinitionKind::tagged_union: {
-                dependency(
-                    definitions.tagged_unions
-                        .discriminant[definitions.tagged_unions.index(graph.definition(owner))]);
-                for (auto const id :
-                     definitions.tagged_unions.alternatives_of(graph.definition(owner))) {
-                    dependency(definitions.tagged_union_alternatives
-                                   .semantic_type[definitions.tagged_union_alternatives.index(id)]);
-                }
-                break;
-            }
-            default:
-                break;
-        }
-    }
-    for (auto const use : graph.type_uses()) {
-        if (is_record_signature(use, graph) &&
-            graph.occurrences().type[graph.occurrences().index(graph.target(use))] !=
-                *graph.owner(use) &&
-            !uses_forward_declaration(graph.target(use), graph, graph.kind(use))) {
-            edges.push_back(
-                {*graph.owner(use),
-                 graph.occurrences().type[graph.occurrences().index(graph.target(use))]});
-        }
-    }
-    std::ranges::stable_sort(edges, {}, &detail::TypeDependencyEdge::owner);
-    detail::CompleteDependencies result;
-    result.offsets.reserve(count + 1);
-    result.targets.reserve(edges.size());
-    std::size_t position{};
-    for (std::uint32_t index{}; index < count; ++index) {
-        result.offsets.push_back(static_cast<std::uint32_t>(result.targets.size()));
-        while (position < edges.size() && edges[position].owner.value == index) {
-            result.targets.push_back(edges[position++].target);
-        }
-    }
-    result.offsets.push_back(static_cast<std::uint32_t>(result.targets.size()));
-    return result;
-}
-
-void validate_complete_definition_cycles(schema::TypeGraph const& graph,
-                                         detail::CompleteDependencies const& dependencies) {
-    std::vector<bool> visited(graph.types().size());
-    std::vector<schema::TypeId> active;
-    auto visit = [&](auto&& self, schema::TypeId type) -> void {
-        if (visited[type.value]) {
-            return;
-        }
-        if (auto const cycle{std::ranges::find(active, type)}; cycle != active.end()) {
-            std::string message{"C++ complete-definition dependency cycle: "};
-            for (auto entry{cycle}; entry != active.end(); ++entry) {
-                message += graph.strings().view(graph.cpp_spelling(*entry));
-                message += " -> ";
-            }
-            message += graph.strings().view(graph.cpp_spelling(type));
-            throw std::invalid_argument{message};
-        }
-        active.push_back(type);
-        for (auto const dependency : dependencies.of(type)) {
-            self(self, dependency);
-        }
-        active.pop_back();
-        visited[type.value] = true;
-    };
-    auto const count{static_cast<std::uint32_t>(graph.types().size())};
-    for (std::uint32_t index{}; index < count; ++index) {
-        visit(visit, schema::TypeId{index});
-    }
 }
 
 auto declaration_emission_order(Declarations const& store,
@@ -397,12 +284,9 @@ auto lower_scalar(detail::LoweringContext& context, DeclarationHandle scalar)
     if (context.declarations.integer_scalars
             .cpp_emission[context.declarations.integer_scalars.index(scalar)] !=
         IntegerScalarCppEmission::none) {
-        if (!context.declarations.integer_scalars
-                 .cpp_type[context.declarations.integer_scalars.index(scalar)]
-                 .has_value()) {
-            throw std::invalid_argument{"Integer scalar '" + scalar_name +
-                                        "' constants emission requires a C++ type"};
-        }
+        assert(context.declarations.integer_scalars
+                   .cpp_type[context.declarations.integer_scalars.index(scalar)]
+                   .has_value());
         auto const cpp_type{
             scalar_cpp_type(context,
                             *context.declarations.integer_scalars
@@ -432,17 +316,25 @@ auto lower_scalar(detail::LoweringContext& context, DeclarationHandle scalar)
         if (context.declarations.integer_scalars
                 .cpp_emission[context.declarations.integer_scalars.index(scalar)] ==
             IntegerScalarCppEmission::constants_with_names) {
-            auto dependencies{std::vector<TypeDependencyId>{ir.types.dependencies(cpp_type).begin(),
-                                                            ir.types.dependencies(cpp_type).end()}};
-            dependencies.push_back(ir.types.dependency("std::string_view", "string_view"));
+            auto const lookup{
+                ir.function(ir.strings.intern(scalar_name + "_name"), ir.types.intern("auto"))};
+            ir.set_function_return_type(
+                lookup,
+                ir.types.intern("std::string_view",
+                                {ir.types.dependency("std::string_view", "string_view")}),
+                ReturnSyntax::trailing);
+            ir.set_function_parameters(
+                lookup,
+                {ir.parameter(
+                    ir.types.derive(cpp_type, std::string{ir.types.spelling(cpp_type)} + " const"),
+                    ir.strings.intern("value"))});
+            auto& flags{ir.function_flags(lookup)};
+            flags.set_define_in_header(true);
+            flags.set_is_constexpr(true);
+            flags.set_is_nodiscard(true);
+            ir.set_function_noexcept(lookup);
 
-            std::string lookup;
-            auto const out{std::back_inserter(lookup)};
-            std::format_to(out,
-                           "[[nodiscard]] constexpr auto {}_name({} const value) noexcept -> "
-                           "std::string_view {{\n    switch (value) {{\n",
-                           scalar_name,
-                           ir.types.spelling(cpp_type));
+            std::vector<SwitchCaseId> cases;
             for (auto const code_id : context.declarations.items(
                      context.declarations.integer_scalars
                          .named_codes[context.declarations.integer_scalars.index(scalar)])) {
@@ -450,17 +342,17 @@ auto lower_scalar(detail::LoweringContext& context, DeclarationHandle scalar)
                 auto const code_name{
                     context.text(context.declarations.packed_named_codes
                                      .name[context.declarations.packed_named_codes.index(code)])};
-                std::format_to(
-                    out,
-                    "        case {}_{}: {{\n            return {};\n        }}\n",
-                    scalar_name,
-                    code_name,
-                    ir.render(ir.string_literal(string_id(
+                cases.push_back(ir.switch_case(
+                    ir.named(scalar_name + '_' + code_name),
+                    ir.block({ir.return_statement(ir.string_literal(string_id(
                         context.declarations.packed_named_codes
-                            .name[context.declarations.packed_named_codes.index(code)]))));
+                            .name[context.declarations.packed_named_codes.index(code)])))})));
             }
-            lookup += "    }\n\n    return {};\n}";
-            declarations.add(ir.raw(lookup, std::move(dependencies)), 2);
+            NodeListBuilder body{ir};
+            body.add(ir.switch_statement(ir.named("value"), cases), 2)
+                .add(ir.return_statement(ir.init_list({})));
+            ir.set_function_body(lookup, body.build());
+            declarations.add(ir.header_function(lookup), 2);
         }
     }
 
@@ -471,8 +363,7 @@ auto lower_scalar(detail::LoweringContext& context, DeclarationHandle scalar)
 
 auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph)
     -> std::vector<ModuleId> {
-    auto const complete{complete_dependencies(graph)};
-    validate_complete_definition_cycles(graph, complete);
+    auto const complete{detail::complete_dependencies(graph)};
     auto& store{manifest.declarations};
     std::vector<ModuleId> result;
     for (auto const module_id : manifest.modules) {
@@ -680,7 +571,6 @@ void compile_schema(CompilerStorage& storage,
     }
     output.dependencies.insert(output.dependencies.end(), modules.begin(), modules.end());
     if (!emit) {
-        validate_complete_definition_cycles(graph, complete_dependencies(graph));
         return;
     }
     auto files{render_modules(ir, lower_modules(ir, manifest, graph))};

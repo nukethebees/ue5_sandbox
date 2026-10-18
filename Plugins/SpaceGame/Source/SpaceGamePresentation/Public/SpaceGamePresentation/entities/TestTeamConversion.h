@@ -62,4 +62,5 @@ static_assert(static_cast<int>(ETestTeam::Green) == static_cast<int>(::ioj::Team
 static_assert(static_cast<int>(ETestTeam::Blue) == static_cast<int>(::ioj::Team::Blue));
 static_assert(static_cast<int>(ETestTeam::Orange) == static_cast<int>(::ioj::Team::Orange));
 static_assert(static_cast<int>(ETestTeam::Yellow) == static_cast<int>(::ioj::Team::Yellow));
+
 } // namespace ioj

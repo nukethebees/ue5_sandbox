@@ -61,6 +61,7 @@ ioj_enable_warnings(lispb-project CODEGEN)
 add_library(lispb-schema)
 target_sources(lispb-schema PRIVATE
   src/compiler_storage.cpp
+  src/complete_dependencies.cpp
   src/ast/cpp_types.cpp
   src/declaration_schema.cpp
   src/declarations.cpp
@@ -204,7 +205,6 @@ target_sources(codegen-lib PRIVATE
   src/ast/include.cpp
   src/ast/node_list_builder.cpp
   src/cpp_string.cpp
-  src/complete_dependencies.cpp
   src/lowering_context.cpp
   src/enum_lowering.cpp
   src/facade_lowering.cpp

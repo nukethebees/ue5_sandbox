@@ -123,9 +123,15 @@ auto parse_document(std::string_view const path, std::string_view const source) 
     return ParsedDocument{path, source};
 }
 
+auto render_document(ParsedDocument& document, lispb::KernelProfile const profile)
+    -> std::vector<lispb::TextArtifact> {
+    auto const analysis{analyze(document.syntax, document.data, ModuleId{0}, profile)};
+    return render(document.cpp, document.data, analysis);
+}
+
 auto render_source(std::string_view const source) -> std::vector<lispb::TextArtifact> {
     auto document{parse_document("test.lispb", source)};
-    return render(document.cpp, document.data, ModuleId{0}, lispb::KernelProfile::unreal);
+    return render_document(document, lispb::KernelProfile::unreal);
 }
 
 auto literal_source(std::string_view const types, std::string_view const literal) -> std::string {
@@ -182,8 +188,7 @@ TEST(KernelRenderer, GeneratesConcreteOverloadsAndSourceLoops) {
 
 TEST(KernelRenderer, GeneratesFusedComponentMapBindings) {
     auto document{parse_document("test.lispb", component_standard_source)};
-    auto const files{
-        render(document.cpp, document.data, ModuleId{0}, lispb::KernelProfile::standard)};
+    auto const files{render_document(document, lispb::KernelProfile::standard)};
 
     ASSERT_EQ(files.size(), 2);
     EXPECT_TRUE(files[0].content.contains("std::span<float const> from_x"));
@@ -216,7 +221,7 @@ TEST(KernelParser, RejectsInvalidComponentMapDeclarations) {
                  lispb::codegen::sexpr::SourceError);
 }
 
-TEST(KernelRenderer, RejectsInvalidIntegralReferenceFixtures) {
+TEST(KernelAnalysis, RejectsInvalidIntegralReferenceFixtures) {
     constexpr std::string_view prefix = R"(
 (kernel-module invalid_reference
   (emit standard
@@ -239,9 +244,11 @@ TEST(KernelRenderer, RejectsInvalidIntegralReferenceFixtures) {
     for (auto const expression : {"(* (* data 50000) 50000)", "(/ data 0)"}) {
         auto const source{std::string{prefix} + expression + std::string{suffix}};
         auto document{parse_document("test.lispb", source)};
-        EXPECT_THROW(static_cast<void>(render(
-                         document.cpp, document.data, ModuleId{0}, lispb::KernelProfile::standard)),
-                     std::invalid_argument);
+        EXPECT_THROW(
+            static_cast<void>(analyze(
+                document.syntax, document.data, ModuleId{0}, lispb::KernelProfile::standard)),
+            lispb::codegen::sexpr::SourceError);
+        EXPECT_TRUE(document.cpp.files.path.empty());
     }
 }
 
@@ -269,8 +276,7 @@ TEST(KernelReferenceEvaluator, EvaluatesEveryOperatorForEveryNumericType) {
 )";
 
     auto document{parse_document("test.lispb", source)};
-    auto const files{
-        render(document.cpp, document.data, ModuleId{0}, lispb::KernelProfile::standard)};
+    auto const files{render_document(document, lispb::KernelProfile::standard)};
 
     ASSERT_EQ(files.size(), 3);
     EXPECT_TRUE(files[2].content.contains("static_cast<std::int32_t>("));
@@ -282,8 +288,7 @@ TEST(KernelReferenceEvaluator, EvaluatesEveryOperatorForEveryNumericType) {
 TEST(KernelRenderer, SkipsModulesWithoutTheSelectedProfile) {
     auto document{parse_document("test.lispb", valid_source)};
 
-    EXPECT_TRUE(
-        render(document.cpp, document.data, ModuleId{0}, lispb::KernelProfile::standard).empty());
+    EXPECT_TRUE(render_document(document, lispb::KernelProfile::standard).empty());
 }
 
 TEST(KernelParser, RejectsInvalidEmissionProfiles) {
@@ -353,8 +358,7 @@ TEST(KernelRenderer, StandardPairwiseDisjointChecksEveryArray) {
     auto source{std::string{standard_source}};
     source.replace(source.find("(variants"), 0, "(aliasing pairwise-disjoint)\n    ");
     auto document{parse_document("test.lispb", source)};
-    auto const files{
-        render(document.cpp, document.data, ModuleId{0}, lispb::KernelProfile::standard)};
+    auto const files{render_document(document, lispb::KernelProfile::standard)};
 
     EXPECT_TRUE(
         files[1].content.contains("arithmetic_detail::require(!arithmetic_detail::ranges_overlap("
@@ -403,8 +407,7 @@ TEST(KernelRenderer, RendersNamedConstantsForEachConcreteFloatingType) {
     EXPECT_TRUE(files[1].content.contains("-std::numeric_limits<double>::infinity()"));
 
     auto document{parse_document("test.lispb", source)};
-    auto const standard_files{
-        render(document.cpp, document.data, ModuleId{0}, lispb::KernelProfile::standard)};
+    auto const standard_files{render_document(document, lispb::KernelProfile::standard)};
 
     EXPECT_TRUE(standard_files[1].content.contains("#include <limits>"));
     EXPECT_TRUE(standard_files[1].content.contains("std::numeric_limits<float>::quiet_NaN()"));
@@ -522,7 +525,7 @@ TEST(KernelParser, RejectsInvalidOrUnrepresentableDecimalLiterals) {
     }
 }
 
-TEST(KernelRenderer, RejectsCollidingPublicSignatures) {
+TEST(KernelAnalysis, RejectsCollidingPublicSignatures) {
     auto source{std::string{valid_source}};
     auto const map_position{source.find("(map multiply")};
     auto duplicate{source.substr(map_position, source.rfind(')') - map_position)};
@@ -533,10 +536,12 @@ TEST(KernelRenderer, RejectsCollidingPublicSignatures) {
                       "(in-place lhs product_in_place)");
     source.insert(source.rfind(')'), duplicate);
 
-    EXPECT_THROW(static_cast<void>(render_source(source)), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(render_source(source)), lispb::codegen::sexpr::SourceError);
     auto document{parse_document("test.lispb", source)};
-    EXPECT_THROW(validate(document.data, ModuleId{0}, lispb::KernelProfile::unreal),
-                 std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(analyze(
+                     document.syntax, document.data, ModuleId{0}, lispb::KernelProfile::unreal)),
+                 lispb::codegen::sexpr::SourceError);
+    EXPECT_TRUE(document.cpp.files.path.empty());
 }
 
 }

@@ -508,7 +508,7 @@ TEST(SourceLoader, RecordParameterDefaultsRejectCompleteDefinitionCycles) {
                  (record B (function consume void (parameter value first::A :default "{}")))))"}) {
         files.write_root(schema);
         try {
-            static_cast<void>(files.lower(files.load()));
+            static_cast<void>(files.graph());
             FAIL();
         } catch (std::invalid_argument const& error) {
             EXPECT_TRUE(std::string{error.what()}.contains("complete-definition dependency cycle"))
@@ -580,7 +580,7 @@ TEST(SourceLoader, RecordMethodSignaturesRejectLayoutOnlyTypesAndCompleteDefinit
                          signature + R"()
           (struct Layout :layout-only true (member xs array float))))");
         try {
-            static_cast<void>(files.lower(files.load()));
+            static_cast<void>(files.graph());
             FAIL() << signature;
         } catch (std::invalid_argument const& error) {
             EXPECT_TRUE(std::string{error.what()}.contains("has no C++ owner")) << error.what();
@@ -591,7 +591,7 @@ TEST(SourceLoader, RecordMethodSignaturesRejectLayoutOnlyTypesAndCompleteDefinit
       (module providers :header "Providers.h" :namespace providers :backend standard-library
         (struct Layout :layout-only true (member xs array float))))");
     try {
-        static_cast<void>(files.lower(files.load()));
+        static_cast<void>(files.graph());
         FAIL();
     } catch (std::invalid_argument const& error) {
         EXPECT_TRUE(std::string{error.what()}.contains("has no C++ owner")) << error.what();
@@ -600,7 +600,7 @@ TEST(SourceLoader, RecordMethodSignaturesRejectLayoutOnlyTypesAndCompleteDefinit
       (record A (function make B :body ("return {};")))
       (record B (function make A :body ("return {};")))))");
     try {
-        static_cast<void>(files.lower(files.load()));
+        static_cast<void>(files.graph());
         FAIL();
     } catch (std::invalid_argument const& error) {
         EXPECT_TRUE(std::string{error.what()}.contains("complete-definition dependency cycle"));
@@ -611,7 +611,7 @@ TEST(SourceLoader, RecordMethodSignaturesRejectLayoutOnlyTypesAndCompleteDefinit
       (module second :header "Second.h" :namespace second
         (record B (member a first::A))))");
     try {
-        static_cast<void>(files.lower(files.load()));
+        static_cast<void>(files.graph());
         FAIL();
     } catch (std::invalid_argument const& error) {
         EXPECT_TRUE(std::string{error.what()}.contains("complete-definition dependency cycle"));

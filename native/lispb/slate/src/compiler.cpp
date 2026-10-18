@@ -14,6 +14,7 @@
 #include <slate_codegen/indices.h>
 #include <slate_codegen/source_options.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <string>
@@ -36,6 +37,14 @@ void compile_sources(lispb::codegen::sexpr::Syntax& syntax,
             (directory.is_absolute() ? directory : source_root / directory).lexically_normal());
     }
 
+    struct SourceDeclarations {
+        std::string path;
+        std::size_t begin;
+        std::size_t end;
+    };
+    std::vector<SourceDeclarations> sources;
+    sources.reserve(options.inputs.size());
+
     for (auto const& input : options.inputs) {
         auto const preprocessed{
             detail::preprocess(syntax, source_root / input, include_directories)};
@@ -44,20 +53,24 @@ void compile_sources(lispb::codegen::sexpr::Syntax& syntax,
                                    preprocessed.dependencies.end());
         auto const begin{document.declarations.size()};
         detail::parse(syntax, preprocessed.forms, document);
-        auto const end{document.declarations.size()};
-        for (auto index{begin}; index < end; ++index) {
-            if (emit) {
-                auto const file{
-                    detail::lower(input.generic_string(),
-                                  syntax.sources(),
-                                  document,
-                                  detail::DeclarationId{static_cast<std::uint32_t>(index)},
-                                  ir)};
-                auto const file_index{ir.files.index(file)};
-                result.add_text(std::filesystem::path{ir.strings.view(ir.files.path[file_index])},
-                                ir.render(file),
-                                ir.files.flags[file_index].format_generated());
-            }
+        sources.push_back({input.generic_string(), begin, document.declarations.size()});
+    }
+
+    if (!emit) {
+        return;
+    }
+
+    for (auto const& source : sources) {
+        for (auto index{source.begin}; index < source.end; ++index) {
+            auto const file{detail::lower(source.path,
+                                          syntax.sources(),
+                                          document,
+                                          detail::DeclarationId{static_cast<std::uint32_t>(index)},
+                                          ir)};
+            auto const file_index{ir.files.index(file)};
+            result.add_text(std::filesystem::path{ir.strings.view(ir.files.path[file_index])},
+                            ir.render(file),
+                            ir.files.flags[file_index].format_generated());
         }
     }
 }

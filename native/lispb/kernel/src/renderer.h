@@ -1,5 +1,7 @@
 #pragma once
 
+#include "validation.h"
+
 #include <kernel_codegen/document.h>
 #include <kernel_codegen/indices.h>
 #include <lispb/compilation.h>
@@ -14,11 +16,8 @@ class CppIR;
 
 namespace kernel_codegen::detail {
 
-void validate(Document const& document, ModuleId const module, lispb::KernelProfile profile);
-
-auto render(lispb::codegen::CppIR& cpp,
-            Document const& document,
-            ModuleId const module,
-            lispb::KernelProfile profile) -> std::vector<lispb::TextArtifact>;
+// Consume analysis for this document; no source validation occurs during lowering.
+auto render(lispb::codegen::CppIR& cpp, Document const& document, ModuleAnalysis const& analysis)
+    -> std::vector<lispb::TextArtifact>;
 
 }

@@ -54,4 +54,5 @@ static_assert(static_cast<int>(ETestMissionFailReason::TimeElapsed) ==
               static_cast<int>(::ioj::sim::MissionFailReason::TimeElapsed));
 static_assert(static_cast<int>(ETestMissionFailReason::DefenceObjectiveFailed) ==
               static_cast<int>(::ioj::sim::MissionFailReason::DefenceObjectiveFailed));
+
 } // namespace ioj

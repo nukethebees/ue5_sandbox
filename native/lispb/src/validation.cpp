@@ -2591,6 +2591,12 @@ class Validator {
                     throw std::invalid_argument{context + " fixed storage requires vector storage"};
                 }
             }
+            if (declarations_.normal_modules
+                        .soa_backend[declarations_.normal_modules.index(module)] ==
+                    SoaBackend::standard_library &&
+                declarations_.soas.fixed[declarations_.soas.index(schema)]) {
+                throw std::invalid_argument{"Standard-library SoA does not support fixed storage"};
+            }
             if (declarations_.soas.array_allocator[declarations_.soas.index(schema)]) {
                 validate_type(*declarations_.soas.array_allocator[declarations_.soas.index(schema)],
                               types,

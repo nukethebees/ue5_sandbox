@@ -46,4 +46,5 @@ static_assert(static_cast<int>(ETestShipFireRate::Burst3) ==
               static_cast<int>(::ioj::sim::ShipFireRate::Burst3));
 static_assert(static_cast<int>(ETestShipFireRate::FullAuto) ==
               static_cast<int>(::ioj::sim::ShipFireRate::FullAuto));
+
 } // namespace ioj

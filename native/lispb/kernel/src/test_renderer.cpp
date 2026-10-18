@@ -13,6 +13,7 @@
 #include <kernel_codegen/variant_kind.h>
 #include <lispb/strings.h>
 
+#include <cassert>
 #include <cstddef>
 #include <span>
 #include <string>
@@ -69,10 +70,10 @@ void append_case(std::string& output,
                  EmissionId const emission,
                  Document const& document,
                  ExpandedVariantId const id,
-                 std::size_t const count) {
+                 ReferenceFixture const& fixture) {
     auto const& expanded{document.expanded_variants};
     auto const type{standard_type(expanded.type(id))};
-    auto const fixture{make_reference_fixture(document, id, count)};
+    auto const count{fixture.expected.size()};
     output += "    for (std::size_t const Count : {0, 1, 7, 8, 9, 31}) {\n";
     for (std::size_t index{}; index < document.operations.operands(expanded.operation(id)).size();
          ++index) {
@@ -112,7 +113,9 @@ void append_case(std::string& output,
 auto lower_standard_tests(lispb::codegen::CppIR& cpp,
                           EmissionId const emission,
                           ModuleId const module,
-                          Document const& document) -> lispb::codegen::CppFileId {
+                          Document const& document,
+                          std::span<ReferenceFixture const> const fixtures)
+    -> lispb::codegen::CppFileId {
     lispb::codegen::NodeListBuilder file_nodes{cpp};
     file_nodes
         .add(cpp.include(document.emissions.header_include(emission),
@@ -152,11 +155,12 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
 )")});
     std::string cases;
     auto const range{document.modules.expanded_variants(module)};
+    assert(fixtures.size() == range.count);
     auto const end{range.offset + range.count};
     for (auto variant_index{range.offset}; variant_index < end; ++variant_index) {
         auto const id{ExpandedVariantId{variant_index}};
         cases += "TEST(" + suite + ", " + raw_name(document, id) + ") {\n";
-        append_case(cases, emission, document, id, 31);
+        append_case(cases, emission, document, id, fixtures[variant_index - range.offset]);
         cases += "}\n\n";
     }
     file_nodes.add(
