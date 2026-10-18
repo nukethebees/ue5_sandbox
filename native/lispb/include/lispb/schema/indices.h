@@ -7,7 +7,7 @@
 
 namespace lispb::schema {
 
-class EditorDeclarations;
+struct DeclarationTag;
 class TypeGraph;
 struct EnumDomains;
 struct RecordMembers;
@@ -18,7 +18,7 @@ struct TaggedUnionAlternatives;
 struct TypeUseTag;
 struct UnionAlternatives;
 
-using DeclarationId = Index<EditorDeclarations>;
+using DeclarationId = Index<DeclarationTag>;
 using EnumDomainId = Index<EnumDomains>;
 using RecordMemberId = Index<RecordMembers>;
 using RelationshipId = Index<Relationships>;

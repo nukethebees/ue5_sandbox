@@ -131,9 +131,11 @@ class Lexer {
             if (std::isspace(static_cast<unsigned char>(peek())) != 0) {
                 ++index_;
             } else if (peek() == ';') {
+                auto const begin{index_};
                 while (!at_end() && peek() != '\n') {
                     ++index_;
                 }
+                syntax_.add_comment(span(begin));
             } else {
                 return;
             }

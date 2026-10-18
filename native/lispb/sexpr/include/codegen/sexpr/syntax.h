@@ -57,6 +57,8 @@ class Syntax {
         -> FormId;
     [[nodiscard]] auto token_count() const -> std::uint32_t;
     [[nodiscard]] auto form_count() const -> std::uint32_t;
+    void add_comment(SourceSpan span);
+    [[nodiscard]] auto comments() const -> std::span<SourceSpan const>;
     [[nodiscard]] auto cached_forms(SourceFileId file) const -> std::optional<HandleRange>;
     void cache_forms(SourceFileId file, HandleRange forms);
     void clear();
@@ -74,6 +76,7 @@ class Syntax {
     std::vector<ExpansionId> form_expansions_;
     std::vector<FormId> child_ids_;
     std::vector<std::optional<HandleRange>> file_forms_;
+    std::vector<SourceSpan> comments_;
 };
 
 }

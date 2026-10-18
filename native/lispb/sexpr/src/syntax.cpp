@@ -154,6 +154,14 @@ auto Syntax::form_count() const -> std::uint32_t {
     return static_cast<std::uint32_t>(form_tokens_.size());
 }
 
+void Syntax::add_comment(SourceSpan const span) {
+    comments_.push_back(span);
+}
+
+auto Syntax::comments() const -> std::span<SourceSpan const> {
+    return comments_;
+}
+
 void Syntax::clear() {
     token_kinds_.assign(1, TokenKind::end);
     token_texts_.assign(1, {});
@@ -165,6 +173,7 @@ void Syntax::clear() {
     form_expansions_.assign(1, {});
     child_ids_.clear();
     file_forms_.clear();
+    comments_.clear();
 }
 
 auto Syntax::cached_forms(SourceFileId const file) const -> std::optional<HandleRange> {
