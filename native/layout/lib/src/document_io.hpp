@@ -1,18 +1,14 @@
 #pragma once
 
-#include <codegen/sexpr/indices.h>
-#include <codegen/sexpr/source_span.h>
-
-#include <string_view>
+#include <ioj/layout/document_source.hpp>
+#include <filesystem>
+#include <span>
 
 namespace ioj::layout {
 class DocumentState;
-
 namespace document_io {
-void append_source(DocumentState& state, lispb::codegen::sexpr::SourceFileId file);
+void initialize_inputs(DocumentState& state, std::span<DocumentSource const> sources, std::string_view registry);
+void load_inputs(DocumentState& state, std::filesystem::path const& path, std::string_view target);
 void finish_load(DocumentState& state);
-auto sources_span(DocumentState& state,
-                  lispb::codegen::sexpr::SourceFileId file,
-                  std::string_view target_name) -> lispb::codegen::sexpr::SourceSpan;
 }
 }

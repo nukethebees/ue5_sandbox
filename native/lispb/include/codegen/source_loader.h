@@ -3,6 +3,7 @@
 #include <codegen/loaded_type_registry.h>
 #include <codegen/schema/manifest.h>
 #include <codegen/sexpr/indices.h>
+#include <codegen/type_registry_include_resolver.h>
 
 #include <filesystem>
 #include <span>
@@ -17,6 +18,9 @@ auto load_type_registry(CompilerStorage& storage, std::filesystem::path const& r
     -> LoadedTypeRegistry;
 // Parse an existing source without reading its root path; includes resolve beside that path.
 auto parse_type_registry(CompilerStorage& storage, sexpr::SourceFileId root) -> LoadedTypeRegistry;
+auto parse_type_registry(CompilerStorage& storage,
+                         sexpr::SourceFileId root,
+                         TypeRegistryIncludeResolver const& resolve_include) -> LoadedTypeRegistry;
 auto parse_module_source(CompilerStorage& storage, sexpr::SourceFileId file) -> LoadedModuleSource;
 
 auto load_module_source(CompilerStorage& storage, std::filesystem::path const& path)

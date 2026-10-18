@@ -47,7 +47,7 @@ void DocumentState::edit_source(std::string_view operation,
             }
         }
         source_order.push_back(file);
-        io.source_origins.emplace(file, file);
+        source_ids.emplace(file, SourceId{current_instruction_id, ++source_creation_slot});
         comments.capture(storage(), parsed.modules, file);
         return;
     }
@@ -106,9 +106,10 @@ void DocumentState::edit_source(std::string_view operation,
         }
         for (auto const& [unused_name, id] : old_ids) {
             variants.erase_declaration(id);
+            analysis_settings.erase_declaration(id);
         }
         comments.capture(storage(), parsed.modules, file);
-        io.source_origins.emplace(file, io.source_origins.at(previous));
+        source_ids.emplace(file, source_ids.at(previous));
         *found = file;
         std::erase_if(candidate.modules,
                       [&](auto module) { return source_files.at(module) == previous; });
@@ -136,29 +137,15 @@ void DocumentState::edit_source(std::string_view operation,
         throw std::invalid_argument{"Source is already registered: " + destination};
     }
     auto const file{storage().sources.add(destination, storage().sources.text(previous))};
-    io.source_origins.emplace(file, io.source_origins.at(previous));
-    auto const render_origin{io.render_origins.find(previous)};
-    io.render_origins.emplace(
-        file, render_origin == io.render_origins.end() ? previous : render_origin->second);
+    source_ids.emplace(file, source_ids.at(previous));
+    auto const render_origin{render_origins.find(previous)};
+    render_origins.emplace(
+        file, render_origin == render_origins.end() ? previous : render_origin->second);
     *found = file;
-    auto& store{storage().declarations};
-    for (auto& module : candidate.modules) {
+    for (auto const module : candidate.modules) {
         if (source_files.at(module) != previous) {
             continue;
         }
-        auto const original{module};
-        switch (module.kind()) {
-            case lispb::codegen::ModuleKind::normal:
-                module = store.normal_modules.clone(module);
-                break;
-            case lispb::codegen::ModuleKind::settings:
-                module = store.settings_modules.clone(module);
-                break;
-            case lispb::codegen::ModuleKind::umbrella:
-                module = store.umbrella_modules.clone(module);
-                break;
-        }
-        inherit_module(original, module);
         source_files[module] = file;
     }
 }

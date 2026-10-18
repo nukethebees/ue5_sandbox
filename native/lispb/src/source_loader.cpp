@@ -20,6 +20,7 @@
 #include <map>
 #include <optional>
 #include <set>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -45,27 +46,32 @@ auto load_type_registry(lispb::CompilerStorage& storage, std::filesystem::path c
 
 auto parse_type_registry(lispb::CompilerStorage& storage, sexpr::SourceFileId const root)
     -> LoadedTypeRegistry {
+    return parse_type_registry(storage, root, [&](sexpr::SourceFileId file, std::string_view include) {
+        auto const path{std::filesystem::weakly_canonical(storage.sources.filesystem_path(file).parent_path() / include)};
+        return storage.sources.load(path);
+    });
+}
+
+auto parse_type_registry(lispb::CompilerStorage& storage,
+                         sexpr::SourceFileId const root,
+                         TypeRegistryIncludeResolver const& resolve_include) -> LoadedTypeRegistry {
     auto& syntax{storage.syntax};
     SchemaParser parser{syntax};
     sexpr::Parser fields_parser{syntax};
     LoadedTypeRegistry result{
         .types = TypeRegistry{storage.registered_types}, .sources = {}, .declarations = {}};
-    std::map<std::filesystem::path, sexpr::SourceFileId> loaded;
-    std::set<std::filesystem::path> active;
-    auto load = [&](auto&& self,
-                    sexpr::SourceFileId const file,
-                    std::filesystem::path const& path) -> sexpr::SourceFileId {
-        if (active.contains(path)) {
-            storage.diagnostics.fail(syntax.sources(),
-                                     {.file = loaded.at(path)},
-                                     "Cyclic type registry include: " + path.string());
+    std::set<sexpr::SourceFileId> loaded;
+    std::set<sexpr::SourceFileId> active;
+    auto parse = [&](auto&& self, sexpr::SourceFileId const file) -> void {
+        if (active.contains(file)) {
+            storage.diagnostics.fail(syntax.sources(), {.file = file},
+                "Cyclic type registry include: " + std::string{storage.sources.path(file)});
         }
-        if (auto const found{loaded.find(path)}; found != loaded.end()) {
-            return found->second;
+        if (!loaded.insert(file).second) {
+            return;
         }
-        active.insert(path);
+        active.insert(file);
         syntax.sources().set_kind(file, sexpr::SourceFileKind::type_registry);
-        loaded.emplace(path, file);
         auto const forms{sexpr::read_forms(syntax, file)};
         result.sources.push_back(file);
         std::vector<sexpr::SourceFileId> include_targets;
@@ -75,39 +81,31 @@ auto parse_type_registry(lispb::CompilerStorage& storage, sexpr::SourceFileId co
             if (syntax.head(form) == "include") {
                 sexpr::Fields const include{fields_parser, form, "include", 1};
                 include.validate({});
-                auto const target{std::filesystem::weakly_canonical(
-                    path.parent_path() /
-                    fields_parser.text(include.positional(0), "include path"))};
                 try {
-                    auto const found{loaded.find(target)};
-                    auto const target_file{
-                        self(self,
-                             found == loaded.end() ? syntax.sources().load(target) : found->second,
-                             target)};
-                    include_targets.push_back(target_file);
+                    auto const target{resolve_include(file, fields_parser.text(include.positional(0), "include path"))};
+                    self(self, target);
+                    include_targets.push_back(target);
                     include_spans.push_back(syntax.span(form));
                 } catch (sexpr::SourceError const&) {
                     throw;
-                } catch (std::exception const& error) {
+                } catch (std::runtime_error const& error) {
+                    fields_parser.fail(form, error.what());
+                } catch (std::invalid_argument const& error) {
                     fields_parser.fail(form, error.what());
                 }
                 continue;
             }
             auto [name, type]{parser.parse_type_definition(form, result.types)};
             if (!result.types.bind(name, type)) {
-                fields_parser.fail(form,
-                                   "duplicate type definition '" +
-                                       std::string{storage.strings.view(name)} + "'");
+                fields_parser.fail(form, "duplicate type definition '" +
+                    std::string{storage.strings.view(name)} + "'");
             }
             result.declarations.emplace(name, form);
         }
         syntax.sources().set_includes(file, include_targets, include_spans);
-        active.erase(path);
-        return file;
+        active.erase(file);
     };
-    load(load,
-         root,
-         std::filesystem::absolute(storage.sources.filesystem_path(root)).lexically_normal());
+    parse(parse, root);
     return result;
 }
 

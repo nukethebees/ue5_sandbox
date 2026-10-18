@@ -1,30 +1,28 @@
 #pragma once
 
-#include <ioj/layout/revision.hpp>
-
-#include <codegen/sexpr/indices.h>
-#include <codegen/sexpr/source_span.h>
+#include <ioj/layout/frozen_registry.hpp>
+#include <ioj/layout/source_id.hpp>
 #include <lispb/indices.h>
 
+#include <cstdint>
 #include <map>
 #include <vector>
 
 namespace ioj::layout {
-class DocumentIoState {
-  public:
-    lispb::codegen::sexpr::SourceFileId project_source;
-    lispb::codegen::sexpr::SourceSpan project_sources_span;
+struct DocumentIoState {
+    FrozenRegistry registry;
+    lispb::IdentifierId project_path;
+    lispb::IdentifierId project_root;
+    lispb::IdentifierId target_name;
+    lispb::IdentifierId registry_path;
+    lispb::StringId project_text;
+    std::uint32_t sources_begin{};
+    std::uint32_t sources_end{};
+    lispb::StringId source_comments;
     lispb::StringId saved_project_text;
-    lispb::StringId registry_text;
-    std::vector<lispb::IdentifierId> saved_source_order;
-    mutable Revision rendered_revision{invalid_revision};
-    mutable std::map<lispb::codegen::sexpr::SourceFileId, lispb::StringId> rendered_sources;
+    std::vector<lispb::IdentifierId> saved_order;
     std::map<lispb::IdentifierId, lispb::StringId> saved_sources;
     std::map<lispb::IdentifierId, lispb::StringId> persisted_sources;
-    std::map<lispb::codegen::sexpr::SourceFileId, lispb::codegen::sexpr::SourceFileId>
-        source_origins;
-    std::map<lispb::codegen::sexpr::SourceFileId, lispb::codegen::sexpr::SourceFileId>
-        render_origins;
-    std::map<lispb::codegen::sexpr::SourceFileId, lispb::IdentifierId> saved_source_paths;
+    std::map<SourceId, lispb::IdentifierId> saved_paths;
 };
 }
