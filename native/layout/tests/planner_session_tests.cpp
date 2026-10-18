@@ -1,4 +1,5 @@
 #include <ioj/layout/document.hpp>
+#include <ioj/layout/editor_session.hpp>
 #include <ioj/layout/planner_session.hpp>
 
 #include <gtest/gtest.h>
@@ -13,7 +14,8 @@ constexpr std::string_view source{R"((module game :header "Game.h"
     (union Payload (alternative small std::uint8_t) (alternative large std::uint32_t))))"};
 
 TEST(PlannerSession, RefreshesOnlyAfterDocumentOrInputChanges) {
-    auto document{Document::from_source(source)};
+    EditorSession editor;
+    auto document{editor.from_source(source)};
     ASSERT_TRUE(document.valid());
     PlannerAnalysisSession session{document.types()};
     auto const type{document.find_type("game", "State").value()};
@@ -39,7 +41,8 @@ TEST(PlannerSession, RefreshesOnlyAfterDocumentOrInputChanges) {
 }
 
 TEST(PlannerSession, SelectionChangeClearsTypeSpecificAnalysis) {
-    auto document{Document::from_source(source)};
+    EditorSession editor;
+    auto document{editor.from_source(source)};
     ASSERT_TRUE(document.valid());
     PlannerAnalysisSession session{document.types()};
     auto& inputs{session.edit_inputs()};
@@ -57,7 +60,8 @@ TEST(PlannerSession, SelectionChangeClearsTypeSpecificAnalysis) {
 }
 
 TEST(PlannerSession, UnknownAbiRemainsUnknownAndTargetChangesRefreshBothSides) {
-    auto document{Document::from_source(source)};
+    EditorSession editor;
+    auto document{editor.from_source(source)};
     ASSERT_TRUE(document.valid());
     PlannerAnalysisSession session{document.types()};
     auto const type{document.find_type("game", "Position").value()};
@@ -77,7 +81,8 @@ TEST(PlannerSession, UnknownAbiRemainsUnknownAndTargetChangesRefreshBothSides) {
 }
 
 TEST(PlannerSession, DistributionUpdatesProduceFreshAnalysisAndUndoRetainsOwner) {
-    auto document{Document::from_source(source)};
+    EditorSession editor;
+    auto document{editor.from_source(source)};
     ASSERT_TRUE(document.valid());
     PlannerAnalysisSession session{document.types()};
     auto const type{document.find_type("game", "Payload").value()};
@@ -104,7 +109,8 @@ TEST(PlannerSession, DistributionUpdatesProduceFreshAnalysisAndUndoRetainsOwner)
 }
 
 TEST(PlannerSession, DeletedSelectionIsClearedOnRefresh) {
-    auto document{Document::from_source(source)};
+    EditorSession editor;
+    auto document{editor.from_source(source)};
     ASSERT_TRUE(document.valid());
     PlannerAnalysisSession session{document.types()};
     session.edit_inputs().selection.select_type(document.types(),

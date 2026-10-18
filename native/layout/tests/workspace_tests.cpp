@@ -1,4 +1,5 @@
 #include <ioj/layout/document.hpp>
+#include <ioj/layout/editor_session.hpp>
 #include <ioj/layout/planner_session.hpp>
 #include <ioj/layout/workspace.hpp>
 
@@ -15,7 +16,8 @@ constexpr std::string_view source{R"((module game :header "Game.h" :backend stan
     (struct Ships (member values array std::uint32_t))))"};
 
 TEST(DocumentVariants, CreatesDuplicatesRenamesResetsAndDeletesThroughHistory) {
-    auto doc{Document::from_source(source)};
+    EditorSession editor;
+    auto doc{editor.from_source(source)};
     ASSERT_TRUE(doc.valid());
     auto create{doc.transaction()};
     create.create_variant("Compact");
@@ -47,7 +49,8 @@ TEST(DocumentVariants, CreatesDuplicatesRenamesResetsAndDeletesThroughHistory) {
 }
 
 TEST(DocumentVariants, MixedSchemaAndVariantEditsUndoAsOneTransaction) {
-    auto doc{Document::from_source(source)};
+    EditorSession editor;
+    auto doc{editor.from_source(source)};
     ASSERT_TRUE(doc.valid());
     auto create{doc.transaction()};
     create.create_variant("Alternative");
@@ -81,7 +84,8 @@ TEST(DocumentVariants, MixedSchemaAndVariantEditsUndoAsOneTransaction) {
 }
 
 TEST(DocumentVariants, ResolvesOverridesAfterRenameAndAllowsSpeculativeOverflow) {
-    auto doc{Document::from_source(source)};
+    EditorSession editor;
+    auto doc{editor.from_source(source)};
     ASSERT_TRUE(doc.valid());
     auto create{doc.transaction()};
     create.create_variant("Overflow");
@@ -103,7 +107,8 @@ TEST(DocumentVariants, ResolvesOverridesAfterRenameAndAllowsSpeculativeOverflow)
 }
 
 TEST(LayoutWorkspace, TracksAnalysisElementCountSeparatelyFromDocumentHistory) {
-    auto doc{Document::from_source(source)};
+    EditorSession editor;
+    auto doc{editor.from_source(source)};
     ASSERT_TRUE(doc.valid());
     LayoutWorkspace workspace;
     workspace.bind(doc);

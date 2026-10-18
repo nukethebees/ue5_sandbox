@@ -14,13 +14,20 @@ struct ImGuiContext;
 struct ImGuiSettingsHandler;
 struct ImGuiTextBuffer;
 
+namespace ioj::layout {
+class EditorSession;
+}
+
 namespace ioj::layout_planner {
 class FileDialog;
 
 class PlannerUi {
   public:
-    explicit PlannerUi(std::filesystem::path project_path = {}, std::string target_name = {});
-    explicit PlannerUi(layout::Document document);
+    // The editor must outlive the UI; a supplied document must belong to that editor.
+    explicit PlannerUi(layout::EditorSession& editor,
+                       std::filesystem::path project_path = {},
+                       std::string target_name = {});
+    PlannerUi(layout::EditorSession& editor, layout::Document document);
 
     void set_file_dialog(FileDialog* dialog);
     void register_settings_handler();
@@ -50,6 +57,7 @@ class PlannerUi {
     void draw_diagnostics();
     void draw_close_confirmation();
 
+    layout::EditorSession& editor_;
     std::optional<layout::Document> document_;
     layout::PlannerAnalysisSession analysis_;
     FileDialog* file_dialog_{};

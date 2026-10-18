@@ -6,6 +6,7 @@ target_sources(native-layout PRIVATE
   src/document_file_updates.cpp
   src/document_source_edit.cpp
   src/document_state.cpp
+  src/editor_session.cpp
   src/transaction.cpp
   src/abi_profile.cpp
   src/profile_probe.cpp

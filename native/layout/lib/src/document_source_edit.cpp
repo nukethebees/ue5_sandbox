@@ -1,4 +1,5 @@
-#include "document_state.hpp"
+#include <ioj/layout/document_state.hpp>
+#include <ioj/layout/editor_session.hpp>
 
 #include <codegen/schema/declaration_schema.h>
 #include <codegen/source_loader.h>
@@ -25,18 +26,18 @@ void DocumentState::edit_source(std::string_view operation,
                                 lispb::codegen::Manifest& candidate) {
     auto const name{source_edit::normalized(path)};
     auto const found{std::ranges::find_if(
-        source_order, [&](auto file) { return storage.sources.path(file) == name; })};
+        source_order, [&](auto file) { return storage().sources.path(file) == name; })};
     if (operation == "add") {
         if (found != source_order.end()) {
             throw std::invalid_argument{"Source is already registered: " + name};
         }
-        auto const file{storage.sources.add(name, text)};
-        auto const parsed{lispb::codegen::parse_module_source(storage, file)};
+        auto const file{storage().sources.add(name, text)};
+        auto const parsed{lispb::codegen::parse_module_source(storage(), file)};
         for (auto const module : parsed.modules) {
             source_files.emplace(module, file);
             candidate.modules.push_back(module);
             if (module.kind() == lispb::codegen::ModuleKind::normal) {
-                auto const& store{storage.declarations};
+                auto const& store{storage().declarations};
                 for (auto const declaration : store.items(
                          store.normal_modules.declarations[store.normal_modules.index(module)])) {
                     register_declaration(declaration);
@@ -45,7 +46,7 @@ void DocumentState::edit_source(std::string_view operation,
         }
         source_order.push_back(file);
         io.source_origins.emplace(file, file);
-        comments.capture(storage, parsed.modules);
+        comments.capture(storage(), parsed.modules, file);
         return;
     }
 
@@ -54,7 +55,7 @@ void DocumentState::edit_source(std::string_view operation,
     }
     auto const previous{*found};
     if (operation == "replace") {
-        auto& store{storage.declarations};
+        auto& store{storage().declarations};
         std::map<std::pair<std::string, std::string>, lispb::schema::DeclarationId> old_ids;
         auto first{candidate.modules.size()};
         auto const module_count{candidate.modules.size()};
@@ -68,32 +69,32 @@ void DocumentState::edit_source(std::string_view operation,
                 continue;
             }
             auto const settings{store.module_settings(module)};
-            auto const module_name{std::string{storage.strings.view(
+            auto const module_name{std::string{storage().strings.view(
                 store.module_settings_store.name[store.module_settings_store.index(settings)])}};
             for (auto const declaration : store.items(
                      store.normal_modules.declarations[store.normal_modules.index(module)])) {
                 old_ids.emplace(
                     std::pair{module_name,
-                              std::string{storage.strings.view(
+                              std::string{storage().strings.view(
                                   lispb::codegen::declaration_name(store, declaration))}},
                     declaration_ids.at(declaration));
             }
         }
-        auto const file{storage.sources.add(name, text)};
-        auto const parsed{lispb::codegen::parse_module_source(storage, file)};
+        auto const file{storage().sources.add(name, text)};
+        auto const parsed{lispb::codegen::parse_module_source(storage(), file)};
         for (auto const module : parsed.modules) {
             source_files.emplace(module, file);
             if (module.kind() != lispb::codegen::ModuleKind::normal) {
                 continue;
             }
             auto const settings{store.module_settings(module)};
-            auto const module_name{std::string{storage.strings.view(
+            auto const module_name{std::string{storage().strings.view(
                 store.module_settings_store.name[store.module_settings_store.index(settings)])}};
             for (auto const declaration : store.items(
                      store.normal_modules.declarations[store.normal_modules.index(module)])) {
                 auto const key{
                     std::pair{module_name,
-                              std::string{storage.strings.view(
+                              std::string{storage().strings.view(
                                   lispb::codegen::declaration_name(store, declaration))}}};
                 auto const prior{old_ids.find(key)};
                 if (prior == old_ids.end()) {
@@ -107,7 +108,7 @@ void DocumentState::edit_source(std::string_view operation,
         for (auto const& [unused_name, id] : old_ids) {
             variants.erase_declaration(id);
         }
-        comments.capture(storage, parsed.modules, file);
+        comments.capture(storage(), parsed.modules, file);
         io.source_origins.emplace(file, io.source_origins.at(previous));
         *found = file;
         std::erase_if(candidate.modules,
@@ -129,17 +130,17 @@ void DocumentState::edit_source(std::string_view operation,
     if (name == destination) {
         return;
     }
-    if (std::ranges::any_of(source_order,
-                            [&](auto file) { return storage.sources.path(file) == destination; })) {
+    if (std::ranges::any_of(
+            source_order, [&](auto file) { return storage().sources.path(file) == destination; })) {
         throw std::invalid_argument{"Source is already registered: " + destination};
     }
-    auto const file{storage.sources.add(destination, storage.sources.text(previous))};
+    auto const file{storage().sources.add(destination, storage().sources.text(previous))};
     io.source_origins.emplace(file, io.source_origins.at(previous));
     auto const render_origin{io.render_origins.find(previous)};
     io.render_origins.emplace(
         file, render_origin == io.render_origins.end() ? previous : render_origin->second);
     *found = file;
-    auto& store{storage.declarations};
+    auto& store{storage().declarations};
     for (auto& module : candidate.modules) {
         if (source_files.at(module) != previous) {
             continue;

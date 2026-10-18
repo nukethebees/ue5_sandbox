@@ -1,5 +1,6 @@
 #include <ioj/layout/abi_profile.hpp>
 #include <ioj/layout/document.hpp>
+#include <ioj/layout/editor_session.hpp>
 #include <ioj/layout/physical_facts.hpp>
 #include <ioj/layout/profile_probe.hpp>
 
@@ -14,18 +15,19 @@
 #include <vector>
 
 auto main(int argc, char** argv) -> int {
+    ioj::layout::EditorSession editor;
     if (argc != 3) {
         return 2;
     }
     if (std::string{argv[1]} == "generate") {
-        auto const document{ioj::layout::Document::from_source(R"(
+        auto const document{editor.from_source(R"(
             (module probe :header "Probe.h" (record Uses
                 (member value @external_sdk)
                 (member pointer (type-ref @external_sdk :suffix "*"))
                 (member deep (type-ref @external_sdk :suffix "**"))
                 (member constant (type-ref @external_sdk :suffix " const*"))))
         )",
-                                                               R"(
+                                               R"(
             (type external :spelling "std::array<float, 3>")
             (type external_sdk :spelling "std::array<float, 3>" :header "array"))")};
         if (!document.valid()) {
@@ -56,7 +58,7 @@ auto main(int argc, char** argv) -> int {
         return 1;
     }
     auto const facts{profile->find("std::array<float, 3>")};
-    auto const document{ioj::layout::Document::from_source("")};
+    auto const document{editor.from_source("")};
     auto const& types{document.types()};
     ioj::layout::PhysicalFactsResolver resolver{types, *profile};
     for (auto const& [spelling, size, alignment] :

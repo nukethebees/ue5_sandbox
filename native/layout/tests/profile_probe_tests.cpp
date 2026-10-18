@@ -1,5 +1,6 @@
 #include "document_test_support.hpp"
 #include <ioj/layout/document.hpp>
+#include <ioj/layout/editor_session.hpp>
 #include <ioj/layout/physical_facts.hpp>
 #include <ioj/layout/planner_type.hpp>
 #include <ioj/layout/profile_probe.hpp>
@@ -18,7 +19,8 @@ namespace ioj::layout {
 namespace profile_probe_tests {
 
 TEST(ProfileProbe, CollectsExactExternalUsesAndUnsupportedDiagnostics) {
-    auto const document{Document::from_source(R"lisp(
+    EditorSession editor;
+    auto const document{editor.from_source(R"lisp(
         (module uses :header "Uses.h" (record Uses
             (member value @external)
             (member pointer (type-ref @external :suffix "*"))
@@ -35,10 +37,10 @@ TEST(ProfileProbe, CollectsExactExternalUsesAndUnsupportedDiagnostics) {
             (member unrelated (type-ref Other :suffix "*"))
             (member alias (type-ref @external_alias :suffix "***"))))
     )lisp",
-                                              R"(
+                                           R"(
         (type external :spelling "sdk::ExternalValue")
         (type external_alias :spelling "sdk::ExternalValue"))")};
-    ASSERT_TRUE(document.valid()) << diagnostic_messages(document);
+    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto const& types{document.types()};
     auto const selected{*types.find_registered(types.strings().find("external"))};
     auto const probe{external_probe_request(types, selected)};
@@ -83,17 +85,18 @@ INSTANTIATE_TEST_SUITE_P(CompleteObjectSpellings,
                                          "auto*"));
 
 TEST(ProfileProbe, UnionsHeadersAcrossAliasesAndDeduplicatesIncludes) {
-    auto const document{Document::from_source(R"(
+    EditorSession editor;
+    auto const document{editor.from_source(R"(
         (module probe :header "Probe.h" (record Uses
             (member pointer (type-ref @external_b :suffix "*"))))
     )",
-                                              R"(
+                                           R"(
         (type external_a :spelling "sdk::ExternalValue")
         (type external_b :spelling "sdk::ExternalValue" :header "sdk/external_value.hpp")
         (type external_unused :spelling "sdk::ExternalValue" :header "sdk/Extra Detail.hpp")
         (type external_config :spelling "sdk::ExternalValue" :header "sdk/config.hpp")
         (type unrelated :spelling "sdk::Unrelated" :header "unrelated.hpp"))")};
-    ASSERT_TRUE(document.valid()) << diagnostic_messages(document);
+    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto const& types{document.types()};
     auto const selected{*types.find_registered(types.strings().find("external_a"))};
     auto const request{external_probe_request(types, selected)};
@@ -122,10 +125,11 @@ TEST(ProfileProbe, UnionsHeadersAcrossAliasesAndDeduplicatesIncludes) {
 }
 
 TEST(ProfileProbe, IncludesHeadersIntroducedByResolvedUses) {
-    auto const document{Document::from_source(R"(
+    EditorSession editor;
+    auto const document{editor.from_source(R"(
         (module probe :header "Probe.h"
             (record Uses (member pointer (type-ref std::uint16_t :suffix "*")))))")};
-    ASSERT_TRUE(document.valid()) << diagnostic_messages(document);
+    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto const inventory{external_dependencies(document.types())};
     ASSERT_EQ(inventory.size(), 1);
     auto const request{external_probe_request(document.types(), inventory.front().types.front())};
@@ -145,6 +149,7 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values("", "sdk/\"bad.hpp", "<sdk/value.hpp>", "sdk/value.hpp\n#error bad"));
 
 TEST(ProfileProbe, ExactPointerFactsOverrideGenericPolicy) {
+    EditorSession editor;
     auto profile{parse_abi_profile(R"(ioj-layout-profile 2
 name "Measured target"
 identity architecture "non-x86-test"
@@ -153,8 +158,8 @@ type "void*" 8 8 non-integer unknown "generic target representation" compiler-pr
 )")};
     ASSERT_TRUE(profile);
     ASSERT_FALSE(profile->object_pointer_representation());
-    auto const document{Document::from_source("")};
-    ASSERT_TRUE(document.valid()) << diagnostic_messages(document);
+    auto const document{editor.from_source("")};
+    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto const& types{document.types()};
     auto const exact{PhysicalFactsResolver{types, *profile}.resolve_spelling("Opaque*")};
     ASSERT_TRUE(exact.facts);

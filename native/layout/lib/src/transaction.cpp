@@ -1,10 +1,11 @@
 #include <ioj/layout/transaction.hpp>
 
-#include "document_state.hpp"
+#include <ioj/layout/document_state.hpp>
 
 #include <codegen/schema/declaration_schema.h>
 #include <codegen/schema/declarations.h>
 #include <codegen/source_loader.h>
+#include <lispb/compiler_storage.h>
 
 #include <algorithm>
 #include <cassert>
@@ -52,7 +53,7 @@ void publish_module(DocumentState& state,
                     Manifest& manifest,
                     std::size_t index,
                     std::vector<DeclarationHandle> const& values) {
-    auto& store{state.storage.declarations};
+    auto& store{state.storage().declarations};
     auto const original{manifest.modules[index]};
     auto const replacement{store.normal_modules.clone(original)};
     store.normal_modules.declarations[store.normal_modules.index(replacement)] =
@@ -211,7 +212,7 @@ void repair_references(DocumentState& state,
                        ModuleHandle old_module,
                        DeclarationHandle after,
                        ModuleHandle new_module) {
-    auto& store{state.storage.declarations};
+    auto& store{state.storage().declarations};
     auto const old_namespace{namespace_name(store, old_module)};
     auto const new_namespace{namespace_name(store, new_module)};
     auto old_names{generated_cpp_names(store, before, old_module)};
@@ -315,8 +316,9 @@ void reorder(std::vector<Id>& values, std::size_t from, std::size_t to) {
 }
 }
 
-Transaction::Transaction(Document const& owner, Revision revision)
-    : owner_{&owner}
+Transaction::Transaction(EditorSession const& session, DocumentId owner, Revision revision)
+    : session_{&session}
+    , owner_{owner}
     , revision_{revision} {}
 void Transaction::append(TransactionKind kind,
                          std::string_view module,
@@ -524,8 +526,8 @@ void Transaction::set_variant_capacity(VariantId id,
 }
 
 void Transaction::apply(DocumentState& state, Manifest& manifest) const {
-    auto& store{state.storage.declarations};
-    auto& strings{state.storage.strings};
+    auto& store{state.storage().declarations};
+    auto& strings{state.storage().strings};
     std::vector<std::string> removed_names;
     std::vector<std::string> removed_namespaces;
     auto record_removed =
@@ -654,14 +656,14 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
 
         if (kind == TransactionKind::create_module) {
             auto const path{std::filesystem::path{child_name}.lexically_normal()};
-            auto const file{state.storage.sources.add(path.generic_string(), text)};
-            auto const parsed{parse_module_source(state.storage, file)};
+            auto const file{state.storage().sources.add(path.generic_string(), text)};
+            auto const parsed{parse_module_source(state.storage(), file)};
             if (parsed.modules.size() != 1 || parsed.modules.front().kind() != ModuleKind::normal) {
                 throw std::invalid_argument{"Expected exactly one normal module"};
             }
             manifest.modules.push_back(parsed.modules.front());
             auto const destination{std::ranges::find_if(state.source_order, [&](auto source) {
-                return state.storage.sources.filesystem_path(source).lexically_normal() == path;
+                return state.storage().sources.filesystem_path(source).lexically_normal() == path;
             })};
             auto const source{destination == state.source_order.end() ? file : *destination};
             state.source_files.emplace(parsed.modules.front(), source);
@@ -669,7 +671,7 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
                 state.source_order.push_back(file);
                 state.io.source_origins.emplace(file, file);
             }
-            state.comments.capture(state.storage, parsed.modules, parsed.file);
+            state.comments.capture(state.storage(), parsed.modules, parsed.file);
             for (auto declaration : declarations_of(store, parsed.modules.front())) {
                 state.register_declaration(declaration);
             }
@@ -710,14 +712,14 @@ void Transaction::apply(DocumentState& state, Manifest& manifest) const {
             continue;
         }
         if (kind == TransactionKind::create || kind == TransactionKind::replace) {
-            auto const file{state.storage.sources.add(
+            auto const file{state.storage().sources.add(
                 "edit.lispb", "(module edit :header \"Edit.h\" " + text + ")")};
-            auto const parsed{parse_module_source(state.storage, file)};
+            auto const parsed{parse_module_source(state.storage(), file)};
             auto const created{declarations_of(store, parsed.modules.front())};
             if (created.size() != 1) {
                 throw std::invalid_argument{"Expected exactly one declaration"};
             }
-            state.comments.capture(state.storage, parsed.modules, parsed.file);
+            state.comments.capture(state.storage(), parsed.modules, parsed.file);
             std::optional<DeclarationHandle> replaced;
             if (kind == TransactionKind::create) {
                 values.push_back(created.front());

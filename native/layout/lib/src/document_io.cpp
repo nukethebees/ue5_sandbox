@@ -1,6 +1,7 @@
 #include "document_file_updates.hpp"
-#include "document_state.hpp"
 #include <ioj/layout/document.hpp>
+#include <ioj/layout/document_state.hpp>
+#include <ioj/layout/editor_session.hpp>
 
 #include <codegen/path_utils.h>
 #include <codegen/schema/declaration_schema.h>
@@ -33,43 +34,43 @@ auto read(std::filesystem::path const& path) -> std::string {
 }
 auto render(DocumentState const& state, SourceFileId file) -> std::string {
     std::vector<lispb::codegen::ModuleHandle> modules;
-    for (auto const module : state.manifest.modules) {
+    for (auto const module : state.modules) {
         if (state.source_files.at(module) == file) {
             modules.push_back(module);
         }
     }
     auto const origin{state.io.render_origins.find(file)};
     return lispb::schema::render_source_file(
-        state.storage,
+        state.storage(),
         state.comments,
         modules,
         origin == state.io.render_origins.end() ? file : origin->second);
 }
 void append_source(DocumentState& state, SourceFileId file) {
-    auto const parsed{lispb::codegen::parse_module_source(state.storage, file)};
+    auto const parsed{lispb::codegen::parse_module_source(state.storage(), file)};
     state.source_order.push_back(file);
     state.io.source_origins.emplace(file, file);
     for (auto const module : parsed.modules) {
-        state.manifest.modules.push_back(module);
+        state.modules.push_back(module);
         state.source_files.emplace(module, file);
         if (module.kind() == lispb::codegen::ModuleKind::normal) {
-            auto const& store{state.storage.declarations};
+            auto const& store{state.storage().declarations};
             for (auto const declaration : store.items(
                      store.normal_modules.declarations[store.normal_modules.index(module)])) {
                 state.register_declaration(declaration);
             }
         }
     }
-    state.comments.capture(state.storage, parsed.modules);
+    state.comments.capture(state.storage(), parsed.modules, file);
 }
 void finish_load(DocumentState& state) {
-    state.types = lispb::schema::resolve_type_graph(state.manifest);
-    state.baseline = state.manifest.modules;
+    state.types = lispb::schema::resolve_type_graph(state.manifest());
+    state.baseline = state.modules;
     state.baseline_sources = state.source_order;
     for (auto const file : state.source_order) {
-        auto const path{std::string{state.storage.sources.path(file)}};
+        auto const path{std::string{state.storage().sources.path(file)}};
         state.io.saved_sources.emplace(path, render(state, file));
-        state.io.persisted_sources.emplace(path, state.storage.sources.text(file));
+        state.io.persisted_sources.emplace(path, state.storage().sources.text(file));
         state.io.saved_source_paths.emplace(file, path);
         state.io.saved_source_order.push_back(path);
     }
@@ -87,7 +88,7 @@ auto quote(std::string_view value) -> std::string {
 }
 auto sources_span(DocumentState& state, SourceFileId file, std::string_view target_name)
     -> lispb::codegen::sexpr::SourceSpan {
-    auto& syntax{state.storage.syntax};
+    auto& syntax{state.storage().syntax};
     lispb::codegen::sexpr::Parser parser{syntax};
     auto const forms{lispb::codegen::sexpr::read_forms(syntax, file)};
     lispb::codegen::sexpr::Fields const project_fields{
@@ -106,17 +107,17 @@ auto sources_span(DocumentState& state, SourceFileId file, std::string_view targ
 auto project_text(DocumentState const& state) -> std::string {
     std::vector<std::string> paths;
     for (auto const file : state.source_order) {
-        paths.emplace_back(state.storage.sources.path(file));
+        paths.emplace_back(state.storage().sources.path(file));
     }
     if (paths == state.io.saved_source_order) {
         return state.io.saved_project_text;
     }
     auto const span{state.io.project_sources_span};
-    auto const original{state.storage.sources.text(state.io.project_source)};
+    auto const original{state.storage().sources.text(state.io.project_source)};
     auto const newline{original.contains("\r\n") ? "\r\n" : "\n"};
     std::string list{"("};
     // Preserve comments from the source list when rewriting its paths.
-    for (auto const comment : state.storage.syntax.comments()) {
+    for (auto const comment : state.storage().syntax.comments()) {
         if (comment.file == span.file && comment.offset >= span.offset &&
             comment.end_offset <= span.end_offset) {
             list += newline;
@@ -128,7 +129,7 @@ auto project_text(DocumentState const& state) -> std::string {
         if (list.back() != '(' && list.back() != '\n') {
             list += ' ';
         }
-        list += quote(state.storage.sources.path(file));
+        list += quote(state.storage().sources.path(file));
     }
     list += ')';
     std::string result{original};
@@ -137,21 +138,35 @@ auto project_text(DocumentState const& state) -> std::string {
 }
 }
 
-auto Document::from_source(std::string_view source, std::string_view registry) -> Document {
+auto EditorSession::from_source(std::string_view source, std::string_view registry) -> Document {
     DocumentSource const input{"document.lispb", source};
     return from_sources(std::span{&input, 1}, registry);
 }
-auto Document::from_sources(std::span<DocumentSource const> sources, std::string_view registry)
+auto EditorSession::from_sources(std::span<DocumentSource const> sources, std::string_view registry)
     -> Document {
-    Document document;
-    auto& state{*document.state_};
+    begin_operation();
+    Document document{*this};
+    auto& state{document.state_};
     try {
-        state.io.registry_text = registry;
-        if (!registry.empty()) {
-            auto const file{state.storage.sources.add("document-types.lispb", registry)};
-            state.manifest.types = lispb::codegen::parse_type_registry(state.storage, file).types;
+        std::vector<std::string> paths;
+        std::vector<std::string> texts;
+        for (auto const source : sources) {
+            paths.emplace_back(source.path);
+            texts.emplace_back(source.text);
         }
-        for (auto const& input : sources) {
+        std::vector<DocumentSource> inputs;
+        auto const count{paths.size()};
+        for (std::size_t index{}; index < count; ++index) {
+            inputs.push_back({paths[index], texts[index]});
+        }
+        state.io.registry_text = registry;
+        if (!state.io.registry_text.empty()) {
+            auto const file{
+                state.storage().sources.add("document-types.lispb", state.io.registry_text)};
+            state.registered_types =
+                lispb::codegen::parse_type_registry(state.storage(), file).types.entries;
+        }
+        for (auto const& input : inputs) {
             auto const path{std::filesystem::path{input.path}.lexically_normal()};
             if (path.empty() || path == "." || path.has_root_path() ||
                 std::ranges::find(path, std::filesystem::path{".."}) != path.end()) {
@@ -160,74 +175,77 @@ auto Document::from_sources(std::span<DocumentSource const> sources, std::string
             }
             auto const name{path.generic_string()};
             if (std::ranges::any_of(state.source_order, [&](auto file) {
-                    return state.storage.sources.path(file) == name;
+                    return state.storage().sources.path(file) == name;
                 })) {
                 throw std::invalid_argument{"Duplicate source path"};
             }
-            document_io::append_source(state, state.storage.sources.add(name, input.text));
+            document_io::append_source(state, state.storage().sources.add(name, input.text));
         }
         document_io::finish_load(state);
     } catch (lispb::codegen::sexpr::SourceError const&) {
     } catch (std::runtime_error const& error) {
-        state.error(error.what());
+        state.session->record_error(error.what());
     } catch (std::invalid_argument const& error) {
-        state.error(error.what());
+        state.session->record_error(error.what());
     }
     return document;
 }
-auto Document::load(std::filesystem::path const& project_path, std::string_view target_name)
+auto EditorSession::load(std::filesystem::path const& project_path, std::string_view target_value)
     -> Document {
-    Document document;
-    auto& state{*document.state_};
+    begin_operation();
+    std::string const target_name{target_value};
+    Document document{*this};
+    auto& state{document.state_};
     try {
+        state.storage().sources.refresh();
         state.project_path = std::filesystem::absolute(project_path).lexically_normal();
-        state.project.emplace(lispb::load_project(state.storage.syntax, state.project_path));
+        state.project.emplace(lispb::load_project(state.storage().syntax, state.project_path));
         state.target = state.project->find_target(target_name);
         if (!state.target || state.target->kind() != lispb::TargetKind::cpp_schema) {
             throw std::invalid_argument{"Expected an existing C++ schema target"};
         }
-        state.io.project_source = state.storage.sources.load(state.project_path);
-        state.io.saved_project_text = state.storage.sources.text(state.io.project_source);
+        state.io.project_source = state.storage().sources.load(state.project_path);
+        state.io.saved_project_text = state.storage().sources.text(state.io.project_source);
         state.io.project_sources_span =
             document_io::sources_span(state, state.io.project_source, target_name);
-        state.manifest.types =
+        state.registered_types =
             lispb::codegen::load_type_registry(
-                state.storage, state.project->root / state.project->types(*state.target))
-                .types;
+                state.storage(), state.project->root / state.project->types(*state.target))
+                .types.entries;
         for (auto const& source : state.project->sources(*state.target)) {
-            auto const file{
-                state.storage.sources.load(state.project->root / source, source.generic_string())};
+            auto const file{state.storage().sources.load(state.project->root / source,
+                                                         source.generic_string())};
             document_io::append_source(state, file);
         }
         document_io::finish_load(state);
     } catch (lispb::codegen::sexpr::SourceError const&) {
     } catch (std::invalid_argument const& error) {
-        state.error(error.what());
+        state.session->record_error(error.what());
     } catch (std::runtime_error const& error) {
-        state.error(error.what());
+        state.session->record_error(error.what());
     }
     return document;
 }
 auto Document::project_path() const -> std::filesystem::path const& {
-    return state_->project_path;
+    return state_.project_path;
 }
 auto Document::target_name() const -> std::string_view {
-    return state_->target ? state_->project->target_name(*state_->target) : std::string_view{};
+    return state_.target ? state_.project->target_name(*state_.target) : std::string_view{};
 }
 auto Document::sources() const -> std::vector<DocumentSource> {
-    auto& state{*state_};
+    auto& state{state_};
     std::vector<DocumentSource> result;
     for (auto const file : state.source_order) {
         auto& text{state.io.rendered_sources[file]};
         text = document_io::render(state, file);
-        result.push_back({state.storage.sources.path(file), text});
+        result.push_back({state.storage().sources.path(file), text});
     }
     return result;
 }
 auto Document::declaration_source(std::string_view module_name, std::string_view name) const
     -> std::optional<std::string> {
-    auto const& store{state_->storage.declarations};
-    for (auto const module : state_->manifest.modules) {
+    auto const& store{state_.storage().declarations};
+    for (auto const module : state_.modules) {
         auto const settings{store.module_settings(module)};
         if (module.kind() != lispb::codegen::ModuleKind::normal ||
             store.strings().view(
@@ -246,13 +264,13 @@ auto Document::declaration_source(std::string_view module_name, std::string_view
     return std::nullopt;
 }
 auto Document::dirty() const -> bool {
-    auto const& state{*state_};
+    auto const& state{state_};
     if (state.source_order.size() != state.io.saved_sources.size()) {
         return true;
     }
     auto const count{state.source_order.size()};
     for (std::size_t index{}; index < count; ++index) {
-        if (state.storage.sources.path(state.source_order[index]) !=
+        if (state.storage().sources.path(state.source_order[index]) !=
             state.io.saved_source_order[index]) {
             return true;
         }
@@ -266,10 +284,10 @@ auto Document::dirty() const -> bool {
     return false;
 }
 auto Document::save() -> bool {
-    auto& state{*state_};
-    state.diagnostic_begin = state.storage.diagnostics.size();
+    auto& state{state_};
+    state.session->begin_operation();
     if (!state.project) {
-        state.error("Document has no project destination");
+        state.session->record_error("Document has no project destination");
         return false;
     }
     try {
@@ -294,7 +312,7 @@ auto Document::save() -> bool {
         for (auto const file : state.source_order) {
             auto const saved{state.io.saved_source_paths.find(state.io.source_origins.at(file))};
             if (saved != state.io.saved_source_paths.end() &&
-                saved->second != state.storage.sources.path(file)) {
+                saved->second != state.storage().sources.path(file)) {
                 auto const expected{state.io.persisted_sources.find(saved->second)};
                 if (expected != state.io.persisted_sources.end() &&
                     document_io::read(state.project->root / saved->second) != expected->second) {
@@ -314,7 +332,7 @@ auto Document::save() -> bool {
         }
         for (auto const file : state.source_order) {
             auto const origin{state.io.source_origins.at(file)};
-            auto const path{std::string{state.storage.sources.path(file)}};
+            auto const path{std::string{state.storage().sources.path(file)}};
             auto const saved{state.io.saved_source_paths.find(origin)};
             if (saved != state.io.saved_source_paths.end() && saved->second != path &&
                 !std::ranges::any_of(
@@ -332,7 +350,7 @@ auto Document::save() -> bool {
         }
         for (auto const file : state.source_order) {
             auto const origin{state.io.source_origins.at(file)};
-            auto const path{std::string{state.storage.sources.path(file)}};
+            auto const path{std::string{state.storage().sources.path(file)}};
             auto const saved{state.io.saved_source_paths.find(origin)};
             if (saved != state.io.saved_source_paths.end() && saved->second != path &&
                 !std::ranges::any_of(
@@ -349,17 +367,17 @@ auto Document::save() -> bool {
         }
         return true;
     } catch (std::invalid_argument const& error) {
-        state.error(error.what());
+        state.session->record_error(error.what());
     } catch (std::runtime_error const& error) {
-        state.error(error.what());
+        state.session->record_error(error.what());
     }
     return false;
 }
 auto Document::save_as(std::filesystem::path const& project_path, std::string_view target_value)
     -> bool {
-    auto& state{*state_};
+    auto& state{state_};
     std::string const target_name{target_value};
-    state.diagnostic_begin = state.storage.diagnostics.size();
+    state.session->begin_operation();
     try {
         auto const destination{std::filesystem::absolute(project_path).lexically_normal()};
         if (destination == state.project_path) {
@@ -422,8 +440,8 @@ auto Document::save_as(std::filesystem::path const& project_path, std::string_vi
             project_text += document_io::quote(source.path) + ' ';
         }
         project_text += ")\n    :output-root (project-path \"generated\")))\n";
-        auto const file{state.storage.sources.overlay(destination, project_text)};
-        auto project{lispb::load_project(state.storage.syntax, destination)};
+        auto const file{state.storage().sources.add(destination.generic_string(), project_text)};
+        auto project{lispb::parse_project(state.storage().syntax, file, destination)};
         auto const target{project.find_target(target_name)};
         auto const span{document_io::sources_span(state, file, target_name)};
 
@@ -453,14 +471,14 @@ auto Document::save_as(std::filesystem::path const& project_path, std::string_vi
         }
         for (auto const source : state.source_order) {
             state.io.saved_source_paths.emplace(state.io.source_origins.at(source),
-                                                state.storage.sources.path(source));
+                                                state.storage().sources.path(source));
         }
         return true;
     } catch (lispb::codegen::sexpr::SourceError const&) {
     } catch (std::invalid_argument const& error) {
-        state.error(error.what());
+        state.session->record_error(error.what());
     } catch (std::runtime_error const& error) {
-        state.error(error.what());
+        state.session->record_error(error.what());
     }
     return false;
 }

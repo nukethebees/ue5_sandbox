@@ -1,4 +1,5 @@
 #include "analyzer_test_fixtures.hpp"
+#include <ioj/layout/editor_session.hpp>
 
 namespace ioj::layout {
 namespace analyzer_soa_tests {
@@ -6,8 +7,9 @@ namespace analyzer_soa_tests {
 class SoaAnalysisTest : public testing::TestWithParam<AnalysisCase> {};
 
 TEST_P(SoaAnalysisTest, ReportsColumnsAllocationsAndAccess) {
+    EditorSession editor;
     auto const& test{GetParam()};
-    auto const document{Document::from_source(test.source)};
+    auto const document{editor.from_source(test.source)};
     ASSERT_TRUE(document.valid());
     test.verify(document);
 }
@@ -146,8 +148,9 @@ INSTANTIATE_TEST_SUITE_P(Source,
 class SoaCapacityTest : public testing::TestWithParam<std::uint64_t> {};
 
 TEST_P(SoaCapacityTest, ScalesPayloadAndMemoryRegions) {
+    EditorSession editor;
     auto const capacity{GetParam()};
-    auto const doc{Document::from_source(R"((module game :header "Game.h" :backend standard-library
+    auto const doc{editor.from_source(R"((module game :header "Game.h" :backend standard-library
         (struct Value (member x array float) (member y array float) (member z array float))))")};
     ASSERT_TRUE(doc.valid());
     auto abi{AbiProfile::host_common()};

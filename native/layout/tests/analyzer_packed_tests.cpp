@@ -1,4 +1,5 @@
 #include "analyzer_test_fixtures.hpp"
+#include <ioj/layout/editor_session.hpp>
 
 namespace ioj::layout {
 namespace analyzer_packed_tests {
@@ -6,8 +7,9 @@ namespace analyzer_packed_tests {
 class PackedAnalysisTest : public testing::TestWithParam<AnalysisCase> {};
 
 TEST_P(PackedAnalysisTest, ReportsPhysicalAndSemanticFacts) {
+    EditorSession editor;
     auto const& test{GetParam()};
-    auto const document{Document::from_source(test.source)};
+    auto const document{editor.from_source(test.source)};
     ASSERT_TRUE(document.valid());
     test.verify(document);
 }
@@ -161,13 +163,14 @@ struct CapacityCase {
 class RelationshipCapacityTest : public testing::TestWithParam<CapacityCase> {};
 
 TEST_P(RelationshipCapacityTest, DerivesWidthFromTargetExtent) {
+    EditorSession editor;
     auto const& test{GetParam()};
     auto const source{std::string{R"((module game :header "Game.h" :backend standard-library
         (struct Entities (member values array std::uint8_t))
         (packed-value Handle :storage std::uint64_t
           (field index std::uint64_t :bits 8 (relation )"} +
                       std::string{test.relation} + " Entities))))"};
-    auto const document{Document::from_source(source)};
+    auto const document{editor.from_source(source)};
     ASSERT_TRUE(document.valid());
     std::array const targets{RelationshipTargetFacts{
         document.find_type("game", "Entities").value(), test.extent, test.extent}};

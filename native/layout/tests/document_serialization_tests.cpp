@@ -1,5 +1,6 @@
 #include "document_test_support.hpp"
 #include <ioj/layout/document.hpp>
+#include <ioj/layout/editor_session.hpp>
 
 #include <gtest/gtest.h>
 
@@ -26,13 +27,14 @@ struct SerializationCase {
 class DocumentSerializationTest : public testing::TestWithParam<SerializationCase> {};
 
 TEST_P(DocumentSerializationTest, CanonicalRenderingRoundTripsWithoutFurtherChanges) {
+    EditorSession editor;
     auto const& test{GetParam()};
-    auto const document{Document::from_source(test.source)};
-    ASSERT_TRUE(document.valid()) << diagnostic_messages(document);
+    auto const document{editor.from_source(test.source)};
+    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto const output{rendered(document)};
     test.verify(output);
-    auto const reloaded{Document::from_source(output)};
-    ASSERT_TRUE(reloaded.valid()) << diagnostic_messages(reloaded);
+    auto const reloaded{editor.from_source(output)};
+    ASSERT_TRUE(reloaded.valid()) << diagnostic_messages(editor);
     EXPECT_EQ(rendered(reloaded), output);
 }
 
@@ -128,8 +130,9 @@ struct CommentEditCase {
 class DocumentCommentEditTest : public testing::TestWithParam<CommentEditCase> {};
 
 TEST_P(DocumentCommentEditTest, CommentsFollowTheirOwnersAndUndoRestoresThem) {
+    EditorSession editor;
     auto const& test{GetParam()};
-    auto document{Document::from_source(R"(
+    auto document{editor.from_source(R"(
 ; file documentation
 (module game :header "Game.h"
     ; data documentation
@@ -139,11 +142,11 @@ TEST_P(DocumentCommentEditTest, CommentsFollowTheirOwnersAndUndoRestoresThem) {
         ; y documentation
         (member y std::uint32_t)))
 )")};
-    ASSERT_TRUE(document.valid()) << diagnostic_messages(document);
+    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto const before{rendered(document)};
     auto transaction{document.transaction()};
     test.change(transaction);
-    ASSERT_TRUE(document.commit(transaction)) << diagnostic_messages(document);
+    ASSERT_TRUE(document.commit(transaction)) << diagnostic_messages(editor);
     auto const after{rendered(document)};
     test.verify(after);
     EXPECT_TRUE(after.contains("; file documentation"));
@@ -209,21 +212,22 @@ INSTANTIATE_TEST_SUITE_P(
     [](auto const& info) { return info.param.name; });
 
 TEST(DocumentSerialization, RemovedPropertyRetainsCommentOnItsParent) {
-    auto document{Document::from_source(R"(
+    EditorSession editor;
+    auto document{editor.from_source(R"(
         (module game :header "Game.h"
             (record Data
                 (member values float :count 4 ; count explanation
                 )))
     )")};
-    ASSERT_TRUE(document.valid()) << diagnostic_messages(document);
+    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto transaction{document.transaction()};
     transaction.set_member_count("game", "Data", "values", std::nullopt);
-    ASSERT_TRUE(document.commit(transaction)) << diagnostic_messages(document);
+    ASSERT_TRUE(document.commit(transaction)) << diagnostic_messages(editor);
     auto const output{rendered(document)};
     EXPECT_FALSE(output.contains(":count"));
     EXPECT_TRUE(output.contains("; count explanation"));
-    auto const reloaded{Document::from_source(output)};
-    ASSERT_TRUE(reloaded.valid()) << diagnostic_messages(reloaded);
+    auto const reloaded{editor.from_source(output)};
+    ASSERT_TRUE(reloaded.valid()) << diagnostic_messages(editor);
     EXPECT_EQ(rendered(reloaded), output);
 }
 

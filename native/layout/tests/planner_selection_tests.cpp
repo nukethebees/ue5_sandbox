@@ -1,4 +1,5 @@
 #include <ioj/layout/document.hpp>
+#include <ioj/layout/editor_session.hpp>
 #include <ioj/layout/planner_selection.hpp>
 
 #include <gtest/gtest.h>
@@ -10,7 +11,8 @@ namespace ioj::layout {
 namespace planner_selection_tests {
 
 TEST(PlannerSelection, TypeSwitchClearsAllLocalWorkloads) {
-    auto const document{Document::from_source(R"(
+    EditorSession editor;
+    auto const document{editor.from_source(R"(
         (module test :header "Test.h"
             (record Record (member value std::uint32_t))
             (packed-value Packed :storage std::uint8_t (field bits std::uint8_t :bits 8))))")};
@@ -51,11 +53,12 @@ struct ReconcileCase {
 class SelectionReconcileTest : public testing::TestWithParam<ReconcileCase> {};
 
 TEST_P(SelectionReconcileTest, RetainsOnlyValidSelectionAndWorkload) {
+    EditorSession editor;
     auto const& test{GetParam()};
-    auto const original{Document::from_source(R"(
+    auto const original{editor.from_source(R"(
         (module test :header "Test.h" (record Record (member value std::uint32_t))))")};
-    auto const replacement{Document::from_source(std::string{R"((module test :header "Test.h" )"} +
-                                                 test.replacement + ')')};
+    auto const replacement{editor.from_source(std::string{R"((module test :header "Test.h" )"} +
+                                              test.replacement + ')')};
     ASSERT_TRUE(original.valid());
     ASSERT_TRUE(replacement.valid());
     PlannerSelection selection;

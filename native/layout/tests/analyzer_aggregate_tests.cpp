@@ -1,4 +1,5 @@
 #include "analyzer_test_fixtures.hpp"
+#include <ioj/layout/editor_session.hpp>
 
 namespace ioj::layout {
 namespace analyzer_aggregate_tests {
@@ -6,8 +7,9 @@ namespace analyzer_aggregate_tests {
 class AggregateAnalysisTest : public testing::TestWithParam<AnalysisCase> {};
 
 TEST_P(AggregateAnalysisTest, ReportsLayoutAndAccessFacts) {
+    EditorSession editor;
     auto const& test{GetParam()};
-    auto const document{Document::from_source(test.source)};
+    auto const document{editor.from_source(test.source)};
     ASSERT_TRUE(document.valid());
     test.verify(document);
 }

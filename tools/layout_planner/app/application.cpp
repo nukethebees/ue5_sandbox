@@ -3,6 +3,7 @@
 #include "gui/planner_ui.hpp"
 #include "platform/file_dialog.hpp"
 #include "platform/sdl_headers.hpp"
+#include <ioj/layout/editor_session.hpp>
 #include <ioj/layout/frame_pacer.hpp>
 
 #include <imgui.h>
@@ -25,7 +26,7 @@ class Application {
     Application(std::filesystem::path project_path,
                 std::string target_name,
                 bool const reopen_recent_project)
-        : ui_{std::move(project_path), std::move(target_name)}
+        : ui_{editor_, std::move(project_path), std::move(target_name)}
         , reopen_recent_project_{reopen_recent_project} {}
     ~Application();
 
@@ -38,6 +39,7 @@ class Application {
     auto render_frame() -> bool;
     static auto is_interaction_event(Uint32 type) -> bool;
 
+    layout::EditorSession editor_;
     PlannerUi ui_;
     FileDialog file_dialog_;
     bool reopen_recent_project_{};

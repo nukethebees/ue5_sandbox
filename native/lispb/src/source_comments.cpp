@@ -102,6 +102,9 @@ void SourceComments::capture(CompilerStorage const& storage,
 
     auto const previous_files{captured_files_};
     for (auto const span : syntax.comments()) {
+        if (file.value != 0 && span.file != file) {
+            continue;
+        }
         if (previous_files.contains(span.file)) {
             continue;
         }

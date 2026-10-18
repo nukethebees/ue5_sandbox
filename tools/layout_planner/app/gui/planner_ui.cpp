@@ -2,6 +2,7 @@
 
 #include "platform/file_dialog.hpp"
 #include <ioj/layout/abi_profile.hpp>
+#include <ioj/layout/editor_session.hpp>
 #include <ioj/layout/planner_type.hpp>
 
 #include <lispb/diagnostics.h>
@@ -121,18 +122,23 @@ void soa_layout(layout::SoaAnalysis const& soa) {
 }
 }
 
-PlannerUi::PlannerUi(std::filesystem::path project_path, std::string target_name)
-    : project_path_{std::move(project_path)}
+PlannerUi::PlannerUi(layout::EditorSession& editor,
+                     std::filesystem::path project_path,
+                     std::string target_name)
+    : editor_{editor}
+    , project_path_{std::move(project_path)}
     , target_name_{std::move(target_name)}
     , project_input_{project_path_.string()}
     , target_input_{target_name_} {}
 
-PlannerUi::PlannerUi(layout::Document document)
-    : document_{std::move(document)}
+PlannerUi::PlannerUi(layout::EditorSession& editor, layout::Document document)
+    : editor_{editor}
+    , document_{std::move(document)}
     , project_path_{document_->project_path()}
     , target_name_{document_->target_name()}
     , project_input_{project_path_.string()}
     , target_input_{target_name_} {
+    assert(&document_->session() == &editor_);
     synchronize();
 }
 
@@ -236,7 +242,7 @@ auto PlannerUi::open_project() -> bool {
         return false;
     }
 
-    auto next{layout::Document::load(project_input_, target_input_)};
+    auto next{editor_.load(project_input_, target_input_)};
     auto const valid{next.valid()};
     document_ = std::move(next);
     project_path_ = project_input_;
@@ -260,8 +266,7 @@ void PlannerUi::new_project() {
         status_ = "Save or undo the current edits before creating another project.";
         return;
     }
-    document_ = layout::Document::from_source(
-        R"((module game :header "Game.h" :backend standard-library))");
+    document_ = editor_.from_source(R"((module game :header "Game.h" :backend standard-library))");
     analysis_ = layout::PlannerAnalysisSession{};
     selected_module_ = "game";
     selected_declaration_.clear();
@@ -450,11 +455,7 @@ void PlannerUi::draw_project() {
         if (result && *result) {
             project_input_ = (**result).string();
         } else if (!result) {
-            if (document_) {
-                document_->record_error(result.error());
-            } else {
-                status_ = result.error();
-            }
+            editor_.record_error(result.error());
         }
     }
     if (ImGui::Button("Open project")) {
@@ -738,7 +739,7 @@ void PlannerUi::draw_analysis() {
             if (profile) {
                 analysis_.set_primary_abi(std::move(*profile));
             } else {
-                document_->record_error(profile.error().message);
+                editor_.record_error(profile.error().message);
             }
         }
         ImGui::SameLine();
@@ -751,7 +752,7 @@ void PlannerUi::draw_analysis() {
             if (profile) {
                 analysis_.set_comparison_abi(std::move(*profile));
             } else {
-                document_->record_error(profile.error().message);
+                editor_.record_error(profile.error().message);
             }
         }
         analysis_.refresh(&*document_);
@@ -1007,18 +1008,11 @@ void PlannerUi::draw_diagnostics() {
     if (!status_.empty()) {
         label(status_);
     }
-    if (document_) {
-        auto const& diagnostics{document_->diagnostics()};
-        auto const count{diagnostics.size()};
-        for (std::size_t index{}; index < count; ++index) {
-            auto const id{lispb::DiagnosticId{static_cast<std::uint32_t>(index)}};
-            auto const severity{diagnostics.severity(id)};
-            ImGui::TextUnformatted(severity == lispb::DiagnosticSeverity::error     ? "Error:"
-                                   : severity == lispb::DiagnosticSeverity::warning ? "Warning:"
-                                                                                    : "Note:");
-            ImGui::SameLine();
-            label(diagnostics.message(id));
-        }
+    auto const& diagnostics{editor_.diagnostics()};
+    auto const count{diagnostics.size()};
+    for (std::size_t index{}; index < count; ++index) {
+        auto const id{lispb::DiagnosticId{static_cast<std::uint32_t>(index)}};
+        label(editor_.format_diagnostic(id));
     }
     ImGui::End();
 }

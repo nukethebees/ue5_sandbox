@@ -1,5 +1,6 @@
 #include <ioj/layout/analyzer.hpp>
 #include <ioj/layout/document.hpp>
+#include <ioj/layout/editor_session.hpp>
 #include <ioj/layout/physical_facts.hpp>
 
 #include <gtest/gtest.h>
@@ -14,14 +15,15 @@
 namespace ioj::layout {
 namespace physical_facts_tests {
 
-auto physical_fixture() -> Document {
-    return Document::load(std::filesystem::path{IOJ_SOURCE_DIR} / "lispb/project.lispb",
-                          "native-soa-fixture");
+auto physical_fixture(EditorSession& editor) -> Document {
+    return editor.load(std::filesystem::path{IOJ_SOURCE_DIR} / "lispb/project.lispb",
+                       "native-soa-fixture");
 }
 
 TEST(PhysicalFacts, GeneratedCppAgreesForPointersNestedRecordsAndAlignedExternalMembers) {
+    EditorSession editor;
     using namespace ml::native_soa_fixture;
-    auto const document{physical_fixture()};
+    auto const document{physical_fixture(editor)};
     ASSERT_TRUE(document.valid());
     auto const& types{document.types()};
     auto profile{AbiProfile::host_common()};
@@ -61,8 +63,9 @@ TEST(PhysicalFacts, GeneratedCppAgreesForPointersNestedRecordsAndAlignedExternal
 }
 
 TEST(PhysicalFacts, SingleOnlySchemasUseOwnerFactsAndLayoutsHaveNoPhysicalObject) {
+    EditorSession editor;
     using namespace ml::native_soa_fixture;
-    auto const document{physical_fixture()};
+    auto const document{physical_fixture(editor)};
     ASSERT_TRUE(document.valid());
     auto const& types{document.types()};
     auto profile{AbiProfile::host_common()};
@@ -88,7 +91,8 @@ TEST(PhysicalFacts, SingleOnlySchemasUseOwnerFactsAndLayoutsHaveNoPhysicalObject
 }
 
 TEST(PhysicalFacts, MissingPointeeFactsDoNotBlockPointersAndProfilesStaySeparate) {
-    auto const document{Document::from_source("")};
+    EditorSession editor;
+    auto const document{editor.from_source("")};
     ASSERT_TRUE(document.valid());
     auto const& types{document.types()};
     auto profile{AbiProfile::host_common()};
@@ -104,7 +108,8 @@ TEST(PhysicalFacts, MissingPointeeFactsDoNotBlockPointersAndProfilesStaySeparate
 }
 
 TEST(PhysicalFacts, UnsupportedUsesAndReferenceStorageRemainUnknown) {
-    auto const document{Document::from_source("")};
+    EditorSession editor;
+    auto const document{editor.from_source("")};
     ASSERT_TRUE(document.valid());
     auto const& types{document.types()};
     auto profile{AbiProfile::host_common()};
@@ -123,7 +128,8 @@ TEST(PhysicalFacts, UnsupportedUsesAndReferenceStorageRemainUnknown) {
 }
 
 TEST(PhysicalFacts, PointerPolicyRetainsManualEvidence) {
-    auto const document{Document::from_source("")};
+    EditorSession editor;
+    auto const document{editor.from_source("")};
     ASSERT_TRUE(document.valid());
     auto const& types{document.types()};
     AbiProfile profile{"assumed target"};
@@ -141,7 +147,8 @@ TEST(PhysicalFacts, PointerPolicyRetainsManualEvidence) {
 }
 
 TEST(PhysicalFacts, SuppliedFactsCannotSilentlyReplaceGeneratedLayout) {
-    auto const document{physical_fixture()};
+    EditorSession editor;
+    auto const document{physical_fixture(editor)};
     ASSERT_TRUE(document.valid());
     auto const& types{document.types()};
     auto profile{AbiProfile::host_common()};

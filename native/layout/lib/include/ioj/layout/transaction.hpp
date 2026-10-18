@@ -1,4 +1,5 @@
 #pragma once
+#include <ioj/layout/document_id.hpp>
 #include <ioj/layout/revision.hpp>
 #include <ioj/layout/transaction_kind.hpp>
 #include <ioj/layout/variant_id.hpp>
@@ -15,6 +16,7 @@ struct Manifest;
 
 namespace ioj::layout {
 class Document;
+class EditorSession;
 class DocumentState;
 // Names resolve in instruction order. A transaction belongs to its creating document revision.
 class Transaction {
@@ -131,7 +133,7 @@ class Transaction {
                               std::optional<std::uint64_t> capacity);
   private:
     friend class Document;
-    Transaction(Document const& owner, Revision revision);
+    Transaction(EditorSession const& session, DocumentId owner, Revision revision);
     void append(TransactionKind kind,
                 std::string_view module,
                 std::string_view declaration,
@@ -139,7 +141,8 @@ class Transaction {
                 std::string_view text,
                 std::optional<std::uint64_t> number = 0);
     void apply(DocumentState& state, lispb::codegen::Manifest& manifest) const;
-    Document const* owner_;
+    EditorSession const* session_;
+    DocumentId owner_;
     Revision revision_;
     std::vector<TransactionKind> kinds_;
     std::vector<std::string> modules_;

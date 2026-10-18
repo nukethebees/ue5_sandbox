@@ -1,5 +1,6 @@
 #include "document_test_support.hpp"
 #include <ioj/layout/document.hpp>
+#include <ioj/layout/editor_session.hpp>
 #include <ioj/layout/planner_session.hpp>
 #include <ioj/layout/planner_type.hpp>
 
@@ -27,11 +28,12 @@ struct CapabilityCase {
 class DeclarationCapabilityTest : public testing::TestWithParam<CapabilityCase> {};
 
 TEST_P(DeclarationCapabilityTest, ReportsAuthoringAndAnalysisCapabilities) {
+    EditorSession editor;
     auto const& test{GetParam()};
-    auto const document{Document::from_source(
+    auto const document{editor.from_source(
         std::string{R"((module test :header "Test.h" :source "Test.cpp" :backend )"} +
         test.backend + ' ' + test.declaration + ')')};
-    ASSERT_TRUE(document.valid()) << diagnostic_messages(document);
+    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto const type{document.find_type("test", "Value")};
     ASSERT_TRUE(type);
     auto const capabilities{declaration_capabilities(document.types(), *type)};
@@ -99,9 +101,10 @@ struct StatusCase {
 class DeclarationStatusTest : public testing::TestWithParam<StatusCase> {};
 
 TEST_P(DeclarationStatusTest, DistinguishesUnknownFactsFromErrors) {
+    EditorSession editor;
     auto const& test{GetParam()};
-    auto const document{Document::from_source(test.source)};
-    ASSERT_TRUE(document.valid()) << diagnostic_messages(document);
+    auto const document{editor.from_source(test.source)};
+    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto const type{document.find_type("test", "Value")};
     ASSERT_TRUE(type);
     EXPECT_EQ(declaration_status(
@@ -139,11 +142,12 @@ INSTANTIATE_TEST_SUITE_P(
     [](auto const& info) { return info.param.name; });
 
 TEST(PlannerType, ExternalFactsUnblockValuesOnlyOnTheActiveTarget) {
-    auto const document{Document::from_source(R"(
+    EditorSession editor;
+    auto const document{editor.from_source(R"(
         (module test :header "Test.h"
             (record Value (member value OpaqueVector))
             (record Pointer (member value (type-ref OpaqueVector :suffix "*")))))")};
-    ASSERT_TRUE(document.valid()) << diagnostic_messages(document);
+    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto const& types{document.types()};
     auto const external{external_dependencies(types).front().types.front()};
     PlannerAnalysisSession session{types};
@@ -178,12 +182,13 @@ TEST(PlannerType, ExternalFactsUnblockValuesOnlyOnTheActiveTarget) {
 }
 
 TEST(PlannerType, SwitchingUnsupportedBackendClearsPhysicalResults) {
-    auto const document{Document::from_source(R"(
+    EditorSession editor;
+    auto const document{editor.from_source(R"(
         (module standard :header "Standard.h" :backend standard-library
             (struct Columns (member values array float)))
         (module unreal :header "Unreal.h" :source "Unreal.cpp" :backend unreal
             (struct Columns (member values array float))))")};
-    ASSERT_TRUE(document.valid()) << diagnostic_messages(document);
+    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     PlannerAnalysisSession session{document.types()};
     for (auto const module : {"standard", "unreal", "standard"}) {
         ASSERT_TRUE(session.edit_inputs().selection.select_type(
@@ -196,23 +201,24 @@ TEST(PlannerType, SwitchingUnsupportedBackendClearsPhysicalResults) {
 }
 
 TEST(PlannerType, StatusTracksVariantRelationshipCapacity) {
-    auto document{Document::from_source(R"(
+    EditorSession editor;
+    auto document{editor.from_source(R"(
         (module entities :header "Entities.h" :backend standard-library
             (struct Entities (member values array std::uint8_t)))
         (module test :header "Test.h"
             (packed-value Value :storage std::uint64_t
                 (field value std::uint64_t :bits 17 (relation index_into Entities)))))")};
-    ASSERT_TRUE(document.valid()) << diagnostic_messages(document);
+    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto const type{*document.find_type("test", "Value")};
     PlannerAnalysisSession session{document.types()};
     EXPECT_EQ(session.status(type), LayoutStatus::available);
     auto create{document.transaction()};
     create.create_variant("narrow");
-    ASSERT_TRUE(document.commit(create)) << diagnostic_messages(document);
+    ASSERT_TRUE(document.commit(create)) << diagnostic_messages(editor);
     auto const variant{document.variants().ids().back()};
     auto edit{document.transaction()};
     edit.set_variant_field_bits(variant, "test", "Value", "value", 8);
-    ASSERT_TRUE(document.commit(edit)) << diagnostic_messages(document);
+    ASSERT_TRUE(document.commit(edit)) << diagnostic_messages(editor);
     session.edit_inputs().selection.select_type(document.types(), type);
     ASSERT_TRUE(session.refresh(&document));
     ASSERT_TRUE(session.edit_inputs().workspace.select_variant(variant));
@@ -225,11 +231,12 @@ TEST(PlannerType, StatusTracksVariantRelationshipCapacity) {
 }
 
 TEST(PlannerType, VarintStatusUsesSelectedElementCount) {
-    auto const document{Document::from_source(R"(
+    EditorSession editor;
+    auto const document{editor.from_source(R"(
         (module test :header "Test.h"
             (integer-scalar Source :signed false :minimum 0 :maximum 16384)
             (integer-varint Value :source Source :encoding unsigned)))")};
-    ASSERT_TRUE(document.valid()) << diagnostic_messages(document);
+    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto const type{*document.find_type("test", "Value")};
     PlannerAnalysisSession session{document.types()};
     EXPECT_EQ(session.status(type), LayoutStatus::available);

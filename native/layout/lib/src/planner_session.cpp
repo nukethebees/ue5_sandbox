@@ -1,6 +1,7 @@
 #include <ioj/layout/planner_session.hpp>
 
 #include <ioj/layout/document.hpp>
+#include <ioj/layout/editor_session.hpp>
 
 #include <codegen/schema.h>
 #include <codegen/schema/soa_backend.h>
@@ -438,7 +439,7 @@ auto PlannerAnalysisSession::refresh(Document* document) -> bool {
             collect_diagnostics(result.diagnostics);
         }
         for (auto const& message : errors) {
-            document->record_error(message);
+            document->session().record_error(message);
         }
     }
     return true;

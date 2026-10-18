@@ -7,19 +7,24 @@ and analysis APIs; it does not mutate compiler columns.
 
 ## Document and transactions
 
-`Document` owns one compiler storage, the current module roots, project sources,
-physical variants, diagnostics, and one history cursor. `Transaction` queues
+`EditorSession` owns the shared compiler stores, strings, source text, and
+diagnostics. It creates documents and must outlive them. `Document` holds its
+module roots, source handles, physical variants, and history directly by value.
+It borrows the session so its edit and query methods remain convenient.
+`Transaction` queues
 instructions in parallel columns. Names resolve in instruction order, so later
 instructions can use a declaration created or renamed earlier in the transaction.
 
-The owned state stays at a stable address when `Document` moves: the compiler
-stores reference one another and cannot be moved independently.
+Documents move without relocating the session's stores. Transactions identify
+their document by a session-local `DocumentId`, so a queued transaction survives
+a document move. Query objects borrow declarations and module handles directly;
+they do not retain a manifest. Reacquire borrowed query views after a move.
 
 Applying an instruction appends immutable declaration/module versions to the
 compiler's SoA stores. Intermediate versions may be invalid. Commit resolves and
 validates the final schema before publishing its roots. Rejection retains the
 previous document, cursor, and redo branch; diagnostics remain available through
-`diagnostics()` and `last_diagnostic_begin()`.
+the session's `diagnostics()` and `last_diagnostic_begin()`.
 
 Accepted history consists of forward module-root splices and changed source and
 variant versions. Undo and redo move the cursor, replay the accepted prefix from
@@ -33,14 +38,15 @@ experiments and are not written into LispB source files.
 
 `Variants` stores authored settings in SoA form. `ResolvedVariant` is one analysis
 projection using graph-local type IDs. `VariantId{}` selects the baseline. Member
-keys use interned `IdentifierId`s from the document's existing LispB string store.
+keys use interned `IdentifierId`s from the session's LispB string store.
 
 ## Reading and writing
 
 Tests and consumers use source text and named queries:
 
 ```cpp
-auto document = Document::from_source(source);
+EditorSession editor;
+auto document = editor.from_source(source);
 auto transaction = document.transaction();
 transaction.set_field_bits("game", "ShipState", "health", 12);
 document.commit(transaction);
@@ -64,7 +70,7 @@ Project source membership participates in the same history as schema edits.
 overrides. `LayoutWorkspace` supplies the resolved analysis inputs; it has no
 authored document or undo history. `PlannerSession` recomputes results when the
 document revision or analysis inputs change. Analysis errors also enter the
-document diagnostic container.
+session diagnostic container.
 
 Physical sizes remain unknown when target facts are absent. Semantic bit widths
 do not establish C++ object size/alignment. Cache/page results describe modeled

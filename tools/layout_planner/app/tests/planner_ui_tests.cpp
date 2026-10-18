@@ -1,4 +1,5 @@
 #include "gui/planner_ui.hpp"
+#include <ioj/layout/editor_session.hpp>
 
 #include <gtest/gtest.h>
 #include <imgui.h>
@@ -31,7 +32,8 @@ class PlannerUiTest : public testing::Test {
 };
 
 TEST_F(PlannerUiTest, EmptyWorkspaceCanDrawAndClose) {
-    PlannerUi ui;
+    layout::EditorSession editor;
+    PlannerUi ui{editor};
     draw(ui);
     EXPECT_EQ(ui.window_title(), "Memory Layout Planner");
     ui.request_close();
@@ -40,7 +42,8 @@ TEST_F(PlannerUiTest, EmptyWorkspaceCanDrawAndClose) {
 }
 
 TEST_F(PlannerUiTest, RemembersWindowSizeThroughSettings) {
-    PlannerUi ui;
+    layout::EditorSession editor;
+    PlannerUi ui{editor};
     ui.register_settings_handler();
     ui.remember_window_size({1280, 720});
     auto const settings{std::string{ImGui::SaveIniSettingsToMemory()}};
@@ -52,14 +55,16 @@ TEST_F(PlannerUiTest, RemembersWindowSizeThroughSettings) {
 }
 
 TEST_F(PlannerUiTest, InvalidInputCanDrawDiagnostics) {
-    auto document{layout::Document::from_source("(broken")};
+    layout::EditorSession editor;
+    auto document{editor.from_source("(broken")};
     ASSERT_FALSE(document.valid());
-    PlannerUi ui{std::move(document)};
+    PlannerUi ui{editor, std::move(document)};
     draw(ui);
 }
 
 TEST_F(PlannerUiTest, ChangedDocumentRequiresCloseConfirmation) {
-    auto document{layout::Document::from_source(R"(
+    layout::EditorSession editor;
+    auto document{editor.from_source(R"(
         (module game :header "Game.h" :backend standard-library
             (packed-value ShipState :storage std::uint16_t
                 (field health std::uint16_t :bits 8))))")};
@@ -67,7 +72,7 @@ TEST_F(PlannerUiTest, ChangedDocumentRequiresCloseConfirmation) {
     auto transaction{document.transaction()};
     transaction.set_field_bits("game", "ShipState", "health", 4);
     ASSERT_TRUE(document.commit(transaction));
-    PlannerUi ui{std::move(document)};
+    PlannerUi ui{editor, std::move(document)};
     draw(ui);
     EXPECT_TRUE(ui.window_title().ends_with(" *"));
     ui.request_close();

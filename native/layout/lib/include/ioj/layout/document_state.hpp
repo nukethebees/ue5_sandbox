@@ -1,12 +1,12 @@
 #pragma once
 
-#include "document_io_state.hpp"
+#include <ioj/layout/document_id.hpp>
+#include <ioj/layout/document_io_state.hpp>
 #include <ioj/layout/revision.hpp>
 #include <ioj/layout/variants.hpp>
 
 #include <codegen/schema/manifest.h>
 #include <codegen/schema/schema_version.h>
-#include <lispb/compiler_storage.h>
 #include <lispb/project.h>
 #include <lispb/schema/source_comments.h>
 #include <lispb/schema/type_graph.h>
@@ -14,9 +14,12 @@
 #include <memory>
 
 namespace ioj::layout {
+class EditorSession;
 class DocumentState {
   public:
-    void error(std::string_view message);
+    DocumentState(EditorSession& session, DocumentId id);
+    auto storage() const -> lispb::CompilerStorage&;
+    auto manifest() const -> lispb::codegen::Manifest;
     auto register_declaration(lispb::codegen::DeclarationHandle declaration)
         -> lispb::schema::DeclarationId;
     void inherit_declaration(lispb::codegen::DeclarationHandle before,
@@ -27,11 +30,10 @@ class DocumentState {
                      std::string_view text,
                      lispb::codegen::Manifest& candidate);
 
-    lispb::CompilerStorage storage;
-    lispb::codegen::Manifest manifest{lispb::codegen::manifest_schema_version,
-                                      lispb::codegen::TypeRegistry{storage.registered_types},
-                                      storage.declarations,
-                                      {}};
+    EditorSession* session;
+    DocumentId id;
+    std::vector<lispb::codegen::ModuleHandle> modules;
+    std::map<lispb::IdentifierId, lispb::codegen::RegisteredTypeId> registered_types;
     lispb::schema::TypeGraph types;
     lispb::schema::SourceComments comments;
     Variants variants;
@@ -56,7 +58,6 @@ class DocumentState {
     std::vector<std::shared_ptr<std::vector<lispb::codegen::sexpr::SourceFileId> const>>
         source_versions;
     std::size_t position{};
-    std::size_t diagnostic_begin{};
     Revision revision{};
     bool valid{};
 };

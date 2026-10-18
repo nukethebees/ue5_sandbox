@@ -1,4 +1,5 @@
 #include <ioj/layout/document.hpp>
+#include <ioj/layout/editor_session.hpp>
 #include <ioj/layout/graph_view.hpp>
 
 #include <lispb/strings.h>
@@ -17,8 +18,9 @@ namespace ioj::layout {
 namespace graph_view_tests {
 
 TEST(GraphView, RealProjectModuleProjectionReducesScopeAndKeepsBoundaries) {
-    auto const document{Document::load(
-        std::filesystem::path{IOJ_SOURCE_DIR} / "lispb/project.lispb", "sandbox-code")};
+    EditorSession editor;
+    auto const document{
+        editor.load(std::filesystem::path{IOJ_SOURCE_DIR} / "lispb/project.lispb", "sandbox-code")};
     ASSERT_TRUE(document.valid());
     auto const& types{document.types()};
     auto const project{project_graph(types, {})};
@@ -37,7 +39,8 @@ TEST(GraphView, RealProjectModuleProjectionReducesScopeAndKeepsBoundaries) {
     }
 }
 TEST(GraphView, ModuleScopeKeepsDirectBoundariesWithoutExpandingTheirDependencies) {
-    auto const document{Document::from_source(R"(
+    EditorSession editor;
+    auto const document{editor.from_source(R"(
         (module a :header "a.h" (record aRecord (member max bRecord) (member x bRecord)))
         (module b :header "b.h" (record bRecord (member max float) (member x float)))
         (module c :header "c.h" (record cRecord (member max float) (member x float))))")};

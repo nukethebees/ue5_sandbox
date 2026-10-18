@@ -1,4 +1,5 @@
 #include "analyzer_test_fixtures.hpp"
+#include <ioj/layout/editor_session.hpp>
 
 #include <cmath>
 
@@ -8,8 +9,9 @@ namespace analyzer_tests {
 class RepresentationTest : public testing::TestWithParam<AnalysisCase> {};
 
 TEST_P(RepresentationTest, ReportsSemanticAndEncodingFacts) {
+    EditorSession editor;
     auto const& test{GetParam()};
-    auto const document{Document::from_source(test.source)};
+    auto const document{editor.from_source(test.source)};
     ASSERT_TRUE(document.valid());
     test.verify(document);
 }

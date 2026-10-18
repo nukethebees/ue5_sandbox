@@ -1,4 +1,5 @@
 #include <ioj/layout/document.hpp>
+#include <ioj/layout/editor_session.hpp>
 #include <ioj/layout/planner_session.hpp>
 
 #include <lispb/diagnostics.h>
@@ -58,8 +59,8 @@ void report_samples(std::string_view operation, std::vector<double> samples) {
     std::cout << std::endl;
 }
 
-void report_failure(Document const& document) {
-    auto const& diagnostics{document.diagnostics()};
+void report_failure(EditorSession const& editor) {
+    auto const& diagnostics{editor.diagnostics()};
     auto const count{diagnostics.size()};
     auto const first{count > 8 ? count - 8 : 0};
     for (auto row{first}; row < count; ++row) {
@@ -69,10 +70,11 @@ void report_failure(Document const& document) {
 }
 
 auto run(char const* project, char const* target) -> int {
+    EditorSession editor;
     auto const deadline{Clock::now() + std::chrono::seconds{170}};
-    auto document{Document::load(project, target)};
+    auto document{editor.load(project, target)};
     if (!document.valid()) {
-        report_failure(document);
+        report_failure(editor);
         return 1;
     }
     auto const selected{document.find_type("sandbox_ismc_render", "PackedTransform")};
@@ -86,7 +88,7 @@ auto run(char const* project, char const* target) -> int {
     auto create{document.transaction()};
     create.create_variant("Benchmark");
     if (!document.commit(create)) {
-        report_failure(document);
+        report_failure(editor);
         return 1;
     }
     session.refresh(&document);
@@ -121,7 +123,7 @@ auto run(char const* project, char const* target) -> int {
         }
         auto const start{Clock::now()};
         if (!document.commit(transaction)) {
-            report_failure(document);
+            report_failure(editor);
             return 1;
         }
         session.refresh(&document);
@@ -133,7 +135,7 @@ auto run(char const* project, char const* target) -> int {
     for (std::size_t row{}; row < commits.size() && Clock::now() < deadline; ++row) {
         auto const start{Clock::now()};
         if (!document.undo()) {
-            report_failure(document);
+            report_failure(editor);
             return 1;
         }
         session.refresh(&document);
@@ -145,7 +147,7 @@ auto run(char const* project, char const* target) -> int {
     for (std::size_t row{}; row < undos.size() && Clock::now() < deadline; ++row) {
         auto const start{Clock::now()};
         if (!document.redo()) {
-            report_failure(document);
+            report_failure(editor);
             return 1;
         }
         session.refresh(&document);

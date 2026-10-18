@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ioj/layout/document_source.hpp>
+#include <ioj/layout/document_state.hpp>
 #include <ioj/layout/revision.hpp>
 #include <ioj/layout/transaction.hpp>
 #include <ioj/layout/variants.hpp>
@@ -9,26 +10,18 @@
 #include <lispb/schema/type_graph.h>
 
 #include <filesystem>
-#include <memory>
 #include <span>
 #include <string>
 #include <string_view>
 #include <vector>
 
-namespace lispb {
-class Diagnostics;
-}
 namespace ioj::layout {
-class DocumentState;
+class EditorSession;
 
-// Queries and source views borrow this document until the next edit or source rendering.
+// Borrow the creating session, which must outlive this document. Moves preserve handles;
+// reacquire queries and views after a move, edit, or source rendering.
 class Document {
   public:
-    static auto from_source(std::string_view source, std::string_view registry = {}) -> Document;
-    static auto from_sources(std::span<DocumentSource const> sources,
-                             std::string_view registry = {}) -> Document;
-    static auto load(std::filesystem::path const& project_path, std::string_view target)
-        -> Document;
     ~Document();
     Document(Document&&) noexcept;
     auto operator=(Document&&) noexcept -> Document&;
@@ -44,10 +37,7 @@ class Document {
         -> std::optional<lispb::schema::DeclarationId>;
     auto declaration_type(lispb::schema::DeclarationId declaration) const
         -> std::optional<lispb::schema::TypeId>;
-    auto diagnostics() const -> lispb::Diagnostics const&;
-    auto format_diagnostic(lispb::DiagnosticId diagnostic) const -> std::string;
-    auto last_diagnostic_begin() const -> std::size_t;
-    void record_error(std::string_view message);
+    auto session() const -> EditorSession&;
     auto transaction() const -> Transaction;
     auto commit(Transaction const& transaction) -> bool;
     auto undo() -> bool;
@@ -64,9 +54,9 @@ class Document {
     auto save() -> bool;
     auto save_as(std::filesystem::path const& project_path, std::string_view target) -> bool;
   private:
-    Document();
+    friend class EditorSession;
+    explicit Document(EditorSession& session);
     auto replay(std::size_t position) -> bool;
-    // Keep the compiler's mutually referencing stores at stable addresses when Document moves.
-    std::unique_ptr<DocumentState> state_;
+    DocumentState state_;
 };
 }

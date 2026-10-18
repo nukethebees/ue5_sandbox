@@ -1,4 +1,5 @@
 #include "document_test_support.hpp"
+#include <ioj/layout/editor_session.hpp>
 
 #include <gtest/gtest.h>
 
@@ -27,17 +28,18 @@ class DocumentProjectSerializationTest : public testing::TestWithParam<char cons
 };
 
 TEST_P(DocumentProjectSerializationTest, CanonicalProjectSavesAndReloadsWithoutFurtherChanges) {
-    auto document{Document::load(std::filesystem::path{IOJ_SOURCE_DIR} / "lispb/project.lispb",
-                                 GetParam())};
-    ASSERT_TRUE(document.valid()) << diagnostic_messages(document);
+    EditorSession editor;
+    auto document{
+        editor.load(std::filesystem::path{IOJ_SOURCE_DIR} / "lispb/project.lispb", GetParam())};
+    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     std::vector<std::pair<std::string, std::string>> expected;
     for (auto const& source : document.sources()) {
         expected.emplace_back(source.path, source.text);
     }
     auto const destination{directory_ / "project.lispb"};
-    ASSERT_TRUE(document.save_as(destination, GetParam())) << diagnostic_messages(document);
-    auto const reloaded{Document::load(destination, GetParam())};
-    ASSERT_TRUE(reloaded.valid()) << diagnostic_messages(reloaded);
+    ASSERT_TRUE(document.save_as(destination, GetParam())) << diagnostic_messages(editor);
+    auto const reloaded{editor.load(destination, GetParam())};
+    ASSERT_TRUE(reloaded.valid()) << diagnostic_messages(editor);
     auto const actual{reloaded.sources()};
     ASSERT_EQ(actual.size(), expected.size());
     auto const count{actual.size()};
@@ -49,12 +51,12 @@ TEST_P(DocumentProjectSerializationTest, CanonicalProjectSavesAndReloadsWithoutF
 }
 
 INSTANTIATE_TEST_SUITE_P(RepositoryTargets,
-                        DocumentProjectSerializationTest,
-                        testing::Values("sandbox-code", "compiler-ir", "cpp-compile-fixture"),
-                        [](auto const& info) {
-                            std::string name{info.param};
-                            std::ranges::replace(name, '-', '_');
-                            return name;
-                        });
+                         DocumentProjectSerializationTest,
+                         testing::Values("sandbox-code", "compiler-ir", "cpp-compile-fixture"),
+                         [](auto const& info) {
+                             std::string name{info.param};
+                             std::ranges::replace(name, '-', '_');
+                             return name;
+                         });
 
 } // namespace ioj::layout::document_project_serialization_tests
