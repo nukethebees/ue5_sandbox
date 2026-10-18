@@ -68,11 +68,11 @@ auto append_mission_groups(sim::LevelEventSchedule& schedule,
 }
 
 auto append_spawn_groups(sim::LevelEventSchedule& schedule,
+                         std::int32_t const capital_end,
+                         std::int32_t const turret_end,
                          std::int32_t& capital_offset,
                          std::int32_t& turret_offset,
                          std::string& error) -> bool {
-    auto const capital_end{schedule.capital_spawns.num()};
-    auto const turret_end{schedule.turret_spawns.num()};
     auto const append = [&](sim::EntityType const type,
                             std::int32_t const offset,
                             std::int32_t const count,
@@ -172,69 +172,77 @@ auto compile_level(LevelDefinition const& level,
     });
 
     MissionTickValues mission_values;
-    auto const append_entity = [&](sim::LevelEntityIndex const entity_index_value,
-                                   sim::LevelCapitalSpawnEvents& capital_storage,
-                                   sim::LevelTurretSpawnEvents& turret_storage) {
-        auto const& entity{definition.entities()[static_cast<std::size_t>(entity_index_value)]};
-        if (entity.archetype == EntityArchetype::CapitalShip) {
-            auto const row{capital_storage.num()};
-            capital_storage.add_uninitialised(1);
-            auto const capital_events{capital_storage.get_view()};
-            capital_events.entity_indices()[row] = entity_index_value;
-            capital_events.target_entity_indices()[row] =
-                entity.overrides.target_entity_id.empty()
-                    ? sim::invalid_level_entity_index
-                    : entity_index(definition, entity.overrides.target_entity_id);
-            set_vector(capital_events.view_locations(),
-                       row,
-                       Vector3f{static_cast<float>(entity.position.x()),
-                                static_cast<float>(entity.position.y()),
-                                static_cast<float>(entity.position.z())});
-            set_rotation(capital_events.view_rotations(),
-                         row,
-                         Rotator3f{static_cast<float>(entity.rotation.pitch),
-                                   static_cast<float>(entity.rotation.yaw),
-                                   static_cast<float>(entity.rotation.roll)});
-            capital_events.teams()[row] = entity.team;
-            capital_events.healths()[row] =
-                entity.overrides.health.value_or(capital_config.max_health);
-            capital_events.initial_fighter_spawn_delays()[row] =
-                entity.overrides.initial_spawn_delay.value_or(0.0f);
-            capital_events.fighter_spawn_cooldowns()[row] =
-                entity.overrides.spawn_cooldown.value_or(capital_config.spawn_delay);
-        } else if (entity.archetype == EntityArchetype::StaticTurret) {
-            auto const row{turret_storage.num()};
-            turret_storage.add_uninitialised(1);
-            auto const turret_events{turret_storage.get_view()};
-            turret_events.entity_indices()[row] = entity_index_value;
-            set_vector(turret_events.view_locations(),
-                       row,
-                       Vector3f{static_cast<float>(entity.position.x()),
-                                static_cast<float>(entity.position.y()),
-                                static_cast<float>(entity.position.z())});
-            set_rotation(turret_events.view_rotations(),
-                         row,
-                         Rotator3f{static_cast<float>(entity.rotation.pitch),
-                                   static_cast<float>(entity.rotation.yaw),
-                                   static_cast<float>(entity.rotation.roll)});
-            turret_events.teams()[row] = entity.team;
-            turret_events.healths()[row] =
-                entity.overrides.health.value_or(turret_config.max_health);
-            turret_events.laser_damages()[row] =
-                entity.overrides.laser_damage.value_or(turret_config.laser.damage);
-        }
-    };
+    std::int32_t capital_count{};
+    std::int32_t turret_count{};
+    for (auto const& entity : definition.entities()) {
+        capital_count += entity.archetype == EntityArchetype::CapitalShip ? 1 : 0;
+        turret_count += entity.archetype == EntityArchetype::StaticTurret ? 1 : 0;
+    }
+    schedule.capital_spawns.add_uninitialised(capital_count);
+    schedule.turret_spawns.add_uninitialised(turret_count);
+    auto const capital_events{schedule.capital_spawns.get_view()};
+    auto const turret_events{schedule.turret_spawns.get_view()};
+    std::int32_t capital_end{};
+    std::int32_t turret_end{};
+
+    auto const append_entity =
+        [&, capital_events, turret_events](sim::LevelEntityIndex const entity_index_value) {
+            auto const& entity{definition.entities()[static_cast<std::size_t>(entity_index_value)]};
+            if (entity.archetype == EntityArchetype::CapitalShip) {
+                auto const row{capital_end++};
+                capital_events.entity_indices()[row] = entity_index_value;
+                capital_events.target_entity_indices()[row] =
+                    entity.overrides.target_entity_id.empty()
+                        ? sim::invalid_level_entity_index
+                        : entity_index(definition, entity.overrides.target_entity_id);
+                set_vector(capital_events.view_locations(),
+                           row,
+                           Vector3f{static_cast<float>(entity.position.x()),
+                                    static_cast<float>(entity.position.y()),
+                                    static_cast<float>(entity.position.z())});
+                set_rotation(capital_events.view_rotations(),
+                             row,
+                             Rotator3f{static_cast<float>(entity.rotation.pitch),
+                                       static_cast<float>(entity.rotation.yaw),
+                                       static_cast<float>(entity.rotation.roll)});
+                capital_events.teams()[row] = entity.team;
+                capital_events.healths()[row] =
+                    entity.overrides.health.value_or(capital_config.max_health);
+                capital_events.initial_fighter_spawn_delays()[row] =
+                    entity.overrides.initial_spawn_delay.value_or(0.0f);
+                capital_events.fighter_spawn_cooldowns()[row] =
+                    entity.overrides.spawn_cooldown.value_or(capital_config.spawn_delay);
+            } else if (entity.archetype == EntityArchetype::StaticTurret) {
+                auto const row{turret_end++};
+                turret_events.entity_indices()[row] = entity_index_value;
+                set_vector(turret_events.view_locations(),
+                           row,
+                           Vector3f{static_cast<float>(entity.position.x()),
+                                    static_cast<float>(entity.position.y()),
+                                    static_cast<float>(entity.position.z())});
+                set_rotation(turret_events.view_rotations(),
+                             row,
+                             Rotator3f{static_cast<float>(entity.rotation.pitch),
+                                       static_cast<float>(entity.rotation.yaw),
+                                       static_cast<float>(entity.rotation.roll)});
+                turret_events.teams()[row] = entity.team;
+                turret_events.healths()[row] =
+                    entity.overrides.health.value_or(turret_config.max_health);
+                turret_events.laser_damages()[row] =
+                    entity.overrides.laser_damage.value_or(turret_config.laser.damage);
+            }
+        };
 
     for (auto const source : sources) {
         if (source.execution_tick != 0) {
             break;
         }
         if (source.source_index < entity_count) {
-            append_entity(source.source_index, schedule.capital_spawns, schedule.turret_spawns);
+            append_entity(source.source_index);
         }
     }
-    auto capital_offset{static_cast<std::int32_t>(schedule.capital_spawns.num())};
-    auto turret_offset{static_cast<std::int32_t>(schedule.turret_spawns.num())};
+    auto capital_offset{capital_end};
+    auto turret_offset{turret_end};
     schedule.add_initial_spawn_group(sim::EntityType::CapitalShip, 0, capital_offset);
     schedule.add_initial_spawn_group(sim::EntityType::Turret, 0, turret_offset);
 
@@ -247,7 +255,8 @@ auto compile_level(LevelDefinition const& level,
             schedule.execution_ticks.back() != source.execution_tick) {
             if (!schedule.execution_ticks.empty()) {
                 std::string error;
-                if (!append_spawn_groups(schedule, capital_offset, turret_offset, error) ||
+                if (!append_spawn_groups(
+                        schedule, capital_end, turret_end, capital_offset, turret_offset, error) ||
                     !append_mission_groups(schedule, mission_values, error)) {
                     return std::unexpected{LevelCompilationErrors{std::move(error)}};
                 }
@@ -256,7 +265,7 @@ auto compile_level(LevelDefinition const& level,
             schedule.event_group_counts.emplace_back();
         }
         if (is_entity) {
-            append_entity(source.source_index, schedule.capital_spawns, schedule.turret_spawns);
+            append_entity(source.source_index);
         } else {
             auto const& event{definition.mission_events()[static_cast<std::size_t>(
                 source.source_index - entity_count)]};
@@ -270,7 +279,8 @@ auto compile_level(LevelDefinition const& level,
     }
     if (!schedule.execution_ticks.empty()) {
         std::string error;
-        if (!append_spawn_groups(schedule, capital_offset, turret_offset, error) ||
+        if (!append_spawn_groups(
+                schedule, capital_end, turret_end, capital_offset, turret_offset, error) ||
             !append_mission_groups(schedule, mission_values, error)) {
             return std::unexpected{LevelCompilationErrors{std::move(error)}};
         }

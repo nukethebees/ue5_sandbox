@@ -12,6 +12,64 @@
 namespace ioj::settings {
 using SettingValue = std::variant<bool, std::int64_t, double, std::string, std::vector<double>>;
 
+namespace setting_assignment {
+template <typename T>
+auto copy_value(SettingValue const& value, T& target) -> bool {
+    auto const* source{std::get_if<T>(&value)};
+    if (!source) {
+        return false;
+    }
+
+    target = *source;
+    return true;
+}
+
+template <typename T>
+auto convert_number(long double const number, T& target) -> bool {
+    if (!std::isfinite(number) || number < std::numeric_limits<T>::lowest() ||
+        number > std::numeric_limits<T>::max()) {
+        return false;
+    }
+    if constexpr (std::integral<T>) {
+        if (std::trunc(number) != number) {
+            return false;
+        }
+    }
+
+    target = static_cast<T>(number);
+    return true;
+}
+
+template <typename T>
+auto assign_number(SettingValue const& value, T& target) -> bool {
+    if (auto const* integer{std::get_if<std::int64_t>(&value)}) {
+        return convert_number(static_cast<long double>(*integer), target);
+    }
+    if (auto const* real{std::get_if<double>(&value)}) {
+        return convert_number(static_cast<long double>(*real), target);
+    }
+    return false;
+}
+
+template <typename T>
+auto assign_vector(SettingValue const& value, T& target) -> bool {
+    auto const* source{std::get_if<std::vector<double>>(&value)};
+    if (!source || source->size() != 3) {
+        return false;
+    }
+
+    using Component = std::remove_cvref_t<decltype(target.x())>;
+    Component x{}, y{}, z{};
+    if (!convert_number((*source)[0], x) || !convert_number((*source)[1], y) ||
+        !convert_number((*source)[2], z)) {
+        return false;
+    }
+
+    target = T{x, y, z};
+    return true;
+}
+}
+
 struct Setting {
     std::string path;
     SettingValue value;
@@ -21,43 +79,15 @@ struct Setting {
     [[nodiscard]] auto assign(T& target) const -> bool {
         if constexpr (std::same_as<T, bool> || std::same_as<T, std::string> ||
                       std::same_as<T, std::vector<double>>) {
-            if (auto const* source{std::get_if<T>(&value)}) {
-                target = *source;
-                return true;
-            }
+            return setting_assignment::copy_value(value, target);
         } else if constexpr (std::is_arithmetic_v<T>) {
-            auto const* integer{std::get_if<std::int64_t>(&value)};
-            auto const* real{std::get_if<double>(&value)};
-            if (integer || real) {
-                auto const number{integer ? static_cast<long double>(*integer)
-                                          : static_cast<long double>(*real)};
-                if (std::isfinite(number) && number >= std::numeric_limits<T>::lowest() &&
-                    number <= std::numeric_limits<T>::max()) {
-                    if constexpr (std::integral<T>) {
-                        if (std::trunc(number) != number) {
-                            return false;
-                        }
-                    }
-                    target = static_cast<T>(number);
-                    return true;
-                }
-            }
+            return setting_assignment::assign_number(value, target);
         } else if constexpr (requires {
                                  target.x();
                                  target.y();
                                  target.z();
                              }) {
-            if (auto const* source{std::get_if<std::vector<double>>(&value)};
-                source && source->size() == 3) {
-                using Component = std::remove_cvref_t<decltype(target.x())>;
-                Component x{}, y{}, z{};
-                if (!Setting{{}, (*source)[0]}.assign(x) || !Setting{{}, (*source)[1]}.assign(y) ||
-                    !Setting{{}, (*source)[2]}.assign(z)) {
-                    return false;
-                }
-                target = T{x, y, z};
-                return true;
-            }
+            return setting_assignment::assign_vector(value, target);
         }
         return false;
     }
