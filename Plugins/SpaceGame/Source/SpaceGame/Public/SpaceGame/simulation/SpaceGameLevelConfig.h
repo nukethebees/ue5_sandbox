@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SpaceGamePresentation/config/AttackDistanceBand.h>
+#include <ioj/sim/levels/simulation_settings.h>
 #include <SpaceGamePresentation/config/BarrelRollConfig.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include <SpaceGamePresentation/presentation/LevelPresentationSettings.h>
@@ -67,10 +67,8 @@ struct SPACEGAME_API FCollisionGridConfig {
                                                 TOptional<FVector3f> cell_size_override) const
         -> FCollisionGridConfig;
 
-    UPROPERTY(EditAnywhere, Category = "Collision", meta = (Units = "cm"))
     FVector3f grid_size{2000000.f, 2000000.f, 100000.f};
 
-    UPROPERTY(EditAnywhere, Category = "Collision", meta = (Units = "cm"))
     FVector3f cell_size{5000.f, 5000.f, 20000.f};
 
     UPROPERTY(EditAnywhere, Category = "Collision|Static Geometry")
@@ -110,6 +108,8 @@ class SPACEGAME_API USpaceGameLevelConfig : public UDataAsset {
                 radar,
                 sparks};
     }
+    void apply_settings(ioj::sim::SimulationSettings const& settings);
+    ioj::sim::OverlapResponseConfig overlap_response;
     [[nodiscard]] auto is_valid(bool require_presentation = true) const noexcept -> bool;
     void get_validation_errors(TArray<FString>& errors, bool require_presentation = true) const;
     void get_validation_warnings(TArray<FString>& warnings) const;
@@ -163,7 +163,6 @@ class SPACEGAME_API USpaceGameLevelConfig : public UDataAsset {
     UPROPERTY(EditAnywhere, Category = "UI", meta = (ShowOnlyInnerProperties))
     FEntityOverlaySettings entity_overlay;
 
-    UPROPERTY(EditAnywhere, Category = "UI", meta = (ShowOnlyInnerProperties))
     FRadarSettings radar;
 
     UPROPERTY(EditAnywhere, Category = "Sparks", meta = (ShowOnlyInnerProperties))

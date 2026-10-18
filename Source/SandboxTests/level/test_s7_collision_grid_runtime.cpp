@@ -1,4 +1,5 @@
 #include <ioj/sim/collision/spatial_query_manager.h>
+#include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SpaceGame/levels/ExampleLevels.h>
 #include <SpaceGame/levels/LevelLoader.h>
@@ -34,13 +35,10 @@ TEST_CLASS(S7CollisionGridRuntime, "Sandbox.LevelTests")
             if (!checks.is_valid(orchestrator, TEXT("Runtime orchestrator exists"))) {
                 return;
             }
-            auto* const base{
-                DuplicateObject<USpaceGameLevelConfig>(&level_setup.get_config(), orchestrator)};
+            auto* const base{ioj::duplicate_level_config(level_setup.get_config(), *orchestrator)};
             if (!checks.is_true(IsValid(base), TEXT("Base config duplicates"))) {
                 return;
             }
-            base->collision_grid.grid_size = FVector3f{2150000.f, 2050000.f, 430000.f};
-            base->collision_grid.cell_size = FVector3f{37000.f, 43000.f, 27000.f};
             orchestrator->set_level_config(*base);
 
             auto const size_override{FVector3f{2450000.f, 2250000.f, 550000.f}};
@@ -79,8 +77,8 @@ TEST_CLASS(S7CollisionGridRuntime, "Sandbox.LevelTests")
                                    actual.cell_dimensions.y() == expected.cell_size.Y &&
                                    actual.cell_dimensions.z() == expected.cell_size.Z,
                                TEXT("LevelSim cell size comes from base plus current override"));
-                checks.is_true(orchestrator->get_level_config() == base,
-                               TEXT("Effective config never replaces the base asset"));
+                checks.is_true(orchestrator->get_level_config() != base,
+                               TEXT("Orchestrator owns the resolved settings"));
                 auto* const player{const_cast<ATestSpaceShip*>(orchestrator->get_player_ship())};
                 if (IsValid(player)) {
                     player->Destroy();

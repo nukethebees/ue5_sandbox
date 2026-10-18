@@ -39,6 +39,7 @@ public class SpaceGame : ModuleRules
 
         PrivateDependencyModuleNames.AddRange(new string[]
         {
+            "NativeSettings",
             "CpuFeatures",
             "Niagara",
             "Json",

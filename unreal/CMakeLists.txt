@@ -104,12 +104,6 @@ set(IOJ_LEVEL_AUTOMATION_FILTERS
 )
 
 add_unreal_automation_test(
-  Sandbox.ExportSimulationFixture
-  FILTERS Sandbox.FixtureTools.SimulationFixtureExport
-  LABELS fixture-tools
-)
-
-add_unreal_automation_test(
   Sandbox.UnitTests
   FILTERS ${IOJ_UNIT_AUTOMATION_FILTERS}
   LABELS unit

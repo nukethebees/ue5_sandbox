@@ -4,6 +4,7 @@
   (settings
     :tick (tick :tick-rate 60 :time-scale 1)
     :player-ship (player-ship
+      :health 1000 :laser-mode 'single :laser-fire-rate 'full-auto
       :thrust-energy-max 1
       :pitch-angle-max 30 :pitch-speed 3
       :yaw-angle-max 30 :yaw-speed 3

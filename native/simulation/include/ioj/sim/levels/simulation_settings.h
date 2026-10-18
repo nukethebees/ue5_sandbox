@@ -7,7 +7,9 @@
 #include <ioj/sim/fighters/fighter_sim_config.h>
 #include <ioj/sim/fixed_tick_loop.h>
 #include <ioj/sim/lasers/laser_sim_config.h>
+#include <ioj/sim/player/fire_rate.h>
 #include <ioj/sim/player/player_sim_config.h>
+#include <ioj/sim/player/ship_laser_mode.h>
 #include <ioj/sim/spinners/spinner_sim_config.h>
 #include <ioj/sim/turrets/turret_sim_config.h>
 
@@ -17,6 +19,9 @@ class LevelDefinition;
 
 namespace ioj::sim {
 struct LevelSimInitData;
+namespace player {
+struct PlayerSpawnData;
+}
 
 struct HudSettings {
     float player_status_update_period{0.25f};
@@ -24,9 +29,16 @@ struct HudSettings {
     float mission_status_update_period{0.25f};
 };
 
+struct PlayerInitialSettings {
+    Health health{1000};
+    ShipLaserMode laser_mode{ShipLaserMode::Single};
+    ShipFireRate laser_fire_rate{ShipFireRate::FullAuto};
+};
+
 struct SimulationSettings {
     FixedTickLoop clock{};
     PlayerSimConfig player{};
+    PlayerInitialSettings player_initial{};
     LaserSimConfig lasers{};
     CapitalShipSimConfig capital_ships{};
     FighterSimConfig fighters{};
@@ -52,4 +64,5 @@ struct SimulationSettings {
 
 // Require validated settings. Retain the destination's asset-derived geometry and spawn data.
 void apply_settings(SimulationSettings const& settings, LevelSimInitData& target);
+void apply_settings(SimulationSettings const& settings, player::PlayerSpawnData& target);
 }

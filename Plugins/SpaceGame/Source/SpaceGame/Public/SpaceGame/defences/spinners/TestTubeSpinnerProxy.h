@@ -69,7 +69,6 @@ class ATestTubeSpinnerProxy
     UPROPERTY(EditAnywhere, Category = "Proxy")
     TArray<TObjectPtr<UArrowComponent>> fire_points{};
 
-    UPROPERTY(EditAnywhere, Category = "Proxy")
     int32 initial_active_fire_point{0};
 
 #if WITH_EDITORONLY_DATA

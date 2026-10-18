@@ -24,7 +24,7 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
         if (!TestRunner->TestNotNull(TEXT("Default config loads"), source)) {
             return;
         }
-        config = DuplicateObject<USpaceGameLevelConfig>(source, world);
+        config = ioj::duplicate_level_config(*source, *world);
         orchestrator = world->SpawnActor<ATestBatchOrchestrator>();
         orchestrator->set_level_config(*config);
     }
@@ -65,10 +65,10 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
         auto* const second{world->SpawnActor<ATestCapitalShipProxy>()};
         first->SetActorLocationAndRotation(FVector{1200., -500., 300.}, FRotator{15., 125., 5.});
         second->SetActorLocationAndRotation(FVector{-3400., 1500., 200.}, FRotator{0., -45., 0.});
-        auto* const stale{DuplicateObject<USpaceGameLevelConfig>(config, world)};
+        auto* const stale{ioj::duplicate_level_config(*config, *world)};
         first->set_level_config_asset(stale);
         second->set_actor_config(nullptr);
-        config->capital_ships.fighter_spawn_slots = 2;
+        config->capital_ships.simulation.fighter_spawn_slots = 2;
         config->capital_ships.fighter_spawn_slots_relative_transforms = {
             FTransform{FVector{10000., -3000., 0.}}, FTransform{FVector{10000., 3000., 0.}}};
         invoke(*first, TEXT("apply_asset_configuration_to_all_instances"));
@@ -97,9 +97,10 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
                              points[0]->GetComponentLocation().Equals(moved, 0.01));
         TestRunner->TestTrue(TEXT("Apply preserves authored component identity"),
                              arrows(*first, TEXT("fighter_spawn_slots"))[0] == points[0]);
-        TestRunner->TestEqual(TEXT("Save does not modify stale asset"),
-                              stale->capital_ships.fighter_spawn_slots,
-                              ioj::load_default_level_config()->capital_ships.fighter_spawn_slots);
+        TestRunner->TestEqual(
+            TEXT("Save does not modify stale asset"),
+            stale->capital_ships.simulation.fighter_spawn_slots,
+            ioj::load_default_level_config()->capital_ships.simulation.fighter_spawn_slots);
     }
 
     TEST_METHOD(CapitalBlueprintApplySurvivesConstructionRerun)
@@ -115,7 +116,7 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
         auto const points{arrows(*proxy, TEXT("fighter_spawn_slots"))};
         if (!TestRunner->TestEqual(TEXT("Construction preserves slot count"),
                                    points.Num(),
-                                   config->capital_ships.fighter_spawn_slots)) {
+                                   config->capital_ships.simulation.fighter_spawn_slots)) {
             return;
         }
         FTransform const frame{
@@ -159,10 +160,10 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
     {
         auto* const first{world->SpawnActor<ATestStaticTurretsProxy>()};
         auto* const second{world->SpawnActor<ATestStaticTurretsProxy>()};
-        auto* const stale{DuplicateObject<USpaceGameLevelConfig>(config, world)};
+        auto* const stale{ioj::duplicate_level_config(*config, *world)};
         first->set_actor_config(&stale->turrets);
         second->set_actor_config(nullptr);
-        config->turrets.detection_radius = 4321.f;
+        config->turrets.simulation.detection_radius = 4321.f;
         config->turrets.fire_point_offset = FTransform{FVector{100., 200., 300.}};
         invoke(*first, TEXT("apply_asset_configuration_to_all_instances"));
         for (auto* const proxy : {first, second}) {
@@ -181,7 +182,7 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
     {
         auto* const first{world->SpawnActor<ATestTubeSpinnerProxy>()};
         auto* const second{world->SpawnActor<ATestTubeSpinnerProxy>()};
-        auto* const stale{DuplicateObject<USpaceGameLevelConfig>(config, world)};
+        auto* const stale{ioj::duplicate_level_config(*config, *world)};
         first->set_actor_config(&stale->tube_spinners);
         second->set_actor_config(nullptr);
         config->tube_spinners.fire_point_offsets = {FTransform{FVector{200., 0., 0.}},

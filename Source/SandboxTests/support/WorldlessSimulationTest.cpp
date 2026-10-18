@@ -7,7 +7,6 @@
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
-#include <SpaceGame/simulation/SimulationConfigConversion.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGamePresentation/integration/TransformConversion.h>
 #include <SpaceGamePresentation/integration/VectorConversion.h>
@@ -33,7 +32,10 @@ auto make_worldless_player_spawn(USpaceGameLevelConfig const& config, FTransform
     auto const* player{config.classes.player_ship_class->GetDefaultObject<ATestSpaceShip>()};
     check(player);
     auto result{player->make_spawn_data()};
-    result.config = make_simulation_config(config.player_ship);
+    result.config = config.player_ship.simulation;
+    result.health = {config.player_ship.initial.health, config.player_ship.initial.health};
+    result.laser_mode = config.player_ship.initial.laser_mode;
+    result.laser_fire_rate = config.player_ship.initial.laser_fire_rate;
     result.transform = to_native(transform);
     return result;
 }

@@ -3,7 +3,6 @@
 #include <SpaceGame/entities/ProxyEntityMap.h>
 #include <SpaceGame/missions/LevelMissionDefinition.h>
 #include <SpaceGame/missions/MissionCompletion.h>
-#include <SpaceGame/simulation/FixedTickLoopConfig.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
@@ -60,7 +59,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     // Level configuration
     /* **************************************** */
-    void set_level_config(USpaceGameLevelConfig& config);
+    auto set_level_config(USpaceGameLevelConfig& config) -> bool;
     auto get_level_config() noexcept -> USpaceGameLevelConfig* { return level_config.Get(); }
     auto get_level_config() const noexcept -> USpaceGameLevelConfig const* {
         return level_config.Get();
@@ -71,19 +70,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void set_collision_grid_override(FVector3f level_size, FVector3f cell_size);
     void clear_collision_grid_override();
     void set_level_definition(ioj::levels::LevelDefinition definition) {
-        if (definition.collision_grid()) {
-            auto const& grid{*definition.collision_grid()};
-            set_collision_grid_override(
-                grid.level_size
-                    ? FVector3f{FVector{
-                          grid.level_size->x(), grid.level_size->y(), grid.level_size->z()}}
-                    : FVector3f::ZeroVector,
-                grid.cell_size ? FVector3f{FVector{
-                                     grid.cell_size->x(), grid.cell_size->y(), grid.cell_size->z()}}
-                               : FVector3f::ZeroVector);
-        } else {
-            clear_collision_grid_override();
-        }
+        settings_prepared_ = false;
         level_definition_ = MoveTemp(definition);
     }
     auto is_presentation_enabled() const noexcept -> bool { return presentation_enabled; }
@@ -160,7 +147,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     }
     auto get_hud_manager() noexcept -> FHUDManager& { return hud_manager; }
     auto get_hud_manager() const noexcept -> FHUDManager const& { return hud_manager; }
-    auto get_hud_update_frequencies() const noexcept -> FTestBatchGameUiUpdateFrequencies const& {
+    auto get_hud_update_frequencies() const noexcept -> ioj::sim::HudSettings const& {
         return hud_update_frequencies;
     }
 
@@ -170,7 +157,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void set_end_tick_test_hook(FOrchestratorEndTickTestHook hook);
     void clear_end_tick_test_hook();
 
-    void prepare_level();
+    auto prepare_level() -> bool;
 
     /* **************************************** */
     // Events, results, and presentation
@@ -238,8 +225,14 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     FOrchestratorEndTickTestHook end_tick_test_hook;
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (ShowOnlyInnerProperties))
-    FFixedTickLoopConfig simulation_tick_loop{};
+    ioj::sim::FixedTickLoop simulation_tick_loop{};
+    TOptional<time_type> time_scale_override_;
+    bool settings_prepared_{};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Sandbox|Settings",
+              meta = (FilePathFilter = "scm", RelativeToGameDir))
+    FFilePath settings_file{TEXT("LevelScripts/Settings/base.scm")};
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     EOrchestratorStartMode start_mode{EOrchestratorStartMode::Automatic};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Presentation")
@@ -248,17 +241,10 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox|Assets")
     TObjectPtr<USpaceGameLevelConfig> level_config{nullptr};
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Collision")
     bool use_collision_grid_override{};
 
-    UPROPERTY(EditAnywhere,
-              Category = "Sandbox|Collision",
-              meta = (EditCondition = "use_collision_grid_override", Units = "cm"))
     FVector3f level_size_override{FVector3f::ZeroVector};
 
-    UPROPERTY(EditAnywhere,
-              Category = "Sandbox|Collision",
-              meta = (EditCondition = "use_collision_grid_override", Units = "cm"))
     FVector3f grid_cell_size_override{FVector3f::ZeroVector};
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Collision")
@@ -275,12 +261,11 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     FString level_source_sha256_{};
     ioj::FLevelCollisionHost world_collision_;
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox|UI", meta = (ShowOnlyInnerProperties))
-    FTestBatchGameUiUpdateFrequencies hud_update_frequencies{};
+    ioj::sim::HudSettings hud_update_frequencies{};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestSpaceShip> player_ship{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (ShowOnlyInnerProperties))
+    UPROPERTY(Transient)
     FLevelMissionDefinition mission_definition;
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
     TObjectPtr<USandboxISMCComponent> laser_instances_;

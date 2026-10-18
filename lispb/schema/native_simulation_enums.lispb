@@ -67,12 +67,6 @@
   :namespace ioj::sim
   (enum ShipLaserMode @native_uint8
     :native-api true
-    (unreal-projection EShipLaserMode
-      :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/common/ShipLaserMode.h"
-      :header-include "SpaceGame/ships/common/ShipLaserMode.h"
-      :conversion-header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/common/ShipLaserModeConversion.h"
-      :native-header-include "ioj/sim/player/ship_laser_mode.h"
-      :reflection blueprint)
     (value Single :value "0" :display-name "Single" :serialized-name "single")
     (value Double :value "1" :display-name "Double" :serialized-name "double")
     (value Hyper :value "2" :display-name "Hyper" :serialized-name "hyper")))

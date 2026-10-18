@@ -20,6 +20,5 @@ single subsystem lives beside that subsystem instead.
 
 Existing investigation notes remain here:
 
-- [Level configuration migration mapping](level_config_migration_mapping.md)
 - [Ray/AABB slab-ordering benchmark](ray_aabb_slab_ordering_benchmark.md)
 - [Spark rendering-path experiment](spark_rendering_path_experiment.md)

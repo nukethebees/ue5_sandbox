@@ -56,7 +56,7 @@ void ATestStaticTurretsProxy::apply_actor_configuration() {
     }
 
     mesh->SetStaticMesh(actor_config->mesh);
-    detection->SetSphereRadius(actor_config->detection_radius);
+    detection->SetSphereRadius(actor_config->simulation.detection_radius);
     fire_point->SetRelativeTransform(actor_config->fire_point_offset);
     detection->SetVisibility(actor_config->show_collision);
 

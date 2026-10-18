@@ -8,7 +8,6 @@
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/player/space_ship_common.h>
 #include <SpaceGame/entities/TestEntity.h>
-#include <SpaceGame/ships/common/ShipLaserModeConversion.h>
 #include <SpaceGame/ships/player/TestShipFireRateConversion.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGamePresentation/entities/ShipHealth.h>
@@ -60,6 +59,7 @@ class SPACEGAME_API ATestSpaceShip
     auto get_test_name() const noexcept -> FName { return TEXT("PlayerShip"); }
     auto get_team() const noexcept -> ETestTeam;
     void set_team(ETestTeam new_team) noexcept;
+    void set_initial_health(int32 value) noexcept { initial_.health = value; }
 
     void set_actor_config(FPlayerShipConfig const* new_config) noexcept;
     auto get_kills() const -> int32;
@@ -150,7 +150,6 @@ class SPACEGAME_API ATestSpaceShip
     /* **************************************** */
     FPlayerShipConfig const* actor_config{nullptr};
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     ETestTeam team{ETestTeam::White};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
@@ -164,13 +163,7 @@ class SPACEGAME_API ATestSpaceShip
     UPROPERTY(EditAnywhere, Category = "Sandbox|Niagara", meta = (AllowPrivateAccess))
     UNiagaraComponent* boost_engine_effect{nullptr};
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Laser", meta = (AllowPrivateAccess))
-    EShipLaserMode laser_mode{EShipLaserMode::Single};
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Laser", meta = (AllowPrivateAccess))
-    ETestShipFireRate laser_fire_rate{ETestShipFireRate::Burst3};
-
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Health", meta = (AllowPrivateAccess))
-    FShipHealth health{1000};
+    ioj::sim::PlayerInitialSettings initial_;
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Logging", meta = (AllowPrivateAccess))
     FActorLoggingConfig log_config{1.f};

@@ -18,8 +18,6 @@ Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionModeConv
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionState.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionStateConversion.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/settings/GameSettings.generated.h
-Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/common/ShipLaserMode.h
-Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/common/ShipLaserModeConversion.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRate.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRateConversion.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/StaticCollisionSources.h

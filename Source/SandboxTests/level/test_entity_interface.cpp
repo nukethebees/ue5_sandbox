@@ -7,7 +7,6 @@
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/ships/capital/TestCapitalShipsConfig.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -18,18 +17,21 @@
 namespace ioj {
 FEntityInterfaceScenario::FEntityInterfaceScenario(FSimulationTestContext& context)
     : FSimulationTestScenario{context} {
-    level_config = DuplicateObject<USpaceGameLevelConfig>(&context.config, &context.orchestrator);
+    level_config = duplicate_level_config(context.config, context.orchestrator);
     if (!checks.not_nullptr(level_config.Get(), TEXT("Entity interface level config is created"))) {
         return;
     }
-    level_config->collision_grid.grid_size.Z = 2000000.f;
     context.orchestrator.set_level_config(*level_config);
+    auto grid_size{level_config->collision_grid.grid_size};
+    grid_size.Z = 2000000.f;
+    context.orchestrator.set_collision_grid_override(grid_size, FVector3f::ZeroVector);
 
     TestCommandBuilder.Do([this] { spawn_fixture(); });
 }
 
 void FEntityInterfaceScenario::on_tear_down() {
     context_.orchestrator.reset_for_new_level();
+    context_.orchestrator.clear_collision_grid_override();
     context_.orchestrator.set_level_config(const_cast<USpaceGameLevelConfig&>(context_.config));
 }
 
@@ -41,8 +43,6 @@ void FEntityInterfaceScenario::spawn_fixture() {
     if (!checks.not_nullptr(capital_config, TEXT("Entity interface capital config is created"))) {
         return;
     }
-    capital_config->spawn_delay = 10.f;
-    capital_config->max_health = 10000;
     context_.orchestrator.set_level_config(*level_config);
 
     auto* const player{spawn_player_ship(
@@ -94,6 +94,10 @@ void FEntityInterfaceScenario::spawn_fixture() {
         !checks.is_valid(player_targeter, TEXT("Player-targeting capital is spawned")) ||
         !checks.is_valid(turret_targeter, TEXT("Turret-targeting capital is spawned"))) {
         return;
+    }
+    for (auto* const capital : {green, red, player_targeter, turret_targeter}) {
+        capital->set_health(10000);
+        capital->set_spawn_cooldown(10.f);
     }
     green->set_team(ETestTeam::Green);
     green->set_actor_config(capital_config);

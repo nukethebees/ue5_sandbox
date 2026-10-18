@@ -79,6 +79,21 @@ auto FCollisionGridConfig::is_valid() const noexcept -> bool {
     return collision_grid_dimensions_are_valid(*this) && collision_class_lists_are_valid(*this);
 }
 
+void USpaceGameLevelConfig::apply_settings(ioj::sim::SimulationSettings const& settings) {
+    overlap_response = settings.overlap_response;
+    player_ship.simulation = settings.player;
+    player_ship.initial = settings.player_initial;
+    laser_projectiles.simulation = settings.lasers;
+    capital_ships.simulation = settings.capital_ships;
+    capital_ships.simulation.fighter_spawn_slots =
+        capital_ships.fighter_spawn_slots_relative_transforms.Num();
+    fighters.simulation = settings.fighters;
+    turrets.simulation = settings.turrets;
+    tube_spinners.simulation = settings.spinners;
+    collision_grid.grid_size = ioj::to_unreal(settings.collision_grid_size);
+    collision_grid.cell_size = ioj::to_unreal(settings.collision_cell_size);
+}
+
 auto USpaceGameLevelConfig::is_valid(bool const require_presentation) const noexcept -> bool {
     TArray<FString> errors;
     get_validation_errors(errors, require_presentation);
@@ -99,12 +114,6 @@ void USpaceGameLevelConfig::get_validation_errors(TArray<FString>& errors,
         REQUIRE_CONFIG(capital_ships.team_visual_data, "capital_ships.team_visual_data is null");
         REQUIRE_CONFIG(fighters.team_visual_data, "fighters.team_visual_data is null");
         REQUIRE_CONFIG(turrets.team_visual_data, "turrets.team_visual_data is null");
-        REQUIRE_CONFIG(player_ship.thrust_energy_max > 0.f,
-                       "player_ship.thrust_energy_max must be positive");
-        REQUIRE_CONFIG(player_ship.laser.projectile_speed > 0.f,
-                       "player_ship.laser.projectile_speed must be positive");
-        REQUIRE_CONFIG(player_ship.laser.max_distance > 0.f,
-                       "player_ship.laser.max_distance must be positive");
         REQUIRE_CONFIG(!entity_overlay.enabled || entity_overlay.soft_target.mesh,
                        "entity_overlay.soft_target.mesh is null");
         REQUIRE_CONFIG(!entity_overlay.enabled || entity_overlay.soft_target.material,
@@ -112,64 +121,10 @@ void USpaceGameLevelConfig::get_validation_errors(TArray<FString>& errors,
     }
     REQUIRE_CONFIG(laser_projectiles.max_cull_distance >= laser_projectiles.min_cull_distance,
                    "laser_projectiles cull distance range is invalid");
-    REQUIRE_CONFIG(laser_projectiles.n_preallocated_instances >= 0,
-                   "laser_projectiles.n_preallocated_instances must not be negative");
     REQUIRE_CONFIG(capital_ships.mesh, "capital_ships.mesh is null");
     REQUIRE_CONFIG(fighters.mesh, "fighters.mesh is null");
     REQUIRE_CONFIG(turrets.mesh, "turrets.mesh is null");
     REQUIRE_CONFIG(tube_spinners.mesh, "tube_spinners.mesh is null");
-    REQUIRE_CONFIG(FMath::IsFinite(fighters.fire_dot_product_threshold) &&
-                       fighters.fire_dot_product_threshold >= -1.f &&
-                       fighters.fire_dot_product_threshold <= 1.f,
-                   "fighters.fire_dot_product_threshold must be finite and between -1 and 1");
-    REQUIRE_CONFIG(FMath::IsFinite(fighters.avoidance_clear_update_frequency) &&
-                       fighters.avoidance_clear_update_frequency > 0.f,
-                   "fighters.avoidance_clear_update_frequency must be finite and positive");
-    REQUIRE_CONFIG(FMath::IsFinite(fighters.avoidance_update_frequency) &&
-                       fighters.avoidance_update_frequency > 0.f,
-                   "fighters.avoidance_update_frequency must be finite and positive");
-    REQUIRE_CONFIG(FMath::IsFinite(fighters.avoidance_active_update_frequency) &&
-                       fighters.avoidance_active_update_frequency > 0.f,
-                   "fighters.avoidance_active_update_frequency must be finite and positive");
-    REQUIRE_CONFIG(FMath::IsFinite(fighters.avoidance_immediate_update_frequency) &&
-                       fighters.avoidance_immediate_update_frequency > 0.f,
-                   "fighters.avoidance_immediate_update_frequency must be finite and positive");
-    REQUIRE_CONFIG(
-        fighters.avoidance_clear_update_frequency <= fighters.avoidance_update_frequency &&
-            fighters.avoidance_update_frequency <= fighters.avoidance_active_update_frequency &&
-            fighters.avoidance_active_update_frequency <=
-                fighters.avoidance_immediate_update_frequency,
-        "fighter avoidance update frequencies must be non-decreasing by risk tier");
-    REQUIRE_CONFIG(FMath::IsFinite(fighters.avoidance_lookahead_time) &&
-                       fighters.avoidance_lookahead_time >= 0.f,
-                   "fighters.avoidance_lookahead_time must be finite and non-negative");
-    REQUIRE_CONFIG(FMath::IsFinite(fighters.avoidance_clearance_buffer) &&
-                       fighters.avoidance_clearance_buffer >= 0.f,
-                   "fighters.avoidance_clearance_buffer must be finite and non-negative");
-    REQUIRE_CONFIG(FMath::IsFinite(fighters.separation_radius) && fighters.separation_radius > 0.f,
-                   "fighters.separation_radius must be finite and positive");
-    REQUIRE_CONFIG(FMath::IsFinite(fighters.separation_strength) &&
-                       fighters.separation_strength >= 0.f,
-                   "fighters.separation_strength must be finite and non-negative");
-    REQUIRE_CONFIG(FMath::IsFinite(fighters.steering_memory_duration) &&
-                       fighters.steering_memory_duration >= 0.f,
-                   "fighters.steering_memory_duration must be finite and non-negative");
-    REQUIRE_CONFIG(fighters.dense_traffic_neighbour_threshold >= 2,
-                   "fighters.dense_traffic_neighbour_threshold must be at least two");
-    REQUIRE_CONFIG(capital_ships.fighter_spawn_slots >= 0,
-                   "capital_ships.fighter_spawn_slots must not be negative");
-    REQUIRE_CONFIG(capital_ships.fighter_spawn_slots ==
-                       capital_ships.fighter_spawn_slots_relative_transforms.Num(),
-                   "capital_ships fighter spawn slot count does not match its transforms");
-    REQUIRE_CONFIG(capital_ships.max_health > 0, "capital_ships.max_health must be positive");
-    REQUIRE_CONFIG(fighters.health > 0, "fighters.health must be positive");
-    REQUIRE_CONFIG(fighters.laser.projectile_speed > 0.f,
-                   "fighters.laser.projectile_speed must be positive");
-    REQUIRE_CONFIG(turrets.max_health > 0, "turrets.max_health must be positive");
-    REQUIRE_CONFIG(turrets.laser.projectile_speed > 0.f,
-                   "turrets.laser.projectile_speed must be positive");
-    REQUIRE_CONFIG(tube_spinners.laser.projectile_speed > 0.f,
-                   "tube_spinners.laser.projectile_speed must be positive");
     REQUIRE_CONFIG(collision_grid.grid_size.X > 0.f && collision_grid.grid_size.Y > 0.f &&
                        collision_grid.grid_size.Z > 0.f,
                    "collision_grid.grid_size components must be positive");

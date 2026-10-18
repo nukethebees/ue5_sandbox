@@ -5,6 +5,7 @@
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/fixed_tick_loop.h>
+#include <ioj/sim/levels/simulation_settings.h>
 #include <ioj/sim/missions/mission_mode.h>
 #include <ioj/sim/missions/mission_state.h>
 #include <ioj/sim/player/fire_rate.h>
@@ -12,7 +13,6 @@
 #include <ioj/sim/player/space_ship_common.h>
 #include <SpaceGamePresentation/entities/ShipHealth.h>
 #include <SpaceGamePresentation/presentation/EntityOverlaySource.h>
-#include <SpaceGamePresentation/presentation/HudUpdateSettings.h>
 #include <SpaceGamePresentation/presentation/LevelPresentationSettings.h>
 #include <SpaceGamePresentation/presentation/RadarSource.h>
 #include <SpaceGamePresentation/presentation/widgets/FlightVectorDebugData.h>
@@ -171,7 +171,7 @@ struct FDataChanges {
 }
 
 struct SPACEGAMEPRESENTATION_API FHUDManager {
-    void initialise(FTestBatchGameUiUpdateFrequencies const& update_frequencies,
+    void initialise(ioj::sim::HudSettings const& update_frequencies,
                     ::ioj::sim::MissionManager const& new_mission_manager,
                     ::ioj::sim::EntityLedger const& new_entity_ledger,
                     ::ioj::sim::capital_ships::Sim const& new_capitals,

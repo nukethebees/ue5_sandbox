@@ -67,13 +67,10 @@ class ATestStaticTurretsProxy
     UPROPERTY(EditAnywhere, Category = "Proxy")
     TObjectPtr<UArrowComponent> fire_point{nullptr};
 
-    UPROPERTY(EditAnywhere, Category = "Proxy")
     ETestTeam team{ETestTeam::White};
 
-    UPROPERTY(EditAnywhere, Category = "Proxy")
     TOptional<int32> health{NullOpt};
 
-    UPROPERTY(EditAnywhere, Category = "Proxy")
     TOptional<int32> laser_damage{NullOpt};
 
 #if WITH_EDITORONLY_DATA

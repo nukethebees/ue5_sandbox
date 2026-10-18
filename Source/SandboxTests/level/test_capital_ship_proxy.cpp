@@ -6,7 +6,6 @@
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SpaceGame/entities/ProxyEntityMap.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/ships/capital/TestCapitalShipsConfig.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
@@ -31,7 +30,7 @@ void FTestCapitalShipProxyScenario::spawn_proxies(UWorld& world,
                                                   USpaceGameLevelConfig const& config) {
     auto const* const capital_config{&config.capital_ships};
 
-    default_health = capital_config->max_health;
+    default_health = capital_config->simulation.max_health;
     overridden_health = default_health + 1234;
 
     spawn_capital_proxy(world, config, checks, default_health_capital_name, FVector::ZeroVector);

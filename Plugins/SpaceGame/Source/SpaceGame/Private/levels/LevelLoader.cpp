@@ -81,6 +81,9 @@ auto spawn_player(UWorld& world,
     transaction.add(*player);
     player->set_actor_config(&config.player_ship);
     player->set_team(team);
+    if (entity.overrides.health) {
+        player->set_initial_health(*entity.overrides.health);
+    }
     if (!finish_spawn(*player, transform)) {
         add_error(result,
                   ELevelLoadErrorCode::ActorSpawnFailed,
@@ -160,7 +163,7 @@ auto FLevelLoader::load(levels::LevelDefinition const& definition,
         return result;
     }
 
-    auto const* const config{orchestrator_.get_level_config()};
+    auto const* config{orchestrator_.get_level_config()};
     auto const has_player{!definition.player_entity_id().empty()};
     auto const presentation_enabled{orchestrator_.is_presentation_enabled()};
     if (!has_player && presentation_enabled &&
@@ -205,7 +208,14 @@ auto FLevelLoader::load(levels::LevelDefinition const& definition,
         return result;
     }
 
-    orchestrator_.prepare_level();
+    orchestrator_.set_level_definition(definition);
+    if (!orchestrator_.prepare_level()) {
+        add_error(result,
+                  ELevelLoadErrorCode::InvalidLevelConfig,
+                  TEXT("Failed to resolve game settings"));
+        return result;
+    }
+    config = orchestrator_.get_level_config();
     if (presentation_enabled && !orchestrator_.get_presentation_resources().is_valid()) {
         add_error(result,
                   ELevelLoadErrorCode::MissingInfrastructure,
@@ -238,7 +248,6 @@ auto FLevelLoader::load(levels::LevelDefinition const& definition,
         player_controller->Possess(player);
     }
 
-    orchestrator_.set_level_definition(definition);
     transaction.commit();
     return result;
 }

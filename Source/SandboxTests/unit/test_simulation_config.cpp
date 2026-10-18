@@ -1,8 +1,6 @@
 #include <ioj/sim/collision/entity_world_bounds.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
-#include <SpaceGame/simulation/FixedTickLoopConfig.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
-#include <SpaceGame/simulation/SimulationConfigConversion.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGameS7/definition_reader.h>
 
@@ -15,47 +13,6 @@
 
 TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
 {
-    TEST_METHOD(FixedTickLoopConfigCreatesNativeLoop)
-    {
-        FFixedTickLoopConfig const config{.tick_rate = 20.0, .time_scale = 2.0};
-        auto loop{ioj::make_fixed_tick_loop(config)};
-
-        TestRunner->TestEqual(TEXT("Tick rate is copied into native state"), loop.tick_rate, 20.0);
-        TestRunner->TestEqual(TEXT("Time scale is copied into native state"), loop.time_scale, 2.0);
-
-        loop.initialise();
-        TestRunner->TestEqual(
-            TEXT("Native state derives its tick period"), loop.get_tick_period(), 0.05);
-        TestRunner->TestEqual(
-            TEXT("Native initialisation clears the accumulator"), loop.accumulator, 0.0);
-    }
-
-    TEST_METHOD(PlayerShipConfigKeepsPresentationAndCombatDataSeparate)
-    {
-        FPlayerShipConfig const presentation_defaults{};
-        ::ioj::sim::PlayerSimConfig const simulation_defaults{};
-        auto const converted_defaults{make_simulation_config(presentation_defaults)};
-        TestRunner->TestEqual(TEXT("Energy capacity is copied into simulation config"),
-                              converted_defaults.thrust_energy_max,
-                              presentation_defaults.thrust_energy_max);
-        TestRunner->TestEqual(TEXT("Presentation pitch is copied into simulation config"),
-                              converted_defaults.pitch_angle_max,
-                              presentation_defaults.pitch_angle_max);
-        TestRunner->TestEqual(TEXT("Laser damage is copied into simulation config"),
-                              converted_defaults.laser.damage,
-                              presentation_defaults.laser.damage);
-        TestRunner->TestEqual(TEXT("Native energy capacity has a stable default"),
-                              simulation_defaults.thrust_energy_max,
-                              1.f);
-
-        auto const* const source{ioj::load_default_level_config()};
-        if (!TestRunner->TestNotNull(TEXT("Default level config loads"), source)) {
-            return;
-        }
-        TestRunner->TestTrue(TEXT("Authored player energy capacity remains valid"),
-                             source->player_ship.thrust_energy_max > 0.f);
-    }
-
     TEST_METHOD(RotatedWorldBoundsEncloseTransformedCorners)
     {
         ::ioj::sim::collision::EntityAABBs bounds{};
@@ -106,7 +63,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
             return;
         }
 
-        auto* const copy{DuplicateObject<USpaceGameLevelConfig>(source, GetTransientPackage())};
+        auto* const copy{ioj::duplicate_level_config(*source, *GetTransientPackage())};
         if (!TestRunner->TestNotNull(TEXT("Level config copy is created"), copy)) {
             return;
         }
@@ -163,7 +120,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
             return;
         }
 
-        auto* const copy{DuplicateObject<USpaceGameLevelConfig>(source, GetTransientPackage())};
+        auto* const copy{ioj::duplicate_level_config(*source, *GetTransientPackage())};
         if (!TestRunner->TestNotNull(TEXT("Level config copy is created"), copy)) {
             return;
         }
@@ -171,14 +128,14 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Copy has a different address"), source != copy);
         TestRunner->TestTrue(TEXT("Copied level config is valid"), copy->is_valid());
         TestRunner->TestEqual(TEXT("Player laser damage is preserved"),
-                              copy->player_ship.laser.damage,
-                              source->player_ship.laser.damage);
+                              copy->player_ship.simulation.laser.damage,
+                              source->player_ship.simulation.laser.damage);
         TestRunner->TestEqual(TEXT("Fighter spawn transforms are preserved"),
                               copy->capital_ships.fighter_spawn_slots_relative_transforms.Num(),
                               source->capital_ships.fighter_spawn_slots_relative_transforms.Num());
         TestRunner->TestEqual(TEXT("Turret projectile speed is preserved"),
-                              copy->turrets.laser.projectile_speed,
-                              source->turrets.laser.projectile_speed);
+                              copy->turrets.simulation.laser.projectile_speed,
+                              source->turrets.simulation.laser.projectile_speed);
         TestRunner->TestTrue(TEXT("Player team visual remains shared"),
                              copy->player_ship.team_visual_data ==
                                  source->player_ship.team_visual_data);
@@ -198,69 +155,6 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
                              copy->collision_grid.cell_size == source->collision_grid.cell_size);
     }
 
-    TEST_METHOD(FighterNavigationDefaultsAndValidation)
-    {
-        FFighterConfig const defaults{};
-        TestRunner->TestEqual(TEXT("Clear navigation defaults to 2 Hz"),
-                              defaults.avoidance_clear_update_frequency,
-                              2.f);
-        TestRunner->TestEqual(TEXT("Nearby navigation preserves the 5 Hz default"),
-                              defaults.avoidance_update_frequency,
-                              5.f);
-        TestRunner->TestEqual(TEXT("Active navigation defaults to 12 Hz"),
-                              defaults.avoidance_active_update_frequency,
-                              12.f);
-        TestRunner->TestEqual(TEXT("Immediate navigation defaults to 30 Hz"),
-                              defaults.avoidance_immediate_update_frequency,
-                              30.f);
-        TestRunner->TestEqual(
-            TEXT("Fighter separation defaults to 2000 cm"), defaults.separation_radius, 2000.f);
-        TestRunner->TestEqual(TEXT("Fighter steering memory defaults to 0.75 seconds"),
-                              defaults.steering_memory_duration,
-                              0.75f);
-        TestRunner->TestEqual(TEXT("Dense traffic defaults to four neighbours"),
-                              defaults.dense_traffic_neighbour_threshold,
-                              4);
-
-        auto const* const source{ioj::load_default_level_config()};
-        if (!TestRunner->TestNotNull(TEXT("Default level config loads"), source)) {
-            return;
-        }
-        auto* const copy{DuplicateObject<USpaceGameLevelConfig>(source, GetTransientPackage())};
-        if (!TestRunner->TestNotNull(TEXT("Level config copy is created"), copy)) {
-            return;
-        }
-
-        copy->fighters.avoidance_active_update_frequency =
-            copy->fighters.avoidance_update_frequency * 0.5f;
-        TArray<FString> errors;
-        copy->get_validation_errors(errors);
-        TestRunner->TestFalse(TEXT("Out-of-order navigation tiers are invalid"), copy->is_valid());
-        TestRunner->TestTrue(
-            TEXT("Invalid navigation tiers have a diagnostic"),
-            errors.Contains(TEXT("fighter avoidance update frequencies must be non-decreasing by "
-                                 "risk tier")));
-
-        copy->fighters.avoidance_active_update_frequency = 12.f;
-        copy->fighters.separation_radius = 0.f;
-        errors.Reset();
-        copy->get_validation_errors(errors);
-        TestRunner->TestFalse(TEXT("Zero separation radius is invalid"), copy->is_valid());
-        TestRunner->TestTrue(
-            TEXT("Invalid separation radius has a diagnostic"),
-            errors.Contains(TEXT("fighters.separation_radius must be finite and positive")));
-
-        copy->fighters.separation_radius = 2000.f;
-        copy->fighters.dense_traffic_neighbour_threshold = 1;
-        errors.Reset();
-        copy->get_validation_errors(errors);
-        TestRunner->TestFalse(TEXT("Single-neighbour dense traffic is invalid"), copy->is_valid());
-        TestRunner->TestTrue(
-            TEXT("Invalid dense-traffic threshold has a diagnostic"),
-            errors.Contains(
-                TEXT("fighters.dense_traffic_neighbour_threshold must be at least two")));
-    }
-
     TEST_METHOD(FighterSpawnSlotsHaveClearance)
     {
         auto const* const config{ioj::load_default_level_config()};
@@ -271,7 +165,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
 
         auto const& transforms{config->capital_ships.fighter_spawn_slots_relative_transforms};
         auto const clearance_radius{config->fighters.mesh->GetBounds().SphereRadius +
-                                    config->fighters.avoidance_clearance_buffer};
+                                    config->fighters.simulation.avoidance_clearance_buffer};
         auto minimum_distance{TNumericLimits<float>::Max()};
         for (int32 i{}; i < transforms.Num(); ++i) {
             for (int32 j{i + 1}; j < transforms.Num(); ++j) {
@@ -301,9 +195,6 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
             return;
         }
 
-        TestRunner->TestEqual(TEXT("Runtime fighter spawn count matches its source"),
-                              runtime->capital_ships.fighter_spawn_slots,
-                              source->capital_ships.fighter_spawn_slots);
         auto const& runtime_transforms{
             runtime->capital_ships.fighter_spawn_slots_relative_transforms};
         auto const& source_transforms{
@@ -338,8 +229,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
             return;
         }
 
-        auto* const inside_capital{
-            DuplicateObject<USpaceGameLevelConfig>(source, GetTransientPackage())};
+        auto* const inside_capital{ioj::duplicate_level_config(*source, *GetTransientPackage())};
         inside_capital->capital_ships.fighter_spawn_slots_relative_transforms[0].SetLocation(
             source->capital_ships.mesh->GetBounds().Origin);
         auto const capital_result{ioj::make_level_simulation_init_data(*inside_capital)};
@@ -352,7 +242,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         }
 
         auto* const overlapping_fighters{
-            DuplicateObject<USpaceGameLevelConfig>(source, GetTransientPackage())};
+            ioj::duplicate_level_config(*source, *GetTransientPackage())};
         overlapping_fighters->capital_ships.fighter_spawn_slots_relative_transforms[1].SetLocation(
             overlapping_fighters->capital_ships.fighter_spawn_slots_relative_transforms[0]
                 .GetLocation());
@@ -373,7 +263,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
             return;
         }
 
-        auto* const copy{DuplicateObject<USpaceGameLevelConfig>(source, GetTransientPackage())};
+        auto* const copy{ioj::duplicate_level_config(*source, *GetTransientPackage())};
         if (!TestRunner->TestNotNull(TEXT("Level config copy is created"), copy)) {
             return;
         }

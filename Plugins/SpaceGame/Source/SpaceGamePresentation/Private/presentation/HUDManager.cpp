@@ -43,7 +43,7 @@ TRACE_DECLARE_INT_COUNTER(SandboxRadarCandidateCount, TEXT("Sandbox/Radar/Candid
 TRACE_DECLARE_INT_COUNTER(SandboxRadarVisibleCount, TEXT("Sandbox/Radar/VisibleCount"));
 TRACE_DECLARE_INT_COUNTER(SandboxRadarUploadBytes, TEXT("Sandbox/Radar/UploadBytes"));
 
-void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_frequencies,
+void FHUDManager::initialise(ioj::sim::HudSettings const& update_frequencies,
                              ::ioj::sim::MissionManager const& new_mission_manager,
                              ::ioj::sim::EntityLedger const& new_entity_ledger,
                              ::ioj::sim::capital_ships::Sim const& new_capitals,
@@ -74,9 +74,11 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
     auto const update_tick_rate{tick_loop_.tick_rate};
     seconds_per_tick_ = static_cast<float>(1.0 / update_tick_rate);
 
-    auto const periods{update_frequencies.to_array()};
-    auto const n_periods{periods.Num()};
-    for (int32 i{0}; i < n_periods; ++i) {
+    std::array const periods{update_frequencies.player_status_update_period,
+                             update_frequencies.entity_count_update_period,
+                             update_frequencies.mission_status_update_period};
+    auto const n_periods{periods.size()};
+    for (std::size_t i{}; i < n_periods; ++i) {
         if (!ioj::valid_periods(periods[i])) {
             UE_LOG(LogSandboxUI, Fatal, TEXT("FHUDManager::initialise: Invalid update period."));
         }
@@ -142,9 +144,9 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
             UTestTeamVisualData::build_team_colour_cache(level_config.turrets.team_visual_data),
     };
     entity_overlay_maximum_health_ = {
-        .capital_ship = level_config.capital_ships.max_health,
-        .fighter = level_config.fighters.health,
-        .turret = level_config.turrets.max_health,
+        .capital_ship = level_config.capital_ships.simulation.max_health,
+        .fighter = level_config.fighters.simulation.health,
+        .turret = level_config.turrets.simulation.max_health,
     };
     soft_target_selection_settings_ = {
         .acquisition_radius_pixels = entity_overlay_settings.soft_target.acquisition_radius_pixels,

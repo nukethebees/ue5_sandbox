@@ -1,7 +1,6 @@
 #include "SpaceGame/ships/player/TestSpaceShip.h"
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
-#include <SpaceGame/simulation/SimulationConfigConversion.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGamePresentation/integration/TransformConversion.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
@@ -75,13 +74,13 @@ auto ATestSpaceShip::make_spawn_data() const -> ::ioj::sim::player::PlayerSpawnD
     result.transform = ioj::to_native(GetActorTransform());
     result.body_transform =
         ioj::to_native(ship_mesh ? ship_mesh->GetRelativeTransform() : FTransform::Identity);
-    result.laser_mode = ioj::to_native(laser_mode);
-    result.laser_fire_rate = ioj::to_native(laser_fire_rate);
-    result.health = {health.health, health.max_health};
+    result.laser_mode = initial_.laser_mode;
+    result.laser_fire_rate = initial_.laser_fire_rate;
+    result.health = {initial_.health, initial_.health};
     result.flight_models = flight_models_;
 
     if (actor_config) {
-        result.config = make_simulation_config(*actor_config);
+        result.config = actor_config->simulation;
     }
     if (ship_mesh) {
         result.left_socket =
@@ -150,8 +149,11 @@ void ATestSpaceShip::set_team(ETestTeam const new_team) noexcept {
 
 void ATestSpaceShip::set_actor_config(FPlayerShipConfig const* const new_config) noexcept {
     actor_config = new_config;
+    if (new_config && !bound_simulation) {
+        initial_ = new_config->initial;
+    }
     if (new_config && bound_simulation) {
-        commands().set_config(make_simulation_config(*new_config));
+        commands().set_config(new_config->simulation);
     }
 }
 
@@ -301,7 +303,7 @@ void ATestSpaceShip::select_previous_laser_fire_rate() noexcept {
 }
 
 void ATestSpaceShip::set_laser_fire_rate(ETestShipFireRate const value) noexcept {
-    laser_fire_rate = value;
+    initial_.laser_fire_rate = ioj::to_native(value);
     if (bound_simulation) {
         commands().set_laser_fire_rate(ioj::to_native(value));
     }
@@ -319,7 +321,7 @@ void ATestSpaceShip::add_health(int32 const added_health) {
 
 auto ATestSpaceShip::get_health_info() const -> FShipHealth {
     if (!bound_simulation) {
-        return health;
+        return FShipHealth{initial_.health};
     }
     auto const native_health{bound_simulation->get_health()};
     return {native_health.health, native_health.max_health};

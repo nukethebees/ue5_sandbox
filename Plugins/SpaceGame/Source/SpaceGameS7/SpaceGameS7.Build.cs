@@ -25,6 +25,7 @@ public class SpaceGameS7 : ModuleRules
             "Engine",
             "InputCore",
             "NativeLevelAuthoring",
+            "NativeSettings",
             "PlatformCrypto",
             "PlatformCryptoContext",
             "SandboxCoreEngine",
@@ -32,8 +33,5 @@ public class SpaceGameS7 : ModuleRules
             "SlateCore",
         });
 
-        RuntimeDependencies.Add(
-            "$(ProjectDir)/LevelScripts/...*.scm",
-            StagedFileType.UFS);
     }
 }

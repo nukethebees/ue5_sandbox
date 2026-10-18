@@ -1,6 +1,5 @@
 #pragma once
 #include "SpaceGamePresentation/presentation/HudCrosshairDistances.h"
-#include <SpaceGamePresentation/presentation/HudUpdateSettings.h>
 
 #include <Blueprint/UserWidget.h>
 #include <Containers/StaticArray.h>

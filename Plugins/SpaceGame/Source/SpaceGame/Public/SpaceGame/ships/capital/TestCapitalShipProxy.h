@@ -82,16 +82,12 @@ class ATestCapitalShipProxy
     UPROPERTY(EditAnywhere, Category = "Ship")
     TObjectPtr<AActor> target_ship{nullptr};
 
-    UPROPERTY(EditAnywhere, Category = "Ship")
     ETestTeam team{ETestTeam::White};
 
-    UPROPERTY(EditAnywhere, Category = "Ship")
     TOptional<int32> health{NullOpt};
 
-    UPROPERTY(EditAnywhere, Category = "Ship")
     TOptional<float> initial_spawn_delay{NullOpt};
 
-    UPROPERTY(EditAnywhere, Category = "Ship")
     TOptional<float> spawn_cooldown{NullOpt};
 
 #if WITH_EDITORONLY_DATA

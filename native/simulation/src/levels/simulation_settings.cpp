@@ -22,6 +22,9 @@ void fields(SimulationSettings& target, Apply&& apply) {
     apply("player-ship.yaw-speed", target.player.yaw_speed);
     apply("player-ship.turn-bank-angle-max", target.player.turn_bank_angle_max);
     apply("player-ship.turn-bank-speed", target.player.turn_bank_speed);
+    apply("player-ship.health", target.player_initial.health);
+    apply("player-ship.laser-mode", target.player_initial.laser_mode);
+    apply("player-ship.laser-fire-rate", target.player_initial.laser_fire_rate);
 
     apply("laser-projectiles.n-preallocated-instances", target.lasers.n_preallocated_instances);
     apply("capital-ships.spawn-delay", target.capital_ships.spawn_delay);
@@ -87,6 +90,45 @@ void fields(SimulationSettings& target, Apply&& apply) {
     apply("hud.entity-count-update-period", target.hud.entity_count_update_period);
     apply("hud.mission-status-update-period", target.hud.mission_status_update_period);
 }
+
+template <typename T>
+auto assign(settings::Setting const& setting, T& target) -> bool {
+    return setting.assign(target);
+}
+
+auto assign(settings::Setting const& setting, ShipLaserMode& target) -> bool {
+    auto const* name{std::get_if<std::string>(&setting.value)};
+    if (!name) {
+        return false;
+    }
+    if (*name == "single") {
+        target = ShipLaserMode::Single;
+    } else if (*name == "double") {
+        target = ShipLaserMode::Double;
+    } else if (*name == "hyper") {
+        target = ShipLaserMode::Hyper;
+    } else {
+        return false;
+    }
+    return true;
+}
+
+auto assign(settings::Setting const& setting, ShipFireRate& target) -> bool {
+    auto const* name{std::get_if<std::string>(&setting.value)};
+    if (!name) {
+        return false;
+    }
+    if (*name == "single") {
+        target = ShipFireRate::Single;
+    } else if (*name == "burst3") {
+        target = ShipFireRate::Burst3;
+    } else if (*name == "full-auto") {
+        target = ShipFireRate::FullAuto;
+    } else {
+        return false;
+    }
+    return true;
+}
 }
 
 auto apply_settings(settings::Settings const& settings, SimulationSettings& target)
@@ -97,7 +139,7 @@ auto apply_settings(settings::Settings const& settings, SimulationSettings& targ
         simulation_settings::fields(target, [&](std::string_view const path, auto& field) {
             if (setting.path == path) {
                 found = true;
-                if (!setting.assign(field)) {
+                if (!simulation_settings::assign(setting, field)) {
                     errors.emplace_back(levels::DiagnosticCode::InvalidType,
                                         setting.path,
                                         "Setting has an incompatible value");
@@ -162,6 +204,7 @@ auto validate_settings(SimulationSettings const& settings)
     positive(settings.clock.tick_rate, "tick.tick-rate");
     positive(settings.clock.time_scale, "tick.time-scale");
     positive(settings.player.thrust_energy_max, "player-ship.thrust-energy-max");
+    positive(settings.player_initial.health, "player-ship.health");
     nonnegative(settings.lasers.n_preallocated_instances,
                 "laser-projectiles.n-preallocated-instances");
     nonnegative(settings.fighters.max_live_fighters, "fighters.max-live-fighters");
@@ -248,7 +291,14 @@ void apply_settings(SimulationSettings const& settings, LevelSimInitData& target
                                                                  settings.collision_cell_size),
                             settings.collision_cell_size};
     if (target.player) {
-        target.player->config = settings.player;
+        apply_settings(settings, *target.player);
     }
+}
+
+void apply_settings(SimulationSettings const& settings, player::PlayerSpawnData& target) {
+    target.config = settings.player;
+    target.health = ShipHealth{settings.player_initial.health};
+    target.laser_mode = settings.player_initial.laser_mode;
+    target.laser_fire_rate = settings.player_initial.laser_fire_rate;
 }
 }

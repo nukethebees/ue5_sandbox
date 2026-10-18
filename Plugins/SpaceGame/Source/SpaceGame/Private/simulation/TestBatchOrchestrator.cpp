@@ -21,6 +21,7 @@
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
+#include <SpaceGame/simulation/LevelPresentationConfig.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
 #include <SpaceGame/telemetry/LevelTelemetryMetadata.h>
@@ -35,6 +36,7 @@
 
 #include <SandboxCore/array_utils.h>
 #include <SandboxCoreEngine/actor_utils.h>
+#include <SandboxCoreEngine/strings.h>
 #include <SandboxCoreEngine/uobject_utils.h>
 
 #include <CoreGlobals.h>
@@ -53,6 +55,7 @@
 #include <HAL/IConsoleManager.h>
 #include <Kismet/GameplayStatics.h>
 #include <Misc/DateTime.h>
+#include <NativeSettings/settings_reader.h>
 #include <SandboxISMCComponent.h>
 
 namespace ioj::fighter_diagnostics {
@@ -231,6 +234,7 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     level_presentation_.Reset();
     level_simulation_.Reset();
     level_definition_.Reset();
+    settings_prepared_ = false;
 
     launched_paused_ = false;
     launch_options_ = {};
@@ -341,15 +345,15 @@ void ATestBatchOrchestrator::reset_for_new_level() {
 /* **************************************** */
 // Level configuration
 /* **************************************** */
-void ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) {
+auto ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) -> bool {
     if (level_simulation_.IsSet()) {
         UE_LOG(LogSandbox,
                Error,
                TEXT("Reset the level simulation before replacing its configuration"));
-        return;
+        return false;
     }
     if (!ensureAlwaysMsgf(config.is_valid(presentation_enabled), TEXT("Level config is invalid"))) {
-        return;
+        return false;
     }
 
 #if WITH_EDITOR
@@ -359,6 +363,7 @@ void ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) {
 #endif
 
     level_config = &config;
+    settings_prepared_ = false;
     refresh_collision_grid_visualization();
     if (IsValid(player_ship)) {
         apply_actor_config(*player_ship, &config.player_ship);
@@ -370,6 +375,7 @@ void ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) {
         set_actor_config_on_all<ATestStaticTurretsProxy>(*world, &config.turrets);
         set_actor_config_on_all<ATestTubeSpinnerProxy>(*world, &config.tube_spinners);
     }
+    return true;
 }
 void ATestBatchOrchestrator::set_collision_grid_override(FVector3f const level_size,
                                                          FVector3f const cell_size) {
@@ -450,7 +456,7 @@ auto ATestBatchOrchestrator::initialise_simulation(USpaceGameLevelConfig const& 
 
     auto const* const player_collision_mesh{IsValid(player_ship) ? player_ship->get_collision_mesh()
                                                                  : nullptr};
-    auto const clock_settings{ioj::make_fixed_tick_loop(simulation_tick_loop)};
+    auto const clock_settings{simulation_tick_loop};
 
     if (level_definition_.IsSet()) {
         auto result{ioj::make_level_simulation_init_data(config,
@@ -562,22 +568,11 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         return false;
     }
 
-    if (!level_config->is_valid(presentation_enabled)) {
-        handle_level_start_failure(TEXT("Cannot start level: base level configuration is invalid"));
+    if (!settings_prepared_ && !prepare_level()) {
         return false;
     }
 
-    auto* effective_config{level_config.Get()};
-    if (use_collision_grid_override) {
-        effective_config = DuplicateObject<USpaceGameLevelConfig>(level_config, this);
-        if (!IsValid(effective_config)) {
-            handle_level_start_failure(
-                TEXT("Cannot start level: collision-grid override could not be applied"));
-            return false;
-        }
-        effective_config->collision_grid =
-            apply_collision_grid_overrides(level_config->collision_grid);
-    }
+    auto const* const effective_config{level_config.Get()};
 
     ioj::FLevelStartErrors config_errors;
     TArray<FString> config_error_messages;
@@ -609,7 +604,6 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         return false;
     }
 
-    set_level_config(*level_config);
     ioj::FLevelStartErrors simulation_errors;
     TOptional<ioj::FProxyLevelSimBuild> proxy_build;
     ioj::sim::collision::GridGeometry grid_geometry{};
@@ -885,6 +879,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
 }
 void ATestBatchOrchestrator::set_time_scale(time_type const scale) noexcept {
     check(scale > time_type{0});
+    time_scale_override_ = scale;
     if (level_simulation_.IsSet()) {
         level_simulation_->set_time_scale(scale);
         return;
@@ -922,18 +917,67 @@ void ATestBatchOrchestrator::set_end_tick_test_hook(FOrchestratorEndTickTestHook
 void ATestBatchOrchestrator::clear_end_tick_test_hook() {
     end_tick_test_hook.Unbind();
 }
-void ATestBatchOrchestrator::prepare_level() {
-    if (get_state() != ioj::sim::OrchestratorState::Uninitialised) {
-        UE_LOG(LogSandbox, Error, TEXT("Cannot prepare an already initialized level"));
-        return;
+auto ATestBatchOrchestrator::prepare_level() -> bool {
+    check(get_state() == ioj::sim::OrchestratorState::Uninitialised);
+    if (settings_prepared_) {
+        return true;
     }
-    auto* world{GetWorld()};
+
+    auto source{ioj::settings::read_file(settings_file.FilePath)};
+    if (!source) {
+        handle_level_start_failure(source.error());
+        return false;
+    }
+
+    ioj::sim::SimulationSettings settings;
+    auto applied{ioj::sim::apply_settings(*source, settings)};
+    if (applied && level_definition_.IsSet()) {
+        applied = ioj::sim::apply_settings(*level_definition_, settings);
+    }
+    if (applied) {
+        applied = ioj::sim::validate_settings(settings);
+    }
+    if (!applied) {
+        handle_level_start_failure(
+            ioj::to_fstring(ioj::levels::format_diagnostics(applied.error())));
+        return false;
+    }
+
+    auto* const world{GetWorld()};
     ioj::fatal_if_uobject_ptrs_invalid(
         {SANDBOX_NAMED_UOBJECT_PTR(world), SANDBOX_NAMED_UOBJECT_PTR(level_config)});
+    auto* const config{DuplicateObject<USpaceGameLevelConfig>(level_config, this)};
+    check(config);
+    config->apply_settings(settings);
+    applied = apply_presentation_settings(*source, *config);
+    if (applied && level_definition_.IsSet()) {
+        applied = apply_presentation_settings(level_definition_->settings(), *config);
+    }
+    if (!applied) {
+        handle_level_start_failure(
+            ioj::to_fstring(ioj::levels::format_diagnostics(applied.error())));
+        return false;
+    }
+    config->collision_grid = apply_collision_grid_overrides(config->collision_grid);
+    simulation_tick_loop = settings.clock;
+    if (time_scale_override_.IsSet()) {
+        simulation_tick_loop.time_scale = time_scale_override_.GetValue();
+    }
+    hud_update_frequencies = settings.hud;
+
     if (!IsValid(player_ship)) {
         player_ship = ioj::get_first_actor<ATestSpaceShip>(*world);
     }
-    set_level_config(*level_config);
+    if (!set_level_config(*config)) {
+        return false;
+    }
+    level_source_sha256_ = ioj::settings::source_hash(level_source_sha256_, *source);
+    if (level_definition_.IsSet()) {
+        level_source_sha256_ =
+            ioj::settings::source_hash(level_source_sha256_, level_definition_->settings());
+    }
+    settings_prepared_ = true;
+    return true;
 }
 
 #if WITH_EDITOR

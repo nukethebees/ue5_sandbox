@@ -11,7 +11,6 @@
 #include <ioj/sim/missions/mission_fail_reason.h>
 #include <ioj/sim/missions/mission_mode.h>
 #include <ioj/sim/missions/mission_state.h>
-#include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/entities/TestEntity.h>
@@ -20,7 +19,6 @@
 #include <SpaceGame/missions/TestMissionModeConversion.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
-#include <SpaceGame/simulation/SimulationConfigConversion.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGamePresentation/integration/RotatorConversion.h>
@@ -249,15 +247,25 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     FLevelSimBuildResult result{std::in_place};
     auto& data{result.value()};
     data.clock_settings = clock_settings;
-    data.lasers = make_simulation_config(config.laser_projectiles);
-    data.capital_ships = make_simulation_config(config.capital_ships);
-    data.capital_ships.fighter_spawn_slots_relative_transforms.resize(
-        data.capital_ships.fighter_spawn_slots);
-    data.fighters = make_simulation_config(config.fighters);
-    data.fighters.max_live_fighters =
-        GetDefault<USandboxDeveloperSettings>()->get_effective_max_live_fighters();
-    data.turrets = make_simulation_config(config.turrets);
-    data.spinners = make_simulation_config(config.tube_spinners);
+    data.overlap_response = config.overlap_response;
+    data.lasers = config.laser_projectiles.simulation;
+    data.capital_ships = config.capital_ships.simulation;
+    data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
+    for (auto const& transform : config.capital_ships.fighter_spawn_slots_relative_transforms) {
+        data.capital_ships.fighter_spawn_slots_relative_transforms.push_back(to_native(transform));
+    }
+    data.capital_ships.fighter_spawn_slots = static_cast<std::int32_t>(
+        data.capital_ships.fighter_spawn_slots_relative_transforms.size());
+    data.fighters = config.fighters.simulation;
+    data.turrets = config.turrets.simulation;
+    data.turrets.fire_point_offset =
+        to_native(FVector3f{config.turrets.fire_point_offset.GetLocation()});
+    data.spinners = config.tube_spinners.simulation;
+    data.spinners.fire_point_offsets.clear();
+    for (auto const& offset : config.tube_spinners.fire_point_offsets) {
+        data.spinners.fire_point_offsets.push_back(
+            {to_native(FVector3f{offset.GetLocation()}), to_native(FRotator3f{offset.Rotator()})});
+    }
     if (player.IsSet()) {
         data.player.emplace(MoveTemp(player.GetValue()));
     }
@@ -357,7 +365,7 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
 
     {
         auto const count{build.capital_proxies.Num()};
-        auto const default_spawn_cooldown{config.capital_ships.spawn_delay};
+        auto const default_spawn_cooldown{config.capital_ships.simulation.spawn_delay};
         auto& storage{spawns.capital_spawns};
         spawns.add_initial_spawn_group(sim::EntityType::CapitalShip, 0, count);
         storage.add_defaulted(count);
@@ -370,7 +378,8 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
             set_vector(events.view_locations(), i, to_native(FVector3f{transform.GetLocation()}));
             set_rotation(events.view_rotations(), i, to_native(FRotator3f{transform.Rotator()}));
             events.teams()[i] = to_native(proxy->get_team());
-            events.healths()[i] = proxy->get_health().Get(config.capital_ships.max_health);
+            events.healths()[i] =
+                proxy->get_health().Get(config.capital_ships.simulation.max_health);
             events.initial_fighter_spawn_delays()[i] = proxy->get_initial_spawn_delay().Get(0.f);
             events.fighter_spawn_cooldowns()[i] =
                 proxy->get_spawn_cooldown().Get(default_spawn_cooldown);
@@ -391,8 +400,9 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
             set_vector(events.view_locations(), i, to_native(FVector3f{transform.GetLocation()}));
             set_rotation(events.view_rotations(), i, to_native(FRotator3f{transform.Rotator()}));
             events.teams()[i] = to_native(proxy->get_team());
-            events.healths()[i] = proxy->get_health().Get(config.turrets.max_health);
-            events.laser_damages()[i] = proxy->get_laser_damage().Get(config.turrets.laser.damage);
+            events.healths()[i] = proxy->get_health().Get(config.turrets.simulation.max_health);
+            events.laser_damages()[i] =
+                proxy->get_laser_damage().Get(config.turrets.simulation.laser.damage);
         }
     }
     {

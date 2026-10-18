@@ -257,7 +257,12 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
                                                        level_components.player_entity_id(),
                                                        &levels::EntitySpawnDefinition::id)};
         auto player{reference.player};
+        sim::apply_settings(settings, player);
         player.team = player_definition->team;
+        if (player_definition->overrides.health) {
+            auto const health{*player_definition->overrides.health};
+            player.health = {health, health};
+        }
         player.transform.location = {player_definition->position.x(),
                                      player_definition->position.y(),
                                      player_definition->position.z()};

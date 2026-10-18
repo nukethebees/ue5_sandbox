@@ -109,7 +109,7 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
     harness.finish_initialisation();
 
     FHUDManager hud;
-    hud.initialise(FTestBatchGameUiUpdateFrequencies{},
+    hud.initialise(ioj::sim::HudSettings{},
                    mission,
                    harness.get_ledger(),
                    simulation.get_capital_ships(),

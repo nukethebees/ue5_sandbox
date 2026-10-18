@@ -68,7 +68,7 @@ SDL3, SDL_GPU, and Dear ImGui for presentation; image generation remains CPU-nat
 `cmake --workflow --preset image-lab`; see the
 [Image Lab guide](../tools/image_lab/README.md).
 
-Simulation tests live in `simulation/tests/`. Asset/configuration conversion and presentation remain
+Simulation tests live in `simulation/tests/`. Asset geometry and presentation remain
 covered by Unreal tests. See [Build and test](../docs/build-and-test.md) for the full test workflows
 and [Code generation](../Codegen/README.md) for generated outputs.
 
@@ -82,12 +82,6 @@ caught C++ exceptions because the LLVM 21 Windows ASAN runtime terminates while 
 The exclusions are explicit in `cmake/presets/features.py`; the corresponding non-ASAN clang-cl and
 MSVC tests remain enabled.
 
-To refresh the checked-in native simulation fixture, build `editor`, then run:
-
-```powershell
-ctest --test-dir out/build/debug-game -R '^Sandbox.ExportSimulationFixture$' --output-on-failure
-```
-
-This writes `.local/simulation_fixture.cpp`. Review it against
-`simulation/tests/support/simulation_fixture.cpp`; native tests never load Unreal assets or refresh
-the snapshot automatically.
+Simulation tests and benchmarks load tuning from `LevelScripts/Settings/base.scm`. The checked-in
+`simulation/src/levels/reference_level_simulation_data.cpp` retains mesh/socket geometry so native
+validation does not require Unreal assets.

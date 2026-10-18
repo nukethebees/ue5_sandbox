@@ -31,7 +31,7 @@ auto make_fixture() -> SimulationFixture {
 
     auto fixture{make_reference_level_simulation_data()};
     apply_settings(settings, fixture.data);
-    fixture.player.config = settings.player;
+    apply_settings(settings, fixture.player);
     fixture.data.lasers.n_preallocated_instances = 256;
     fixture.data.grid_geometry.dimensions = {64, 64, 5};
     fixture.data.grid_geometry.cell_dimensions = {31250.f, 31250.f, 20000.f};

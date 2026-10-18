@@ -7,6 +7,7 @@
 #include <ioj/sim/missions/mission_mode.h>
 #include <ioj/sim/missions/mission_state.h>
 #include <SandboxTests/support/PlayerControllerTestAccess.h>
+#include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/time_series_test_data.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/levels/ExampleLevels.h>
@@ -254,8 +255,7 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
     orchestrator.set_presentation_enabled(false);
     initialise_test_driver();
 
-    auto* const config{
-        DuplicateObject<USpaceGameLevelConfig>(orchestrator.get_level_config(), &orchestrator)};
+    auto* const config{duplicate_level_config(*orchestrator.get_level_config(), orchestrator)};
     config->classes.player_controller_class = nullptr;
     config->classes.player_ship_class = nullptr;
     orchestrator.set_level_config(*config);

@@ -48,8 +48,8 @@ void FLaserPresentation::begin_play_presentation() {
     }
 
     configure_ismc();
-    visible_indices_.Reserve(actor_config->n_preallocated_instances);
-    instances->reserve_instances(actor_config->n_preallocated_instances);
+    visible_indices_.Reserve(actor_config->simulation.n_preallocated_instances);
+    instances->reserve_instances(actor_config->simulation.n_preallocated_instances);
 
 #if WITH_EDITOR
     debug_drawer.world = instances->GetWorld();

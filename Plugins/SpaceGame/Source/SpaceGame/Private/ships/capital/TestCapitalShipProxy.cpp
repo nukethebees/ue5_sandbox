@@ -186,7 +186,7 @@ void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
     auto const bounds{make_world_bounds(ioj::sim::EntityType::CapitalShip,
                                         FVector3f{GetActorLocation()},
                                         FRotator3f{GetActorRotation()})};
-    auto const clearance{config->fighters.avoidance_clearance_buffer};
+    auto const clearance{config->fighters.simulation.avoidance_clearance_buffer};
     TArray<FBox3f> fighter_bounds;
     fighter_bounds.SetNum(slot_count);
     for (int32 i{}; i < slot_count; ++i) {
@@ -294,12 +294,12 @@ void ATestCapitalShipProxy::save_configuration_to_asset() {
     }
 
     auto const slot_count{fighter_spawn_slots.Num()};
-    if (slot_count != actor_config->fighter_spawn_slots) {
+    if (slot_count != actor_config->fighter_spawn_slots_relative_transforms.Num()) {
         UE_LOG(LogSandboxLearning,
                Warning,
                TEXT("ATestCapitalShipProxy::save_configuration_to_asset: expected %d fighter "
                     "spawn slots but found %d components."),
-               actor_config->fighter_spawn_slots,
+               actor_config->fighter_spawn_slots_relative_transforms.Num(),
                slot_count);
         return;
     }
@@ -346,19 +346,9 @@ void ATestCapitalShipProxy::apply_asset_configuration() {
 
 void ATestCapitalShipProxy::apply_spawn_configuration(USpaceGameLevelConfig& config) {
     auto const& capital_config{config.capital_ships};
-    if (capital_config.fighter_spawn_slots < 0 ||
-        capital_config.fighter_spawn_slots_relative_transforms.Num() !=
-            capital_config.fighter_spawn_slots) {
-        UE_LOG(LogSandboxLearning,
-               Warning,
-               TEXT("ATestCapitalShipProxy::apply_asset_configuration: saved spawn slot count "
-                    "does not match its transforms; existing arrows were left unchanged."));
-        return;
-    }
-
     Modify();
     set_level_config_asset(&config);
-    auto const slot_count{capital_config.fighter_spawn_slots};
+    auto const slot_count{capital_config.fighter_spawn_slots_relative_transforms.Num()};
     auto const old_count{fighter_spawn_slots.Num()};
     for (int32 i{slot_count}; i < old_count; ++i) {
         auto const slot{fighter_spawn_slots[i]};
