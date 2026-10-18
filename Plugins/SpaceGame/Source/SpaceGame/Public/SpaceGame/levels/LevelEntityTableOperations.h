@@ -2,7 +2,7 @@
 
 #include <SpaceGame/levels/LevelDefinition.h>
 
-namespace ml::level_entity_table_detail {
+namespace ioj::level_entity_table_detail {
 inline void append(FLevelEntityTable& entities, FEntitySpawnDefinition const& entity) {
     entities.add(entity.id,
                  entity.archetype,

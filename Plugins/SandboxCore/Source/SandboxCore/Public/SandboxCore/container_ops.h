@@ -8,7 +8,7 @@
 
 #include <type_traits>
 
-namespace ml {
+namespace ioj {
 template <SupportsIsEmpty... Containers>
 [[nodiscard]] auto any_non_empty(Containers const&... containers) -> bool {
     return ((!containers.IsEmpty()) || ...);

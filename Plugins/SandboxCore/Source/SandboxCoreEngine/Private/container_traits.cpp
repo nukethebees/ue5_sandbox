@@ -2,7 +2,7 @@
 
 #include "Components/InstancedStaticMeshComponent.h"
 
-namespace ml {
+namespace ioj {
 
 auto NumTraits<UInstancedStaticMeshComponent>::num(UInstancedStaticMeshComponent const& value)
     -> int32 {

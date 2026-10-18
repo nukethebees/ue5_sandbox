@@ -21,7 +21,7 @@ class PhaseInterface {
 
     void generate_fire_commands() { simulation.generate_fire_commands(); }
 
-    void resolve_damage_events(ml::FrameMemoryResource* const scratch_resource) {
+    void resolve_damage_events(ioj::FrameMemoryResource* const scratch_resource) {
         simulation.resolve_damage_events(scratch_resource);
     }
 

@@ -17,7 +17,7 @@ ATestFlyBase::ATestFlyBase()
 
     main_mesh->SetupAttachment(RootComponent);
 
-    main_collision->SetCollisionResponseToChannel(ml::collision::projectile,
+    main_collision->SetCollisionResponseToChannel(ioj::collision::projectile,
                                                   ECollisionResponse::ECR_Block);
 
     PrimaryActorTick.bStartWithTickEnabled = true;

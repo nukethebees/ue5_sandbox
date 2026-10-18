@@ -6,6 +6,6 @@ class UStaticMeshComponent;
 class UStaticMesh;
 class UPrimitiveComponent;
 
-namespace ml {
+namespace ioj {
 auto get_static_mesh(UPrimitiveComponent const* component) -> UStaticMesh const*;
 }

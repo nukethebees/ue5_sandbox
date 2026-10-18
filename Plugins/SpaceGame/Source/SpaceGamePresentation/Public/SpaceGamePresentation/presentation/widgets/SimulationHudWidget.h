@@ -15,7 +15,7 @@ class UForceStatusWidget;
 class UMissionStatusWidget;
 class SEntityOverlayWidget;
 
-namespace ml::hud_manager {
+namespace ioj::hud_manager {
 struct FMissionDataCache;
 }
 namespace ioj {
@@ -29,7 +29,7 @@ class SPACEGAMEPRESENTATION_API USimulationHudWidget : public UUserWidget {
     virtual void apply_ui_style(ioj::FGameUiStyle const& style);
     void set_entity_counts(ioj::sim::telemetry::EntityCounts const& counts);
     void set_entity_colours(UTestTeamVisualData::FColourArray const& colours);
-    void set_mission_data(ml::hud_manager::FMissionDataCache const& data);
+    void set_mission_data(ioj::hud_manager::FMissionDataCache const& data);
 
     void set_entity_overlay_frame_store(FEntityOverlayFrameStoreConstPtr frame_store);
     void set_entity_overlay_style(FEntityOverlayStyle const& style);

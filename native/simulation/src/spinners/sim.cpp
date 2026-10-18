@@ -52,7 +52,7 @@ void Sim::update_entity_lookup_table() {
 void Sim::prepare_tick(float const) {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::prepare_tick");
 
-    ml::tick_countdowns<std::int16_t>(
+    ioj::tick_countdowns<std::int16_t>(
         entities.get_view().laser_cooldowns(), cooldown_cleaner_, 16384);
     update_entity_lookup_table();
 }
@@ -61,7 +61,7 @@ void Sim::think(float const dt) {
 
     planned_yaw_delta_ = dt * config.yaw_rotation_speed_degrees;
 }
-void Sim::apply_movement(ml::FrameMemoryResource*) {
+void Sim::apply_movement(ioj::FrameMemoryResource*) {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::apply_movement");
     for (auto& yaw : entities.get_view().yaws()) {
         yaw += planned_yaw_delta_;
@@ -143,7 +143,7 @@ void Sim::fire_lasers() {
     auto const entity_columns{entities.get_view()};
     pending_fire_indices_.clear();
     pending_fire_indices_.reserve(count);
-    auto cooldowns{ml::TickCountdownView<std::int16_t>{entity_columns.laser_cooldowns(),
+    auto cooldowns{ioj::TickCountdownView<std::int16_t>{entity_columns.laser_cooldowns(),
                                                        cooldown_restart_ticks_}};
     for (std::uint32_t index{}; index < count; ++index) {
         if (cooldowns.try_consume(static_cast<std::size_t>(index))) {
@@ -180,7 +180,7 @@ void Sim::materialize_fire_commands() {
             config.fire_point_offsets[static_cast<std::size_t>(next_fire_point)]};
         auto const heading{forward_direction({0.f, yaws[element], 0.f})};
         auto const rotate_offset{[heading](Vector3f const local) {
-            return ml::make_vector3f(heading.x() * local.x() - heading.y() * local.y(),
+            return ioj::make_vector3f(heading.x() * local.x() - heading.y() * local.y(),
                                      heading.y() * local.x() + heading.x() * local.y(),
                                      local.z());
         }};
@@ -190,7 +190,7 @@ void Sim::materialize_fire_commands() {
         set_rotation(laser_rotations,
                      request_index,
                      direction_to_rotation(rotate_offset(forward_direction(fire_point.rotation))));
-        set_vector(laser_base_velocities, request_index, ml::make_vector3f(0.f, 0.f, 0.f));
+        set_vector(laser_base_velocities, request_index, ioj::make_vector3f(0.f, 0.f, 0.f));
         laser_damages[request_index] = config.laser.damage;
         laser_speeds[request_index] = config.laser.projectile_speed;
         laser_max_distances[request_index] = config.laser.max_distance;

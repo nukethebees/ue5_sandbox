@@ -4,7 +4,7 @@
 
 #include "SandboxGameShared/logging/SandboxGameSharedLogCategories.h"
 
-namespace ml {
+namespace ioj {
 void log_value_is_x(FString const& var_name,
                     FString const& null_form,
                     std::source_location const loc) {

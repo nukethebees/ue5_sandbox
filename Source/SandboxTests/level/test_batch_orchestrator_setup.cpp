@@ -24,7 +24,7 @@
 
 #include <bit>
 
-namespace ml {
+namespace ioj {
 FTestBatchOrchestratorSetupScenario::FTestBatchOrchestratorSetupScenario(
     FSimulationTestContext& context, EOrchestratorSetupScenario const scenario)
     : FSimulationTestScenario{context}

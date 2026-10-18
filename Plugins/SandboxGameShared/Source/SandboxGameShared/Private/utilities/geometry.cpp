@@ -2,7 +2,7 @@
 
 #include "GameFramework/Actor.h"
 
-namespace ml {
+namespace ioj {
 auto get_norm_vector_to_actor(AActor& actor, FVector point) -> FVector {
     auto const fwd{actor.GetActorForwardVector()};
     auto const pos{actor.GetActorLocation()};

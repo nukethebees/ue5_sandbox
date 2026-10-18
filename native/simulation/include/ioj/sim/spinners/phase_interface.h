@@ -17,7 +17,7 @@ class PhaseInterface {
 
     void think(float const dt) { simulation.think(dt); }
 
-    void apply_movement(ml::FrameMemoryResource* const scratch_resource) {
+    void apply_movement(ioj::FrameMemoryResource* const scratch_resource) {
         simulation.apply_movement(scratch_resource);
     }
 

@@ -138,7 +138,7 @@ void UTelemetryDashboardWidget::rebuild_state() {
         .level_display_name = UTF8_TO_TCHAR(record->metadata.level_display_name.c_str())}
                          .level_label()};
     auto const completion_reason{
-        ml::to_fstring(sim::to_serialized_string(record->completion.reason))};
+        ioj::to_fstring(sim::to_serialized_string(record->completion.reason))};
     state_.header = FText::FromString(FString::Printf(
         TEXT("%s\nLAUNCHED // %s    END // %s\nREQUESTED // "
              "%.3gx    MODE // %s    DURATION // %s\nBUILD // %s    "
@@ -213,7 +213,7 @@ void UTelemetryDashboardWidget::rebuild_state() {
         auto const winner{
             record->completion.reason == sim::LevelTelemetryRunEndReason::BattleResolved
                 ? (record->completion.winning_team.has_value()
-                       ? ml::to_fstring(
+                       ? ioj::to_fstring(
                              ioj::to_serialized_string(record->completion.winning_team.value()))
                        : FString{TEXT("draw")})
                 : FString{TEXT("—")}};

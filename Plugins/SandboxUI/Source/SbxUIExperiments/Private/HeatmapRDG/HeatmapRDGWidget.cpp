@@ -14,7 +14,7 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogHeatmapRDGWidget, Log, All);
 
-namespace ml::ui::heatmap_rdg {
+namespace ioj::ui::heatmap_rdg {
 constexpr int32 output_texture_dimension{512};
 
 auto maximum_heatmap_dimension() -> int32 {
@@ -27,7 +27,7 @@ auto are_supported_heatmap_dimensions(int32 const width, int32 const height) -> 
 }
 
 auto FHeatmapRDGGrid::is_valid() const noexcept -> bool {
-    return ml::is_valid_grid_value_count(width, height, values.Num());
+    return ioj::is_valid_grid_value_count(width, height, values.Num());
 }
 
 UHeatmapRDGWidget::UHeatmapRDGWidget() {
@@ -48,27 +48,27 @@ bool UHeatmapRDGWidget::set_grid(FHeatmapRDGGrid const& grid) {
                grid.values.Num());
         return false;
     }
-    if (!ml::ui::heatmap_rdg::are_supported_heatmap_dimensions(grid.width, grid.height)) {
+    if (!ioj::ui::heatmap_rdg::are_supported_heatmap_dimensions(grid.width, grid.height)) {
         UE_LOG(LogHeatmapRDGWidget,
                Warning,
                TEXT("Rejected heatmap grid %dx%d because the experiment supports at most %dx%d."),
                grid.width,
                grid.height,
-               ml::ui::heatmap_rdg::maximum_heatmap_dimension(),
-               ml::ui::heatmap_rdg::maximum_heatmap_dimension());
+               ioj::ui::heatmap_rdg::maximum_heatmap_dimension(),
+               ioj::ui::heatmap_rdg::maximum_heatmap_dimension());
         return false;
     }
 
     auto const grid_dimensions{FIntPoint{grid.width, grid.height}};
-    auto const output_dimensions{FIntPoint{ml::ui::heatmap_rdg::output_texture_dimension,
-                                           ml::ui::heatmap_rdg::output_texture_dimension}};
+    auto const output_dimensions{FIntPoint{ioj::ui::heatmap_rdg::output_texture_dimension,
+                                           ioj::ui::heatmap_rdg::output_texture_dimension}};
     if (!ensure_output_texture(output_dimensions)) {
         return false;
     }
 
     auto const uv_max{
-        FVector2f{static_cast<float>(grid.width) / ml::ui::heatmap_rdg::output_texture_dimension,
-                  static_cast<float>(grid.height) / ml::ui::heatmap_rdg::output_texture_dimension}};
+        FVector2f{static_cast<float>(grid.width) / ioj::ui::heatmap_rdg::output_texture_dimension,
+                  static_cast<float>(grid.height) / ioj::ui::heatmap_rdg::output_texture_dimension}};
     brush_.SetUVRegion(FBox2f{FVector2f::ZeroVector, uv_max});
     brush_.ImageSize = FVector2D{grid_dimensions};
     if (image_.IsValid()) {
@@ -101,14 +101,14 @@ void UHeatmapRDGWidget::generate_demo_grid(int32 const width, int32 const height
         [[maybe_unused]] auto const submitted{set_grid(grid)};
         return;
     }
-    if (!ml::ui::heatmap_rdg::are_supported_heatmap_dimensions(width, height)) {
+    if (!ioj::ui::heatmap_rdg::are_supported_heatmap_dimensions(width, height)) {
         UE_LOG(LogHeatmapRDGWidget,
                Warning,
                TEXT("Rejected demo heatmap %dx%d because the experiment supports at most %dx%d."),
                width,
                height,
-               ml::ui::heatmap_rdg::maximum_heatmap_dimension(),
-               ml::ui::heatmap_rdg::maximum_heatmap_dimension());
+               ioj::ui::heatmap_rdg::maximum_heatmap_dimension(),
+               ioj::ui::heatmap_rdg::maximum_heatmap_dimension());
         return;
     }
 

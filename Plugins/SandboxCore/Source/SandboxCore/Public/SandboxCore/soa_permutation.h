@@ -9,7 +9,7 @@
 #include <span>
 #include <utility>
 
-namespace ml {
+namespace ioj {
 namespace detail {
 template <typename T>
 concept SupportsApplyPermutation = requires(T& value, TArrayView<int32> indices) {
@@ -19,7 +19,7 @@ concept SupportsApplyPermutation = requires(T& value, TArrayView<int32> indices)
 
 template <typename T, typename Allocator>
 void apply_permutation(TArray<T, Allocator>& values, TArrayView<int32> indices) {
-    ml::apply_permutation(
+    ioj::apply_permutation(
         std::span<T>{values.GetData(), static_cast<std::size_t>(values.Num())},
         std::span<int32>{indices.GetData(), static_cast<std::size_t>(indices.Num())});
 }

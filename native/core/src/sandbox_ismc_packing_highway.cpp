@@ -8,7 +8,7 @@
 #include <limits>
 
 #if HWY_TARGET == HWY_AVX2
-#define IOJ_HIGHWAY_NAMESPACE ml::sandbox_ismc::highway_avx2
+#define IOJ_HIGHWAY_NAMESPACE ioj::sandbox_ismc::highway_avx2
 #else
 #error Unsupported Highway packing target
 #endif

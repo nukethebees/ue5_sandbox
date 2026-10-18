@@ -11,7 +11,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace ml {
+namespace ioj {
 template <typename T>
 concept is_uenum = static_cast<bool>(TIsUEnumClass<std::remove_cvref_t<T>>::Value);
 

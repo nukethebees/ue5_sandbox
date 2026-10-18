@@ -32,7 +32,7 @@ auto make_data(player::FlightModelPreset const preset) -> LevelSimInitData {
     data.frame_memory_capacity_bytes = 1024 * 1024;
     data.capital_ships.fighter_spawn_slots = 0;
     data.clock_settings.tick_rate = 60.0;
-    for (auto const type : ml::EnumTraits<EntityType>::values) {
+    for (auto const type : ioj::EnumTraits<EntityType>::values) {
         data.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
 
@@ -64,17 +64,17 @@ auto mutable_player_sim(LevelSim& simulation) -> player::Sim& {
     return LevelSimTestAccess::player_simulation(simulation);
 }
 
-void set_test_turn(player::CommandInterface* const commands, ml::Vector2d const direction) {
+void set_test_turn(player::CommandInterface* const commands, ioj::Vector2d const direction) {
     commands->set_yaw_input(static_cast<float>(direction.x()));
     commands->set_pitch_input(static_cast<float>(direction.y()));
 }
 
-auto velocity(LevelSim& simulation) -> ml::Vector3d {
+auto velocity(LevelSim& simulation) -> ioj::Vector3d {
     return player_sim(simulation).get_physical_state().velocity;
 }
 
-void expect_velocity_near(ml::Vector3d const& actual,
-                          ml::Vector3d const& expected,
+void expect_velocity_near(ioj::Vector3d const& actual,
+                          ioj::Vector3d const& expected,
                           double const tolerance) {
     EXPECT_NEAR(actual.x(), expected.x(), tolerance);
     EXPECT_NEAR(actual.y(), expected.y(), tolerance);
@@ -256,7 +256,7 @@ TEST(NativeSimulationFlightModels, SkaterCanFaceBackwardWhilePreservingForwardTr
     advance_ticks(simulation, 180);
 
     expect_velocity_near(velocity(simulation), preserved, 1.e-5);
-    EXPECT_LT(ml::dot(velocity(simulation),
+    EXPECT_LT(ioj::dot(velocity(simulation),
                       player_sim(simulation).get_physical_state().transform.forward()),
               0.0);
 }
@@ -383,7 +383,7 @@ TEST(NativeSimulationFlightModels, SwitchingClearsPersistentTargetsAndSamplingSt
     commands->select_flight_model_slot(player::FlightModelSlot::Up);
 
     EXPECT_FALSE(player_sim(simulation).is_sampling_target_speed());
-    EXPECT_EQ(player_sim(simulation).get_sampled_target_speed_scale(), ml::Vector2d{});
+    EXPECT_EQ(player_sim(simulation).get_sampled_target_speed_scale(), ioj::Vector2d{});
     EXPECT_EQ(player_sim(simulation).get_controller_state().persistent_forward_target_speed, 0.f);
     EXPECT_EQ(player_sim(simulation).get_controller_state().persistent_right_target_speed, 0.f);
     EXPECT_EQ(player_sim(simulation).get_controller_state().persistent_up_target_speed, 0.f);

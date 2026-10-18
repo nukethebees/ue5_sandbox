@@ -159,7 +159,7 @@ bool validate_entry(FWidgetBlueprintGenerationEntry const& entry,
         }
 
         if (!IsValid(ui_data)) {
-            ui_data = ml::test_batch_game_ui_data::get_data_asset();
+            ui_data = ioj::test_batch_game_ui_data::get_data_asset();
         }
 
         if (!IsValid(ui_data)) {
@@ -212,7 +212,7 @@ EBindWidgetConstructionResult construct_bind_widget(UWidgetTree& widget_tree,
     auto* widget_class_to_construct{required_widget_class};
     if (is_project_widget) {
         if (!IsValid(ui_data)) {
-            ui_data = ml::test_batch_game_ui_data::get_data_asset();
+            ui_data = ioj::test_batch_game_ui_data::get_data_asset();
         }
 
         if (!IsValid(ui_data)) {

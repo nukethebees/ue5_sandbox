@@ -4,7 +4,7 @@
 
 class UInstancedStaticMeshComponent;
 
-namespace ml {
+namespace ioj {
 template <>
 struct SANDBOXCOREENGINE_API NumTraits<UInstancedStaticMeshComponent> {
     static auto num(UInstancedStaticMeshComponent const& value) -> int32;

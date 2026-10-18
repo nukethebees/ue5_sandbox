@@ -8,7 +8,7 @@
 namespace ioj::levels {
 struct LevelCameraDefinition {
     std::vector<EntityId> target_entity_ids{};
-    ml::Vector3d offset_direction{};
+    ioj::Vector3d offset_direction{};
     double distance{};
 };
 }

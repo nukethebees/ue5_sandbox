@@ -7,6 +7,6 @@
 
 class AActor;
 
-namespace ml {
+namespace ioj {
 auto get_random_nav_point(AActor& actor, float radius) -> std::optional<FNavLocation>;
 }

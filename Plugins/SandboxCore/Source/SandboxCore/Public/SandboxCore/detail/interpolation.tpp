@@ -8,14 +8,14 @@
 
 #include "CoreMinimal.h"
 
-namespace ml::kernel {
+namespace ioj::kernel {
 template <Numeric T>
 void lerp_1d(T* RESTRICT out,
              T const* RESTRICT from,
              T const* RESTRICT to,
              T const* RESTRICT alpha,
              int32 const count) noexcept {
-    ml::native_kernel::lerp(out, from, to, alpha, count);
+    ioj::native_kernel::lerp(out, from, to, alpha, count);
 }
 
 #define ML_EXTERN_FN(T)                                                      \
@@ -34,7 +34,7 @@ void lerp_1d(T* RESTRICT out,
              T const* RESTRICT to,
              T alpha,
              int32 const count) noexcept {
-    ml::native_kernel::lerp(out, from, to, alpha, count);
+    ioj::native_kernel::lerp(out, from, to, alpha, count);
 }
 
 template <Numeric T>
@@ -42,12 +42,12 @@ void lerp_1d_in_place(T* current,
                       T const* target,
                       T const* alpha,
                       int32 const count) noexcept {
-    ml::native_kernel::lerp_in_place(current, target, alpha, count);
+    ioj::native_kernel::lerp_in_place(current, target, alpha, count);
 }
 
 template <Numeric T>
 void lerp_1d_in_place(T* current, T const* target, T const alpha, int32 const count) noexcept {
-    ml::native_kernel::lerp_in_place(current, target, alpha, count);
+    ioj::native_kernel::lerp_in_place(current, target, alpha, count);
 }
 
 template <Numeric T>
@@ -59,8 +59,8 @@ void lerp_2d(T* RESTRICT out_x,
              T const* RESTRICT to_y,
              T const* RESTRICT alpha,
              int32 const count) noexcept {
-    ml::native_kernel::lerp(out_x, from_x, to_x, alpha, count);
-    ml::native_kernel::lerp(out_y, from_y, to_y, alpha, count);
+    ioj::native_kernel::lerp(out_x, from_x, to_x, alpha, count);
+    ioj::native_kernel::lerp(out_y, from_y, to_y, alpha, count);
 }
 
 template <Numeric T>
@@ -72,8 +72,8 @@ void lerp_2d(T* RESTRICT out_x,
              T const* RESTRICT to_y,
              T const alpha,
              int32 const count) noexcept {
-    ml::native_kernel::lerp(out_x, from_x, to_x, alpha, count);
-    ml::native_kernel::lerp(out_y, from_y, to_y, alpha, count);
+    ioj::native_kernel::lerp(out_x, from_x, to_x, alpha, count);
+    ioj::native_kernel::lerp(out_y, from_y, to_y, alpha, count);
 }
 
 template <Numeric T>
@@ -83,8 +83,8 @@ void lerp_2d_in_place(T* current_x,
                       T const* target_y,
                       T const* alpha,
                       int32 const count) noexcept {
-    ml::native_kernel::lerp_in_place(current_x, target_x, alpha, count);
-    ml::native_kernel::lerp_in_place(current_y, target_y, alpha, count);
+    ioj::native_kernel::lerp_in_place(current_x, target_x, alpha, count);
+    ioj::native_kernel::lerp_in_place(current_y, target_y, alpha, count);
 }
 
 template <Numeric T>
@@ -94,8 +94,8 @@ void lerp_2d_in_place(T* current_x,
                       T const* target_y,
                       T const alpha,
                       int32 const count) noexcept {
-    ml::native_kernel::lerp_in_place(current_x, target_x, alpha, count);
-    ml::native_kernel::lerp_in_place(current_y, target_y, alpha, count);
+    ioj::native_kernel::lerp_in_place(current_x, target_x, alpha, count);
+    ioj::native_kernel::lerp_in_place(current_y, target_y, alpha, count);
 }
 
 template <Numeric T>
@@ -110,9 +110,9 @@ void lerp_3d(T* RESTRICT out_x,
              T const* RESTRICT to_z,
              T const* RESTRICT alpha,
              int32 const count) noexcept {
-    ml::native_kernel::lerp(out_x, from_x, to_x, alpha, count);
-    ml::native_kernel::lerp(out_y, from_y, to_y, alpha, count);
-    ml::native_kernel::lerp(out_z, from_z, to_z, alpha, count);
+    ioj::native_kernel::lerp(out_x, from_x, to_x, alpha, count);
+    ioj::native_kernel::lerp(out_y, from_y, to_y, alpha, count);
+    ioj::native_kernel::lerp(out_z, from_z, to_z, alpha, count);
 }
 
 template <Numeric T>
@@ -127,9 +127,9 @@ void lerp_3d(T* RESTRICT out_x,
              T const* RESTRICT to_z,
              T const alpha,
              int32 const count) noexcept {
-    ml::native_kernel::lerp(out_x, from_x, to_x, alpha, count);
-    ml::native_kernel::lerp(out_y, from_y, to_y, alpha, count);
-    ml::native_kernel::lerp(out_z, from_z, to_z, alpha, count);
+    ioj::native_kernel::lerp(out_x, from_x, to_x, alpha, count);
+    ioj::native_kernel::lerp(out_y, from_y, to_y, alpha, count);
+    ioj::native_kernel::lerp(out_z, from_z, to_z, alpha, count);
 }
 
 template <Numeric T>
@@ -141,9 +141,9 @@ void lerp_3d_in_place(T* current_x,
                       T const* target_z,
                       T const* alpha,
                       int32 const count) noexcept {
-    ml::native_kernel::lerp_in_place(current_x, target_x, alpha, count);
-    ml::native_kernel::lerp_in_place(current_y, target_y, alpha, count);
-    ml::native_kernel::lerp_in_place(current_z, target_z, alpha, count);
+    ioj::native_kernel::lerp_in_place(current_x, target_x, alpha, count);
+    ioj::native_kernel::lerp_in_place(current_y, target_y, alpha, count);
+    ioj::native_kernel::lerp_in_place(current_z, target_z, alpha, count);
 }
 
 template <Numeric T>
@@ -155,13 +155,13 @@ void lerp_3d_in_place(T* current_x,
                       T const* target_z,
                       T const alpha,
                       int32 const count) noexcept {
-    ml::native_kernel::lerp_in_place(current_x, target_x, alpha, count);
-    ml::native_kernel::lerp_in_place(current_y, target_y, alpha, count);
-    ml::native_kernel::lerp_in_place(current_z, target_z, alpha, count);
+    ioj::native_kernel::lerp_in_place(current_x, target_x, alpha, count);
+    ioj::native_kernel::lerp_in_place(current_y, target_y, alpha, count);
+    ioj::native_kernel::lerp_in_place(current_z, target_z, alpha, count);
 }
 }
 
-namespace ml {
+namespace ioj {
 template <Numeric T>
 void lerp_1d(TArrayView<T> out,
              TConstArrayView<T> from,
@@ -169,9 +169,9 @@ void lerp_1d(TArrayView<T> out,
              TConstArrayView<T> alpha) noexcept {
     auto const count{out.Num()};
 
-    check(ml::all_num_equal_and_pointers_not_equal(out, from, to, alpha));
+    check(ioj::all_num_equal_and_pointers_not_equal(out, from, to, alpha));
 
-    ml::kernel::lerp_1d(out.GetData(), from.GetData(), to.GetData(), alpha.GetData(), count);
+    ioj::kernel::lerp_1d(out.GetData(), from.GetData(), to.GetData(), alpha.GetData(), count);
 }
 
 template <Numeric T>
@@ -181,9 +181,9 @@ void lerp_1d(TArrayView<T> out,
              T const alpha) noexcept {
     auto const count{out.Num()};
 
-    check(ml::all_num_equal_and_pointers_not_equal(out, from, to));
+    check(ioj::all_num_equal_and_pointers_not_equal(out, from, to));
 
-    ml::kernel::lerp_1d(out.GetData(), from.GetData(), to.GetData(), alpha, count);
+    ioj::kernel::lerp_1d(out.GetData(), from.GetData(), to.GetData(), alpha, count);
 }
 
 template <Numeric T>
@@ -192,9 +192,9 @@ void lerp_1d_in_place(TArrayView<T> current,
                       TConstArrayView<T> alpha) noexcept {
     auto const count{current.Num()};
 
-    check(ml::all_num_equal_and_pointers_not_equal(current, target, alpha));
+    check(ioj::all_num_equal_and_pointers_not_equal(current, target, alpha));
 
-    ml::kernel::lerp_1d_in_place(
+    ioj::kernel::lerp_1d_in_place(
         current.GetData(), target.GetData(), alpha.GetData(), count);
 }
 
@@ -204,9 +204,9 @@ void lerp_1d_in_place(TArrayView<T> current,
                       T const alpha) noexcept {
     auto const count{current.Num()};
 
-    check(ml::all_num_equal_and_pointers_not_equal(current, target));
+    check(ioj::all_num_equal_and_pointers_not_equal(current, target));
 
-    ml::kernel::lerp_1d_in_place(current.GetData(), target.GetData(), alpha, count);
+    ioj::kernel::lerp_1d_in_place(current.GetData(), target.GetData(), alpha, count);
 }
 
 template <Numeric T>
@@ -219,10 +219,10 @@ void lerp_2d(TArrayView<T> out_x,
              TConstArrayView<T> alpha) noexcept {
     auto const count{out_x.Num()};
 
-    check(ml::all_num_equal_and_pointers_not_equal(
+    check(ioj::all_num_equal_and_pointers_not_equal(
         out_x, out_y, from_x, from_y, to_x, to_y, alpha));
 
-    ml::kernel::lerp_2d(out_x.GetData(),
+    ioj::kernel::lerp_2d(out_x.GetData(),
                         out_y.GetData(),
                         from_x.GetData(),
                         from_y.GetData(),
@@ -242,10 +242,10 @@ void lerp_2d(TArrayView<T> out_x,
              T const alpha) noexcept {
     auto const count{out_x.Num()};
 
-    check(ml::all_num_equal_and_pointers_not_equal(
+    check(ioj::all_num_equal_and_pointers_not_equal(
         out_x, out_y, from_x, from_y, to_x, to_y));
 
-    ml::kernel::lerp_2d(out_x.GetData(),
+    ioj::kernel::lerp_2d(out_x.GetData(),
                         out_y.GetData(),
                         from_x.GetData(),
                         from_y.GetData(),
@@ -263,10 +263,10 @@ void lerp_2d_in_place(TArrayView<T> current_x,
                       TConstArrayView<T> alpha) noexcept {
     auto const count{current_x.Num()};
 
-    check(ml::all_num_equal_and_pointers_not_equal(
+    check(ioj::all_num_equal_and_pointers_not_equal(
         current_x, current_y, target_x, target_y, alpha));
 
-    ml::kernel::lerp_2d_in_place(current_x.GetData(),
+    ioj::kernel::lerp_2d_in_place(current_x.GetData(),
                                  current_y.GetData(),
                                  target_x.GetData(),
                                  target_y.GetData(),
@@ -282,9 +282,9 @@ void lerp_2d_in_place(TArrayView<T> current_x,
                       T const alpha) noexcept {
     auto const count{current_x.Num()};
 
-    check(ml::all_num_equal_and_pointers_not_equal(current_x, current_y, target_x, target_y));
+    check(ioj::all_num_equal_and_pointers_not_equal(current_x, current_y, target_x, target_y));
 
-    ml::kernel::lerp_2d_in_place(current_x.GetData(),
+    ioj::kernel::lerp_2d_in_place(current_x.GetData(),
                                  current_y.GetData(),
                                  target_x.GetData(),
                                  target_y.GetData(),
@@ -305,10 +305,10 @@ void lerp_3d(TArrayView<T> out_x,
              TConstArrayView<T> alpha) noexcept {
     auto const count{out_x.Num()};
 
-    check(ml::all_num_equal_and_pointers_not_equal(
+    check(ioj::all_num_equal_and_pointers_not_equal(
         out_x, out_y, out_z, from_x, from_y, from_z, to_x, to_y, to_z, alpha));
 
-    ml::kernel::lerp_3d(out_x.GetData(),
+    ioj::kernel::lerp_3d(out_x.GetData(),
                         out_y.GetData(),
                         out_z.GetData(),
                         from_x.GetData(),
@@ -334,10 +334,10 @@ void lerp_3d(TArrayView<T> out_x,
              T const alpha) noexcept {
     auto const count{out_x.Num()};
 
-    check(ml::all_num_equal_and_pointers_not_equal(
+    check(ioj::all_num_equal_and_pointers_not_equal(
         out_x, out_y, out_z, from_x, from_y, from_z, to_x, to_y, to_z));
 
-    ml::kernel::lerp_3d(out_x.GetData(),
+    ioj::kernel::lerp_3d(out_x.GetData(),
                         out_y.GetData(),
                         out_z.GetData(),
                         from_x.GetData(),
@@ -360,10 +360,10 @@ void lerp_3d_in_place(TArrayView<T> current_x,
                       TConstArrayView<T> alpha) noexcept {
     auto const count{current_x.Num()};
 
-    check(ml::all_num_equal_and_pointers_not_equal(
+    check(ioj::all_num_equal_and_pointers_not_equal(
         current_x, current_y, current_z, target_x, target_y, target_z, alpha));
 
-    ml::kernel::lerp_3d_in_place(current_x.GetData(),
+    ioj::kernel::lerp_3d_in_place(current_x.GetData(),
                                  current_y.GetData(),
                                  current_z.GetData(),
                                  target_x.GetData(),
@@ -383,10 +383,10 @@ void lerp_3d_in_place(TArrayView<T> current_x,
                       T const alpha) noexcept {
     auto const count{current_x.Num()};
 
-    check(ml::all_num_equal_and_pointers_not_equal(
+    check(ioj::all_num_equal_and_pointers_not_equal(
         current_x, current_y, current_z, target_x, target_y, target_z));
 
-    ml::kernel::lerp_3d_in_place(current_x.GetData(),
+    ioj::kernel::lerp_3d_in_place(current_x.GetData(),
                                  current_y.GetData(),
                                  current_z.GetData(),
                                  target_x.GetData(),

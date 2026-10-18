@@ -28,7 +28,7 @@ void FFormatLevelDisplayNameSpec::Define() {
 
             It(*FString::Printf(TEXT("should format '%s' as '%s'"), *input.ToString(), *expected),
                [this, input, expected]() {
-                   auto const actual{ml::format_level_display_name(input)};
+                   auto const actual{ioj::format_level_display_name(input)};
                    TestEqual(TEXT("Formatted output"), actual, expected);
                });
         }

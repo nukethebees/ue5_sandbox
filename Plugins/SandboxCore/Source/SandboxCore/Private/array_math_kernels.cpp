@@ -16,10 +16,10 @@ auto as_span(TConstArrayView<T> const values) -> std::span<T const> {
 }
 }
 
-namespace ml {
+namespace ioj {
 #define SANDBOX_DEFINE_SCALAR_IN_PLACE(Type, Function)                      \
     void Function(TArrayView<Type> const data, Type const value) noexcept { \
-        ml::Function(as_span(data), value);                                 \
+        ioj::Function(as_span(data), value);                                 \
     }                                                                       \
     void Function(TArray<Type>& data, Type const value) noexcept {          \
         Function(TArrayView<Type>{data}, value);                            \
@@ -41,20 +41,20 @@ SANDBOX_DEFINE_SCALAR_IN_PLACE(double, divide_in_place)
     void multiply(TConstArrayView<Type> const lhs,                                                 \
                   TConstArrayView<Type> const rhs,                                                 \
                   TArrayView<Type> const out) noexcept {                                           \
-        ml::multiply(as_span(lhs), as_span(rhs), as_span(out));                                    \
+        ioj::multiply(as_span(lhs), as_span(rhs), as_span(out));                                    \
     }                                                                                              \
     void multiply(                                                                                 \
         TConstArrayView<Type> const lhs, Type const rhs, TArrayView<Type> const out) noexcept {    \
-        ml::multiply(as_span(lhs), rhs, as_span(out));                                             \
+        ioj::multiply(as_span(lhs), rhs, as_span(out));                                             \
     }                                                                                              \
     void multiply_in_place(TArrayView<Type> const lhs, TConstArrayView<Type> const rhs) noexcept { \
-        ml::multiply_in_place(as_span(lhs), as_span(rhs));                                         \
+        ioj::multiply_in_place(as_span(lhs), as_span(rhs));                                         \
     }                                                                                              \
     void multiply_in_place(TArray<Type>& lhs, TConstArrayView<Type> const rhs) noexcept {          \
         multiply_in_place(TArrayView<Type>{lhs}, rhs);                                             \
     }                                                                                              \
     void multiply_in_place(TArrayView<Type> const lhs, Type const rhs) noexcept {                  \
-        ml::multiply_in_place(as_span(lhs), rhs);                                                  \
+        ioj::multiply_in_place(as_span(lhs), rhs);                                                  \
     }                                                                                              \
     void multiply_in_place(TArray<Type>& lhs, Type const rhs) noexcept {                           \
         multiply_in_place(TArrayView<Type>{lhs}, rhs);                                             \

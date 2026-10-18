@@ -2,8 +2,8 @@
 
 #include "CoreMinimal.h"
 
-namespace ml {
+namespace ioj {
 
 SANDBOXGAMESHARED_API int32 scale_font_to_umg(int32 slate_dpi);
 
-} // namespace ml
+} // namespace ioj

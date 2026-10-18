@@ -9,9 +9,9 @@
 
 void UHealthWidget::set_health(FHealthData health_data) {
     RETURN_IF_NULLPTR(health_bar);
-    health_bar->SetPercent(ml::clamp_normalised_percent(health_data.percent));
+    health_bar->SetPercent(ioj::clamp_normalised_percent(health_data.percent));
 
     RETURN_IF_NULLPTR(health_text);
     health_text->SetText(FText::FromString(
-        FString::Printf(TEXT("%d%%"), ml::denormalise_percent_to_int(health_data.percent))));
+        FString::Printf(TEXT("%d%%"), ioj::denormalise_percent_to_int(health_data.percent))));
 }

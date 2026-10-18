@@ -38,7 +38,7 @@ TEST(NativeSimulation, FighterEntityBiasPackedDataTest) {
     EXPECT_EQ(const_view.integral_biases()[1], 300u) << "Const view integral bias";
     EXPECT_EQ(const_view.float_biases()[0], 0.2f) << "Const view float bias";
 
-    ml::MultiBuffer<EntityData, 2> buffers;
+    ioj::MultiBuffer<EntityData, 2> buffers;
     buffers.current().append_from(source.get_const_view());
     buffers.cycle();
     buffers.current().append_from(buffers.previous().slice(2, 1));

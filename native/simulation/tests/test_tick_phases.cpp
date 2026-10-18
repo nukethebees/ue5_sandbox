@@ -15,14 +15,14 @@ auto make_world() -> LevelSimInitData {
     data.lasers.n_preallocated_instances = 8;
     data.overlap_response.damage_per_overlap_detection = 25;
 
-    for (auto const type : ml::EnumTraits<EntityType>::values) {
+    for (auto const type : ioj::EnumTraits<EntityType>::values) {
         data.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
 
     return data;
 }
 
-void add_moving_player(LevelSimInitData& data, ml::Vector3d const location = {}) {
+void add_moving_player(LevelSimInitData& data, ioj::Vector3d const location = {}) {
     player::PlayerSpawnData spawn{};
     spawn.transform.location = location;
     spawn.flight_models.initial_slot = player::FlightModelSlot::Left;

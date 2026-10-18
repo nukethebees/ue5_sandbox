@@ -42,7 +42,7 @@ auto FStaticCollisionSourcesConstView::get_const_view(int32 const offset, int32 
 }
 
 auto FStaticCollisionSourcesConstView::num() const noexcept -> int32 {
-    return ml::num(components);
+    return ioj::num(components);
 }
 
 auto FStaticCollisionSourcesConstView::is_empty() const noexcept -> bool {
@@ -50,7 +50,7 @@ auto FStaticCollisionSourcesConstView::is_empty() const noexcept -> bool {
 }
 
 void FStaticCollisionSourcesConstView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FStaticCollisionSourcesConstView::slice(int32 const offset, int32 const count) const
@@ -102,7 +102,7 @@ auto FStaticCollisionSourcesView::get_const_view(int32 const offset, int32 const
 }
 
 auto FStaticCollisionSourcesView::num() const noexcept -> int32 {
-    return ml::num(components);
+    return ioj::num(components);
 }
 
 auto FStaticCollisionSourcesView::is_empty() const noexcept -> bool {
@@ -110,7 +110,7 @@ auto FStaticCollisionSourcesView::is_empty() const noexcept -> bool {
 }
 
 void FStaticCollisionSourcesView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FStaticCollisionSourcesView::slice(int32 const offset, int32 const count) -> View {
@@ -138,11 +138,11 @@ auto FStaticCollisionSourcesView::right(int32 const count) const -> ConstView {
 }
 
 void FStaticCollisionSources::reset() {
-    ml::soa_ops::reset(*this);
+    ioj::soa_ops::reset(*this);
 }
 
 void FStaticCollisionSources::apply_permutation(TArrayView<int32> indices) {
-    ml::soa_ops::apply_permutation(*this, indices);
+    ioj::soa_ops::apply_permutation(*this, indices);
 }
 
 auto FStaticCollisionSources::get_view() -> View {
@@ -180,7 +180,7 @@ auto FStaticCollisionSources::get_const_view(int32 const offset, int32 const cou
 }
 
 auto FStaticCollisionSources::num() const noexcept -> int32 {
-    return ml::num(components);
+    return ioj::num(components);
 }
 
 auto FStaticCollisionSources::is_empty() const noexcept -> bool {
@@ -188,7 +188,7 @@ auto FStaticCollisionSources::is_empty() const noexcept -> bool {
 }
 
 void FStaticCollisionSources::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FStaticCollisionSources::slice(int32 const offset, int32 const count) -> View {

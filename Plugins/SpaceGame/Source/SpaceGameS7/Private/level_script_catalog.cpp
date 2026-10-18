@@ -41,7 +41,7 @@ auto to_native_levels(TArray<FLevelScriptEntry> const& entries) -> std::vector<L
     }
     return result;
 }
-auto to_native_campaign(ml::FCampaignDefinition const& definition) -> CampaignDefinition {
+auto to_native_campaign(ioj::FCampaignDefinition const& definition) -> CampaignDefinition {
     CampaignDefinition result{.id = CampaignId{to_utf8(definition.id.value.ToString().ToLower())},
                               .title = to_utf8(definition.title)};
     for (auto const id : definition.level_ids) {
@@ -69,7 +69,7 @@ void apply_level_issues(FLevelScriptCatalogResult& result) {
     auto const issues{::ioj::levels::validate_level_catalog(native_entries)};
     for (auto const& issue : issues) {
         auto& entry{result.entries[static_cast<int32>(issue.entry_index)]};
-        auto const message{ml::to_fstring(issue.diagnostic.message)};
+        auto const message{ioj::to_fstring(issue.diagnostic.message)};
         append_error(entry.error, message);
         entry.definition.Reset();
         append_error(result.error, FString::Printf(TEXT("%s: %s"), *entry.filename, *message));
@@ -82,7 +82,7 @@ void apply_campaign_issues(FLevelScriptCatalogResult& result) {
     auto const issues{::ioj::levels::validate_campaign_catalog(campaigns, levels)};
     for (auto const& issue : issues) {
         auto& entry{result.campaigns[static_cast<int32>(issue.entry_index)]};
-        auto const message{ml::to_fstring(issue.diagnostic.message)};
+        auto const message{ioj::to_fstring(issue.diagnostic.message)};
         append_error(entry.error, message);
         entry.definition.Reset();
         append_error(result.error, FString::Printf(TEXT("%s: %s"), *entry.filename, *message));
@@ -104,7 +104,7 @@ void sort_campaigns(FLevelScriptCatalogResult& result) {
 }
 } // namespace
 
-auto catalog_category(ml::FLevelDefinition const& definition) noexcept -> ELevelCatalogCategory {
+auto catalog_category(ioj::FLevelDefinition const& definition) noexcept -> ELevelCatalogCategory {
     return definition.player_entity_id.is_set() ? ELevelCatalogCategory::Mission
                                                 : ELevelCatalogCategory::BattleViewer;
 }
@@ -128,12 +128,12 @@ auto load_level_script_catalog(FStringView const root_path) -> FLevelScriptCatal
     result.directory = FPaths::GetPath(full_path);
     auto catalog{DefinitionReader{}.read_root_file(std::filesystem::path{*full_path})};
     if (!catalog) {
-        result.error = ml::to_fstring(format_diagnostics(catalog.error()));
+        result.error = ioj::to_fstring(format_diagnostics(catalog.error()));
         return result;
     }
 
     for (auto& native : catalog->levels) {
-        auto const path{ml::to_fstring(ioj::path_to_utf8(native.source_path))};
+        auto const path{ioj::to_fstring(ioj::path_to_utf8(native.source_path))};
         FLevelScriptEntry entry{
             .filename = FPaths::GetCleanFilename(path),
             .path = path,
@@ -142,7 +142,7 @@ auto load_level_script_catalog(FStringView const root_path) -> FLevelScriptCatal
         auto const source_read{!path.IsEmpty() &&
                                FFileHelper::LoadFileToString(entry.source_text, *path)};
         if (!native.definition) {
-            entry.error = ml::to_fstring(format_diagnostics(native.definition.error()));
+            entry.error = ioj::to_fstring(format_diagnostics(native.definition.error()));
         } else if (!source_read) {
             entry.error = FString::Printf(TEXT("Could not read level script '%s'."), *path);
         } else {
@@ -153,19 +153,19 @@ auto load_level_script_catalog(FStringView const root_path) -> FLevelScriptCatal
         result.entries.Add(MoveTemp(entry));
     }
     for (auto& native : catalog->campaigns) {
-        auto const path{ml::to_fstring(ioj::path_to_utf8(native.source_path))};
+        auto const path{ioj::to_fstring(ioj::path_to_utf8(native.source_path))};
         FCampaignScriptEntry entry{.filename = FPaths::GetCleanFilename(path), .path = path};
         if (!native.definition) {
-            entry.error = ml::to_fstring(format_diagnostics(native.definition.error()));
+            entry.error = ioj::to_fstring(format_diagnostics(native.definition.error()));
             append_error(result.error,
                          FString::Printf(TEXT("%s: %s"), *entry.filename, *entry.error));
         } else {
             auto& definition{*native.definition};
-            ml::FCampaignDefinition converted;
-            converted.id = ml::FCampaignId{FName{ml::to_fstring(definition.id.value)}};
-            converted.title = ml::to_fstring(definition.title);
+            ioj::FCampaignDefinition converted;
+            converted.id = ioj::FCampaignId{FName{ioj::to_fstring(definition.id.value)}};
+            converted.title = ioj::to_fstring(definition.title);
             for (auto const& id : definition.level_ids) {
-                converted.level_ids.Add(ml::FLevelId{FName{ml::to_fstring(id.value)}});
+                converted.level_ids.Add(ioj::FLevelId{FName{ioj::to_fstring(id.value)}});
             }
             entry.definition = MoveTemp(converted);
         }

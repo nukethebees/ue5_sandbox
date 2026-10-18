@@ -6,14 +6,14 @@
 #include <cstdint>
 
 TEST(MonitoredLockFreeMPSCQueue, CountsAndConsumesEnqueueResults) {
-    using Queue = ml::MonitoredLockFreeMPSCQueue<ml::LockFreeMPSCQueue<std::int32_t>>;
+    using Queue = ioj::MonitoredLockFreeMPSCQueue<ioj::LockFreeMPSCQueue<std::int32_t>>;
 
     Queue queue{};
-    EXPECT_EQ(queue.enqueue(0), ml::ELockFreeMPSCQueueEnqueueResult::Uninitialised);
-    ASSERT_EQ(queue.init(2), ml::ELockFreeMPSCQueueInitResult::Success);
-    EXPECT_EQ(queue.enqueue(10), ml::ELockFreeMPSCQueueEnqueueResult::Success);
-    EXPECT_EQ(queue.enqueue(20), ml::ELockFreeMPSCQueueEnqueueResult::Success);
-    EXPECT_EQ(queue.enqueue(30), ml::ELockFreeMPSCQueueEnqueueResult::Full);
+    EXPECT_EQ(queue.enqueue(0), ioj::ELockFreeMPSCQueueEnqueueResult::Uninitialised);
+    ASSERT_EQ(queue.init(2), ioj::ELockFreeMPSCQueueInitResult::Success);
+    EXPECT_EQ(queue.enqueue(10), ioj::ELockFreeMPSCQueueEnqueueResult::Success);
+    EXPECT_EQ(queue.enqueue(20), ioj::ELockFreeMPSCQueueEnqueueResult::Success);
+    EXPECT_EQ(queue.enqueue(30), ioj::ELockFreeMPSCQueueEnqueueResult::Full);
 
     auto const result{queue.swap_and_consume()};
     ASSERT_EQ(result.view.size(), 2);
@@ -27,12 +27,12 @@ TEST(MonitoredLockFreeMPSCQueue, CountsAndConsumesEnqueueResults) {
 }
 
 TEST(MonitoredLockFreeMPSCQueue, ResetsCounters) {
-    using Queue = ml::MonitoredLockFreeMPSCQueue<ml::LockFreeMPSCQueue<std::int32_t>>;
+    using Queue = ioj::MonitoredLockFreeMPSCQueue<ioj::LockFreeMPSCQueue<std::int32_t>>;
 
     Queue queue{};
-    ASSERT_EQ(queue.init(1), ml::ELockFreeMPSCQueueInitResult::Success);
-    ASSERT_EQ(queue.enqueue(10), ml::ELockFreeMPSCQueueEnqueueResult::Success);
-    ASSERT_EQ(queue.enqueue(20), ml::ELockFreeMPSCQueueEnqueueResult::Full);
+    ASSERT_EQ(queue.init(1), ioj::ELockFreeMPSCQueueInitResult::Success);
+    ASSERT_EQ(queue.enqueue(10), ioj::ELockFreeMPSCQueueEnqueueResult::Success);
+    ASSERT_EQ(queue.enqueue(20), ioj::ELockFreeMPSCQueueEnqueueResult::Full);
 
     queue.reset_counters();
     auto const result{queue.swap_and_consume()};

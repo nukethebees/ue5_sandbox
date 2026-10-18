@@ -13,7 +13,7 @@ void add_to_sum(int const value) {
 TEST(InvokeOnAll, InvokesCompileTimeCallableForEveryValue) {
     sum = 0;
 
-    ml::invoke_on_all<add_to_sum>(1, 2, 3);
+    ioj::invoke_on_all<add_to_sum>(1, 2, 3);
 
     EXPECT_EQ(sum, 6);
 }
@@ -21,7 +21,7 @@ TEST(InvokeOnAll, InvokesCompileTimeCallableForEveryValue) {
 TEST(InvokeOnAll, InvokesRuntimeCallableForEveryValue) {
     auto result{0};
 
-    ml::invoke_on_all([&result](int const value) { result += value; }, 2, 4, 8);
+    ioj::invoke_on_all([&result](int const value) { result += value; }, 2, 4, 8);
 
     EXPECT_EQ(result, 14);
 }

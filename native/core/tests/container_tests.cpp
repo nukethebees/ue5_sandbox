@@ -15,7 +15,7 @@
 
 namespace {
 TEST(NativeCoreFixedArray, ManagesCapacityAndElementLifetime) {
-    ml::FixedArray<std::string, 3> values{"alpha", "beta"};
+    ioj::FixedArray<std::string, 3> values{"alpha", "beta"};
 
     EXPECT_EQ(values.num(), 2);
     EXPECT_EQ(values.last(), "beta");
@@ -32,7 +32,7 @@ TEST(NativeCoreFixedArray, ManagesCapacityAndElementLifetime) {
 TEST(NativeCoreFrameArray, UsesBorrowedPmrStorageAndRemovesBySwap) {
     std::array<std::byte, 1024> storage{};
     std::pmr::monotonic_buffer_resource resource{storage.data(), storage.size()};
-    ml::FrameArray<int> values{&resource};
+    ioj::FrameArray<int> values{&resource};
 
     values.add(10);
     values.add(20);
@@ -45,8 +45,8 @@ TEST(NativeCoreFrameArray, UsesBorrowedPmrStorageAndRemovesBySwap) {
 }
 
 TEST(NativeCoreFrameMemoryResource, AlignsTracksAndReclaimsAllocations) {
-    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 512> backing{};
-    ml::FrameMemoryResource resource{backing};
+    alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 512> backing{};
+    ioj::FrameMemoryResource resource{backing};
 
     auto* const first{resource.allocate(7, 1)};
     auto* const aligned{resource.allocate(32, 32)};
@@ -66,8 +66,8 @@ TEST(NativeCoreFrameMemoryResource, AlignsTracksAndReclaimsAllocations) {
 }
 
 TEST(NativeCoreFrameMemoryResource, RecordsOverflowWithoutClaimingMemory) {
-    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 64> backing{};
-    ml::FrameMemoryResource resource{backing};
+    alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 64> backing{};
+    ioj::FrameMemoryResource resource{backing};
 
     EXPECT_EQ(resource.try_allocate(128, 16), nullptr);
 
@@ -78,7 +78,7 @@ TEST(NativeCoreFrameMemoryResource, RecordsOverflowWithoutClaimingMemory) {
 }
 
 TEST(NativeCoreMultiBuffer, CyclesPreviousCurrentAndNextRoles) {
-    ml::MultiBuffer<int, 3> buffers{{10, 20, 30}};
+    ioj::MultiBuffer<int, 3> buffers{{10, 20, 30}};
 
     auto* const first{&buffers.current()};
     auto* const second{&buffers.next()};
@@ -106,7 +106,7 @@ TEST(NativeCorePermutation, AppliesCyclesAndRestoresIndices) {
     std::array<std::int32_t, 4> indices{2, 0, 3, 1};
     auto const original{indices};
 
-    ml::apply_permutation(std::span{values}, std::span{indices});
+    ioj::apply_permutation(std::span{values}, std::span{indices});
 
     EXPECT_EQ(values, (std::vector<std::string>{"two", "zero", "three", "one"}));
     EXPECT_EQ(indices, original);
@@ -115,7 +115,7 @@ TEST(NativeCorePermutation, AppliesCyclesAndRestoresIndices) {
 TEST(NativeCoreContainerOps, RemovesRangeByMovingTailIntoRemovedRange) {
     std::vector<int> values{0, 1, 2, 3, 4, 5};
 
-    ml::remove_at_swap(values, 1, 2);
+    ioj::remove_at_swap(values, 1, 2);
 
     EXPECT_EQ(values, (std::vector<int>{0, 4, 5, 3}));
 }

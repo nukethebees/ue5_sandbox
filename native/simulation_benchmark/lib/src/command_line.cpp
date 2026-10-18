@@ -6,7 +6,7 @@
 #include <cmath>
 #include <sstream>
 
-namespace ml::simulation_benchmark {
+namespace ioj::simulation_benchmark {
 auto parse_command_line(int const argc, char const* const* argv) -> CommandLineResult {
     BenchmarkOptions options;
     CLI::App app{"Run a Lisp-authored level through the deterministic native simulation."};
@@ -85,4 +85,4 @@ auto parse_command_line(int const argc, char const* const* argv) -> CommandLineR
     }
     return {.options = std::move(options)};
 }
-} // namespace ml::simulation_benchmark
+} // namespace ioj::simulation_benchmark

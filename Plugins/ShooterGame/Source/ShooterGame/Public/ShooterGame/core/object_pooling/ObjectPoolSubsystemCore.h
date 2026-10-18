@@ -24,7 +24,7 @@ enum class EObjectPoolSubsystemReturnStatus : uint8 {
 template <typename... Configs>
     requires (IsPoolConfig<Configs> && ...)
 class UObjectPoolSubsystemCore
-    : public ml::LogMsgMixin<"UObjectPoolSubsystemCore", LogShooterGameSubsystem> {
+    : public ioj::LogMsgMixin<"UObjectPoolSubsystemCore", LogShooterGameSubsystem> {
   public:
     using free_list_type = TArray<int32>;
 
@@ -72,7 +72,7 @@ class UObjectPoolSubsystemCore
         actor->Activate();
 
         logger.log_very_verbose(TEXT("Retrieved actor %s from pool at index %d (%d free)"),
-                                *ml::get_best_display_name(*actor),
+                                *ioj::get_best_display_name(*actor),
                                 pool_idx,
                                 subclass_data.freelist.Num());
 

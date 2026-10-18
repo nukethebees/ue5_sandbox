@@ -12,7 +12,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace ml::soa_storage_detail {
+namespace ioj::soa_storage_detail {
 
 // Generated owners supply state and explicit typed column operations.
 template <typename Size, auto RoundedCapacity, auto GrowthCapacity>
@@ -262,4 +262,4 @@ struct StorageOperations {
     }
 };
 
-} // namespace ml::soa_storage_detail
+} // namespace ioj::soa_storage_detail

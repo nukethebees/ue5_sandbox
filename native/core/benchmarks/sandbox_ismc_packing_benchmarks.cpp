@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-namespace ml::sandbox_ismc::packing_benchmarks {
+namespace ioj::sandbox_ismc::packing_benchmarks {
 enum class Operation {
     Position,
     Quaternion,
@@ -31,7 +31,7 @@ struct Buffers {
         for (std::size_t index{}; index < count; ++index) {
             positions[index] = {
                 262144 + offset(random), -262144 + offset(random), 1000000 + offset(random)};
-            auto const q{ioj::normalized(ml::make_quaternion4f(
+            auto const q{ioj::normalized(ioj::make_quaternion4f(
                 normal(random), normal(random), normal(random), normal(random)))};
             rotations[index] = {q.x(), q.y(), q.z(), q.w()};
         }
@@ -63,17 +63,17 @@ auto run(benchmark::State& state) -> void {
         static_cast<void>(_);
         if constexpr (operation == Operation::Position) {
             constexpr auto kernel{implementation == Implementation::Production
-                                      ? ml::sandbox_ismc::pack_positions
+                                      ? ioj::sandbox_ismc::pack_positions
                                       : pack_positions_scalar};
             kernel(input.positions, parameters.position_root, buffers.output);
         } else if constexpr (operation == Operation::Quaternion) {
             constexpr auto kernel{implementation == Implementation::Production
-                                      ? ml::sandbox_ismc::pack_rotations
+                                      ? ioj::sandbox_ismc::pack_rotations
                                       : pack_rotations_scalar};
             kernel(input.rotations, buffers.output);
         } else {
             constexpr auto kernel{implementation == Implementation::Production
-                                      ? ml::sandbox_ismc::pack_transforms
+                                      ? ioj::sandbox_ismc::pack_transforms
                                       : pack_transforms_scalar};
             kernel(input,
                    parameters,

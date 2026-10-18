@@ -31,10 +31,10 @@ static bool is_view_record(CXXRecordDecl const* record) {
     // This is the intentional extension point for view families without a common
     // base. Names identify declarations, never substrings of source spelling.
     if (llvm::StringSwitch<bool>(name)
-            .Cases({"std::span", "ml::Vector3SoAView"}, true)
-            .Cases({"ml::TickCountdownView", "ml::PeriodicTickCountdownView"}, true)
+            .Cases({"std::span", "ioj::Vector3SoAView"}, true)
+            .Cases({"ioj::TickCountdownView", "ioj::PeriodicTickCountdownView"}, true)
             .Cases(
-                {"ml::soa_storage_detail::CompactViewState", "ml::soa_storage_detail::VectorView"},
+                {"ioj::soa_storage_detail::CompactViewState", "ioj::soa_storage_detail::VectorView"},
                 true)
             .Cases({"ioj::sim::HealthView", "ioj::sim::HealthConstView"}, true)
             .Cases({"ioj::sim::DirectDamageEventsView", "ioj::sim::DirectDamageEventsConstView"},

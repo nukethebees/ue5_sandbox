@@ -12,7 +12,7 @@
 
 // Row data structure for variant-based storage
 template <typename Config>
-struct RowData : public ml::LogMsgMixin<"RowData"> {
+struct RowData : public ioj::LogMsgMixin<"RowData"> {
     using SettingT = typename Config::SettingT;
     using UnrealT = typename Config::UnrealT;
     using ConfigT = typename Config;
@@ -24,7 +24,7 @@ struct RowData : public ml::LogMsgMixin<"RowData"> {
             return value ? on_text : off_text;
         } else if constexpr (std::is_same_v<SettingT, EVisualQualityLevel>) {
             return GetQualityLevelDisplayName(value);
-        } else if constexpr (ml::is_numeric<SettingT>) {
+        } else if constexpr (ioj::is_numeric<SettingT>) {
             return FText::AsNumber(value);
         } else if constexpr (std::is_enum_v<SettingT>) {
             // For other enums, show underlying value

@@ -15,7 +15,7 @@
 
 #include <SandboxCoreEngine/actor_utils.h>
 
-namespace ml {
+namespace ioj {
 FEntityInterfaceScenario::FEntityInterfaceScenario(FSimulationTestContext& context)
     : FSimulationTestScenario{context} {
     level_config = DuplicateObject<USpaceGameLevelConfig>(&context.config, &context.orchestrator);

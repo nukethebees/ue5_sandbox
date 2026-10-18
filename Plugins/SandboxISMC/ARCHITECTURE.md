@@ -77,7 +77,7 @@ declarations, LOD restrictions, frustum visibility and queued update/recreation/
 
 ## Packed transform ABI
 
-`ml::sandbox_ismc::PackedTransform` (also `FSandboxISMCRenderInstance`) is little endian,
+`ioj::sandbox_ismc::PackedTransform` (also `FSandboxISMCRenderInstance`) is little endian,
 standard layout, trivially copyable, 12 bytes, alignment 4. Compile-time assertions fix every offset.
 The `sandbox_ismc_render` module in `lispb/schema/sandbox_ismc.lispb` owns `PackedTransform`
 and `Quat32` storage, emitted into `ioj/sandbox_ismc_render.h`. In the memory

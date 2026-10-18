@@ -6,7 +6,7 @@
 
 namespace ioj::sim {
 void DamageQueue::prepare(EntityLookupTables const& indexes,
-                          ml::FrameMemoryResource* const scratch_resource) {
+                          ioj::FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("DamageQueue::prepare");
     spans_ = {};
     auto const count{events_.num()};
@@ -35,7 +35,7 @@ void DamageQueue::prepare(EntityLookupTables const& indexes,
         groups += span.count > 0 ? 1 : 0;
     }
     if (groups > 1) {
-        ml::FrameArray<std::int32_t> order{scratch_resource};
+        ioj::FrameArray<std::int32_t> order{scratch_resource};
         order.set_num(count);
         for (std::uint32_t i{}; i < count; ++i) {
             auto const type{damaged_entities[i].entity_type()};
@@ -47,16 +47,16 @@ void DamageQueue::prepare(EntityLookupTables const& indexes,
         auto const amounts{events.damage_amounts()};
         auto const instigators{events.instigators()};
         auto const permutation{order.view()};
-        ml::apply_permutation(recipients, permutation);
-        ml::apply_permutation(amounts, permutation);
-        ml::apply_permutation(instigators, permutation);
+        ioj::apply_permutation(recipients, permutation);
+        ioj::apply_permutation(amounts, permutation);
+        ioj::apply_permutation(instigators, permutation);
     }
 
     // Filter retired recipients with one bound lookup table per type run.
     std::uint32_t destination{};
     auto const sorted_events{events_.get_const_view()};
     auto const sorted_entities{sorted_events.damaged_entities()};
-    for (auto const type : ml::EnumTraits<EntityType>::values) {
+    for (auto const type : ioj::EnumTraits<EntityType>::values) {
         auto const source{spans_[type]};
         auto const end{source.end()};
         // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- bind a different table for each type run.

@@ -24,7 +24,7 @@ class UHealthComponent;
 UCLASS()
 class SHOOTERGAME_API ASimpleCharacter
     : public ACharacter
-    , public ml::LogMsgMixin<"ASimpleCharacter", LogShooterGameCharacter>
+    , public ioj::LogMsgMixin<"ASimpleCharacter", LogShooterGameCharacter>
     , public IDeathHandler
     , public IGenericTeamAgentInterface
     , public ISandboxMobInterface {

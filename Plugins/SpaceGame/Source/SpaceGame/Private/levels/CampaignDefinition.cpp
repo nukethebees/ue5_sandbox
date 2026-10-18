@@ -1,6 +1,6 @@
 #include "SpaceGame/levels/CampaignDefinition.h"
 
-namespace ml {
+namespace ioj {
 FCampaignDefinition::FCampaignDefinition() = default;
 FCampaignDefinition::FCampaignDefinition(FCampaignDefinition const&) = default;
 FCampaignDefinition::FCampaignDefinition(FCampaignDefinition&&) noexcept = default;

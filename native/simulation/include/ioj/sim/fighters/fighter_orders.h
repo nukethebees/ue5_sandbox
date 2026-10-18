@@ -25,17 +25,17 @@ enum class FighterTask : FighterTaskUnderlying {
 
 struct FighterOrder {
     using storage_type = std::uint8_t;
-    static_assert(ml::valid_packed_storage<storage_type, 8>());
+    static_assert(ioj::valid_packed_storage<storage_type, 8>());
 
     // task
     using task_type = std::uint8_t;
-    using task_field = ml::PackedField<storage_type, task_type, 0, 1>;
+    using task_field = ioj::PackedField<storage_type, task_type, 0, 1>;
     inline static constexpr task_type task_minimum{0};
     inline static constexpr task_type task_maximum{static_cast<task_type>(task_field::value_mask)};
 
     // target
     using target_type = std::uint8_t;
-    using target_field = ml::PackedField<storage_type, target_type, 1, 1>;
+    using target_field = ioj::PackedField<storage_type, target_type, 1, 1>;
     inline static constexpr target_type target_minimum{0};
     inline static constexpr target_type target_maximum{
         static_cast<target_type>(target_field::value_mask)};
@@ -53,8 +53,8 @@ struct FighterOrder {
                                     target_type const target_value) noexcept {
         assert(task_value <= task_maximum);
         assert(target_value <= target_maximum);
-        value_ = static_cast<storage_type>(ml::packed_pack<task_field>(task_value) |
-                                           ml::packed_pack<target_field>(target_value));
+        value_ = static_cast<storage_type>(ioj::packed_pack<task_field>(task_value) |
+                                           ioj::packed_pack<target_field>(target_value));
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
@@ -62,20 +62,20 @@ struct FighterOrder {
     [[nodiscard]] constexpr auto operator<=>(FighterOrder const&) const noexcept = default;
 
     [[nodiscard]] constexpr auto task() const noexcept -> task_type {
-        return ml::packed_extract<task_field>(value_);
+        return ioj::packed_extract<task_field>(value_);
     }
 
     [[nodiscard]] constexpr auto target() const noexcept -> target_type {
-        return ml::packed_extract<target_field>(value_);
+        return ioj::packed_extract<target_field>(value_);
     }
   private:
     storage_type value_{0x0};
 };
-static_assert(ml::valid_packed_value_layout<FighterOrder>());
+static_assert(ioj::valid_packed_value_layout<FighterOrder>());
 } // namespace ioj::sim
-namespace ml {
+namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<::ioj::sim::FighterTask>() noexcept -> std::size_t {
     return 3;
 }
-} // namespace ml
+} // namespace ioj

@@ -4,7 +4,7 @@
 #include <SandboxTests/support/SimulationTestScenario.h>
 #include <SpaceGame/entities/ProxyEntityMap.h>
 
-namespace ml {
+namespace ioj {
 class FTestCapitalShipProxyScenario final : public FSimulationTestScenario {
     inline static FName const default_health_capital_name{TEXT("default_health_capital")};
     inline static FName const overridden_health_capital_name{TEXT("overridden_health_capital")};

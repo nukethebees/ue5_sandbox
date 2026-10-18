@@ -6,7 +6,7 @@
 #include <span>
 #include <type_traits>
 
-namespace ml::soa_storage_detail {
+namespace ioj::soa_storage_detail {
 
 template <typename Left, typename Right>
 concept SameSoaSchema = std::same_as<typename std::remove_cvref_t<Left>::soa_schema,
@@ -189,4 +189,4 @@ concept RightBorrowableStorage =
     std::is_lvalue_reference_v<Owner> &&
     requires(Owner&& owner, Size count) { owner.get_view().right(count); };
 
-} // namespace ml::soa_storage_detail
+} // namespace ioj::soa_storage_detail

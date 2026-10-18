@@ -23,7 +23,7 @@ void UFlightVectorDebugWidget::NativePreConstruct() {
     update_widgets();
 }
 
-void UFlightVectorDebugWidget::update(ml::ship_hud::FFlightVectorDebugData const& data) {
+void UFlightVectorDebugWidget::update(ioj::ship_hud::FFlightVectorDebugData const& data) {
     data_ = data;
     update_widgets();
 }

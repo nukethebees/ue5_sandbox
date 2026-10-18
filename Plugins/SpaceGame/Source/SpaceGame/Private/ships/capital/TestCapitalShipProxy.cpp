@@ -46,7 +46,7 @@ void ATestCapitalShipProxy::set_level_config_asset(
 
 void ATestCapitalShipProxy::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
-    ml::set_proxy_actor_name(*this, TEXT("CapitalShip"), team);
+    ioj::set_proxy_actor_name(*this, TEXT("CapitalShip"), team);
 
     if (IsValid(level_config_asset)) {
         actor_config = &level_config_asset->capital_ships;
@@ -55,7 +55,7 @@ void ATestCapitalShipProxy::OnConstruction(FTransform const& transform) {
         return;
     }
 
-    if (auto const msg{ml::report_invalid_uobject_ptrs({
+    if (auto const msg{ioj::report_invalid_uobject_ptrs({
             SANDBOX_NAMED_UOBJECT_PTR(mesh),
         })}) {
         UE_LOG(LogSandbox,
@@ -65,7 +65,7 @@ void ATestCapitalShipProxy::OnConstruction(FTransform const& transform) {
         return;
     }
 
-    if (auto const msg{ml::report_invalid_uobject_ptrs({
+    if (auto const msg{ioj::report_invalid_uobject_ptrs({
             SANDBOX_NAMED_UOBJECT_PTR(actor_config->mesh),
             SANDBOX_NAMED_UOBJECT_PTR(actor_config->team_visual_data),
         })}) {
@@ -76,7 +76,7 @@ void ATestCapitalShipProxy::OnConstruction(FTransform const& transform) {
         return;
     }
 
-    if (!ml::is_valid(team)) {
+    if (!ioj::is_valid(team)) {
         UE_LOG(LogSandbox, Warning, TEXT("ATestCapitalShipProxy::OnConstruction Team is invalid"));
     }
 
@@ -109,7 +109,7 @@ void ATestCapitalShipProxy::Tick(float const delta_seconds) {
 }
 
 auto ATestCapitalShipProxy::resolve_editor_configuration() const -> USpaceGameLevelConfig* {
-    return ml::resolve_proxy_level_config(*this);
+    return ioj::resolve_proxy_level_config(*this);
 }
 
 void ATestCapitalShipProxy::update_spawn_configuration_status() {
@@ -177,8 +177,8 @@ void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
         auto const native_bounds{ioj::sim::collision::make_entity_world_bounds(
             *local_bounds,
             type,
-            ml::make_vector3f(position.X, position.Y, position.Z),
-            ml::make_quaternion4f(orientation.X, orientation.Y, orientation.Z, orientation.W))};
+            ioj::make_vector3f(position.X, position.Y, position.Z),
+            ioj::make_quaternion4f(orientation.X, orientation.Y, orientation.Z, orientation.W))};
         return FBox3f{
             FVector3f{native_bounds.min.x(), native_bounds.min.y(), native_bounds.min.z()},
             FVector3f{native_bounds.max.x(), native_bounds.max.y(), native_bounds.max.z()}};
@@ -404,7 +404,7 @@ void ATestCapitalShipProxy::apply_asset_configuration_to_all_instances() {
     }
     FScopedTransaction const transaction{
         NSLOCTEXT("CapitalShipProxy", "ApplyAllSpawnSlots", "Apply spawn layout to all capitals")};
-    ml::for_each_instance(*this,
+    ioj::for_each_instance(*this,
                           [config](ThisClass& proxy) { proxy.apply_spawn_configuration(*config); });
 }
 #endif

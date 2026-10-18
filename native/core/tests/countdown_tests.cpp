@@ -21,7 +21,7 @@ TEST(NativeCountdown, DecrementsAndPeriodicallyClamps) {
     std::array<std::int8_t, 3> counters{1, 0, -1};
     std::int8_t cleaner{1};
 
-    ml::tick_countdowns<std::int8_t>(counters, cleaner, 2);
+    ioj::tick_countdowns<std::int8_t>(counters, cleaner, 2);
 
     EXPECT_EQ(counters, (std::array<std::int8_t, 3>{0, 0, 0}));
     EXPECT_EQ(cleaner, 0);
@@ -30,7 +30,7 @@ TEST(NativeCountdown, DecrementsAndPeriodicallyClamps) {
 TEST(NativeCountdown, PeriodicCountdownSaturatesAtZero) {
     std::array<std::int16_t, 3> counters{2, 5, 0};
 
-    ml::tick_periodic_countdowns<std::int16_t>(counters, 3);
+    ioj::tick_periodic_countdowns<std::int16_t>(counters, 3);
 
     EXPECT_EQ(counters, (std::array<std::int16_t, 3>{0, 2, 0}));
 }
@@ -38,7 +38,7 @@ TEST(NativeCountdown, PeriodicCountdownSaturatesAtZero) {
 TEST(NativeCountdown, RestartsReadyCounters) {
     std::array<std::int32_t, 4> counters{-1, 0, 1, 2};
 
-    ml::consume_ready_countdowns<std::int32_t>(counters, 10);
+    ioj::consume_ready_countdowns<std::int32_t>(counters, 10);
 
     EXPECT_EQ(counters, (std::array<std::int32_t, 4>{10, 10, 1, 2}));
 }
@@ -46,13 +46,13 @@ TEST(NativeCountdown, RestartsReadyCounters) {
 TEST(NativeCountdown, DecrementsFloatingPointTimers) {
     std::array counters{2.0f, 1.0f};
 
-    ml::tick_countdowns(counters, 0.25f);
+    ioj::tick_countdowns(counters, 0.25f);
 
     EXPECT_EQ(counters, (std::array{1.75f, 0.75f}));
 }
 
 TEST(NativeTickCountdown, OwnsAndMutatesNativeStorage) {
-    ml::TickCountdown<std::int16_t> countdown{3, 5};
+    ioj::TickCountdown<std::int16_t> countdown{3, 5};
 
     countdown.set_counter(0, 2);
     countdown.set_counter(1, 1);
@@ -67,7 +67,7 @@ TEST(NativeTickCountdown, OwnsAndMutatesNativeStorage) {
 }
 
 TEST(NativeTickCountdown, CleanerAndResetSemanticsArePreserved) {
-    ml::TickCountdown<std::int8_t> countdown{1, 0};
+    ioj::TickCountdown<std::int8_t> countdown{1, 0};
 
     for (int index{}; index < 32; ++index) {
         countdown.tick();
@@ -85,7 +85,7 @@ TEST(NativeTickCountdown, CleanerAndResetSemanticsArePreserved) {
 }
 
 TEST(NativeTickCountdown, SupportsSoaRemovalAndPermutation) {
-    ml::TickCountdown<std::int16_t> countdown{3, 6};
+    ioj::TickCountdown<std::int16_t> countdown{3, 6};
     countdown.set_counter(0, 1);
     countdown.set_counter(1, 2);
     countdown.set_counter(2, 3);
@@ -100,7 +100,7 @@ TEST(NativeTickCountdown, SupportsSoaRemovalAndPermutation) {
 }
 
 TEST(NativePeriodicTickCountdown, UsesIndividualPeriods) {
-    ml::PeriodicTickCountdown<std::int8_t> countdown;
+    ioj::PeriodicTickCountdown<std::int8_t> countdown;
     countdown.add_started(2);
     countdown.add_started(4);
 
@@ -113,13 +113,13 @@ TEST(NativePeriodicTickCountdown, UsesIndividualPeriods) {
 }
 
 TEST(NativePeriodicTickCountdown, PreservesPairsAcrossSoaOperations) {
-    ml::PeriodicTickCountdown<std::int16_t> source;
+    ioj::PeriodicTickCountdown<std::int16_t> source;
     source.add_started(10);
     source.add_started(20);
     source.add_started(30);
     source.tick(3);
 
-    ml::PeriodicTickCountdown<std::int16_t> destination;
+    ioj::PeriodicTickCountdown<std::int16_t> destination;
     destination.add_zeroed(1, 3);
     destination.copy_element(0, source, 2);
     destination.copy_elements(1, source, 0, 2);
@@ -133,7 +133,7 @@ TEST(NativePeriodicTickCountdown, PreservesPairsAcrossSoaOperations) {
 }
 
 TEST(NativeCountdownTimers, TicksAndSupportsNativeStorageOperations) {
-    ml::CountdownTimers timers;
+    ioj::CountdownTimers timers;
     timers.add_defaulted(3);
     timers[0] = 1.f;
     timers[1] = 2.f;
@@ -152,14 +152,14 @@ TEST(NativeCountdownTimers, TicksAndSupportsNativeStorageOperations) {
 }
 
 TEST(NativeCountdownTimers, SortsUsingAndRestoresScratchIndices) {
-    ml::CountdownTimers timers;
+    ioj::CountdownTimers timers;
     static_cast<void>(timers.add(3.f));
     static_cast<void>(timers.add(1.f));
     static_cast<void>(timers.add(4.f));
     static_cast<void>(timers.add(2.f));
     std::array<std::int32_t, 4> scratch{};
 
-    timers.sort([](ml::CountdownTimers const& values,
+    timers.sort([](ioj::CountdownTimers const& values,
                    auto const lhs,
                    auto const rhs) { return values[lhs] < values[rhs]; },
                 scratch);
@@ -169,7 +169,7 @@ TEST(NativeCountdownTimers, SortsUsingAndRestoresScratchIndices) {
 }
 
 TEST(NativePeriodicCountdownTimers, ConsumesAndPreservesPeriods) {
-    ml::PeriodicCountdownTimers timers;
+    ioj::PeriodicCountdownTimers timers;
     timers.add_started(1.f);
     timers.add_started(0.5f);
     timers.add_zeroed(2.f);

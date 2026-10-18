@@ -55,9 +55,9 @@ TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
     EXPECT_EQ(output.find("TArray"), std::string::npos);
     EXPECT_EQ(output.find("FMemory"), std::string::npos);
     EXPECT_EQ(output.find("CoreMinimal"), std::string::npos);
-    EXPECT_NE(output.find("using ml::native_soa::default_construct_n;"), std::string::npos);
+    EXPECT_NE(output.find("using ioj::native_soa::default_construct_n;"), std::string::npos);
     EXPECT_NE(output.find("default_construct_n(columns.nested_xs, count);"), std::string::npos);
-    EXPECT_NE(output.find("using ml::native_soa::source_data;"), std::string::npos);
+    EXPECT_NE(output.find("using ioj::native_soa::source_data;"), std::string::npos);
     EXPECT_NE(output.find("source_data(nested_view.xs())"), std::string::npos);
     EXPECT_NE(output.find("Operations::release_storage(*this);"), std::string::npos);
     EXPECT_NE(output.find("transfer_columns<false>(destination, source, num_);"),

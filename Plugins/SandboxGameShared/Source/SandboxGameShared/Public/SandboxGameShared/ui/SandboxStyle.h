@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "Styling/SlateStyle.h"
 
-namespace ml {
+namespace ioj {
 
 /**
  * Minimal style registry using UE5's FSlateStyleSet.
@@ -21,4 +21,4 @@ class SANDBOXGAMESHARED_API SandboxStyle {
     static void initialize_text_styles();
 };
 
-} // namespace ml
+} // namespace ioj

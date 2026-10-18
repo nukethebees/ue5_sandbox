@@ -2,7 +2,7 @@
 
 #include <CoreMinimal.h>
 
-namespace ml::soft_target_world {
+namespace ioj::soft_target_world {
 inline constexpr int32 color_red_index{0};
 inline constexpr int32 color_green_index{1};
 inline constexpr int32 color_blue_index{2};

@@ -22,5 +22,5 @@ struct FWeaponPickupPayload {
     FTriggerResult trigger(FTriggerContext context);
     bool tick(float delta_time);
 
-    static constexpr auto logger{ml::LogMsgMixin<"FWeaponPickupPayload", LogShooterGameWeapon>{}};
+    static constexpr auto logger{ioj::LogMsgMixin<"FWeaponPickupPayload", LogShooterGameWeapon>{}};
 };

@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 
-namespace ml::ProcessorGroupNames {
+namespace ioj::ProcessorGroupNames {
 inline FName const Movement = FName(TEXT("Movement"));
 inline FName const CollisionDetection = FName(TEXT("CollisionDetection"));
 inline FName const CollisionHandling = FName(TEXT("CollisionHandling"));

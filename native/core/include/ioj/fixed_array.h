@@ -10,7 +10,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace ml {
+namespace ioj {
 // Fixed-capacity, contiguous array with inline storage for up to N elements.
 // Adding beyond capacity is a programming error and triggers a check.
 template <typename T, std::uint32_t N>

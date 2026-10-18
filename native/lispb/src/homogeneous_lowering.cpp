@@ -29,8 +29,8 @@ auto homogeneous_permutation_function(LoweringContext& context, DeclarationHandl
                  .components[context.declarations.homogeneous_layouts.index(layout)])) {
         auto const component{context.text(component_id)};
         body.add(ir.expression_statement(
-            ir.raw_expression("ml::apply_permutation(" + component + ", indices)"),
-            {ir.types.dependency("ml::apply_permutation", "SandboxCore/soa_permutation.h")}));
+            ir.raw_expression("ioj::apply_permutation(" + component + ", indices)"),
+            {ir.types.dependency("ioj::apply_permutation", "SandboxCore/soa_permutation.h")}));
     }
     auto const created_function{
         ir.function(ir.strings.intern("apply_permutation"), ir.types.intern("void"))};

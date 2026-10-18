@@ -33,9 +33,9 @@ auto FSandboxISMCInstanceChunkWriter::validate_transforms(TConstArrayView<FVecto
     for (int32 axis{0}; axis < 3; ++axis) {
         if (!position_bounds_.IsValid ||
             !(position_bounds_.Min[axis] <= position_bounds_.Max[axis]) ||
-            !ml::sandbox_ismc::can_quantize_position(position_bounds_.Min[axis],
+            !ioj::sandbox_ismc::can_quantize_position(position_bounds_.Min[axis],
                                                      position_root_[axis]) ||
-            !ml::sandbox_ismc::can_quantize_position(position_bounds_.Max[axis],
+            !ioj::sandbox_ismc::can_quantize_position(position_bounds_.Max[axis],
                                                      position_root_[axis])) {
             UE_LOG(LogTemp,
                    Fatal,
@@ -67,8 +67,8 @@ auto FSandboxISMCInstanceChunkWriter::validate_transforms(TConstArrayView<FVecto
                    position.Z);
             return false;
         }
-        if (!ml::sandbox_ismc::is_normalized_quaternion(
-                ml::make_quaternion4f(rotation.X, rotation.Y, rotation.Z, rotation.W))) {
+        if (!ioj::sandbox_ismc::is_normalized_quaternion(
+                ioj::make_quaternion4f(rotation.X, rotation.Y, rotation.Z, rotation.W))) {
             UE_LOG(LogTemp,
                    Fatal,
                    TEXT("SandboxISMC instance %d requires finite normalized rotation (length "
@@ -91,23 +91,23 @@ auto FSandboxISMCInstanceChunkWriter::set_transforms(TConstArrayView<FVector3f> 
 
     auto const count{static_cast<std::size_t>(instances_.Num())};
     auto const native_vector{
-        [](FVector3f value) { return ml::make_vector3f(value.X, value.Y, value.Z); }};
-    ml::sandbox_ismc::TransformInput const input{
+        [](FVector3f value) { return ioj::make_vector3f(value.X, value.Y, value.Z); }};
+    ioj::sandbox_ismc::TransformInput const input{
         std::as_bytes(std::span{positions.GetData(), count}),
         std::as_bytes(std::span{rotations.GetData(), count})};
-    ml::sandbox_ismc::PackingParameters const parameters{native_vector(position_root_),
+    ioj::sandbox_ismc::PackingParameters const parameters{native_vector(position_root_),
                                                          native_vector(mesh_bounds_origin_),
                                                          native_vector(mesh_bounds_extent_)};
     auto const output{std::span{instances_.GetData(), count}};
     if constexpr (BoundsMode == ESandboxISMCBoundsMode::Calculate) {
-        ml::sandbox_ismc::TransformBounds bounds{};
-        ml::sandbox_ismc::pack_transforms(input, parameters, output, &bounds);
+        ioj::sandbox_ismc::TransformBounds bounds{};
+        ioj::sandbox_ismc::pack_transforms(input, parameters, output, &bounds);
         bounds_ = bounds.valid
                     ? FBox3f{FVector3f{bounds.minimum.x(), bounds.minimum.y(), bounds.minimum.z()},
                              FVector3f{bounds.maximum.x(), bounds.maximum.y(), bounds.maximum.z()}}
                     : FBox3f{ForceInit};
     } else {
-        ml::sandbox_ismc::pack_transforms(input, parameters, output);
+        ioj::sandbox_ismc::pack_transforms(input, parameters, output);
     }
 }
 

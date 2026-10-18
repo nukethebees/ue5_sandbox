@@ -2,7 +2,7 @@
 
 #include <CoreMinimal.h>
 
-namespace ml {
+namespace ioj {
 void FSoftTestAssertions::display_result(bool const passed, FString const& msg) {
     check(test_runner);
     if (!passed) {

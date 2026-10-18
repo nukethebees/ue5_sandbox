@@ -114,14 +114,14 @@ auto team_colour(::ioj::sim::EntityType const type,
 }
 }
 
-auto select_soft_target(std::span<::ml::presentation::AgentDisplayBatch const> const batches,
+auto select_soft_target(std::span<::ioj::presentation::AgentDisplayBatch const> const batches,
                         ::ioj::sim::EntityTypeRadii const& entity_type_radii,
                         TConstArrayView<EEntityOverlayObjectiveRole> const objective_roles,
                         FSoftTargetSelectionContext const& context,
                         FSoftTargetSelectionSettings const& settings,
                         ::ioj::sim::EntityUniqueId const current_target)
     -> FSoftTargetSelectionResult {
-    check(objective_roles.Num() == ::ml::presentation::display_entity_count(batches));
+    check(objective_roles.Num() == ::ioj::presentation::display_entity_count(batches));
     if (!context.view.is_valid()) {
         return {};
     }
@@ -156,12 +156,12 @@ auto select_soft_target(std::span<::ml::presentation::AgentDisplayBatch const> c
         check(batch.ids.size() == static_cast<std::size_t>(batch_count));
         for (int32 index{}; index < batch_count; ++index, ++output_index) {
             if (::ioj::sim::is_dead(batch.health(index)) ||
-                batch.team(index) == ml::to_native(context.player_team) ||
+                batch.team(index) == ioj::to_native(context.player_team) ||
                 !is_supported_entity_type(batch.type)) {
                 continue;
             }
 
-            auto const position{ml::to_unreal(::ioj::vector_at(batch.locations, index))};
+            auto const position{ioj::to_unreal(::ioj::vector_at(batch.locations, index))};
             auto const objective{objective_roles[output_index] !=
                                  EEntityOverlayObjectiveRole::None};
             if (!objective && FVector3f::DistSquared(context.view.camera_origin, position) >
@@ -295,7 +295,7 @@ auto select_soft_target(std::span<::ml::presentation::AgentDisplayBatch const> c
 }
 
 auto collect_entity_overlay_instances(
-    std::span<::ml::presentation::AgentDisplayBatch const> const batches,
+    std::span<::ioj::presentation::AgentDisplayBatch const> const batches,
     ::ioj::sim::EntityTypeRadii const& entity_type_radii,
     TConstArrayView<EEntityOverlayObjectiveRole> const objective_roles,
     FEntityOverlayTeamColours const& team_colours,
@@ -305,10 +305,10 @@ auto collect_entity_overlay_instances(
     TArray<FEntityOverlayInstance>& output_instances,
     FEntityOverlayCollector& collector) -> FEntityOverlayCollectionResult {
     TRACE_CPUPROFILER_EVENT_SCOPE(EntityOverlay::CollectAgentSource);
-    check(objective_roles.Num() == ::ml::presentation::display_entity_count(batches));
+    check(objective_roles.Num() == ::ioj::presentation::display_entity_count(batches));
     collector.begin(origin, FMath::Max(maximum_range, 0.0f), output_instances);
 
-    auto const count{::ml::presentation::display_entity_count(batches)};
+    auto const count{::ioj::presentation::display_entity_count(batches)};
     output_instances.Reserve(count);
     int32 output_index{};
     for (auto const& batch : batches) {
@@ -326,10 +326,10 @@ auto collect_entity_overlay_instances(
 
             auto const objective_role{objective_roles[output_index]};
             static_cast<void>(collector.try_add_colored(
-                ml::to_unreal(::ioj::vector_at(batch.locations, index)),
+                ioj::to_unreal(::ioj::vector_at(batch.locations, index)),
                 static_cast<float>(batch.health(index)) * inverse_health,
                 entity_type_radii[entity_type],
-                team_colour(entity_type, ml::to_unreal(batch.team(index)), team_colours),
+                team_colour(entity_type, ioj::to_unreal(batch.team(index)), team_colours),
                 objective_role,
                 objective_role != EEntityOverlayObjectiveRole::None));
         }

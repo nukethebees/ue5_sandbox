@@ -7,7 +7,7 @@
 #include <concepts>
 #include <cstdint>
 
-namespace ml::detail {
+namespace ioj::detail {
 template <template <typename> typename AngleTraits, std::floating_point T>
 auto normalise_signed_half_open_once(T const angle) noexcept -> T {
     constexpr auto half_turn{AngleTraits<T>::half_turn};
@@ -39,7 +39,7 @@ auto shortest_signed_angle_delta_normalised(T const current, T const target) noe
 }
 }
 
-namespace ml {
+namespace ioj {
 template <std::floating_point T>
 auto normalise_degrees_signed_half_open_once(T const angle) noexcept -> T {
     return detail::normalise_signed_half_open_once<DegreesAngleTraits, T>(angle);
@@ -71,7 +71,7 @@ auto shortest_signed_angle_delta_radians_normalised(T const current, T const tar
 }
 }
 
-namespace ml::kernel::detail {
+namespace ioj::kernel::detail {
 template <template <typename> typename AngleTraits, std::floating_point T>
 void rotate_towards_1d(T const* const current,
                        T const* const target,
@@ -91,7 +91,7 @@ void rotate_towards_1d(T const* const current,
 
     for (std::uint32_t i{}; i < count; ++i) {
         auto const delta{
-            ml::detail::shortest_signed_angle_delta<AngleTraits, T>(current[i], target[i])};
+            ioj::detail::shortest_signed_angle_delta<AngleTraits, T>(current[i], target[i])};
         auto const clamped_delta{std::clamp(delta, -max_step, max_step)};
         auto const new_out{current[i] + clamped_delta};
 
@@ -121,11 +121,11 @@ void rotate_towards_1d_normalised(T const* const current,
     }
 
     for (std::uint32_t i{}; i < count; ++i) {
-        auto const delta{ml::detail::shortest_signed_angle_delta_normalised<AngleTraits, T>(
+        auto const delta{ioj::detail::shortest_signed_angle_delta_normalised<AngleTraits, T>(
             current[i], target[i])};
         auto const clamped_delta{std::clamp(delta, -max_step, max_step)};
         out[i] =
-            ml::detail::normalise_signed_half_open_once<AngleTraits, T>(current[i] + clamped_delta);
+            ioj::detail::normalise_signed_half_open_once<AngleTraits, T>(current[i] + clamped_delta);
     }
 }
 
@@ -141,16 +141,16 @@ void rotate_towards_1d_normalised_in_place(T* const current,
     }
 
     for (std::uint32_t i{}; i < count; ++i) {
-        auto const delta{ml::detail::shortest_signed_angle_delta_normalised<AngleTraits, T>(
+        auto const delta{ioj::detail::shortest_signed_angle_delta_normalised<AngleTraits, T>(
             current[i], target[i])};
         auto const clamped_delta{std::clamp(delta, -max_step, max_step)};
         current[i] =
-            ml::detail::normalise_signed_half_open_once<AngleTraits, T>(current[i] + clamped_delta);
+            ioj::detail::normalise_signed_half_open_once<AngleTraits, T>(current[i] + clamped_delta);
     }
 }
 }
 
-namespace ml::kernel {
+namespace ioj::kernel {
 template <std::floating_point T>
 void rotate_towards_1d_degrees(T const* const current,
                                T const* const target,

@@ -28,7 +28,7 @@ struct FQueuedHealthChange {
 UCLASS()
 class SANDBOXGAMESHARED_API UDamageManagerSubsystem
     : public UTickableWorldSubsystem
-    , public ml::LogMsgMixin<"UDamageManagerSubsystem", LogSandboxGameShared> {
+    , public ioj::LogMsgMixin<"UDamageManagerSubsystem", LogSandboxGameShared> {
     GENERATED_BODY()
   public:
     static constexpr std::size_t n_queue_elements{10000};
@@ -39,6 +39,6 @@ class SANDBOXGAMESHARED_API UDamageManagerSubsystem
     virtual bool IsTickable() const override { return tick_enabled; }
     virtual TStatId GetStatId() const override;
   private:
-    ml::MonitoredLockFreeMPSCQueue<ml::LockFreeMPSCQueue<FQueuedHealthChange>> damage_queue;
+    ioj::MonitoredLockFreeMPSCQueue<ioj::LockFreeMPSCQueue<FQueuedHealthChange>> damage_queue;
     bool tick_enabled{false};
 };

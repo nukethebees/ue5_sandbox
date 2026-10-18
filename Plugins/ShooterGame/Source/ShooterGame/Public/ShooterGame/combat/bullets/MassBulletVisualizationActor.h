@@ -21,7 +21,7 @@ class UBulletDataAsset;
 UCLASS()
 class SHOOTERGAME_API AMassBulletVisualizationActor
     : public AActor
-    , public ml::LogMsgMixin<"AMassBulletVisualizationActor", LogShooterGameMassEntity> {
+    , public ioj::LogMsgMixin<"AMassBulletVisualizationActor", LogShooterGameMassEntity> {
     GENERATED_BODY()
   public:
     static constexpr float growth_factor{1.5};
@@ -90,7 +90,7 @@ class SHOOTERGAME_API AMassBulletVisualizationActor
 
     FDelegateHandle phase_end_delegate_handle{};
 
-    TArray<ml::MonitoredLockFreeMPSCQueue<ml::LockFreeMPSCQueue<FTransform>>> transform_queues{};
+    TArray<ioj::MonitoredLockFreeMPSCQueue<ioj::LockFreeMPSCQueue<FTransform>>> transform_queues{};
     UPROPERTY(VisibleAnywhere, Category = "Bullets")
     TArray<int32> current_instance_counts{};
     TArray<std::atomic<int32>> to_be_hidden{};

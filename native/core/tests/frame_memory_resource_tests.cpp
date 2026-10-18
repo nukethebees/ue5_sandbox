@@ -35,11 +35,11 @@ class FrameBacking {
   public:
     explicit FrameBacking(std::size_t const capacity)
         : data_{static_cast<std::byte*>(::operator new(
-              capacity, std::align_val_t{ml::FrameMemoryResource::backing_alignment}))}
+              capacity, std::align_val_t{ioj::FrameMemoryResource::backing_alignment}))}
         , capacity_{capacity} {}
 
     ~FrameBacking() {
-        ::operator delete(data_, std::align_val_t{ml::FrameMemoryResource::backing_alignment});
+        ::operator delete(data_, std::align_val_t{ioj::FrameMemoryResource::backing_alignment});
     }
 
     FrameBacking(FrameBacking const&) = delete;
@@ -72,7 +72,7 @@ class CountingResource final : public std::pmr::memory_resource {
 };
 TEST(NativeCoreFrameMemoryResource, AlignsAllocationsIncludingZeroSizedRequests) {
     FrameBacking backing{4096};
-    ml::FrameMemoryResource resource{backing};
+    ioj::FrameMemoryResource resource{backing};
 
     auto* const byte{resource.allocate(1, 1)};
     auto* const aligned{resource.allocate(sizeof(OverAlignedValue), alignof(OverAlignedValue))};
@@ -92,7 +92,7 @@ TEST(NativeCoreFrameMemoryResource, AlignsAllocationsIncludingZeroSizedRequests)
 
 TEST(NativeCoreFrameMemoryResource, RecordsExactBoundaryOverflowAndFrameStatistics) {
     FrameBacking backing{256};
-    ml::FrameMemoryResource resource{backing};
+    ioj::FrameMemoryResource resource{backing};
     auto* const exact{resource.allocate(256, 1)};
 
     EXPECT_EQ(resource.try_allocate(1, 1), nullptr);
@@ -112,7 +112,7 @@ TEST(NativeCoreFrameMemoryResource, RecordsExactBoundaryOverflowAndFrameStatisti
 
 TEST(NativeCoreFrameMemoryResource, ReclaimsPhasesWhilePreservingFrameTotals) {
     FrameBacking backing{512};
-    ml::FrameMemoryResource resource{backing};
+    ioj::FrameMemoryResource resource{backing};
 
     auto* const first{resource.allocate(128, 16)};
     resource.deallocate(first, 128, 16);
@@ -144,7 +144,7 @@ TEST(NativeCoreFrameMemoryResource, MakesConcurrentNonOverlappingClaims) {
     };
 
     FrameBacking backing{thread_count * allocations_per_thread * 64};
-    ml::FrameMemoryResource resource{backing};
+    ioj::FrameMemoryResource resource{backing};
     std::array<std::vector<Allocation>, thread_count> thread_allocations;
     std::vector<std::thread> threads;
     threads.reserve(thread_count);
@@ -196,9 +196,9 @@ TEST(NativeCoreFrameMemoryResource, TracksFrameArraysWithoutDefaultResourceFallb
     auto* const previous_default{std::pmr::set_default_resource(&fallback)};
     {
         FrameBacking backing{4096};
-        ml::FrameMemoryResource resource{backing};
+        ioj::FrameMemoryResource resource{backing};
         {
-            ml::FrameArray<TrackedValue> values{&resource};
+            ioj::FrameArray<TrackedValue> values{&resource};
             values.reserve(4);
             values.emplace();
             values.emplace();
@@ -215,25 +215,25 @@ TEST(NativeCoreFrameMemoryResource, TracksFrameArraysWithoutDefaultResourceFallb
 
 TEST(NativeCoreFrameMemoryResource, ScratchScopesReclaimAndCleanUpDuringExceptions) {
     FrameBacking backing{4096};
-    ml::FrameMemoryResource resource{backing};
+    ioj::FrameMemoryResource resource{backing};
     void* first{};
     {
-        ml::FrameScratchScope scope{resource};
+        ioj::FrameScratchScope scope{resource};
         first = resource.allocate(128, 16);
         resource.deallocate(first, 128, 16);
     }
     EXPECT_EQ(resource.get_stats().current_claimed_bytes, 0);
 
     {
-        ml::FrameScratchScope scope{resource};
+        ioj::FrameScratchScope scope{resource};
         auto* const reused{resource.allocate(64, 16)};
         EXPECT_EQ(reused, first);
         resource.deallocate(reused, 64, 16);
     }
 
     try {
-        ml::FrameScratchScope scope{resource};
-        ml::FrameArray<std::int32_t> values{&resource};
+        ioj::FrameScratchScope scope{resource};
+        ioj::FrameArray<std::int32_t> values{&resource};
         values.set_num(16);
         throw 7;
     } catch (std::int32_t const value) {
@@ -248,16 +248,16 @@ TEST(NativeCoreFrameMemoryResource, ScratchScopesReclaimAndCleanUpDuringExceptio
 
 TEST(NativeCoreFrameMemoryResource, RefusesReclaimWithOutstandingAllocationsAndValidatesBacking) {
     FrameBacking backing{4096};
-    ml::FrameMemoryResource resource{backing};
+    ioj::FrameMemoryResource resource{backing};
     auto* const allocation{resource.allocate(64, 16)};
 
     EXPECT_FALSE(resource.try_reclaim());
     resource.deallocate(allocation, 64, 16);
     EXPECT_TRUE(resource.try_reclaim());
 
-    EXPECT_THROW((ml::FrameMemoryResource{std::span<std::byte>{}}), std::invalid_argument);
-    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 128> aligned{};
-    EXPECT_THROW((ml::FrameMemoryResource{std::span<std::byte>{aligned}.subspan(1)}),
+    EXPECT_THROW((ioj::FrameMemoryResource{std::span<std::byte>{}}), std::invalid_argument);
+    alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 128> aligned{};
+    EXPECT_THROW((ioj::FrameMemoryResource{std::span<std::byte>{aligned}.subspan(1)}),
                  std::invalid_argument);
 }
 }

@@ -11,11 +11,11 @@ class SCheckBox;
 namespace ioj {
 class SGameButton;
 }
-namespace SlateGenerated::ml::s7 {
+namespace SlateGenerated::ioj::s7 {
 struct SScriptLevelSelectViewBuilder;
 }
 
-namespace ml::s7 {
+namespace ioj::s7 {
 using ioj::levels::authoring::ELevelCatalogCategory;
 
 DECLARE_DELEGATE_OneParam(FOnLevelRowSelected, int32);
@@ -25,7 +25,7 @@ DECLARE_DELEGATE_TwoParams(FOnBattleDurationChanged, TOptional<double>, bool);
 DECLARE_DELEGATE_OneParam(FOnBattleBoolChanged, bool);
 
 class SScriptLevelSelectView final : public SCompoundWidget {
-    friend struct ::SlateGenerated::ml::s7::SScriptLevelSelectViewBuilder;
+    friend struct ::SlateGenerated::ioj::s7::SScriptLevelSelectViewBuilder;
   public:
     SLATE_BEGIN_ARGS(SScriptLevelSelectView)
         : _Style(nullptr) {}
@@ -101,4 +101,4 @@ class SScriptLevelSelectView final : public SCompoundWidget {
     bool battle_duration_valid_{true};
     bool battle_simulation_only_{};
 };
-} // namespace ml::s7
+} // namespace ioj::s7

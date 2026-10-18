@@ -58,7 +58,7 @@ bool UInventoryComponent::add_item(TScriptInterface<IInventoryItem> item) {
             break;
         }
         default: {
-            logger.log_warning(TEXT("%s"), *ml::make_unhandled_enum_case_warning(item_type));
+            logger.log_warning(TEXT("%s"), *ioj::make_unhandled_enum_case_warning(item_type));
             break;
         }
     }
@@ -175,10 +175,10 @@ auto UInventoryComponent::get_random_weapon() -> AWeaponBase* {
     return nullptr;
 }
 auto UInventoryComponent::get_weapon_after(AWeaponBase const& cur_weapon) -> AWeaponBase* {
-    return get_weapon_adjacent<ml::increment_index>(cur_weapon);
+    return get_weapon_adjacent<ioj::increment_index>(cur_weapon);
 }
 auto UInventoryComponent::get_weapon_before(AWeaponBase const& cur_weapon) -> AWeaponBase* {
-    return get_weapon_adjacent<ml::decrement_index>(cur_weapon);
+    return get_weapon_adjacent<ioj::decrement_index>(cur_weapon);
 }
 auto UInventoryComponent::request_ammo(FAmmoData ammo_needed) -> FAmmoData {
     FAmmoData out{ammo_needed.type};
@@ -318,11 +318,11 @@ auto UInventoryComponent::get_weapon_adjacent(AWeaponBase const& cur_weapon) -> 
 
     auto const grid_dimensions{get_dimensions()};
     auto const grid_area{grid_dimensions.area()};
-    auto const initial_coordinate{ml::to_1d_index(grid_dimensions, item_entry->origin)};
-    auto coord_1d{next_index_fn(grid_area, ml::to_1d_index(grid_dimensions, item_entry->origin))};
+    auto const initial_coordinate{ioj::to_1d_index(grid_dimensions, item_entry->origin)};
+    auto coord_1d{next_index_fn(grid_area, ioj::to_1d_index(grid_dimensions, item_entry->origin))};
 
     while (coord_1d != initial_coordinate) {
-        auto const coord_2d{ml::to_coord(grid_dimensions, coord_1d)};
+        auto const coord_2d{ioj::to_coord(grid_dimensions, coord_1d)};
 
         if (auto* item{get_entry_at_origin(coord_2d)}) {
             if (auto* weapon{item->item->get_weapon()}) {

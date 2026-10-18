@@ -240,16 +240,16 @@ void run_worldless_collision_uniform_grid_membership(tests::SimulationFixture co
     auto const player_index{tests::add_player_spawn(
         data,
         tests::make_player_spawn(config,
-                                 Transform3d{.rotation = ml::Quaternion4d{},
-                                             .location = ml::Vector3d{-1500.f, -1500.f, 0.f}}))};
+                                 Transform3d{.rotation = ioj::Quaternion4d{},
+                                             .location = ioj::Vector3d{-1500.f, -1500.f, 0.f}}))};
     tests::add_capital_spawn(data,
                              Vector3f{{-500.f, -500.f, 0.f}},
                              Team::Blue,
                              player_index,
                              0.f,
                              data.capital_ships.spawn_delay);
-    tests::add_turret_spawn(data, ml::make_vector3f(500.f, 500.f, 0.f), {}, Team::Blue);
-    tests::add_spinner_spawn(data, ml::make_vector3f(1500.f, 1500.f, 0.f), 0.f, 0);
+    tests::add_turret_spawn(data, ioj::make_vector3f(500.f, 500.f, 0.f), {}, Team::Blue);
+    tests::add_spinner_spawn(data, ioj::make_vector3f(1500.f, 1500.f, 0.f), 0.f, 0);
 
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
@@ -265,7 +265,7 @@ void run_worldless_collision_uniform_grid_membership(tests::SimulationFixture co
         return;
     }
 
-    ml::EnumArray<EntityType, EntityUniqueId> expected_ids{};
+    ioj::EnumArray<EntityType, EntityUniqueId> expected_ids{};
     expected_ids[EntityType::PlayerShip] = player->unique_entity_id;
     expected_ids[EntityType::Turret] = simulation.get_turrets().get_entities().entity_ids()[0];
     expected_ids[EntityType::CapitalShip] = simulation.get_capital_ships().get_id(0);
@@ -276,7 +276,7 @@ void run_worldless_collision_uniform_grid_membership(tests::SimulationFixture co
     auto const& grid{SpatialQueryManagerTestAccess::uniform_grid(spatial_queries)};
     auto const& entity_aabbs{SpatialQueryManagerTestAccess::entity_aabbs(spatial_queries)};
 
-    for (auto const entity_type : ml::EnumTraits<EntityType>::values) {
+    for (auto const entity_type : ioj::EnumTraits<EntityType>::values) {
         auto const id{expected_ids[entity_type]};
         EXPECT_TRUE(entity_is_alive(simulation, id))
             << "Expected collision-grid entity is alive" << ::testing::PrintToString(entity_type);

@@ -6,7 +6,7 @@
 #include <utility>
 #include <vector>
 
-namespace ml {
+namespace ioj {
 
 template <typename T>
 void apply_permutation(TArray<T>& values, TArrayView<int32> const indices) {
@@ -28,4 +28,4 @@ void apply_permutation(T& values, TArrayView<int32> const indices) {
     values.apply_permutation(indices);
 }
 
-} // namespace ml
+} // namespace ioj

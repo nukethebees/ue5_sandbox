@@ -21,8 +21,8 @@ auto allocate_backing(std::size_t const capacity_bytes, std::pmr::memory_resourc
 #if defined(IOJ_WITH_TRACY)
     // Attribute retained backing to its physical allocation, not each borrower.
     if (&upstream == std::pmr::new_delete_resource()) {
-        ml::profiling::record_memory_allocation(
-            ml::profiling::MemoryDomain::PersistentRoot, allocation, capacity_bytes);
+        ioj::profiling::record_memory_allocation(
+            ioj::profiling::MemoryDomain::PersistentRoot, allocation, capacity_bytes);
     }
 #endif
     return allocation;
@@ -37,7 +37,7 @@ Backing::Backing(std::size_t const capacity_bytes, std::pmr::memory_resource& up
 Backing::~Backing() {
 #if defined(IOJ_WITH_TRACY)
     if (&upstream_ == std::pmr::new_delete_resource()) {
-        ml::profiling::record_memory_free(ml::profiling::MemoryDomain::PersistentRoot, data_);
+        ioj::profiling::record_memory_free(ioj::profiling::MemoryDomain::PersistentRoot, data_);
     }
 #endif
     upstream_.deallocate(data_, capacity_bytes_, alignment);

@@ -26,7 +26,7 @@ class SHOOTERGAME_API ACombatDummyController : public AAIController {
 
     void set_bb_value(FName const& name, auto const& value) {
         check(Blackboard);
-        ml::set_bb_value(*Blackboard, name, value);
+        ioj::set_bb_value(*Blackboard, name, value);
     }
     void set_ai_state(EAIState state);
 

@@ -7,14 +7,14 @@
 
 #include <utility>
 
-namespace ml {
-inline constexpr int32 test_team_count{ml::enum_count<ETestTeam>()};
+namespace ioj {
+inline constexpr int32 test_team_count{ioj::enum_count<ETestTeam>()};
 
 template <typename T>
 using TStaticTeamArray = TStaticArray<T, test_team_count>;
 
 constexpr bool is_valid(ETestTeam const team) {
-    return std::to_underlying(team) < ml::enum_count<ETestTeam>();
+    return std::to_underlying(team) < ioj::enum_count<ETestTeam>();
 }
 }
 
@@ -28,5 +28,5 @@ struct FTeamColours {
         return colours[std::to_underlying(team)];
     }
     auto operator[](ETestTeam team) -> FLinearColor& { return colours[std::to_underlying(team)]; }
-    ml::TStaticTeamArray<FLinearColor> colours;
+    ioj::TStaticTeamArray<FLinearColor> colours;
 };

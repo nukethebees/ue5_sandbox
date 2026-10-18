@@ -2,7 +2,7 @@
 
 #include <CoreMinimal.h>
 
-namespace ml::ship_hud {
+namespace ioj::ship_hud {
 
 struct FFlightVectorDebugData {
     bool operator==(FFlightVectorDebugData const& other) const noexcept = default;
@@ -13,4 +13,4 @@ struct FFlightVectorDebugData {
     FVector2D local_velocity{};
 };
 
-} // namespace ml::ship_hud
+} // namespace ioj::ship_hud

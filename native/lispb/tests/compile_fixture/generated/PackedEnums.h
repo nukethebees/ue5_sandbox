@@ -43,10 +43,10 @@ enum class DomainState : DomainStateUnderlying {
 };
 
 } // namespace codegen_compile_fixture
-namespace ml {
+namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::DomainState>() noexcept
     -> std::size_t {
     return 2;
 }
-} // namespace ml
+} // namespace ioj

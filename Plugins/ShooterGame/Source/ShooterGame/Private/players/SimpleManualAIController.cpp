@@ -175,7 +175,7 @@ void ASimpleManualAIController::fsm_wandering(float delta_time) {
 
     TRY_INIT_PTR(pawn, GetPawn());
 
-    auto const random_point{ml::get_random_nav_point(*pawn, config.wander_radius)};
+    auto const random_point{ioj::get_random_nav_point(*pawn, config.wander_radius)};
     if (!random_point) {
         LOG.log_warning(TEXT("No point found."));
         return;

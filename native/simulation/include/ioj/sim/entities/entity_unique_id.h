@@ -15,20 +15,20 @@
 namespace ioj::sim {
 struct EntityUniqueId {
     using storage_type = std::uint32_t;
-    static_assert(ml::valid_packed_storage<storage_type, 32>());
+    static_assert(ioj::valid_packed_storage<storage_type, 32>());
 
     // index
     using index_type = std::uint32_t;
-    using index_field = ml::PackedField<storage_type, index_type, 0, 24>;
+    using index_field = ioj::PackedField<storage_type, index_type, 0, 24>;
     inline static constexpr index_type index_minimum{0};
     inline static constexpr index_type index_maximum{
         static_cast<index_type>(index_field::value_mask)};
 
     // entity_type
     using entity_type_type = ioj::sim::EntityType;
-    static_assert(ml::valid_packed_enum<entity_type_type, 8>());
+    static_assert(ioj::valid_packed_enum<entity_type_type, 8>());
     using entity_type_underlying_type = std::underlying_type_t<entity_type_type>;
-    using entity_type_field = ml::PackedField<storage_type, entity_type_type, 24, 8>;
+    using entity_type_field = ioj::PackedField<storage_type, entity_type_type, 24, 8>;
 
     inline static constexpr storage_type invalid_value{storage_type{0xffffffff}};
 
@@ -45,27 +45,27 @@ struct EntityUniqueId {
     explicit constexpr EntityUniqueId(index_type const index_value,
                                       entity_type_type const entity_type_value) noexcept {
         assert(index_value <= index_maximum);
-        assert(static_cast<std::size_t>(entity_type_value) < ml::enum_count<entity_type_type>());
-        value_ = static_cast<storage_type>(ml::packed_pack<index_field>(index_value) |
-                                           ml::packed_pack<entity_type_field>(entity_type_value));
+        assert(static_cast<std::size_t>(entity_type_value) < ioj::enum_count<entity_type_type>());
+        value_ = static_cast<storage_type>(ioj::packed_pack<index_field>(index_value) |
+                                           ioj::packed_pack<entity_type_field>(entity_type_value));
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return value_ != invalid_value &&
-               static_cast<std::size_t>(entity_type()) < ml::enum_count<entity_type_type>();
+               static_cast<std::size_t>(entity_type()) < ioj::enum_count<entity_type_type>();
     }
 
     [[nodiscard]] constexpr auto operator<=>(EntityUniqueId const&) const noexcept = default;
 
     [[nodiscard]] constexpr auto index() const noexcept -> index_type {
-        return ml::packed_extract<index_field>(value_);
+        return ioj::packed_extract<index_field>(value_);
     }
 
     [[nodiscard]] constexpr auto entity_type() const noexcept -> entity_type_type {
-        return ml::packed_extract<entity_type_field>(value_);
+        return ioj::packed_extract<entity_type_field>(value_);
     }
   private:
     storage_type value_{invalid_value};
 };
-static_assert(ml::valid_packed_value_layout<EntityUniqueId>());
+static_assert(ioj::valid_packed_value_layout<EntityUniqueId>());
 } // namespace ioj::sim

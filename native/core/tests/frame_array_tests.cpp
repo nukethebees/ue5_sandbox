@@ -168,7 +168,7 @@ struct ThrowingDestructor {
 };
 
 template <typename T>
-concept FrameArrayElement = requires { typename ml::FrameArray<T>; };
+concept FrameArrayElement = requires { typename ioj::FrameArray<T>; };
 
 template <typename Array>
 concept CopiesElements = requires(
@@ -181,7 +181,7 @@ template <typename Array>
 concept RemovesElements = requires(Array& array) { array.remove_at_swap(0); };
 
 TEST(NativeCoreFrameArray, BorrowsStorageAndHasFixedIdentity) {
-    using Array = ml::FrameArray<std::int32_t>;
+    using Array = ioj::FrameArray<std::int32_t>;
 
     static_assert(!std::is_default_constructible_v<Array>);
     static_assert(!std::is_copy_constructible_v<Array>);
@@ -194,10 +194,10 @@ TEST(NativeCoreFrameArray, BorrowsStorageAndHasFixedIdentity) {
     static_assert(!FrameArrayElement<ThrowingMove>);
     static_assert(!FrameArrayElement<ThrowingDestructor>);
     static_assert(CopiesElements<Array>);
-    static_assert(!CopiesElements<ml::FrameArray<MoveOnlyValue>>);
-    static_assert(!ResizesElements<ml::FrameArray<MoveOnlyValue>>);
-    static_assert(RemovesElements<ml::FrameArray<MoveOnlyValue>>);
-    static_assert(!RemovesElements<ml::FrameArray<ThrowingValue>>);
+    static_assert(!CopiesElements<ioj::FrameArray<MoveOnlyValue>>);
+    static_assert(!ResizesElements<ioj::FrameArray<MoveOnlyValue>>);
+    static_assert(RemovesElements<ioj::FrameArray<MoveOnlyValue>>);
+    static_assert(!RemovesElements<ioj::FrameArray<ThrowingValue>>);
 
     std::array<std::byte, 1024> backing{};
     std::pmr::monotonic_buffer_resource resource{backing.data(), backing.size()};
@@ -214,7 +214,7 @@ TEST(NativeCoreFrameArray, BorrowsStorageAndHasFixedIdentity) {
 TEST(NativeCoreFrameArray, AddsEmplacesAndExposesNativeViews) {
     TrackedValue::reset_counts();
     std::pmr::unsynchronized_pool_resource resource;
-    ml::FrameArray<TrackedValue> values{&resource};
+    ioj::FrameArray<TrackedValue> values{&resource};
     values.reserve(3);
     TrackedValue copied_source{10};
     TrackedValue moved_source{20};
@@ -239,7 +239,7 @@ TEST(NativeCoreFrameArray, AddsEmplacesAndExposesNativeViews) {
 
 TEST(NativeCoreFrameArray, ReservesReusesAndIteratesWithConstCorrectness) {
     std::pmr::unsynchronized_pool_resource resource;
-    ml::FrameArray<std::int32_t> values{&resource};
+    ioj::FrameArray<std::int32_t> values{&resource};
     values.reserve(4);
     values.add(1);
     auto* const reserved_data{values.data()};
@@ -267,7 +267,7 @@ TEST(NativeCoreFrameArray, DestroysActiveValuesAndSupportsMoveOnlyValues) {
     TrackedValue::reset_counts();
     {
         std::pmr::unsynchronized_pool_resource resource;
-        ml::FrameArray<TrackedValue> values{&resource};
+        ioj::FrameArray<TrackedValue> values{&resource};
         values.reserve(3);
         values.emplace(10);
         values.emplace(20);
@@ -280,7 +280,7 @@ TEST(NativeCoreFrameArray, DestroysActiveValuesAndSupportsMoveOnlyValues) {
     }
 
     std::pmr::unsynchronized_pool_resource resource;
-    ml::FrameArray<MoveOnlyValue> values{&resource};
+    ioj::FrameArray<MoveOnlyValue> values{&resource};
     MoveOnlyValue source{10};
     values.add(std::move(source));
     values.emplace(20);
@@ -293,7 +293,7 @@ TEST(NativeCoreFrameArray, DestroysActiveValuesAndSupportsMoveOnlyValues) {
 
 TEST(NativeCoreFrameArray, ResizesRemovesAndPreservesValuesThroughGrowth) {
     std::pmr::unsynchronized_pool_resource resource;
-    ml::FrameArray<std::int32_t> values{&resource};
+    ioj::FrameArray<std::int32_t> values{&resource};
     values.set_num(3);
     values[0] = 10;
     values[1] = 20;
@@ -314,7 +314,7 @@ TEST(NativeCoreFrameArray, ResizesRemovesAndPreservesValuesThroughGrowth) {
 
 TEST(NativeCoreFrameArray, AcceptsBorrowedStandardResources) {
     std::pmr::unsynchronized_pool_resource resource{std::pmr::new_delete_resource()};
-    ml::FrameArray<std::string> values{&resource};
+    ioj::FrameArray<std::string> values{&resource};
 
     values.reserve(2);
     values.emplace("alpha");
@@ -332,7 +332,7 @@ TEST(NativeCoreFrameArray, MatchesAllocationSizesAndAlignmentsAndRetainsClearedS
 
     RecordingResource resource;
     {
-        ml::FrameArray<AlignedValue> values{&resource};
+        ioj::FrameArray<AlignedValue> values{&resource};
         values.reserve(0);
         values.clear();
         EXPECT_TRUE(resource.allocations.empty());
@@ -365,7 +365,7 @@ TEST(NativeCoreFrameArray, ShrinksAndRemovesExactlyTheActiveElements) {
     TrackedValue::reset_counts();
     RecordingResource resource;
     {
-        ml::FrameArray<TrackedValue> values{&resource};
+        ioj::FrameArray<TrackedValue> values{&resource};
         values.set_num(4);
         auto* const storage{values.data()};
         values[3].value = 30;
@@ -386,7 +386,7 @@ TEST(NativeCoreFrameArray, ShrinksAndRemovesExactlyTheActiveElements) {
     EXPECT_EQ(TrackedValue::live_count, 0);
     EXPECT_EQ(resource.outstanding, 0);
 
-    ml::FrameArray<int> scalars{&resource};
+    ioj::FrameArray<int> scalars{&resource};
     scalars.set_num(2);
     EXPECT_EQ(scalars[0], 0);
     EXPECT_EQ(scalars[1], 0);
@@ -402,7 +402,7 @@ TEST(NativeCoreFrameArray, UninitialisedGrowthLeavesNewElementsForCallerConstruc
         TrackedValue::reset_counts();
         RecordingResource resource;
         {
-            ml::FrameArray<TrackedValue> values{&resource};
+            ioj::FrameArray<TrackedValue> values{&resource};
             values.reserve(reserve_spare ? 3 : 1);
             values.emplace(42);
             auto const allocation_count{resource.allocations.size()};
@@ -428,7 +428,7 @@ TEST(NativeCoreFrameArray, UninitialisedResizeShrinksAndReusesStorage) {
     TrackedValue::reset_counts();
     RecordingResource resource;
     {
-        ml::FrameArray<TrackedValue> values{&resource};
+        ioj::FrameArray<TrackedValue> values{&resource};
         values.set_num_uninitialised(0);
         EXPECT_TRUE(values.is_empty());
         EXPECT_EQ(values.data(), nullptr);
@@ -476,7 +476,7 @@ TEST(NativeCoreFrameArray, UninitialisedResizeShrinksAndReusesStorage) {
 TEST(NativeCoreFrameArray, UninitialisedResizeSupportsNonDefaultConstructibleMoveOnlyElements) {
     RecordingResource resource;
     {
-        ml::FrameArray<MoveOnlyValue> values{&resource};
+        ioj::FrameArray<MoveOnlyValue> values{&resource};
         values.set_num_uninitialised(1);
         EXPECT_EQ(values.num(), 1);
         std::construct_at(values.data(), 42);
@@ -496,7 +496,7 @@ TEST(NativeCoreFrameArray, UninitialisedResizePreservesStateWhenAllocationFails)
     TrackedValue::reset_counts();
     RecordingResource resource;
     {
-        ml::FrameArray<TrackedValue> values{&resource};
+        ioj::FrameArray<TrackedValue> values{&resource};
         resource.fail_next = true;
         EXPECT_THROW(values.set_num_uninitialised(1), std::bad_alloc);
         EXPECT_TRUE(values.is_empty());
@@ -530,7 +530,7 @@ TEST(NativeCoreFrameArray, UninitialisedResizePreservesStateWhenAllocationFails)
 TEST(NativeCoreFrameArray, ConsumesAliasedArgumentsBeforeGrowingStorage) {
     RecordingResource resource;
     {
-        ml::FrameArray<TrackedValue> values{&resource};
+        ioj::FrameArray<TrackedValue> values{&resource};
         values.reserve(1);
         values.emplace(42);
         values.add(values[0]);
@@ -543,7 +543,7 @@ TEST(NativeCoreFrameArray, ConsumesAliasedArgumentsBeforeGrowingStorage) {
     EXPECT_EQ(TrackedValue::live_count, 0);
 
     {
-        ml::FrameArray<MoveOnlyValue> values{&resource};
+        ioj::FrameArray<MoveOnlyValue> values{&resource};
         values.reserve(1);
         values.emplace(17);
         values.add(std::move(values[0]));
@@ -558,7 +558,7 @@ TEST(NativeCoreFrameArray, ConsumesAliasedArgumentsBeforeGrowingStorage) {
 TEST(NativeCoreFrameArray, PreservesValuesWhenAllocationFails) {
     RecordingResource resource;
     {
-        ml::FrameArray<MoveOnlyValue> values{&resource};
+        ioj::FrameArray<MoveOnlyValue> values{&resource};
         resource.fail_next = true;
         EXPECT_THROW(values.emplace(9), std::bad_alloc);
         EXPECT_TRUE(values.is_empty());
@@ -585,7 +585,7 @@ TEST(NativeCoreFrameArray, RollsBackFailedInsertionAndPartialResize) {
     for (bool const reserve_spare : {false, true}) {
         ThrowingValue::constructions_before_throw = -1;
         {
-            ml::FrameArray<ThrowingValue> values{&resource};
+            ioj::FrameArray<ThrowingValue> values{&resource};
             values.reserve(reserve_spare ? 8 : 1);
             values.emplace(42);
             auto* const storage{values.data()};
@@ -615,7 +615,7 @@ TEST(NativeCoreFrameArray, ForwardsExplicitElementResourcesWithoutAllocatorInjec
     RecordingResource storage_resource;
     RecordingResource element_resource;
     {
-        ml::FrameArray<std::pmr::string> values{&storage_resource};
+        ioj::FrameArray<std::pmr::string> values{&storage_resource};
         values.emplace(128, 'x', std::pmr::polymorphic_allocator<char>{&element_resource});
         values.reserve(4);
         EXPECT_EQ(values[0].size(), 128);
@@ -628,11 +628,11 @@ TEST(NativeCoreFrameArray, ForwardsExplicitElementResourcesWithoutAllocatorInjec
 }
 
 TEST(NativeCoreFrameArray, BalancesFrameResourceAllocationsAfterGrowthAndFailure) {
-    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing{};
-    ml::FrameMemoryResource resource{backing};
+    alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing{};
+    ioj::FrameMemoryResource resource{backing};
     ThrowingValue::constructions_before_throw = -1;
     {
-        ml::FrameArray<ThrowingValue> values{&resource};
+        ioj::FrameArray<ThrowingValue> values{&resource};
         values.emplace(42);
         values.reserve(2);
         values.emplace(17);

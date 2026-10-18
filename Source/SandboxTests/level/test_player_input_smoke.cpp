@@ -37,10 +37,10 @@
 
 TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
 {
-    inline static ml::FTestBatchOrchestratorLevelSetup level_setup{};
+    inline static ioj::FTestBatchOrchestratorLevelSetup level_setup{};
     inline static FTimespan const timeout{FTimespan::FromSeconds(2)};
 
-    ml::FSoftTestAssertions checks{};
+    ioj::FSoftTestAssertions checks{};
     TWeakObjectPtr<ASpaceGamePlayerController> controller_{};
     TWeakObjectPtr<UEnhancedInputLocalPlayerSubsystem> subsystem_{};
     TWeakObjectPtr<UEnhancedInputUserSettings> settings_{};
@@ -158,9 +158,9 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
         if (!checks.is_valid(orchestrator, TEXT("Orchestrator exists"))) {
             return false;
         }
-        ml::FLevelLoader loader{*orchestrator};
+        ioj::FLevelLoader loader{*orchestrator};
         if (!checks.is_true(
-                static_cast<bool>(loader.load(ml::example_levels::make_native_example())),
+                static_cast<bool>(loader.load(ioj::example_levels::make_native_example())),
                 TEXT("Gameplay level loads directly"))) {
             return false;
         }

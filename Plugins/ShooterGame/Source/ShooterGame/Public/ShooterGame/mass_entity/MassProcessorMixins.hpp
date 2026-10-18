@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "MassProcessingTypes.h"
 
-namespace ml {
+namespace ioj {
 struct MassProcessorMixins {
     template <typename Self>
     void set_execution_flags(this Self& self, EProcessorExecutionFlags flags) {

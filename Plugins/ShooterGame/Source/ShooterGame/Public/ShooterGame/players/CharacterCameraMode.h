@@ -20,9 +20,9 @@ enum class ECharacterCameraMode : uint8 {
 
 using ECharacterCameraModeUnderlying = uint8;
 
-namespace ml {
+namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<::ECharacterCameraMode>() noexcept -> std::size_t {
     return 2;
 }
-} // namespace ml
+} // namespace ioj

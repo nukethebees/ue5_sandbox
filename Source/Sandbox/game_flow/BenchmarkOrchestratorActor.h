@@ -19,7 +19,7 @@ enum class EBenchmarkEndState : uint8 {
 UCLASS()
 class SANDBOX_API ABenchmarkOrchestratorActor
     : public AActor
-    , public ml::LogMsgMixin<"ABenchmarkOrchestratorActor"> {
+    , public ioj::LogMsgMixin<"ABenchmarkOrchestratorActor"> {
     GENERATED_BODY()
   public:
     ABenchmarkOrchestratorActor();

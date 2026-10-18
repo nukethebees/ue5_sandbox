@@ -5,7 +5,7 @@
 #include <cstring>
 #include <limits>
 
-namespace ml::sandbox_ismc {
+namespace ioj::sandbox_ismc {
 namespace scalar_detail {
 template <std::size_t Components>
 auto load(std::span<std::byte const> bytes, std::size_t index) noexcept

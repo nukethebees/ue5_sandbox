@@ -10,7 +10,7 @@
 #include <Engine/World.h>
 #include <Kismet/GameplayStatics.h>
 
-namespace ml {
+namespace ioj {
 auto spawn_player_ship(UWorld& world,
                        TSubclassOf<ATestSpaceShip> const player_class,
                        FPlayerShipConfig const* const player_config,

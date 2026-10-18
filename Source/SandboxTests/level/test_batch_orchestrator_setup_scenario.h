@@ -3,7 +3,7 @@
 #include <ioj/time_series_data.h>
 #include <SandboxTests/support/SimulationTestScenario.h>
 
-namespace ml {
+namespace ioj {
 enum class EOrchestratorSetupScenario : uint8 {
     SpawnMissingActors,
     SimulationClockConversions,

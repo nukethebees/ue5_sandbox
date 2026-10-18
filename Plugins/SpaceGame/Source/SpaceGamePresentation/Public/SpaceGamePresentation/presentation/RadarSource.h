@@ -21,7 +21,7 @@ struct SPACEGAMEPRESENTATION_API FRadarCollectionResult {
 [[nodiscard]] SPACEGAMEPRESENTATION_API auto sanitize_radar_settings(FRadarSettings settings)
     -> FRadarSettings;
 
-namespace ml::radar_source {
+namespace ioj::radar_source {
 [[nodiscard]] SPACEGAMEPRESENTATION_API auto to_radar_display_radius(float world_distance,
                                                                      FRadarSettings const& settings)
     -> float;
@@ -31,7 +31,7 @@ namespace ml::radar_source {
 }
 
 [[nodiscard]] SPACEGAMEPRESENTATION_API auto
-    collect_radar_instances(std::span<::ml::presentation::AgentDisplayBatch const> batches,
+    collect_radar_instances(std::span<::ioj::presentation::AgentDisplayBatch const> batches,
                             TConstArrayView<EEntityOverlayObjectiveRole> objective_roles,
                             FRadarContactColours const& contact_colours,
                             FTransform const& player_transform,

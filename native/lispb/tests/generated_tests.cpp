@@ -835,12 +835,12 @@ TEST(GeneratedPackedValue, GeneratesConstructionValidationAndRangeHelpers) {
     static_assert(CheckedValue::serial_maximum == CheckedValue::serial_field::value_mask);
     static_assert(CheckedValue::serial_range_fits(0, CheckedValue::serial_field::value_mask + 1));
     static_assert(!CheckedValue::serial_range_fits(CheckedValue::serial_field::value_mask, 2));
-    static_assert(ml::range_fits(10u, 11u, 10u, 20u));
-    static_assert(!ml::range_fits(9u, 1u, 10u, 20u));
-    static_assert(!ml::range_fits(10u, 12u, 10u, 20u));
-    static_assert(ml::range_fits(0xffffffffu, 0u, 10u, 20u));
-    static_assert(ml::range_fits(0xffffffffu, 1u, 0u, 0xffffffffu));
-    static_assert(!ml::range_fits(0xffffffffu, 2u, 0u, 0xffffffffu));
+    static_assert(ioj::range_fits(10u, 11u, 10u, 20u));
+    static_assert(!ioj::range_fits(9u, 1u, 10u, 20u));
+    static_assert(!ioj::range_fits(10u, 12u, 10u, 20u));
+    static_assert(ioj::range_fits(0xffffffffu, 0u, 10u, 20u));
+    static_assert(ioj::range_fits(0xffffffffu, 1u, 0u, 0xffffffffu));
+    static_assert(!ioj::range_fits(0xffffffffu, 2u, 0u, 0xffffffffu));
 
     CheckedValue const null_value;
     EXPECT_FALSE(null_value.is_valid());
@@ -1055,18 +1055,18 @@ TEST(GeneratedFacade, Operations) {
 }
 
 TEST(GeneratedEnum, ValuesAndConversions) {
-    static_assert(ml::enum_count<EPlainFixture>() == 2);
-    static_assert(ml::EnumArray<EPlainFixture, float>::size() == 2);
+    static_assert(ioj::enum_count<EPlainFixture>() == 2);
+    static_assert(ioj::EnumArray<EPlainFixture, float>::size() == 2);
 
-    ml::EnumArray<EPlainFixture, float> radii;
+    ioj::EnumArray<EPlainFixture, float> radii;
     radii[EPlainFixture::First] = 100.0f;
     radii[EPlainFixture::ReadableName] = 200.0f;
     check(radii[EPlainFixture::First] == 100.0f);
     check(radii[EPlainFixture::ReadableName] == 200.0f);
 
-    static_assert(ml::enum_count<EReflectedFixture>() == 1);
-    static_assert(ml::EnumArray<EReflectedFixture, int32>::size() == 1);
-    ml::EnumArray<EReflectedFixture, int32> reflected_values;
+    static_assert(ioj::enum_count<EReflectedFixture>() == 1);
+    static_assert(ioj::EnumArray<EReflectedFixture, int32>::size() == 1);
+    ioj::EnumArray<EReflectedFixture, int32> reflected_values;
     reflected_values[EReflectedFixture::Visible] = 42;
     check(reflected_values[EReflectedFixture::Visible] == 42);
 
@@ -1157,8 +1157,8 @@ TEST(GeneratedStaticTable, Operations) {
 
 TEST(GeneratedSingleAllocationSoa, LayoutAndAccess) {
     using SingleParents = codegen_compile_fixture::SingleParents;
-    static_assert(ml::soa_storage_detail::validate_compact_view<SingleParents::View>());
-    static_assert(ml::soa_storage_detail::validate_compact_view<SingleParents::ConstView>());
+    static_assert(ioj::soa_storage_detail::validate_compact_view<SingleParents::View>());
+    static_assert(ioj::soa_storage_detail::validate_compact_view<SingleParents::ConstView>());
     static_assert(!std::is_copy_constructible_v<SingleParents>);
     using KeysColumn = std::remove_cvref_t<decltype(SingleParents::Layout::columns.KeysColumn)>;
     static_assert(std::is_same_v<KeysColumn::pointer, int32*>);

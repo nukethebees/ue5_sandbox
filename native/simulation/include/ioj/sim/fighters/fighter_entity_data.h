@@ -24,9 +24,9 @@ struct FighterEntityDataSingleView;
 struct FighterEntityDataSingleConstView;
 struct FighterEntityDataSingleLayoutColumns {
     template <typename T>
-    using ColLayout = ml::native_soa::ColumnLayout<T>;
+    using ColLayout = ioj::native_soa::ColumnLayout<T>;
 
-    ml::native_soa::ColumnLayoutStart LayoutStart{};
+    ioj::native_soa::ColumnLayoutStart LayoutStart{};
 
     ColLayout<EntityUniqueId> EntityIdsColumn;
     ColLayout<std::uint32_t> IntegralBiasesColumn;
@@ -149,8 +149,8 @@ struct FighterEntityDataSingleLayout {
     using byte_size_type = std::size_t;
 
     static constexpr size_type capacity_granularity{
-        ml::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
+        ioj::native_soa::LayoutPolicy::capacity_granularity};
+    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
 
     static constexpr FighterEntityDataSingleLayoutColumns columns{};
 
@@ -160,8 +160,8 @@ struct FighterEntityDataSingleLayout {
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::capacity_block_bound(columns.TargetRadiiColumn)};
-    static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
+        ioj::native_soa::capacity_block_bound(columns.TargetRadiiColumn)};
+    static constexpr size_type max_capacity{ioj::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return blocks == 0 ? 0 : columns.TargetRadiiColumn.data_end(blocks);
     }
@@ -169,11 +169,11 @@ struct FighterEntityDataSingleLayout {
 };
 
 template <bool Const>
-struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
+struct FighterEntityDataSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = FighterEntityDataSchema;
     using size_type = std::uint32_t;
     using Layout = FighterEntityDataSingleLayout;
-    using Storage = ml::native_soa::StorageState;
+    using Storage = ioj::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
@@ -195,8 +195,8 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
     auto float_biases() const { return make_column_view(Layout::columns.FloatBiasesColumn); }
     auto tasks() const { return make_column_view(Layout::columns.TasksColumn); }
     auto view_locations() const {
-        using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+        using ioj::soa_storage_detail::three_column_view;
+        return three_column_view<ioj::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
             count_,
@@ -205,8 +205,8 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
             Layout::columns.LocationsZsColumn);
     }
     auto view_desired_move_locations() const {
-        using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+        using ioj::soa_storage_detail::three_column_view;
+        return three_column_view<ioj::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
             count_,
@@ -215,8 +215,8 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
             Layout::columns.DesiredMoveLocationsZsColumn);
     }
     auto view_aim_directions() const {
-        using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+        using ioj::soa_storage_detail::three_column_view;
+        return three_column_view<ioj::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
             count_,
@@ -225,8 +225,8 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
             Layout::columns.AimDirectionsZsColumn);
     }
     auto view_planned_aim_directions() const {
-        using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+        using ioj::soa_storage_detail::three_column_view;
+        return three_column_view<ioj::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
             count_,
@@ -235,8 +235,8 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
             Layout::columns.PlannedAimDirectionsZsColumn);
     }
     auto view_desired_aiming_directions() const {
-        using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+        using ioj::soa_storage_detail::three_column_view;
+        return three_column_view<ioj::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
             count_,
@@ -245,8 +245,8 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
             Layout::columns.DesiredAimingDirectionsZsColumn);
     }
     auto view_movement_directions() const {
-        using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+        using ioj::soa_storage_detail::three_column_view;
+        return three_column_view<ioj::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
             count_,
@@ -255,8 +255,8 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
             Layout::columns.MovementDirectionsZsColumn);
     }
     auto view_velocities() const {
-        using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+        using ioj::soa_storage_detail::three_column_view;
+        return three_column_view<ioj::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
             count_,
@@ -278,8 +278,8 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
         return make_column_view(Layout::columns.NavigationUpdateCountdownsPeriodsColumn);
     }
     auto view_separation_steering() const {
-        using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+        using ioj::soa_storage_detail::three_column_view;
+        return three_column_view<ioj::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
             count_,
@@ -307,8 +307,8 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
     }
     auto target_ids() const { return make_column_view(Layout::columns.TargetIdsColumn); }
     auto view_target_locations() const {
-        using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+        using ioj::soa_storage_detail::three_column_view;
+        return three_column_view<ioj::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
             count_,
@@ -317,8 +317,8 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
             Layout::columns.TargetLocationsZsColumn);
     }
     auto view_target_velocities() const {
-        using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+        using ioj::soa_storage_detail::three_column_view;
+        return three_column_view<ioj::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
             count_,
@@ -327,8 +327,8 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
             Layout::columns.TargetVelocitiesZsColumn);
     }
     auto view_target_directions() const {
-        using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+        using ioj::soa_storage_detail::three_column_view;
+        return three_column_view<ioj::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
             count_,
@@ -415,11 +415,11 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
     }
   private:
     template <typename T>
-    auto make_column_view(ml::native_soa::ColumnLayout<T> const& layout) const {
-        return ml::soa_storage_detail::column_view<std::span<Element<T>>>(
+    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
             state_, offset_, count_, layout);
     }
-    friend ml::soa_storage_detail::CompactViewOperations;
+    friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct FighterEntityDataSingleViewImpl;
     State* state_{};
@@ -430,12 +430,12 @@ struct FighterEntityDataSingleConstView : FighterEntityDataSingleViewImpl<true> 
     using Base = FighterEntityDataSingleViewImpl<true>;
     using Base::Base;
 };
-static_assert(ml::soa_storage_detail::validate_compact_view<FighterEntityDataSingleConstView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<FighterEntityDataSingleConstView>());
 struct FighterEntityDataSingleView : FighterEntityDataSingleViewImpl<false> {
     using Base = FighterEntityDataSingleViewImpl<false>;
     using Base::Base;
 };
-static_assert(ml::soa_storage_detail::validate_compact_view<FighterEntityDataSingleView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<FighterEntityDataSingleView>());
 // Columns:
 // entity_ids: EntityUniqueId
 // integral_biases: std::uint32_t
@@ -493,10 +493,10 @@ static_assert(ml::soa_storage_detail::validate_compact_view<FighterEntityDataSin
 // target_distances: float
 // target_radii: float
 struct FighterEntityData
-    : protected ml::native_soa::StorageState
-    , ml::native_soa::StorageOperations {
+    : protected ioj::native_soa::StorageState
+    , ioj::native_soa::StorageOperations {
     using soa_schema = FighterEntityDataSchema;
-    using Operations = ml::native_soa::StorageOperations;
+    using Operations = ioj::native_soa::StorageOperations;
     using Layout = FighterEntityDataSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
@@ -669,14 +669,14 @@ struct FighterEntityData
   private:
     std::pmr::memory_resource* resource_{};
     friend Operations;
-    friend ::ml::soa_storage_detail::StorageRequirements;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
     // Column pointers
     /* **************************************** */
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ml::native_soa::LayoutCursor cursor{blocks};
+        ioj::native_soa::LayoutCursor cursor{blocks};
         return {
             cursor.column_pointer(data, Layout::columns.EntityIdsColumn),
             cursor.column_pointer(data, Layout::columns.IntegralBiasesColumn),
@@ -743,7 +743,7 @@ struct FighterEntityData
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
-        using ml::native_soa::default_construct_n;
+        using ioj::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
         default_construct_n(columns.entity_ids, count);
         default_construct_n(columns.integral_biases, count);
@@ -806,7 +806,7 @@ struct FighterEntityData
                                  DataPointers<Byte> const& source,
                                  size_type count) {
         auto transfer = [count](auto* dst, auto const* src) {
-            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
         };
         transfer(destination.entity_ids, source.entity_ids);
         transfer(destination.integral_biases, source.integral_biases);
@@ -880,16 +880,16 @@ struct FighterEntityData
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
-        ml::soa_storage_detail::for_each_removal_run(
+        ioj::soa_storage_detail::for_each_removal_run(
             num_, indices, [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
     }
     template <typename Columns>
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ml::soa_storage_detail::SoaSourceFor<Columns, FighterEntityData, size_type>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, FighterEntityData, size_type>
     {
-        using ml::native_soa::source_data;
+        using ioj::native_soa::source_data;
         auto const& locations_view{source.view_locations()};
         auto const& desired_move_locations_view{source.view_desired_move_locations()};
         auto const& aim_directions_view{source.view_aim_directions()};
@@ -962,7 +962,7 @@ struct FighterEntityData
                         size_type source_first,
                         size_type first,
                         size_type count)
-        requires ml::soa_storage_detail::SoaSourceFor<Columns, FighterEntityData, size_type>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, FighterEntityData, size_type>
     {
         transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
@@ -971,7 +971,7 @@ struct FighterEntityData
                            size_type source_first,
                            size_type first,
                            size_type count)
-        requires ml::soa_storage_detail::SoaSourceFor<Columns, FighterEntityData, size_type>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, FighterEntityData, size_type>
     {
         transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }

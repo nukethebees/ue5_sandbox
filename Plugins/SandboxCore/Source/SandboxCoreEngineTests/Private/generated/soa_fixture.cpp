@@ -9,7 +9,7 @@
 #include "Containers/AllowShrinking.h"
 #include "Containers/ArrayView.h"
 
-namespace ml::soa_test_fixture {
+namespace ioj::soa_test_fixture {
 
 auto VectorsConstView::get_view() const -> ConstView {
     return get_view(0, num());
@@ -36,7 +36,7 @@ auto VectorsConstView::get_const_view(int32 const offset, int32 const count) con
 }
 
 auto VectorsConstView::num() const noexcept -> int32 {
-    return ml::num(xs);
+    return ioj::num(xs);
 }
 
 auto VectorsConstView::is_empty() const noexcept -> bool {
@@ -44,7 +44,7 @@ auto VectorsConstView::is_empty() const noexcept -> bool {
 }
 
 void VectorsConstView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto VectorsConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -96,7 +96,7 @@ auto VectorsView::get_const_view(int32 const offset, int32 const count) const ->
 }
 
 auto VectorsView::num() const noexcept -> int32 {
-    return ml::num(xs);
+    return ioj::num(xs);
 }
 
 auto VectorsView::is_empty() const noexcept -> bool {
@@ -104,7 +104,7 @@ auto VectorsView::is_empty() const noexcept -> bool {
 }
 
 void VectorsView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto VectorsView::slice(int32 const offset, int32 const count) -> View {
@@ -132,27 +132,27 @@ auto VectorsView::right(int32 const count) const -> ConstView {
 }
 
 void Vectors::reset() {
-    ml::soa_ops::reset(*this);
+    ioj::soa_ops::reset(*this);
 }
 
 void Vectors::reserve(int32 const count) {
-    ml::soa_ops::reserve(*this, count);
+    ioj::soa_ops::reserve(*this, count);
 }
 
 void Vectors::add_uninitialised(int32 const count) {
-    ml::soa_ops::add_uninitialised(*this, count);
+    ioj::soa_ops::add_uninitialised(*this, count);
 }
 
 void Vectors::add_defaulted(int32 const count) {
-    ml::soa_ops::add_defaulted(*this, count);
+    ioj::soa_ops::add_defaulted(*this, count);
 }
 
 void Vectors::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::soa_ops::set_num(*this, count, allow_shrinking);
+    ioj::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void Vectors::apply_permutation(TArrayView<int32> indices) {
-    ml::soa_ops::apply_permutation(*this, indices);
+    ioj::soa_ops::apply_permutation(*this, indices);
 }
 
 auto Vectors::get_view() -> View {
@@ -192,7 +192,7 @@ auto Vectors::get_const_view(int32 const offset, int32 const count) const -> Con
 }
 
 auto Vectors::num() const noexcept -> int32 {
-    return ml::num(xs);
+    return ioj::num(xs);
 }
 
 auto Vectors::is_empty() const noexcept -> bool {
@@ -200,7 +200,7 @@ auto Vectors::is_empty() const noexcept -> bool {
 }
 
 void Vectors::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto Vectors::slice(int32 const offset, int32 const count) -> View {
@@ -245,4 +245,4 @@ auto ApiOwner::total() const -> Value {
     return result;
 }
 
-} // namespace ml::soa_test_fixture
+} // namespace ioj::soa_test_fixture

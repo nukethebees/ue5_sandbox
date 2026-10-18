@@ -8,7 +8,7 @@
 #include <memory>
 #include <type_traits>
 
-namespace ml::soa_storage_detail {
+namespace ioj::soa_storage_detail {
 
 // Views borrow their owner and range. The owner must outlive them; reallocation, owner moves,
 // reset, and removal/reordering of borrowed rows invalidate them. Reacquire after invalidation.

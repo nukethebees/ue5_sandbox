@@ -29,7 +29,7 @@ struct FTriggerableRange {
     uint32 end() const { return offset + length; }
 };
 
-namespace ml {
+namespace ioj {
 template <typename T>
 using TriggerArray = TArray<T>;
 
@@ -87,9 +87,9 @@ constexpr auto trigger_array_index_v =
     } while (0)
 
 template <typename... Types>
-class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore", LogShooterGameSubsystem> {
+class TriggerSubsystemCore : public ioj::LogMsgMixin<"TriggerSubsystemCore", LogShooterGameSubsystem> {
   public:
-    using TriggerableTupleT = ml::TriggerTuple<Types...>;
+    using TriggerableTupleT = ioj::TriggerTuple<Types...>;
     static constexpr std::size_t N_TYPES{sizeof...(Types)};
 
     template <typename Self, typename Payload>
@@ -97,7 +97,7 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore", LogS
         register_triggerable(this Self&& self, AActor& actor, Payload&& payload) {
         TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::TriggerSubsystemCore::register_triggerable"))
 
-        static_assert(ml::IsTriggerPayload<std::remove_cvref_t<Payload>>,
+        static_assert(ioj::IsTriggerPayload<std::remove_cvref_t<Payload>>,
                       "Payload must satisfy IsTriggerPayload concept");
 
         // Actor triggerables must be stored contiguously
@@ -109,7 +109,7 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore", LogS
                     if (range->length > 0) {
                         self.log_error(TEXT("Actor %s already finished registration - cannot add "
                                             "more triggerables"),
-                                       *ml::get_best_display_name(actor));
+                                       *ioj::get_best_display_name(actor));
                         return std::nullopt;
                     }
                 }
@@ -117,10 +117,10 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore", LogS
             self.current_registering_actor = &actor;
         }
 
-        auto& payload_array{ml::TriggerArrayGet<std::remove_cvref_t<Payload>>(self.triggerables)};
+        auto& payload_array{ioj::TriggerArrayGet<std::remove_cvref_t<Payload>>(self.triggerables)};
         auto const payload_element_index{payload_array.Add(std::forward<Payload>(payload))};
         static constexpr auto payload_array_index{
-            ml::trigger_array_index_v<std::remove_cvref_t<Payload>, Self>};
+            ioj::trigger_array_index_v<std::remove_cvref_t<Payload>, Self>};
 
         TriggerableId const id{static_cast<int32>(payload_array_index), payload_element_index};
         auto const triggerable_id_index{self.triggerable_ids.Add(id)};
@@ -135,7 +135,7 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore", LogS
 
         self.id_to_actor.Add(id.as_combined_id(), &actor);
         self.log_verbose(TEXT("Registered triggerable for actor %s with ID (%d, %d)"),
-                         *ml::get_best_display_name(actor),
+                         *ioj::get_best_display_name(actor),
                          id.tuple_index(),
                          id.array_index());
 
@@ -163,7 +163,7 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore", LogS
         }
 
         self.log_verbose(TEXT("Deregistered triggerable for actor %s"),
-                         *ml::get_best_display_name(actor));
+                         *ioj::get_best_display_name(actor));
     }
 
     template <typename Self>
@@ -189,7 +189,7 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore", LogS
         if (auto* const id{self.actor_to_actor_id.Find(&actor)}) {
             return self.trigger(*id, source);
         } else {
-            LOG.log_warning(TEXT("Actor is not registered: %s"), *ml::get_best_display_name(actor));
+            LOG.log_warning(TEXT("Actor is not registered: %s"), *ioj::get_best_display_name(actor));
             return ETriggerOccurred::no;
         }
     }
@@ -317,7 +317,7 @@ class TriggerSubsystemCore : public ml::LogMsgMixin<"TriggerSubsystemCore", LogS
 
         LOG.log_verbose(TEXT("Created actor ID %llu for actor %s"),
                         new_id.get(),
-                        *ml::get_best_display_name(actor));
+                        *ioj::get_best_display_name(actor));
         return new_id;
     }
 

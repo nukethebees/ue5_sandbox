@@ -24,7 +24,7 @@ AShipLaser::AShipLaser()
     mesh_component->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
     mesh_component->SetCollisionResponseToAllChannels(ECR_Block);
     mesh_component->SetNotifyRigidBodyCollision(true);
-    mesh_component->SetCollisionObjectType(ml::collision::projectile);
+    mesh_component->SetCollisionObjectType(ioj::collision::projectile);
     mesh_component->BodyInstance.bUseCCD = true;
 }
 
@@ -79,7 +79,7 @@ void AShipLaser::on_hit(UPrimitiveComponent* HitComponent,
         UE_LOG(LogSandboxWeapon,
                Verbose,
                TEXT("Laser hit: %s"),
-               *ml::get_best_display_name(*other_actor));
+               *ioj::get_best_display_name(*other_actor));
         do_hit(*other_actor, *other_component);
     } else {
         UE_LOG(LogSandboxWeapon, Verbose, TEXT("Actor is null"));

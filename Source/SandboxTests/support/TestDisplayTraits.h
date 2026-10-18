@@ -10,7 +10,7 @@
 #include <concepts>
 #include <type_traits>
 
-namespace ml {
+namespace ioj {
 template <typename T>
 struct TestDisplayTraits {
     static auto format_arg(T const& value) -> FStringFormatArg {
@@ -33,7 +33,7 @@ struct TestDisplayTraits {
                 std::to_underlying(value));
         } else {
             static_assert(is_uenum<T>, "Test display formatting is not defined for this type.");
-            return FStringFormatArg{ml::to_string_without_type_prefix(value)};
+            return FStringFormatArg{ioj::to_string_without_type_prefix(value)};
         }
     }
 };

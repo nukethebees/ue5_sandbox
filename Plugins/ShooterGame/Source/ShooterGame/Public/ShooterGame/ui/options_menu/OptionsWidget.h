@@ -22,7 +22,7 @@ enum class EOptionsTab : uint8 { Gameplay = 0, Visuals = 1, Audio = 2, Controls 
 UCLASS()
 class SHOOTERGAME_API UOptionsWidget
     : public UUserWidget
-    , public ml::LogMsgMixin<"UVideoSettingRowWidget"> {
+    , public ioj::LogMsgMixin<"UVideoSettingRowWidget"> {
     GENERATED_BODY()
   protected:
     void NativeConstruct() override;

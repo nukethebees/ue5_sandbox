@@ -13,7 +13,7 @@
 #include <span>
 #include <utility>
 
-namespace ml::native_soa::vector_storage_ops {
+namespace ioj::native_soa::vector_storage_ops {
 namespace detail {
 struct ColumnVisitor {
     template <typename Column>
@@ -99,14 +99,14 @@ void remove_at_swap(Soa& soa, std::uint32_t const index, std::uint32_t const cou
     soa.validate_array_sizes();
     [[maybe_unused]] auto const old_num{soa.num()};
     assert(index <= old_num && count <= old_num - index);
-    soa.each_column([index, count](auto& column) { ml::remove_at_swap(column, index, count); });
+    soa.each_column([index, count](auto& column) { ioj::remove_at_swap(column, index, count); });
 }
 
 template <VectorStorageSoa Soa>
 void apply_permutation(Soa& soa, std::span<std::int32_t> const indices) {
     soa.validate_array_sizes();
     assert(indices.size() == static_cast<std::size_t>(soa.num()));
-    soa.each_column([indices](auto& column) { ml::apply_permutation(std::span{column}, indices); });
+    soa.each_column([indices](auto& column) { ioj::apply_permutation(std::span{column}, indices); });
 }
 
 template <VectorStorageSoa Soa, typename Compare>
@@ -126,4 +126,4 @@ void sort(Soa& soa, Compare&& compare, std::span<std::int32_t> const scratch_ind
     apply_permutation(soa, scratch_indices);
 }
 
-} // namespace ml::native_soa::vector_storage_ops
+} // namespace ioj::native_soa::vector_storage_ops

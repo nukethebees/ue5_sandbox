@@ -27,7 +27,7 @@ AMoneyPickupActor::AMoneyPickupActor() {
     collision_component->SetMobility(mobility);
     collision_component->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
     collision_component->SetCollisionResponseToAllChannels(ECR_Ignore);
-    collision_component->SetCollisionResponseToChannel(ml::collision::interaction, ECR_Block);
+    collision_component->SetCollisionResponseToChannel(ioj::collision::interaction, ECR_Block);
     collision_component->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 }
 

@@ -48,7 +48,7 @@ void CollisionSystem::refresh_spatial_index(LevelReadAccess const& level) {
 // Overlap detection
 /* **************************************** */
 auto CollisionSystem::detect_overlaps(std::span<EntityUniqueId const> const overlap_candidates,
-                                      ml::FrameMemoryResource* const scratch_resource)
+                                      ioj::FrameMemoryResource* const scratch_resource)
     -> DetectedOverlapsView {
     SANDBOX_PROFILE_SCOPE("CollisionSystem::detect_overlaps");
     EntityEntityOverlaps entity_overlaps{scratch_resource};
@@ -67,7 +67,7 @@ void CollisionSystem::collect_overlaps_for_candidates(
     std::span<EntityUniqueId const> const overlap_candidates,
     EntityEntityOverlaps& entity_overlaps,
     EntityStaticOverlaps& static_overlaps,
-    ml::FrameMemoryResource* const scratch_resource) {
+    ioj::FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("CollisionSystem::collect_overlaps_for_candidates");
 
     if (overlap_candidates.empty()) {
@@ -76,16 +76,16 @@ void CollisionSystem::collect_overlaps_for_candidates(
 
     assert(std::in_range<std::uint32_t>(overlap_candidates.size()));
     auto const candidate_count{static_cast<std::uint32_t>(overlap_candidates.size())};
-    ml::FrameArray<WorldAABB> bounds{scratch_resource};
-    ml::FrameArray<CollisionUniformGrid::OverlapCounts> counts{scratch_resource};
-    ml::FrameArray<CollisionUniformGrid::OverlapCounts> offsets{scratch_resource};
+    ioj::FrameArray<WorldAABB> bounds{scratch_resource};
+    ioj::FrameArray<CollisionUniformGrid::OverlapCounts> counts{scratch_resource};
+    ioj::FrameArray<CollisionUniformGrid::OverlapCounts> offsets{scratch_resource};
     bounds.set_num(candidate_count);
     counts.set_num(candidate_count);
     offsets.set_num(candidate_count);
 
-    ml::FrameArray<std::uint32_t> order{scratch_resource};
-    ml::FrameArray<EntityInstanceHandle> handles{scratch_resource};
-    ml::FrameArray<std::uint8_t> present{scratch_resource};
+    ioj::FrameArray<std::uint32_t> order{scratch_resource};
+    ioj::FrameArray<EntityInstanceHandle> handles{scratch_resource};
+    ioj::FrameArray<std::uint8_t> present{scratch_resource};
     order.set_num(candidate_count);
     handles.set_num(candidate_count);
     present.set_num(candidate_count);
@@ -189,12 +189,12 @@ void CollisionSystem::collect_overlaps_for_candidates(
 }
 void CollisionSystem::finalize_overlaps(EntityEntityOverlaps& entity_overlaps,
                                         EntityStaticOverlaps& static_overlaps,
-                                        ml::FrameMemoryResource* const scratch_resource) {
+                                        ioj::FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("CollisionSystem::finalize_overlaps");
     auto const entity_overlap_count{entity_overlaps.num()};
     auto const static_overlap_count{static_overlaps.num()};
     auto const sort_index_count{std::max(entity_overlap_count, static_overlap_count)};
-    ml::FrameArray<std::int32_t> sort_indices{scratch_resource};
+    ioj::FrameArray<std::int32_t> sort_indices{scratch_resource};
     sort_indices.reserve(sort_index_count);
 
     auto const entity_columns{entity_overlaps.get_view()};
@@ -214,8 +214,8 @@ void CollisionSystem::finalize_overlaps(EntityEntityOverlaps& entity_overlaps,
             return lhs_first < rhs_first ||
                    (lhs_first == rhs_first && second_entities[lhs] < second_entities[rhs]);
         });
-        ml::apply_permutation(first_entities, indices);
-        ml::apply_permutation(second_entities, indices);
+        ioj::apply_permutation(first_entities, indices);
+        ioj::apply_permutation(second_entities, indices);
 
         std::uint32_t write_index{1};
         for (std::uint32_t read_index{1}; read_index < entity_overlap_count; ++read_index) {
@@ -239,8 +239,8 @@ void CollisionSystem::finalize_overlaps(EntityEntityOverlaps& entity_overlaps,
             return lhs_entity < rhs_entity ||
                    (lhs_entity == rhs_entity && static_indices[lhs] < static_indices[rhs]);
         });
-        ml::apply_permutation(static_entities, indices);
-        ml::apply_permutation(static_indices, indices);
+        ioj::apply_permutation(static_entities, indices);
+        ioj::apply_permutation(static_indices, indices);
 
         std::uint32_t write_index{1};
         for (std::uint32_t read_index{1}; read_index < static_overlap_count; ++read_index) {

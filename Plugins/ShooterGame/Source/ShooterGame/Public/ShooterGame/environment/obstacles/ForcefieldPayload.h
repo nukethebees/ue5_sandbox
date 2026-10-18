@@ -15,7 +15,7 @@ struct FForcefieldPayload {
     TWeakObjectPtr<AActor> forcefield_actor{nullptr};
 
     // Static logger since can't inherit from LogMsgMixin
-    static inline auto logger{ml::LogMsgMixin<"FForcefieldPayload">{}};
+    static inline auto logger{ioj::LogMsgMixin<"FForcefieldPayload">{}};
 
     FTriggerResult trigger(FTriggerContext context);
     bool tick(float delta_time);

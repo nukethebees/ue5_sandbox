@@ -21,7 +21,7 @@ AExplosiveProp::AExplosiveProp()
     mesh_component->SetupAttachment(RootComponent);
     mesh_component->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
     // Allow destruction from bullets
-    mesh_component->SetCollisionResponseToChannel(ml::collision::projectile, ECR_Block);
+    mesh_component->SetCollisionResponseToChannel(ioj::collision::projectile, ECR_Block);
 }
 
 void AExplosiveProp::BeginPlay() {

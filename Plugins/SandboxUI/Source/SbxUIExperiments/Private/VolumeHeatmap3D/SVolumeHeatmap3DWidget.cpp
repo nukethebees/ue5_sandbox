@@ -9,7 +9,7 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogVolumeHeatmap3DWidget, Log, All);
 
-namespace ml::ui::volume_heatmap_3d_widget {
+namespace ioj::ui::volume_heatmap_3d_widget {
 constexpr int32 output_texture_dimension{512};
 
 auto gaussian(FVector3f const position, FVector3f const centre, float const radius) -> float {
@@ -23,8 +23,8 @@ void SVolumeHeatmap3DWidget::Construct(FArguments const&) {
     brush_.DrawAs = ESlateBrushDrawType::Image;
     brush_.ImageType = ESlateBrushImageType::FullColor;
     brush_.Tiling = ESlateBrushTileType::NoTile;
-    brush_.ImageSize = FVector2D{ml::ui::volume_heatmap_3d_widget::output_texture_dimension,
-                                 ml::ui::volume_heatmap_3d_widget::output_texture_dimension};
+    brush_.ImageSize = FVector2D{ioj::ui::volume_heatmap_3d_widget::output_texture_dimension,
+                                 ioj::ui::volume_heatmap_3d_widget::output_texture_dimension};
     output_ready_ = initialise_output_texture();
     SetCanTick(true);
     ChildSlot[SlateGenerated::SVolumeHeatmap3DWidgetBuilder{*this}.BuildImage(&brush_)];
@@ -96,23 +96,23 @@ void SVolumeHeatmap3DWidget::initialise_grid() {
                 FVector3f const position{px, py, pz};
                 float density{0.0f};
                 if (pattern_ == EVolumeHeatmap3DPattern::GaussianClouds) {
-                    density = ml::ui::volume_heatmap_3d_widget::gaussian(
+                    density = ioj::ui::volume_heatmap_3d_widget::gaussian(
                                   position, {-0.42f, -0.25f, 0.20f}, 0.28f) *
                                   0.95f +
-                              ml::ui::volume_heatmap_3d_widget::gaussian(
+                              ioj::ui::volume_heatmap_3d_widget::gaussian(
                                   position, {0.38f, -0.12f, -0.30f}, 0.23f) *
                                   0.88f +
-                              ml::ui::volume_heatmap_3d_widget::gaussian(
+                              ioj::ui::volume_heatmap_3d_widget::gaussian(
                                   position, {0.12f, 0.42f, 0.28f}, 0.31f) *
                                   0.72f +
-                              ml::ui::volume_heatmap_3d_widget::gaussian(
+                              ioj::ui::volume_heatmap_3d_widget::gaussian(
                                   position, {-0.28f, 0.34f, -0.38f}, 0.19f) *
                                   0.65f;
                 } else {
                     float const radius{position.Size()};
                     float const shell_delta{(radius - 0.62f) / 0.075f};
                     density = FMath::Exp(-0.5f * shell_delta * shell_delta) * 0.92f;
-                    density += ml::ui::volume_heatmap_3d_widget::gaussian(
+                    density += ioj::ui::volume_heatmap_3d_widget::gaussian(
                                    position, {0.24f, -0.18f, 0.10f}, 0.16f) *
                                0.55f;
                 }
@@ -135,8 +135,8 @@ auto SVolumeHeatmap3DWidget::initialise_output_texture() -> bool {
     output_texture->Filter = TF_Bilinear;
     output_texture->AddressX = TA_Clamp;
     output_texture->AddressY = TA_Clamp;
-    output_texture->InitCustomFormat(ml::ui::volume_heatmap_3d_widget::output_texture_dimension,
-                                     ml::ui::volume_heatmap_3d_widget::output_texture_dimension,
+    output_texture->InitCustomFormat(ioj::ui::volume_heatmap_3d_widget::output_texture_dimension,
+                                     ioj::ui::volume_heatmap_3d_widget::output_texture_dimension,
                                      PF_R8G8B8A8,
                                      true);
     output_texture_.Reset(output_texture);

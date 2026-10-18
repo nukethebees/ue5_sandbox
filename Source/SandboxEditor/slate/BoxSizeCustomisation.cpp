@@ -44,7 +44,7 @@ void
     child_builder.AddCustomRow(INVTEXT("Vector Edit Mode"))
         .WholeRowContent()
         [
-            SAssignNew(box_size_widget, ml::SBoxSizePropInput)
+            SAssignNew(box_size_widget, ioj::SBoxSizePropInput)
             .x_handle(x_handle)
             .y_handle(y_handle)
             .z_handle(z_handle)

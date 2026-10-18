@@ -18,7 +18,7 @@ class SBox;
 UCLASS()
 class SANDBOX_API ATextPopupTriggerActor
     : public AActor
-    , public ml::LogMsgMixin<"ATextPopupTriggerActor"> {
+    , public ioj::LogMsgMixin<"ATextPopupTriggerActor"> {
     GENERATED_BODY()
   public:
     ATextPopupTriggerActor();

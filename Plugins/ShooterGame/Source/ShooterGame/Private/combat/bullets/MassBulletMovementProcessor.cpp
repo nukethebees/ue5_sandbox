@@ -32,7 +32,7 @@ UMassBulletMovementProcessor::UMassBulletMovementProcessor()
     AutoExecuteQuery = executor;
 
     SetProcessingPhase(EMassProcessingPhase::PrePhysics);
-    ExecutionOrder.ExecuteInGroup = ml::ProcessorGroupNames::Movement;
+    ExecutionOrder.ExecuteInGroup = ioj::ProcessorGroupNames::Movement;
 
     if (HasAnyFlags(RF_ClassDefaultObject)) {
         set_execution_flags(EProcessorExecutionFlags::All);

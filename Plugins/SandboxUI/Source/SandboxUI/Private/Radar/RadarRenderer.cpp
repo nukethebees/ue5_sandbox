@@ -16,7 +16,7 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogRadarRenderer, Log, All);
 
-namespace ml::ui::radar {
+namespace ioj::ui::radar {
 inline constexpr uint32 structure_line_count{26};
 
 class FPlaneVS final : public FGlobalShader {
@@ -333,7 +333,7 @@ void execute_graph(FRHICommandListImmediate& command_list,
     graph.SetTextureAccessFinal(output, ERHIAccess::SRVMask);
     graph.Execute();
 }
-} // namespace ml::ui::radar
+} // namespace ioj::ui::radar
 
 void FRadarRenderer::render(FRadarFrameStoreConstPtr frame_store,
                             FRadarStyle const& style,
@@ -354,7 +354,7 @@ void FRadarRenderer::render(FRadarFrameStoreConstPtr frame_store,
             UE_LOG(LogRadarRenderer, Error, TEXT("The radar output has no RHI texture."));
             return;
         }
-        ml::ui::radar::execute_graph(list, *frame, style, output_rhi);
+        ioj::ui::radar::execute_graph(list, *frame, style, output_rhi);
     });
 }
 
@@ -381,7 +381,7 @@ auto measure_radar_gpu(FRHICommandListImmediate& command_list,
     auto start_query{query_pool->AllocateQuery()};
     auto end_query{query_pool->AllocateQuery()};
     command_list.EndRenderQuery(start_query.GetQuery());
-    ml::ui::radar::execute_graph(command_list, frame, style, output_rhi);
+    ioj::ui::radar::execute_graph(command_list, frame, style, output_rhi);
     command_list.EndRenderQuery(end_query.GetQuery());
     command_list.ImmediateFlush(EImmediateFlushType::FlushRHIThread);
 

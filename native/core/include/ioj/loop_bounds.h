@@ -4,7 +4,7 @@
 #include <cassert>
 #include <cstdint>
 
-namespace ml {
+namespace ioj {
 struct FLoopBounds {
     std::uint32_t begin;
     std::uint32_t end;

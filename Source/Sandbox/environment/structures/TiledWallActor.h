@@ -75,7 +75,7 @@ struct FTiledWallActorMaterialParams {
 UCLASS()
 class SANDBOX_API ATiledWallActor
     : public AActor
-    , public ml::LogMsgMixin<"ATiledWallActor"> {
+    , public ioj::LogMsgMixin<"ATiledWallActor"> {
     GENERATED_BODY()
   public:
     ATiledWallActor();

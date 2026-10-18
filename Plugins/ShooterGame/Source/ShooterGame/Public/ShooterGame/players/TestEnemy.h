@@ -48,7 +48,7 @@ struct FTestEnemyRangedConfig {
 UCLASS()
 class SHOOTERGAME_API ATestEnemy
     : public ACharacter
-    , public ml::LogMsgMixin<"ATestEnemy", LogShooterGameCharacter>
+    , public ioj::LogMsgMixin<"ATestEnemy", LogShooterGameCharacter>
     , public ICombatActor
     , public IDeathHandler
     , public IGenericTeamAgentInterface
@@ -78,7 +78,7 @@ class SHOOTERGAME_API ATestEnemy
 
     // IDescribable
     virtual FText get_description() const override {
-        auto const attack_mode{ml::to_string_without_type_prefix(combat_profile.attack_mode)};
+        auto const attack_mode{ioj::to_string_without_type_prefix(combat_profile.attack_mode)};
 
         auto const fmt{FText::FromName(TEXT("Test NPC ({0})"))};
         auto const description{FText::Format(fmt, FText::FromString(attack_mode))};

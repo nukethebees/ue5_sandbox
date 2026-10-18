@@ -9,7 +9,7 @@
 
 class AActor;
 
-namespace ml {
+namespace ioj {
 // Get angle (rads) between two lines from the same point
 // Written for vision calculations
 inline auto get_angle_between_norm_lines(FVector a, FVector b) -> double {

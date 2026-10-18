@@ -22,7 +22,7 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
         auto const team_entity_count{expected_team_counts[team_index]};
         for (std::int32_t i{}; i < team_entity_count; ++i) {
             tests::add_capital_spawn(data,
-                                     ml::make_vector3f(static_cast<float>(actor_index * 5000),
+                                     ioj::make_vector3f(static_cast<float>(actor_index * 5000),
                                                        static_cast<float>(team_index * 5000),
                                                        4360.f),
                                      static_cast<Team>(team_index),
@@ -54,7 +54,7 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
             EXPECT_EQ(expected_team_counts[team_index], counts[team_index])
                 << "Count team " + ::testing::PrintToString(team);
             std::int32_t type_count{};
-            constexpr auto type_count_limit{ml::enum_count<EntityType>()};
+            constexpr auto type_count_limit{ioj::enum_count<EntityType>()};
             for (std::size_t type{}; type < type_count_limit; ++type) {
                 type_count += type_counts[team_index][type];
             }
@@ -88,7 +88,7 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
         std::int32_t total_kills{};
         std::int32_t alive_count{};
     };
-    ml::TimeSeriesData<Sample> samples;
+    ioj::TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim&) {
         auto const& ledger{harness.get_ledger()};
         samples.add(harness.get_time(),

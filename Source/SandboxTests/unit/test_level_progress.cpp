@@ -7,7 +7,7 @@ TEST_CLASS(LevelProgress, "Sandbox.UnitTests")
 {
     TEST_METHOD(SummarisesOnlyTheRequestedAuthoredLevel)
     {
-        ml::FLevelId const level_id{FName{TEXT("border-skirmish")}};
+        ioj::FLevelId const level_id{FName{TEXT("border-skirmish")}};
         TArray<FScoreRecord> const records{
             {.date = FDateTime{2026, 8, 20},
              .level_name = level_id.value,
@@ -51,7 +51,7 @@ TEST_CLASS(LevelProgress, "Sandbox.UnitTests")
                                             .kills = 3}};
 
         auto const attempted{
-            ioj::summarize_level_progress(ml::FLevelId{FName{TEXT("failed-level")}}, records)};
+            ioj::summarize_level_progress(ioj::FLevelId{FName{TEXT("failed-level")}}, records)};
         TestRunner->TestTrue(TEXT("Failed level is attempted"),
                              attempted.state == ioj::ELevelProgressState::Attempted);
         TestRunner->TestEqual(
@@ -61,7 +61,7 @@ TEST_CLASS(LevelProgress, "Sandbox.UnitTests")
                               -1.0f);
 
         auto const unknown{
-            ioj::summarize_level_progress(ml::FLevelId{FName{TEXT("unknown-level")}}, records)};
+            ioj::summarize_level_progress(ioj::FLevelId{FName{TEXT("unknown-level")}}, records)};
         TestRunner->TestTrue(TEXT("Unknown level is not attempted"),
                              unknown.state == ioj::ELevelProgressState::NotAttempted);
         TestRunner->TestEqual(TEXT("Unknown level has no attempts"), unknown.attempt_count, 0);

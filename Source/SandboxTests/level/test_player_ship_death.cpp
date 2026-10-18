@@ -16,7 +16,7 @@
 #include <Engine/World.h>
 #include <Misc/Optional.h>
 
-namespace ml {
+namespace ioj {
 FTestPlayerShipDeathScenario::FTestPlayerShipDeathScenario(FSimulationTestContext& context)
     : FSimulationTestScenario{context} {
     TestCommandBuilder.Do([this] {
@@ -38,7 +38,7 @@ void FTestPlayerShipDeathScenario::run() {
 void FTestPlayerShipDeathScenario::player_ship_pre_begin_play(UWorld& world,
                                                               USpaceGameLevelConfig const& config) {
     auto* const spawned_player_ship{
-        ml::spawn_player_ship(world, config.classes.player_ship_class, &config.player_ship)};
+        ioj::spawn_player_ship(world, config.classes.player_ship_class, &config.player_ship)};
     if (!checks.is_valid(spawned_player_ship, TEXT("Player ship is spawned"))) {
         return;
     }
@@ -105,7 +105,7 @@ void FTestPlayerShipDeathScenario::on_end_tick(ATestBatchOrchestrator&) {
 }
 
 void FTestPlayerShipDeathScenario::check_player_ship_death() {
-    ml::check_samples_recorded(
+    ioj::check_samples_recorded(
         samples.num(), checks, TEXT("Player-death simulation samples recorded"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 

@@ -29,7 +29,7 @@ void FArcSplitSpec::Define() {
                 FString::Printf(TEXT("Start=%.1f, Arc=%.1f, Segs=%d"), tc.start, tc.arc, tc.segs)};
             name.ReplaceCharInline(TEXT('.'), TEXT('p'));
             It(*name, [&]() {
-                auto const result{ml::subdivide_arc_into_segments(tc.start, tc.arc, tc.segs)};
+                auto const result{ioj::subdivide_arc_into_segments(tc.start, tc.arc, tc.segs)};
                 TestEqual(TEXT("Split arc"), result, tc.expected);
             });
         }

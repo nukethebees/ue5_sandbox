@@ -98,7 +98,7 @@ void UExplosionSubsystem::execute_explosion(FVector location,
 
         // Apply damage if actor has health component
         if (auto* health_component{target_actor->FindComponentByClass<UHealthComponent>()}) {
-            float const scaled_damage{ml::calculate_explosion_damage(
+            float const scaled_damage{ioj::calculate_explosion_damage(
                 distance, config.explosion_radius, config.damage_config.value)};
             if (scaled_damage > 0.0f) {
                 FHealthChange damage_change{scaled_damage, config.damage_config.type};

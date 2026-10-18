@@ -25,7 +25,7 @@ enum class EPushForceMode : uint8 {
 UCLASS()
 class SHOOTERGAME_API APushZoneActor
     : public AActor
-    , public ml::LogMsgMixin<"PushZone"> {
+    , public ioj::LogMsgMixin<"PushZone"> {
     GENERATED_BODY()
   public:
     APushZoneActor();

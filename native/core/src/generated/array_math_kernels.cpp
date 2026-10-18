@@ -558,7 +558,7 @@ void dot_product_3d_double_array_array_array_array_array_array_raw(
 }
 } // namespace array_math_detail
 
-namespace ml {
+namespace ioj {
 void add_in_place(std::span<std::int32_t> data, std::int32_t value) noexcept {
     auto const count{data.size()};
     array_math_detail::add_int32_array_scalar_in_place_raw(data.data(), value, count);
@@ -1289,4 +1289,4 @@ void dot_product_3d(std::span<double const> ax,
     array_math_detail::dot_product_3d_double_array_array_array_array_array_array_raw(
         ax.data(), ay.data(), az.data(), bx.data(), by.data(), bz.data(), out.data(), count);
 }
-} // namespace ml
+} // namespace ioj

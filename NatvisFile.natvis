@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
-  <Type Name="ml::TFixedArray&lt;*,*&gt;">
+  <Type Name="ioj::TFixedArray&lt;*,*&gt;">
     <DisplayString>{{ num = {size_}, capacity = {capacity_value} }}</DisplayString>
     <Expand>
       <Item Name="num">size_</Item>

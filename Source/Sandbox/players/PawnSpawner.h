@@ -15,7 +15,7 @@ class AAIController;
 UCLASS()
 class SANDBOX_API APawnSpawner
     : public AActor
-    , public ml::LogMsgMixin<"APawnSpawner"> {
+    , public ioj::LogMsgMixin<"APawnSpawner"> {
     GENERATED_BODY()
   public:
     APawnSpawner();

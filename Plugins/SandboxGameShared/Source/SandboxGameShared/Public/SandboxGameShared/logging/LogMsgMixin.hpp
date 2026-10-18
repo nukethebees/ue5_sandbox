@@ -23,7 +23,7 @@ concept HasTagMember = requires {
     { T::tag.data() } -> std::same_as<TCHAR const*>;
 };
 
-namespace ml {
+namespace ioj {
 template <StaticTCharString tag, auto& log_category_ = LogTemp>
 struct LogMsgMixin {
     template <typename Self>

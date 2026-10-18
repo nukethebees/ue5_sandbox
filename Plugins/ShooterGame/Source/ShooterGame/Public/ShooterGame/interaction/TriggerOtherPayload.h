@@ -10,7 +10,7 @@
 
 #include "CoreMinimal.h"
 
-struct FTriggerOtherPayload : public ml::LogMsgMixin<"FTriggerOtherPayload"> {
+struct FTriggerOtherPayload : public ioj::LogMsgMixin<"FTriggerOtherPayload"> {
     static constexpr uint8 MAX_TARGETS{8};
 
     std::array<ActorId, MAX_TARGETS> target_actor_ids{};

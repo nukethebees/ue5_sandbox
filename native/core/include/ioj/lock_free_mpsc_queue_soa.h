@@ -18,7 +18,7 @@
 template <typename View, typename... Ts>
 concept is_soa_queue_view = std::is_void_v<View> || std::constructible_from<View, std::span<Ts>...>;
 
-namespace ml {
+namespace ioj {
 // Lock-free multi-producer single-consumer queue with Structure of Arrays layout
 // Contract: swap_and_consume() must only be called when all enqueue() operations are complete
 #if defined(_MSC_VER)

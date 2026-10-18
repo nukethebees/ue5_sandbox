@@ -247,7 +247,7 @@ void AMothershipBoss::set_mothership_collision() {
 }
 void AMothershipBoss::set_component_collision(UPrimitiveComponent& c) {
     c.SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-    c.SetCollisionResponseToChannel(ml::collision::projectile, ECollisionResponse::ECR_Block);
+    c.SetCollisionResponseToChannel(ioj::collision::projectile, ECollisionResponse::ECR_Block);
 }
 
 void AMothershipBoss::idle_rotation(float dt) {

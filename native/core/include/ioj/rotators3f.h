@@ -35,7 +35,7 @@ struct Rotators3fConstView {
         fn(rolls);
     }
     void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
+        ioj::native_soa::vector_storage_ops::validate_array_sizes(*this);
     }
     auto slice(size_type const offset, size_type const count) const -> Rotators3fConstView {
         assert(offset <= num() && count <= num() - offset);
@@ -87,7 +87,7 @@ struct Rotators3fView {
         fn(rolls);
     }
     void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
+        ioj::native_soa::vector_storage_ops::validate_array_sizes(*this);
     }
     auto slice(size_type const offset, size_type const count) const -> Rotators3fView {
         assert(offset <= num() && count <= num() - offset);
@@ -137,9 +137,9 @@ struct Rotators3f {
     auto operator[](size_type const index) const -> equivalent_type {
         return get_const_view()[index];
     }
-    ml::native_soa::Vector<float> pitches;
-    ml::native_soa::Vector<float> yaws;
-    ml::native_soa::Vector<float> rolls;
+    ioj::native_soa::Vector<float> pitches;
+    ioj::native_soa::Vector<float> yaws;
+    ioj::native_soa::Vector<float> rolls;
     auto num() const noexcept -> size_type { return static_cast<size_type>(pitches.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -155,28 +155,28 @@ struct Rotators3f {
         fn(rolls);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reset() { ml::native_soa::vector_storage_ops::reset(*this); }
+    void reset() { ioj::native_soa::vector_storage_ops::reset(*this); }
     void reserve(size_type const count) {
-        ml::native_soa::vector_storage_ops::reserve(*this, count);
+        ioj::native_soa::vector_storage_ops::reserve(*this, count);
     }
     void add_uninitialised(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
+        ioj::native_soa::vector_storage_ops::add_uninitialised(*this, count);
     }
     void add_defaulted(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
+        ioj::native_soa::vector_storage_ops::add_defaulted(*this, count);
     }
     void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
+        ioj::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
     }
     void set_num(size_type const count) {
-        ml::native_soa::vector_storage_ops::set_num(*this, count);
+        ioj::native_soa::vector_storage_ops::set_num(*this, count);
     }
     void apply_permutation(std::span<std::int32_t> const indices) {
-        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
+        ioj::native_soa::vector_storage_ops::apply_permutation(*this, indices);
     }
     template <typename Compare>
     void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        ml::native_soa::vector_storage_ops::sort(
+        ioj::native_soa::vector_storage_ops::sort(
             *this, std::forward<Compare>(compare), scratch_indices);
     }
     void set(size_type const index,
@@ -186,7 +186,7 @@ struct Rotators3f {
         get_view().set(index, new_pitches, new_yaws, new_rolls);
     }
     auto add(float const new_pitches, float const new_yaws, float const new_rolls) -> size_type {
-        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+        return ioj::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
             pitches.emplace_back(new_pitches);
             yaws.emplace_back(new_yaws);
             rolls.emplace_back(new_rolls);
@@ -203,10 +203,10 @@ struct Rotators3f {
         if (count == 0) {
             return;
         }
-        assert(ml::native_soa::is_external_source(pitches, source.pitches));
-        assert(ml::native_soa::is_external_source(yaws, source.yaws));
-        assert(ml::native_soa::is_external_source(rolls, source.rolls));
-        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+        assert(ioj::native_soa::is_external_source(pitches, source.pitches));
+        assert(ioj::native_soa::is_external_source(yaws, source.yaws));
+        assert(ioj::native_soa::is_external_source(rolls, source.rolls));
+        ioj::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
             pitches.insert(pitches.end(), source.pitches.data(), source.pitches.data() + count);
             yaws.insert(yaws.end(), source.yaws.data(), source.yaws.data() + count);
             rolls.insert(rolls.end(), source.rolls.data(), source.rolls.data() + count);

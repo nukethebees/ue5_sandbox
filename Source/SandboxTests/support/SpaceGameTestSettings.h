@@ -15,6 +15,6 @@ class USpaceGameTestSettings : public UDeveloperSettings {
     double level_playback_time_scale{100.0};
 };
 
-namespace ml {
+namespace ioj {
 auto get_space_game_level_test_time_scale() -> double;
 }

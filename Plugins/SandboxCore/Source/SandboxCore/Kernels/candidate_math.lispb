@@ -4,7 +4,7 @@
     (source "standard/candidate_math_kernels.cpp")
     (tests "standard/candidate_math_kernels_tests.cpp")
     (header-include "standard/candidate_math_kernels.h")
-    (namespace ml::kernel_lab))
+    (namespace ioj::kernel_lab))
   (type-set numeric int32 uint32 float double)
   (type-set floating float double)
 

@@ -2,7 +2,7 @@
 
 #include <tracy/Tracy.hpp>
 
-namespace ml::profiling {
+namespace ioj::profiling {
 namespace memory_profiling {
 constexpr std::int32_t allocation_callstack_depth{16};
 

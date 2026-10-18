@@ -70,7 +70,7 @@ struct FSimpleManualAIControllerMemory {
 UCLASS()
 class SHOOTERGAME_API ASimpleManualAIController
     : public AAIController
-    , public ml::LogMsgMixin<"ASimpleManualAIController"> {
+    , public ioj::LogMsgMixin<"ASimpleManualAIController"> {
     GENERATED_BODY()
   public:
     ASimpleManualAIController();

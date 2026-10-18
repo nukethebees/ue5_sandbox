@@ -136,7 +136,7 @@ class SkillGenerator:
     header_include_path: str
     ed_header_include_path: str
     
-    namespace: str = "ml"
+    namespace: str = "ioj"
 
     player_skills_enum = UnrealType("PlayerSkillName", UnrealType.Tag.ENUM)
     player_skills_struct = UnrealType("PlayerSkills", UnrealType.Tag.STRUCT)
@@ -469,7 +469,7 @@ enum class {self.player_skills_enum} : uint8 {{
     auto get_view(this Self& self) {{
         return SkillView{{
             {key},
-            ml::get_display_string({key}),
+            ioj::get_display_string({key}),
             self.template {m.get_skill}<{key}>()
         }};
     }}
@@ -652,8 +652,8 @@ void {prefix}CustomizeChildren(
     }}
     auto* data{{reinterpret_cast<FPlayerSkills*>(raw_data)}};
 
-	for (auto value : ml::EPlayerSkillName_values) {{
-        auto const& name{{ml::get_display_string_view(value)}};
+	for (auto value : ioj::EPlayerSkillName_values) {{
+        auto const& name{{ioj::get_display_string_view(value)}};
         auto skill{{data->{self.SkillsMembers.get_skill}(value)}};
 
 	    {cb}.AddCustomRow(FText::FromStringView(name))

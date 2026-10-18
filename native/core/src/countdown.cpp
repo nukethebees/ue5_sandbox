@@ -1,6 +1,6 @@
 #include "ioj/countdown.h"
 
-namespace ml {
+namespace ioj {
 void tick_countdowns(std::span<float> const remaining_times, float const dt) noexcept {
     for (auto& remaining : remaining_times) {
         remaining -= dt;

@@ -68,7 +68,7 @@ TEST(Generated_array_math, add_int32_array_scalar_in_place_raw) {
             static_cast<std::int32_t>(-1), static_cast<std::int32_t>(-12),
             static_cast<std::int32_t>(1),  static_cast<std::int32_t>(-6),
             static_cast<std::int32_t>(3)};
-        ml::add_in_place(std::span<std::int32_t>{data.data(), Count}, value);
+        ioj::add_in_place(std::span<std::int32_t>{data.data(), Count}, value);
         for (std::size_t i{}; i < Count; ++i) {
             expect_value(data[i], expected[i]);
         }
@@ -121,7 +121,7 @@ TEST(Generated_array_math, add_float_array_scalar_in_place_raw) {
             static_cast<float>(0.5),   static_cast<float>(-4.5),  static_cast<float>(6.5),
             static_cast<float>(-1),    static_cast<float>(-0.5),  static_cast<float>(-2.5),
             static_cast<float>(1e+10)};
-        ml::add_in_place(std::span<float>{data.data(), Count}, value);
+        ioj::add_in_place(std::span<float>{data.data(), Count}, value);
         for (std::size_t i{}; i < Count; ++i) {
             expect_value(data[i], expected[i]);
         }
@@ -179,7 +179,7 @@ TEST(Generated_array_math, add_double_array_scalar_in_place_raw) {
                                         static_cast<double>(-0.49999999989999999),
                                         static_cast<double>(-2.5),
                                         static_cast<double>(9999999999.5)};
-        ml::add_in_place(std::span<double>{data.data(), Count}, value);
+        ioj::add_in_place(std::span<double>{data.data(), Count}, value);
         for (std::size_t i{}; i < Count; ++i) {
             expect_value(data[i], expected[i]);
         }
@@ -223,7 +223,7 @@ TEST(Generated_array_math, subtract_int32_array_scalar_in_place_raw) {
             static_cast<std::int32_t>(7),  static_cast<std::int32_t>(-4),
             static_cast<std::int32_t>(9),  static_cast<std::int32_t>(2),
             static_cast<std::int32_t>(11)};
-        ml::subtract_in_place(std::span<std::int32_t>{data.data(), Count}, value);
+        ioj::subtract_in_place(std::span<std::int32_t>{data.data(), Count}, value);
         for (std::size_t i{}; i < Count; ++i) {
             expect_value(data[i], expected[i]);
         }
@@ -276,7 +276,7 @@ TEST(Generated_array_math, subtract_float_array_scalar_in_place_raw) {
             static_cast<float>(1.5),   static_cast<float>(-3.5), static_cast<float>(7.5),
             static_cast<float>(0),     static_cast<float>(0.5),  static_cast<float>(-1.5),
             static_cast<float>(1e+10)};
-        ml::subtract_in_place(std::span<float>{data.data(), Count}, value);
+        ioj::subtract_in_place(std::span<float>{data.data(), Count}, value);
         for (std::size_t i{}; i < Count; ++i) {
             expect_value(data[i], expected[i]);
         }
@@ -334,7 +334,7 @@ TEST(Generated_array_math, subtract_double_array_scalar_in_place_raw) {
                                         static_cast<double>(0.50000000010000001),
                                         static_cast<double>(-1.5),
                                         static_cast<double>(10000000000.5)};
-        ml::subtract_in_place(std::span<double>{data.data(), Count}, value);
+        ioj::subtract_in_place(std::span<double>{data.data(), Count}, value);
         for (std::size_t i{}; i < Count; ++i) {
             expect_value(data[i], expected[i]);
         }
@@ -395,7 +395,7 @@ TEST(Generated_array_math, multiply_int32_array_array_raw) {
             static_cast<std::int32_t>(-18), static_cast<std::int32_t>(-24),
             static_cast<std::int32_t>(-40), static_cast<std::int32_t>(-10),
             static_cast<std::int32_t>(-14)};
-        ml::multiply(std::span<std::int32_t const>{lhs.data(), Count},
+        ioj::multiply(std::span<std::int32_t const>{lhs.data(), Count},
                      std::span<std::int32_t const>{rhs.data(), Count},
                      std::span<std::int32_t>{out.data(), Count});
         for (std::size_t i{}; i < Count; ++i) {
@@ -442,7 +442,7 @@ TEST(Generated_array_math, multiply_int32_array_scalar_raw) {
             static_cast<std::int32_t>(-12), static_cast<std::int32_t>(32),
             static_cast<std::int32_t>(-20), static_cast<std::int32_t>(8),
             static_cast<std::int32_t>(-28)};
-        ml::multiply(std::span<std::int32_t const>{lhs.data(), Count},
+        ioj::multiply(std::span<std::int32_t const>{lhs.data(), Count},
                      rhs,
                      std::span<std::int32_t>{out.data(), Count});
         for (std::size_t i{}; i < Count; ++i) {
@@ -547,7 +547,7 @@ TEST(Generated_array_math, multiply_float_array_array_raw) {
                                        static_cast<float>(-8.00000011e-10),
                                        static_cast<float>(-6),
                                        static_cast<float>(-1)};
-        ml::multiply(std::span<float const>{lhs.data(), Count},
+        ioj::multiply(std::span<float const>{lhs.data(), Count},
                      std::span<float const>{rhs.data(), Count},
                      std::span<float>{out.data(), Count});
         for (std::size_t i{}; i < Count; ++i) {
@@ -622,7 +622,7 @@ TEST(Generated_array_math, multiply_float_array_scalar_raw) {
                                        static_cast<float>(-5.00000007e-11),
                                        static_cast<float>(1),
                                        static_cast<float>(-5e+09)};
-        ml::multiply(
+        ioj::multiply(
             std::span<float const>{lhs.data(), Count}, rhs, std::span<float>{out.data(), Count});
         for (std::size_t i{}; i < Count; ++i) {
             expect_value(out[i], expected[i]);
@@ -698,7 +698,7 @@ TEST(Generated_array_math, multiply_double_array_array_raw) {
                                         static_cast<double>(-8.0000000000000003e-10),
                                         static_cast<double>(-6),
                                         static_cast<double>(-1)};
-        ml::multiply(std::span<double const>{lhs.data(), Count},
+        ioj::multiply(std::span<double const>{lhs.data(), Count},
                      std::span<double const>{rhs.data(), Count},
                      std::span<double>{out.data(), Count});
         for (std::size_t i{}; i < Count; ++i) {
@@ -759,7 +759,7 @@ TEST(Generated_array_math, multiply_double_array_scalar_raw) {
                                         static_cast<double>(-5.0000000000000002e-11),
                                         static_cast<double>(1),
                                         static_cast<double>(-5000000000)};
-        ml::multiply(
+        ioj::multiply(
             std::span<double const>{lhs.data(), Count}, rhs, std::span<double>{out.data(), Count});
         for (std::size_t i{}; i < Count; ++i) {
             expect_value(out[i], expected[i]);
@@ -820,7 +820,7 @@ TEST(Generated_array_math, multiply_int32_array_array_in_place_raw) {
             static_cast<std::int32_t>(-18), static_cast<std::int32_t>(-24),
             static_cast<std::int32_t>(-40), static_cast<std::int32_t>(-10),
             static_cast<std::int32_t>(-14)};
-        ml::multiply_in_place(std::span<std::int32_t>{lhs.data(), Count},
+        ioj::multiply_in_place(std::span<std::int32_t>{lhs.data(), Count},
                               std::span<std::int32_t const>{rhs.data(), Count});
         for (std::size_t i{}; i < Count; ++i) {
             expect_value(lhs[i], expected[i]);
@@ -865,7 +865,7 @@ TEST(Generated_array_math, multiply_int32_array_scalar_in_place_raw) {
             static_cast<std::int32_t>(-12), static_cast<std::int32_t>(32),
             static_cast<std::int32_t>(-20), static_cast<std::int32_t>(8),
             static_cast<std::int32_t>(-28)};
-        ml::multiply_in_place(std::span<std::int32_t>{lhs.data(), Count}, rhs);
+        ioj::multiply_in_place(std::span<std::int32_t>{lhs.data(), Count}, rhs);
         for (std::size_t i{}; i < Count; ++i) {
             expect_value(lhs[i], expected[i]);
         }
@@ -967,7 +967,7 @@ TEST(Generated_array_math, multiply_float_array_array_in_place_raw) {
                                        static_cast<float>(-8.00000011e-10),
                                        static_cast<float>(-6),
                                        static_cast<float>(-1)};
-        ml::multiply_in_place(std::span<float>{lhs.data(), Count},
+        ioj::multiply_in_place(std::span<float>{lhs.data(), Count},
                               std::span<float const>{rhs.data(), Count});
         for (std::size_t i{}; i < Count; ++i) {
             expect_value(lhs[i], expected[i]);
@@ -1040,7 +1040,7 @@ TEST(Generated_array_math, multiply_float_array_scalar_in_place_raw) {
                                        static_cast<float>(-5.00000007e-11),
                                        static_cast<float>(1),
                                        static_cast<float>(-5e+09)};
-        ml::multiply_in_place(std::span<float>{lhs.data(), Count}, rhs);
+        ioj::multiply_in_place(std::span<float>{lhs.data(), Count}, rhs);
         for (std::size_t i{}; i < Count; ++i) {
             expect_value(lhs[i], expected[i]);
         }
@@ -1114,7 +1114,7 @@ TEST(Generated_array_math, multiply_double_array_array_in_place_raw) {
                                         static_cast<double>(-8.0000000000000003e-10),
                                         static_cast<double>(-6),
                                         static_cast<double>(-1)};
-        ml::multiply_in_place(std::span<double>{lhs.data(), Count},
+        ioj::multiply_in_place(std::span<double>{lhs.data(), Count},
                               std::span<double const>{rhs.data(), Count});
         for (std::size_t i{}; i < Count; ++i) {
             expect_value(lhs[i], expected[i]);
@@ -1173,7 +1173,7 @@ TEST(Generated_array_math, multiply_double_array_scalar_in_place_raw) {
                                         static_cast<double>(-5.0000000000000002e-11),
                                         static_cast<double>(1),
                                         static_cast<double>(-5000000000)};
-        ml::multiply_in_place(std::span<double>{lhs.data(), Count}, rhs);
+        ioj::multiply_in_place(std::span<double>{lhs.data(), Count}, rhs);
         for (std::size_t i{}; i < Count; ++i) {
             expect_value(lhs[i], expected[i]);
         }
@@ -1217,7 +1217,7 @@ TEST(Generated_array_math, divide_int32_array_scalar_in_place_raw) {
             static_cast<std::int32_t>(0),  static_cast<std::int32_t>(2),
             static_cast<std::int32_t>(-1), static_cast<std::int32_t>(0),
             static_cast<std::int32_t>(-1)};
-        ml::divide_in_place(std::span<std::int32_t>{data.data(), Count}, value);
+        ioj::divide_in_place(std::span<std::int32_t>{data.data(), Count}, value);
         for (std::size_t i{}; i < Count; ++i) {
             expect_value(data[i], expected[i]);
         }
@@ -1289,7 +1289,7 @@ TEST(Generated_array_math, divide_float_array_scalar_in_place_raw) {
                                        static_cast<float>(-2.00000003e-10),
                                        static_cast<float>(4),
                                        static_cast<float>(-2e+10)};
-        ml::divide_in_place(std::span<float>{data.data(), Count}, value);
+        ioj::divide_in_place(std::span<float>{data.data(), Count}, value);
         for (std::size_t i{}; i < Count; ++i) {
             expect_value(data[i], expected[i]);
         }
@@ -1347,7 +1347,7 @@ TEST(Generated_array_math, divide_double_array_scalar_in_place_raw) {
                                         static_cast<double>(-2.0000000000000001e-10),
                                         static_cast<double>(4),
                                         static_cast<double>(-20000000000)};
-        ml::divide_in_place(std::span<double>{data.data(), Count}, value);
+        ioj::divide_in_place(std::span<double>{data.data(), Count}, value);
         for (std::size_t i{}; i < Count; ++i) {
             expect_value(data[i], expected[i]);
         }
@@ -1408,7 +1408,7 @@ TEST(Generated_array_math, add_arrays_int32_array_array_raw) {
             static_cast<std::int32_t>(-3), static_cast<std::int32_t>(-5),
             static_cast<std::int32_t>(-3), static_cast<std::int32_t>(3),
             static_cast<std::int32_t>(5)};
-        ml::add_arrays(std::span<std::int32_t const>{lhs.data(), Count},
+        ioj::add_arrays(std::span<std::int32_t const>{lhs.data(), Count},
                        std::span<std::int32_t const>{rhs.data(), Count},
                        std::span<std::int32_t>{out.data(), Count});
         for (std::size_t i{}; i < Count; ++i) {
@@ -1494,7 +1494,7 @@ TEST(Generated_array_math, add_arrays_float_array_array_raw) {
             static_cast<float>(0.5),   static_cast<float>(-4),    static_cast<float>(5),
             static_cast<float>(1e+10), static_cast<float>(-8),    static_cast<float>(1),
             static_cast<float>(1e+10)};
-        ml::add_arrays(std::span<float const>{lhs.data(), Count},
+        ioj::add_arrays(std::span<float const>{lhs.data(), Count},
                        std::span<float const>{rhs.data(), Count},
                        std::span<float>{out.data(), Count});
         for (std::size_t i{}; i < Count; ++i) {
@@ -1571,7 +1571,7 @@ TEST(Generated_array_math, add_arrays_double_array_array_raw) {
                                         static_cast<double>(-7.9999999999),
                                         static_cast<double>(1),
                                         static_cast<double>(10000000000)};
-        ml::add_arrays(std::span<double const>{lhs.data(), Count},
+        ioj::add_arrays(std::span<double const>{lhs.data(), Count},
                        std::span<double const>{rhs.data(), Count},
                        std::span<double>{out.data(), Count});
         for (std::size_t i{}; i < Count; ++i) {
@@ -1633,7 +1633,7 @@ TEST(Generated_array_math, add_arrays_int32_array_array_in_place_raw) {
             static_cast<std::int32_t>(-3), static_cast<std::int32_t>(-5),
             static_cast<std::int32_t>(-3), static_cast<std::int32_t>(3),
             static_cast<std::int32_t>(5)};
-        ml::add_arrays_in_place(std::span<std::int32_t>{lhs.data(), Count},
+        ioj::add_arrays_in_place(std::span<std::int32_t>{lhs.data(), Count},
                                 std::span<std::int32_t const>{rhs.data(), Count});
         for (std::size_t i{}; i < Count; ++i) {
             expect_value(lhs[i], expected[i]);
@@ -1717,7 +1717,7 @@ TEST(Generated_array_math, add_arrays_float_array_array_in_place_raw) {
             static_cast<float>(0.5),   static_cast<float>(-4),    static_cast<float>(5),
             static_cast<float>(1e+10), static_cast<float>(-8),    static_cast<float>(1),
             static_cast<float>(1e+10)};
-        ml::add_arrays_in_place(std::span<float>{lhs.data(), Count},
+        ioj::add_arrays_in_place(std::span<float>{lhs.data(), Count},
                                 std::span<float const>{rhs.data(), Count});
         for (std::size_t i{}; i < Count; ++i) {
             expect_value(lhs[i], expected[i]);
@@ -1792,7 +1792,7 @@ TEST(Generated_array_math, add_arrays_double_array_array_in_place_raw) {
                                         static_cast<double>(-7.9999999999),
                                         static_cast<double>(1),
                                         static_cast<double>(10000000000)};
-        ml::add_arrays_in_place(std::span<double>{lhs.data(), Count},
+        ioj::add_arrays_in_place(std::span<double>{lhs.data(), Count},
                                 std::span<double const>{rhs.data(), Count});
         for (std::size_t i{}; i < Count; ++i) {
             expect_value(lhs[i], expected[i]);
@@ -1927,7 +1927,7 @@ TEST(Generated_array_math, lerp_float_array_array_array_raw) {
                                        static_cast<float>(-2),
                                        static_cast<float>(-4.9999999e+10),
                                        static_cast<float>(0)};
-        ml::lerp_1d(std::span<float const>{from.data(), Count},
+        ioj::lerp_1d(std::span<float const>{from.data(), Count},
                     std::span<float const>{to.data(), Count},
                     std::span<float const>{alpha.data(), Count},
                     std::span<float>{out.data(), Count});
@@ -2020,7 +2020,7 @@ TEST(Generated_array_math, lerp_float_array_array_scalar_raw) {
             static_cast<float>(-8.9999999e+10),  static_cast<float>(1.00000002e+20),
             static_cast<float>(-8e+10),          static_cast<float>(4.9999999e+10),
             static_cast<float>(-1.00000002e+20)};
-        ml::lerp_1d(std::span<float const>{from.data(), Count},
+        ioj::lerp_1d(std::span<float const>{from.data(), Count},
                     std::span<float const>{to.data(), Count},
                     alpha,
                     std::span<float>{out.data(), Count});
@@ -2129,7 +2129,7 @@ TEST(Generated_array_math, lerp_double_array_array_array_raw) {
                                         static_cast<double>(-1.999999999925),
                                         static_cast<double>(-50000000002),
                                         static_cast<double>(0)};
-        ml::lerp_1d(std::span<double const>{from.data(), Count},
+        ioj::lerp_1d(std::span<double const>{from.data(), Count},
                     std::span<double const>{to.data(), Count},
                     std::span<double const>{alpha.data(), Count},
                     std::span<double>{out.data(), Count});
@@ -2208,7 +2208,7 @@ TEST(Generated_array_math, lerp_double_array_array_scalar_raw) {
                                         static_cast<double>(-80000000001),
                                         static_cast<double>(49999999998),
                                         static_cast<double>(-9.9999999989999993e+19)};
-        ml::lerp_1d(std::span<double const>{from.data(), Count},
+        ioj::lerp_1d(std::span<double const>{from.data(), Count},
                     std::span<double const>{to.data(), Count},
                     alpha,
                     std::span<double>{out.data(), Count});
@@ -2344,7 +2344,7 @@ TEST(Generated_array_math, lerp_float_array_array_array_in_place_raw) {
                                        static_cast<float>(-2),
                                        static_cast<float>(-4.9999999e+10),
                                        static_cast<float>(0)};
-        ml::lerp_1d_in_place(std::span<float>{from.data(), Count},
+        ioj::lerp_1d_in_place(std::span<float>{from.data(), Count},
                              std::span<float const>{to.data(), Count},
                              std::span<float const>{alpha.data(), Count});
         for (std::size_t i{}; i < Count; ++i) {
@@ -2435,7 +2435,7 @@ TEST(Generated_array_math, lerp_float_array_array_scalar_in_place_raw) {
             static_cast<float>(-8.9999999e+10),  static_cast<float>(1.00000002e+20),
             static_cast<float>(-8e+10),          static_cast<float>(4.9999999e+10),
             static_cast<float>(-1.00000002e+20)};
-        ml::lerp_1d_in_place(
+        ioj::lerp_1d_in_place(
             std::span<float>{from.data(), Count}, std::span<float const>{to.data(), Count}, alpha);
         for (std::size_t i{}; i < Count; ++i) {
             expect_value(from[i], expected[i]);
@@ -2541,7 +2541,7 @@ TEST(Generated_array_math, lerp_double_array_array_array_in_place_raw) {
                                         static_cast<double>(-1.999999999925),
                                         static_cast<double>(-50000000002),
                                         static_cast<double>(0)};
-        ml::lerp_1d_in_place(std::span<double>{from.data(), Count},
+        ioj::lerp_1d_in_place(std::span<double>{from.data(), Count},
                              std::span<double const>{to.data(), Count},
                              std::span<double const>{alpha.data(), Count});
         for (std::size_t i{}; i < Count; ++i) {
@@ -2618,7 +2618,7 @@ TEST(Generated_array_math, lerp_double_array_array_scalar_in_place_raw) {
                                         static_cast<double>(-80000000001),
                                         static_cast<double>(49999999998),
                                         static_cast<double>(-9.9999999989999993e+19)};
-        ml::lerp_1d_in_place(std::span<double>{from.data(), Count},
+        ioj::lerp_1d_in_place(std::span<double>{from.data(), Count},
                              std::span<double const>{to.data(), Count},
                              alpha);
         for (std::size_t i{}; i < Count; ++i) {
@@ -2754,7 +2754,7 @@ TEST(Generated_array_math, add_scaled_float_array_array_array_raw) {
                                        static_cast<float>(-2),
                                        static_cast<float>(-3.0000001e+10),
                                        static_cast<float>(1e+10)};
-        ml::add_scaled(std::span<float const>{base.data(), Count},
+        ioj::add_scaled(std::span<float const>{base.data(), Count},
                        std::span<float const>{value.data(), Count},
                        std::span<float const>{scale.data(), Count},
                        std::span<float>{out.data(), Count});
@@ -2861,7 +2861,7 @@ TEST(Generated_array_math, add_scaled_float_array_array_scalar_raw) {
                                        static_cast<float>(-8e+10),
                                        static_cast<float>(3.0000001e+10),
                                        static_cast<float>(1e+10)};
-        ml::add_scaled(std::span<float const>{base.data(), Count},
+        ioj::add_scaled(std::span<float const>{base.data(), Count},
                        std::span<float const>{value.data(), Count},
                        scale,
                        std::span<float>{out.data(), Count});
@@ -2970,7 +2970,7 @@ TEST(Generated_array_math, add_scaled_double_array_array_array_raw) {
                                         static_cast<double>(-1.9999999999),
                                         static_cast<double>(-30000000002),
                                         static_cast<double>(10000000000)};
-        ml::add_scaled(std::span<double const>{base.data(), Count},
+        ioj::add_scaled(std::span<double const>{base.data(), Count},
                        std::span<double const>{value.data(), Count},
                        std::span<double const>{scale.data(), Count},
                        std::span<double>{out.data(), Count});
@@ -3035,7 +3035,7 @@ TEST(Generated_array_math, add_scaled_double_array_array_scalar_raw) {
             static_cast<double>(-19999999993),    static_cast<double>(1e+20),
             static_cast<double>(-80000000000),    static_cast<double>(29999999998),
             static_cast<double>(9999999999)};
-        ml::add_scaled(std::span<double const>{base.data(), Count},
+        ioj::add_scaled(std::span<double const>{base.data(), Count},
                        std::span<double const>{value.data(), Count},
                        scale,
                        std::span<double>{out.data(), Count});
@@ -3171,7 +3171,7 @@ TEST(Generated_array_math, add_scaled_float_array_array_array_in_place_raw) {
                                        static_cast<float>(-2),
                                        static_cast<float>(-3.0000001e+10),
                                        static_cast<float>(1e+10)};
-        ml::add_scaled_in_place(std::span<float>{base.data(), Count},
+        ioj::add_scaled_in_place(std::span<float>{base.data(), Count},
                                 std::span<float const>{value.data(), Count},
                                 std::span<float const>{scale.data(), Count});
         for (std::size_t i{}; i < Count; ++i) {
@@ -3276,7 +3276,7 @@ TEST(Generated_array_math, add_scaled_float_array_array_scalar_in_place_raw) {
                                        static_cast<float>(-8e+10),
                                        static_cast<float>(3.0000001e+10),
                                        static_cast<float>(1e+10)};
-        ml::add_scaled_in_place(std::span<float>{base.data(), Count},
+        ioj::add_scaled_in_place(std::span<float>{base.data(), Count},
                                 std::span<float const>{value.data(), Count},
                                 scale);
         for (std::size_t i{}; i < Count; ++i) {
@@ -3383,7 +3383,7 @@ TEST(Generated_array_math, add_scaled_double_array_array_array_in_place_raw) {
                                         static_cast<double>(-1.9999999999),
                                         static_cast<double>(-30000000002),
                                         static_cast<double>(10000000000)};
-        ml::add_scaled_in_place(std::span<double>{base.data(), Count},
+        ioj::add_scaled_in_place(std::span<double>{base.data(), Count},
                                 std::span<double const>{value.data(), Count},
                                 std::span<double const>{scale.data(), Count});
         for (std::size_t i{}; i < Count; ++i) {
@@ -3446,7 +3446,7 @@ TEST(Generated_array_math, add_scaled_double_array_array_scalar_in_place_raw) {
             static_cast<double>(-19999999993),    static_cast<double>(1e+20),
             static_cast<double>(-80000000000),    static_cast<double>(29999999998),
             static_cast<double>(9999999999)};
-        ml::add_scaled_in_place(std::span<double>{base.data(), Count},
+        ioj::add_scaled_in_place(std::span<double>{base.data(), Count},
                                 std::span<double const>{value.data(), Count},
                                 scale);
         for (std::size_t i{}; i < Count; ++i) {
@@ -3563,7 +3563,7 @@ TEST(Generated_array_math, subtract_scaled_float_array_array_array_raw) {
             static_cast<float>(5e+09), static_cast<float>(-4),   static_cast<float>(13),
             static_cast<float>(0.5),   static_cast<float>(2),    static_cast<float>(3.0000001e+10),
             static_cast<float>(1e+10)};
-        ml::subtract_scaled(std::span<float const>{base.data(), Count},
+        ioj::subtract_scaled(std::span<float const>{base.data(), Count},
                             std::span<float const>{value.data(), Count},
                             std::span<float const>{scale.data(), Count},
                             std::span<float>{out.data(), Count});
@@ -3656,7 +3656,7 @@ TEST(Generated_array_math, subtract_scaled_float_array_array_scalar_raw) {
             static_cast<float>(2e+10),          static_cast<float>(-1.00000002e+20),
             static_cast<float>(8e+10),          static_cast<float>(-3.0000001e+10),
             static_cast<float>(1e+10)};
-        ml::subtract_scaled(std::span<float const>{base.data(), Count},
+        ioj::subtract_scaled(std::span<float const>{base.data(), Count},
                             std::span<float const>{value.data(), Count},
                             scale,
                             std::span<float>{out.data(), Count});
@@ -3765,7 +3765,7 @@ TEST(Generated_array_math, subtract_scaled_double_array_array_array_raw) {
                                         static_cast<double>(2.0000000001),
                                         static_cast<double>(29999999998),
                                         static_cast<double>(10000000000)};
-        ml::subtract_scaled(std::span<double const>{base.data(), Count},
+        ioj::subtract_scaled(std::span<double const>{base.data(), Count},
                             std::span<double const>{value.data(), Count},
                             std::span<double const>{scale.data(), Count},
                             std::span<double>{out.data(), Count});
@@ -3830,7 +3830,7 @@ TEST(Generated_array_math, subtract_scaled_double_array_array_scalar_raw) {
             static_cast<double>(20000000007),    static_cast<double>(-1e+20),
             static_cast<double>(80000000000),    static_cast<double>(-30000000002),
             static_cast<double>(10000000001)};
-        ml::subtract_scaled(std::span<double const>{base.data(), Count},
+        ioj::subtract_scaled(std::span<double const>{base.data(), Count},
                             std::span<double const>{value.data(), Count},
                             scale,
                             std::span<double>{out.data(), Count});
@@ -3947,7 +3947,7 @@ TEST(Generated_array_math, subtract_scaled_float_array_array_array_in_place_raw)
             static_cast<float>(5e+09), static_cast<float>(-4),   static_cast<float>(13),
             static_cast<float>(0.5),   static_cast<float>(2),    static_cast<float>(3.0000001e+10),
             static_cast<float>(1e+10)};
-        ml::subtract_scaled_in_place(std::span<float>{base.data(), Count},
+        ioj::subtract_scaled_in_place(std::span<float>{base.data(), Count},
                                      std::span<float const>{value.data(), Count},
                                      std::span<float const>{scale.data(), Count});
         for (std::size_t i{}; i < Count; ++i) {
@@ -4038,7 +4038,7 @@ TEST(Generated_array_math, subtract_scaled_float_array_array_scalar_in_place_raw
             static_cast<float>(2e+10),          static_cast<float>(-1.00000002e+20),
             static_cast<float>(8e+10),          static_cast<float>(-3.0000001e+10),
             static_cast<float>(1e+10)};
-        ml::subtract_scaled_in_place(std::span<float>{base.data(), Count},
+        ioj::subtract_scaled_in_place(std::span<float>{base.data(), Count},
                                      std::span<float const>{value.data(), Count},
                                      scale);
         for (std::size_t i{}; i < Count; ++i) {
@@ -4145,7 +4145,7 @@ TEST(Generated_array_math, subtract_scaled_double_array_array_array_in_place_raw
                                         static_cast<double>(2.0000000001),
                                         static_cast<double>(29999999998),
                                         static_cast<double>(10000000000)};
-        ml::subtract_scaled_in_place(std::span<double>{base.data(), Count},
+        ioj::subtract_scaled_in_place(std::span<double>{base.data(), Count},
                                      std::span<double const>{value.data(), Count},
                                      std::span<double const>{scale.data(), Count});
         for (std::size_t i{}; i < Count; ++i) {
@@ -4208,7 +4208,7 @@ TEST(Generated_array_math, subtract_scaled_double_array_array_scalar_in_place_ra
             static_cast<double>(20000000007),    static_cast<double>(-1e+20),
             static_cast<double>(80000000000),    static_cast<double>(-30000000002),
             static_cast<double>(10000000001)};
-        ml::subtract_scaled_in_place(std::span<double>{base.data(), Count},
+        ioj::subtract_scaled_in_place(std::span<double>{base.data(), Count},
                                      std::span<double const>{value.data(), Count},
                                      scale);
         for (std::size_t i{}; i < Count; ++i) {
@@ -4344,7 +4344,7 @@ TEST(Generated_array_math, size_squared_3d_float_array_array_array_raw) {
                                        static_cast<float>(64.0625),
                                        static_cast<float>(1.00000002e+20),
                                        static_cast<float>(1.00000002e+20)};
-        ml::size_squared_3d(std::span<float const>{x.data(), Count},
+        ioj::size_squared_3d(std::span<float const>{x.data(), Count},
                             std::span<float const>{y.data(), Count},
                             std::span<float const>{z.data(), Count},
                             std::span<float>{out.data(), Count});
@@ -4434,7 +4434,7 @@ TEST(Generated_array_math, size_squared_3d_double_array_array_array_raw) {
             static_cast<double>(1e+20), static_cast<double>(80),      static_cast<double>(62),
             static_cast<double>(1e+20), static_cast<double>(64.0625), static_cast<double>(1e+20),
             static_cast<double>(1e+20)};
-        ml::size_squared_3d(std::span<double const>{x.data(), Count},
+        ioj::size_squared_3d(std::span<double const>{x.data(), Count},
                             std::span<double const>{y.data(), Count},
                             std::span<double const>{z.data(), Count},
                             std::span<double>{out.data(), Count});
@@ -4650,7 +4650,7 @@ TEST(Generated_array_math, distance_squared_3d_float_array_array_array_array_arr
             static_cast<float>(1.00000002e+20), static_cast<float>(2.00000004e+20),
             static_cast<float>(148.0625),       static_cast<float>(1.00000002e+20),
             static_cast<float>(2.00000004e+20)};
-        ml::distance_squared_3d(std::span<float const>{ax.data(), Count},
+        ioj::distance_squared_3d(std::span<float const>{ax.data(), Count},
                                 std::span<float const>{ay.data(), Count},
                                 std::span<float const>{az.data(), Count},
                                 std::span<float const>{bx.data(), Count},
@@ -4813,7 +4813,7 @@ TEST(Generated_array_math, distance_squared_3d_double_array_array_array_array_ar
                                         static_cast<double>(148.06250000239999),
                                         static_cast<double>(1.0000000005999999e+20),
                                         static_cast<double>(2.0000000001000001e+20)};
-        ml::distance_squared_3d(std::span<double const>{ax.data(), Count},
+        ioj::distance_squared_3d(std::span<double const>{ax.data(), Count},
                                 std::span<double const>{ay.data(), Count},
                                 std::span<double const>{az.data(), Count},
                                 std::span<double const>{bx.data(), Count},
@@ -5027,7 +5027,7 @@ TEST(Generated_array_math, dot_product_3d_float_array_array_array_array_array_ar
             static_cast<float>(-5e+09), static_cast<float>(-1), static_cast<float>(-7.0000001e+10),
             static_cast<float>(-5e+09), static_cast<float>(-2), static_cast<float>(-3.0000001e+10),
             static_cast<float>(-5e+09)};
-        ml::dot_product_3d(std::span<float const>{ax.data(), Count},
+        ioj::dot_product_3d(std::span<float const>{ax.data(), Count},
                            std::span<float const>{ay.data(), Count},
                            std::span<float const>{az.data(), Count},
                            std::span<float const>{bx.data(), Count},
@@ -5176,7 +5176,7 @@ TEST(Generated_array_math, dot_product_3d_double_array_array_array_array_array_a
             static_cast<double>(-70000000020),        static_cast<double>(-5000000001.5),
             static_cast<double>(-2.0000000012000001), static_cast<double>(-30000000020),
             static_cast<double>(-5000000001)};
-        ml::dot_product_3d(std::span<double const>{ax.data(), Count},
+        ioj::dot_product_3d(std::span<double const>{ax.data(), Count},
                            std::span<double const>{ay.data(), Count},
                            std::span<double const>{az.data(), Count},
                            std::span<double const>{bx.data(), Count},

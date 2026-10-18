@@ -135,7 +135,7 @@ void UInGamePlayerMenu::refresh() {
             break;
         }
         default: {
-            logger.log_warning(TEXT("%s"), *ml::make_unhandled_enum_case_warning(current_tab));
+            logger.log_warning(TEXT("%s"), *ioj::make_unhandled_enum_case_warning(current_tab));
             break;
         }
     }

@@ -96,7 +96,7 @@ inline void to_rotations(Rotators3f& out, VectorColumns auto const& directions) 
 inline void lerp_in_place(VectorColumns auto const& current,
                           VectorColumns auto const& target,
                           float const alpha) {
-    ml::lerp_3d_in_place(
+    ioj::lerp_3d_in_place(
         current.xs(), current.ys(), current.zs(), target.xs(), target.ys(), target.zs(), alpha);
 }
 
@@ -112,7 +112,7 @@ inline void distance_and_squared(std::span<float> const distances,
         return;
     }
     assert(distances.data() != squared_distances.data());
-    ml::native_math::distance_and_squared_vector(distances.data(),
+    ioj::native_math::distance_and_squared_vector(distances.data(),
                                                  squared_distances.data(),
                                                  from.xs().data(),
                                                  from.ys().data(),

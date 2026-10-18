@@ -32,7 +32,7 @@ struct FHealthStationPayload {
     FOnStationStateChanged on_station_state_changed;
 
     // Static logger since can't inherit from LogMsgMixin
-    static inline auto logger{ml::LogMsgMixin<"FHealthStationPayload">{}};
+    static inline auto logger{ioj::LogMsgMixin<"FHealthStationPayload">{}};
 
     FTriggerResult trigger(FTriggerContext context);
     bool tick(float delta_time);

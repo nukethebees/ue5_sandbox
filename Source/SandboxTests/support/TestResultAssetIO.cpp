@@ -9,7 +9,7 @@
 #include <UObject/SavePackage.h>
 #include <UObject/UObjectGlobals.h>
 
-namespace ml {
+namespace ioj {
 FTestResultAsset::FTestResultAsset(FName const test_name, FAutomationTestBase& in_test_runner)
     : package_name_prefix{FString::Printf(
           TEXT("/Game/test_results/%s/%s"), *test_name.ToString(), *test_name.ToString())}

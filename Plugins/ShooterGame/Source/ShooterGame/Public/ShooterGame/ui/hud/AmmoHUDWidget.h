@@ -15,7 +15,7 @@ class UTextBlock;
 UCLASS()
 class SHOOTERGAME_API UAmmoHUDWidget
     : public UUserWidget
-    , public ml::LogMsgMixin<"AmmoHUDWidget", LogShooterGameUI> {
+    , public ioj::LogMsgMixin<"AmmoHUDWidget", LogShooterGameUI> {
     GENERATED_BODY()
   public:
     void set_max_ammo(FAmmoData new_max_ammo);

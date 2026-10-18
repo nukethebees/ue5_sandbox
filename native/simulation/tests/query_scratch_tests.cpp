@@ -36,13 +36,13 @@ void CountingResource::do_deallocate(void* pointer,
 }
 
 struct FrameBacking {
-    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 256 * 1024> bytes{};
-    ml::FrameMemoryResource resource{bytes};
+    alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 256 * 1024> bytes{};
+    ioj::FrameMemoryResource resource{bytes};
 };
 
 void initialise_queries(SpatialQueryManager& manager, CollisionAgentStorage const& owners) {
     collision::EntityAABBs bounds;
-    for (auto const type : ml::EnumTraits<EntityType>::values) {
+    for (auto const type : ioj::EnumTraits<EntityType>::values) {
         bounds.set_centre(type, {});
         bounds.set_half_extents(type, Vector3f{{2.f, 2.f, 2.f}});
     }
@@ -57,10 +57,10 @@ TEST(QueryScratch, ExhaustionDoesNotFallBackToHeap) {
     owners.publish();
     SpatialQueryManager manager{owners.entity_tables};
     query_scratch_detail::initialise_queries(manager, owners);
-    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 64> backing{};
-    ml::FrameMemoryResource frame{backing};
+    alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 64> backing{};
+    ioj::FrameMemoryResource frame{backing};
     {
-        ml::FrameScratchScope scope{frame};
+        ioj::FrameScratchScope scope{frame};
         EXPECT_THROW(manager.trace_closest({}, {}, &frame), std::bad_alloc);
         EXPECT_EQ(frame.get_stats().overflow_count, 1u);
         EXPECT_EQ(frame.get_stats().outstanding_allocation_count, 0u);
@@ -75,7 +75,7 @@ TEST(QueryScratch, ConcurrentQueriesAllocateFromSharedFrameAndReleaseBeforeRecla
     query_scratch_detail::initialise_queries(manager, owners);
     query_scratch_detail::FrameBacking frame;
     {
-        ml::FrameScratchScope scope{frame.resource};
+        ioj::FrameScratchScope scope{frame.resource};
         std::barrier start{4};
         std::array<std::jthread, 4> workers;
         for (auto& worker : workers) {
@@ -111,7 +111,7 @@ TEST(QueryScratch, ManagerUsesExplicitScratchAndReleasesQueriesWithinEachEpoch) 
     query_scratch_detail::FrameBacking frame;
     for (int epoch{}; epoch < 3; ++epoch) {
         {
-            ml::FrameScratchScope scratch_scope{frame.resource};
+            ioj::FrameScratchScope scratch_scope{frame.resource};
             auto const persistent_allocations{persistent.allocations.load()};
             auto const hit{
                 manager.trace_closest({{-10.f, 0.f, 0.f}}, {{10.f, 0.f, 0.f}}, &frame.resource)};
@@ -142,7 +142,7 @@ TEST(QueryScratch, PublishedOverlapBatchesSurviveScratchEpochs) {
     // NOLINTBEGIN(ioj-loop-view-accessor-call)
     for (int epoch{}; epoch < 3; ++epoch) {
         {
-            ml::FrameScratchScope scratch_scope{frame.resource};
+            ioj::FrameScratchScope scratch_scope{frame.resource};
             auto const overlaps{manager.detect_overlaps(ids, &frame.resource)};
             ASSERT_EQ(overlaps.entity_entity_overlaps.num(), 1u);
             EXPECT_FALSE(

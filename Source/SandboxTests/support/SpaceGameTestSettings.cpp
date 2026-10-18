@@ -10,7 +10,7 @@ USpaceGameTestSettings::USpaceGameTestSettings() {
     SectionName = TEXT("SpaceGame Tests");
 }
 
-namespace ml {
+namespace ioj {
 auto get_space_game_level_test_time_scale() -> double {
     double value{};
     if (FParse::Value(FCommandLine::Get(), TEXT("SpaceGameTestTimeScale="), value)) {

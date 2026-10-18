@@ -5,7 +5,7 @@
 #include "Engine/UserInterfaceSettings.h"
 #include "UnrealClient.h"
 
-namespace ml {
+namespace ioj {
 
 int32 scale_font_to_umg(int32 font_size) {
     constexpr float slate_dpi{96.0f};
@@ -24,4 +24,4 @@ int32 scale_font_to_umg(int32 font_size) {
     return font_size;
 }
 
-} // namespace ml
+} // namespace ioj

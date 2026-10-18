@@ -11,31 +11,31 @@
 #define WARN_IF_EXPR(BOOL_EXPR)                                 \
     do {                                                        \
         if ((BOOL_EXPR)) {                                      \
-            ml::log_value_is_x(TEXT(#BOOL_EXPR), TEXT("true")); \
+            ioj::log_value_is_x(TEXT(#BOOL_EXPR), TEXT("true")); \
         }                                                       \
     } while (0)
 
 #define RETURN_VALUE_AND_WARN_IF_EXPR(VAR_NAME, BOOL_EXPR, NULL_FORM, RETURN_VALUE) \
     do {                                                                            \
         if (BOOL_EXPR) {                                                            \
-            ml::log_value_is_x(TEXT(#VAR_NAME), TEXT(NULL_FORM));                   \
+            ioj::log_value_is_x(TEXT(#VAR_NAME), TEXT(NULL_FORM));                   \
             return RETURN_VALUE;                                                    \
         }                                                                           \
     } while (0)
 
 #define CONTINUE_AND_WARN_IF_EXPR(VAR_NAME, BOOL_EXPR, NULL_FORM) \
     if (BOOL_EXPR) {                                              \
-        ml::log_value_is_x(TEXT(#VAR_NAME), TEXT(NULL_FORM));     \
+        ioj::log_value_is_x(TEXT(#VAR_NAME), TEXT(NULL_FORM));     \
         continue;                                                 \
     }
 
 #define IF_EXPR_ELSE_WARN(EXPR)                         \
     if (!(EXPR)) {                                      \
-        ml::log_value_is_x(TEXT(#EXPR), TEXT("false")); \
+        ioj::log_value_is_x(TEXT(#EXPR), TEXT("false")); \
     } else
 #define WARN_IF_EXPR_ELSE(EXPR)                         \
     if ((EXPR)) {                                       \
-        ml::log_value_is_x(TEXT(#EXPR), TEXT("false")); \
+        ioj::log_value_is_x(TEXT(#EXPR), TEXT("false")); \
     } else
 
 // Pointers

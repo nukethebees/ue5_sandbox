@@ -9,7 +9,7 @@
 #include "Containers/AllowShrinking.h"
 #include "Containers/ArrayView.h"
 
-namespace ml {
+namespace ioj {
 
 auto FLevelEntityTableConstView::get_view() const -> ConstView {
     return get_view(0, num());
@@ -18,8 +18,8 @@ auto FLevelEntityTableConstView::get_view() const -> ConstView {
 auto FLevelEntityTableConstView::get_view(int32 const offset, int32 const count) const
     -> ConstView {
     return ConstView{
-        TConstArrayView<ml::FLevelEntityId>{ids}.Slice(offset, count),
-        TConstArrayView<ml::FEntityArchetypeId>{archetypes}.Slice(offset, count),
+        TConstArrayView<ioj::FLevelEntityId>{ids}.Slice(offset, count),
+        TConstArrayView<ioj::FEntityArchetypeId>{archetypes}.Slice(offset, count),
         TConstArrayView<::ioj::Team>{teams}.Slice(offset, count),
         positions.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
@@ -34,8 +34,8 @@ auto FLevelEntityTableConstView::get_const_view() const -> ConstView {
 auto FLevelEntityTableConstView::get_const_view(int32 const offset, int32 const count) const
     -> ConstView {
     return ConstView{
-        TConstArrayView<ml::FLevelEntityId>{ids}.Slice(offset, count),
-        TConstArrayView<ml::FEntityArchetypeId>{archetypes}.Slice(offset, count),
+        TConstArrayView<ioj::FLevelEntityId>{ids}.Slice(offset, count),
+        TConstArrayView<ioj::FEntityArchetypeId>{archetypes}.Slice(offset, count),
         TConstArrayView<::ioj::Team>{teams}.Slice(offset, count),
         positions.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
@@ -44,7 +44,7 @@ auto FLevelEntityTableConstView::get_const_view(int32 const offset, int32 const 
 }
 
 auto FLevelEntityTableConstView::num() const noexcept -> int32 {
-    return ml::num(ids);
+    return ioj::num(ids);
 }
 
 auto FLevelEntityTableConstView::is_empty() const noexcept -> bool {
@@ -52,7 +52,7 @@ auto FLevelEntityTableConstView::is_empty() const noexcept -> bool {
 }
 
 void FLevelEntityTableConstView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FLevelEntityTableConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -73,8 +73,8 @@ auto FLevelEntityTableView::get_view() -> View {
 
 auto FLevelEntityTableView::get_view(int32 const offset, int32 const count) -> View {
     return View{
-        TArrayView<ml::FLevelEntityId>{ids}.Slice(offset, count),
-        TArrayView<ml::FEntityArchetypeId>{archetypes}.Slice(offset, count),
+        TArrayView<ioj::FLevelEntityId>{ids}.Slice(offset, count),
+        TArrayView<ioj::FEntityArchetypeId>{archetypes}.Slice(offset, count),
         TArrayView<::ioj::Team>{teams}.Slice(offset, count),
         positions.get_view(offset, count),
         rotations.get_view(offset, count),
@@ -88,8 +88,8 @@ auto FLevelEntityTableView::get_view() const -> ConstView {
 
 auto FLevelEntityTableView::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<ml::FLevelEntityId>{ids}.Slice(offset, count),
-        TConstArrayView<ml::FEntityArchetypeId>{archetypes}.Slice(offset, count),
+        TConstArrayView<ioj::FLevelEntityId>{ids}.Slice(offset, count),
+        TConstArrayView<ioj::FEntityArchetypeId>{archetypes}.Slice(offset, count),
         TConstArrayView<::ioj::Team>{teams}.Slice(offset, count),
         positions.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
@@ -104,8 +104,8 @@ auto FLevelEntityTableView::get_const_view() const -> ConstView {
 auto FLevelEntityTableView::get_const_view(int32 const offset, int32 const count) const
     -> ConstView {
     return ConstView{
-        TConstArrayView<ml::FLevelEntityId>{ids}.Slice(offset, count),
-        TConstArrayView<ml::FEntityArchetypeId>{archetypes}.Slice(offset, count),
+        TConstArrayView<ioj::FLevelEntityId>{ids}.Slice(offset, count),
+        TConstArrayView<ioj::FEntityArchetypeId>{archetypes}.Slice(offset, count),
         TConstArrayView<::ioj::Team>{teams}.Slice(offset, count),
         positions.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
@@ -114,7 +114,7 @@ auto FLevelEntityTableView::get_const_view(int32 const offset, int32 const count
 }
 
 auto FLevelEntityTableView::num() const noexcept -> int32 {
-    return ml::num(ids);
+    return ioj::num(ids);
 }
 
 auto FLevelEntityTableView::is_empty() const noexcept -> bool {
@@ -122,7 +122,7 @@ auto FLevelEntityTableView::is_empty() const noexcept -> bool {
 }
 
 void FLevelEntityTableView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FLevelEntityTableView::slice(int32 const offset, int32 const count) -> View {
@@ -150,27 +150,27 @@ auto FLevelEntityTableView::right(int32 const count) const -> ConstView {
 }
 
 void FLevelEntityTable::reset() {
-    ml::soa_ops::reset(*this);
+    ioj::soa_ops::reset(*this);
 }
 
 void FLevelEntityTable::reserve(int32 const count) {
-    ml::soa_ops::reserve(*this, count);
+    ioj::soa_ops::reserve(*this, count);
 }
 
 void FLevelEntityTable::add_uninitialised(int32 const count) {
-    ml::soa_ops::add_uninitialised(*this, count);
+    ioj::soa_ops::add_uninitialised(*this, count);
 }
 
 void FLevelEntityTable::add_defaulted(int32 const count) {
-    ml::soa_ops::add_defaulted(*this, count);
+    ioj::soa_ops::add_defaulted(*this, count);
 }
 
 void FLevelEntityTable::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::soa_ops::set_num(*this, count, allow_shrinking);
+    ioj::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void FLevelEntityTable::apply_permutation(TArrayView<int32> indices) {
-    ml::soa_ops::apply_permutation(*this, indices);
+    ioj::soa_ops::apply_permutation(*this, indices);
 }
 
 auto FLevelEntityTable::get_view() -> View {
@@ -179,8 +179,8 @@ auto FLevelEntityTable::get_view() -> View {
 
 auto FLevelEntityTable::get_view(int32 const offset, int32 const count) -> View {
     return View{
-        TArrayView<ml::FLevelEntityId>{ids}.Slice(offset, count),
-        TArrayView<ml::FEntityArchetypeId>{archetypes}.Slice(offset, count),
+        TArrayView<ioj::FLevelEntityId>{ids}.Slice(offset, count),
+        TArrayView<ioj::FEntityArchetypeId>{archetypes}.Slice(offset, count),
         TArrayView<::ioj::Team>{teams}.Slice(offset, count),
         positions.get_view(offset, count),
         rotations.get_view(offset, count),
@@ -194,8 +194,8 @@ auto FLevelEntityTable::get_view() const -> ConstView {
 
 auto FLevelEntityTable::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<ml::FLevelEntityId>{ids}.Slice(offset, count),
-        TConstArrayView<ml::FEntityArchetypeId>{archetypes}.Slice(offset, count),
+        TConstArrayView<ioj::FLevelEntityId>{ids}.Slice(offset, count),
+        TConstArrayView<ioj::FEntityArchetypeId>{archetypes}.Slice(offset, count),
         TConstArrayView<::ioj::Team>{teams}.Slice(offset, count),
         positions.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
@@ -209,8 +209,8 @@ auto FLevelEntityTable::get_const_view() const -> ConstView {
 
 auto FLevelEntityTable::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<ml::FLevelEntityId>{ids}.Slice(offset, count),
-        TConstArrayView<ml::FEntityArchetypeId>{archetypes}.Slice(offset, count),
+        TConstArrayView<ioj::FLevelEntityId>{ids}.Slice(offset, count),
+        TConstArrayView<ioj::FEntityArchetypeId>{archetypes}.Slice(offset, count),
         TConstArrayView<::ioj::Team>{teams}.Slice(offset, count),
         positions.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
@@ -219,7 +219,7 @@ auto FLevelEntityTable::get_const_view(int32 const offset, int32 const count) co
 }
 
 auto FLevelEntityTable::num() const noexcept -> int32 {
-    return ml::num(ids);
+    return ioj::num(ids);
 }
 
 auto FLevelEntityTable::is_empty() const noexcept -> bool {
@@ -227,7 +227,7 @@ auto FLevelEntityTable::is_empty() const noexcept -> bool {
 }
 
 void FLevelEntityTable::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FLevelEntityTable::slice(int32 const offset, int32 const count) -> View {
@@ -253,4 +253,4 @@ auto FLevelEntityTable::left(int32 const count) const -> ConstView {
 auto FLevelEntityTable::right(int32 const count) const -> ConstView {
     return slice(num() - count, count);
 }
-} // namespace ml
+} // namespace ioj

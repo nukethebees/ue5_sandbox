@@ -1,6 +1,6 @@
 #include <SandboxCore/string.h>
 
-namespace ml {
+namespace ioj {
 auto without_class_prefix(FString const& input) -> FString {
     FString out{};
 

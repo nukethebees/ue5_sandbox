@@ -6,31 +6,31 @@
 #include <limits>
 
 namespace {
-auto contains_error(ml::FLevelValidationResult const& result,
-                    ml::ELevelValidationErrorCode const code) -> bool {
+auto contains_error(ioj::FLevelValidationResult const& result,
+                    ioj::ELevelValidationErrorCode const code) -> bool {
     return result.errors.ContainsByPredicate(
-        [code](ml::FLevelValidationError const& error) { return error.code == code; });
+        [code](ioj::FLevelValidationError const& error) { return error.code == code; });
 }
 
-auto make_camera_level() -> ml::FLevelDefinition {
-    ml::FLevelBuilder builder;
-    builder.set_metadata(ml::FLevelMetadata{.id = ml::FLevelId{FName{TEXT("camera-level")}},
+auto make_camera_level() -> ioj::FLevelDefinition {
+    ioj::FLevelBuilder builder;
+    builder.set_metadata(ioj::FLevelMetadata{.id = ioj::FLevelId{FName{TEXT("camera-level")}},
                                             .title = TEXT("Camera Level")});
-    builder.add_entity(ml::FEntitySpawnDefinition{
-        .id = ml::FLevelEntityId{FName{TEXT("blue-capital")}},
-        .archetype = ml::level_archetypes::capital_ship,
+    builder.add_entity(ioj::FEntitySpawnDefinition{
+        .id = ioj::FLevelEntityId{FName{TEXT("blue-capital")}},
+        .archetype = ioj::level_archetypes::capital_ship,
         .team = ::ioj::Team::Blue,
         .position = FVector{-1000.0, 0.0, 0.0},
     });
-    builder.add_entity(ml::FEntitySpawnDefinition{
-        .id = ml::FLevelEntityId{FName{TEXT("red-capital")}},
-        .archetype = ml::level_archetypes::capital_ship,
+    builder.add_entity(ioj::FEntitySpawnDefinition{
+        .id = ioj::FLevelEntityId{FName{TEXT("red-capital")}},
+        .archetype = ioj::level_archetypes::capital_ship,
         .team = ::ioj::Team::Red,
         .position = FVector{1000.0, 0.0, 0.0},
     });
-    builder.set_camera(ml::FLevelCameraDefinition{
-        .target_entity_ids = {ml::FLevelEntityId{FName{TEXT("blue-capital")}},
-                              ml::FLevelEntityId{FName{TEXT("red-capital")}}},
+    builder.set_camera(ioj::FLevelCameraDefinition{
+        .target_entity_ids = {ioj::FLevelEntityId{FName{TEXT("blue-capital")}},
+                              ioj::FLevelEntityId{FName{TEXT("red-capital")}}},
         .offset_direction = FVector{-1.0, -1.0, 0.5},
         .distance = 10000.0,
     });
@@ -42,8 +42,8 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
 {
     TEST_METHOD(BuilderConstructsValidSoALevel)
     {
-        auto const definition{ml::example_levels::make_native_example()};
-        auto const validation{ml::validate_level(definition)};
+        auto const definition{ioj::example_levels::make_native_example()};
+        auto const validation{ioj::validate_level(definition)};
 
         TestRunner->TestTrue(TEXT("Definition is valid"), static_cast<bool>(validation));
         TestRunner->TestEqual(
@@ -53,13 +53,13 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
         TestRunner->TestFalse(TEXT("Omitted par time remains unset"),
                               definition.metadata.par_time_seconds.IsSet());
         TestRunner->TestTrue(TEXT("Stable level id is preserved"),
-                             definition.metadata.id == ml::FLevelId{FName{TEXT("native-example")}});
+                             definition.metadata.id == ioj::FLevelId{FName{TEXT("native-example")}});
         TestRunner->TestTrue(TEXT("Player id is preserved"),
                              definition.player_entity_id ==
-                                 ml::FLevelEntityId{FName{TEXT("player")}});
+                                 ioj::FLevelEntityId{FName{TEXT("player")}});
         TestRunner->TestTrue(TEXT("Player archetype is preserved"),
                              definition.entities.archetypes[0] ==
-                                 ml::level_archetypes::player_fighter);
+                                 ioj::level_archetypes::player_fighter);
         TestRunner->TestTrue(TEXT("Player team is preserved"),
                              definition.entities.teams[0] == ::ioj::Team::Blue);
         TestRunner->TestTrue(TEXT("Player position is preserved"),
@@ -67,7 +67,7 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
                                  FVector{0.0, -25000.0, 1000.0}));
         TestRunner->TestTrue(TEXT("Turret archetype is preserved"),
                              definition.entities.archetypes[3] ==
-                                 ml::level_archetypes::static_turret);
+                                 ioj::level_archetypes::static_turret);
         if (TestRunner->TestTrue(TEXT("Mission is preserved"), definition.mission.IsSet())) {
             auto const& mission{definition.mission.GetValue()};
             TestRunner->TestTrue(TEXT("Mission mode is preserved"),
@@ -84,20 +84,20 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(UnsupportedTeamFailsValidation)
     {
-        auto definition{ml::example_levels::make_native_example()};
+        auto definition{ioj::example_levels::make_native_example()};
         definition.entities.teams[1] = static_cast<::ioj::Team>(255);
 
-        auto const validation{ml::validate_level(definition)};
+        auto const validation{ioj::validate_level(definition)};
         TestRunner->TestFalse(TEXT("Definition is invalid"), static_cast<bool>(validation));
         TestRunner->TestTrue(
             TEXT("Unknown team is reported"),
-            contains_error(validation, ml::ELevelValidationErrorCode::UnsupportedTeam));
+            contains_error(validation, ioj::ELevelValidationErrorCode::UnsupportedTeam));
     }
 
     TEST_METHOD(BuilderConstructsValidPlayerlessCameraLevel)
     {
         auto const definition{make_camera_level()};
-        auto const validation{ml::validate_level(definition)};
+        auto const validation{ioj::validate_level(definition)};
 
         TestRunner->TestTrue(TEXT("Camera definition is valid"), static_cast<bool>(validation));
         TestRunner->TestFalse(TEXT("Camera definition has no player"),
@@ -115,34 +115,34 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(ParTimeRequiresAPositivePlayerMissionTarget)
     {
-        auto valid{ml::example_levels::make_native_example()};
+        auto valid{ioj::example_levels::make_native_example()};
         valid.metadata.par_time_seconds = 45.0f;
         TestRunner->TestTrue(TEXT("Positive mission par time is valid"),
-                             static_cast<bool>(ml::validate_level(valid)));
+                             static_cast<bool>(ioj::validate_level(valid)));
 
         auto zero{valid};
         zero.metadata.par_time_seconds = 0.0f;
         TestRunner->TestTrue(TEXT("Zero par time is rejected"),
-                             contains_error(ml::validate_level(zero),
-                                            ml::ELevelValidationErrorCode::InvalidParTime));
+                             contains_error(ioj::validate_level(zero),
+                                            ioj::ELevelValidationErrorCode::InvalidParTime));
 
         auto negative{valid};
         negative.metadata.par_time_seconds = -1.0f;
         TestRunner->TestTrue(TEXT("Negative par time is rejected"),
-                             contains_error(ml::validate_level(negative),
-                                            ml::ELevelValidationErrorCode::InvalidParTime));
+                             contains_error(ioj::validate_level(negative),
+                                            ioj::ELevelValidationErrorCode::InvalidParTime));
 
         auto non_finite{valid};
         non_finite.metadata.par_time_seconds = std::numeric_limits<float>::infinity();
         TestRunner->TestTrue(TEXT("Non-finite par time is rejected"),
-                             contains_error(ml::validate_level(non_finite),
-                                            ml::ELevelValidationErrorCode::InvalidParTime));
+                             contains_error(ioj::validate_level(non_finite),
+                                            ioj::ELevelValidationErrorCode::InvalidParTime));
 
         auto playerless{make_camera_level()};
         playerless.metadata.par_time_seconds = 45.0f;
         TestRunner->TestTrue(TEXT("Playerless level par time is rejected"),
-                             contains_error(ml::validate_level(playerless),
-                                            ml::ELevelValidationErrorCode::UnexpectedParTime));
+                             contains_error(ioj::validate_level(playerless),
+                                            ioj::ELevelValidationErrorCode::UnexpectedParTime));
     }
 
     TEST_METHOD(CameraCanTargetOneEntity)
@@ -150,18 +150,18 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
         auto definition{make_camera_level()};
         definition.camera->target_entity_ids.SetNum(1);
 
-        auto const validation{ml::validate_level(definition)};
+        auto const validation{ioj::validate_level(definition)};
         TestRunner->TestTrue(TEXT("Single-target camera is valid"), static_cast<bool>(validation));
     }
 
     TEST_METHOD(BuilderCanBeReused)
     {
-        ml::FLevelBuilder builder;
+        ioj::FLevelBuilder builder;
         builder.set_metadata(
-            ml::FLevelMetadata{.id = ml::FLevelId{FName{TEXT("first")}}, .title = TEXT("First")});
-        auto const first_player{builder.add_entity(ml::FEntitySpawnDefinition{
-            .id = ml::FLevelEntityId{FName{TEXT("first-player")}},
-            .archetype = ml::level_archetypes::player_fighter,
+            ioj::FLevelMetadata{.id = ioj::FLevelId{FName{TEXT("first")}}, .title = TEXT("First")});
+        auto const first_player{builder.add_entity(ioj::FEntitySpawnDefinition{
+            .id = ioj::FLevelEntityId{FName{TEXT("first-player")}},
+            .archetype = ioj::level_archetypes::player_fighter,
             .team = ::ioj::Team::Blue,
             .position = FVector{10.0, 20.0, 30.0},
         })};
@@ -169,7 +169,7 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
 
         auto const first{builder.finish()};
         TestRunner->TestTrue(TEXT("First definition is valid"),
-                             static_cast<bool>(ml::validate_level(first)));
+                             static_cast<bool>(ioj::validate_level(first)));
         TestRunner->TestEqual(TEXT("First definition has one row"), first.entities.num(), 1);
         TestRunner->TestTrue(TEXT("Player references the authored entity"),
                              first.player_entity_id == first_player);
@@ -178,17 +178,17 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
             first.entities.positions.get_const_view()[0].Equals(FVector{10.0, 20.0, 30.0}));
 
         builder.set_metadata(
-            ml::FLevelMetadata{.id = ml::FLevelId{FName{TEXT("second")}}, .title = TEXT("Second")});
-        auto const second_player{builder.add_entity(ml::FEntitySpawnDefinition{
-            .id = ml::FLevelEntityId{FName{TEXT("second-player")}},
-            .archetype = ml::level_archetypes::player_fighter,
+            ioj::FLevelMetadata{.id = ioj::FLevelId{FName{TEXT("second")}}, .title = TEXT("Second")});
+        auto const second_player{builder.add_entity(ioj::FEntitySpawnDefinition{
+            .id = ioj::FLevelEntityId{FName{TEXT("second-player")}},
+            .archetype = ioj::level_archetypes::player_fighter,
             .team = ::ioj::Team::Red,
         })};
         builder.set_player_entity(second_player);
         auto const second{builder.finish()};
 
         TestRunner->TestTrue(TEXT("Reused builder produces a valid definition"),
-                             static_cast<bool>(ml::validate_level(second)));
+                             static_cast<bool>(ioj::validate_level(second)));
         TestRunner->TestEqual(
             TEXT("Reused builder starts with empty entity storage"), second.entities.num(), 1);
         TestRunner->TestEqual(TEXT("Reused builder replaces metadata"),
@@ -198,45 +198,45 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(DuplicateAuthoredEntityIdFailsValidation)
     {
-        auto definition{ml::example_levels::make_native_example()};
+        auto definition{ioj::example_levels::make_native_example()};
         definition.entities.ids[1] = definition.player_entity_id;
 
-        auto const validation{ml::validate_level(definition)};
+        auto const validation{ioj::validate_level(definition)};
         TestRunner->TestFalse(TEXT("Definition is invalid"), static_cast<bool>(validation));
         TestRunner->TestTrue(
             TEXT("Duplicate entity id is reported"),
-            contains_error(validation, ml::ELevelValidationErrorCode::DuplicateEntityId));
+            contains_error(validation, ioj::ELevelValidationErrorCode::DuplicateEntityId));
     }
 
     TEST_METHOD(BuilderReuseClearsCameraState)
     {
-        ml::FLevelBuilder builder;
+        ioj::FLevelBuilder builder;
         builder.set_metadata(
-            ml::FLevelMetadata{.id = ml::FLevelId{FName{TEXT("camera")}}, .title = TEXT("Camera")});
-        builder.add_entity(ml::FEntitySpawnDefinition{
-            .id = ml::FLevelEntityId{FName{TEXT("capital")}},
-            .archetype = ml::level_archetypes::capital_ship,
+            ioj::FLevelMetadata{.id = ioj::FLevelId{FName{TEXT("camera")}}, .title = TEXT("Camera")});
+        builder.add_entity(ioj::FEntitySpawnDefinition{
+            .id = ioj::FLevelEntityId{FName{TEXT("capital")}},
+            .archetype = ioj::level_archetypes::capital_ship,
             .team = ::ioj::Team::Blue,
         });
-        builder.set_camera(ml::FLevelCameraDefinition{
-            .target_entity_ids = {ml::FLevelEntityId{FName{TEXT("capital")}}},
+        builder.set_camera(ioj::FLevelCameraDefinition{
+            .target_entity_ids = {ioj::FLevelEntityId{FName{TEXT("capital")}}},
             .offset_direction = FVector{-1.0, 0.0, 0.0},
             .distance = 1000.0,
         });
-        builder.set_mission(ml::FLevelMissionDefinition{
+        builder.set_mission(ioj::FLevelMissionDefinition{
             .mode = ::ioj::levels::LevelMissionMode::SurviveTime,
             .time_limit_seconds = 10.0f,
-            .must_survive_entity_ids = {ml::FLevelEntityId{FName{TEXT("capital")}}},
+            .must_survive_entity_ids = {ioj::FLevelEntityId{FName{TEXT("capital")}}},
         });
         auto const camera_level{builder.finish()};
         TestRunner->TestTrue(TEXT("First definition has a camera"), camera_level.camera.IsSet());
         TestRunner->TestTrue(TEXT("First definition has a mission"), camera_level.mission.IsSet());
 
         builder.set_metadata(
-            ml::FLevelMetadata{.id = ml::FLevelId{FName{TEXT("player")}}, .title = TEXT("Player")});
-        auto const player_id{builder.add_entity(ml::FEntitySpawnDefinition{
-            .id = ml::FLevelEntityId{FName{TEXT("player")}},
-            .archetype = ml::level_archetypes::player_fighter,
+            ioj::FLevelMetadata{.id = ioj::FLevelId{FName{TEXT("player")}}, .title = TEXT("Player")});
+        auto const player_id{builder.add_entity(ioj::FEntitySpawnDefinition{
+            .id = ioj::FLevelEntityId{FName{TEXT("player")}},
+            .archetype = ioj::level_archetypes::player_fighter,
             .team = ::ioj::Team::Blue,
         })};
         builder.set_player_entity(player_id);
@@ -247,212 +247,212 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
         TestRunner->TestFalse(TEXT("Reused builder clears the mission"),
                               player_level.mission.IsSet());
         TestRunner->TestTrue(TEXT("Reused builder definition is valid"),
-                             static_cast<bool>(ml::validate_level(player_level)));
+                             static_cast<bool>(ioj::validate_level(player_level)));
     }
 
     TEST_METHOD(MissionModeRequirementsAreValidated)
     {
-        auto missing_mode{ml::example_levels::make_native_example()};
+        auto missing_mode{ioj::example_levels::make_native_example()};
         missing_mode.mission->mode = ::ioj::levels::LevelMissionMode::Unspecified;
-        auto const missing_mode_validation{ml::validate_level(missing_mode)};
+        auto const missing_mode_validation{ioj::validate_level(missing_mode)};
         TestRunner->TestTrue(TEXT("Missing mission mode is reported"),
                              contains_error(missing_mode_validation,
-                                            ml::ELevelValidationErrorCode::MissingMissionMode));
+                                            ioj::ELevelValidationErrorCode::MissingMissionMode));
 
-        auto missing_time{ml::example_levels::make_native_example()};
+        auto missing_time{ioj::example_levels::make_native_example()};
         missing_time.mission->mode = ::ioj::levels::LevelMissionMode::KillEnemiesWithinTime;
-        auto const missing_time_validation{ml::validate_level(missing_time)};
+        auto const missing_time_validation{ioj::validate_level(missing_time)};
         TestRunner->TestTrue(
             TEXT("Missing timed mission limit is reported"),
             contains_error(missing_time_validation,
-                           ml::ELevelValidationErrorCode::InvalidMissionTimeLimit));
+                           ioj::ELevelValidationErrorCode::InvalidMissionTimeLimit));
 
-        auto missing_heroes{ml::example_levels::make_native_example()};
+        auto missing_heroes{ioj::example_levels::make_native_example()};
         missing_heroes.mission->hero_entity_ids.Reset();
-        auto const missing_heroes_validation{ml::validate_level(missing_heroes)};
+        auto const missing_heroes_validation{ioj::validate_level(missing_heroes)};
         TestRunner->TestTrue(TEXT("Missing kill mission heroes are reported"),
                              contains_error(missing_heroes_validation,
-                                            ml::ELevelValidationErrorCode::MissingMissionHeroes));
+                                            ioj::ELevelValidationErrorCode::MissingMissionHeroes));
 
-        auto invalid_count{ml::example_levels::make_native_example()};
+        auto invalid_count{ioj::example_levels::make_native_example()};
         invalid_count.mission->kill_count = 0;
-        auto const invalid_count_validation{ml::validate_level(invalid_count)};
+        auto const invalid_count_validation{ioj::validate_level(invalid_count)};
         TestRunner->TestTrue(
             TEXT("Non-positive explicit kill count is reported"),
             contains_error(invalid_count_validation,
-                           ml::ELevelValidationErrorCode::InvalidMissionKillCount));
+                           ioj::ELevelValidationErrorCode::InvalidMissionKillCount));
 
-        auto unexpected_time{ml::example_levels::make_native_example()};
+        auto unexpected_time{ioj::example_levels::make_native_example()};
         unexpected_time.mission->time_limit_seconds = 10.0f;
-        auto const unexpected_time_validation{ml::validate_level(unexpected_time)};
+        auto const unexpected_time_validation{ioj::validate_level(unexpected_time)};
         TestRunner->TestTrue(
             TEXT("Untimed mission rejects a time limit"),
             contains_error(unexpected_time_validation,
-                           ml::ELevelValidationErrorCode::UnexpectedMissionTimeLimit));
+                           ioj::ELevelValidationErrorCode::UnexpectedMissionTimeLimit));
 
-        auto survive{ml::example_levels::make_native_example()};
-        survive.mission = ml::FLevelMissionDefinition{
+        auto survive{ioj::example_levels::make_native_example()};
+        survive.mission = ioj::FLevelMissionDefinition{
             .mode = ::ioj::levels::LevelMissionMode::SurviveTime,
             .time_limit_seconds = 10.0f,
             .kill_count = 1,
         };
-        auto const survive_validation{ml::validate_level(survive)};
+        auto const survive_validation{ioj::validate_level(survive)};
         TestRunner->TestTrue(
             TEXT("Survive mission requires a protected entity"),
             contains_error(survive_validation,
-                           ml::ELevelValidationErrorCode::MissingMissionSurvivors));
+                           ioj::ELevelValidationErrorCode::MissingMissionSurvivors));
         TestRunner->TestTrue(
             TEXT("Survive mission rejects a kill count"),
             contains_error(survive_validation,
-                           ml::ELevelValidationErrorCode::UnexpectedMissionKillCount));
+                           ioj::ELevelValidationErrorCode::UnexpectedMissionKillCount));
     }
 
     TEST_METHOD(MissionEntityReferencesAreValidated)
     {
-        auto unknown{ml::example_levels::make_native_example()};
-        unknown.mission->must_survive_entity_ids[0] = ml::FLevelEntityId{FName{TEXT("missing")}};
-        auto const unknown_validation{ml::validate_level(unknown)};
+        auto unknown{ioj::example_levels::make_native_example()};
+        unknown.mission->must_survive_entity_ids[0] = ioj::FLevelEntityId{FName{TEXT("missing")}};
+        auto const unknown_validation{ioj::validate_level(unknown)};
         TestRunner->TestTrue(TEXT("Unknown mission entity is reported"),
                              contains_error(unknown_validation,
-                                            ml::ELevelValidationErrorCode::MissionEntityNotFound));
+                                            ioj::ELevelValidationErrorCode::MissionEntityNotFound));
 
-        auto duplicate{ml::example_levels::make_native_example()};
+        auto duplicate{ioj::example_levels::make_native_example()};
         auto const duplicate_hero{duplicate.mission->hero_entity_ids[0]};
         duplicate.mission->hero_entity_ids.Add(duplicate_hero);
-        auto const duplicate_validation{ml::validate_level(duplicate)};
+        auto const duplicate_validation{ioj::validate_level(duplicate)};
         TestRunner->TestTrue(
             TEXT("Duplicate mission entity is reported"),
             contains_error(duplicate_validation,
-                           ml::ELevelValidationErrorCode::DuplicateMissionEntityReference));
+                           ioj::ELevelValidationErrorCode::DuplicateMissionEntityReference));
 
-        auto conflicting{ml::example_levels::make_native_example()};
+        auto conflicting{ioj::example_levels::make_native_example()};
         conflicting.mission->hero_entity_ids.Add(conflicting.mission->required_kill_entity_ids[0]);
-        auto const conflicting_validation{ml::validate_level(conflicting)};
+        auto const conflicting_validation{ioj::validate_level(conflicting)};
         TestRunner->TestTrue(
             TEXT("Conflicting mission roles are reported"),
             contains_error(conflicting_validation,
-                           ml::ELevelValidationErrorCode::ConflictingMissionEntityRoles));
+                           ioj::ELevelValidationErrorCode::ConflictingMissionEntityRoles));
 
-        auto ambiguous_teams{ml::example_levels::make_native_example()};
-        ambiguous_teams.mission->hero_entity_ids.Add(ml::FLevelEntityId{FName{TEXT("red-turret")}});
-        auto const ambiguous_teams_validation{ml::validate_level(ambiguous_teams)};
+        auto ambiguous_teams{ioj::example_levels::make_native_example()};
+        ambiguous_teams.mission->hero_entity_ids.Add(ioj::FLevelEntityId{FName{TEXT("red-turret")}});
+        auto const ambiguous_teams_validation{ioj::validate_level(ambiguous_teams)};
         TestRunner->TestTrue(
             TEXT("Automatic count requires one hero team"),
             contains_error(ambiguous_teams_validation,
-                           ml::ELevelValidationErrorCode::AmbiguousAutomaticKillTeams));
+                           ioj::ELevelValidationErrorCode::AmbiguousAutomaticKillTeams));
     }
 
     TEST_METHOD(MalformedDefinitionsReportStructuredErrors)
     {
-        auto missing_id{ml::example_levels::make_native_example()};
+        auto missing_id{ioj::example_levels::make_native_example()};
         missing_id.metadata.id = {};
-        auto const missing_id_validation{ml::validate_level(missing_id)};
+        auto const missing_id_validation{ioj::validate_level(missing_id)};
         TestRunner->TestTrue(
             TEXT("Missing stable id is reported"),
-            contains_error(missing_id_validation, ml::ELevelValidationErrorCode::MissingLevelId));
+            contains_error(missing_id_validation, ioj::ELevelValidationErrorCode::MissingLevelId));
 
-        auto missing_player{ml::example_levels::make_native_example()};
+        auto missing_player{ioj::example_levels::make_native_example()};
         missing_player.player_entity_id = {};
-        auto const missing_player_validation{ml::validate_level(missing_player)};
+        auto const missing_player_validation{ioj::validate_level(missing_player)};
         TestRunner->TestTrue(TEXT("Missing viewpoint is reported"),
                              contains_error(missing_player_validation,
-                                            ml::ELevelValidationErrorCode::MissingViewpoint));
+                                            ioj::ELevelValidationErrorCode::MissingViewpoint));
 
-        auto unsupported_archetype{ml::example_levels::make_native_example()};
+        auto unsupported_archetype{ioj::example_levels::make_native_example()};
         unsupported_archetype.entities.archetypes[1] =
-            ml::FEntityArchetypeId{FName{TEXT("pirate-fighter")}};
-        auto const unsupported_archetype_validation{ml::validate_level(unsupported_archetype)};
+            ioj::FEntityArchetypeId{FName{TEXT("pirate-fighter")}};
+        auto const unsupported_archetype_validation{ioj::validate_level(unsupported_archetype)};
         TestRunner->TestTrue(TEXT("Unsupported archetype is reported"),
                              contains_error(unsupported_archetype_validation,
-                                            ml::ELevelValidationErrorCode::UnsupportedArchetype));
+                                            ioj::ELevelValidationErrorCode::UnsupportedArchetype));
 
-        auto invalid_placement{ml::example_levels::make_native_example()};
+        auto invalid_placement{ioj::example_levels::make_native_example()};
         invalid_placement.entities.positions.xs[1] = std::numeric_limits<double>::quiet_NaN();
-        auto const invalid_placement_validation{ml::validate_level(invalid_placement)};
+        auto const invalid_placement_validation{ioj::validate_level(invalid_placement)};
         TestRunner->TestTrue(TEXT("Invalid placement is reported"),
                              contains_error(invalid_placement_validation,
-                                            ml::ELevelValidationErrorCode::InvalidPlacement));
+                                            ioj::ELevelValidationErrorCode::InvalidPlacement));
 
-        auto mismatched_columns{ml::example_levels::make_native_example()};
+        auto mismatched_columns{ioj::example_levels::make_native_example()};
         mismatched_columns.entities.teams.Pop();
-        auto const mismatched_columns_validation{ml::validate_level(mismatched_columns)};
+        auto const mismatched_columns_validation{ioj::validate_level(mismatched_columns)};
         TestRunner->TestTrue(
             TEXT("Mismatched columns are reported"),
             contains_error(mismatched_columns_validation,
-                           ml::ELevelValidationErrorCode::MismatchedEntityColumns));
+                           ioj::ELevelValidationErrorCode::MismatchedEntityColumns));
     }
 
     TEST_METHOD(CameraAndPlayerAreMutuallyExclusive)
     {
-        auto both{ml::example_levels::make_native_example()};
+        auto both{ioj::example_levels::make_native_example()};
         both.camera = make_camera_level().camera;
-        auto const both_validation{ml::validate_level(both)};
+        auto const both_validation{ioj::validate_level(both)};
         TestRunner->TestTrue(
             TEXT("Player and camera conflict is reported"),
-            contains_error(both_validation, ml::ELevelValidationErrorCode::ConflictingViewpoints));
+            contains_error(both_validation, ioj::ELevelValidationErrorCode::ConflictingViewpoints));
 
         auto neither{make_camera_level()};
         neither.camera.Reset();
-        auto const neither_validation{ml::validate_level(neither)};
+        auto const neither_validation{ioj::validate_level(neither)};
         TestRunner->TestTrue(
             TEXT("Missing viewpoint is reported"),
-            contains_error(neither_validation, ml::ELevelValidationErrorCode::MissingViewpoint));
+            contains_error(neither_validation, ioj::ELevelValidationErrorCode::MissingViewpoint));
     }
 
     TEST_METHOD(CameraTargetsMustBeUniqueDeclaredEntities)
     {
         auto duplicate{make_camera_level()};
         duplicate.camera->target_entity_ids[1] = duplicate.camera->target_entity_ids[0];
-        auto const duplicate_validation{ml::validate_level(duplicate)};
+        auto const duplicate_validation{ioj::validate_level(duplicate)};
         TestRunner->TestTrue(TEXT("Duplicate camera target is reported"),
                              contains_error(duplicate_validation,
-                                            ml::ELevelValidationErrorCode::DuplicateCameraTarget));
+                                            ioj::ELevelValidationErrorCode::DuplicateCameraTarget));
 
         auto unknown{make_camera_level()};
-        unknown.camera->target_entity_ids[0] = ml::FLevelEntityId{FName{TEXT("missing-capital")}};
-        auto const unknown_validation{ml::validate_level(unknown)};
+        unknown.camera->target_entity_ids[0] = ioj::FLevelEntityId{FName{TEXT("missing-capital")}};
+        auto const unknown_validation{ioj::validate_level(unknown)};
         TestRunner->TestTrue(TEXT("Unknown camera target is reported"),
                              contains_error(unknown_validation,
-                                            ml::ELevelValidationErrorCode::CameraTargetNotFound));
+                                            ioj::ELevelValidationErrorCode::CameraTargetNotFound));
 
         auto empty{make_camera_level()};
         empty.camera->target_entity_ids.Reset();
-        auto const empty_validation{ml::validate_level(empty)};
+        auto const empty_validation{ioj::validate_level(empty)};
         TestRunner->TestTrue(
             TEXT("Missing camera target is reported"),
-            contains_error(empty_validation, ml::ELevelValidationErrorCode::MissingCameraTarget));
+            contains_error(empty_validation, ioj::ELevelValidationErrorCode::MissingCameraTarget));
     }
 
     TEST_METHOD(CameraPlacementMustBeFiniteAndNonZero)
     {
         auto invalid_distance{make_camera_level()};
         invalid_distance.camera->distance = 0.0;
-        auto const distance_validation{ml::validate_level(invalid_distance)};
+        auto const distance_validation{ioj::validate_level(invalid_distance)};
         TestRunner->TestTrue(TEXT("Invalid camera distance is reported"),
                              contains_error(distance_validation,
-                                            ml::ELevelValidationErrorCode::InvalidCameraDistance));
+                                            ioj::ELevelValidationErrorCode::InvalidCameraDistance));
 
         auto invalid_direction{make_camera_level()};
         invalid_direction.camera->offset_direction = FVector::ZeroVector;
-        auto const direction_validation{ml::validate_level(invalid_direction)};
+        auto const direction_validation{ioj::validate_level(invalid_direction)};
         TestRunner->TestTrue(
             TEXT("Invalid camera direction is reported"),
             contains_error(direction_validation,
-                           ml::ELevelValidationErrorCode::InvalidCameraOffsetDirection));
+                           ioj::ELevelValidationErrorCode::InvalidCameraOffsetDirection));
 
         auto non_finite_distance{make_camera_level()};
         non_finite_distance.camera->distance = std::numeric_limits<double>::infinity();
-        auto const non_finite_distance_validation{ml::validate_level(non_finite_distance)};
+        auto const non_finite_distance_validation{ioj::validate_level(non_finite_distance)};
         TestRunner->TestTrue(TEXT("Non-finite camera distance is reported"),
                              contains_error(non_finite_distance_validation,
-                                            ml::ELevelValidationErrorCode::InvalidCameraDistance));
+                                            ioj::ELevelValidationErrorCode::InvalidCameraDistance));
 
         auto non_finite_direction{make_camera_level()};
         non_finite_direction.camera->offset_direction.X = std::numeric_limits<double>::quiet_NaN();
-        auto const non_finite_direction_validation{ml::validate_level(non_finite_direction)};
+        auto const non_finite_direction_validation{ioj::validate_level(non_finite_direction)};
         TestRunner->TestTrue(
             TEXT("Non-finite camera direction is reported"),
             contains_error(non_finite_direction_validation,
-                           ml::ELevelValidationErrorCode::InvalidCameraOffsetDirection));
+                           ioj::ELevelValidationErrorCode::InvalidCameraOffsetDirection));
     }
 };

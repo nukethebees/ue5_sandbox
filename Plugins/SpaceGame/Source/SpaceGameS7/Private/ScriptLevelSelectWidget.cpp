@@ -13,7 +13,7 @@
 #include <Kismet/GameplayStatics.h>
 #include <Misc/FileHelper.h>
 
-namespace ml::s7 {
+namespace ioj::s7 {
 using ioj::levels::authoring::catalog_category;
 using ioj::levels::authoring::ELevelCatalogCategory;
 using ioj::levels::authoring::FLevelScriptEntry;
@@ -572,4 +572,4 @@ void UScriptLevelSelectWidget::launch_selected_level(ioj::FLevelLaunchOptions op
     publish_view();
     UGameplayStatics::OpenLevel(this, FName{TEXT("/SpaceGame/Levels/GameRuntime")});
 }
-} // namespace ml::s7
+} // namespace ioj::s7

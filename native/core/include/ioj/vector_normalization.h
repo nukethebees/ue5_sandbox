@@ -5,7 +5,7 @@
 
 #include <cmath>
 
-namespace ml::native_math {
+namespace ioj::native_math {
 template <std::floating_point T>
 void safe_normal_components(T& x, T& y, T& z, T const squared_tolerance = T{1.e-8}) noexcept {
     auto const length_squared{size_squared(x, y, z)};

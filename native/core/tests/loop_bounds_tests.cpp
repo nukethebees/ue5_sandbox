@@ -10,9 +10,9 @@ namespace {
 void expect_bounds(std::int32_t const begin,
                    std::int32_t const end,
                    std::int32_t const offset,
-                   ml::FLoopBounds const first,
-                   ml::FLoopBounds const second) {
-    auto const bounds{ml::make_rotated_loop_bounds(begin, end, offset)};
+                   ioj::FLoopBounds const first,
+                   ioj::FLoopBounds const second) {
+    auto const bounds{ioj::make_rotated_loop_bounds(begin, end, offset)};
     EXPECT_EQ(bounds[0].begin, first.begin);
     EXPECT_EQ(bounds[0].end, first.end);
     EXPECT_EQ(bounds[1].begin, second.begin);
@@ -21,7 +21,7 @@ void expect_bounds(std::int32_t const begin,
 
 void expect_sequence(std::int32_t const begin, std::int32_t const end, std::int32_t const offset) {
     std::vector<std::int32_t> actual;
-    for (auto const bound : ml::make_rotated_loop_bounds(begin, end, offset)) {
+    for (auto const bound : ioj::make_rotated_loop_bounds(begin, end, offset)) {
         for (auto i{bound.begin}; i < bound.end; ++i) {
             actual.push_back(i);
         }

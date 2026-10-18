@@ -22,7 +22,7 @@ UCLASS()
 class SHOOTERGAME_API UTriggerSubsystem
     : public UTickableWorldSubsystem
     , public UTriggerSubsystemMixins
-    , public ml::LogMsgMixin<"UTriggerSubsystem", LogShooterGameSubsystem> {
+    , public ioj::LogMsgMixin<"UTriggerSubsystem", LogShooterGameSubsystem> {
     GENERATED_BODY()
     friend class UTriggerSubsystemMixins;
   public:

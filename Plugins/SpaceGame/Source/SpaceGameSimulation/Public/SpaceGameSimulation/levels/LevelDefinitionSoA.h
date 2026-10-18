@@ -19,7 +19,7 @@
 
 #include <utility>
 
-namespace ml {
+namespace ioj {
 struct FLevelEntityTableSchema;
 
 struct FLevelEntityTableView;
@@ -49,8 +49,8 @@ struct SPACEGAMESIMULATION_API FLevelEntityTableConstView {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TConstArrayView<ml::FLevelEntityId> ids;
-    TConstArrayView<ml::FEntityArchetypeId> archetypes;
+    TConstArrayView<ioj::FLevelEntityId> ids;
+    TConstArrayView<ioj::FEntityArchetypeId> archetypes;
     TConstArrayView<::ioj::Team> teams;
     FVectors3d::ConstView positions;
     FRotatorsd::ConstView rotations;
@@ -62,8 +62,8 @@ struct SPACEGAMESIMULATION_API FLevelEntityTableView {
     using ConstView = FLevelEntityTableConstView;
 
     void set(int32 const index,
-             ml::FLevelEntityId const new_ids,
-             ml::FEntityArchetypeId const new_archetypes,
+             ioj::FLevelEntityId const new_ids,
+             ioj::FEntityArchetypeId const new_archetypes,
              ::ioj::Team const new_teams,
              FVectors3d::equivalent_type const& new_positions,
              FRotatorsd::equivalent_type const& new_rotations,
@@ -101,8 +101,8 @@ struct SPACEGAMESIMULATION_API FLevelEntityTableView {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TArrayView<ml::FLevelEntityId> ids;
-    TArrayView<ml::FEntityArchetypeId> archetypes;
+    TArrayView<ioj::FLevelEntityId> ids;
+    TArrayView<ioj::FEntityArchetypeId> archetypes;
     TArrayView<::ioj::Team> teams;
     FVectors3d::View positions;
     FRotatorsd::View rotations;
@@ -113,8 +113,8 @@ struct SPACEGAMESIMULATION_API FLevelEntityTable {
     using View = FLevelEntityTableView;
     using ConstView = FLevelEntityTableConstView;
     void set(int32 const index,
-             ml::FLevelEntityId const new_ids,
-             ml::FEntityArchetypeId const new_archetypes,
+             ioj::FLevelEntityId const new_ids,
+             ioj::FEntityArchetypeId const new_archetypes,
              ::ioj::Team const new_teams,
              FVectors3d::equivalent_type const& new_positions,
              FRotatorsd::equivalent_type const& new_rotations,
@@ -127,8 +127,8 @@ struct SPACEGAMESIMULATION_API FLevelEntityTable {
         spawn_times_seconds[index] = new_spawn_times_seconds;
     }
 
-    auto add(ml::FLevelEntityId const new_ids,
-             ml::FEntityArchetypeId const new_archetypes,
+    auto add(ioj::FLevelEntityId const new_ids,
+             ioj::FEntityArchetypeId const new_archetypes,
              ::ioj::Team const new_teams,
              FVectors3d::equivalent_type const& new_positions,
              FRotatorsd::equivalent_type const& new_rotations,
@@ -154,30 +154,30 @@ struct SPACEGAMESIMULATION_API FLevelEntityTable {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
+        ioj::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
     template <typename Other>
     void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
-        ml::copy_element(ids, dst_i, other.ids, src_i);
-        ml::copy_element(archetypes, dst_i, other.archetypes, src_i);
-        ml::copy_element(teams, dst_i, other.teams, src_i);
-        ml::copy_element(positions, dst_i, other.positions, src_i);
-        ml::copy_element(rotations, dst_i, other.rotations, src_i);
-        ml::copy_element(spawn_times_seconds, dst_i, other.spawn_times_seconds, src_i);
+        ioj::copy_element(ids, dst_i, other.ids, src_i);
+        ioj::copy_element(archetypes, dst_i, other.archetypes, src_i);
+        ioj::copy_element(teams, dst_i, other.teams, src_i);
+        ioj::copy_element(positions, dst_i, other.positions, src_i);
+        ioj::copy_element(rotations, dst_i, other.rotations, src_i);
+        ioj::copy_element(spawn_times_seconds, dst_i, other.spawn_times_seconds, src_i);
     }
 
     template <typename Other>
     void
         copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
-        ml::copy_elements(ids, dst_i, other.ids, src_i, count);
-        ml::copy_elements(archetypes, dst_i, other.archetypes, src_i, count);
-        ml::copy_elements(teams, dst_i, other.teams, src_i, count);
-        ml::copy_elements(positions, dst_i, other.positions, src_i, count);
-        ml::copy_elements(rotations, dst_i, other.rotations, src_i, count);
-        ml::copy_elements(spawn_times_seconds, dst_i, other.spawn_times_seconds, src_i, count);
+        ioj::copy_elements(ids, dst_i, other.ids, src_i, count);
+        ioj::copy_elements(archetypes, dst_i, other.archetypes, src_i, count);
+        ioj::copy_elements(teams, dst_i, other.teams, src_i, count);
+        ioj::copy_elements(positions, dst_i, other.positions, src_i, count);
+        ioj::copy_elements(rotations, dst_i, other.rotations, src_i, count);
+        ioj::copy_elements(spawn_times_seconds, dst_i, other.spawn_times_seconds, src_i, count);
     }
 
     template <typename Other>
@@ -189,26 +189,26 @@ struct SPACEGAMESIMULATION_API FLevelEntityTable {
 
     template <typename Other>
     void append_from(Other const& other)
-        requires ml::SupportsApplyArrayPairsWith<FLevelEntityTable, Other>
+        requires ioj::SupportsApplyArrayPairsWith<FLevelEntityTable, Other>
     {
-        ml::append_from(ids, other.ids);
-        ml::append_from(archetypes, other.archetypes);
-        ml::append_from(teams, other.teams);
-        ml::append_from(positions, other.positions);
-        ml::append_from(rotations, other.rotations);
-        ml::append_from(spawn_times_seconds, other.spawn_times_seconds);
+        ioj::append_from(ids, other.ids);
+        ioj::append_from(archetypes, other.archetypes);
+        ioj::append_from(teams, other.teams);
+        ioj::append_from(positions, other.positions);
+        ioj::append_from(rotations, other.rotations);
+        ioj::append_from(spawn_times_seconds, other.spawn_times_seconds);
     }
 
     void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
+        ioj::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort<Compare>(*this, scratch_indices);
+        ioj::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -253,11 +253,11 @@ struct SPACEGAMESIMULATION_API FLevelEntityTable {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TArray<ml::FLevelEntityId> ids;
-    TArray<ml::FEntityArchetypeId> archetypes;
+    TArray<ioj::FLevelEntityId> ids;
+    TArray<ioj::FEntityArchetypeId> archetypes;
     TArray<::ioj::Team> teams;
     FVectors3d positions;
     FRotatorsd rotations;
     TArray<double> spawn_times_seconds;
 };
-} // namespace ml
+} // namespace ioj

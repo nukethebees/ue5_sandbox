@@ -20,8 +20,8 @@ class UTestBatchGameUiData;
 UCLASS()
 class SGLEGACY_API ASpaceShipController
     : public APlayerController
-    , public ml::EnhancedInputMixin
-    , public ml::LogMsgMixin<"SpaceShipController", LogSandboxController> {
+    , public ioj::EnhancedInputMixin
+    , public ioj::LogMsgMixin<"SpaceShipController", LogSandboxController> {
     GENERATED_BODY()
 
     ASpaceShipController();

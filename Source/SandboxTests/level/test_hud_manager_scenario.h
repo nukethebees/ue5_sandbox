@@ -7,7 +7,7 @@
 #include <SpaceGamePresentation/entities/TestTeam.h>
 #include <SpaceGamePresentation/presentation/HUDManager.h>
 
-namespace ml {
+namespace ioj {
 enum class EHUDManagerScenario : uint8 {
     InitialCachesPopulateWithoutHUD,
     EntityCountPollingContinuesWithoutHUD,

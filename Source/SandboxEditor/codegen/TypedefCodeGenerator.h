@@ -9,7 +9,7 @@
  * Runs a Python script to
  * generate type-safe USTRUCT wrappers with reflection support.
  */
-class FTypedefCodeGenerator : public ml::LogMsgMixin<"FTypedefCodeGenerator"> {
+class FTypedefCodeGenerator : public ioj::LogMsgMixin<"FTypedefCodeGenerator"> {
   public:
     /**
      * Generate strong typedef wrapper structs by running the Python generator script.

@@ -49,7 +49,7 @@ auto make_long_running_battle() -> LevelSimInitData {
                                         std::numeric_limits<std::int32_t>::max())};
     data.level_events.schedule.capital_spawns.get_view().target_entity_indices()[0] = second;
 
-    for (auto const type : ml::EnumTraits<EntityType>::values) {
+    for (auto const type : ioj::EnumTraits<EntityType>::values) {
         data.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
     return data;

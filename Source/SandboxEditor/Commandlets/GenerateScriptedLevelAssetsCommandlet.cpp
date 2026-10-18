@@ -112,8 +112,8 @@ constexpr TCHAR observer_input_package_path[]{TEXT("/SpaceGame/Input/Observer/")
 constexpr TCHAR benchmark_input_package_path[]{TEXT("/SpaceGame/Input/Benchmark/")};
 constexpr TCHAR ship_input_package_path[]{TEXT("/SpaceGame/Input/SpaceShip/")};
 FName const scripted_level_generation_context{TEXT("GenerateScriptedLevelAssets")};
-auto constexpr& runtime_config_package_name{ml::s7_level_config::canonical_package_name};
-auto constexpr& runtime_config_asset_name{ml::s7_level_config::canonical_asset_name};
+auto constexpr& runtime_config_package_name{ioj::s7_level_config::canonical_package_name};
+auto constexpr& runtime_config_asset_name{ioj::s7_level_config::canonical_asset_name};
 constexpr TCHAR player_controller_object_path[]{
     TEXT("/SpaceGame/Players/BP_SpaceGamePlayerController.BP_SpaceGamePlayerController")};
 constexpr TCHAR player_controller_package_name[]{
@@ -642,7 +642,7 @@ auto generate_control_context_input_assets(FObserverControlInputs& observer,
 }
 
 auto generate_battle_viewer_widget() -> UClass* {
-    auto* const ui_data{ml::test_batch_game_ui_data::get_data_asset()};
+    auto* const ui_data{ioj::test_batch_game_ui_data::get_data_asset()};
     if (!IsValid(ui_data)) {
         return nullptr;
     }
@@ -695,7 +695,7 @@ auto generate_battle_viewer_widget() -> UClass* {
 }
 
 auto generate_benchmark_widget(UClass& button_class) -> UClass* {
-    auto* const ui_data{ml::test_batch_game_ui_data::get_data_asset()};
+    auto* const ui_data{ioj::test_batch_game_ui_data::get_data_asset()};
     if (!IsValid(ui_data)) {
         return nullptr;
     }
@@ -1304,7 +1304,7 @@ auto configure_ui_data(UClass& root_class,
                        UClass& completion_class,
                        UClass& battle_viewer_class,
                        UClass& benchmark_class) -> bool {
-    auto* const ui_data{ml::test_batch_game_ui_data::get_data_asset()};
+    auto* const ui_data{ioj::test_batch_game_ui_data::get_data_asset()};
     if (!IsValid(ui_data)) {
         return false;
     }
@@ -1327,7 +1327,7 @@ auto generate_level_select_widget() -> UClass* {
         load_or_create_widget_blueprint(widget_object_path,
                                         widget_package_name,
                                         TEXT("WBP_LevelSelect"),
-                                        *ml::s7::UScriptLevelSelectWidget::StaticClass())};
+                                        *ioj::s7::UScriptLevelSelectWidget::StaticClass())};
     if (!IsValid(blueprint)) {
         return nullptr;
     }

@@ -5,7 +5,7 @@
 
 #include "ioj/sim/player/fire_rate.h"
 #include "SpaceGame/ships/player/TestShipFireRate.h"
-namespace ml {
+namespace ioj {
 [[nodiscard]] constexpr auto to_native(ETestShipFireRate const value) noexcept
     -> ::ioj::sim::ShipFireRate {
     switch (value) {
@@ -46,4 +46,4 @@ static_assert(static_cast<int>(ETestShipFireRate::Burst3) ==
               static_cast<int>(::ioj::sim::ShipFireRate::Burst3));
 static_assert(static_cast<int>(ETestShipFireRate::FullAuto) ==
               static_cast<int>(::ioj::sim::ShipFireRate::FullAuto));
-} // namespace ml
+} // namespace ioj

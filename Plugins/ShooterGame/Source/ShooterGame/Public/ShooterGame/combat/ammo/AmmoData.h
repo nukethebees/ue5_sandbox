@@ -17,7 +17,7 @@ struct FAmmoData {
         : type(type)
         , amount(amount) {}
 
-    bool is_empty() const { return ml::is_discrete(type) && (amount == 0); }
+    bool is_empty() const { return ioj::is_discrete(type) && (amount == 0); }
 
     auto& operator+=(FAmmoData const& other) {
         if (type == other.type) {

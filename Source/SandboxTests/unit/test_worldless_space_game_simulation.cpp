@@ -6,14 +6,14 @@
 
 TEST_CLASS(WorldlessSpaceGameSimulation, "Sandbox.UnitTests")
 {
-    ml::FSoftTestAssertions checks{};
+    ioj::FSoftTestAssertions checks{};
     USpaceGameLevelConfig const* config{};
 
     BEFORE_EACH()
     {
         checks.test_runner = TestRunner;
         checks.all_passed = true;
-        config = ml::get_default_level_config(checks);
+        config = ioj::get_default_level_config(checks);
     }
   private:
     template <typename Runner, typename... Args>
@@ -26,27 +26,27 @@ TEST_CLASS(WorldlessSpaceGameSimulation, "Sandbox.UnitTests")
   public:
     TEST_METHOD(HUD_InitialCachesPopulateWithoutHUD)
     {
-        run(ml::run_worldless_hud_manager_scenario,
-            ml::EHUDManagerScenario::InitialCachesPopulateWithoutHUD);
+        run(ioj::run_worldless_hud_manager_scenario,
+            ioj::EHUDManagerScenario::InitialCachesPopulateWithoutHUD);
     }
     TEST_METHOD(HUD_EntityCountPollingContinuesWithoutHUD)
     {
-        run(ml::run_worldless_hud_manager_scenario,
-            ml::EHUDManagerScenario::EntityCountPollingContinuesWithoutHUD);
+        run(ioj::run_worldless_hud_manager_scenario,
+            ioj::EHUDManagerScenario::EntityCountPollingContinuesWithoutHUD);
     }
     TEST_METHOD(HUD_MissionAndDefenceDataUpdateWithoutHUD)
     {
-        run(ml::run_worldless_hud_manager_scenario,
-            ml::EHUDManagerScenario::MissionAndDefenceDataUpdateWithoutHUD);
+        run(ioj::run_worldless_hud_manager_scenario,
+            ioj::EHUDManagerScenario::MissionAndDefenceDataUpdateWithoutHUD);
     }
     TEST_METHOD(HUD_PlayerStateAndKillsUpdateWithoutHUD)
     {
-        run(ml::run_worldless_hud_manager_scenario,
-            ml::EHUDManagerScenario::PlayerStateAndKillsUpdateWithoutHUD);
+        run(ioj::run_worldless_hud_manager_scenario,
+            ioj::EHUDManagerScenario::PlayerStateAndKillsUpdateWithoutHUD);
     }
     TEST_METHOD(HUD_MissionTimeUsesSimulationClockWithoutHUD)
     {
-        run(ml::run_worldless_hud_manager_scenario,
-            ml::EHUDManagerScenario::MissionTimeUsesSimulationClockWithoutHUD);
+        run(ioj::run_worldless_hud_manager_scenario,
+            ioj::EHUDManagerScenario::MissionTimeUsesSimulationClockWithoutHUD);
     }
 };

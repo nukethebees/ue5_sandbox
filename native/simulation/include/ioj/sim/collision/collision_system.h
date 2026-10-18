@@ -9,7 +9,7 @@
 #include <cstdint>
 #include <span>
 
-namespace ml {
+namespace ioj {
 class FrameMemoryResource;
 }
 
@@ -50,14 +50,14 @@ class CollisionSystem {
     // Overlap detection
     /* **************************************** */
     auto detect_overlaps(std::span<EntityUniqueId const> overlap_candidates,
-                         ml::FrameMemoryResource* const scratch_resource) -> DetectedOverlapsView;
+                         ioj::FrameMemoryResource* const scratch_resource) -> DetectedOverlapsView;
     void collect_overlaps_for_candidates(std::span<EntityUniqueId const> overlap_candidates,
                                          EntityEntityOverlaps& entity_overlaps,
                                          EntityStaticOverlaps& static_overlaps,
-                                         ml::FrameMemoryResource* const scratch_resource);
+                                         ioj::FrameMemoryResource* const scratch_resource);
     void finalize_overlaps(EntityEntityOverlaps& entity_overlaps,
                            EntityStaticOverlaps& static_overlaps,
-                           ml::FrameMemoryResource* const scratch_resource);
+                           ioj::FrameMemoryResource* const scratch_resource);
 
     /* **************************************** */
     // Events and bounds

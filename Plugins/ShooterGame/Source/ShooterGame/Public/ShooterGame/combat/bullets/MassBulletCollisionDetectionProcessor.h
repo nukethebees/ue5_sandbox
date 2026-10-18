@@ -15,7 +15,7 @@
 
 struct FMassBulletCollisionDetectionExecutor
     : public UE::Mass::FQueryExecutor
-    , public ml::LogMsgMixin<"FMassBulletCollisionDetectionExecutor", LogShooterGameMassEntity> {
+    , public ioj::LogMsgMixin<"FMassBulletCollisionDetectionExecutor", LogShooterGameMassEntity> {
     FMassBulletCollisionDetectionExecutor() = default;
 
     using Query = UE::Mass::FQueryDefinition<
@@ -35,7 +35,7 @@ struct FMassBulletCollisionDetectionExecutor
 UCLASS()
 class SHOOTERGAME_API UMassBulletCollisionDetectionProcessor
     : public UMassProcessor
-    , public ml::MassProcessorMixins {
+    , public ioj::MassProcessorMixins {
     GENERATED_BODY()
 
     friend struct MassProcessorMixins;

@@ -22,7 +22,7 @@ enum class EAmmoType : uint8 {
     CONTINUOUS_END UMETA(Hidden),
 };
 
-namespace ml {
+namespace ioj {
 inline static constexpr std::array<EAmmoType, 6> ammo_types{
     EAmmoType::Bullets,
     EAmmoType::Shells,

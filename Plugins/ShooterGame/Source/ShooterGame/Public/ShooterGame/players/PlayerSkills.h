@@ -28,7 +28,7 @@ enum class EPlayerSkillName : uint8 {
     small_guns UMETA(DisplayName = "Small Guns"),
 };
 
-namespace ml {
+namespace ioj {
 inline constexpr std::array<EPlayerSkillName, 7> EPlayerSkillName_values{{
     EPlayerSkillName::Strength,
     EPlayerSkillName::Endurance,
@@ -57,7 +57,7 @@ SHOOTERGAME_API auto get_display_name(EPlayerSkillName value) -> FName;
 SHOOTERGAME_API auto get_display_string(EPlayerSkillName value) -> FString const&;
 SHOOTERGAME_API auto get_display_string_view(EPlayerSkillName value) -> TStringView<TCHAR>;
 SHOOTERGAME_API auto get_display_text(EPlayerSkillName value) -> FText;
-} // namespace ml
+} // namespace ioj
 
 USTRUCT(BlueprintType)
 struct FPlayerSkill {
@@ -128,7 +128,7 @@ struct FPlayerSkills {
     auto get_view(this Self& self) {
         return SkillView{
             skill_type,
-            ml::get_display_string(skill_type),
+            ioj::get_display_string(skill_type),
             self.template get_skill<skill_type>()
         };
     }

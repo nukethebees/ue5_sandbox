@@ -10,6 +10,6 @@ namespace ioj::sim::player {
 struct PhysicalMovementState {
     ioj::Transform3d transform{};
 
-    ml::Vector3d velocity{};
+    ioj::Vector3d velocity{};
 };
 } // namespace ioj::sim::player

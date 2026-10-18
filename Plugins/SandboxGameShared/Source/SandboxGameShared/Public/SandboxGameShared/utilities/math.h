@@ -2,7 +2,7 @@
 
 #include "Math/UnrealMathUtility.h"
 
-namespace ml {
+namespace ioj {
 inline auto normalised_percent(float value, float max) {
     return value / max;
 }

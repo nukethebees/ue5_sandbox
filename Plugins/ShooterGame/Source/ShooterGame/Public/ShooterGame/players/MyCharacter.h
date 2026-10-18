@@ -50,9 +50,9 @@ class UActorDescriptionScannerComponent;
 
 class ADroppableWaypoint;
 
-namespace ml {
+namespace ioj {
 namespace AMyCharacter {
-inline static constexpr int32 camera_count{ml::enum_count<ECharacterCameraMode>()};
+inline static constexpr int32 camera_count{ioj::enum_count<ECharacterCameraMode>()};
 inline static constexpr FCameraConfig camera_configs[camera_count] = {
     {ECharacterCameraMode::FirstPerson, "Camera", false, true},
     {ECharacterCameraMode::ThirdPerson, "ThirdPersonCamera", true, true}};
@@ -72,11 +72,11 @@ consteval int32 count_required_spring_arms() {
 UCLASS()
 class SHOOTERGAME_API AMyCharacter
     : public ACharacter
-    , public ml::LogMsgMixin<"MyCharacter", LogShooterGameCharacter>
+    , public ioj::LogMsgMixin<"MyCharacter", LogShooterGameCharacter>
     , public IDeathHandler
     , public IMaxSpeedChangeListener
     , public IMovementMultiplierReceiver
-    , public ml::EnhancedInputMixin
+    , public ioj::EnhancedInputMixin
     , public IGenericTeamAgentInterface {
     GENERATED_BODY()
   public:
@@ -211,8 +211,8 @@ class SHOOTERGAME_API AMyCharacter
     UActorDescriptionScannerComponent* actor_description_scanner{nullptr};
 
     // Camera components
-    static constexpr int32 camera_count{ml::AMyCharacter::camera_count};
-    static constexpr int32 spring_arm_count{ml::AMyCharacter::count_required_spring_arms()};
+    static constexpr int32 camera_count{ioj::AMyCharacter::camera_count};
+    static constexpr int32 spring_arm_count{ioj::AMyCharacter::count_required_spring_arms()};
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
     TArray<UCameraComponent*> cameras{};

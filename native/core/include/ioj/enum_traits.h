@@ -2,7 +2,7 @@
 
 #include <cstddef>
 
-namespace ml {
+namespace ioj {
 
 template <typename Enum>
 struct EnumTraits;
@@ -10,4 +10,4 @@ struct EnumTraits;
 template <typename Enum>
 [[nodiscard]] constexpr auto enum_count() noexcept -> std::size_t = delete;
 
-} // namespace ml
+} // namespace ioj

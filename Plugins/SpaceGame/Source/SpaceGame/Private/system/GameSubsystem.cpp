@@ -199,7 +199,7 @@ auto UGameSubsystem::set_ui_theme(USpaceGameUiTheme* const theme) -> bool {
 /* **************************************** */
 // Level launch and navigation
 /* **************************************** */
-void UGameSubsystem::set_pending_level(ml::FLevelDefinition definition,
+void UGameSubsystem::set_pending_level(ioj::FLevelDefinition definition,
                                        FString source_path,
                                        FString source_sha256,
                                        FLevelLaunchOptions options) {

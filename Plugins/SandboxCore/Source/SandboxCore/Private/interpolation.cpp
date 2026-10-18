@@ -1,6 +1,6 @@
 #include "SandboxCore/interpolation.h"
 
-namespace ml::kernel {
+namespace ioj::kernel {
 #define ML_INSTANTIATE_FN(T)                                          \
     template SANDBOXCORE_API void lerp_1d<T>(T * RESTRICT out,        \
                                              T const* RESTRICT from,  \

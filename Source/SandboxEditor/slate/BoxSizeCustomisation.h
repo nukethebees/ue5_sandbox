@@ -11,7 +11,7 @@ class SWidget;
 class SBox;
 class IPropertyHandle;
 
-namespace ml {
+namespace ioj {
 class SBoxSizePropInput;
 }
 
@@ -38,5 +38,5 @@ class FBoxSizeCustomisation : public IPropertyTypeCustomization {
     TSharedPtr<IPropertyHandle> y_handle{nullptr};
     TSharedPtr<IPropertyHandle> z_handle{nullptr};
 
-    TSharedPtr<ml::SBoxSizePropInput> box_size_widget{nullptr};
+    TSharedPtr<ioj::SBoxSizePropInput> box_size_widget{nullptr};
 };

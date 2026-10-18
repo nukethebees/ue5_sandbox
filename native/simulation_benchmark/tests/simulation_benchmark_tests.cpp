@@ -12,7 +12,7 @@
 #include <system_error>
 #include <vector>
 
-namespace ml::simulation_benchmark::tests {
+namespace ioj::simulation_benchmark::tests {
 namespace {
 class TemporaryFile final {
   public:
@@ -300,4 +300,4 @@ TEST(SimulationBenchmarkRunner, SaturatesAndMeasuresFighterStressScenario) {
     EXPECT_GT(result->total_simulation_ticks, result->measured_ticks);
 }
 } // namespace
-} // namespace ml::simulation_benchmark::tests
+} // namespace ioj::simulation_benchmark::tests

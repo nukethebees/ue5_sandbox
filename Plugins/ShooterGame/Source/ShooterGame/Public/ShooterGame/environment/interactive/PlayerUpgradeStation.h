@@ -24,7 +24,7 @@ UCLASS()
 class APlayerUpgradeStation
     : public AActor
     , public IInteractable
-    , public ml::LogMsgMixin<"APlayerUpgradeStation", LogShooterGameActor> {
+    , public ioj::LogMsgMixin<"APlayerUpgradeStation", LogShooterGameActor> {
     GENERATED_BODY()
   public:
     APlayerUpgradeStation();

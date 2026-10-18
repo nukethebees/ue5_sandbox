@@ -24,10 +24,10 @@ using NavigationScanCount = std::uint8_t;
 
 using AvoidanceChoice = std::int8_t;
 } // namespace ioj::sim::fighters
-namespace ml {
+namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<::ioj::sim::fighters::NavigationRiskTier>() noexcept
     -> std::size_t {
     return 4;
 }
-} // namespace ml
+} // namespace ioj

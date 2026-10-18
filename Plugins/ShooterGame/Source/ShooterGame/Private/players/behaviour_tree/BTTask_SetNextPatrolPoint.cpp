@@ -31,7 +31,7 @@ EBTNodeResult::Type UBTTask_SetNextPatrolPoint::ExecuteTask(UBehaviorTreeCompone
     patrol->advance_to_next_point();
     INIT_PTR_OR_RETURN_VALUE(wp, patrol->get_current_point(), EBTNodeResult::Failed);
 
-    ml::set_bb_value(*bb, move_destination.SelectedKeyName, wp->get_point());
+    ioj::set_bb_value(*bb, move_destination.SelectedKeyName, wp->get_point());
 
     return EBTNodeResult::Succeeded;
 }

@@ -13,8 +13,8 @@
 
 #include <utility>
 
-namespace ml::ship_hud {
-struct FTopKillerEntries : public ml::FSoAArrayMixin {
+namespace ioj::ship_hud {
+struct FTopKillerEntries : public ioj::FSoAArrayMixin {
     static constexpr int32 minimum_size{10};
 
     bool operator==(FTopKillerEntries const& other) const noexcept {
@@ -45,8 +45,8 @@ struct FTopKillerEntries : public ml::FSoAArrayMixin {
 };
 
 struct FTeamKillMatrix {
-    static constexpr int32 team_count{ml::enum_count<ETestTeam>()};
-    static constexpr int32 entity_type_count{ml::enum_count<::ioj::sim::EntityType>()};
+    static constexpr int32 team_count{ioj::enum_count<ETestTeam>()};
+    static constexpr int32 entity_type_count{ioj::enum_count<::ioj::sim::EntityType>()};
     static constexpr int32 count{team_count * entity_type_count};
 
     bool operator==(FTeamKillMatrix const&) const noexcept = default;

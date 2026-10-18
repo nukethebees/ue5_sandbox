@@ -2,7 +2,7 @@
 
 #include <numbers>
 
-namespace ml::constants {
+namespace ioj::constants {
 template <typename T>
 inline constexpr T half_turn_degrees{T{180.0}};
 

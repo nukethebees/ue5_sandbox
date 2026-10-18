@@ -4,7 +4,7 @@
 
 #include <CoreMinimal.h>
 
-namespace ml {
+namespace ioj {
 inline auto to_native(FVector3f const value) noexcept -> ::ioj::Vector3f {
     return make_vector3f(value.X, value.Y, value.Z);
 }

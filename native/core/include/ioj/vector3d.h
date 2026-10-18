@@ -1,6 +1,6 @@
 #pragma once
 #include <ioj/vector_value_math.h>
-namespace ml {
+namespace ioj {
 using Vector3d = ioj::Vector<double, 3>;
 using ioj::cross;
 using ioj::dot;

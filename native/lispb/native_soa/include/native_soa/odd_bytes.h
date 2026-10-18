@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace ml::native_soa_fixture {
+namespace ioj::native_soa_fixture {
 struct OddBytes {
     std::uint8_t bytes[3];
 };

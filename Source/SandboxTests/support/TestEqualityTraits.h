@@ -2,7 +2,7 @@
 
 #include <CoreMinimal.h>
 
-namespace ml {
+namespace ioj {
 template <typename T>
 struct TestEqualityTraits {
     static bool is_equal(T const& expected, T const& actual) { return expected == actual; }

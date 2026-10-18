@@ -7,7 +7,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace ml {
+namespace ioj {
 template <typename Enum, typename T>
     requires std::is_enum_v<Enum>
 class EnumArray {

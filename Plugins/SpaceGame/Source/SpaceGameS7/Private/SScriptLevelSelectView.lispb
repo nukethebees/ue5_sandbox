@@ -1,4 +1,4 @@
-(widget-class ml::s7::SScriptLevelSelectView
+(widget-class ioj::s7::SScriptLevelSelectView
   (function BuildRoot
     (params
       (value body_background)

@@ -13,7 +13,7 @@ class ABulletActor;
 UCLASS()
 class SHOOTERGAME_API ABulletSpawner
     : public AActor
-    , public ml::LogMsgMixin<"ABulletSpawner"> {
+    , public ioj::LogMsgMixin<"ABulletSpawner"> {
     GENERATED_BODY()
   public:
     ABulletSpawner();

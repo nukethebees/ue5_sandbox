@@ -7,9 +7,9 @@
 
 namespace projectile_intercept_benchmarks {
 using BatchSolver = void (*)(float*,
-                             ml::Vector3fSoAConstView,
-                             ml::Vector3fSoAConstView,
-                             ml::Vector3fSoAConstView,
+                             ioj::Vector3fSoAConstView,
+                             ioj::Vector3fSoAConstView,
+                             ioj::Vector3fSoAConstView,
                              float) noexcept;
 
 struct ProjectileBuffers {
@@ -35,11 +35,11 @@ struct ProjectileBuffers {
         }
     }
 
-    auto shooters() const -> ml::Vector3fSoAConstView { return {shooter_x, shooter_y, shooter_z}; }
+    auto shooters() const -> ioj::Vector3fSoAConstView { return {shooter_x, shooter_y, shooter_z}; }
 
-    auto targets() const -> ml::Vector3fSoAConstView { return {target_x, target_y, target_z}; }
+    auto targets() const -> ioj::Vector3fSoAConstView { return {target_x, target_y, target_z}; }
 
-    auto velocities() const -> ml::Vector3fSoAConstView {
+    auto velocities() const -> ioj::Vector3fSoAConstView {
         return {velocity_x, velocity_y, velocity_z};
     }
 
@@ -74,17 +74,17 @@ void run_projectile_benchmark(benchmark::State& state, BatchSolver const solver)
 
 BENCHMARK_CAPTURE(run_projectile_benchmark,
                   aos,
-                  ml::detail::solve_intercept_times_aos::solve_intercept_times)
+                  ioj::detail::solve_intercept_times_aos::solve_intercept_times)
     ->Range(1, 65536)
     ->UseRealTime();
 BENCHMARK_CAPTURE(run_projectile_benchmark,
                   struct_loop,
-                  ml::detail::solve_intercept_times_struct_loop::solve_intercept_times)
+                  ioj::detail::solve_intercept_times_struct_loop::solve_intercept_times)
     ->Range(1, 65536)
     ->UseRealTime();
 BENCHMARK_CAPTURE(run_projectile_benchmark,
                   soa_loop,
-                  ml::detail::solve_intercept_times_soa_loop::solve_intercept_times)
+                  ioj::detail::solve_intercept_times_soa_loop::solve_intercept_times)
     ->Range(1, 65536)
     ->UseRealTime();
 }

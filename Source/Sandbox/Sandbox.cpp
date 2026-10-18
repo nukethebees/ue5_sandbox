@@ -15,12 +15,12 @@ void FSandboxModule::StartupModule() {
 
     UE_LOG(LogTemp, Verbose, TEXT("Mapped /Project to: %s"), *shader_dir);
 
-    ml::SandboxStyle::initialize();
+    ioj::SandboxStyle::initialize();
 }
 
 void FSandboxModule::ShutdownModule() {
 
-    ml::SandboxStyle::shutdown();
+    ioj::SandboxStyle::shutdown();
 }
 
 #undef LOCTEXT_NAMESPACE

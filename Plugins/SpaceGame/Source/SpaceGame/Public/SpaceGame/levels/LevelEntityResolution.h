@@ -6,7 +6,7 @@
 
 #include <Misc/Optional.h>
 
-namespace ml {
+namespace ioj {
 using EResolvedLevelArchetype = ::ioj::levels::EntityArchetype;
 
 inline auto resolve_level_archetype(FEntityArchetypeId const id)

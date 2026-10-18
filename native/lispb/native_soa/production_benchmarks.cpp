@@ -11,7 +11,7 @@
 #include <ranges>
 #include <vector>
 
-namespace ml::native_soa_benchmarks {
+namespace ioj::native_soa_benchmarks {
 namespace {
 template <typename Owner>
 void populate(Owner& owner, std::int32_t const count) {
@@ -170,4 +170,4 @@ BENCHMARK(compact_laser_hit_accumulation)
     ->Args({row_count, 256})
     ->Args({row_count, 4096});
 } // namespace
-} // namespace ml::native_soa_benchmarks
+} // namespace ioj::native_soa_benchmarks

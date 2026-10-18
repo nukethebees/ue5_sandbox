@@ -42,7 +42,7 @@ class SHOOTERGAME_API ALandMine
     : public AActor
     , public ICollisionOwner
     , public IDeathHandler
-    , public ml::LogMsgMixin<"ALandMine", LogShooterGameActor>
+    , public ioj::LogMsgMixin<"ALandMine", LogShooterGameActor>
     , public IDescribable {
     GENERATED_BODY()
   public:

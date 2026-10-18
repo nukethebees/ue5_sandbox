@@ -25,7 +25,7 @@ struct SHOOTERGAME_API FRotatePayload {
     TWeakObjectPtr<AActor> rotating_actor{nullptr};
 
     // Static logger since can't inherit from LogMsgMixin
-    static inline auto logger{ml::LogMsgMixin<"FRotatePayload">{}};
+    static inline auto logger{ioj::LogMsgMixin<"FRotatePayload">{}};
 
     FTriggerResult trigger(FTriggerContext context);
     bool tick(float delta_time);

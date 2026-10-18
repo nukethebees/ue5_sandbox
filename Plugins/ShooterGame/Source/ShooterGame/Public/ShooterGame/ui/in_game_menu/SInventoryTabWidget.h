@@ -8,7 +8,7 @@
 
 class SInventoryTabWidget
     : public SCompoundWidget
-    , public ml::LogMsgMixin<"SInventoryTabWidget", LogShooterGameUI> {
+    , public ioj::LogMsgMixin<"SInventoryTabWidget", LogShooterGameUI> {
   public:
     // clang-format off
     SLATE_BEGIN_ARGS(SInventoryTabWidget) {}

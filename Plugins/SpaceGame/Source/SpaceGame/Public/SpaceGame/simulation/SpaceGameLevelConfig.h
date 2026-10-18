@@ -27,7 +27,7 @@ class UStaticMesh;
 class UTestTeamVisualData;
 class USpaceGameLevelConfig;
 
-namespace ml::s7_level_config {
+namespace ioj::s7_level_config {
 inline constexpr TCHAR canonical_package_name[]{
     TEXT("/SpaceGame/Levels/DA_GameRuntimeLevelConfig")};
 inline constexpr TCHAR canonical_asset_name[]{TEXT("DA_GameRuntimeLevelConfig")};

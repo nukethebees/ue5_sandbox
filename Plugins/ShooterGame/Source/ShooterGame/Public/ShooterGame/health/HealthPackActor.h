@@ -17,7 +17,7 @@ class UStaticMeshComponent;
 UCLASS()
 class SHOOTERGAME_API AHealthPackActor
     : public AActor
-    , public ml::LogMsgMixin<"AHealthPackActor"> {
+    , public ioj::LogMsgMixin<"AHealthPackActor"> {
     GENERATED_BODY()
   public:
     AHealthPackActor();

@@ -7,7 +7,7 @@
 #include <span>
 #include <type_traits>
 
-namespace ml {
+namespace ioj {
 template <typename T>
     requires std::is_same_v<std::remove_const_t<T>, float>
 struct Vector3SoAView {

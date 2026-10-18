@@ -161,7 +161,7 @@ token-patching implementation remains in the schema library.
 ## Packed C++ values
 
 Packed values store one unsigned fixed-width integer. The schema defines offsets, widths, and
-bit order; C++ lowering uses explicit masks and shifts through `ml::PackedField` and the
+bit order; C++ lowering uses explicit masks and shifts through `ioj::PackedField` and the
 `packed_extract`, `packed_pack`, and `packed_insert` helpers in `ioj/packed_value.h`.
 Each field exposes `<name>_field::{offset,bits,value_mask,mask}` instead of four separate
 `<name>_offset`, `<name>_bits`, `<name>_value_mask`, and `<name>_mask` constants.
@@ -386,7 +386,7 @@ nested schemas. Registered names, dependency edges and planner identity remain l
 facts for an owner are keyed by its physical spelling, never a deleted vector class name.
 When a logical vector schema has a declared vector equivalent, the resolved model also retains
 that vector declaration's `equivalent_constructor`. Compact row conversion uses it (for example,
-`ml::make_vector3f` for core vector values) instead of assuming aggregate construction.
+`ioj::make_vector3f` for core vector values) instead of assuming aggregate construction.
 
 Vector SoA declarations can set `:equivalent-accessors true` with named
 `:equivalent-members` to emit component calls such as `value.x()`. Field access

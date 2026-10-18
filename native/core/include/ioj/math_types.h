@@ -5,7 +5,7 @@
 
 #include <type_traits>
 
-namespace ml {
+namespace ioj {
 using Vector2f = ioj::Vector<float, 2>;
 using Vector3f = ioj::Vector<float, 3>;
 using Quaternion4f = ioj::Quaternion<float>;

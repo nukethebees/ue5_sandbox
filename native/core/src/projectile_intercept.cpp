@@ -6,22 +6,22 @@
 namespace {
 constexpr float no_intercept_candidate_time{std::numeric_limits<float>::infinity()};
 
-auto size_squared(ml::Vector3f const value) noexcept -> float {
+auto size_squared(ioj::Vector3f const value) noexcept -> float {
     return ioj::size_squared(value);
 }
 
-auto dot_product(ml::Vector3f const lhs, ml::Vector3f const rhs) noexcept -> float {
+auto dot_product(ioj::Vector3f const lhs, ioj::Vector3f const rhs) noexcept -> float {
     return ioj::dot(lhs, rhs);
 }
 
-auto at(ml::Vector3fSoAConstView const values, std::uint32_t const index) noexcept -> ml::Vector3f {
+auto at(ioj::Vector3fSoAConstView const values, std::uint32_t const index) noexcept -> ioj::Vector3f {
     return values[index];
 }
 
 auto validate_batch([[maybe_unused]] float const* const out_intercept_times,
-                    ml::Vector3fSoAConstView const shooter_positions,
-                    [[maybe_unused]] ml::Vector3fSoAConstView const target_positions,
-                    [[maybe_unused]] ml::Vector3fSoAConstView const target_velocities) noexcept
+                    ioj::Vector3fSoAConstView const shooter_positions,
+                    [[maybe_unused]] ioj::Vector3fSoAConstView const target_positions,
+                    [[maybe_unused]] ioj::Vector3fSoAConstView const target_velocities) noexcept
     -> std::uint32_t {
     auto const count{shooter_positions.num()};
     assert(count == target_positions.num());
@@ -31,7 +31,7 @@ auto validate_batch([[maybe_unused]] float const* const out_intercept_times,
 }
 }
 
-namespace ml {
+namespace ioj {
 auto solve_intercept_time(Vector3f const shooter_position,
                           Vector3f const target_position,
                           Vector3f const target_velocity,
@@ -74,7 +74,7 @@ auto solve_intercept_time(Vector3f const shooter_position,
 }
 }
 
-namespace ml::detail::solve_intercept_times_aos {
+namespace ioj::detail::solve_intercept_times_aos {
 void solve_intercept_times(float* const out_intercept_times,
                            Vector3fSoAConstView const shooter_positions,
                            Vector3fSoAConstView const target_positions,
@@ -83,7 +83,7 @@ void solve_intercept_times(float* const out_intercept_times,
     auto const count{validate_batch(
         out_intercept_times, shooter_positions, target_positions, target_velocities)};
     for (std::uint32_t i{}; i < count; ++i) {
-        out_intercept_times[i] = ml::solve_intercept_time(at(shooter_positions, i),
+        out_intercept_times[i] = ioj::solve_intercept_time(at(shooter_positions, i),
                                                           at(target_positions, i),
                                                           at(target_velocities, i),
                                                           projectile_speed);
@@ -91,7 +91,7 @@ void solve_intercept_times(float* const out_intercept_times,
 }
 }
 
-namespace ml::detail::solve_intercept_times_struct_loop {
+namespace ioj::detail::solve_intercept_times_struct_loop {
 void solve_intercept_times(float* const out_intercept_times,
                            Vector3fSoAConstView const shooter_positions,
                            Vector3fSoAConstView const target_positions,

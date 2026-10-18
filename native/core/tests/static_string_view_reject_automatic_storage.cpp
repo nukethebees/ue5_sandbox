@@ -4,6 +4,6 @@
 
 auto reject_automatic_storage() -> std::size_t {
     constexpr char local_string[]{"automatic"};
-    ml::StaticStringView const value{local_string};
+    ioj::StaticStringView const value{local_string};
     return value.size();
 }

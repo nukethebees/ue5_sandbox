@@ -50,7 +50,7 @@ struct FTiledCubeActorMaterialParams {
 UCLASS()
 class SANDBOX_API ATiledCubeActor
     : public AActor
-    , public ml::LogMsgMixin<"ATiledCubeActor"> {
+    , public ioj::LogMsgMixin<"ATiledCubeActor"> {
     GENERATED_BODY()
   public:
     ATiledCubeActor();

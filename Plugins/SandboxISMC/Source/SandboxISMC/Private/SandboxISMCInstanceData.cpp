@@ -9,7 +9,7 @@
 #include "Containers/AllowShrinking.h"
 #include "Containers/ArrayView.h"
 
-namespace ml::sandbox_ismc {
+namespace ioj::sandbox_ismc {
 
 auto InstanceDataConstView::get_view() const -> ConstView {
     return get_view(0, num());
@@ -35,7 +35,7 @@ auto InstanceDataConstView::get_const_view(int32 const offset, int32 const count
 }
 
 auto InstanceDataConstView::num() const noexcept -> int32 {
-    return ml::num(positions);
+    return ioj::num(positions);
 }
 
 auto InstanceDataConstView::is_empty() const noexcept -> bool {
@@ -43,7 +43,7 @@ auto InstanceDataConstView::is_empty() const noexcept -> bool {
 }
 
 void InstanceDataConstView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto InstanceDataConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -92,7 +92,7 @@ auto InstanceDataView::get_const_view(int32 const offset, int32 const count) con
 }
 
 auto InstanceDataView::num() const noexcept -> int32 {
-    return ml::num(positions);
+    return ioj::num(positions);
 }
 
 auto InstanceDataView::is_empty() const noexcept -> bool {
@@ -100,7 +100,7 @@ auto InstanceDataView::is_empty() const noexcept -> bool {
 }
 
 void InstanceDataView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto InstanceDataView::slice(int32 const offset, int32 const count) -> View {
@@ -128,27 +128,27 @@ auto InstanceDataView::right(int32 const count) const -> ConstView {
 }
 
 void InstanceData::reset() {
-    ml::soa_ops::reset(*this);
+    ioj::soa_ops::reset(*this);
 }
 
 void InstanceData::reserve(int32 const count) {
-    ml::soa_ops::reserve(*this, count);
+    ioj::soa_ops::reserve(*this, count);
 }
 
 void InstanceData::add_uninitialised(int32 const count) {
-    ml::soa_ops::add_uninitialised(*this, count);
+    ioj::soa_ops::add_uninitialised(*this, count);
 }
 
 void InstanceData::add_defaulted(int32 const count) {
-    ml::soa_ops::add_defaulted(*this, count);
+    ioj::soa_ops::add_defaulted(*this, count);
 }
 
 void InstanceData::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::soa_ops::set_num(*this, count, allow_shrinking);
+    ioj::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void InstanceData::apply_permutation(TArrayView<int32> indices) {
-    ml::soa_ops::apply_permutation(*this, indices);
+    ioj::soa_ops::apply_permutation(*this, indices);
 }
 
 auto InstanceData::get_view() -> View {
@@ -185,7 +185,7 @@ auto InstanceData::get_const_view(int32 const offset, int32 const count) const -
 }
 
 auto InstanceData::num() const noexcept -> int32 {
-    return ml::num(positions);
+    return ioj::num(positions);
 }
 
 auto InstanceData::is_empty() const noexcept -> bool {
@@ -193,7 +193,7 @@ auto InstanceData::is_empty() const noexcept -> bool {
 }
 
 void InstanceData::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto InstanceData::slice(int32 const offset, int32 const count) -> View {
@@ -219,4 +219,4 @@ auto InstanceData::left(int32 const count) const -> ConstView {
 auto InstanceData::right(int32 const count) const -> ConstView {
     return slice(num() - count, count);
 }
-} // namespace ml::sandbox_ismc
+} // namespace ioj::sandbox_ismc

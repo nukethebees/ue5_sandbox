@@ -6,7 +6,7 @@
 #include "Containers/UnrealString.h"
 #include "UObject/UObjectGlobals.h"
 
-namespace ml {
+namespace ioj {
 auto report_invalid_uobject_ptrs(std::initializer_list<NamedUObjectPtr> ptrs) -> FErrorMsg {
     FErrorMsg error_msg;
     report_invalid_uobject_ptrs(ptrs, error_msg);

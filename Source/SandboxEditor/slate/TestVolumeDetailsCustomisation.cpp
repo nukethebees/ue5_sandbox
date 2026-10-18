@@ -39,7 +39,7 @@ void FTestVolumeDetailsCustomisation::build_custom_rows(IDetailLayoutBuilder& de
         .AddCustomRow(INVTEXT("BoxSize"))
         .WholeRowContent()
         [
-            SNew(ml::SBoxSizeAttrPropInput)
+            SNew(ioj::SBoxSizeAttrPropInput)
             .value_Lambda([this]() -> TOptional<FVector> {
                 auto* box{get_box()};
                 if (!box) {

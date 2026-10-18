@@ -79,7 +79,7 @@ void SInventoryTabWidget::Construct(FArguments const& InArgs) {
                                     [
                                         SNew(STextBlock)
                                             .Text(FText::FromString(TEXT("Money:")))
-                                            .TextStyle(&ml::SandboxStyle::get(), "Sandbox.Text.Widget")
+                                            .TextStyle(&ioj::SandboxStyle::get(), "Sandbox.Text.Widget")
                                     ]
                                 + SHorizontalBox::Slot()
                                     .AutoWidth()
@@ -89,7 +89,7 @@ void SInventoryTabWidget::Construct(FArguments const& InArgs) {
                                             .Text_Lambda([this]() {
                                                 return FText::AsNumber(money_.Get());
                                             })
-                                            .TextStyle(&ml::SandboxStyle::get(), "Sandbox.Text.Widget")
+                                            .TextStyle(&ioj::SandboxStyle::get(), "Sandbox.Text.Widget")
                                     ]
                             ]
                     ]

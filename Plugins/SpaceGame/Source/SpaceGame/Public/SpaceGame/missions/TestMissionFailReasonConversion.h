@@ -5,7 +5,7 @@
 
 #include "ioj/sim/missions/mission_fail_reason.h"
 #include "SpaceGame/missions/TestMissionFailReason.h"
-namespace ml {
+namespace ioj {
 [[nodiscard]] constexpr auto to_native(ETestMissionFailReason const value) noexcept
     -> ::ioj::sim::MissionFailReason {
     switch (value) {
@@ -54,4 +54,4 @@ static_assert(static_cast<int>(ETestMissionFailReason::TimeElapsed) ==
               static_cast<int>(::ioj::sim::MissionFailReason::TimeElapsed));
 static_assert(static_cast<int>(ETestMissionFailReason::DefenceObjectiveFailed) ==
               static_cast<int>(::ioj::sim::MissionFailReason::DefenceObjectiveFailed));
-} // namespace ml
+} // namespace ioj

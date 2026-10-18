@@ -269,7 +269,7 @@ class FSandboxISMCInstanceBuffer final : public FVertexBuffer {
     int32 capacity_{0};
     int32 custom_data_capacity_{0};
     int32 num_custom_data_floats_{0};
-    FVector4f position_root_quantum_{0.0f, 0.0f, 0.0f, ml::sandbox_ismc::position_quantum};
+    FVector4f position_root_quantum_{0.0f, 0.0f, 0.0f, ioj::sandbox_ismc::position_quantum};
     FShaderResourceViewRHIRef instance_srv_;
     FBufferRHIRef custom_data_buffer_;
     FShaderResourceViewRHIRef custom_data_srv_;

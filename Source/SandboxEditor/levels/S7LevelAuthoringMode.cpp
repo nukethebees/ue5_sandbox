@@ -178,7 +178,7 @@ void US7LevelAuthoringMode::Tick(FEditorViewportClient* const viewport_client,
             auto const source{levels::authoring::emit_editor_level_source(*definition)};
             if (source) {
                 observed_scene_digest_ =
-                    FS7LevelSourceSession::source_digest(ml::to_fstring(*source));
+                    FS7LevelSourceSession::source_digest(ioj::to_fstring(*source));
             }
         }
         observed_scene_ = scene ? TOptional{*scene} : NullOpt;
@@ -777,7 +777,7 @@ void US7LevelAuthoringMode::preview_apply() {
     }
     auto read{source_session_.read()};
     if (!read) {
-        set_status(FText::FromString(ml::to_fstring(levels::format_diagnostics(read.error()))));
+        set_status(FText::FromString(ioj::to_fstring(levels::format_diagnostics(read.error()))));
         preview_.Reset();
         source_session_.state().preview = PreviewState::None;
         changed_.Broadcast();
@@ -942,11 +942,11 @@ void US7LevelAuthoringMode::save_canonical_from_scene() {
     }
     auto const emitted{levels::authoring::emit_editor_level_source(*definition)};
     if (!emitted) {
-        set_status(FText::FromString(ml::to_fstring(levels::format_diagnostics(emitted.error()))));
+        set_status(FText::FromString(ioj::to_fstring(levels::format_diagnostics(emitted.error()))));
         changed_.Broadcast();
         return;
     }
-    auto const source{ml::to_fstring(*emitted)};
+    auto const source{ioj::to_fstring(*emitted)};
 
     std::expected<void, FString> saved;
     if (source_session_.path().IsEmpty()) {

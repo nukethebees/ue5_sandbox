@@ -16,7 +16,7 @@ class UTriggerSubsystem;
 UCLASS(BlueprintType, Blueprintable)
 class SHOOTERGAME_API ATriggerButtonActor
     : public AActor
-    , public ml::LogMsgMixin<"ATriggerButtonActor", LogShooterGameActor> {
+    , public ioj::LogMsgMixin<"ATriggerButtonActor", LogShooterGameActor> {
     GENERATED_BODY()
   public:
     ATriggerButtonActor();

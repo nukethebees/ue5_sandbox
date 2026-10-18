@@ -5,7 +5,7 @@
 
 #include "ioj/sim/missions/mission_state.h"
 #include "SpaceGame/missions/TestMissionState.h"
-namespace ml {
+namespace ioj {
 [[nodiscard]] constexpr auto to_native(ETestMissionState const value) noexcept
     -> ::ioj::sim::MissionState {
     switch (value) {
@@ -62,4 +62,4 @@ static_assert(static_cast<int>(ETestMissionState::Failed) ==
               static_cast<int>(::ioj::sim::MissionState::Failed));
 static_assert(static_cast<int>(ETestMissionState::Disabled) ==
               static_cast<int>(::ioj::sim::MissionState::Disabled));
-} // namespace ml
+} // namespace ioj

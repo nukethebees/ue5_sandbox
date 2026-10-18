@@ -20,7 +20,7 @@ struct FBatchGameUiClasses {
     TMap<TSubclassOf<UUserWidget>, TSubclassOf<UUserWidget>> classes{};
 };
 
-namespace ml::test_batch_game_ui_data {
+namespace ioj::test_batch_game_ui_data {
 inline auto get_data_asset_path() -> FName {
     return FName{TEXT("/Game/UI/DA_ui_data")};
 }

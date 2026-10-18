@@ -36,7 +36,7 @@ void STextPopupWidget::Construct(FArguments const& InArgs) {
                         [
                             SNew(STextBlock)
                             .Text(msg_)
-                            .TextStyle(&ml::SandboxStyle::get(), "Sandbox.Text.Widget")
+                            .TextStyle(&ioj::SandboxStyle::get(), "Sandbox.Text.Widget")
                         ]
                     + SVerticalBox::Slot()
                         .AutoHeight()

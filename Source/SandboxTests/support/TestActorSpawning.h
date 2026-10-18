@@ -10,7 +10,7 @@ class USpaceGameLevelConfig;
 struct FPlayerShipConfig;
 class UWorld;
 
-namespace ml {
+namespace ioj {
 struct FSoftTestAssertions;
 
 struct FProxyEntityBinding {

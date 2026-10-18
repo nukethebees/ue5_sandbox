@@ -2,7 +2,7 @@
 
 #include "array_math.tpp"
 
-namespace ml::kernel {
+namespace ioj::kernel {
 #define ML_EXTERN_FN(T)                                                                       \
     extern template auto collect_indices_less_equal<T>(                                       \
         T const* values, std::int32_t count, T threshold, std::int32_t* out_indices) noexcept \

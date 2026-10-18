@@ -1,6 +1,6 @@
 #include <ioj/array_math.h>
 
-namespace ml::kernel {
+namespace ioj::kernel {
 template auto
     collect_indices_less_equal<float>(float const*, std::uint32_t, float, std::uint32_t*) noexcept
     -> std::uint32_t;

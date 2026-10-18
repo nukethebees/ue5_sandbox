@@ -1620,7 +1620,7 @@ TEST(Lowering, EnumCountsUseMlNamespaceForQualifiedHeaderOnlyEnums) {
                 return new_normal_modules;
             }()}})};
     ASSERT_EQ(files.size(), 1);
-    EXPECT_NE(files.front().content.find("namespace ml {"), std::string::npos);
+    EXPECT_NE(files.front().content.find("namespace ioj {"), std::string::npos);
     EXPECT_NE(
         files.front().content.find(
             "enum_count<::project::states::EState>() noexcept -> std::size_t {\n    return 1;\n}"),
@@ -1635,17 +1635,17 @@ TEST(Lowering, AppliesEveryStorageOperationToEveryMember) {
     auto const output{render_soa(context, std::move(schema))};
 
     std::vector<std::pair<std::string const*, std::string>> const expectations{
-        {&output.source, "ml::soa_ops::reset(*this);"},
-        {&output.source, "ml::soa_ops::reserve(*this, count);"},
-        {&output.source, "ml::soa_ops::add_uninitialised(*this, count);"},
-        {&output.source, "ml::soa_ops::add_defaulted(*this, count);"},
-        {&output.header, "ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);"},
-        {&output.source, "ml::soa_ops::set_num(*this, count, allow_shrinking);"},
-        {&output.header, "ml::copy_element(ids, dst_i, other.ids, src_i);"},
-        {&output.header, "ml::copy_element(weights, dst_i, other.weights, src_i);"},
-        {&output.header, "ml::append_from(ids, other.ids);"},
-        {&output.header, "ml::append_from(weights, other.weights);"},
-        {&output.source, "ml::soa_ops::apply_permutation(*this, indices);"},
+        {&output.source, "ioj::soa_ops::reset(*this);"},
+        {&output.source, "ioj::soa_ops::reserve(*this, count);"},
+        {&output.source, "ioj::soa_ops::add_uninitialised(*this, count);"},
+        {&output.source, "ioj::soa_ops::add_defaulted(*this, count);"},
+        {&output.header, "ioj::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);"},
+        {&output.source, "ioj::soa_ops::set_num(*this, count, allow_shrinking);"},
+        {&output.header, "ioj::copy_element(ids, dst_i, other.ids, src_i);"},
+        {&output.header, "ioj::copy_element(weights, dst_i, other.weights, src_i);"},
+        {&output.header, "ioj::append_from(ids, other.ids);"},
+        {&output.header, "ioj::append_from(weights, other.weights);"},
+        {&output.source, "ioj::soa_ops::apply_permutation(*this, indices);"},
     };
 
     for (auto const& [text, expected] : expectations) {
@@ -1747,7 +1747,7 @@ TEST(Lowering, PreservesCustomNestedRemovalOperation) {
     EXPECT_LT(validation, first_member);
     EXPECT_NE(output.header.find("registered.erase_swap(index, count, allow_shrinking);"),
               std::string::npos);
-    EXPECT_NE(output.header.find("ml::remove_at_swap(generic, index, count, allow_shrinking);"),
+    EXPECT_NE(output.header.find("ioj::remove_at_swap(generic, index, count, allow_shrinking);"),
               std::string::npos);
     EXPECT_EQ(occurrences(output.header, "#include \"SandboxCore/container_ops.h\""), 1);
 }
@@ -1836,7 +1836,7 @@ TEST(Lowering, UsesSharedConventionalNestedRemovalOperation) {
     auto const output{render_soa(context, std::move(schema), {{"nested", std::move(nested)}})};
 
     EXPECT_NE(
-        output.header.find("ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);"),
+        output.header.find("ioj::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);"),
         std::string::npos);
     EXPECT_EQ(occurrences(output.header, "#include \"SandboxCore/soa_storage_ops.h\""), 1);
 }
@@ -1849,7 +1849,7 @@ TEST(Lowering, SourceOnlyStorageHelpersDoNotLeakIntoHeader) {
     auto const output{render_soa(context, std::move(schema))};
     EXPECT_EQ(output.header.find("SandboxCore/container_ops.h"), std::string::npos);
     EXPECT_EQ(occurrences(output.source, "#include \"SandboxCore/container_ops.h\""), 1);
-    EXPECT_NE(output.source.find("ml::soa_ops::reserve(*this, count);"), std::string::npos);
+    EXPECT_NE(output.source.find("ioj::soa_ops::reserve(*this, count);"), std::string::npos);
 }
 
 TEST(Lowering, CustomSetAndAddStillSuppressGeneratedBodies) {
@@ -2071,8 +2071,8 @@ TEST(Lowering, SupportsMemberwiseCopying) {
 
     EXPECT_NE(output.header.find("ids[dst_i] = other.ids[src_i];"), std::string::npos);
     EXPECT_NE(output.header.find("weights[dst_i] = other.weights[src_i];"), std::string::npos);
-    EXPECT_EQ(output.header.find("ml::copy_element(ids"), std::string::npos);
-    EXPECT_NE(output.header.find("ml::copy_elements(ids, dst_i, other.ids, src_i, count);"),
+    EXPECT_EQ(output.header.find("ioj::copy_element(ids"), std::string::npos);
+    EXPECT_NE(output.header.find("ioj::copy_elements(ids, dst_i, other.ids, src_i, count);"),
               std::string::npos);
     EXPECT_NE(output.header.find("auto const count{other.num()};\n"
                                  "        check(num() >= count);\n"
@@ -2166,12 +2166,12 @@ TEST(Lowering, ValidatesSizesBeforePermutationAndSorting) {
     auto const output{render_soa(context, basic_schema(context))};
 
     EXPECT_NE(output.source.find("void FData::apply_permutation("), std::string::npos);
-    EXPECT_NE(output.source.find("ml::soa_ops::apply_permutation(*this, indices);"),
+    EXPECT_NE(output.source.find("ioj::soa_ops::apply_permutation(*this, indices);"),
               std::string::npos);
     EXPECT_NE(output.header.find("template <typename Compare>"), std::string::npos);
     EXPECT_NE(output.header.find("template <auto Compare>"), std::string::npos);
-    EXPECT_EQ(occurrences(output.header, "ml::soa_ops::validate_array_sizes(*this);"), 0);
-    EXPECT_NE(output.header.find("ml::soa_ops::sort(*this, std::forward<Compare>(compare),"),
+    EXPECT_EQ(occurrences(output.header, "ioj::soa_ops::validate_array_sizes(*this);"), 0);
+    EXPECT_NE(output.header.find("ioj::soa_ops::sort(*this, std::forward<Compare>(compare),"),
               std::string::npos);
 }
 

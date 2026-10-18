@@ -6,7 +6,7 @@
 
 #include <string_view>
 
-namespace ml {
+namespace ioj {
 template <typename Queue>
 [[nodiscard]] auto logged_init(Queue& queue,
                                typename Queue::size_type const capacity,

@@ -2,7 +2,7 @@
 
 #include <hwy/targets.h>
 
-namespace ml::sandbox_ismc {
+namespace ioj::sandbox_ismc {
 namespace packing_dispatch {
 auto supports_highway_avx2() noexcept -> bool {
     // Highway checks OS vector state and its full AVX2 feature set, including FMA.

@@ -15,7 +15,7 @@ void SNumWidget<T>::Construct(FArguments const& InArgs) {
     // clang-format off
     ChildSlot[
         SAssignNew(text_block_, STextBlock)
-            .TextStyle(&ml::SandboxStyle::get(), "Sandbox.Text.Widget")
+            .TextStyle(&ioj::SandboxStyle::get(), "Sandbox.Text.Widget")
     ];
     // clang-format on
 }

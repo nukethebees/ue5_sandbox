@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace ml::native_math {
+namespace ioj::native_math {
 namespace trigonometry_detail {
 inline constexpr float pi{3.14159265358979323846f};
 inline constexpr float two_pi{6.28318530717958647692f};

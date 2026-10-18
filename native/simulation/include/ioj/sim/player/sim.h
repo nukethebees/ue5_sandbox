@@ -105,7 +105,7 @@ struct Sim {
     void set_forward_input(float input) noexcept;
     void set_right_input(float input) noexcept;
     void set_up_input(float input) noexcept;
-    void set_ship_2d_control(ml::Vector2d input);
+    void set_ship_2d_control(ioj::Vector2d input);
     void start_sampling() noexcept;
     void stop_sampling();
     void adjust_desired_forward_velocity(float direction);
@@ -144,7 +144,7 @@ struct Sim {
     auto get_kills() const -> std::int32_t;
     auto get_speed() const noexcept -> float;
     auto is_sampling_target_speed() const noexcept -> bool { return sampling_target_speed_; }
-    auto get_sampled_target_speed_scale() const noexcept -> ml::Vector2d {
+    auto get_sampled_target_speed_scale() const noexcept -> ioj::Vector2d {
         return sampled_target_speed_scale_;
     }
     auto get_energy() const -> float;
@@ -175,12 +175,12 @@ struct Sim {
     std::uint32_t speed_sample_max{0};
     std::int32_t speed_sample_ticks_remaining{0};
     std::int32_t speed_sample_tick_period{1};
-    std::vector<ml::Vector2d> speed_samples;
+    std::vector<ioj::Vector2d> speed_samples;
   private:
     PlayerSimulationState state_{};
     PlayerSimulationState planned_state_{};
     PlayerFlightIntent flight_intent_{};
-    ml::Vector2d sampled_target_speed_scale_{};
+    ioj::Vector2d sampled_target_speed_scale_{};
     bool sampling_target_speed_{};
     FlightModelLoadout flight_models_{make_default_flight_model_loadout()};
     FlightModelSlot active_flight_model_slot_{FlightModelSlot::Up};
@@ -193,7 +193,7 @@ struct Sim {
     void think(float dt);
     void apply_movement();
     void generate_fire_commands();
-    void resolve_damage_events(ml::FrameMemoryResource* scratch_resource);
+    void resolve_damage_events(ioj::FrameMemoryResource* scratch_resource);
 
     /* **************************************** */
     // Identity and accounting

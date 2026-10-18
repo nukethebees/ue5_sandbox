@@ -31,7 +31,7 @@ void FFighterPresentation::begin_play_presentation() {
     if (!actor_config) {
         UE_LOG(LogSandbox, Fatal, TEXT("FFighterPresentation actor_config is nullptr."));
     }
-    ml::fatal_if_uobject_ptrs_invalid({
+    ioj::fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(actor_config->mesh.Get()),
         SANDBOX_NAMED_UOBJECT_PTR(actor_config->team_visual_data.Get()),
     });
@@ -88,7 +88,7 @@ void FFighterPresentation::update_ismc() {
     for (int32 index{}; index < count; ++index) {
         if (::ioj::sim::is_alive(healths.health(index))) {
             visible_indices_.Add(index);
-            position_bounds += ml::to_unreal(::ioj::vector_at(locations, index));
+            position_bounds += ioj::to_unreal(::ioj::vector_at(locations, index));
         }
     }
     instances->set_instances(
@@ -108,15 +108,15 @@ void FFighterPresentation::update_ismc() {
             transform_rotations.SetNumUninitialized(chunk.num());
             for (int32 local_index{0}; local_index < chunk_count; ++local_index) {
                 auto const index{visible_indices_[first_index + local_index]};
-                auto const position{ml::to_unreal(::ioj::vector_at(locations, index))};
-                FVector const direction{ml::to_unreal(::ioj::vector_at(aim_directions, index))};
+                auto const position{ioj::to_unreal(::ioj::vector_at(locations, index))};
+                FVector const direction{ioj::to_unreal(::ioj::vector_at(aim_directions, index))};
                 auto const rotation{
                     FQuat4f{FQuat::FindBetweenNormals(FVector::ForwardVector, direction)}};
                 transform_positions[local_index] = position;
                 transform_rotations[local_index] = rotation;
 
                 auto custom_data{chunk.custom_data(local_index)};
-                auto const& colour{team_colours_[ml::to_unreal(teams[index])]};
+                auto const& colour{team_colours_[ioj::to_unreal(teams[index])]};
                 custom_data[0] = colour.R;
                 custom_data[1] = colour.G;
                 custom_data[2] = colour.B;
@@ -136,20 +136,20 @@ void FFighterPresentation::draw_debug_shapes() {
     auto const target_locations{data.view_target_locations()};
 
     for (int32 i{0}; i < n; ++i) {
-        FVector const ship_location{ml::to_unreal(::ioj::vector_at(locations, i))};
+        FVector const ship_location{ioj::to_unreal(::ioj::vector_at(locations, i))};
         if (enable_ship_location_debug_drawing) {
             debug_drawer.draw_sphere(ship_location);
         }
         if (enable_target_debug_drawing && targets[i].is_valid()) {
             debug_drawer.draw_line(ship_location,
-                                   FVector{ml::to_unreal(::ioj::vector_at(target_locations, i))});
+                                   FVector{ioj::to_unreal(::ioj::vector_at(target_locations, i))});
         }
     }
 }
 
 void FFighterPresentation::validate_array_sizes() const {
     simulation().get_entities().validate();
-    ml::fatal_if_nums_not_equal({
+    ioj::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(visible_indices_.Num()),
         SANDBOX_NAMED_NUM(instances->get_instance_count()),
     });

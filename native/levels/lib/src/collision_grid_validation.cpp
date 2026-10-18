@@ -6,13 +6,13 @@
 
 namespace ioj::levels::detail {
 void validate_collision_grid(LevelCollisionGridDefinition const& grid, Diagnostics& result) {
-    auto const valid_level_size{!grid.level_size || ml::is_positive_finite(*grid.level_size)};
+    auto const valid_level_size{!grid.level_size || ioj::is_positive_finite(*grid.level_size)};
     if (grid.level_size && !valid_level_size) {
         result.emplace_back(DiagnosticCode::InvalidLevelSize,
                             "level.collision-grid.level-size",
                             "Collision-grid level size must be finite and greater than zero");
     }
-    auto const valid_cell_size{!grid.cell_size || ml::is_positive_finite(*grid.cell_size)};
+    auto const valid_cell_size{!grid.cell_size || ioj::is_positive_finite(*grid.cell_size)};
     if (grid.cell_size && !valid_cell_size) {
         result.emplace_back(DiagnosticCode::InvalidGridCellSize,
                             "level.collision-grid.cell-size",

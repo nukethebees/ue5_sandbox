@@ -13,7 +13,7 @@
 UCLASS()
 class SANDBOXGAMESHARED_API UExplosionSubsystem
     : public UWorldSubsystem
-    , public ml::LogMsgMixin<"UExplosionSubsystem", LogSandboxGameShared> {
+    , public ioj::LogMsgMixin<"UExplosionSubsystem", LogSandboxGameShared> {
     GENERATED_BODY()
   public:
     void spawn_explosion(FVector location, FRotator rotation, FExplosionConfig const& config);

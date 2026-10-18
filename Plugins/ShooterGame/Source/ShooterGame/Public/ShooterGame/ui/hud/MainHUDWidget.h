@@ -18,7 +18,7 @@ class UAmmoHUDWidget;
 UCLASS()
 class SHOOTERGAME_API UMainHUDWidget
     : public UUserWidget
-    , public ml::LogMsgMixin<"UMainHUDWidget", LogShooterGameUI> {
+    , public ioj::LogMsgMixin<"UMainHUDWidget", LogShooterGameUI> {
     GENERATED_BODY()
   public:
     UPROPERTY(meta = (BindWidget))

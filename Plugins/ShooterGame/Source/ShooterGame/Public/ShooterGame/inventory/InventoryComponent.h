@@ -24,7 +24,7 @@ DECLARE_MULTICAST_DELEGATE_OneParam(FOnAmmoAdded, FAmmoData /* total_ammo */);
 UCLASS()
 class SHOOTERGAME_API UInventoryComponent
     : public UActorComponent
-    , public ml::LogMsgMixin<"UInventoryComponent", LogShooterGameInventory> {
+    , public ioj::LogMsgMixin<"UInventoryComponent", LogShooterGameInventory> {
     GENERATED_BODY()
   public:
     UInventoryComponent();

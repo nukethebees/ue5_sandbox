@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-namespace ml::simulation_benchmark {
+namespace ioj::simulation_benchmark {
 struct BenchmarkOptions {
     std::filesystem::path level_path{};
     double simulated_seconds{};
@@ -27,4 +27,4 @@ struct CommandLineResult {
 };
 
 [[nodiscard]] auto parse_command_line(int argc, char const* const* argv) -> CommandLineResult;
-} // namespace ml::simulation_benchmark
+} // namespace ioj::simulation_benchmark

@@ -19,7 +19,7 @@ void run_worldless_player_ship_vs_capital(tests::SimulationFixture const& config
         data,
         tests::make_player_spawn(config,
                                  Transform3d{.rotation = to_quaternion(Rotator3d{0.f, -90.f, 0.f}),
-                                             .location = ml::Vector3d{19850.f, 1300.f, 980.f}}))};
+                                             .location = ioj::Vector3d{19850.f, 1300.f, 980.f}}))};
     data.player->health.health = player_vs_capital_test::collision_resilient_health;
     tests::add_capital_spawn(
         data, Vector3f{{-22020.f, 2170.f, 4360.f}}, Team::Green, player_index, 0.f, 120.f);
@@ -32,18 +32,18 @@ void run_worldless_player_ship_vs_capital(tests::SimulationFixture const& config
     harness.get_simulation().get_player_ship_commands()->start_boost();
     auto const player_id{player->unique_entity_id};
     struct Sample {
-        ml::Vector3d player_location;
-        ml::Vector3d accessor_location;
+        ioj::Vector3d player_location;
+        ioj::Vector3d accessor_location;
         std::vector<Vector3f> fighter_target_locations{};
         std::vector<Vector3f> fighter_locations{};
     };
-    ml::TimeSeriesData<Sample> samples;
+    ioj::TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim&) {
         Sample sample{.player_location = player->get_physical_state().transform.location,
                       .accessor_location = [&] {
                           auto const location{
                               observe_entity(harness.get_simulation(), player_id)->location};
-                          return ml::Vector3d{location.x(), location.y(), location.z()};
+                          return ioj::Vector3d{location.x(), location.y(), location.z()};
                       }()};
         sample.fighter_target_locations = tests::copy_vectors(fighters.get_target_locations());
         sample.fighter_locations = tests::copy_vectors(fighters.get_locations());

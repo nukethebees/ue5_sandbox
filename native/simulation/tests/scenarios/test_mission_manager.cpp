@@ -9,7 +9,7 @@
 namespace ioj::sim {
 namespace {
 auto add_worldless_capital(LevelSimInitData& data,
-                           ml::Vector3d const location,
+                           ioj::Vector3d const location,
                            Team const team = Team::White) -> std::uint32_t {
     auto const row{data.level_events.schedule.capital_spawns.num()};
     tests::add_capital_spawn(
@@ -27,21 +27,21 @@ void run_worldless_mission_manager_scenario(tests::SimulationFixture const& conf
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     auto const hero_index{add_worldless_capital(
         data,
-        ml::Vector3d{-2000.f, 0.f, 0.f},
+        ioj::Vector3d{-2000.f, 0.f, 0.f},
         scenario == Scenario::AutomaticKillTarget ? Team::Green : Team::White)};
     std::uint32_t ordinary_enemy_index{invalid_level_entity_index};
     std::uint32_t required_enemy_index{invalid_level_entity_index};
     if (scenario == Scenario::KillEnemies || scenario == Scenario::KillEnemiesWithinTime) {
-        ordinary_enemy_index = add_worldless_capital(data, ml::Vector3d{2000.f, 0.f, 0.f});
+        ordinary_enemy_index = add_worldless_capital(data, ioj::Vector3d{2000.f, 0.f, 0.f});
     } else if (scenario == Scenario::RequiredKillsObjective) {
-        ordinary_enemy_index = add_worldless_capital(data, ml::Vector3d{2000.f, 0.f, 0.f});
-        required_enemy_index = add_worldless_capital(data, ml::Vector3d{4000.f, 0.f, 0.f});
+        ordinary_enemy_index = add_worldless_capital(data, ioj::Vector3d{2000.f, 0.f, 0.f});
+        required_enemy_index = add_worldless_capital(data, ioj::Vector3d{4000.f, 0.f, 0.f});
     } else if (scenario == Scenario::RequiredKillsTimeElapsed) {
-        required_enemy_index = add_worldless_capital(data, ml::Vector3d{2000.f, 0.f, 0.f});
+        required_enemy_index = add_worldless_capital(data, ioj::Vector3d{2000.f, 0.f, 0.f});
     } else if (scenario == Scenario::AutomaticKillTarget) {
         ordinary_enemy_index =
-            add_worldless_capital(data, ml::Vector3d{2000.f, 0.f, 0.f}, Team::Red);
-        add_worldless_capital(data, ml::Vector3d{4000.f, 0.f, 0.f}, Team::Red);
+            add_worldless_capital(data, ioj::Vector3d{2000.f, 0.f, 0.f}, Team::Red);
+        add_worldless_capital(data, ioj::Vector3d{4000.f, 0.f, 0.f}, Team::Red);
     }
 
     auto& mission{data.level_events.initialisation.mission.emplace()};
@@ -123,7 +123,7 @@ void run_worldless_mission_manager_scenario(tests::SimulationFixture const& conf
         std::int32_t survivor_health{};
         std::int32_t required_health{};
     };
-    ml::TimeSeriesData<Sample> samples;
+    ioj::TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim&) {
         Sample sample;
         sample.state = manager.get_mission_state();

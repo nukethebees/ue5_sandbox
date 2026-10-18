@@ -38,7 +38,7 @@ ATestStaticTurretsProxy::ATestStaticTurretsProxy()
 
 void ATestStaticTurretsProxy::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
-    ml::set_proxy_actor_name(*this, TEXT("StaticTurret"), team);
+    ioj::set_proxy_actor_name(*this, TEXT("StaticTurret"), team);
     apply_actor_configuration();
 }
 
@@ -60,7 +60,7 @@ void ATestStaticTurretsProxy::apply_actor_configuration() {
     fire_point->SetRelativeTransform(actor_config->fire_point_offset);
     detection->SetVisibility(actor_config->show_collision);
 
-    if (IsValid(actor_config->team_visual_data) && ml::is_valid(team)) {
+    if (IsValid(actor_config->team_visual_data) && ioj::is_valid(team)) {
         actor_config->team_visual_data->ensure_all_team_colours_exist();
         auto const colour_cache{
             UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
@@ -70,7 +70,7 @@ void ATestStaticTurretsProxy::apply_actor_configuration() {
 
 #if WITH_EDITOR
 void ATestStaticTurretsProxy::apply_asset_configuration() {
-    auto const* const config{ml::resolve_proxy_level_config(*this)};
+    auto const* const config{ioj::resolve_proxy_level_config(*this)};
     if (!IsValid(config)) {
         UE_LOG(LogSandboxLearning,
                Warning,
@@ -91,7 +91,7 @@ void ATestStaticTurretsProxy::apply_asset_configuration() {
 void ATestStaticTurretsProxy::apply_asset_configuration_to_all_instances() {
     FScopedTransaction const transaction{
         NSLOCTEXT("TurretProxy", "ApplyAll", "Apply configuration to all turrets")};
-    ml::for_each_instance(*this, [](ThisClass& x) { x.apply_asset_configuration(); });
+    ioj::for_each_instance(*this, [](ThisClass& x) { x.apply_asset_configuration(); });
 }
 
 #endif

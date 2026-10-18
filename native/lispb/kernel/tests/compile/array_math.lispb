@@ -3,7 +3,7 @@
     (header "ArrayKernels.h")
     (source "ArrayKernels.cpp")
     (header-include "ArrayKernels.h")
-    (namespace ml)
+    (namespace ioj)
     (export COMPILE_FIXTURE_API))
 
   (type-set numeric int32 float double)

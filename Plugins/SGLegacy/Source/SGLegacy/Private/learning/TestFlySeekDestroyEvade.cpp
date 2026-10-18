@@ -115,8 +115,8 @@ void ATestFlySeekDestroyEvade::transition_to_state(ETestFlySeekDestroyEvadeState
         UE_LOG(LogSandboxLearning,
                Display,
                TEXT("Moving from %s to %s"),
-               *ml::to_string_without_type_prefix(old_state),
-               *ml::to_string_without_type_prefix(state));
+               *ioj::to_string_without_type_prefix(old_state),
+               *ioj::to_string_without_type_prefix(state));
     }
 
     switch (state) {
@@ -163,7 +163,7 @@ void ATestFlySeekDestroyEvade::handle_search(float dt) {
             UE_LOG(LogSandboxLearning,
                    Display,
                    TEXT("Found target: %s"),
-                   *ml::get_best_display_name(*target));
+                   *ioj::get_best_display_name(*target));
         }
 
         set_state(ETestFlySeekDestroyEvadeState::chasing);
@@ -183,13 +183,13 @@ auto ATestFlySeekDestroyEvade::scan_for_target() -> bool {
 
     GetActorBounds(false, origin, extent);
 
-    auto hits{ml::find_actors_within_cone(*this,
+    auto hits{ioj::find_actors_within_cone(*this,
                                           config.vision.radius,
                                           extent.Z * 2.0,
                                           config.vision.half_angle_rad(),
                                           ThisClass::StaticClass())};
 
-    target = ml::get_centre_actor_in_fov(*this, hits);
+    target = ioj::get_centre_actor_in_fov(*this, hits);
     if (!target.IsValid()) {
         target.Reset();
         return false;

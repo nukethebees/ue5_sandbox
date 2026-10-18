@@ -50,10 +50,10 @@ struct MissionManager {
     auto operator=(MissionManager const&) -> MissionManager& = delete;
     auto operator=(MissionManager&&) -> MissionManager& = delete;
 
-    void begin_play(ml::FrameMemoryResource* scratch_resource);
-    void prepare_objectives(ml::FrameMemoryResource* scratch_resource);
+    void begin_play(ioj::FrameMemoryResource* scratch_resource);
+    void prepare_objectives(ioj::FrameMemoryResource* scratch_resource);
     void reset_runtime_state();
-    void mission_tick(ml::FrameMemoryResource* scratch_resource);
+    void mission_tick(ioj::FrameMemoryResource* scratch_resource);
     auto complete_mission() -> bool;
 
     /* **************************************** */
@@ -148,7 +148,7 @@ struct MissionManager {
     /* **************************************** */
     void update_objective_health(std::span<EntityUniqueId const> ids,
                                  std::span<ShipHealth> output,
-                                 ml::FrameMemoryResource* scratch_resource);
+                                 ioj::FrameMemoryResource* scratch_resource);
     auto entities_that_must_survive_are_alive() const -> bool;
     auto entities_required_to_kill_are_dead() const -> bool;
 

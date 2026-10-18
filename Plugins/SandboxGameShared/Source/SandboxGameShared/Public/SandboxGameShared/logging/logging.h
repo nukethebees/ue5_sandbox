@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 
-namespace ml {
+namespace ioj {
 SANDBOXGAMESHARED_API void log_value_is_x(
     FString const& var_name,
     FString const& null_form,

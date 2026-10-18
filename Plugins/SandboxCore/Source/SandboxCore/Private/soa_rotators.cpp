@@ -11,7 +11,7 @@
 void FRotatorsd::apply_permutation(TArrayView<int32> indices) {
     validate_array_sizes();
     check(indices.Num() == num());
-    ml::apply_permutation(pitches, indices);
-    ml::apply_permutation(yaws, indices);
-    ml::apply_permutation(rolls, indices);
+    ioj::apply_permutation(pitches, indices);
+    ioj::apply_permutation(yaws, indices);
+    ioj::apply_permutation(rolls, indices);
 }

@@ -10,7 +10,7 @@
 #include <Misc/PackageName.h>
 #include <UObject/SavePackage.h>
 
-namespace ml::world_soft_target_assets {
+namespace ioj::world_soft_target_assets {
 inline constexpr TCHAR material_object_path[]{
     TEXT("/SpaceGame/Generated/Materials/M_SoftTargetWorld.M_SoftTargetWorld")};
 inline constexpr TCHAR mesh_object_path[]{
@@ -54,7 +54,7 @@ UGenerateWorldSoftTargetAssetsCommandlet::UGenerateWorldSoftTargetAssetsCommandl
 }
 
 int32 UGenerateWorldSoftTargetAssetsCommandlet::Main(FString const&) {
-    using namespace ml::world_soft_target_assets;
+    using namespace ioj::world_soft_target_assets;
 
     auto* const material{LoadObject<UMaterialInterface>(nullptr, material_object_path)};
     if (!IsValid(material)) {

@@ -19,7 +19,7 @@ class UWorld;
 class UStaticMesh;
 class UStaticMeshComponent;
 
-namespace ml {
+namespace ioj {
 struct QuantisedPotential {
     using Value = uint8;
 
@@ -51,8 +51,8 @@ struct FTestUniformFieldCell {
 
     UPROPERTY()
     FVector3f potential{FVector3f::ZeroVector};
-    ml::QuantisedPotential old_quantised_potential{};
-    ml::QuantisedPotential new_quantised_potential{};
+    ioj::QuantisedPotential old_quantised_potential{};
+    ioj::QuantisedPotential new_quantised_potential{};
 
     bool quantised_changed() const;
     void reset();

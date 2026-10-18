@@ -30,6 +30,6 @@ struct CollisionGridEntityStorage {
     EntityCellData rebuild_entity_data;
     // Map each per-type entity-storage row to its cached world-space AABB row.
     // Rows omitted from the rebuild have EntityInstanceHandle::invalid_value.
-    ml::EnumArray<EntityType, std::vector<std::uint32_t>> entity_row_to_aabb_row;
+    ioj::EnumArray<EntityType, std::vector<std::uint32_t>> entity_row_to_aabb_row;
 };
 } // namespace ioj::sim::collision

@@ -25,7 +25,7 @@ auto text(FString const& value) -> std::string {
 auto entity_id(FName const value) -> EntityId {
     return EntityId{value.IsNone() ? std::string{} : text(value.ToString().ToLower())};
 }
-auto vector(FVector const value) -> ml::Vector3d {
+auto vector(FVector const value) -> ioj::Vector3d {
     return {value.X, value.Y, value.Z};
 }
 
@@ -45,7 +45,7 @@ auto adopt(ULevel& level, TArray<FS7LevelEntityBinding>& bindings) -> int32 {
         }
         auto const id{allocate_entity_id(
             text(actor->GetActorLabel()), to_serialized_string(resolved->archetype), ids)};
-        bindings.Add({.id = FName{ml::to_fstring(id.value)}, .actor = actor});
+        bindings.Add({.id = FName{ioj::to_fstring(id.value)}, .actor = actor});
         bound.Add(actor);
         ++count;
     }
@@ -99,7 +99,7 @@ auto create_level_authoring_document(ULevel& level)
     auto const map_name{FPackageName::GetShortName(level.GetOutermost()->GetName())};
     document->level_id = canonical_s7_level_entity_id(map_name, TEXTVIEW("authored-level"));
     document->title = map_name;
-    document->level_config = ml::s7_level_config::load_canonical();
+    document->level_config = ioj::s7_level_config::load_canonical();
     if (!IsValid(document->level_config)) {
         document->Destroy();
         transaction.Cancel();
@@ -279,7 +279,7 @@ auto collect_s7_editor_level(ULevel const& level, AS7LevelAuthoringDocument cons
     -> std::expected<levels::LevelDefinition, FString> {
     using namespace s7_level_authoring_session_detail;
     auto const* const config{document.level_config.Get()};
-    auto const* const canonical{ml::s7_level_config::load_canonical()};
+    auto const* const canonical{ioj::s7_level_config::load_canonical()};
     if (!IsValid(config) || !IsValid(canonical) ||
         (config != canonical && !level.GetOutermost()->GetName().StartsWith(TEXT("/Temp/")))) {
         return std::unexpected{
@@ -306,7 +306,7 @@ auto collect_s7_editor_level(ULevel const& level, AS7LevelAuthoringDocument cons
     }
     auto checked{LevelDefinition::make(MoveTemp(scene->definition))};
     if (!checked) {
-        return std::unexpected{ml::to_fstring(format_diagnostics(checked.error()))};
+        return std::unexpected{ioj::to_fstring(format_diagnostics(checked.error()))};
     }
     return MoveTemp(*checked);
 }

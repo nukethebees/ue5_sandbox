@@ -221,7 +221,7 @@ TEST_CLASS(SaveProfileManager, "Sandbox.UnitTests")
         TestRunner->TestEqual(
             TEXT("Active profile is restored"), reloaded.get_active_profile_id(), profile_id);
         auto const progress{ioj::summarize_level_progress(
-            ml::FLevelId{FName{TEXT("asteroid-field")}}, reloaded.get_active_records())};
+            ioj::FLevelId{FName{TEXT("asteroid-field")}}, reloaded.get_active_records())};
         TestRunner->TestTrue(TEXT("Reloaded level remains completed"),
                              progress.state == ioj::ELevelProgressState::Completed);
     }

@@ -17,21 +17,21 @@ class PhaseInterface {
 
     void prepare_tick(float const dt) { simulation.prepare_tick(dt); }
 
-    void think(float const dt, ml::FrameMemoryResource* const scratch_resource) {
+    void think(float const dt, ioj::FrameMemoryResource* const scratch_resource) {
         simulation.think(dt, scratch_resource);
     }
 
-    void apply_movement(ml::FrameMemoryResource* const scratch_resource) {
+    void apply_movement(ioj::FrameMemoryResource* const scratch_resource) {
         simulation.apply_movement(scratch_resource);
     }
 
-    void generate_fire_commands(ml::FrameMemoryResource* const scratch_resource) {
+    void generate_fire_commands(ioj::FrameMemoryResource* const scratch_resource) {
         simulation.generate_fire_commands(scratch_resource);
     }
 
     void commit_spawns() { simulation.commit_spawns(); }
 
-    void resolve_damage_events(ml::FrameMemoryResource* const scratch_resource) {
+    void resolve_damage_events(ioj::FrameMemoryResource* const scratch_resource) {
         simulation.resolve_damage_events(scratch_resource);
     }
 

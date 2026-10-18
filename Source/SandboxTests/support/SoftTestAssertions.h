@@ -14,7 +14,7 @@
 #include <functional>
 #include <type_traits>
 
-namespace ml {
+namespace ioj {
 struct FSoftTestAssertions {
     void store_result(bool result) noexcept;
 
@@ -311,8 +311,8 @@ Check dist > {1}:
     bool all_equal_impl(T const& exp, T const& got, Description const& description) {
         indices.Reset();
 
-        auto const n_exp{ml::num(exp)};
-        auto const n_got{ml::num(got)};
+        auto const n_exp{ioj::num(exp)};
+        auto const n_got{ioj::num(got)};
         if (n_exp != n_got) {
             store_result(false);
             message = format_message(
@@ -337,8 +337,8 @@ Check dist > {1}:
                         Description const& description) {
         indices.Reset();
 
-        auto const n_exp{ml::num(exp)};
-        auto const n_got{ml::num(got)};
+        auto const n_exp{ioj::num(exp)};
+        auto const n_got{ioj::num(got)};
         if (n_exp != n_got) {
             store_result(false);
             message = format_message(

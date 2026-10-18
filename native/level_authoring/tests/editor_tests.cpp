@@ -152,7 +152,7 @@ TEST(NativeEditorScene, InvalidObservedValuesCanBeComparedAndRepaired) {
     EXPECT_FALSE(plan->changes[0].configure_actor);
 
     auto const nan{std::numeric_limits<double>::quiet_NaN()};
-    observed.definition.collision_grid = {.level_size = ml::Vector3d{nan, 1.0, 1.0}};
+    observed.definition.collision_grid = {.level_size = ioj::Vector3d{nan, 1.0, 1.0}};
     observed.definition.camera = {.offset_direction = {nan, 0.0, 0.0}, .distance = nan};
     observed.definition.mission = {.time_limit_seconds = std::numeric_limits<float>::quiet_NaN()};
     EXPECT_EQ(observed, observed);
@@ -168,7 +168,7 @@ TEST(NativeEditorScene, ComparesDocumentFieldsAndRepairsInvalidReferences) {
     auto observed{scene()};
     auto incoming{observed.definition};
     incoming.metadata.description = "Changed";
-    incoming.collision_grid = {.level_size = ml::Vector3d{100000.0, 100000.0, 100000.0}};
+    incoming.collision_grid = {.level_size = ioj::Vector3d{100000.0, 100000.0, 100000.0}};
     incoming.mission = {.mode = LevelMissionMode::KillEnemies,
                         .kill_count = 1,
                         .hero_entity_ids = {EntityId{"player"}},

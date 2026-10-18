@@ -62,7 +62,7 @@ void UVideoSettingRowWidget::setup_input_widgets_for_type() {
     visit_row_data([this](auto const& data) {
         using UnrealT = std::remove_cvref_t<decltype(data)>::UnrealT;
 
-        if constexpr (ml::is_numeric<UnrealT>) {
+        if constexpr (ioj::is_numeric<UnrealT>) {
             setup_numeric_widgets(data);
         } else {
             setup_boolean_widgets();
@@ -120,7 +120,7 @@ void UVideoSettingRowWidget::update_display_values() {
         current_value_text->SetText(data.get_current_display_text());
         pending_value_input->SetText(data.get_pending_display_text());
 
-        if constexpr (ml::is_numeric<UnrealT>) {
+        if constexpr (ioj::is_numeric<UnrealT>) {
             if (numeric_slider) {
                 numeric_slider->SetValue(data.slider_pending());
             }
@@ -153,7 +153,7 @@ void UVideoSettingRowWidget::handle_slider_changed(float value) {
     visit_row_data([this, value](auto& data) {
         using UnrealT = std::remove_cvref_t<decltype(data)>::UnrealT;
 
-        if constexpr (ml::is_numeric<UnrealT>) {
+        if constexpr (ioj::is_numeric<UnrealT>) {
             data.set_pending_value(value);
 
             if (pending_value_input) {
@@ -173,7 +173,7 @@ void UVideoSettingRowWidget::handle_text_committed(FText const& text,
         using SettingT = typename ConfigType::SettingT;
         using UnrealT = typename ConfigType::UnrealT;
 
-        if constexpr (ml::is_numeric<UnrealT>) {
+        if constexpr (ioj::is_numeric<UnrealT>) {
             SettingT value;
             if constexpr (std::is_same_v<SettingT, float>) {
                 value = FCString::Atof(*text.ToString());

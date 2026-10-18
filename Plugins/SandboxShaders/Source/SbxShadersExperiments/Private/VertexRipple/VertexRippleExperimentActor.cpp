@@ -8,7 +8,7 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogVertexRippleExperiment, Log, All);
 
-namespace ml::shaders::vertex_ripple {
+namespace ioj::shaders::vertex_ripple {
 constexpr TCHAR mesh_path[]{
     TEXT("/SandboxShaders/Experiments/VertexRipple/SM_VertexRippleGrid.SM_VertexRippleGrid")};
 constexpr TCHAR material_path[]{
@@ -24,13 +24,13 @@ AVertexRippleExperimentActor::AVertexRippleExperimentActor() {
     surface_mesh_->SetCastShadow(false);
 
     static ConstructorHelpers::FObjectFinder<UStaticMesh> const surface_mesh{
-        ml::shaders::vertex_ripple::mesh_path};
+        ioj::shaders::vertex_ripple::mesh_path};
     if (surface_mesh.Succeeded()) {
         surface_mesh_->SetStaticMesh(surface_mesh.Object);
     }
 
     static ConstructorHelpers::FObjectFinder<UMaterialInterface> const surface_material{
-        ml::shaders::vertex_ripple::material_path};
+        ioj::shaders::vertex_ripple::material_path};
     if (surface_material.Succeeded()) {
         surface_material_ = surface_material.Object;
         surface_mesh_->SetMaterial(0, surface_material_);
@@ -46,11 +46,11 @@ void AVertexRippleExperimentActor::OnConstruction(FTransform const& transform) {
 void AVertexRippleExperimentActor::ensure_material() {
     if (!IsValid(surface_mesh_->GetStaticMesh())) {
         surface_mesh_->SetStaticMesh(
-            LoadObject<UStaticMesh>(nullptr, ml::shaders::vertex_ripple::mesh_path));
+            LoadObject<UStaticMesh>(nullptr, ioj::shaders::vertex_ripple::mesh_path));
     }
     if (!IsValid(surface_material_)) {
         surface_material_ =
-            LoadObject<UMaterialInterface>(nullptr, ml::shaders::vertex_ripple::material_path);
+            LoadObject<UMaterialInterface>(nullptr, ioj::shaders::vertex_ripple::material_path);
     }
     if (IsValid(surface_material_) && !IsValid(material_instance_)) {
         material_instance_ = surface_mesh_->CreateDynamicMaterialInstance(0, surface_material_);

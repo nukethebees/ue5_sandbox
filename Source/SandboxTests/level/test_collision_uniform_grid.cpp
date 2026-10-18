@@ -16,7 +16,7 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
 {
     TEST_METHOD(StaticHarvesting)
     {
-        ml::FSoftTestAssertions checks;
+        ioj::FSoftTestAssertions checks;
         checks.test_runner = TestRunner;
 
         auto* const world{UWorld::CreateWorld(EWorldType::Editor, false)};
@@ -55,7 +55,7 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
         auto const configured_dims{config.calculate_grid_dimensions()};
         auto const grid_geometry{ioj::sim::collision::GridGeometry{
             {configured_dims.X, configured_dims.Y, configured_dims.Z},
-            ml::to_native(config.cell_size)}};
+            ioj::to_native(config.cell_size)}};
         grid.set_geometry(grid_geometry);
         ioj::FLevelCollisionHost collision_host;
         grid.set_static_aabbs(

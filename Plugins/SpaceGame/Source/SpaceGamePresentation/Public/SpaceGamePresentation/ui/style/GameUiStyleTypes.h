@@ -53,25 +53,25 @@ enum class EGameUiIcon : uint8 {
 
 using EGameUiIconUnderlying = uint8;
 
-namespace ml {
+namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<::EGameTextStyle>() noexcept -> std::size_t {
     return 10;
 }
-} // namespace ml
+} // namespace ioj
 
-namespace ml {
+namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<::EGameButtonStyle>() noexcept -> std::size_t {
     return 2;
 }
-} // namespace ml
+} // namespace ioj
 
-namespace ml {
+namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<::EGameUiIcon>() noexcept -> std::size_t {
     return 9;
 }
-} // namespace ml
+} // namespace ioj
 
 SPACEGAMEPRESENTATION_API auto LexToString(EGameUiIcon const value) -> TCHAR const*;

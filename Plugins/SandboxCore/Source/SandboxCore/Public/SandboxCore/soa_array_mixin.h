@@ -10,7 +10,7 @@
 
 #include <type_traits>
 
-namespace ml {
+namespace ioj {
 struct FSoACommonMixin {
     template <typename T>
     using ViewFor = std::conditional_t<std::is_const_v<T>,
@@ -51,12 +51,12 @@ struct FSoACommonMixin {
     template <SupportsApplyArrays Self>
     void validate_array_sizes(this Self const& self) {
         self.apply_arrays(
-            [](auto const&... arrays) { ml::fatal_if_nums_not_equal({ml::num(arrays)...}); });
+            [](auto const&... arrays) { ioj::fatal_if_nums_not_equal({ioj::num(arrays)...}); });
     }
 
     template <SupportsApplyArrays Self>
     auto num(this Self const& self) noexcept -> int32 {
-        return self.apply_arrays([](auto const& first, auto const&...) { return ml::num(first); });
+        return self.apply_arrays([](auto const& first, auto const&...) { return ioj::num(first); });
     }
 
     template <SupportsApplyArrays Self>
@@ -70,22 +70,22 @@ struct FSoACommonMixin {
 struct FSoAArrayMixin : public FSoACommonMixin {
     template <SupportsApplyArrays Self>
     void reset(this Self& self) {
-        self.apply_arrays([](auto&... arrays) { ml::reset(arrays...); });
+        self.apply_arrays([](auto&... arrays) { ioj::reset(arrays...); });
     }
 
     template <SupportsApplyArrays Self>
     void reserve(this Self& self, int32 const count) {
-        self.apply_arrays([count](auto&... arrays) { ml::reserve(count, arrays...); });
+        self.apply_arrays([count](auto&... arrays) { ioj::reserve(count, arrays...); });
     }
 
     template <SupportsApplyArrays Self>
     void add_uninitialised(this Self& self, int32 const count) {
-        self.apply_arrays([count](auto&... arrays) { ml::add_uninitialised(count, arrays...); });
+        self.apply_arrays([count](auto&... arrays) { ioj::add_uninitialised(count, arrays...); });
     }
 
     template <SupportsApplyArrays Self>
     void add_defaulted(this Self& self, int32 const count) {
-        self.apply_arrays([count](auto&... arrays) { ml::add_defaulted(count, arrays...); });
+        self.apply_arrays([count](auto&... arrays) { ioj::add_defaulted(count, arrays...); });
     }
 
     template <SupportsApplyArrays Self>
@@ -94,28 +94,28 @@ struct FSoAArrayMixin : public FSoACommonMixin {
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
         self.apply_arrays([index, count, allow_shrinking](auto&... arrays) {
-            ml::remove_at_swap(index, count, allow_shrinking, arrays...);
+            ioj::remove_at_swap(index, count, allow_shrinking, arrays...);
         });
     }
 
     template <SupportsApplyArrays Self>
     void set_num(this Self& self, int32 const count, EAllowShrinking const allow_shrinking) {
         self.apply_arrays([count, allow_shrinking](auto&... arrays) {
-            ml::set_num(count, allow_shrinking, arrays...);
+            ioj::set_num(count, allow_shrinking, arrays...);
         });
     }
 
     template <SupportsApplyArrayPairs Self>
     void copy_element(this Self& self, int32 const dst_i, Self const& other, int32 const src_i) {
         self.apply_array_pairs(other, [dst_i, src_i](auto&&... arrays) -> void {
-            ml::copy_element(dst_i, src_i, arrays...);
+            ioj::copy_element(dst_i, src_i, arrays...);
         });
     }
 
     template <typename Other, typename Self>
         requires SupportsApplyArrayPairsWith<Self, Other>
     void append_from(this Self& self, Other const& other) {
-        self.apply_array_pairs(other, [](auto&&... arrays) -> void { ml::append_from(arrays...); });
+        self.apply_array_pairs(other, [](auto&&... arrays) -> void { ioj::append_from(arrays...); });
     }
 };
 

@@ -20,7 +20,7 @@ struct OverlapFixture {
                             Vector3f const capital_centre = Vector3f{},
                             Vector3f const turret_half_extents = {{10.f, 10.f, 10.f}})
         : query_manager{owners.entity_tables} {
-        for (auto const type : ml::EnumTraits<EntityType>::values) {
+        for (auto const type : ioj::EnumTraits<EntityType>::values) {
             set_bounds(type, Vector3f{}, Vector3f{{10.f, 10.f, 10.f}});
         }
         set_bounds(EntityType::CapitalShip, capital_centre, capital_half_extents);
@@ -32,7 +32,7 @@ struct OverlapFixture {
     void refresh_and_detect_overlaps(std::span<EntityUniqueId const> const overlap_candidates) {
         owners.refresh(query_manager);
         {
-            ml::FrameScratchScope scratch_scope{frame_memory};
+            ioj::FrameScratchScope scratch_scope{frame_memory};
             try {
                 query_manager.detect_overlaps(overlap_candidates, &frame_memory);
             } catch (std::bad_alloc const&) {
@@ -116,8 +116,8 @@ struct OverlapFixture {
     // Include raw duplicate overlap pairs as well as sorting scratch in the frame budget.
     GameMemory game_memory{{.root_capacity_bytes = overlap_frame_memory_capacity}};
     memory::Block frame_memory_backing{game_memory.acquire_block(
-        overlap_frame_memory_capacity, ml::FrameMemoryResource::backing_alignment)};
-    ml::FrameMemoryResource frame_memory{
+        overlap_frame_memory_capacity, ioj::FrameMemoryResource::backing_alignment)};
+    ioj::FrameMemoryResource frame_memory{
         std::span<std::byte>{frame_memory_backing.data(), frame_memory_backing.size_bytes()}};
     SpatialQueryManager query_manager;
     collision::EntityAABBs entity_bounds;
@@ -151,10 +151,10 @@ void check_single_static_overlap(collision::EntityStaticOverlaps::ConstView cons
 }
 
 TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
-    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
+    alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
         query_backing{};
-    ml::FrameMemoryResource query_memory{query_backing};
-    ml::FrameScratchScope query_scope{query_memory};
+    ioj::FrameMemoryResource query_memory{query_backing};
+    ioj::FrameScratchScope query_scope{query_memory};
 
     OverlapFixture fixture;
     auto const stationary{
@@ -276,10 +276,10 @@ TEST(EntityAABBOverlaps, SelfAndQuietTicksProduceNoPairs) {
 }
 
 TEST(EntityAABBOverlaps, RefreshSpatialIndexDoesNotDetectOrAppendEvents) {
-    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
+    alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
         query_backing{};
-    ml::FrameMemoryResource query_memory{query_backing};
-    ml::FrameScratchScope query_scope{query_memory};
+    ioj::FrameMemoryResource query_memory{query_backing};
+    ioj::FrameScratchScope query_scope{query_memory};
 
     OverlapFixture fixture;
     auto const entity{fixture.spawn({{0.f, 0.f, 0.f}})};
@@ -313,7 +313,7 @@ TEST(EntityAABBOverlaps, DetectOverlapsUsesExistingSpatialIndex) {
     fixture.owners.publish();
     std::array const candidates{candidate};
     {
-        ml::FrameScratchScope scratch_scope{fixture.frame_memory};
+        ioj::FrameScratchScope scratch_scope{fixture.frame_memory};
         auto const overlaps{
             fixture.query_manager.detect_overlaps(candidates, &fixture.frame_memory)};
         EXPECT_EQ(overlaps.entity_entity_overlaps.num(), 0);
@@ -321,7 +321,7 @@ TEST(EntityAABBOverlaps, DetectOverlapsUsesExistingSpatialIndex) {
 
     fixture.owners.refresh(fixture.query_manager);
     {
-        ml::FrameScratchScope scratch_scope{fixture.frame_memory};
+        ioj::FrameScratchScope scratch_scope{fixture.frame_memory};
         auto const overlaps{
             fixture.query_manager.detect_overlaps(candidates, &fixture.frame_memory)};
         check_single_pair(overlaps.entity_entity_overlaps, candidate, stationary);

@@ -4,7 +4,7 @@
 
 #include <CoreMinimal.h>
 
-namespace ml {
+namespace ioj {
 inline auto to_native(FRotator3f const value) noexcept -> ::ioj::Rotator3f {
     return {.pitch = value.Pitch, .yaw = value.Yaw, .roll = value.Roll};
 }

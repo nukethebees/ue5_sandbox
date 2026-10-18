@@ -37,7 +37,7 @@ auto fixed_storage_type(LoweringContext& context, FixedMemberLayoutId member) ->
     if (resolved_store
             .kind[resolved_store.index(fixed_member_store.member[fixed_member_store_index])] ==
         SoaMemberKind::array) {
-        return "ml::TFixedStorage<" +
+        return "ioj::TFixedStorage<" +
                std::string{ir.types.spelling(resolved_store.element_type[resolved_store.index(
                    fixed_member_store.member[fixed_member_store_index])])} +
                ", Capacity>";
@@ -321,7 +321,7 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
         auto const member{
             context.ir.lowering.items(layout_store.members[layout_store_index])[index]};
         auto dependencies{std::vector<TypeDependencyId>{
-            ir.types.dependency("ml::TFixedStorage", "ioj/fixed_storage.h")}};
+            ir.types.dependency("ioj::TFixedStorage", "ioj/fixed_storage.h")}};
         dependencies.insert(dependencies.end(),
                             ir.types
                                 .dependencies(resolved_store.element_type[resolved_store.index(

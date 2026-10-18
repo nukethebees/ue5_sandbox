@@ -52,11 +52,11 @@ void ATestUniformFieldFly2::BeginPlay() {
         return;
     }
 
-    if (!ml::actor_is_within(*this, *field, false)) {
+    if (!ioj::actor_is_within(*this, *field, false)) {
         UE_LOG(LogSandboxLearning,
                Error,
                TEXT("%s is not within the vector field"),
-               *ml::get_best_display_name(*this));
+               *ioj::get_best_display_name(*this));
         SetActorTickEnabled(false);
         return;
     }
@@ -108,7 +108,7 @@ void ATestUniformFieldFly2::explore(float dt) {
         set_new_destination();
     }
 
-    ml::face_point(*this, destination);
+    ioj::face_point(*this, destination);
     move_to_destination(dt);
 
     if (try_find_target()) {
@@ -122,7 +122,7 @@ void ATestUniformFieldFly2::track(float dt) {
         return;
     }
 
-    ml::face_actor(*this, *target);
+    ioj::face_actor(*this, *target);
     move_to_destination(dt);
 
     TRY_INIT_PTR(world, GetWorld());
@@ -163,7 +163,7 @@ void ATestUniformFieldFly2::set_new_destination() {
             UE_LOG(LogSandboxLearning,
                    Warning,
                    TEXT("%s: Sample is nearly zero"),
-                   *ml::get_best_display_name(*this));
+                   *ioj::get_best_display_name(*this));
         }
         return;
     }
@@ -216,7 +216,7 @@ void ATestUniformFieldFly2::display_destination() {
     DrawDebugSphere(world, destination, acceptance_radius, 8, colour, false, 0.f, 0u, thickness);
 }
 bool ATestUniformFieldFly2::is_oob() const {
-    return !ml::actor_is_within(*this, *field, false);
+    return !ioj::actor_is_within(*this, *field, false);
 }
 
 // Vision
@@ -254,7 +254,7 @@ bool ATestUniformFieldFly2::try_find_target() {
         UE_LOG(LogSandboxLearning,
                Display,
                TEXT("%s: Finding a new target"),
-               *ml::get_best_display_name(*this));
+               *ioj::get_best_display_name(*this));
     }
 
     FVector origin;
@@ -262,19 +262,19 @@ bool ATestUniformFieldFly2::try_find_target() {
 
     GetActorBounds(false, origin, extent);
 
-    auto hits{ml::find_actors_within_cone(*this,
+    auto hits{ioj::find_actors_within_cone(*this,
                                           vision_radius,
                                           extent.Z * 2.0,
                                           FMath::RadiansToDegrees(vision_angle_deg / 2.f),
                                           target_classes)};
 
-    target = ml::get_centre_actor_in_fov(*this, hits);
+    target = ioj::get_centre_actor_in_fov(*this, hits);
     if (!target.IsValid()) {
         return false;
     }
 
     if (can_log(EActorLogVerbosity::Basic)) {
-        UE_LOG(LogSandboxLearning, Display, TEXT("Found: %s"), *ml::get_best_display_name(*target));
+        UE_LOG(LogSandboxLearning, Display, TEXT("Found: %s"), *ioj::get_best_display_name(*target));
     }
 
     return true;

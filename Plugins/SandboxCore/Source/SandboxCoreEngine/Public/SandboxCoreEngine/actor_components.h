@@ -6,7 +6,7 @@
 #include "UObject/NameTypes.h"
 #include "UObject/UObjectGlobals.h"
 
-namespace ml {
+namespace ioj {
 template <typename T>
 void destroy_components_array(TArray<T>& components) {
     for (auto& component : components) {

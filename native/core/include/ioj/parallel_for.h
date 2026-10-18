@@ -9,7 +9,7 @@
 #include <concepts>
 #include <cstdint>
 
-namespace ml {
+namespace ioj {
 
 namespace tbb = oneapi::tbb;
 
@@ -45,7 +45,7 @@ void parallel_for(Index const begin, Index const end, Function const& function) 
 
 template <std::integral Index, typename Function>
 void parallel_for(Index const end, Function const& function) {
-    ml::parallel_for(Index{0}, end, function);
+    ioj::parallel_for(Index{0}, end, function);
 }
 
-} // namespace ml
+} // namespace ioj

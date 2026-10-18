@@ -23,7 +23,7 @@ struct SpatialQueryManager;
 struct SpatialQueryManagerTestAccess;
 }
 
-namespace ml {
+namespace ioj {
 class FrameMemoryResource;
 }
 
@@ -56,16 +56,16 @@ struct SpatialQueryManager {
     void trace_line_of_sight(Vectors3fConstView start_locations,
                              Vectors3fConstView end_locations,
                              std::span<EntityUniqueId> out_entity_ids,
-                             ml::FrameMemoryResource* scratch_resource) const;
+                             ioj::FrameMemoryResource* scratch_resource) const;
     void has_line_of_sight_to_targets(Vector3f const& start_location,
                                       Vectors3fConstView end_locations,
                                       std::span<EntityUniqueId const> targets,
                                       std::span<LineQueryResult> has_los,
-                                      ml::FrameMemoryResource* scratch_resource) const;
+                                      ioj::FrameMemoryResource* scratch_resource) const;
     void have_clear_lines(Vectors3fConstView start_locations,
                           Vectors3fConstView end_locations,
                           std::span<LineQueryResult> clear_lines,
-                          ml::FrameMemoryResource* scratch_resource,
+                          ioj::FrameMemoryResource* scratch_resource,
                           std::span<EntityUniqueId const> ignored_entities = {}) const;
     void trace_closest_lines(Vectors3fConstView start_locations,
                              Vectors3fConstView end_locations,
@@ -90,36 +90,36 @@ struct SpatialQueryManager {
                                             std::span<Team const> teams,
                                             float radius,
                                             FrameRangeQueryResults& out_results,
-                                            ml::FrameMemoryResource* const scratch_resource) const;
+                                            ioj::FrameMemoryResource* const scratch_resource) const;
 
     /* **************************************** */
     // Scalar and entity queries
     /* **************************************** */
     // Return unique membership from the last grid rebuild, ordered by entity ID.
     void collect_unique_entities_in_cells(std::span<collision::CellCoord const> cells,
-                                          ml::FrameArray<EntityUniqueId>& out_entities) const;
+                                          ioj::FrameArray<EntityUniqueId>& out_entities) const;
 
     auto has_clear_line(Vector3f start_location,
                         Vector3f end_location,
-                        ml::FrameMemoryResource* scratch_resource,
+                        ioj::FrameMemoryResource* scratch_resource,
                         EntityUniqueId ignored_entity = {}) const -> bool;
     auto trace_closest(Vector3f start_location,
                        Vector3f end_location,
-                       ml::FrameMemoryResource* scratch_resource,
+                       ioj::FrameMemoryResource* scratch_resource,
                        EntityUniqueId ignored_entity = {}) const -> LineTraceResult;
 
     auto collect_non_team_entities_in_range(Vector3f const& origin,
                                             Team const team,
                                             float const radius,
                                             std::span<EntityUniqueId> const out_entities,
-                                            ml::FrameMemoryResource* scratch_resource) const
+                                            ioj::FrameMemoryResource* scratch_resource) const
         -> std::uint32_t;
     auto collect_entities_of_type_in_range(Vector3f const& origin,
                                            EntityType entity_type,
                                            float radius,
                                            EntityUniqueId ignored_entity,
                                            std::span<EntityUniqueId> out_entities,
-                                           ml::FrameMemoryResource* scratch_resource) const
+                                           ioj::FrameMemoryResource* scratch_resource) const
         -> std::uint32_t;
     auto get_any_non_team_entity(Team const team, EntityType const entity_type) const
         -> EntityUniqueId;
@@ -130,12 +130,12 @@ struct SpatialQueryManager {
     auto get_entity_type_radii() const noexcept -> EntityTypeRadii const&;
     void copy_entity_locations(std::span<EntityUniqueId const> ids,
                                Vectors3fView output,
-                               ml::FrameMemoryResource* scratch_resource) const;
+                               ioj::FrameMemoryResource* scratch_resource) const;
     void copy_entity_motion(std::span<EntityUniqueId const> ids,
                             Vectors3fView locations,
                             Vectors3fView velocities,
                             std::span<EntityInstanceHandle> handles,
-                            ml::FrameMemoryResource* scratch_resource) const;
+                            ioj::FrameMemoryResource* scratch_resource) const;
 
     /* **************************************** */
     // Collision and spatial-index lifecycle
@@ -145,7 +145,7 @@ struct SpatialQueryManager {
         -> collision::StaticGeometryIndex;
     void refresh_spatial_index(LevelReadAccess const& level);
     auto detect_overlaps(std::span<EntityUniqueId const> overlap_candidates,
-                         ml::FrameMemoryResource* const scratch_resource)
+                         ioj::FrameMemoryResource* const scratch_resource)
         -> collision::DetectedOverlapsView;
     void reset_frame_collision_events();
     auto get_aabb_overlap_events() const -> collision::AABBOverlapEventsView;
@@ -162,8 +162,8 @@ struct SpatialQueryManager {
 
     collision::CollisionSystem collision_system_;
     EntityTypeRadii entity_radii_{};
-    ml::EnumArray<EntityType, Vectors3fConstView> locations_;
-    ml::EnumArray<EntityType, Vectors3fConstView> velocities_;
+    ioj::EnumArray<EntityType, Vectors3fConstView> locations_;
+    ioj::EnumArray<EntityType, Vectors3fConstView> velocities_;
     PlayerSpatialData player_spatial_;
 };
 }

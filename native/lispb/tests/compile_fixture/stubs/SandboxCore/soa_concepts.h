@@ -1,8 +1,8 @@
 #pragma once
 
-namespace ml {
+namespace ioj {
 
 template <typename Left, typename Right>
 concept SupportsApplyArrayPairsWith = true;
 
-} // namespace ml
+} // namespace ioj

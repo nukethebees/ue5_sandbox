@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include <Components/PrimitiveComponent.h>
 
-namespace ml {
+namespace ioj {
 auto copy_collision_settings(UPrimitiveComponent const& component) -> FCollisionSettings {
     return {
         .enabled = component.GetCollisionEnabled(),

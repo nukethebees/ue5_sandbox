@@ -176,7 +176,7 @@ struct SANDBOXCORE_API FRotatorsd {
         validate_array_sizes();
         auto const n{num()};
         check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
+        ioj::fill_indices(scratch_indices);
         scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
             return compare(*this, lhs, rhs);
         });
@@ -187,7 +187,7 @@ struct SANDBOXCORE_API FRotatorsd {
         validate_array_sizes();
         auto const n{num()};
         check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
+        ioj::fill_indices(scratch_indices);
         scratch_indices.Sort(
             [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
         apply_permutation(scratch_indices);

@@ -8,7 +8,7 @@
 #include <span>
 #include <stdexcept>
 
-namespace ml::native_soa {
+namespace ioj::native_soa {
 namespace {
 
 struct SyntheticSoa {
@@ -136,4 +136,4 @@ TEST(NativeSoaVectorStorageOps, AppendRowsPublishesCompleteRowsAndRollsBackFailu
 }
 
 } // namespace
-} // namespace ml::native_soa
+} // namespace ioj::native_soa

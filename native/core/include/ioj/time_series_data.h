@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-namespace ml {
+namespace ioj {
 template <typename X, typename Y>
     requires std::is_arithmetic_v<X>
 class XYSeriesData {

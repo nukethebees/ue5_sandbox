@@ -13,7 +13,7 @@ template <typename T>
 class SComboBox;
 class SBox;
 
-namespace ml {
+namespace ioj {
 class SBoxSizeAttrPropInput final : public SCompoundWidget {
   public:
     using ThisClass = SBoxSizeAttrPropInput;

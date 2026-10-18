@@ -4,7 +4,7 @@
 
 #include "BehaviorTree/BlackboardComponent.h"
 
-namespace ml {
+namespace ioj {
 bool is_valid_key(UBlackboardComponent& bb, FName const& name);
 
 template <typename T>

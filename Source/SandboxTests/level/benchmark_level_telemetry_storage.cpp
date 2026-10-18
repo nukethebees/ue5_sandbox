@@ -101,7 +101,7 @@ auto pathological_mask(int32 const tick) -> uint64 {
 }
 
 struct FLegacyHistory {
-    TStaticArray<ml::XYSeriesData<uint64, int32>, int32_series_count> int32_series{};
+    TStaticArray<ioj::XYSeriesData<uint64, int32>, int32_series_count> int32_series{};
     int32 allocation_count{};
 
     void append(uint64 const tick, uint64 mask) {

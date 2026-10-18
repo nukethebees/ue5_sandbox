@@ -2,7 +2,7 @@
   :header "soa_fixture.h"
   :source "soa_fixture.cpp"
   :header-include "soa_fixture.h"
-  :namespace ml::soa_test_fixture
+  :namespace ioj::soa_test_fixture
   (struct Vectors
     :operations (all)
     :vector-components (xs ys zs)

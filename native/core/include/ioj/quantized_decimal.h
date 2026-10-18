@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <limits>
 
-namespace ml::details {
+namespace ioj::details {
 template <std::size_t DecimalPlaces>
 consteval auto make_decimal_scale() noexcept -> std::uintmax_t {
     std::uintmax_t scale{1};
@@ -17,7 +17,7 @@ consteval auto make_decimal_scale() noexcept -> std::uintmax_t {
 }
 }
 
-namespace ml {
+namespace ioj {
 template <std::signed_integral IntegerType,
           std::unsigned_integral FractionType,
           std::size_t DecimalPlaces>

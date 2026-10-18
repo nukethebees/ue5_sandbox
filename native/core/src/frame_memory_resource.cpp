@@ -14,7 +14,7 @@
 #include <sandbox/profiling/memory.h>
 #endif
 
-namespace ml {
+namespace ioj {
 FrameMemoryResource::FrameMemoryResource(std::span<std::byte> const backing)
     : backing_{backing.data()}
     , capacity_bytes_{backing.size_bytes()} {

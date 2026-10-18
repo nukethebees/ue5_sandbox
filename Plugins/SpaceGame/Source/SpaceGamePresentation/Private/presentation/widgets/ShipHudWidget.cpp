@@ -47,7 +47,7 @@ void set_font_size_on_widgets(int32 const font_size, WidgetTypes* const... widge
 }
 }
 
-namespace ml::ship_hud {
+namespace ioj::ship_hud {
 inline constexpr float radar_display_dimension{640.0f};
 inline constexpr float radar_viewport_margin{32.0f};
 
@@ -63,13 +63,13 @@ void configure_radar_canvas_slot(UWidget* const widget) {
     slot->SetSize(FVector2D{radar_display_dimension, radar_display_dimension});
     slot->SetAutoSize(false);
 }
-} // namespace ml::ship_hud
+} // namespace ioj::ship_hud
 
 auto UShipHudWidget::RebuildWidget() -> TSharedRef<SWidget> {
     auto const hud_content{Super::RebuildWidget()};
     if (IsValid(radar_background)) {
         radar_background->SetBrushColor(FLinearColor::Transparent);
-        ml::ship_hud::configure_radar_canvas_slot(radar_background);
+        ioj::ship_hud::configure_radar_canvas_slot(radar_background);
     } else {
         UE_LOG(LogSandboxUI, Error, TEXT("Ship HUD has no radar background."));
     }
@@ -79,7 +79,7 @@ auto UShipHudWidget::RebuildWidget() -> TSharedRef<SWidget> {
     radar_widget_->SetVisibility(radar_frame_store_.IsValid() ? EVisibility::HitTestInvisible
                                                               : EVisibility::Collapsed);
     if (IsValid(radar_host)) {
-        ml::ship_hud::configure_radar_canvas_slot(radar_host);
+        ioj::ship_hud::configure_radar_canvas_slot(radar_host);
         radar_host->SetContent(radar);
     } else {
         UE_LOG(LogSandboxUI, Error, TEXT("Ship HUD has no radar NativeWidgetHost."));
@@ -319,7 +319,7 @@ void UShipHudWidget::set_selected_imc(FStringView value) {
     selected_imc_widget->update(value);
 }
 
-void UShipHudWidget::set_flight_vector_debug(ml::ship_hud::FFlightVectorDebugData const& value) {
+void UShipHudWidget::set_flight_vector_debug(ioj::ship_hud::FFlightVectorDebugData const& value) {
     check(IsValid(turn_input_widget));
     check(IsValid(move_input_widget));
     check(IsValid(target_velocity_vector_widget));

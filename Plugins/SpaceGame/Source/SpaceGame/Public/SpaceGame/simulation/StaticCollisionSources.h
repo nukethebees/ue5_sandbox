@@ -94,12 +94,12 @@ struct SPACEGAME_API FStaticCollisionSources {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
+        ioj::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort<Compare>(*this, scratch_indices);
+        ioj::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>

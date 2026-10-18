@@ -14,7 +14,7 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogEntityOverlayRenderer, Log, All);
 
-namespace ml::ui::entity_overlay {
+namespace ioj::ui::entity_overlay {
 static_assert(sizeof(FEntityOverlayInstance) == sizeof(float) * 6,
               "FEntityOverlayInstance must match EntityOverlayInstance in EntityOverlay.usf.");
 
@@ -170,7 +170,7 @@ void execute_graph(FRHICommandListImmediate& rhi_command_list,
     graph_builder.SetTextureAccessFinal(output_texture, ERHIAccess::SRVMask);
     graph_builder.Execute();
 }
-} // namespace ml::ui::entity_overlay
+} // namespace ioj::ui::entity_overlay
 
 void FEntityOverlayRenderer::render(FEntityOverlayFrameStoreConstPtr frame_store,
                                     FEntityOverlayView const& view,
@@ -195,7 +195,7 @@ void FEntityOverlayRenderer::render(FEntityOverlayFrameStoreConstPtr frame_store
                    TEXT("The entity overlay output has no RHI texture."));
             return;
         }
-        ml::ui::entity_overlay::execute_graph(
+        ioj::ui::entity_overlay::execute_graph(
             rhi_command_list, *frame, view, style, output_texture_rhi);
     });
 }
@@ -220,7 +220,7 @@ auto measure_entity_overlay_gpu(FRHICommandListImmediate& rhi_command_list,
     auto start_query{query_pool->AllocateQuery()};
     auto end_query{query_pool->AllocateQuery()};
     rhi_command_list.EndRenderQuery(start_query.GetQuery());
-    ml::ui::entity_overlay::execute_graph(rhi_command_list, frame, view, style, output_texture_rhi);
+    ioj::ui::entity_overlay::execute_graph(rhi_command_list, frame, view, style, output_texture_rhi);
     rhi_command_list.EndRenderQuery(end_query.GetQuery());
     rhi_command_list.ImmediateFlush(EImmediateFlushType::FlushRHIThread);
 

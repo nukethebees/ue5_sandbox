@@ -9,10 +9,10 @@ TEST_CLASS(ReportInvalidUObjectPtrs, "SandboxCoreEngine.UnitTests")
 {
     TEST_METHOD(ValidPointersDoNotProduceAnError)
     {
-        ml::FErrorMsg error_msg;
+        ioj::FErrorMsg error_msg;
         auto const test_valid_object{GetTransientPackage()};
 
-        auto const has_errors{ml::report_invalid_uobject_ptrs(
+        auto const has_errors{ioj::report_invalid_uobject_ptrs(
             {
                 SANDBOX_NAMED_UOBJECT_PTR(test_valid_object),
             },
@@ -24,10 +24,10 @@ TEST_CLASS(ReportInvalidUObjectPtrs, "SandboxCoreEngine.UnitTests")
 
     TEST_METHOD(InvalidPointersReportTheirNames)
     {
-        ml::FErrorMsg error_msg;
+        ioj::FErrorMsg error_msg;
         auto const test_valid_object{GetTransientPackage()};
 
-        auto const has_errors{ml::report_invalid_uobject_ptrs(
+        auto const has_errors{ioj::report_invalid_uobject_ptrs(
             {
                 SANDBOX_NAMED_UOBJECT_PTR(test_valid_object),
                 SANDBOX_NAMED_UOBJECT_PTR(first_invalid_object),
@@ -44,7 +44,7 @@ TEST_CLASS(ReportInvalidUObjectPtrs, "SandboxCoreEngine.UnitTests")
     TEST_METHOD(StringOverloadReportsInvalidPointers)
     {
         auto const message{
-            ml::report_invalid_uobject_ptrs({SANDBOX_NAMED_UOBJECT_PTR(first_invalid_object)})};
+            ioj::report_invalid_uobject_ptrs({SANDBOX_NAMED_UOBJECT_PTR(first_invalid_object)})};
 
         TestRunner->TestTrue(TEXT("The string overload reports the invalid pointer"),
                              message.message.Contains(TEXT("first_invalid_object")));
@@ -52,10 +52,10 @@ TEST_CLASS(ReportInvalidUObjectPtrs, "SandboxCoreEngine.UnitTests")
 
     TEST_METHOD(BatchedChecksStopAtTheFirstInvalidBatch)
     {
-        ml::FErrorMsg error_msg;
+        ioj::FErrorMsg error_msg;
         auto const test_valid_object{GetTransientPackage()};
 
-        auto const has_errors{ml::report_invalid_uobject_ptrs(
+        auto const has_errors{ioj::report_invalid_uobject_ptrs(
             {
                 {SANDBOX_NAMED_UOBJECT_PTR(test_valid_object)},
                 {SANDBOX_NAMED_UOBJECT_PTR(first_invalid_object)},

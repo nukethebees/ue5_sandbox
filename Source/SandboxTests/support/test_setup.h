@@ -16,7 +16,7 @@ class UWorld;
 class AActor;
 class ATestBatchOrchestrator;
 
-namespace ml {
+namespace ioj {
 enum class ETestLevelState : uint8 { Unconstructed, Constructing, Constructed };
 
 class FTestBatchOrchestratorLevelSetup {

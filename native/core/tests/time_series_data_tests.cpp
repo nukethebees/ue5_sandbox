@@ -7,7 +7,7 @@
 #include <string>
 
 TEST(TimeSeriesData, StoresValuesAndResets) {
-    ml::TimeSeriesData<std::string> data;
+    ioj::TimeSeriesData<std::string> data;
     std::string const first{"first"};
 
     data.add(1.5, first);
@@ -26,7 +26,7 @@ TEST(TimeSeriesData, StoresValuesAndResets) {
 }
 
 TEST(TimeSeriesData, ForwardsMoveOnlyValues) {
-    ml::TimeSeriesData<std::unique_ptr<std::int32_t>> data;
+    ioj::TimeSeriesData<std::unique_ptr<std::int32_t>> data;
     auto value{std::make_unique<std::int32_t>(42)};
 
     data.add(1.0, std::move(value));
@@ -37,7 +37,7 @@ TEST(TimeSeriesData, ForwardsMoveOnlyValues) {
 }
 
 TEST(TimeSeriesData, FindsNearestValueAndResolvesTiesEarlier) {
-    ml::XYSeriesData<std::uint64_t, std::int32_t> data;
+    ioj::XYSeriesData<std::uint64_t, std::int32_t> data;
     data.add(10, 100);
     data.add(20, 200);
     data.add(40, 400);
@@ -52,7 +52,7 @@ TEST(TimeSeriesData, FindsNearestValueAndResolvesTiesEarlier) {
 }
 
 TEST(TimeSeriesData, ReportsCapacityAndAllocatedBytes) {
-    ml::TimeSeriesData<std::int32_t> data;
+    ioj::TimeSeriesData<std::int32_t> data;
     data.reserve(16);
 
     EXPECT_GE(data.time_capacity(), 16);

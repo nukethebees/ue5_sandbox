@@ -70,8 +70,8 @@ TEST(HomogeneousLowering, EmitsCompleteViewAndStorageApisForEveryComponent) {
     EXPECT_NE(output.source.find("void FValuesf::apply_permutation"), std::string::npos);
     EXPECT_NE(output.source.find("validate_array_sizes();\n    check(indices.Num() == num());"),
               std::string::npos);
-    EXPECT_NE(output.source.find("ml::apply_permutation(xs, indices);"), std::string::npos);
-    EXPECT_NE(output.source.find("ml::apply_permutation(ys, indices);"), std::string::npos);
+    EXPECT_NE(output.source.find("ioj::apply_permutation(xs, indices);"), std::string::npos);
+    EXPECT_NE(output.source.find("ioj::apply_permutation(ys, indices);"), std::string::npos);
 }
 
 TEST(HomogeneousLowering, EmitsEquivalentAndInputTypeApis) {

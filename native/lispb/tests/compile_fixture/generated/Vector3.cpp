@@ -36,7 +36,7 @@ auto FVectors3fConstView::get_const_view(int32 const offset, int32 const count) 
 }
 
 auto FVectors3fConstView::num() const noexcept -> int32 {
-    return ml::num(xs);
+    return ioj::num(xs);
 }
 
 auto FVectors3fConstView::is_empty() const noexcept -> bool {
@@ -44,7 +44,7 @@ auto FVectors3fConstView::is_empty() const noexcept -> bool {
 }
 
 void FVectors3fConstView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FVectors3fConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -96,7 +96,7 @@ auto FVectors3fView::get_const_view(int32 const offset, int32 const count) const
 }
 
 auto FVectors3fView::num() const noexcept -> int32 {
-    return ml::num(xs);
+    return ioj::num(xs);
 }
 
 auto FVectors3fView::is_empty() const noexcept -> bool {
@@ -104,7 +104,7 @@ auto FVectors3fView::is_empty() const noexcept -> bool {
 }
 
 void FVectors3fView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FVectors3fView::slice(int32 const offset, int32 const count) -> View {
@@ -132,27 +132,27 @@ auto FVectors3fView::right(int32 const count) const -> ConstView {
 }
 
 void FVectors3f::reset() {
-    ml::soa_ops::reset(*this);
+    ioj::soa_ops::reset(*this);
 }
 
 void FVectors3f::reserve(int32 const count) {
-    ml::soa_ops::reserve(*this, count);
+    ioj::soa_ops::reserve(*this, count);
 }
 
 void FVectors3f::add_uninitialised(int32 const count) {
-    ml::soa_ops::add_uninitialised(*this, count);
+    ioj::soa_ops::add_uninitialised(*this, count);
 }
 
 void FVectors3f::add_defaulted(int32 const count) {
-    ml::soa_ops::add_defaulted(*this, count);
+    ioj::soa_ops::add_defaulted(*this, count);
 }
 
 void FVectors3f::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::soa_ops::set_num(*this, count, allow_shrinking);
+    ioj::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void FVectors3f::apply_permutation(TArrayView<int32> indices) {
-    ml::soa_ops::apply_permutation(*this, indices);
+    ioj::soa_ops::apply_permutation(*this, indices);
 }
 
 auto FVectors3f::get_view() -> View {
@@ -192,7 +192,7 @@ auto FVectors3f::get_const_view(int32 const offset, int32 const count) const -> 
 }
 
 auto FVectors3f::num() const noexcept -> int32 {
-    return ml::num(xs);
+    return ioj::num(xs);
 }
 
 auto FVectors3f::is_empty() const noexcept -> bool {
@@ -200,7 +200,7 @@ auto FVectors3f::is_empty() const noexcept -> bool {
 }
 
 void FVectors3f::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FVectors3f::slice(int32 const offset, int32 const count) -> View {

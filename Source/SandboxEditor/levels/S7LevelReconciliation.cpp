@@ -39,7 +39,7 @@ auto make_changes(ULevel const& level,
         if (!IsValid(type) ||
             type->HasAnyClassFlags(CLASS_Abstract | CLASS_NotPlaceable | CLASS_Transient)) {
             return std::unexpected{FString::Printf(TEXT("Entity '%s' cannot be materialised."),
-                                                   *ml::to_fstring(entity.id.value))};
+                                                   *ioj::to_fstring(entity.id.value))};
         }
     }
     auto scene{collect_s7_scene(level, document)};
@@ -54,7 +54,7 @@ auto transform(levels::EntitySpawnDefinition const& entity) -> FTransform {
                       FVector{entity.position.x(), entity.position.y(), entity.position.z()}};
 }
 auto name(levels::EntityId const& id) -> FName {
-    return FName{ml::to_fstring(id.value)};
+    return FName{ioj::to_fstring(id.value)};
 }
 }
 
@@ -64,7 +64,7 @@ auto make_s7_level_sync_plan(ULevel const& level,
     -> std::expected<FS7LevelSyncPlan, FString> {
     auto support{levels::authoring::check_editor_support(definition)};
     if (!support) {
-        return std::unexpected{ml::to_fstring(levels::format_diagnostics(support.error()))};
+        return std::unexpected{ioj::to_fstring(levels::format_diagnostics(support.error()))};
     }
     auto changes{s7_level_reconciliation_detail::make_changes(level, document, definition)};
     if (!changes) {
@@ -137,7 +137,7 @@ auto apply_s7_level_sync_plan(ULevel& level,
             auto const& entity{entities[change.incoming_index]};
             configure_s7_level_actor(actor,
                                      entity.archetype,
-                                     ml::to_unreal(entity.team),
+                                     ioj::to_unreal(entity.team),
                                      *document.level_config,
                                      transform(entity),
                                      id);
@@ -153,7 +153,7 @@ auto apply_s7_level_sync_plan(ULevel& level,
 
     document.Modify();
     auto const grid{definition.collision_grid.value_or(levels::LevelCollisionGridDefinition{})};
-    auto vector{[](std::optional<ml::Vector3d> const& value) -> FVector3f {
+    auto vector{[](std::optional<ioj::Vector3d> const& value) -> FVector3f {
         return value ? FVector3f{static_cast<float>(value->x()),
                                  static_cast<float>(value->y()),
                                  static_cast<float>(value->z())}
@@ -162,9 +162,9 @@ auto apply_s7_level_sync_plan(ULevel& level,
     document.level_size = vector(grid.level_size);
     document.grid_cell_size = vector(grid.cell_size);
     document.grid_override_schema_version = 1;
-    document.level_id = FName{ml::to_fstring(definition.metadata.id.value)};
-    document.title = ml::to_fstring(definition.metadata.title);
-    document.description = ml::to_fstring(definition.metadata.description);
+    document.level_id = FName{ioj::to_fstring(definition.metadata.id.value)};
+    document.title = ioj::to_fstring(definition.metadata.title);
+    document.description = ioj::to_fstring(definition.metadata.description);
     document.entities.Reset(static_cast<int32>(entities.size()));
     for (auto const& entity : entities) {
         auto const id{name(entity.id)};

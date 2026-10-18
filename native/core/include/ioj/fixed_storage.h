@@ -6,7 +6,7 @@
 #include <new>
 #include <utility>
 
-namespace ml {
+namespace ioj {
 // Raw fixed-capacity storage. The owner is responsible for tracking which elements are alive.
 template <typename T, std::uint32_t Capacity>
 class TFixedStorage {

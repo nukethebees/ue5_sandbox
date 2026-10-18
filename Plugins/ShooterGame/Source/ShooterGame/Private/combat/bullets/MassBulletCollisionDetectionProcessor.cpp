@@ -44,7 +44,7 @@ void FMassBulletCollisionDetectionExecutor::Execute(FMassExecutionContext& conte
                                                                     last_position,
                                                                     current_position,
                                                                     FQuat::Identity,
-                                                                    ml::collision::projectile,
+                                                                    ioj::collision::projectile,
                                                                     collision_shape,
                                                                     query_params)};
 
@@ -75,8 +75,8 @@ UMassBulletCollisionDetectionProcessor::UMassBulletCollisionDetectionProcessor()
     AutoExecuteQuery = executor;
 
     SetProcessingPhase(EMassProcessingPhase::PrePhysics);
-    ExecutionOrder.ExecuteInGroup = ml::ProcessorGroupNames::CollisionDetection;
-    ExecutionOrder.ExecuteAfter.Add(ml::ProcessorGroupNames::Movement);
+    ExecutionOrder.ExecuteInGroup = ioj::ProcessorGroupNames::CollisionDetection;
+    ExecutionOrder.ExecuteAfter.Add(ioj::ProcessorGroupNames::Movement);
 
     if (HasAnyFlags(RF_ClassDefaultObject)) {
         set_execution_flags(EProcessorExecutionFlags::All);

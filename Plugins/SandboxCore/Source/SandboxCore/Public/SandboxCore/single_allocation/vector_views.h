@@ -7,7 +7,7 @@
 
 #include <Containers/ArrayView.h>
 
-namespace ml::soa {
+namespace ioj::soa {
 
 template <typename T>
 using Vector2View = soa_storage_detail::VectorView<T, 2, TArrayView, int32>;

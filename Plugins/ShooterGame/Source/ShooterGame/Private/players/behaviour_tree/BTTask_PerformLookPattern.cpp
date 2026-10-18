@@ -71,7 +71,7 @@ void UBTTask_PerformLookPattern::TickTask(UBehaviorTreeComponent& owner_comp,
     UE_LOG(LogShooterGameAI,
            VeryVerbose,
            TEXT("Moving to %s: Next: %s, Tgt: %s, Progress: %.2f"),
-           *ml::to_string_without_type_prefix(move_state),
+           *ioj::to_string_without_type_prefix(move_state),
            *new_rot.Rotator().ToCompactString(),
            *target.Rotator().ToCompactString(),
            progress);
@@ -80,7 +80,7 @@ void UBTTask_PerformLookPattern::TickTask(UBehaviorTreeComponent& owner_comp,
         UE_LOG(LogShooterGameAI,
                Verbose,
                TEXT("Reached: %s"),
-               *ml::to_string_without_type_prefix(move_state));
+               *ioj::to_string_without_type_prefix(move_state));
 
         switch (move_state) {
             using enum ELookPatternMoveState;
@@ -102,7 +102,7 @@ void UBTTask_PerformLookPattern::TickTask(UBehaviorTreeComponent& owner_comp,
                 UE_LOG(LogShooterGameAI,
                        Error,
                        TEXT("%s"),
-                       *ml::make_unhandled_enum_case_warning(move_state));
+                       *ioj::make_unhandled_enum_case_warning(move_state));
                 return FinishLatentTask(owner_comp, EBTNodeResult::Failed);
             }
         }
@@ -122,7 +122,7 @@ auto UBTTask_PerformLookPattern::get_target_rotation(ELookPatternMoveState state
             return actor_left;
         }
         default: {
-            UE_LOG(LogShooterGameAI, Error, TEXT("%s"), *ml::make_unhandled_enum_case_warning(state));
+            UE_LOG(LogShooterGameAI, Error, TEXT("%s"), *ioj::make_unhandled_enum_case_warning(state));
             break;
         }
     }

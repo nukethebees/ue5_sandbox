@@ -271,12 +271,12 @@ auto soa_view_functions(LoweringContext& context,
     add("num",
         ir.types.intern("int32"),
         {},
-        "return ml::num(" +
+        "return ioj::num(" +
             context.text(resolved_store.name[resolved_store.index(members.front())]) + ");",
         ReturnSyntax::trailing,
         true,
         true,
-        {ir.types.dependency("ml::num", "SandboxCore/container_ops.h")});
+        {ir.types.dependency("ioj::num", "SandboxCore/container_ops.h")});
     add("is_empty",
         ir.types.intern("bool"),
         {},
@@ -287,11 +287,11 @@ auto soa_view_functions(LoweringContext& context,
     add("validate_array_sizes",
         ir.types.intern("void"),
         {},
-        "ml::soa_ops::validate_array_sizes(*this);",
+        "ioj::soa_ops::validate_array_sizes(*this);",
         ReturnSyntax::direct,
         true,
         false,
-        {ir.types.dependency("ml::soa_ops", "SandboxCore/soa_storage_ops.h")});
+        {ir.types.dependency("ioj::soa_ops", "SandboxCore/soa_storage_ops.h")});
     if (!const_only) {
         add("slice",
             ir.types.intern("View"),

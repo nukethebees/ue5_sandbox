@@ -14,7 +14,7 @@ class SANDBOXUI_API FEntityOverlayFrameStore final {
     void publish();
     [[nodiscard]] auto current() const -> FEntityOverlayFrame const&;
   private:
-    ml::MultiBuffer<FEntityOverlayFrame, buffer_count> frames_;
+    ioj::MultiBuffer<FEntityOverlayFrame, buffer_count> frames_;
 };
 
 using FEntityOverlayFrameStorePtr = TSharedPtr<FEntityOverlayFrameStore, ESPMode::ThreadSafe>;

@@ -12,7 +12,7 @@
 #include <CoreMinimal.h>
 #include <Misc/TVariant.h>
 
-namespace ml {
+namespace ioj {
 struct SPACEGAME_API FLevelMetadata {
     FLevelId id{};
     FString title{};

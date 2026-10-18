@@ -14,7 +14,7 @@ UCLASS()
 class SHOOTERGAME_API APickupActor
     : public AActor
     , public ICollisionOwner
-    , public ml::LogMsgMixin<"APickupActor"> {
+    , public ioj::LogMsgMixin<"APickupActor"> {
     GENERATED_BODY()
   public:
     APickupActor();

@@ -20,7 +20,7 @@ class UInventoryComponent;
 UCLASS()
 class SHOOTERGAME_API UInventoryGridWidget
     : public UUserWidget
-    , public ml::LogMsgMixin<"UInventoryGridWidget", LogShooterGameUI> {
+    , public ioj::LogMsgMixin<"UInventoryGridWidget", LogShooterGameUI> {
     GENERATED_BODY()
   protected:
     void NativeOnInitialized() override;

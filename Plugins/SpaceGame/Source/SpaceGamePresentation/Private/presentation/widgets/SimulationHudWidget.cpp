@@ -114,7 +114,7 @@ void USimulationHudWidget::set_entity_colours(UTestTeamVisualData::FColourArray 
     }
 }
 
-void USimulationHudWidget::set_mission_data(ml::hud_manager::FMissionDataCache const& data) {
+void USimulationHudWidget::set_mission_data(ioj::hud_manager::FMissionDataCache const& data) {
     if (mission_status_panel) {
         mission_status_panel->set_mission_data(data);
     }

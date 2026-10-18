@@ -8,7 +8,7 @@ void UDamageManagerSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     TRACE_CPUPROFILER_EVENT_SCOPE(TEXT("Sandbox::UDamageManagerSubsystem::Initialize"))
     Super::Initialize(collection);
 
-    (void)ml::logged_init(
+    (void)ioj::logged_init(
         damage_queue, n_queue_elements, "DamageManagerSubsystem::DamageQueue");
 }
 
@@ -30,7 +30,7 @@ void UDamageManagerSubsystem::Tick(float delta_time) {
     Super::Tick(delta_time);
 
     auto changes{damage_queue.swap_and_consume()};
-    ml::log_results(changes, TEXT("UDamageManagerSubsystem::Tick"));
+    ioj::log_results(changes, TEXT("UDamageManagerSubsystem::Tick"));
 
     logger.log_verbose(TEXT("Processing %d damage events."), changes.view.size());
     for (auto const& change : changes.view) {

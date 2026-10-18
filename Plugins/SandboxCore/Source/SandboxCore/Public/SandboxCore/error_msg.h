@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 
-namespace ml {
+namespace ioj {
 struct FErrorMsg {
     auto operator*() const noexcept -> TCHAR const* { return *message; }
 

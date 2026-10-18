@@ -18,13 +18,13 @@ enum class EPlainFixture : EPlainFixtureUnderlying {
 };
 
 } // namespace codegen_compile_fixture
-namespace ml {
+namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::EPlainFixture>() noexcept
     -> std::size_t {
     return 2;
 }
-} // namespace ml
+} // namespace ioj
 
 namespace codegen_compile_fixture {
 COMPILE_FIXTURE_API auto LexToString(EPlainFixture const value) -> TCHAR const*;

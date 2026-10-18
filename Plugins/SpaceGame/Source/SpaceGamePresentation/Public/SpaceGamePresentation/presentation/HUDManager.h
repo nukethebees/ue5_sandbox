@@ -80,7 +80,7 @@ struct FHUDUpdateTimerIndex {
     static constexpr int32 count{3};
 };
 
-namespace ml::hud_manager {
+namespace ioj::hud_manager {
 struct FMissionStaticDataCache {
     bool operator==(FMissionStaticDataCache const& other) const noexcept = default;
 
@@ -118,8 +118,8 @@ struct FEntityCountDataCache {
 struct FKillDataCache {
     bool operator==(FKillDataCache const& other) const noexcept = default;
 
-    ml::ship_hud::FTopKillerEntries top_killers;
-    ml::ship_hud::FTeamKillMatrix team_kill_matrix;
+    ioj::ship_hud::FTopKillerEntries top_killers;
+    ioj::ship_hud::FTeamKillMatrix team_kill_matrix;
 };
 
 struct FPlayerStatusDataCache {
@@ -138,7 +138,7 @@ struct FPlayerFlightDataCache {
     bool operator==(FPlayerFlightDataCache const& other) const noexcept = default;
 
     bool has_player_ship{false};
-    ml::ship_hud::FFlightVectorDebugData flight_vector_debug{};
+    ioj::ship_hud::FFlightVectorDebugData flight_vector_debug{};
     FVector ship_velocity{};
     FVector target_velocity{};
     ::ioj::sim::player::FlightModelPreset flight_model_preset{};
@@ -186,7 +186,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
                     UInstancedStaticMeshComponent* soft_target_instances = nullptr);
     void deactivate();
     void advance(double dt);
-    void tick(ml::PeriodicTickCountdown8::counter_type num_ticks);
+    void tick(ioj::PeriodicTickCountdown8::counter_type num_ticks);
     void force_sample();
 
     void register_hud(USimulationHudWidget& hud);
@@ -196,29 +196,29 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     auto get_state() const noexcept -> EHUDManagerState { return state; }
     auto get_registered_hud_count() const noexcept -> int32 { return registered_huds.Num(); }
     auto has_mission_data_cache() const noexcept -> bool { return has_mission_data; }
-    auto get_mission_data() const noexcept -> ml::hud_manager::FMissionDataCache const& {
+    auto get_mission_data() const noexcept -> ioj::hud_manager::FMissionDataCache const& {
         return mission_data_buffers.current();
     }
-    auto get_entity_count_data() const noexcept -> ml::hud_manager::FEntityCountDataCache const& {
+    auto get_entity_count_data() const noexcept -> ioj::hud_manager::FEntityCountDataCache const& {
         return entity_count_data_buffers.current();
     }
-    auto get_kill_data() const noexcept -> ml::hud_manager::FKillDataCache const& {
+    auto get_kill_data() const noexcept -> ioj::hud_manager::FKillDataCache const& {
         return kill_data_buffers.current();
     }
-    auto get_player_status_data() const noexcept -> ml::hud_manager::FPlayerStatusDataCache const& {
+    auto get_player_status_data() const noexcept -> ioj::hud_manager::FPlayerStatusDataCache const& {
         return player_status_data_buffers.current();
     }
-    auto get_player_flight_data() const noexcept -> ml::hud_manager::FPlayerFlightDataCache const& {
+    auto get_player_flight_data() const noexcept -> ioj::hud_manager::FPlayerFlightDataCache const& {
         return player_flight_data_buffers.current();
     }
 #if WITH_EDITOR
-    auto get_sampled_speed_data() const noexcept -> ml::hud_manager::FSampledSpeedDataCache const& {
+    auto get_sampled_speed_data() const noexcept -> ioj::hud_manager::FSampledSpeedDataCache const& {
         return sampled_speed_data_buffers.current();
     }
 #endif
   private:
     using FWorldSoftTargetCustomDataBuffer =
-        TArray<float, TInlineAllocator<ml::soft_target_world::custom_data_count * 2>>;
+        TArray<float, TInlineAllocator<ioj::soft_target_world::custom_data_count * 2>>;
 
     struct FRegisteredHud {
         TWeakObjectPtr<USimulationHudWidget> hud;
@@ -238,10 +238,10 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
         float fading_soft_target_visibility_remaining{0.0f};
     };
 
-    auto collect_data(ml::PeriodicTickCountdown8::counter_type num_ticks)
-        -> ml::hud_manager::FDataChanges;
+    auto collect_data(ioj::PeriodicTickCountdown8::counter_type num_ticks)
+        -> ioj::hud_manager::FDataChanges;
     bool collect_mission_data();
-    void read_mission_data(ml::hud_manager::FMissionDataCache& out) const;
+    void read_mission_data(ioj::hud_manager::FMissionDataCache& out) const;
     bool collect_entity_count_data();
     void collect_kill_data();
     bool collect_player_status_data();
@@ -270,7 +270,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     bool collect_sampled_speed_data();
 #endif
 
-    void update_huds(ml::hud_manager::FDataChanges const& changes);
+    void update_huds(ioj::hud_manager::FDataChanges const& changes);
     void synchronise_hud(USimulationHudWidget& hud) const;
     void update_mission_hud(USimulationHudWidget& hud) const;
     void update_entity_count_hud(USimulationHudWidget& hud) const;
@@ -287,22 +287,22 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     ::ioj::sim::player::Sim const* player_ship{nullptr};
     ::ioj::sim::MissionManager const* mission_manager{nullptr};
     ::ioj::sim::EntityLedger const* entity_ledger{nullptr};
-    auto display_batches() const -> std::array<::ml::presentation::AgentDisplayBatch, 4>;
+    auto display_batches() const -> std::array<::ioj::presentation::AgentDisplayBatch, 4>;
     ::ioj::sim::capital_ships::Sim const* capitals_{};
     ::ioj::sim::fighters::Sim const* fighters_{};
     ::ioj::sim::turrets::Sim const* turrets_{};
     ::ioj::sim::spinners::Sim const* spinners_{};
     ::ioj::sim::SpatialQueryManager const* spatial_query_manager{nullptr};
     ::ioj::sim::FixedTickLoop tick_loop_{};
-    ml::PeriodicTickCountdown8 update_timers;
+    ioj::PeriodicTickCountdown8 update_timers;
 
-    ml::MultiBuffer<ml::hud_manager::FMissionDataCache, 2> mission_data_buffers;
-    ml::MultiBuffer<ml::hud_manager::FEntityCountDataCache, 2> entity_count_data_buffers;
-    ml::MultiBuffer<ml::hud_manager::FKillDataCache, 2> kill_data_buffers;
-    ml::MultiBuffer<ml::hud_manager::FPlayerStatusDataCache, 2> player_status_data_buffers;
-    ml::MultiBuffer<ml::hud_manager::FPlayerFlightDataCache, 2> player_flight_data_buffers;
+    ioj::MultiBuffer<ioj::hud_manager::FMissionDataCache, 2> mission_data_buffers;
+    ioj::MultiBuffer<ioj::hud_manager::FEntityCountDataCache, 2> entity_count_data_buffers;
+    ioj::MultiBuffer<ioj::hud_manager::FKillDataCache, 2> kill_data_buffers;
+    ioj::MultiBuffer<ioj::hud_manager::FPlayerStatusDataCache, 2> player_status_data_buffers;
+    ioj::MultiBuffer<ioj::hud_manager::FPlayerFlightDataCache, 2> player_flight_data_buffers;
     TArray<::ioj::sim::EntityUniqueId,
-           TInlineAllocator<ml::ship_hud::FTopKillerEntries::minimum_size>>
+           TInlineAllocator<ioj::ship_hud::FTopKillerEntries::minimum_size>>
         top_killer_ids_buffer;
 
     bool has_mission_data{false};
@@ -324,7 +324,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     FRadarContactColours radar_contact_colours_;
 
 #if WITH_EDITOR
-    ml::MultiBuffer<ml::hud_manager::FSampledSpeedDataCache, 2> sampled_speed_data_buffers;
+    ioj::MultiBuffer<ioj::hud_manager::FSampledSpeedDataCache, 2> sampled_speed_data_buffers;
     bool has_sampled_speed_data{false};
 #endif
 };

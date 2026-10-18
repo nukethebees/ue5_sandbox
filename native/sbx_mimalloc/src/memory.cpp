@@ -23,8 +23,8 @@ auto allocate_aligned(std::size_t const bytes, std::size_t const alignment) noex
 #endif
     auto* const allocation{mi_malloc_aligned(bytes, alignment)};
 #if defined(IOJ_WITH_TRACY)
-    ml::profiling::record_memory_allocation(
-        ml::profiling::MemoryDomain::Mimalloc, allocation, bytes);
+    ioj::profiling::record_memory_allocation(
+        ioj::profiling::MemoryDomain::Mimalloc, allocation, bytes);
 #endif
     return allocation;
 }
@@ -37,9 +37,9 @@ auto reallocate_aligned(void* const data,
     auto* const allocation{mi_realloc_aligned(data, bytes, alignment)};
 #if defined(IOJ_WITH_TRACY)
     if (allocation != nullptr) {
-        ml::profiling::record_memory_free(ml::profiling::MemoryDomain::Mimalloc, data);
-        ml::profiling::record_memory_allocation(
-            ml::profiling::MemoryDomain::Mimalloc, allocation, bytes);
+        ioj::profiling::record_memory_free(ioj::profiling::MemoryDomain::Mimalloc, data);
+        ioj::profiling::record_memory_allocation(
+            ioj::profiling::MemoryDomain::Mimalloc, allocation, bytes);
     }
 #endif
     return allocation;
@@ -47,7 +47,7 @@ auto reallocate_aligned(void* const data,
 void free(void* const data) noexcept {
 #if defined(IOJ_WITH_TRACY)
     std::lock_guard const lock{profiling_detail::allocation_mutex};
-    ml::profiling::record_memory_free(ml::profiling::MemoryDomain::Mimalloc, data);
+    ioj::profiling::record_memory_free(ioj::profiling::MemoryDomain::Mimalloc, data);
 #endif
     mi_free(data);
 }

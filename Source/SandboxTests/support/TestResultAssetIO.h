@@ -12,7 +12,7 @@ class UObject;
 class UClass;
 class FAutomationTestBase;
 
-namespace ml {
+namespace ioj {
 template <std::ranges::random_access_range Values, std::ranges::random_access_range Times>
     requires std::is_convertible_v<std::ranges::range_value_t<Values>, float> &&
              std::is_convertible_v<std::ranges::range_value_t<Times>, float>

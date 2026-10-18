@@ -4,9 +4,9 @@
 #pragma once
 
 #include <utility>
-namespace SlateGenerated::ml::s7 {
+namespace SlateGenerated::ioj::s7 {
 struct SScriptLevelSelectViewBuilder {
-    using ThisClass = ::ml::s7::SScriptLevelSelectView;
+    using ThisClass = ::ioj::s7::SScriptLevelSelectView;
 
     explicit SScriptLevelSelectViewBuilder(ThisClass& self)
         : self_{self} {}
@@ -85,4 +85,4 @@ struct SScriptLevelSelectViewBuilder {
   private:
     ThisClass& self_;
 };
-} // namespace SlateGenerated::ml::s7
+} // namespace SlateGenerated::ioj::s7

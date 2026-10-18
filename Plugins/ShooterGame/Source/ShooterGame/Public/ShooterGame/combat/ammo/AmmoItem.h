@@ -24,7 +24,7 @@ class SHOOTERGAME_API AAmmoItem
     , public IDescribable
     , public IInventoryItem
     , public IInteractable
-    , public ml::LogMsgMixin<"AAmmoItem", LogShooterGameWeapon> {
+    , public ioj::LogMsgMixin<"AAmmoItem", LogShooterGameWeapon> {
     GENERATED_BODY()
   public:
     AAmmoItem();

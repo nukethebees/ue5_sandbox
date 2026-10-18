@@ -29,15 +29,15 @@ Native enums emit only the helpers selected with `:helpers`:
 ```
 
 Available helpers are `to-string`, `try-parse`, `to-display-string`, `to-serialized-string`,
-`try-parse-serialized`, and `traits` (`ml::EnumTraits<Enum>::values`). Omit the list
+`try-parse-serialized`, and `traits` (`ioj::EnumTraits<Enum>::values`). Omit the list
 or use `:helpers ()` for a bare enum. Each helper is independent; display formatting falls back
 to the enumerator name. Serialized helpers require `:serialized-name` on every non-count value.
 Unknown or duplicate helpers are errors. Existing native schemas must explicitly select the
 helpers they need; `:native-api true` no longer selects them automatically. Unreal enums use
 the existing `:conversions` list instead.
 
-Use `:enum-array true` independently on native or Unreal enums to generate `ml::enum_count<Enum>()` for
-`ml::EnumArray<Enum, T>` and `ml::FixedEnumArray<Enum>`. LispB requires known codes in declaration
+Use `:enum-array true` independently on native or Unreal enums to generate `ioj::enum_count<Enum>()` for
+`ioj::EnumArray<Enum, T>` and `ioj::FixedEnumArray<Enum>`. LispB requires known codes in declaration
 order from zero through count minus one; gaps, aliases, negative codes, hidden values, and count
 sentinels are rejected. Explicit numeric initializers are allowed. Other enums can remain sparse
 and do not expose the array count API. Unreal projections select their count helper separately

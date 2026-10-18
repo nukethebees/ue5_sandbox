@@ -1,6 +1,6 @@
 #include "SpaceGamePresentation/entities/EntityTypeDisplayNames.h"
 
-namespace ml::entity_type_display_names::Private {
+namespace ioj::entity_type_display_names::Private {
 auto get_entity_name(::ioj::sim::EntityType const type,
                      TCHAR const* const player_ship,
                      TCHAR const* const turret,
@@ -36,7 +36,7 @@ auto get_entity_name(::ioj::sim::EntityType const type,
 }
 }
 
-namespace ml {
+namespace ioj {
 auto get_entity_display_name(::ioj::sim::EntityType const type) -> FString const& {
     return entity_type_display_names::Private::get_entity_name(type,
                                                                TEXT("Player Ship"),

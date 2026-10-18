@@ -8,7 +8,7 @@
 
 class SStatsTabWidget
     : public SCompoundWidget
-    , public ml::LogMsgMixin<"SStatsTabWidget", LogShooterGameUI> {
+    , public ioj::LogMsgMixin<"SStatsTabWidget", LogShooterGameUI> {
   public:
     // clang-format off
     SLATE_BEGIN_ARGS(SStatsTabWidget) {}

@@ -10,12 +10,12 @@
 #include <span>
 #include <vector>
 
-namespace ml {
+namespace ioj {
 class CountdownTimers {
   public:
     using size_type = std::uint32_t;
 
-    void tick(float const dt) noexcept { ml::tick_countdowns(remaining_times(), dt); }
+    void tick(float const dt) noexcept { ioj::tick_countdowns(remaining_times(), dt); }
 
     void reset() noexcept { remaining_times_.clear(); }
 
@@ -44,7 +44,7 @@ class CountdownTimers {
     }
 
     void remove_at_swap(size_type const index, size_type const count) {
-        ml::remove_at_swap(remaining_times_, index, count);
+        ioj::remove_at_swap(remaining_times_, index, count);
     }
 
     void copy_element(size_type const destination,
@@ -96,7 +96,7 @@ class CountdownTimers {
     }
 
     void apply_permutation(std::span<std::int32_t> const indices) {
-        ml::apply_permutation(remaining_times(), indices);
+        ioj::apply_permutation(remaining_times(), indices);
     }
 
     [[nodiscard]] auto num() const noexcept -> size_type {
@@ -133,7 +133,7 @@ class PeriodicCountdownTimers {
   public:
     using size_type = std::uint32_t;
 
-    void tick(float const dt) noexcept { ml::tick_countdowns(remaining_times(), dt); }
+    void tick(float const dt) noexcept { ioj::tick_countdowns(remaining_times(), dt); }
 
     [[nodiscard]] auto expired(size_type const index) const noexcept -> bool {
         return remaining_times_[to_index(index)] <= 0.f;
@@ -203,8 +203,8 @@ class PeriodicCountdownTimers {
     }
 
     void remove_at_swap(size_type const index, size_type const count) {
-        ml::remove_at_swap(remaining_times_, index, count);
-        ml::remove_at_swap(periods_, index, count);
+        ioj::remove_at_swap(remaining_times_, index, count);
+        ioj::remove_at_swap(periods_, index, count);
     }
 
     void reserve(size_type const count) {

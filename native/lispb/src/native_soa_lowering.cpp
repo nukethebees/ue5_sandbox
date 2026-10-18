@@ -100,11 +100,11 @@ void render_vector_storage_operations(LoweringContext& context,
             arguments = ", count";
         }
         out << "void " << name << "(" << parameters
-            << ") { ml::native_soa::vector_storage_ops::" << name << "(*this" << arguments
+            << ") { ioj::native_soa::vector_storage_ops::" << name << "(*this" << arguments
             << "); }\n";
     }
     out << "void apply_permutation(std::span<std::int32_t> const indices) { "
-           "ml::native_soa::vector_storage_ops::apply_permutation(*this, indices); }\n";
+           "ioj::native_soa::vector_storage_ops::apply_permutation(*this, indices); }\n";
 }
 
 }
@@ -294,8 +294,8 @@ auto lower_native_soa(LoweringContext& context,
     };
 
     if (vector3f_schema) {
-        out << "using " << view << " = ml::Vector3fSoAView;\n"
-            << "using " << const_view << " = ml::Vector3fSoAConstView;\n";
+        out << "using " << view << " = ioj::Vector3fSoAView;\n"
+            << "using " << const_view << " = ioj::Vector3fSoAConstView;\n";
     } else {
         header.add(ir.forward_declaration(ir.strings.intern(view))).new_lines();
         header.add(ir.forward_declaration(ir.strings.intern(const_view))).new_lines();
@@ -430,7 +430,7 @@ auto lower_native_soa(LoweringContext& context,
             }
             each_column(column_calls, true);
             out << "void validate_array_sizes() const { "
-                   "ml::native_soa::vector_storage_ops::validate_array_sizes(*this); }\n"
+                   "ioj::native_soa::vector_storage_ops::validate_array_sizes(*this); }\n"
                 << "auto slice(size_type const offset, size_type const count) const -> "
                 << view_type
                 << " { assert(offset <= num() && "
@@ -530,7 +530,7 @@ auto lower_native_soa(LoweringContext& context,
                             ir.types.dependencies(type).end());
         out << (context.declarations.soa_members.kind[context.declarations.soa_members.index(
                     fixed_members.source[fixed_members.index(member)])] == SoaMemberKind::array
-                    ? "ml::native_soa::Vector<" +
+                    ? "ioj::native_soa::Vector<" +
                           native_spelling(std::string{ir.types.spelling(type)}) + ">"
                     : std::string{ir.types.spelling(type)})
             << " "
@@ -569,7 +569,7 @@ auto lower_native_soa(LoweringContext& context,
                 {ir.named("compare")})};
     ir.set_function_body(
         sort,
-        {ir.expression_statement(ir.call(ir.named("ml::native_soa::vector_storage_ops::sort"),
+        {ir.expression_statement(ir.call(ir.named("ioj::native_soa::vector_storage_ops::sort"),
                                          {ir.unary(UnaryOperator::dereference, ir.named("this")),
                                           forward_compare,
                                           ir.named("scratch_indices")}))});
@@ -587,7 +587,7 @@ auto lower_native_soa(LoweringContext& context,
         out << "); }\n"
             << "auto add(";
         render_parameters(context, out, row_parameters, false);
-        out << ") -> size_type { return ml::native_soa::vector_storage_ops::append_rows("
+        out << ") -> size_type { return ioj::native_soa::vector_storage_ops::append_rows("
                "*this, 1, [&] {\n";
         for (auto const parameter : row_parameters) {
             if (parameters.nested[parameters.index(parameter)]) {
@@ -624,10 +624,10 @@ auto lower_native_soa(LoweringContext& context,
             << "source.validate_array_sizes(); if (count == 0) { return; }\n";
         for (auto const leaf : layout_leaves) {
             auto const column{context.path_text(leaves.path[leaves.index(leaf)], ".")};
-            out << "assert(ml::native_soa::is_external_source(" << column << ", "
+            out << "assert(ioj::native_soa::is_external_source(" << column << ", "
                 << view_leaf(leaf, "source.") << "));\n";
         }
-        out << "ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {\n";
+        out << "ioj::native_soa::vector_storage_ops::append_rows(*this, count, [&] {\n";
         for (auto const leaf : layout_leaves) {
             auto const column{context.path_text(leaves.path[leaves.index(leaf)], ".")};
             auto const source_data{view_leaf_data(leaf, "source.")};

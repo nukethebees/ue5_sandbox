@@ -2,7 +2,7 @@
 
 #include <HAL/Platform.h>
 
-namespace ml {
+namespace ioj {
 [[nodiscard]] inline auto is_valid_grid_value_count(int32 const width,
                                                     int32 const height,
                                                     int32 const value_count) noexcept -> bool {

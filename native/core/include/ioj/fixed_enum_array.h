@@ -3,7 +3,7 @@
 #include <ioj/enum_traits.h>
 #include <ioj/fixed_array.h>
 
-namespace ml {
+namespace ioj {
 template <typename Enum>
 using FixedEnumArray = FixedArray<Enum, enum_count<Enum>()>;
 }

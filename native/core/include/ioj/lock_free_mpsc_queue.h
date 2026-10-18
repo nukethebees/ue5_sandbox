@@ -12,7 +12,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace ml {
+namespace ioj {
 template <typename T, typename... Args>
 concept queueable_from =
     std::constructible_from<T, Args&&...> &&

@@ -51,7 +51,7 @@ void APlayerUpgradeStation::on_interacted(AActor& instigator) {
             break;
         }
         default: {
-            logger.log_warning(TEXT("%s"), *ml::make_unhandled_enum_case_warning(station_mode));
+            logger.log_warning(TEXT("%s"), *ioj::make_unhandled_enum_case_warning(station_mode));
             break;
         }
     }

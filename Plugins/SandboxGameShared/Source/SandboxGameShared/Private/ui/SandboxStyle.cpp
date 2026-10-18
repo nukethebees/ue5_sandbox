@@ -7,7 +7,7 @@
 
 #include "SandboxGameShared/ui/font_scaling.h"
 
-namespace ml {
+namespace ioj {
 
 TUniquePtr<FSlateStyleSet> SandboxStyle::style_set_{};
 
@@ -53,4 +53,4 @@ void SandboxStyle::initialize_text_styles() {
     style_set_->Set("Sandbox.Text.Label", label_style);
 }
 
-} // namespace ml
+} // namespace ioj

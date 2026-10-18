@@ -28,8 +28,8 @@ void FPlayerSkillsPropDisplay::CustomizeChildren(
     }
     auto* data{reinterpret_cast<FPlayerSkills*>(raw_data)};
 
-    for (auto value : ml::EPlayerSkillName_values) {
-        auto const& name{ml::get_display_string_view(value)};
+    for (auto value : ioj::EPlayerSkillName_values) {
+        auto const& name{ioj::get_display_string_view(value)};
         auto skill{data->get_skill(value)};
 
         ChildBuilder.AddCustomRow(FText::FromStringView(name))

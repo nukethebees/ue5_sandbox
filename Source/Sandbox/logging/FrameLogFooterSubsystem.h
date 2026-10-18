@@ -15,7 +15,7 @@
 UCLASS(Config = Game)
 class SANDBOX_API UFrameLogFooterSubsystem
     : public UGameInstanceSubsystem
-    , public ml::LogMsgMixin<"UFrameLogFooterSubsystem", LogSandboxSubsystem> {
+    , public ioj::LogMsgMixin<"UFrameLogFooterSubsystem", LogSandboxSubsystem> {
     GENERATED_BODY()
   public:
     virtual void Initialize(FSubsystemCollectionBase& Collection) override;

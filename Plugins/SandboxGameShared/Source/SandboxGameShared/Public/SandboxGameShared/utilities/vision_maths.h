@@ -6,7 +6,7 @@
 
 class AActor;
 
-namespace ml {
+namespace ioj {
 auto SANDBOXGAMESHARED_API get_abs_angle_from_fwd_vector(FVector standing_pt,
                                                          FVector fwd,
                                                          AActor const& target)

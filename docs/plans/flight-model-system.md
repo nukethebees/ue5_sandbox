@@ -330,12 +330,12 @@ Replace the current mixed `MovementState` with separate state:
 ```cpp
 struct PhysicalMovementState {
     Transform3d transform{};
-    ml::Vector3d velocity{};
+    ioj::Vector3d velocity{};
 };
 
 struct PlayerFlightIntent {
-    ml::Vector3d translation{}; // forward, right, up, each normalized
-    ml::Vector3d rotation{};    // pitch, yaw, roll, each normalized
+    ioj::Vector3d translation{}; // forward, right, up, each normalized
+    ioj::Vector3d rotation{};    // pitch, yaw, roll, each normalized
     float accelerator{};        // non-negative accelerator intent
     bool boost_held{};
     bool brake_held{};

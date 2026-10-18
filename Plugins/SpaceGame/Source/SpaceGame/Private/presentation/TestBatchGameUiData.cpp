@@ -24,7 +24,7 @@
 #include <Misc/PackageName.h>
 #include <UObject/UObjectGlobals.h>
 
-auto ml::test_batch_game_ui_data::get_data_asset() -> UTestBatchGameUiData* {
+auto ioj::test_batch_game_ui_data::get_data_asset() -> UTestBatchGameUiData* {
     auto const data_asset_path{get_data_asset_path()};
     auto const data_asset_package_path{data_asset_path.ToString()};
     auto const data_asset_name{FPackageName::GetShortName(data_asset_package_path)};

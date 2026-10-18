@@ -5,7 +5,7 @@
 
 #include <limits>
 
-namespace ml {
+namespace ioj {
 template <typename... ValueTypes>
 void reset_and_reserve_time_series(ATestBatchOrchestrator const& orchestrator,
                                    ATestBatchOrchestrator::time_type const duration,

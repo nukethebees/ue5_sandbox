@@ -19,7 +19,7 @@ enum class EMainMenu2MenuPage : uint8 { Main = 0, LevelSelect = 1, Options = 2 }
 UCLASS()
 class SHOOTERGAME_API UMainMenu2Widget
     : public UUserWidget
-    , public ml::LogMsgMixin<"UMainMenu2Widget"> {
+    , public ioj::LogMsgMixin<"UMainMenu2Widget"> {
     GENERATED_BODY()
   protected:
     void NativeConstruct() override;

@@ -3,17 +3,17 @@
 #include <CQTest.h>
 
 namespace {
-auto completed_criterion(TCHAR const* const level_id) -> ml::FLevelUnlockCriterion {
-    return ml::FLevelUnlockCriterion{
-        TInPlaceType<ml::FLevelCompletedUnlockCriterion>{},
-        ml::FLevelCompletedUnlockCriterion{.level_id = ml::FLevelId{FName{level_id}}}};
+auto completed_criterion(TCHAR const* const level_id) -> ioj::FLevelUnlockCriterion {
+    return ioj::FLevelUnlockCriterion{
+        TInPlaceType<ioj::FLevelCompletedUnlockCriterion>{},
+        ioj::FLevelCompletedUnlockCriterion{.level_id = ioj::FLevelId{FName{level_id}}}};
 }
 
-auto make_evaluator(TSet<ml::FLevelId> const& completed_levels, bool const force_unlocked = false)
-    -> ml::FLevelUnlockEvaluator {
-    return ml::FLevelUnlockEvaluator{
-        [&completed_levels](ml::FLevelId const id) { return completed_levels.Contains(id); },
-        [](ml::FLevelId const id) {
+auto make_evaluator(TSet<ioj::FLevelId> const& completed_levels, bool const force_unlocked = false)
+    -> ioj::FLevelUnlockEvaluator {
+    return ioj::FLevelUnlockEvaluator{
+        [&completed_levels](ioj::FLevelId const id) { return completed_levels.Contains(id); },
+        [](ioj::FLevelId const id) {
             if (id.value == TEXT("asteroid-field")) {
                 return FText::FromString(TEXT("Asteroid Field"));
             }
@@ -28,9 +28,9 @@ TEST_CLASS(LevelUnlock, "Sandbox.UnitTests")
 {
     TEST_METHOD(LevelWithoutCriteriaIsUnlocked)
     {
-        TSet<ml::FLevelId> const completed_levels;
+        TSet<ioj::FLevelId> const completed_levels;
         auto const evaluator{make_evaluator(completed_levels)};
-        ml::FLevelDefinition const definition;
+        ioj::FLevelDefinition const definition;
 
         auto const status{evaluator.evaluate(definition)};
         TestRunner->TestTrue(TEXT("Level is unlocked"), status.unlocked);
@@ -39,10 +39,10 @@ TEST_CLASS(LevelUnlock, "Sandbox.UnitTests")
 
     TEST_METHOD(CompletionCriterionTracksProgression)
     {
-        ml::FLevelDefinition definition;
+        ioj::FLevelDefinition definition;
         definition.unlock_criteria.Add(completed_criterion(TEXT("asteroid-field")));
 
-        TSet<ml::FLevelId> const incomplete;
+        TSet<ioj::FLevelId> const incomplete;
         auto const before{make_evaluator(incomplete).evaluate(definition)};
         TestRunner->TestFalse(TEXT("Prerequisite initially fails"), before.unlocked);
         if (TestRunner->TestEqual(TEXT("One criterion is reported"), before.criteria.Num(), 1)) {
@@ -52,8 +52,8 @@ TEST_CLASS(LevelUnlock, "Sandbox.UnitTests")
                                   FString{TEXT("Complete Asteroid Field")});
         }
 
-        TSet<ml::FLevelId> const completed{
-            ml::FLevelId{FName{TEXT("asteroid-field")}},
+        TSet<ioj::FLevelId> const completed{
+            ioj::FLevelId{FName{TEXT("asteroid-field")}},
         };
         auto const after{make_evaluator(completed).evaluate(definition)};
         TestRunner->TestTrue(TEXT("Completed prerequisite passes"), after.unlocked);
@@ -62,19 +62,19 @@ TEST_CLASS(LevelUnlock, "Sandbox.UnitTests")
 
     TEST_METHOD(MultipleCriteriaMustAllPass)
     {
-        ml::FLevelDefinition definition;
+        ioj::FLevelDefinition definition;
         definition.unlock_criteria.Add(completed_criterion(TEXT("first")));
         definition.unlock_criteria.Add(completed_criterion(TEXT("second")));
 
-        TSet<ml::FLevelId> const one_completed{
-            ml::FLevelId{FName{TEXT("first")}},
+        TSet<ioj::FLevelId> const one_completed{
+            ioj::FLevelId{FName{TEXT("first")}},
         };
         TestRunner->TestFalse(TEXT("One of two completed is locked"),
                               make_evaluator(one_completed).evaluate(definition).unlocked);
 
-        TSet<ml::FLevelId> const both_completed{
-            ml::FLevelId{FName{TEXT("first")}},
-            ml::FLevelId{FName{TEXT("second")}},
+        TSet<ioj::FLevelId> const both_completed{
+            ioj::FLevelId{FName{TEXT("first")}},
+            ioj::FLevelId{FName{TEXT("second")}},
         };
         TestRunner->TestTrue(TEXT("Both completed is unlocked"),
                              make_evaluator(both_completed).evaluate(definition).unlocked);
@@ -82,9 +82,9 @@ TEST_CLASS(LevelUnlock, "Sandbox.UnitTests")
 
     TEST_METHOD(AccessOverridePreservesRealCriterionStatus)
     {
-        ml::FLevelDefinition definition;
+        ioj::FLevelDefinition definition;
         definition.unlock_criteria.Add(completed_criterion(TEXT("asteroid-field")));
-        TSet<ml::FLevelId> const incomplete;
+        TSet<ioj::FLevelId> const incomplete;
 
         auto const overridden{make_evaluator(incomplete, true).evaluate(definition)};
         TestRunner->TestTrue(TEXT("Access override unlocks the level"), overridden.unlocked);

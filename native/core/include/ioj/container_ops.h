@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace ml {
+namespace ioj {
 template <typename T, typename Allocator>
 void remove_at_swap(std::vector<T, Allocator>& values,
                     std::uint32_t const index,

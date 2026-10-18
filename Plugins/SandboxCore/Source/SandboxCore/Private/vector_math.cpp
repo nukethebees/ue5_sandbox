@@ -1,6 +1,6 @@
 #include "SandboxCore/vector_math.h"
 
-namespace ml::kernel {
+namespace ioj::kernel {
 #define ML_INSTANTIATE_VEC3(T)                                      \
     template SANDBOXCORE_API void add_vector3<T>(T * RESTRICT,      \
                                                  T * RESTRICT,      \

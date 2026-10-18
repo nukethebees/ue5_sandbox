@@ -18,7 +18,7 @@ auto AstParser::record(s7::NodeIndex const node,
     }
 
     std::vector<Field> fields;
-    std::bitset<ml::EnumTraits<Property>::values.size()> seen;
+    std::bitset<ioj::EnumTraits<Property>::values.size()> seen;
     auto const count{children.size()};
     fields.reserve((count - 1) / 2);
     for (std::size_t index{1}; index < count; index += 2) {

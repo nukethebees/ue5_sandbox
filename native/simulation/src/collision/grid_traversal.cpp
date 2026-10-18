@@ -15,7 +15,7 @@ auto clip_segment(Vector3f const start,
                   Vector3f& clipped_start,
                   Vector3f& clipped_end) noexcept -> bool {
     auto const delta{
-        ml::make_vector3f(end.x() - start.x(), end.y() - start.y(), end.z() - start.z())};
+        ioj::make_vector3f(end.x() - start.x(), end.y() - start.y(), end.z() - start.z())};
     float entry_t{};
     float exit_t{1.0f};
 
@@ -63,7 +63,7 @@ auto GridTraversal::create(GridGeometry const geometry,
     }
 
     auto const half_size{-to_cell_min(geometry, {})};
-    auto const bounds_min{ml::make_vector3f(-half_size.x(), -half_size.y(), -half_size.z())};
+    auto const bounds_min{ioj::make_vector3f(-half_size.x(), -half_size.y(), -half_size.z())};
     Vector3f bounds_max_inside{half_size};
     for (std::size_t axis{}; axis < 3; ++axis) {
         bounds_max_inside[axis] = std::nextafter(bounds_max_inside[axis], bounds_min[axis]);
@@ -82,7 +82,7 @@ auto GridTraversal::create(GridGeometry const geometry,
     result.current_cell_ = clamp_cell(clipped_start);
     result.end_cell_ = clamp_cell(clipped_end);
     auto const cell_min{to_cell_min(geometry, result.current_cell_)};
-    auto const delta{ml::make_vector3f(clipped_end.x() - clipped_start.x(),
+    auto const delta{ioj::make_vector3f(clipped_end.x() - clipped_start.x(),
                                        clipped_end.y() - clipped_start.y(),
                                        clipped_end.z() - clipped_start.z())};
     for (std::size_t axis{}; axis < 3; ++axis) {

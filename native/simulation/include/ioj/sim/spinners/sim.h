@@ -59,7 +59,7 @@ struct Sim {
     void update_entity_lookup_table();
     void prepare_tick(float dt);
     void think(float dt);
-    void apply_movement(ml::FrameMemoryResource* const scratch_resource);
+    void apply_movement(ioj::FrameMemoryResource* const scratch_resource);
     void generate_fire_commands();
     void materialize_fire_commands();
     std::vector<std::uint32_t> pending_fire_indices_;

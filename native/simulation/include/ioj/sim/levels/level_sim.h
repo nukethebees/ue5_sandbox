@@ -116,7 +116,7 @@ struct LevelSim {
     auto get_level_telemetry_manager() const -> LevelTelemetryManager const& {
         return level_telemetry_manager_;
     }
-    auto get_frame_memory_stats() const noexcept -> ml::FrameMemoryStats {
+    auto get_frame_memory_stats() const noexcept -> ioj::FrameMemoryStats {
         return frame_memory_.get_stats();
     }
   private:
@@ -142,7 +142,7 @@ struct LevelSim {
     OrchestratorState state_{OrchestratorState::Uninitialised};
 
     memory::Block frame_memory_block_;
-    ml::FrameMemoryResource frame_memory_;
+    ioj::FrameMemoryResource frame_memory_;
     EntityLedger entity_ledger_;
     CombatEvents combat_events_{entity_ledger_};
     EntityTables entity_tables_{clock_};

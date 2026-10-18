@@ -23,7 +23,7 @@ void AMassBulletVisualizationActor::BeginPlay() {
     Super::BeginPlay();
 
     TRY_INIT_PTR(world, GetWorld());
-    TRY_INIT_PTR(data_actor, ml::get_first_actor<AMassBulletSubsystemData>(*world));
+    TRY_INIT_PTR(data_actor, ioj::get_first_actor<AMassBulletSubsystemData>(*world));
 
     logger.log_display(TEXT("Registering %d bullet types."), data_actor->bullet_types.Num());
     for (int32 i{0}; i < data_actor->bullet_types.Num(); ++i) {
@@ -72,7 +72,7 @@ int32 AMassBulletVisualizationActor::register_new_projectile(UBulletDataAsset& b
     to_be_hidden.Emplace(0);
 
     // Configure the other elements
-    (void)ml::logged_init(queue, transform_queue_capacity, "MassBulletVisualizationActor");
+    (void)ioj::logged_init(queue, transform_queue_capacity, "MassBulletVisualizationActor");
 
     return i;
 }
@@ -162,7 +162,7 @@ void AMassBulletVisualizationActor::on_phase_end(float delta_time) {
         auto const current_instance_count{current_instance_counts[i]};
 
         auto const transform_result{transform_queues[i].swap_and_consume()};
-        ml::log_results(transform_result, queue_name);
+        ioj::log_results(transform_result, queue_name);
         auto const n_to_hide{consume_killed_count(i)};
 
         auto const n_to_transform{static_cast<int32>(transform_result.view.size())};

@@ -7,7 +7,7 @@ struct FObserverCameraTransform {
     FTransform transform{FTransform::Identity};
 };
 
-namespace ml {
+namespace ioj {
 SPACEGAME_API auto make_observer_camera_transform(TConstArrayView<FVector> target_positions,
                                                   FVector offset_direction,
                                                   double distance)

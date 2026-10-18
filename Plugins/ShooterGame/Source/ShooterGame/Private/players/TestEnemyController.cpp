@@ -101,7 +101,7 @@ void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimul
 
     RETURN_IF_NULLPTR(Blackboard);
 
-    auto const display_name{ml::get_best_display_name(*actor)};
+    auto const display_name{ioj::get_best_display_name(*actor)};
     LOG(VeryVerbose, "Perception updated for: %s.", *display_name);
 
     if (stimulus.WasSuccessfullySensed()) {
@@ -121,7 +121,7 @@ void ATestEnemyController::on_target_perception_updated(AActor* actor, FAIStimul
     }
 }
 void ATestEnemyController::on_target_perception_forgotten(AActor* actor) {
-    auto const display_name{ml::get_best_display_name(*actor)};
+    auto const display_name{ioj::get_best_display_name(*actor)};
     LOG(VeryVerbose, "Forgot: %s", *display_name);
 
     auto* tgt_actor_obj{Blackboard->GetValueAsObject(C::target_actor())};
@@ -146,7 +146,7 @@ void ATestEnemyController::visualise_vision_cone() {
     int32 const n_segments{8};
     int32 const n_lines{n_segments + 1};
 
-    auto const angles{ml::subdivide_arc_into_segments(-angle_deg, angle_deg * 2.0f, n_segments)};
+    auto const angles{ioj::subdivide_arc_into_segments(-angle_deg, angle_deg * 2.0f, n_segments)};
     TArray<FRotator> rots;
     rots.Reserve(angles.Num());
     for (auto const angle : angles) {
@@ -203,7 +203,7 @@ auto ATestEnemyController::check_for_enemy_nearby(UWorld& world,
 
     for (auto const& hit : hits) {
         if (hit.GetActor() == &enemy) {
-            LOG(Verbose, "Sensed %s near pawn.", *ml::get_best_display_name(enemy));
+            LOG(Verbose, "Sensed %s near pawn.", *ioj::get_best_display_name(enemy));
             return true;
         }
     }

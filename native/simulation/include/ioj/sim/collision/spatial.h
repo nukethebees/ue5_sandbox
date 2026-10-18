@@ -3,7 +3,7 @@
 #include <ioj/vector3d.h>
 
 namespace ioj::sim {
-using Point3d = ml::Vector3d;
+using Point3d = ioj::Vector3d;
 
 [[nodiscard]] auto sample_spherical_shell_point(Point3d centre,
                                                 Point3d unit_direction,

@@ -16,7 +16,7 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
 {
     TEST_METHOD(EndPlayReleasesBoundInputAndModalState)
     {
-        auto const world_result{ml::get_editor_world()};
+        auto const world_result{ioj::get_editor_world()};
         if (!TestRunner->TestTrue(TEXT("Editor world is available"), world_result.has_value())) {
             return;
         }
@@ -72,7 +72,7 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
 
     TEST_METHOD(MainMenuBeforeBeginPlayRejectsGameplayActivation)
     {
-        auto const world_result{ml::get_editor_world()};
+        auto const world_result{ioj::get_editor_world()};
         if (!TestRunner->TestTrue(TEXT("Editor world is available"), world_result.has_value())) {
             return;
         }
@@ -96,17 +96,17 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
 
     TEST_METHOD(UnpossessionClearsPendingShipRestore)
     {
-        auto const world_result{ml::get_editor_world()};
+        auto const world_result{ioj::get_editor_world()};
         if (!TestRunner->TestTrue(TEXT("Editor world is available"), world_result.has_value())) {
             return;
         }
         auto* const controller{world_result.value()->SpawnActor<ASpaceGamePlayerController>()};
-        auto const* const config{ml::load_default_level_config()};
+        auto const* const config{ioj::load_default_level_config()};
         if (!TestRunner->TestNotNull(TEXT("Level config loads"), config)) {
             controller->Destroy();
             return;
         }
-        auto* const ship{ml::spawn_player_ship(
+        auto* const ship{ioj::spawn_player_ship(
             *world_result.value(), config->classes.player_ship_class, &config->player_ship)};
         controller->Possess(ship);
         FPlayerControllerTestAccess::prepare_completion(*controller);
@@ -120,14 +120,14 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
 
     TEST_METHOD(UnboundShipCachesFlightModelForSimulationSpawn)
     {
-        auto const world_result{ml::get_editor_world()};
-        auto const* const config{ml::load_default_level_config()};
+        auto const world_result{ioj::get_editor_world()};
+        auto const* const config{ioj::load_default_level_config()};
         if (!TestRunner->TestTrue(TEXT("Editor world is available"), world_result.has_value()) ||
             !TestRunner->TestTrue(TEXT("Level config loads"), IsValid(config))) {
             return;
         }
 
-        auto* const ship{ml::spawn_player_ship(
+        auto* const ship{ioj::spawn_player_ship(
             *world_result.value(), config->classes.player_ship_class, &config->player_ship)};
         auto profile{::ioj::sim::player::make_flight_model_profile(
             ::ioj::sim::player::FlightModelPreset::Fighter)};
@@ -154,8 +154,8 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
 
     TEST_METHOD(PossessionDuringCompletionDoesNotEnableShipInput)
     {
-        auto const world_result{ml::get_editor_world()};
-        auto const* const config{ml::load_default_level_config()};
+        auto const world_result{ioj::get_editor_world()};
+        auto const* const config{ioj::load_default_level_config()};
         if (!TestRunner->TestTrue(TEXT("Editor world is available"), world_result.has_value()) ||
             !TestRunner->TestTrue(TEXT("Level config loads"), IsValid(config))) {
             return;
@@ -163,7 +163,7 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
         auto& world{*world_result.value()};
         auto* const controller{world.SpawnActor<ASpaceGamePlayerController>()};
         auto* const ship{
-            ml::spawn_player_ship(world, config->classes.player_ship_class, &config->player_ship)};
+            ioj::spawn_player_ship(world, config->classes.player_ship_class, &config->player_ship)};
         auto* const component{NewObject<UEnhancedInputComponent>(controller)};
         auto* const subsystem{NewObject<USandboxTestEnhancedInputSubsystem>(controller)};
         subsystem->initialise();

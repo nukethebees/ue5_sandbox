@@ -2,7 +2,7 @@
 
 #include "Containers/ArrayView.h"
 
-namespace ml {
+namespace ioj {
 
 inline void fill_indices(TArrayView<int32> const indices) {
     auto const count{indices.Num()};
@@ -11,4 +11,4 @@ inline void fill_indices(TArrayView<int32> const indices) {
     }
 }
 
-} // namespace ml
+} // namespace ioj

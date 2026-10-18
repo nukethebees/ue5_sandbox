@@ -271,7 +271,7 @@ enum class RecordKind : RecordKindUnderlying {
 }
 
 } // namespace ioj::levels::authoring
-namespace ml {
+namespace ioj {
 template <>
 struct EnumTraits<::ioj::levels::authoring::Property> {
     inline static constexpr std::array values{::ioj::levels::authoring::Property::Id,
@@ -312,4 +312,4 @@ struct EnumTraits<::ioj::levels::authoring::Property> {
                                               ::ioj::levels::authoring::Property::SpawnAt};
 };
 
-} // namespace ml
+} // namespace ioj

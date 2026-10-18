@@ -12,8 +12,8 @@
 #include <utility>
 
 namespace ioj {
-using Vectors3fView = ml::Vector3fSoAView;
-using Vectors3fConstView = ml::Vector3fSoAConstView;
+using Vectors3fView = ioj::Vector3fSoAView;
+using Vectors3fConstView = ioj::Vector3fSoAConstView;
 struct Vectors3f {
     using View = Vectors3fView;
     using ConstView = Vectors3fConstView;
@@ -22,9 +22,9 @@ struct Vectors3f {
     auto operator[](size_type const index) const -> equivalent_type {
         return get_const_view()[index];
     }
-    ml::native_soa::Vector<float> xs;
-    ml::native_soa::Vector<float> ys;
-    ml::native_soa::Vector<float> zs;
+    ioj::native_soa::Vector<float> xs;
+    ioj::native_soa::Vector<float> ys;
+    ioj::native_soa::Vector<float> zs;
     auto num() const noexcept -> size_type { return static_cast<size_type>(xs.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -40,35 +40,35 @@ struct Vectors3f {
         fn(zs);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reset() { ml::native_soa::vector_storage_ops::reset(*this); }
+    void reset() { ioj::native_soa::vector_storage_ops::reset(*this); }
     void reserve(size_type const count) {
-        ml::native_soa::vector_storage_ops::reserve(*this, count);
+        ioj::native_soa::vector_storage_ops::reserve(*this, count);
     }
     void add_uninitialised(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
+        ioj::native_soa::vector_storage_ops::add_uninitialised(*this, count);
     }
     void add_defaulted(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
+        ioj::native_soa::vector_storage_ops::add_defaulted(*this, count);
     }
     void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
+        ioj::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
     }
     void set_num(size_type const count) {
-        ml::native_soa::vector_storage_ops::set_num(*this, count);
+        ioj::native_soa::vector_storage_ops::set_num(*this, count);
     }
     void apply_permutation(std::span<std::int32_t> const indices) {
-        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
+        ioj::native_soa::vector_storage_ops::apply_permutation(*this, indices);
     }
     template <typename Compare>
     void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        ml::native_soa::vector_storage_ops::sort(
+        ioj::native_soa::vector_storage_ops::sort(
             *this, std::forward<Compare>(compare), scratch_indices);
     }
     void set(size_type const index, float const new_xs, float const new_ys, float const new_zs) {
         get_view().set(index, new_xs, new_ys, new_zs);
     }
     auto add(float const new_xs, float const new_ys, float const new_zs) -> size_type {
-        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+        return ioj::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
             xs.emplace_back(new_xs);
             ys.emplace_back(new_ys);
             zs.emplace_back(new_zs);
@@ -85,10 +85,10 @@ struct Vectors3f {
         if (count == 0) {
             return;
         }
-        assert(ml::native_soa::is_external_source(xs, source.xs()));
-        assert(ml::native_soa::is_external_source(ys, source.ys()));
-        assert(ml::native_soa::is_external_source(zs, source.zs()));
-        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+        assert(ioj::native_soa::is_external_source(xs, source.xs()));
+        assert(ioj::native_soa::is_external_source(ys, source.ys()));
+        assert(ioj::native_soa::is_external_source(zs, source.zs()));
+        ioj::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
             xs.insert(xs.end(), source.xs().data(), source.xs().data() + count);
             ys.insert(ys.end(), source.ys().data(), source.ys().data() + count);
             zs.insert(zs.end(), source.zs().data(), source.zs().data() + count);

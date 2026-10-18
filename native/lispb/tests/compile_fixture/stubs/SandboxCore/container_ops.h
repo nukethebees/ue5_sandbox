@@ -3,7 +3,7 @@
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
 
-namespace ml {
+namespace ioj {
 
 template <typename T>
 auto num(T const& values) -> int32 {
@@ -109,4 +109,4 @@ void append_from(Destination& destination, Source const& source) {
     }
 }
 
-} // namespace ml
+} // namespace ioj

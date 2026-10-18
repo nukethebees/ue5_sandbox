@@ -22,7 +22,7 @@ DECLARE_MULTICAST_DELEGATE(FOnMassArchetypeSubsystemReady);
 UCLASS()
 class SHOOTERGAME_API UMassArchetypeSubsystem
     : public UWorldSubsystem
-    , public ml::LogMsgMixin<"UMassArchetypeSubsystem", LogShooterGameSubsystem> {
+    , public ioj::LogMsgMixin<"UMassArchetypeSubsystem", LogShooterGameSubsystem> {
     GENERATED_BODY()
   public:
     auto get_bullet_archetype() const -> FMassArchetypeHandle;

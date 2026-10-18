@@ -6,7 +6,7 @@
 
 #include "CoreMinimal.h"
 
-namespace ml {
+namespace ioj {
 template <typename CharT, std::size_t N>
 struct StringLiteralWrapper {
     using CharType = CharT;
@@ -91,4 +91,4 @@ struct StringLiteralWrapper {
 }
 
 template <std::size_t N>
-using StaticTCharString = ml::StringLiteralWrapper<TCHAR, N>;
+using StaticTCharString = ioj::StringLiteralWrapper<TCHAR, N>;

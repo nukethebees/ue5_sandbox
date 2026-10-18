@@ -18,11 +18,11 @@
 
 TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
 {
-    inline static ml::FTestBatchOrchestratorLevelSetup level_setup{};
+    inline static ioj::FTestBatchOrchestratorLevelSetup level_setup{};
 
-    ml::FSoftTestAssertions checks{};
-    TUniquePtr<ml::FSimulationTestContext> context{nullptr};
-    TUniquePtr<ml::FSimulationTestScenario> scenario{nullptr};
+    ioj::FSoftTestAssertions checks{};
+    TUniquePtr<ioj::FSimulationTestContext> context{nullptr};
+    TUniquePtr<ioj::FSimulationTestScenario> scenario{nullptr};
     BEFORE_EACH()
     {
         checks.test_runner = TestRunner;
@@ -50,7 +50,7 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
             return;
         }
 
-        context = MakeUnique<ml::FSimulationTestContext>(ml::FSimulationTestContext{
+        context = MakeUnique<ioj::FSimulationTestContext>(ioj::FSimulationTestContext{
             .orchestrator = *orchestrator,
             .automation_test = *TestRunner,
             .command_builder = TestCommandBuilder,
@@ -65,31 +65,31 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
     }
   public:
     SHARED_SIMULATION_TEST(Orchestrator_SpawnMissingActors,
-                           ml::FTestBatchOrchestratorSetupScenario,
-                           ml::EOrchestratorSetupScenario::SpawnMissingActors)
+                           ioj::FTestBatchOrchestratorSetupScenario,
+                           ioj::EOrchestratorSetupScenario::SpawnMissingActors)
     SHARED_SIMULATION_TEST(Orchestrator_SimulationClockConversions,
-                           ml::FTestBatchOrchestratorSetupScenario,
-                           ml::EOrchestratorSetupScenario::SimulationClockConversions)
+                           ioj::FTestBatchOrchestratorSetupScenario,
+                           ioj::EOrchestratorSetupScenario::SimulationClockConversions)
     SHARED_SIMULATION_TEST(Orchestrator_LevelTelemetry,
-                           ml::FTestBatchOrchestratorSetupScenario,
-                           ml::EOrchestratorSetupScenario::LevelTelemetry)
+                           ioj::FTestBatchOrchestratorSetupScenario,
+                           ioj::EOrchestratorSetupScenario::LevelTelemetry)
     SHARED_SIMULATION_TEST(Orchestrator_PresentationFrameOrdering,
-                           ml::FTestBatchOrchestratorSetupScenario,
-                           ml::EOrchestratorSetupScenario::PresentationFrameOrdering)
-    SHARED_SIMULATION_TEST(Orchestrator_ResetForNewLevel, ml::FTestBatchOrchestratorResetScenario)
-    SHARED_SIMULATION_TEST(LevelLoader_MaterialisesDefinition, ml::FLevelLoaderScenario)
+                           ioj::FTestBatchOrchestratorSetupScenario,
+                           ioj::EOrchestratorSetupScenario::PresentationFrameOrdering)
+    SHARED_SIMULATION_TEST(Orchestrator_ResetForNewLevel, ioj::FTestBatchOrchestratorResetScenario)
+    SHARED_SIMULATION_TEST(LevelLoader_MaterialisesDefinition, ioj::FLevelLoaderScenario)
     SHARED_SIMULATION_TEST(LevelLoader_MaterialisesPlayerlessCameraDefinition,
-                           ml::FLevelLoaderCameraScenario)
+                           ioj::FLevelLoaderCameraScenario)
 
     SHARED_SIMULATION_TEST(CapitalShipProxy_HealthOverridesConfig,
-                           ml::FTestCapitalShipProxyScenario)
+                           ioj::FTestCapitalShipProxyScenario)
     SHARED_SIMULATION_TEST(EntityInterface_ConvertsProxiesAndResolvesTargets,
-                           ml::FEntityInterfaceScenario)
+                           ioj::FEntityInterfaceScenario)
     SHARED_SIMULATION_TEST(HUD_LateRegistrationSynchronisesAndUnregisters,
-                           ml::FTestHUDManagerScenario,
-                           ml::EHUDManagerScenario::LateHUDRegistrationSynchronisesAndUnregisters)
+                           ioj::FTestHUDManagerScenario,
+                           ioj::EHUDManagerScenario::LateHUDRegistrationSynchronisesAndUnregisters)
     SHARED_SIMULATION_TEST(PlayerShip_LethalDamageDestroysPlayerShip,
-                           ml::FTestPlayerShipDeathScenario)
+                           ioj::FTestPlayerShipDeathScenario)
 };
 
 #undef SHARED_SIMULATION_TEST

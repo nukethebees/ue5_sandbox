@@ -20,7 +20,7 @@ class UMassBulletSubsystem;
 UCLASS()
 class SHOOTERGAME_API AMassBulletSpawner
     : public AActor
-    , public ml::LogMsgMixin<"AMassBulletSpawner"> {
+    , public ioj::LogMsgMixin<"AMassBulletSpawner"> {
     GENERATED_BODY()
   public:
     AMassBulletSpawner();

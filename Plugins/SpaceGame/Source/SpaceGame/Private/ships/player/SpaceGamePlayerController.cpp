@@ -355,7 +355,7 @@ void ASpaceGamePlayerController::bind_orchestrator_events() {
         return;
     }
 
-    auto* const orchestrator{ml::get_first_actor<ATestBatchOrchestrator>(*world)};
+    auto* const orchestrator{ioj::get_first_actor<ATestBatchOrchestrator>(*world)};
     if (!IsValid(orchestrator)) {
         UE_LOG(
             LogSandboxController,

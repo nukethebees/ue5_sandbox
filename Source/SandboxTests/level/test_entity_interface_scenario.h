@@ -3,7 +3,7 @@
 #include <ioj/time_series_data.h>
 #include <SandboxTests/support/SimulationTestScenario.h>
 
-namespace ml {
+namespace ioj {
 class FEntityInterfaceScenario final : public FSimulationTestScenario {
     static constexpr time_type test_time{0.25};
   public:

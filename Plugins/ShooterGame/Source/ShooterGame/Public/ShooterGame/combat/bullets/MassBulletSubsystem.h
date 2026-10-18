@@ -70,7 +70,7 @@ struct FBulletSpawnRequestView {
 UCLASS()
 class SHOOTERGAME_API UMassBulletSubsystem
     : public UMassSubsystemBase
-    , public ml::LogMsgMixin<"UMassBulletSubsystem", LogShooterGameMassEntity> {
+    , public ioj::LogMsgMixin<"UMassBulletSubsystem", LogShooterGameMassEntity> {
     GENERATED_BODY()
   public:
     static constexpr std::size_t n_queue_elements{30000};
@@ -96,7 +96,7 @@ class SHOOTERGAME_API UMassBulletSubsystem
 
     AMassBulletSubsystemData* get_data_actor() {
         if (auto* world{GetWorld()}) {
-            return ml::get_first_actor<AMassBulletSubsystemData>(*world);
+            return ioj::get_first_actor<AMassBulletSubsystemData>(*world);
         }
         return nullptr;
     }
@@ -142,14 +142,14 @@ class SHOOTERGAME_API UMassBulletSubsystem
     TArray<FPrimaryAssetId> indexed_bullet_types;
     TArray<FMassEntityHandle> new_entities{};
 
-    ml::MonitoredLockFreeMPSCQueue<ml::LockFreeMPSCQueueSoA<FBulletSpawnRequestView,
+    ioj::MonitoredLockFreeMPSCQueue<ioj::LockFreeMPSCQueueSoA<FBulletSpawnRequestView,
                                                             FTransform,
                                                             float,
                                                             FHealthChange,
                                                             TWeakObjectPtr<AActor>,
                                                             FPrimaryAssetId>>
         spawn_queue;
-    ml::MonitoredLockFreeMPSCQueue<
-        ml::LockFreeMPSCQueueSoA<FBulletDestroyRequestView, FMassEntityHandle, FPrimaryAssetId>>
+    ioj::MonitoredLockFreeMPSCQueue<
+        ioj::LockFreeMPSCQueueSoA<FBulletDestroyRequestView, FMassEntityHandle, FPrimaryAssetId>>
         destroy_queue;
 };

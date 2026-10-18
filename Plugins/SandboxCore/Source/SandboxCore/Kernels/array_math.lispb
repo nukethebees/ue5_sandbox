@@ -4,7 +4,7 @@
     (source "src/generated/array_math_kernels.cpp")
     (tests "tests/generated/array_math_kernels_tests.cpp")
     (header-include "ioj/generated/array_math_kernels.h")
-    (namespace ml))
+    (namespace ioj))
 
   (type-set numeric int32 float double)
   (type-set vector_numeric int32 float double)

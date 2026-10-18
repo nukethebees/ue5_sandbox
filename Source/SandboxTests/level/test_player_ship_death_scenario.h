@@ -5,7 +5,7 @@
 #include <SandboxTests/support/SimulationTestScenario.h>
 class ATestSpaceShip;
 
-namespace ml {
+namespace ioj {
 class FTestPlayerShipDeathScenario final : public FSimulationTestScenario {
     struct FSimulationSample {
         bool player_id_is_dead{false};

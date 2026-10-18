@@ -6,7 +6,7 @@
 #include <array>
 #include <cstdint>
 
-namespace ml::sandbox_ismc {
+namespace ioj::sandbox_ismc {
 struct Quat32 {
     std::uint32_t bits{};
 };
@@ -16,6 +16,6 @@ struct PackedTransform {
 
     std::uint16_t reserved{};
 
-    ml::sandbox_ismc::Quat32 rotation{};
+    ioj::sandbox_ismc::Quat32 rotation{};
 };
-} // namespace ml::sandbox_ismc
+} // namespace ioj::sandbox_ismc

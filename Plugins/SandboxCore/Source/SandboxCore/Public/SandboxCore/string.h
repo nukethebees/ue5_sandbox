@@ -2,6 +2,6 @@
 
 #include "CoreMinimal.h"
 
-namespace ml {
+namespace ioj {
 auto SANDBOXCORE_API without_class_prefix(FString const& input) -> FString;
 }

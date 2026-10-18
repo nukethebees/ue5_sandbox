@@ -4,5 +4,5 @@
 #include "SandboxISMCStagingBuffer.h"
 
 struct FSandboxISMCStagingState {
-    ml::MultiBuffer<FSandboxISMCStagingBuffer, 3> buffers;
+    ioj::MultiBuffer<FSandboxISMCStagingBuffer, 3> buffers;
 };

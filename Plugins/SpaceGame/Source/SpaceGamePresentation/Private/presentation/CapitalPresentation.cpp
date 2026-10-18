@@ -57,7 +57,7 @@ void FCapitalPresentation::begin_play_presentation() {
     if (!actor_config) {
         UE_LOG(LogSandbox, Fatal, TEXT("FCapitalPresentation actor_config is nullptr."));
     }
-    ml::fatal_if_uobject_ptrs_invalid({
+    ioj::fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(world),
         SANDBOX_NAMED_UOBJECT_PTR(actor_config->mesh.Get()),
         SANDBOX_NAMED_UOBJECT_PTR(actor_config->team_visual_data.Get()),
@@ -75,11 +75,11 @@ void FCapitalPresentation::update_visual_data(ioj::sim::EntityLedger const& ledg
         if (change.kind == ::ioj::sim::EntityFrameChangeKind::RemoveSwap) {
             instances->RemoveInstance(change.index);
         } else {
-            FTransform const transform{FRotator{ml::to_unreal(change.rotation)},
-                                       FVector{ml::to_unreal(change.location)}};
+            FTransform const transform{FRotator{ioj::to_unreal(change.rotation)},
+                                       FVector{ioj::to_unreal(change.location)}};
             auto const index{instances->AddInstance(transform, is_world_space)};
             check(index == static_cast<int32>(change.index));
-            auto const colour{colours[ml::to_unreal(change.team)]};
+            auto const colour{colours[ioj::to_unreal(change.team)]};
             TArray<float> data{colour.R, colour.G, colour.B};
             instances->SetCustomData(index, data, false);
         }
@@ -99,7 +99,7 @@ void FCapitalPresentation::end_tick_presentation() {
 }
 
 void FCapitalPresentation::configure_ismc() {
-    ml::batch::configure_ismc(*instances,
+    ioj::batch::configure_ismc(*instances,
                               {
                                   .mesh = actor_config->mesh.Get(),
                                   .material = actor_config->material.Get(),
@@ -127,7 +127,7 @@ void FCapitalPresentation::add_visual_instances(int32 const first_index, int32 c
 
     for (int32 i{0}; i < n_to_add; ++i) {
         auto const base{i * n_custom_ismc_floats};
-        auto const& colour{colour_cache[ml::to_unreal(teams[first_index + i])]};
+        auto const& colour{colour_cache[ioj::to_unreal(teams[first_index + i])]};
         custom_data[base + 0] = colour.R;
         custom_data[base + 1] = colour.G;
         custom_data[base + 2] = colour.B;
@@ -142,8 +142,8 @@ void FCapitalPresentation::add_visual_instances(int32 const first_index, int32 c
     auto const rolls{rotations.rolls()};
     for (int32 index{first_index}; index < first_index + n_to_add; ++index) {
         transforms.Emplace(
-            FRotator{ml::to_unreal(::ioj::Rotator3f{pitches[index], yaws[index], rolls[index]})},
-            FVector{ml::to_unreal(::ioj::vector_at(locations, index))});
+            FRotator{ioj::to_unreal(::ioj::Rotator3f{pitches[index], yaws[index], rolls[index]})},
+            FVector{ioj::to_unreal(::ioj::vector_at(locations, index))});
     }
     constexpr bool return_indices{false};
     constexpr bool update_navigation{false};
@@ -189,7 +189,7 @@ void FCapitalPresentation::trigger_death_effects(ioj::sim::EntityLedger const& l
     TArray<UNiagaraSystem*> spawn_systems;
     TArray<FVector> spawn_locations;
     TArray<float> spawn_delays;
-    ml::reserve(n * (n_small_explosions + 1), spawn_systems, spawn_locations, spawn_delays);
+    ioj::reserve(n * (n_small_explosions + 1), spawn_systems, spawn_locations, spawn_delays);
 
     float current_delay{0.f};
     std::optional<ioj::sim::SimTick> previous_tick;
@@ -198,7 +198,7 @@ void FCapitalPresentation::trigger_death_effects(ioj::sim::EntityLedger const& l
             current_delay = 0.f;
             previous_tick = death_ticks[row];
         }
-        FVector const base_location{ml::to_unreal(death_locations[row])};
+        FVector const base_location{ioj::to_unreal(death_locations[row])};
         if (has_small_death_explosion) {
             for (int32 explosion_index{0}; explosion_index < n_small_explosions;
                  ++explosion_index) {
@@ -228,7 +228,7 @@ void FCapitalPresentation::trigger_death_effects(ioj::sim::EntityLedger const& l
 
 void FCapitalPresentation::validate_array_sizes() const {
     simulation().get_entities().validate();
-    ml::fatal_if_nums_not_equal({
+    ioj::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(static_cast<int32>(simulation().get_num_instances())),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });

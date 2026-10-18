@@ -34,11 +34,11 @@ void UInventoryMenuWidget::update_money_display(int32 money) {
     money_text->SetText(text);
 }
 void UInventoryMenuWidget::update_ammo_counts() {
-    auto n_ammo_types{static_cast<int32>(ml::ammo_types.size())};
+    auto n_ammo_types{static_cast<int32>(ioj::ammo_types.size())};
     check(inventory);
 
     for (int32 i{0}; i < n_ammo_types; i++) {
-        auto const ammo_type{ml::ammo_types[i]};
+        auto const ammo_type{ioj::ammo_types[i]};
         auto const count(inventory->count_ammo(ammo_type));
 
         ammo_counts[i]->SetText(FText::AsNumber(count.amount));
@@ -48,7 +48,7 @@ void UInventoryMenuWidget::update_ammo_counts() {
 void UInventoryMenuWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
-    auto const outer_coords{ml::get_grid_outer_coords(*numbers_list_panel)};
+    auto const outer_coords{ioj::get_grid_outer_coords(*numbers_list_panel)};
 
     int32 row{outer_coords.y() + 1};
 
@@ -56,11 +56,11 @@ void UInventoryMenuWidget::NativeOnInitialized() {
         constexpr int32 label_column{0};
         constexpr int32 value_column{1};
 
-        auto const value{ml::ammo_types[i]};
+        auto const value{ioj::ammo_types[i]};
 
         auto const label_name{FString::Printf(TEXT("ammo_label_%d"), row)};
         auto const label_text{
-            FString::Printf(TEXT("%s"), *ml::without_class_prefix(UEnum::GetValueAsString(value)))};
+            FString::Printf(TEXT("%s"), *ioj::without_class_prefix(UEnum::GetValueAsString(value)))};
 
         auto* label_widget{
             WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *label_name)};
@@ -87,7 +87,7 @@ void UInventoryMenuWidget::NativeOnInitialized() {
         row++;
     }};
 
-    auto n_ammo_types{static_cast<int32>(ml::ammo_types.size())};
+    auto n_ammo_types{static_cast<int32>(ioj::ammo_types.size())};
     for (int32 i{0}; i < n_ammo_types; i++) {
         create_slot(i);
     }

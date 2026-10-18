@@ -14,7 +14,7 @@
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SHOOTERGAME_API UInteractorComponent
     : public UActorComponent
-    , public ml::LogMsgMixin<"InteractorComponent", LogShooterGameCharacter> {
+    , public ioj::LogMsgMixin<"InteractorComponent", LogShooterGameCharacter> {
     GENERATED_BODY()
   public:
     UInteractorComponent();
@@ -32,7 +32,7 @@ class SHOOTERGAME_API UInteractorComponent
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
     float height_offset{00.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
-    TEnumAsByte<ECollisionChannel> collision_channel{ml::collision::interaction};
+    TEnumAsByte<ECollisionChannel> collision_channel{ioj::collision::interaction};
   private:
     bool cooling_down{false};
     FTimerHandle cooldown_handle;

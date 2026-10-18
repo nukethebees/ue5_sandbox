@@ -13,7 +13,7 @@
 #include <Widgets/SBoxPanel.h>
 #include <Widgets/Text/STextBlock.h>
 
-namespace ml {
+namespace ioj {
 void SBoxSizePropInput::Construct(FArguments const& args) {
     x_handle = args._x_handle;
     y_handle = args._y_handle;

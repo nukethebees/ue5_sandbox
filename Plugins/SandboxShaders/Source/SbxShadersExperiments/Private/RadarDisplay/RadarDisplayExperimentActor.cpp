@@ -8,7 +8,7 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogRadarDisplayExperiment, Log, All);
 
-namespace ml::shaders::radar_display {
+namespace ioj::shaders::radar_display {
 constexpr TCHAR material_path[]{
     TEXT("/SandboxShaders/Experiments/RadarDisplay/M_RadarDisplay.M_RadarDisplay")};
 
@@ -38,7 +38,7 @@ ARadarDisplayExperimentActor::ARadarDisplayExperimentActor() {
     }
 
     static ConstructorHelpers::FObjectFinder<UMaterialInterface> const display_material{
-        ml::shaders::radar_display::material_path};
+        ioj::shaders::radar_display::material_path};
     if (display_material.Succeeded()) {
         display_material_ = display_material.Object;
         display_mesh_->SetMaterial(0, display_material_);
@@ -54,7 +54,7 @@ void ARadarDisplayExperimentActor::OnConstruction(FTransform const& transform) {
 void ARadarDisplayExperimentActor::ensure_material() {
     if (!IsValid(display_material_)) {
         display_material_ =
-            LoadObject<UMaterialInterface>(nullptr, ml::shaders::radar_display::material_path);
+            LoadObject<UMaterialInterface>(nullptr, ioj::shaders::radar_display::material_path);
     }
     if (IsValid(display_material_) && !IsValid(material_instance_)) {
         material_instance_ = display_mesh_->CreateDynamicMaterialInstance(0, display_material_);
@@ -72,13 +72,13 @@ void ARadarDisplayExperimentActor::apply_settings() {
     material_instance_->SetVectorParameterValue(TEXT("SweepColour"), settings.sweep_colour);
     material_instance_->SetVectorParameterValue(TEXT("ContactColour"), settings.contact_colour);
     material_instance_->SetVectorParameterValue(
-        TEXT("ContactA"), ml::shaders::radar_display::contact_as_colour(settings.contact_a));
+        TEXT("ContactA"), ioj::shaders::radar_display::contact_as_colour(settings.contact_a));
     material_instance_->SetVectorParameterValue(
-        TEXT("ContactB"), ml::shaders::radar_display::contact_as_colour(settings.contact_b));
+        TEXT("ContactB"), ioj::shaders::radar_display::contact_as_colour(settings.contact_b));
     material_instance_->SetVectorParameterValue(
-        TEXT("ContactC"), ml::shaders::radar_display::contact_as_colour(settings.contact_c));
+        TEXT("ContactC"), ioj::shaders::radar_display::contact_as_colour(settings.contact_c));
     material_instance_->SetVectorParameterValue(
-        TEXT("ContactD"), ml::shaders::radar_display::contact_as_colour(settings.contact_d));
+        TEXT("ContactD"), ioj::shaders::radar_display::contact_as_colour(settings.contact_d));
     material_instance_->SetScalarParameterValue(TEXT("RingCount"),
                                                 FMath::Clamp(settings.ring_count, 1.0f, 12.0f));
     material_instance_->SetScalarParameterValue(TEXT("SweepSpeed"),

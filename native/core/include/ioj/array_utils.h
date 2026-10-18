@@ -5,7 +5,7 @@
 #include <concepts>
 #include <cstdint>
 
-namespace ml::kernel {
+namespace ioj::kernel {
 template <typename T>
 void assign_from(T* const dst_x,
                  T* const dst_y,

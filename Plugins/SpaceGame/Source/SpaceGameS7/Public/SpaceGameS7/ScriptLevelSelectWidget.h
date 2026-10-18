@@ -13,7 +13,7 @@ struct FLevelProgressSummary;
 class UGameSubsystem;
 }
 
-namespace ml::s7 {
+namespace ioj::s7 {
 using ioj::levels::authoring::ELevelCatalogCategory;
 using ioj::levels::authoring::FCampaignScriptEntry;
 using ioj::levels::authoring::FLevelScriptEntry;

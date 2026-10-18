@@ -14,7 +14,7 @@
 UCLASS()
 class SHOOTERGAME_API UObjectPoolSubsystem
     : public UWorldSubsystem
-    , public ml::LogMsgMixin<"UObjectPoolSubsystem", LogShooterGameSubsystem> {
+    , public ioj::LogMsgMixin<"UObjectPoolSubsystem", LogShooterGameSubsystem> {
     GENERATED_BODY()
   public:
     using pool_type = UObjectPoolSubsystemCore<FBulletPoolConfig, FDroppableWaypointPoolConfig>;

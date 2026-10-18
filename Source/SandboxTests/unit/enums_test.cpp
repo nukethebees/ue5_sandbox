@@ -25,7 +25,7 @@ void FWithoutEnumTypePrefixSpec::Define() {
             It(*FString::Printf(
                    TEXT("should format '%s' as '%s'"), *UEnum::GetValueAsString(input), *expected),
                [this, input, expected]() {
-                   auto const result{ml::to_string_without_type_prefix(input)};
+                   auto const result{ioj::to_string_without_type_prefix(input)};
                    TestEqual(TEXT("Stripped output"), *result, expected);
                });
         }

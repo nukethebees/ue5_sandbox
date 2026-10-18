@@ -20,7 +20,7 @@ UCLASS()
 class SHOOTERGAME_API AExplosiveProp
     : public AActor
     , public IDeathHandler
-    , public ml::LogMsgMixin<"AExplosiveProp", LogShooterGameActor>
+    , public ioj::LogMsgMixin<"AExplosiveProp", LogShooterGameActor>
     , public IDescribable {
     GENERATED_BODY()
   public:

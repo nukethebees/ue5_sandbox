@@ -17,12 +17,12 @@ TEST_CLASS(GameUiRootLayout, "Sandbox.UnitTests")
 {
     TEST_METHOD(ScreenAndModalStacks)
     {
-        auto const world_result{ml::get_editor_world()};
+        auto const world_result{ioj::get_editor_world()};
         if (!TestRunner->TestTrue(TEXT("Editor world is available"), world_result.has_value())) {
             return;
         }
 
-        auto* const ui_data{ml::test_batch_game_ui_data::get_data_asset()};
+        auto* const ui_data{ioj::test_batch_game_ui_data::get_data_asset()};
         auto const root_class{IsValid(ui_data) ? ui_data->get_widget_class<ioj::UGameUiRootLayout>()
                                                : nullptr};
         auto* const root{

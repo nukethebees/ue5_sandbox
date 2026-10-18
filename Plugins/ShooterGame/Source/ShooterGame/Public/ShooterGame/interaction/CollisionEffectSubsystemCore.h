@@ -20,7 +20,7 @@
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "SandboxGameShared/utilities/macros/switch_stamping.hpp"
 
-namespace ml {
+namespace ioj {
 template <typename T>
 concept IsCollisionPayload = requires(T t, FCollisionContext context) {
     { t.execute(context) } -> std::same_as<void>;
@@ -69,9 +69,9 @@ constexpr auto tuple_array_index_v =
 
 template <typename... Types>
 class UCollisionEffectSubsystemCore
-    : public ml::LogMsgMixin<"UCollisionEffectSubsystemCore", LogShooterGameSubsystem> {
+    : public ioj::LogMsgMixin<"UCollisionEffectSubsystemCore", LogShooterGameSubsystem> {
   public:
-    using PayloadsT = ml::ArrayTuple<Types...>;
+    using PayloadsT = ioj::ArrayTuple<Types...>;
     static constexpr std::size_t N_TYPES = sizeof...(Types);
 
     template <typename Self, typename Payload>
@@ -81,9 +81,9 @@ class UCollisionEffectSubsystemCore
         auto const actor_index{self.register_actor(actor, top_subsystem)};
         RETURN_IF_FALSE(actor_index);
 
-        auto& payload_array{ml::ArrayGet<PayloadT>(self.payloads)};
+        auto& payload_array{ioj::ArrayGet<PayloadT>(self.payloads)};
         auto const payload_element_index{payload_array.Add(std::forward<Payload>(payload))};
-        constexpr auto payload_array_index{ml::tuple_array_index_v<PayloadT, Self>};
+        constexpr auto payload_array_index{ioj::tuple_array_index_v<PayloadT, Self>};
 
         auto& payload_indexes{self.actor_payload_indexes[*actor_index].indexes};
         payload_indexes.Add(FPayloadIndex(static_cast<uint8>(payload_array_index),

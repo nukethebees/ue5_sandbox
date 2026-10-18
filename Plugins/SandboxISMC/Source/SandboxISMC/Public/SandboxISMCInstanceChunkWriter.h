@@ -63,7 +63,7 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
             return source;
         }
         auto const radius{(mesh_origin.GetAbs() + mesh_extent).Size()};
-        auto const codec_error{ml::sandbox_ismc::geometry_error(radius)};
+        auto const codec_error{ioj::sandbox_ismc::geometry_error(radius)};
         auto const magnitude{source.Min.GetAbs().ComponentMax(source.Max.GetAbs())};
         auto const margin{FVector3f{codec_error} +
                           (magnitude + FVector3f{codec_error + 1.0f}) * (16.0f * FLT_EPSILON)};

@@ -32,7 +32,7 @@ constexpr std::string_view kernel_source = R"(
     (header "ArrayKernels.h")
     (source "ArrayKernels.cpp")
     (header-include "ArrayKernels.h")
-    (namespace ml)
+    (namespace ioj)
     (export COMPILE_FIXTURE_API))
   (type-set numeric float)
   (map multiply
@@ -163,7 +163,7 @@ TEST(KernelCompiler, EmitsOnlyTheSelectedProfile) {
                   "    (source \"standard/Kernels.cpp\")\n"
                   "    (tests \"standard/KernelsTests.cpp\")\n"
                   "    (header-include \"standard/Kernels.h\")\n"
-                  "    (namespace ml))\n");
+                  "    (namespace ioj))\n");
     project.write("array_math.lispb", source);
 
     ASSERT_EQ(compile(project, {"array_math.lispb"}, lispb::KernelProfile::standard), 0);

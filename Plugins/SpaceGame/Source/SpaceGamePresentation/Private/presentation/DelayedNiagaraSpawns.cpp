@@ -68,8 +68,8 @@ void FDelayedNiagaraSpawns::add_spawns(TArrayView<UNiagaraSystem*> new_systems,
 
     systems.Append(new_systems);
     locations.Append(new_locations);
-    ml::append_n(rotations, FRotator::ZeroRotator, n);
-    ml::append_n(scales, FVector::OneVector, n);
+    ioj::append_n(rotations, FRotator::ZeroRotator, n);
+    ioj::append_n(scales, FVector::OneVector, n);
     times_remaining.Append(new_delays);
 }
 
@@ -80,6 +80,6 @@ auto FDelayedNiagaraSpawns::num() const -> int32 {
 void FDelayedNiagaraSpawns::remove_spawn_at(int32 index) {
     check(systems.IsValidIndex(index));
 
-    ml::remove_at_swap(
+    ioj::remove_at_swap(
         index, 1, EAllowShrinking::No, systems, locations, rotations, scales, times_remaining);
 }

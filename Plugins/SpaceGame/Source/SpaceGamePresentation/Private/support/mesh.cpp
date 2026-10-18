@@ -7,7 +7,7 @@
 #include <Components/StaticMeshComponent.h>
 #include <Engine/StaticMesh.h>
 
-namespace ml {
+namespace ioj {
 auto get_static_mesh(UPrimitiveComponent const* const component) -> UStaticMesh const* {
     if (component == nullptr) {
         return nullptr;

@@ -97,9 +97,9 @@ TEST(OverlapHandler, FiltersUnsupportedRecipientsAndDefersRetirementChecksToDama
         columns.first_entities()[index] = fighter;
         columns.second_entities()[index] = EntityUniqueId{};
     }
-    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
-    ml::FrameMemoryResource memory{backing};
-    ml::FrameScratchScope scope{memory};
+    alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
+    ioj::FrameMemoryResource memory{backing};
+    ioj::FrameScratchScope scope{memory};
     OverlapHandler handler{{}};
     handler.handle({first_pairs.get_const_view(), {}}, owners.combat_events);
     owners.combat_events.prepare(owners.entity_tables.lookups, &memory);

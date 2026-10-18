@@ -51,7 +51,7 @@ enum class EntityArchetype : EntityArchetypeUnderlying {
 }
 
 } // namespace ioj::levels
-namespace ml {
+namespace ioj {
 template <>
 struct EnumTraits<::ioj::levels::EntityArchetype> {
     inline static constexpr std::array values{::ioj::levels::EntityArchetype::PlayerFighter,
@@ -59,4 +59,4 @@ struct EnumTraits<::ioj::levels::EntityArchetype> {
                                               ::ioj::levels::EntityArchetype::StaticTurret};
 };
 
-} // namespace ml
+} // namespace ioj

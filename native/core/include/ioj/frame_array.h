@@ -12,7 +12,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace ml {
+namespace ioj {
 // Contiguous frame-local array with fixed identity. The memory resource is borrowed and must
 // outlive the array. Views, references, and iterators are invalidated by storage reallocation.
 // Destroy the array before reclaiming its resource; retain no views beyond that lifetime.

@@ -18,7 +18,7 @@ class UInventoryComponent;
 UCLASS()
 class SHOOTERGAME_API UPawnWeaponComponent
     : public UActorComponent
-    , public ml::LogMsgMixin<"UPawnWeaponComponent", LogShooterGameWeapon> {
+    , public ioj::LogMsgMixin<"UPawnWeaponComponent", LogShooterGameWeapon> {
     GENERATED_BODY()
   public:
     UPawnWeaponComponent();

@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <utility>
 
-namespace ml {
+namespace ioj {
 // Fixed set of buffers whose previous, current, and next roles rotate on cycle()
 template <typename T, std::int32_t N>
     requires (N >= 2)

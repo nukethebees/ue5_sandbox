@@ -14,7 +14,7 @@
 UCLASS()
 class SHOOTERGAME_API ULevelSelect2Widget
     : public UUserWidget
-    , public ml::LogMsgMixin<"ULevelSelect2Widget"> {
+    , public ioj::LogMsgMixin<"ULevelSelect2Widget"> {
     GENERATED_BODY()
   public:
     FBackRequested back_requested;

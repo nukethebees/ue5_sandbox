@@ -5,7 +5,7 @@
 
 #include "ioj/sim/player/ship_laser_mode.h"
 #include "SpaceGame/ships/common/ShipLaserMode.h"
-namespace ml {
+namespace ioj {
 [[nodiscard]] constexpr auto to_native(EShipLaserMode const value) noexcept
     -> ::ioj::sim::ShipLaserMode {
     switch (value) {
@@ -46,4 +46,4 @@ static_assert(static_cast<int>(EShipLaserMode::Double) ==
               static_cast<int>(::ioj::sim::ShipLaserMode::Double));
 static_assert(static_cast<int>(EShipLaserMode::Hyper) ==
               static_cast<int>(::ioj::sim::ShipLaserMode::Hyper));
-} // namespace ml
+} // namespace ioj

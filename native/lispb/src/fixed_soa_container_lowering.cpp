@@ -951,7 +951,7 @@ auto fixed_container_dependencies(LoweringContext& context, FixedLayoutId layout
     auto& leaf_store{context.ir.lowering.fixed_leaves};
     auto& ir{context.ir};
     std::vector<TypeDependencyId> result{
-        ir.types.dependency("ml::TFixedStorage", "ioj/fixed_storage.h"),
+        ir.types.dependency("ioj::TFixedStorage", "ioj/fixed_storage.h"),
         ir.types.dependency("TArrayView", "Containers/ArrayView.h"),
         ir.types.dependency("std::forward", "utility"),
         ir.types.dependency("MoveTemp", "Templates/UnrealTemplate.h"),

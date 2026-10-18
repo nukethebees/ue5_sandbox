@@ -2,7 +2,7 @@
   :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/levels/LevelDefinitionSoA.h"
   :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/levels/LevelDefinitionSoA.cpp"
   :header-include "SpaceGameSimulation/levels/LevelDefinitionSoA.h"
-  :namespace ml
+  :namespace ioj
   :include-order ("SpaceGame/" "SandboxCore/")
   (struct FLevelEntityTable
     :operations (all)

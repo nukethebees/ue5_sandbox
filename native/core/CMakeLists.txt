@@ -191,7 +191,7 @@ ioj_enable_warnings(native-core-static-string-view-reject-automatic)
 add_test(NAME StaticStringViewRejectsAutomaticStorage
   COMMAND "${CMAKE_COMMAND}" "-DBUILD_DIR=${CMAKE_BINARY_DIR}"
     -DREJECT_TARGET=native-core-static-string-view-reject-automatic
-    "-DEXPECTED_DIAGNOSTIC=(call to consteval function 'ml::StaticStringView::StaticStringView[^\n]*not a constant expression|error C7595:[^\n]*StaticStringView[^\n]*not a constant expression)"
+    "-DEXPECTED_DIAGNOSTIC=(call to consteval function 'ioj::StaticStringView::StaticStringView[^\n]*not a constant expression|error C7595:[^\n]*StaticStringView[^\n]*not a constant expression)"
     -P "${PROJECT_SOURCE_DIR}/cmake/expect_compile_failure.cmake"
 )
 set_tests_properties(StaticStringViewRejectsAutomaticStorage PROPERTIES

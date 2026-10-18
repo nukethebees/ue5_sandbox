@@ -150,7 +150,7 @@ struct FVectors1f {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
+        ioj::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -163,7 +163,7 @@ struct FVectors1f {
     template <typename Other>
     void
         copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
-        ml::copy_elements(xs, dst_i, other.xs, src_i, count);
+        ioj::copy_elements(xs, dst_i, other.xs, src_i, count);
     }
 
     template <typename Other>
@@ -175,21 +175,21 @@ struct FVectors1f {
 
     template <typename Other>
     void append_from(Other const& other)
-        requires ml::SupportsApplyArrayPairsWith<FVectors1f, Other>
+        requires ioj::SupportsApplyArrayPairsWith<FVectors1f, Other>
     {
-        ml::append_from(xs, other.xs);
+        ioj::append_from(xs, other.xs);
     }
 
     void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
+        ioj::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort<Compare>(*this, scratch_indices);
+        ioj::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>

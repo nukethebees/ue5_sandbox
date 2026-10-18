@@ -98,11 +98,11 @@ void UMassArchetypeSubsystem::build_definitions(FMassEntityManager& entity_manag
         return;
     }
 
-    auto visualization_actor{ml::get_first_actor<AMassBulletVisualizationActor>(*world)};
+    auto visualization_actor{ioj::get_first_actor<AMassBulletVisualizationActor>(*world)};
     if (!visualization_actor) {
         return;
     }
-    auto data_actor{ml::get_first_actor<AMassBulletSubsystemData>(*world)};
+    auto data_actor{ioj::get_first_actor<AMassBulletSubsystemData>(*world)};
     if (!data_actor) {
         return;
     }
@@ -131,7 +131,7 @@ void UMassArchetypeSubsystem::build_definitions(FMassEntityManager& entity_manag
         auto data_handle{entity_manager.GetOrCreateConstSharedFragment<FMassBulletDataFragment>(
             asset_id, FBulletTypeIndex{i})};
 
-        ml::add_values(shared_values, impact_effect_handle, viz_actor_handle, data_handle);
+        ioj::add_values(shared_values, impact_effect_handle, viz_actor_handle, data_handle);
 
         add_definition({bullet_archetype, shared_values}, asset_id);
         logger.log_display(

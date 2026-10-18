@@ -44,7 +44,7 @@ ARocket::ARocket()
     collision_box->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
     collision_box->SetCollisionResponseToChannel(ECC_Vehicle, ECR_Block);
     collision_box->SetCollisionResponseToChannel(ECC_Destructible, ECR_Block);
-    collision_box->SetCollisionResponseToChannel(ml::collision::projectile, ECR_Block);
+    collision_box->SetCollisionResponseToChannel(ioj::collision::projectile, ECR_Block);
     collision_box->BodyInstance.bUseCCD = true;
 }
 

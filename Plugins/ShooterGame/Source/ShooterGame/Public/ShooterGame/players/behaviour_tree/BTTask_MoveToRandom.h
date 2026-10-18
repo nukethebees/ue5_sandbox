@@ -15,7 +15,7 @@ struct FPathFollowingResult;
 UCLASS()
 class SHOOTERGAME_API UBTTask_MoveToRandom
     : public UBTTaskNode
-    , public ml::LogMsgMixin<"UBTTask_MoveToRandom", LogShooterGameAI> {
+    , public ioj::LogMsgMixin<"UBTTask_MoveToRandom", LogShooterGameAI> {
     GENERATED_BODY()
   public:
     UBTTask_MoveToRandom();

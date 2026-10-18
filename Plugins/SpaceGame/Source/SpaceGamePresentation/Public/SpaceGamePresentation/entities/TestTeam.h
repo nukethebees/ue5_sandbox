@@ -21,9 +21,9 @@ enum class ETestTeam : uint8 {
 
 using ETestTeamUnderlying = uint8;
 
-namespace ml {
+namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<::ETestTeam>() noexcept -> std::size_t {
     return 6;
 }
-} // namespace ml
+} // namespace ioj

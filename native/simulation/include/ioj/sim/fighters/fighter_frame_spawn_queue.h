@@ -44,8 +44,8 @@ struct FrameSpawnQueue {
   private:
     FrameVectors3f locations_;
     FrameRotators3f rotations_;
-    ml::FrameArray<Team> teams_;
-    ml::FrameArray<EntityUniqueId> parents_;
-    ml::FrameArray<EntityUniqueId> targets_;
+    ioj::FrameArray<Team> teams_;
+    ioj::FrameArray<EntityUniqueId> parents_;
+    ioj::FrameArray<EntityUniqueId> targets_;
 };
 }

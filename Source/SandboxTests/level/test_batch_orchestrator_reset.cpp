@@ -29,7 +29,7 @@
 #include <Misc/Optional.h>
 #include <SandboxISMCComponent.h>
 
-namespace ml {
+namespace ioj {
 FTestBatchOrchestratorResetScenario::FTestBatchOrchestratorResetScenario(
     FSimulationTestContext& context)
     : FSimulationTestScenario{context} {
@@ -63,7 +63,7 @@ auto FTestBatchOrchestratorResetScenario::count_actors(UWorld const& world) cons
 }
 
 auto FTestBatchOrchestratorResetScenario::is_core_runtime_actor(AActor const& actor) const -> bool {
-    return ml::actor_is_any<AWorldSettings,
+    return ioj::actor_is_any<AWorldSettings,
                             AGameModeBase,
                             AGameStateBase,
                             APlayerController,
@@ -116,7 +116,7 @@ void FTestBatchOrchestratorResetScenario::start_initial_simulation() {
     initialise_test_driver();
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
-    ml::reset_and_reserve_time_series(
+    ioj::reset_and_reserve_time_series(
         test_driver->orchestrator, reset_time, initial_samples, reset_samples);
     test_driver->orchestrator.set_end_tick_test_hook(FOrchestratorEndTickTestHook::CreateRaw(
         this, &FTestBatchOrchestratorResetScenario::on_end_tick));
@@ -166,8 +166,8 @@ void FTestBatchOrchestratorResetScenario::reset_simulation() {
 }
 
 void FTestBatchOrchestratorResetScenario::check_reset() {
-    ml::check_samples_recorded(initial_samples.num(), checks, TEXT("Initial samples recorded"));
-    ml::check_samples_recorded(reset_samples.num(), checks, TEXT("Reset samples recorded"));
+    ioj::check_samples_recorded(initial_samples.num(), checks, TEXT("Initial samples recorded"));
+    ioj::check_samples_recorded(reset_samples.num(), checks, TEXT("Reset samples recorded"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
     auto const& reset_sample{reset_samples.last_value()};
@@ -180,12 +180,12 @@ void FTestBatchOrchestratorResetScenario::check_reset() {
     checks.are_equal(0u, reset_sample.laser_count, TEXT("Reset clears projectile instances"));
 
     for (auto const& blocker : blockers) {
-        checks.is_true(!ml::is_actor_in_world(*test_driver->get_world(), blocker.Get()),
+        checks.is_true(!ioj::is_actor_in_world(*test_driver->get_world(), blocker.Get()),
                        TEXT("Reset blocker is removed"));
     }
 
     for (int32 i{0}; i < old_transient_actor_count; ++i) {
-        checks.is_true(!ml::is_actor_in_world(*test_driver->get_world(), old_transient_actors[i]),
+        checks.is_true(!ioj::is_actor_in_world(*test_driver->get_world(), old_transient_actors[i]),
                        TEXT("Previous transient actor is removed"),
                        i);
     }

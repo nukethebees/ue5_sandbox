@@ -4,7 +4,7 @@
 
 #include <CoreMinimal.h>
 
-namespace ml {
+namespace ioj {
 struct SPACEGAME_API FLevelUnlockCriterionStatus {
     bool satisfied{};
     FText description{};

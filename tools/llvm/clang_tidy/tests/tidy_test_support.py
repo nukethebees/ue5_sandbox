@@ -11,16 +11,16 @@ VIEWS = """
 namespace std {
 template<class T> struct span { span(); span(T*, int); };
 }
-namespace ml {
+namespace ioj {
 template<class T> struct Vector3SoAView { Vector3SoAView(); Vector3SoAView(T*, T*, T*, int); };
 namespace soa_storage_detail { template<bool Const, auto Require> struct CompactViewState {}; }
 }
 namespace ioj::sim {
-struct Compact : ml::soa_storage_detail::CompactViewState<false, 0> { Compact(); };
+struct Compact : ioj::soa_storage_detail::CompactViewState<false, 0> { Compact(); };
 struct LineTracesConstView { std::span<int> starts; std::span<int> ends; };
 struct ValueSnapshot { int snapshot; };
 }
-using View = ml::Vector3SoAView<float>;
+using View = ioj::Vector3SoAView<float>;
 struct OrdinaryView { OrdinaryView(); };
 View resolve();
 View const& borrowed();

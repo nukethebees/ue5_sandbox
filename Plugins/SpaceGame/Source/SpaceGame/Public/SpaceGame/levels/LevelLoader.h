@@ -5,7 +5,7 @@
 
 class ATestBatchOrchestrator;
 
-namespace ml {
+namespace ioj {
 enum class ELevelLoadErrorCode : uint8 {
     InvalidDefinition,
     InvalidWorld,

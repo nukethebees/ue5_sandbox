@@ -57,8 +57,8 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
 
     BEFORE_EACH()
     {
-        auto const world_result{ml::get_editor_world()};
-        auto const* const config{ml::load_default_level_config()};
+        auto const world_result{ioj::get_editor_world()};
+        auto const* const config{ioj::load_default_level_config()};
         if (!TestRunner->TestTrue(TEXT("Editor world is available"), world_result.has_value()) ||
             !TestRunner->TestNotNull(TEXT("Level config loads"), config)) {
             return;
@@ -66,7 +66,7 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
         auto& world{*world_result.value()};
         controller_ = world.SpawnActor<ASpaceGamePlayerController>();
         ship_ =
-            ml::spawn_player_ship(world, config->classes.player_ship_class, &config->player_ship);
+            ioj::spawn_player_ship(world, config->classes.player_ship_class, &config->player_ship);
         if (IsValid(ship_)) {
             ship_->bind_simulation(ship_commands_, ship_simulation_);
         }
@@ -220,8 +220,8 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
         contexts_.set_control_context(EPlayerControlContext::None);
         auto const& intent{ship_simulation_.get_flight_intent()};
         TestRunner->TestTrue(TEXT("Translation and rotation clear"),
-                             intent.translation == ml::Vector3d{} &&
-                                 intent.rotation == ml::Vector3d{});
+                             intent.translation == ioj::Vector3d{} &&
+                                 intent.rotation == ioj::Vector3d{});
         TestRunner->TestTrue(TEXT("Accelerator and held propulsion clear"),
                              intent.accelerator == 0.f && !intent.boost_held &&
                                  !intent.brake_held && !intent.emergency_brake_held);

@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace ml::native_kernel {
+namespace ioj::native_kernel {
 template <typename T, typename Alpha>
 void lerp(
     T* out, T const* from, T const* to, Alpha const alpha, std::uint32_t const count) noexcept {

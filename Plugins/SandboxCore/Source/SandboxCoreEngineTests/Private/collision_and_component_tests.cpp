@@ -22,7 +22,7 @@ TEST_CLASS(CollisionSettings, "SandboxCoreEngine.UnitTests")
         component->CanCharacterStepUpOn = ECanBeCharacterBase::ECB_Yes;
         component->SetNotifyRigidBodyCollision(true);
 
-        auto const settings{ml::copy_collision_settings(*component)};
+        auto const settings{ioj::copy_collision_settings(*component)};
 
         component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         component->SetCollisionObjectType(ECC_WorldDynamic);
@@ -30,7 +30,7 @@ TEST_CLASS(CollisionSettings, "SandboxCoreEngine.UnitTests")
         component->SetGenerateOverlapEvents(false);
         component->CanCharacterStepUpOn = ECanBeCharacterBase::ECB_No;
         component->SetNotifyRigidBodyCollision(false);
-        ml::apply_collision_settings(*component, settings);
+        ioj::apply_collision_settings(*component, settings);
 
         TestRunner->TestEqual(TEXT("Collision enabled is restored"),
                               component->GetCollisionEnabled(),
@@ -80,7 +80,7 @@ TEST_CLASS(ActorComponents, "SandboxCoreEngine.LevelTests")
             actor->AddInstanceComponent(root);
             root->RegisterComponent();
 
-            auto* const child{ml::create_attached_instance_component<USceneComponent>(
+            auto* const child{ioj::create_attached_instance_component<USceneComponent>(
                 *actor, TEXT("GeneratedChild"), *root)};
 
             TestRunner->TestNotNull(TEXT("Component is created"), child);
@@ -106,11 +106,11 @@ TEST_CLASS(ActorComponents, "SandboxCoreEngine.LevelTests")
             root->RegisterComponent();
 
             TArray<USceneComponent*> components{
-                ml::create_attached_instance_component<USceneComponent>(
+                ioj::create_attached_instance_component<USceneComponent>(
                     *actor, TEXT("First"), *root),
-                ml::create_attached_instance_component<USceneComponent>(
+                ioj::create_attached_instance_component<USceneComponent>(
                     *actor, TEXT("Second"), *root),
-                ml::create_attached_instance_component<USceneComponent>(
+                ioj::create_attached_instance_component<USceneComponent>(
                     *actor, TEXT("Third"), *root),
             };
             auto* const first{components[0]};
@@ -119,7 +119,7 @@ TEST_CLASS(ActorComponents, "SandboxCoreEngine.LevelTests")
             third->DestroyComponent();
             components[2] = nullptr;
 
-            ml::destroy_components_at_array_end(components, 2);
+            ioj::destroy_components_at_array_end(components, 2);
 
             TestRunner->TestEqual(TEXT("Only the leading component remains"), components.Num(), 1);
             TestRunner->TestTrue(TEXT("Leading component remains registered"),
@@ -128,7 +128,7 @@ TEST_CLASS(ActorComponents, "SandboxCoreEngine.LevelTests")
             TestRunner->TestFalse(TEXT("Third component is unregistered"), third->IsRegistered());
 
             components.Add(nullptr);
-            ml::destroy_components_array(components);
+            ioj::destroy_components_array(components);
             TestRunner->TestTrue(TEXT("All component entries are removed"), components.IsEmpty());
             TestRunner->TestFalse(TEXT("Leading component is destroyed"), first->IsRegistered());
         });
@@ -143,7 +143,7 @@ TEST_CLASS(ActorComponents, "SandboxCoreEngine.LevelTests")
             auto* const second{NewObject<USceneComponent>(actor, TEXT("Second"))};
             USceneComponent* const missing{nullptr};
 
-            ml::register_components(first, missing, second);
+            ioj::register_components(first, missing, second);
 
             TestRunner->TestTrue(TEXT("First component is registered"), first->IsRegistered());
             TestRunner->TestTrue(TEXT("Second component is registered"), second->IsRegistered());

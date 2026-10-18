@@ -56,7 +56,7 @@ auto make_battle() -> LevelSimInitData {
         data, {{-1000.f, 0.f, 0.f}}, Team::Green, invalid_level_entity_index, 60.f, 60.f, 100);
     add_capital_spawn(
         data, {{1000.f, 0.f, 0.f}}, Team::White, invalid_level_entity_index, 60.f, 60.f, 100);
-    for (auto const type : ml::EnumTraits<EntityType>::values) {
+    for (auto const type : ioj::EnumTraits<EntityType>::values) {
         data.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
     return data;
@@ -135,7 +135,7 @@ TEST(NativeSimulation, LevelSimFrameMemoryUsesAndReturnsGameMemoryBlock) {
     EXPECT_EQ(released.live_block_bytes, 0u);
     EXPECT_GE(released.reusable_range_count, 1);
 
-    auto reused{memory.acquire_block(frame_capacity, ml::FrameMemoryResource::backing_alignment)};
+    auto reused{memory.acquire_block(frame_capacity, ioj::FrameMemoryResource::backing_alignment)};
     EXPECT_EQ(reused.data(), backing_data);
 }
 

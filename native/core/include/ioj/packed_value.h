@@ -3,7 +3,7 @@
 #include <limits>
 #include <type_traits>
 
-namespace ml {
+namespace ioj {
 
 template <typename Storage, int ExpectedBits>
 [[nodiscard]] constexpr auto valid_packed_storage() noexcept -> bool {
@@ -114,4 +114,4 @@ template <typename Field>
     return static_cast<Storage>(cleared | packed_pack<Field>(value));
 }
 
-} // namespace ml
+} // namespace ioj

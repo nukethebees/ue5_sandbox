@@ -1525,7 +1525,7 @@ TEST(SemanticTypeGraph, ResolvesStandardLibrarySoaColumns) {
     EXPECT_EQ(storage.strings.view(
                   *graph.definitions()
                        .soas.equivalent_constructor[graph.definitions().soas.index(vector_type)]),
-              "ml::make_vector3f");
+              "ioj::make_vector3f");
     EXPECT_EQ(
         graph.definitions().soas.equivalent_constructor[graph.definitions().soas.index(local)],
         graph.definitions()

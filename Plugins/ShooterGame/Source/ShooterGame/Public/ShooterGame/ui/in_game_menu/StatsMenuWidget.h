@@ -17,7 +17,7 @@ class AMyCharacter;
 UCLASS()
 class SHOOTERGAME_API UStatsMenuWidget
     : public UUserWidget
-    , public ml::LogMsgMixin<"UStatsMenuWidget", LogShooterGameUI> {
+    , public ioj::LogMsgMixin<"UStatsMenuWidget", LogShooterGameUI> {
     GENERATED_BODY()
   public:
     void on_widget_selected();

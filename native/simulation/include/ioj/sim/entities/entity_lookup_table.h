@@ -29,7 +29,7 @@ class EntityLookupTable {
                       Health const maximum = 1) {
         assert(teams.empty() || teams.size() == ids.size());
         assert(healths.empty() || healths.size() == ids.size());
-        assert(ml::range_fits<std::size_t>(0,
+        assert(ioj::range_fits<std::size_t>(0,
                                            ids.size(),
                                            EntityInstanceHandle::index_minimum,
                                            EntityInstanceHandle::index_maximum));
@@ -107,7 +107,7 @@ class EntityLookupTables {
                    EntityLookupTable{EntityType::TubeSpinner}}} {}
 
     [[nodiscard]] auto for_type(EntityType const type) -> EntityLookupTable& {
-        assert(std::to_underlying(type) < ml::enum_count<EntityType>());
+        assert(std::to_underlying(type) < ioj::enum_count<EntityType>());
         return tables_[type];
     }
 
@@ -124,7 +124,7 @@ class EntityLookupTables {
     [[nodiscard]] auto permits_lookup() const noexcept -> bool { return clock_.permits_lookup(); }
 
     [[nodiscard]] auto for_type(EntityType const type) const -> EntityLookupTable const& {
-        assert(std::to_underlying(type) < ml::enum_count<EntityType>());
+        assert(std::to_underlying(type) < ioj::enum_count<EntityType>());
         return tables_[type];
     }
 
@@ -171,6 +171,6 @@ class EntityLookupTables {
     }
   private:
     SimClock const& clock_;
-    ml::EnumArray<EntityType, EntityLookupTable> tables_;
+    ioj::EnumArray<EntityType, EntityLookupTable> tables_;
 };
 }

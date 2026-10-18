@@ -7,7 +7,7 @@
 #include <cstdint>
 
 TEST(NativeSoaMimalloc, AllocatesAlignedColumnsAndPreservesValuesOnGrowth) {
-    ml::native_soa_fixture::SingleAlignmentRows rows{sbx::memory::mimalloc_resource()};
+    ioj::native_soa_fixture::SingleAlignmentRows rows{sbx::memory::mimalloc_resource()};
     rows.set_num(1);
     rows.get_view().view_nested().xs()[0] = 42.f;
     rows.reserve(129);

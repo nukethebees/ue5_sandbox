@@ -78,7 +78,7 @@ void ATestUniformFieldPointSource::on_field_pre_construction(ATestUniformField& 
         UE_LOG(LogSandboxLearning,
                Verbose,
                TEXT("%s::on_field_pre_construction"),
-               *ml::get_best_display_name(*this));
+               *ioj::get_best_display_name(*this));
     }
 
     check(&field_ref == &*field);

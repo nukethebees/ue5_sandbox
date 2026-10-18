@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <span>
 
-namespace ml {
+namespace ioj {
 void lerp_2d(std::span<float const> from_x,
              std::span<float const> from_y,
              std::span<float const> to_x,
@@ -138,4 +138,4 @@ void lerp_3d_in_place(std::span<double> from_x,
                       std::span<double const> to_y,
                       std::span<double const> to_z,
                       double alpha) noexcept;
-} // namespace ml
+} // namespace ioj

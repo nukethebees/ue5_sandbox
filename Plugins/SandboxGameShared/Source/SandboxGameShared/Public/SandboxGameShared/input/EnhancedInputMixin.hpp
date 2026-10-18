@@ -8,7 +8,7 @@
 
 #include <utility>
 
-namespace ml {
+namespace ioj {
 struct EnhancedInputMixin {
     template <typename Self>
     auto make_input_binder(this Self&& self, UEnhancedInputComponent* eic) -> decltype(auto) {

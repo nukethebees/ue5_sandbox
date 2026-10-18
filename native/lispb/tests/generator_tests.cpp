@@ -63,10 +63,10 @@ TEST(Generator, LowersDynamicSoaIntoTypedHeaderAndSource) {
     EXPECT_NE(header.find("struct EXAMPLE_API FDataConstView"), std::string::npos);
     EXPECT_NE(header.find("TConstArrayView<FHandle> handles;"), std::string::npos);
     EXPECT_NE(header.find("TArray<float> weights;"), std::string::npos);
-    EXPECT_NE(header.find("ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);"),
+    EXPECT_NE(header.find("ioj::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);"),
               std::string::npos);
     EXPECT_NE(header.find("template <typename Other>"), std::string::npos);
-    EXPECT_NE(header.find("ml::SupportsApplyArrayPairsWith<FData, Other>"), std::string::npos);
+    EXPECT_NE(header.find("ioj::SupportsApplyArrayPairsWith<FData, Other>"), std::string::npos);
     EXPECT_NE(header.find("#include \"Project/Handle.h\""), std::string::npos);
     EXPECT_NE(header.find("SandboxCore/soa_storage_ops.h"), std::string::npos);
 
@@ -74,7 +74,7 @@ TEST(Generator, LowersDynamicSoaIntoTypedHeaderAndSource) {
     EXPECT_NE(source.find("SandboxCore/soa_storage_ops.h"), std::string::npos);
     EXPECT_NE(source.find("namespace example {"), std::string::npos);
     EXPECT_NE(source.find("void FData::reset()"), std::string::npos);
-    EXPECT_NE(source.find("ml::soa_ops::apply_permutation(*this, indices);"), std::string::npos);
+    EXPECT_NE(source.find("ioj::soa_ops::apply_permutation(*this, indices);"), std::string::npos);
     EXPECT_NE(source.find("auto FData::get_view() -> View"), std::string::npos);
 }
 
@@ -111,10 +111,10 @@ TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
     EXPECT_NE(native_header.find("enum class EField : std::uint8_t"), std::string::npos);
     EXPECT_NE(native_header.find("Last = static_cast<std::uint8_t>(Matrix) + (2) * (3)"),
               std::string::npos);
-    EXPECT_NE(native_header.find("ml::native_soa::Vector<FFieldMask> masks;"), std::string::npos);
+    EXPECT_NE(native_header.find("ioj::native_soa::Vector<FFieldMask> masks;"), std::string::npos);
     EXPECT_NE(native_header.find("ioj/native_soa/vector_storage_ops.h"), std::string::npos);
     EXPECT_NE(native_header.find("#include <utility>"), std::string::npos);
-    EXPECT_EQ(native_header.find("ml::native_soa::vector_storage_ops::reserve(*this, count);"),
+    EXPECT_EQ(native_header.find("ioj::native_soa::vector_storage_ops::reserve(*this, count);"),
               std::string::npos);
     EXPECT_NE(native_header.find("std::forward<Compare>(compare)"), std::string::npos);
     EXPECT_NE(native_header.find("std::int32_t const row_index"), std::string::npos);

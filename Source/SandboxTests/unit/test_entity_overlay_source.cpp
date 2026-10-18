@@ -19,16 +19,16 @@ using EntityTypeRadii = ::ioj::sim::EntityTypeRadii;
 
 auto make_entity_type_radii() -> EntityTypeRadii {
     EntityTypeRadii radii{};
-    for (auto const type : ml::EnumTraits<::ioj::sim::EntityType>::values) {
+    for (auto const type : ioj::EnumTraits<::ioj::sim::EntityType>::values) {
         radii[type] = 1.0f;
     }
     return radii;
 }
 
-auto make_view(ml::tests::FDisplayEntityTestData const& entities,
+auto make_view(ioj::tests::FDisplayEntityTestData const& entities,
                std::span<::ioj::sim::EntityUniqueId const> ids = {})
-    -> std::vector<::ml::presentation::AgentDisplayBatch> {
-    std::vector<::ml::presentation::AgentDisplayBatch> batches;
+    -> std::vector<::ioj::presentation::AgentDisplayBatch> {
+    std::vector<::ioj::presentation::AgentDisplayBatch> batches;
     auto const count{entities.num()};
     batches.reserve(count);
     for (int32 i{}; i < count; ++i) {
@@ -42,7 +42,7 @@ auto make_view(ml::tests::FDisplayEntityTestData const& entities,
     return batches;
 }
 
-void add_entity(ml::tests::FDisplayEntityTestData& entities,
+void add_entity(ioj::tests::FDisplayEntityTestData& entities,
                 EntityTypeRadii& entity_type_radii,
                 FVector3f const position,
                 int32 const health,
@@ -52,9 +52,9 @@ void add_entity(ml::tests::FDisplayEntityTestData& entities,
                 ETestTeam const team = ETestTeam::White) {
     auto const index{entities.num()};
     entities.add_defaulted(1);
-    ::ioj::set_vector(entities.motion.get_view().view_locations(), index, ml::to_native(position));
+    ::ioj::set_vector(entities.motion.get_view().view_locations(), index, ioj::to_native(position));
     entity_type_radii[type] = radius;
-    entities.teams[index] = ml::to_native(team);
+    entities.teams[index] = ioj::to_native(team);
     entities.entity_types[index] = type;
     auto const owner{::ioj::sim::EntityUniqueId(static_cast<std::uint32_t>(index),
                                                 entities.entity_types[index])};
@@ -74,13 +74,13 @@ auto make_forward_x_view() -> FEntityOverlayView {
             .output_size = {1000, 1000}};
 }
 
-auto entity_id(ml::tests::FDisplayEntityTestData const& entities, int32 const index)
+auto entity_id(ioj::tests::FDisplayEntityTestData const& entities, int32 const index)
     -> ::ioj::sim::EntityUniqueId {
     auto const type{entities.entity_types[index]};
     return ::ioj::sim::EntityUniqueId(index, type);
 }
 
-auto select_target(ml::tests::FDisplayEntityTestData const& entities,
+auto select_target(ioj::tests::FDisplayEntityTestData const& entities,
                    EntityTypeRadii const& entity_type_radii,
                    ::ioj::sim::EntityUniqueId const current_target = {},
                    float const weapon_range = 1000.0f) -> FSoftTargetSelectionResult {
@@ -111,7 +111,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
 {
     TEST_METHOD(FiltersEligibilityRangeAndNormalizesHealth)
     {
-        ml::tests::FDisplayEntityTestData entities;
+        ioj::tests::FDisplayEntityTestData entities;
         auto entity_type_radii{make_entity_type_radii()};
         add_entity(entities,
                    entity_type_radii,
@@ -182,7 +182,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
 
     TEST_METHOD(ExcludesDeadAndClampsExcessHealth)
     {
-        ml::tests::FDisplayEntityTestData entities;
+        ioj::tests::FDisplayEntityTestData entities;
         auto entity_type_radii{make_entity_type_radii()};
         add_entity(entities,
                    entity_type_radii,
@@ -212,7 +212,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
 
     TEST_METHOD(SelectsOnlyTheBestValidHostile)
     {
-        ml::tests::FDisplayEntityTestData entities;
+        ioj::tests::FDisplayEntityTestData entities;
         auto entity_type_radii{make_entity_type_radii()};
         add_entity(entities,
                    entity_type_radii,
@@ -255,7 +255,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
 
     TEST_METHOD(RetainsAndSwitchesWithHysteresis)
     {
-        ml::tests::FDisplayEntityTestData entities;
+        ioj::tests::FDisplayEntityTestData entities;
         auto entity_type_radii{make_entity_type_radii()};
         add_entity(entities,
                    entity_type_radii,
@@ -299,7 +299,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
 
     TEST_METHOD(ProjectedSizeDoesNotLetARearTargetDominate)
     {
-        ml::tests::FDisplayEntityTestData entities;
+        ioj::tests::FDisplayEntityTestData entities;
         auto entity_type_radii{make_entity_type_radii()};
         add_entity(entities,
                    entity_type_radii,
@@ -326,7 +326,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
 
     TEST_METHOD(NearestSurfaceResolvesCentredTargetsAndHysteresis)
     {
-        ml::tests::FDisplayEntityTestData entities;
+        ioj::tests::FDisplayEntityTestData entities;
         auto entity_type_radii{make_entity_type_radii()};
         add_entity(entities,
                    entity_type_radii,
@@ -358,7 +358,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
 
     TEST_METHOD(NormalizesRangeAlphaUsingTargetSurfaceDistance)
     {
-        ml::tests::FDisplayEntityTestData entities;
+        ioj::tests::FDisplayEntityTestData entities;
         auto entity_type_radii{make_entity_type_radii()};
         add_entity(entities,
                    entity_type_radii,
@@ -399,7 +399,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
 
     TEST_METHOD(RangeAlphaUsesTargetSurfaceRatherThanCentre)
     {
-        ml::tests::FDisplayEntityTestData entities;
+        ioj::tests::FDisplayEntityTestData entities;
         auto entity_type_radii{make_entity_type_radii()};
         add_entity(entities,
                    entity_type_radii,
@@ -418,7 +418,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
 
     TEST_METHOD(ReportsWorldScaleSeparatelyFromClampedIndicatorRadius)
     {
-        ml::tests::FDisplayEntityTestData entities;
+        ioj::tests::FDisplayEntityTestData entities;
         auto entity_type_radii{make_entity_type_radii()};
         add_entity(entities,
                    entity_type_radii,

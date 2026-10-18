@@ -94,7 +94,7 @@ class SANDBOXEDITOR_API AS7LevelAuthoringDocument final : public AInfo {
     bool IsEditorOnly() const override { return true; }
     void PostActorCreated() override;
     void PostRegisterAllComponents() override;
-    [[nodiscard]] auto collision_grid_overrides() const -> ml::FLevelCollisionGridDefinition;
+    [[nodiscard]] auto collision_grid_overrides() const -> ioj::FLevelCollisionGridDefinition;
     [[nodiscard]] auto resolve_collision_grid(FCollisionGridConfig const& source) const
         -> FCollisionGridConfig;
     void migrate_collision_grid_overrides();

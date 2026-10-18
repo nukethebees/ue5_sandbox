@@ -3,7 +3,7 @@
 #include <concepts>
 #include <cstdint>
 
-namespace ml {
+namespace ioj {
 template <std::integral Result = std::uintptr_t, typename T>
 [[nodiscard]] auto address_cast(T* const pointer) noexcept -> Result {
     if constexpr (std::same_as<Result, std::uintptr_t>) {

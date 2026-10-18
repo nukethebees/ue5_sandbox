@@ -59,10 +59,10 @@ void ATriggerButtonActor::register_targets_with_payload() {
 
         logger.log_verbose(TEXT("Added target actor ID %llu for actor: %s"),
                            actor_id.get(),
-                           *ml::get_best_display_name(*target_actor));
+                           *ioj::get_best_display_name(*target_actor));
     }
 
     logger.log_log(TEXT("Registered %d target actors with trigger button: %s"),
                    trigger_payload.n_targets,
-                   *ml::get_best_display_name(*this));
+                   *ioj::get_best_display_name(*this));
 }

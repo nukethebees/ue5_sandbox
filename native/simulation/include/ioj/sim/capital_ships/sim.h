@@ -111,8 +111,8 @@ struct Sim {
     void begin_play();
     void update_entity_lookup_table();
     void prepare_tick(float dt);
-    void think(float dt, ml::FrameMemoryResource* const scratch_resource);
-    void resolve_damage_events(ml::FrameMemoryResource* scratch_resource);
+    void think(float dt, ioj::FrameMemoryResource* const scratch_resource);
+    void resolve_damage_events(ioj::FrameMemoryResource* scratch_resource);
     void resolve_fighters_of_dying_capitals();
     void publish_deaths();
     void remove_components();
@@ -133,13 +133,13 @@ struct Sim {
     /* **************************************** */
     // Fighter spawning
     /* **************************************** */
-    void queue_fighter_spawns(ml::FrameMemoryResource* const scratch_resource);
-    void refresh_fighter_ids(ml::FrameMemoryResource* const scratch_resource);
+    void queue_fighter_spawns(ioj::FrameMemoryResource* const scratch_resource);
+    void refresh_fighter_ids(ioj::FrameMemoryResource* const scratch_resource);
 
     /* **************************************** */
     // Orders
     /* **************************************** */
-    void queue_fighter_orders(ml::FrameMemoryResource* const scratch_resource);
+    void queue_fighter_orders(ioj::FrameMemoryResource* const scratch_resource);
 
     /* **************************************** */
     // Targets

@@ -8,8 +8,8 @@
 #include <cstdint>
 
 namespace ioj::sim::telemetry {
-inline constexpr auto team_count{ml::enum_count<Team>()};
-inline constexpr auto entity_type_count{ml::enum_count<EntityType>()};
+inline constexpr auto team_count{ioj::enum_count<Team>()};
+inline constexpr auto entity_type_count{ioj::enum_count<EntityType>()};
 
 using TeamCounts = std::array<std::int32_t, team_count>;
 using EntityTypeCounts = std::array<std::int32_t, entity_type_count>;

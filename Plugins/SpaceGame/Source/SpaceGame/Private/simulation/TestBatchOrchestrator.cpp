@@ -55,7 +55,7 @@
 #include <Misc/DateTime.h>
 #include <SandboxISMCComponent.h>
 
-namespace ml::fighter_diagnostics {
+namespace ioj::fighter_diagnostics {
 inline TAutoConsoleVariable<int32> enabled{
     TEXT("sg.FighterDiagnostics"),
     0,
@@ -141,7 +141,7 @@ ATestBatchOrchestrator::ATestBatchOrchestrator() {
         CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("SoftTargets"));
     soft_target_instances_->SetupAttachment(RootComponent);
 
-    ml::set_actor_component_mobility(*this, EComponentMobility::Static);
+    ioj::set_actor_component_mobility(*this, EComponentMobility::Static);
     laser_instances_->SetMobility(EComponentMobility::Movable);
     fighter_instances_->SetMobility(EComponentMobility::Movable);
     soft_target_instances_->SetMobility(EComponentMobility::Movable);
@@ -289,7 +289,7 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     recreate_actor(player_ship);
 
     auto is_retained_actor{[this, &recreated_actors](AActor const* const actor) {
-        if (actor == this || ml::actor_is_any<AWorldSettings,
+        if (actor == this || ioj::actor_is_any<AWorldSettings,
                                               AGameModeBase,
                                               AGameStateBase,
                                               APlayerController,
@@ -436,8 +436,8 @@ void ATestBatchOrchestrator::clear_player_ship() {
 // Level initialization
 /* **************************************** */
 auto ATestBatchOrchestrator::initialise_simulation(USpaceGameLevelConfig const& effective_config,
-                                                   ml::FLevelStartErrors& errors,
-                                                   TOptional<ml::FProxyLevelSimBuild>& proxy_build,
+                                                   ioj::FLevelStartErrors& errors,
+                                                   TOptional<ioj::FProxyLevelSimBuild>& proxy_build,
                                                    ioj::sim::collision::GridGeometry& grid_geometry)
     -> bool {
     auto& world{*GetWorld()};
@@ -450,10 +450,10 @@ auto ATestBatchOrchestrator::initialise_simulation(USpaceGameLevelConfig const& 
 
     auto const* const player_collision_mesh{IsValid(player_ship) ? player_ship->get_collision_mesh()
                                                                  : nullptr};
-    auto const clock_settings{ml::make_fixed_tick_loop(simulation_tick_loop)};
+    auto const clock_settings{ioj::make_fixed_tick_loop(simulation_tick_loop)};
 
     if (level_definition_.IsSet()) {
-        auto result{ml::make_level_simulation_init_data(config,
+        auto result{ioj::make_level_simulation_init_data(config,
                                                         clock_settings,
                                                         level_definition_.GetValue(),
                                                         MoveTemp(player),
@@ -502,18 +502,18 @@ auto ATestBatchOrchestrator::initialise_simulation(USpaceGameLevelConfig const& 
             auto const turret_count{static_cast<int32>(turrets.num())};
             for (int32 i{}; i < turret_count; ++i) {
                 initial_turret_transforms_.Emplace(
-                    FRotator{ml::to_unreal(ioj::rotation_at(turrets.view_rotations(), i))},
-                    FVector{ml::to_unreal(ioj::vector_at(turrets.view_locations(), i))});
+                    FRotator{ioj::to_unreal(ioj::rotation_at(turrets.view_rotations(), i))},
+                    FVector{ioj::to_unreal(ioj::vector_at(turrets.view_locations(), i))});
             }
         }
         result->fighter_diagnostics_enabled =
-            ml::fighter_diagnostics::enabled.GetValueOnGameThread() != 0;
+            ioj::fighter_diagnostics::enabled.GetValueOnGameThread() != 0;
         grid_geometry = result->grid_geometry;
         level_simulation_.Emplace(game_subsystem->get_game_memory(), MoveTemp(result.value()));
         return true;
     }
 
-    auto result{ml::make_proxy_level_simulation_init_data(config,
+    auto result{ioj::make_proxy_level_simulation_init_data(config,
                                                           clock_settings,
                                                           world,
                                                           mission_definition,
@@ -541,7 +541,7 @@ auto ATestBatchOrchestrator::initialise_simulation(USpaceGameLevelConfig const& 
         errors.add(TEXT("Cannot create level simulation without game memory"));
         return false;
     }
-    data.fighter_diagnostics_enabled = ml::fighter_diagnostics::enabled.GetValueOnGameThread() != 0;
+    data.fighter_diagnostics_enabled = ioj::fighter_diagnostics::enabled.GetValueOnGameThread() != 0;
     grid_geometry = data.grid_geometry;
     level_simulation_.Emplace(game_subsystem->get_game_memory(), MoveTemp(data));
     return true;
@@ -580,7 +580,7 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
             apply_collision_grid_overrides(level_config->collision_grid);
     }
 
-    ml::FLevelStartErrors config_errors;
+    ioj::FLevelStartErrors config_errors;
     TArray<FString> config_error_messages;
     effective_config->get_validation_errors(config_error_messages, presentation_enabled);
     config_errors.append(MoveTemp(config_error_messages));
@@ -605,14 +605,14 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
     }
 
     if (!presentation_enabled &&
-        (IsValid(player_ship) || ml::get_first_actor<ATestSpaceShip>(*world))) {
+        (IsValid(player_ship) || ioj::get_first_actor<ATestSpaceShip>(*world))) {
         handle_level_start_failure(TEXT("Presentation-disabled levels must be playerless"));
         return false;
     }
 
     set_level_config(*level_config);
-    ml::FLevelStartErrors simulation_errors;
-    TOptional<ml::FProxyLevelSimBuild> proxy_build;
+    ioj::FLevelStartErrors simulation_errors;
+    TOptional<ioj::FProxyLevelSimBuild> proxy_build;
     ioj::sim::collision::GridGeometry grid_geometry{};
     if (!initialise_simulation(*effective_config, simulation_errors, proxy_build, grid_geometry)) {
         handle_level_start_failure(
@@ -753,7 +753,7 @@ void ATestBatchOrchestrator::load_authored_level() {
     presentation_enabled = options.presentation_mode == ioj::ELevelPresentationMode::Visual;
     set_time_scale(options.requested_time_scale);
 
-    ml::FLevelLoader loader{*this};
+    ioj::FLevelLoader loader{*this};
     auto const result{loader.load(pending->definition, options.control_context)};
     if (!result) {
         TArray<FString> messages;
@@ -859,7 +859,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
     }
 
     auto const fighter_diagnostics_enabled{
-        ml::fighter_diagnostics::enabled.GetValueOnGameThread() != 0};
+        ioj::fighter_diagnostics::enabled.GetValueOnGameThread() != 0};
     level_simulation_->set_fighter_diagnostics_enabled(fighter_diagnostics_enabled);
     auto const previous_tick{level_simulation_->get_clock().get_completed_ticks()};
     level_simulation_->advance(dt);
@@ -932,10 +932,10 @@ void ATestBatchOrchestrator::prepare_level() {
         return;
     }
     auto* world{GetWorld()};
-    ml::fatal_if_uobject_ptrs_invalid(
+    ioj::fatal_if_uobject_ptrs_invalid(
         {SANDBOX_NAMED_UOBJECT_PTR(world), SANDBOX_NAMED_UOBJECT_PTR(level_config)});
     if (!IsValid(player_ship)) {
-        player_ship = ml::get_first_actor<ATestSpaceShip>(*world);
+        player_ship = ioj::get_first_actor<ATestSpaceShip>(*world);
     }
     set_level_config(*level_config);
 }
@@ -990,7 +990,7 @@ void ATestBatchOrchestrator::process_mission_result() {
         if (IsValid(saves)) {
             if (result->state == ioj::sim::MissionState::Succeeded) {
                 auto const previous_progress{saves->get_level_progress(
-                    ml::FLevelId{FName{UTF8_TO_TCHAR(result->level_id.c_str())}})};
+                    ioj::FLevelId{FName{UTF8_TO_TCHAR(result->level_id.c_str())}})};
                 new_best_time =
                     previous_progress.best_completion_time_seconds < 0.0f ||
                     result->elapsed_seconds < previous_progress.best_completion_time_seconds;
@@ -999,9 +999,9 @@ void ATestBatchOrchestrator::process_mission_result() {
             FScoreRecord const record{
                 .date = FDateTime::Now(),
                 .level_name = FName{UTF8_TO_TCHAR(result->level_id.c_str())},
-                .mission_mode = ml::to_unreal(result->mode),
-                .end_state = ml::to_unreal(result->state),
-                .fail_reason = ml::to_unreal(result->fail_reason),
+                .mission_mode = ioj::to_unreal(result->mode),
+                .end_state = ioj::to_unreal(result->state),
+                .fail_reason = ioj::to_unreal(result->fail_reason),
                 .kills = result->kills,
                 .time_seconds = result->elapsed_seconds,
                 .target_kills = result->target_kills,
@@ -1018,8 +1018,8 @@ void ATestBatchOrchestrator::process_mission_result() {
     on_mission_completed.Broadcast(
         {.level_id = FName{UTF8_TO_TCHAR(result->level_id.c_str())},
          .level_display_name = UTF8_TO_TCHAR(result->level_display_name.c_str()),
-         .state = ml::to_unreal(result->state),
-         .fail_reason = ml::to_unreal(result->fail_reason),
+         .state = ioj::to_unreal(result->state),
+         .fail_reason = ioj::to_unreal(result->fail_reason),
          .persisted = persisted,
          .par_time_seconds = par_time_seconds,
          .new_best_time = new_best_time});
@@ -1035,7 +1035,7 @@ void ATestBatchOrchestrator::process_battle_run_end() {
         auto const alive_by_team{get_entity_ledger().count_alive_per_team()};
         int32 living_team_count{};
         std::optional<ioj::Team> winner;
-        constexpr int32 team_count{ml::enum_count<ETestTeam>()};
+        constexpr int32 team_count{ioj::enum_count<ETestTeam>()};
         for (int32 team_index{}; team_index < team_count; ++team_index) {
             if (alive_by_team[team_index] > 0) {
                 ++living_team_count;

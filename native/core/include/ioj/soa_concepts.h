@@ -2,7 +2,7 @@
 
 #include <type_traits>
 
-namespace ml {
+namespace ioj {
 struct FApplyArraysProbe {
     template <typename... T>
     void operator()(T&&...) const {}
@@ -31,4 +31,4 @@ concept SupportsApplyArrayPairsWith =
     requires(std::remove_cvref_t<T>& value, std::remove_cvref_t<Other> const& other) {
         value.apply_array_pairs(other, FApplyArrayPairsProbe{});
     };
-} // namespace ml
+} // namespace ioj

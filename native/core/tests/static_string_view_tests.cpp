@@ -7,7 +7,7 @@
 #include <type_traits>
 
 namespace {
-using ml::StaticStringView;
+using ioj::StaticStringView;
 
 static_assert(std::is_constructible_v<StaticStringView, decltype("hello")>);
 static_assert(!std::is_constructible_v<StaticStringView, char (&)[6]>);

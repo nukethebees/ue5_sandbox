@@ -32,7 +32,7 @@
 
 #include <array>
 
-namespace ml {
+namespace ioj {
 namespace {
 auto count_worldless_hud_entities(FHUDManager const& manager) -> int32 {
     int32 count{};
@@ -196,7 +196,7 @@ FTestHUDManagerScenario::FTestHUDManagerScenario(FSimulationTestContext& context
 
 void FTestHUDManagerScenario::on_tear_down() {
     check_headless_hud_manager_matches_simulation();
-    ml::reset(checks, test_driver, headless_hud_manager);
+    ioj::reset(checks, test_driver, headless_hud_manager);
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -258,18 +258,18 @@ void FTestHUDManagerScenario::initial_caches_process_samples() {
 /* ------------------------------------------------------------------------------------------ */
 void FTestHUDManagerScenario::defence_pre_begin_play(UWorld& world,
                                                      USpaceGameLevelConfig const& config) {
-    auto* const defended{ml::spawn_capital_proxy(
+    auto* const defended{ioj::spawn_capital_proxy(
         world, config, checks, FName{TEXT("defended_capital")}, FVector::ZeroVector)};
     if (!IsValid(defended)) {
         return;
     }
-    ml::spawn_capital_proxy(
+    ioj::spawn_capital_proxy(
         world, config, checks, FName{TEXT("required_enemy_capital")}, FVector{2000.f, 0.f, 0.f});
 }
 
 void FTestHUDManagerScenario::configure_defence_mission(UWorld& world,
                                                         ATestBatchOrchestrator& orchestrator) {
-    auto const capitals{ml::get_actors<ATestCapitalShipProxy>(world)};
+    auto const capitals{ioj::get_actors<ATestCapitalShipProxy>(world)};
     auto const find_capital{[&capitals](FName const test_name) {
         auto* const* const capital{
             capitals.FindByPredicate([test_name](ATestCapitalShipProxy const* const candidate) {
@@ -351,7 +351,7 @@ void FTestHUDManagerScenario::defence_on_tick(ATestBatchOrchestrator&) {
 }
 
 void FTestHUDManagerScenario::defence_process_samples() {
-    ml::check_samples_recorded(defence_samples.num(), checks, TEXT("Defence samples recorded"));
+    ioj::check_samples_recorded(defence_samples.num(), checks, TEXT("Defence samples recorded"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
     auto const& sample{defence_samples.nearest_value(test_duration)};
@@ -401,7 +401,7 @@ void FTestHUDManagerScenario::mission_time_on_tick(ATestBatchOrchestrator& orche
 }
 
 void FTestHUDManagerScenario::mission_time_process_samples() {
-    ml::check_samples_recorded(
+    ioj::check_samples_recorded(
         mission_time_samples.num(), checks, TEXT("Mission-time samples recorded"));
     if (mission_time_samples.is_empty()) {
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
@@ -426,12 +426,12 @@ void FTestHUDManagerScenario::mission_time_process_samples() {
 void FTestHUDManagerScenario::player_kill_pre_begin_play(UWorld& world,
                                                          USpaceGameLevelConfig const& config) {
     auto* const player_ship{
-        ml::spawn_player_ship(world, config.classes.player_ship_class, &config.player_ship)};
+        ioj::spawn_player_ship(world, config.classes.player_ship_class, &config.player_ship)};
     if (!checks.is_valid(player_ship, TEXT("Player ship is spawned"))) {
         return;
     }
 
-    ml::spawn_capital_proxy(world,
+    ioj::spawn_capital_proxy(world,
                             config,
                             checks,
                             FName{TEXT("player_kill_target_capital")},
@@ -441,7 +441,7 @@ void FTestHUDManagerScenario::player_kill_pre_begin_play(UWorld& world,
 void FTestHUDManagerScenario::player_kill_begin() {
     initialise_test_driver();
 
-    auto* player_ship{ml::get_first_actor<ATestSpaceShip>(test_driver->world)};
+    auto* player_ship{ioj::get_first_actor<ATestSpaceShip>(test_driver->world)};
     if (!checks.is_true(IsValid(player_ship), TEXT("Got player ship"))) {
         return;
     }
@@ -494,7 +494,7 @@ void FTestHUDManagerScenario::player_kill_on_tick(ATestBatchOrchestrator&) {
 }
 
 void FTestHUDManagerScenario::player_kill_process_samples() {
-    ml::check_samples_recorded(player_samples.num(), checks, TEXT("Player samples recorded"));
+    ioj::check_samples_recorded(player_samples.num(), checks, TEXT("Player samples recorded"));
     if (player_samples.is_empty()) {
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
         return;
@@ -516,7 +516,7 @@ void FTestHUDManagerScenario::player_kill_process_samples() {
 // Registration
 /* ------------------------------------------------------------------------------------------ */
 void FTestHUDManagerScenario::registration_process_samples() {
-    auto* const player{ml::spawn_player_ship(
+    auto* const player{ioj::spawn_player_ship(
         context_.world, context_.config.classes.player_ship_class, &context_.config.player_ship)};
     if (!checks.is_valid(player, TEXT("Player exists for overlay and radar collection"))) {
         return;
@@ -539,7 +539,7 @@ void FTestHUDManagerScenario::registration_process_samples() {
                      count_cached_entities(hud_manager),
                      TEXT("Cache exists before HUD registration"));
 
-    auto* const ui_data{ml::test_batch_game_ui_data::get_data_asset()};
+    auto* const ui_data{ioj::test_batch_game_ui_data::get_data_asset()};
     auto* const player_controller{context_.world.GetFirstPlayerController()};
     auto const ui_data_loaded{checks.not_nullptr(ui_data, TEXT("HUD UI data loads"))};
     auto const player_controller_available{
@@ -592,7 +592,7 @@ void FTestHUDManagerScenario::registration_process_samples() {
 /* ------------------------------------------------------------------------------------------ */
 void FTestHUDManagerScenario::entity_count_pre_begin_play(UWorld& world,
                                                           USpaceGameLevelConfig const& config) {
-    ml::spawn_capital_proxy(
+    ioj::spawn_capital_proxy(
         world, config, checks, FName{TEXT("entity_count_capital")}, FVector::ZeroVector);
 }
 
@@ -627,7 +627,7 @@ void FTestHUDManagerScenario::entity_count_on_tick(ATestBatchOrchestrator& orche
 }
 
 void FTestHUDManagerScenario::entity_count_process_samples() {
-    ml::check_samples_recorded(
+    ioj::check_samples_recorded(
         entity_count_samples.num(), checks, TEXT("Entity-count samples recorded"));
     if (entity_count_samples.is_empty()) {
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
@@ -730,8 +730,8 @@ void FTestHUDManagerScenario::check_headless_hud_manager_matches_simulation() {
 }
 
 void FTestHUDManagerScenario::check_mission_data_equal(
-    ml::hud_manager::FMissionDataCache const& local,
-    ml::hud_manager::FMissionDataCache const& simulation) {
+    ioj::hud_manager::FMissionDataCache const& local,
+    ioj::hud_manager::FMissionDataCache const& simulation) {
     auto const& local_static_data{local.static_data};
     auto const& simulation_static_data{simulation.static_data};
     checks.are_equal(local_static_data.mission_mode,
@@ -809,8 +809,8 @@ void FTestHUDManagerScenario::check_mission_data_equal(
 
 #if WITH_EDITOR
 void FTestHUDManagerScenario::check_sampled_speed_data_equal(
-    ml::hud_manager::FSampledSpeedDataCache const& local,
-    ml::hud_manager::FSampledSpeedDataCache const& simulation) {
+    ioj::hud_manager::FSampledSpeedDataCache const& local,
+    ioj::hud_manager::FSampledSpeedDataCache const& simulation) {
     constexpr double sampled_speed_tolerance{1e-6};
     auto const local_sample_count{local.samples.Num()};
     auto const simulation_sample_count{simulation.samples.Num()};
@@ -830,8 +830,8 @@ void FTestHUDManagerScenario::check_sampled_speed_data_equal(
 auto FTestHUDManagerScenario::count_cached_entities(FHUDManager const& manager) -> int32 {
     int32 total{0};
     auto const& counts{manager.get_entity_count_data().alive_per_team_and_type};
-    constexpr int32 n_teams{ml::enum_count<ETestTeam>()};
-    constexpr int32 n_types{ml::enum_count<::ioj::sim::EntityType>()};
+    constexpr int32 n_teams{ioj::enum_count<ETestTeam>()};
+    constexpr int32 n_types{ioj::enum_count<::ioj::sim::EntityType>()};
     for (int32 team{0}; team < n_teams; ++team) {
         for (int32 type{0}; type < n_types; ++type) {
             total += counts[team][type];

@@ -5,7 +5,7 @@
 
 #include <SandboxCoreEngine/strings.h>
 
-namespace ml {
+namespace ioj {
 void FLevelBuilder::set_metadata(FLevelMetadata const& metadata) {
     definition_.metadata = metadata;
 }
@@ -57,4 +57,4 @@ auto validate_level(FLevelDefinition const& definition) -> FLevelValidationResul
     }
     return result;
 }
-} // namespace ml
+} // namespace ioj

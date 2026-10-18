@@ -17,7 +17,7 @@ struct SPACEGAME_API FFixedTickLoopConfig {
     double time_scale{1.0};
 };
 
-namespace ml {
+namespace ioj {
 [[nodiscard]] inline auto make_fixed_tick_loop(FFixedTickLoopConfig const& config)
     -> ::ioj::sim::FixedTickLoop {
     return {.tick_rate = config.tick_rate, .time_scale = config.time_scale};

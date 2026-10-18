@@ -6,7 +6,7 @@
 #include "Containers/ArrayView.h"
 #include "CoreTypes.h"
 
-namespace ml {
+namespace ioj {
 
 void SANDBOXCORE_API add_in_place(TArrayView<int32> const data, int32 const value) noexcept;
 

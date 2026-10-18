@@ -7,7 +7,7 @@
 #include <new>
 #include <utility>
 
-namespace ml {
+namespace ioj {
 
 template <typename T, int32 Capacity>
 class TFixedStorage {
@@ -30,4 +30,4 @@ class TFixedStorage {
     alignas(T) std::byte storage_[byte_count];
 };
 
-} // namespace ml
+} // namespace ioj

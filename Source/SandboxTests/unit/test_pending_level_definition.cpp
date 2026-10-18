@@ -17,7 +17,7 @@ TEST_CLASS(PendingLevelDefinition, "Sandbox.UnitTests")
         }
 
         subsystem->set_level_launch_error(TEXT("old error"));
-        subsystem->set_pending_level(ml::example_levels::make_native_example(),
+        subsystem->set_pending_level(ioj::example_levels::make_native_example(),
                                      TEXT("LevelScripts/Example.scm"),
                                      TEXT("0123456789abcdef"),
                                      {.launch_mode = ioj::ELevelLaunchMode::Paused,

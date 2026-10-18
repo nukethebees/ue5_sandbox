@@ -15,7 +15,7 @@
 
 #include <utility>
 
-namespace ml::sandbox_ismc {
+namespace ioj::sandbox_ismc {
 struct InstanceDataSchema;
 
 struct InstanceDataView;
@@ -103,22 +103,22 @@ struct SANDBOXISMC_API InstanceData {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
+        ioj::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
     template <typename Other>
     void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
-        ml::copy_element(positions, dst_i, other.positions, src_i);
-        ml::copy_element(rotations, dst_i, other.rotations, src_i);
+        ioj::copy_element(positions, dst_i, other.positions, src_i);
+        ioj::copy_element(rotations, dst_i, other.rotations, src_i);
     }
 
     template <typename Other>
     void
         copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
-        ml::copy_elements(positions, dst_i, other.positions, src_i, count);
-        ml::copy_elements(rotations, dst_i, other.rotations, src_i, count);
+        ioj::copy_elements(positions, dst_i, other.positions, src_i, count);
+        ioj::copy_elements(rotations, dst_i, other.rotations, src_i, count);
     }
 
     template <typename Other>
@@ -130,22 +130,22 @@ struct SANDBOXISMC_API InstanceData {
 
     template <typename Other>
     void append_from(Other const& other)
-        requires ml::SupportsApplyArrayPairsWith<InstanceData, Other>
+        requires ioj::SupportsApplyArrayPairsWith<InstanceData, Other>
     {
-        ml::append_from(positions, other.positions);
-        ml::append_from(rotations, other.rotations);
+        ioj::append_from(positions, other.positions);
+        ioj::append_from(rotations, other.rotations);
     }
 
     void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
+        ioj::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort<Compare>(*this, scratch_indices);
+        ioj::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -178,4 +178,4 @@ struct SANDBOXISMC_API InstanceData {
     TArray<FVector3f> positions;
     TArray<FQuat4f> rotations;
 };
-} // namespace ml::sandbox_ismc
+} // namespace ioj::sandbox_ismc

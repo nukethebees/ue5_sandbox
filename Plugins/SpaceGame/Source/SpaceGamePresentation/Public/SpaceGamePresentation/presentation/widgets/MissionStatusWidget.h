@@ -11,7 +11,7 @@
 
 class UValueWidget;
 
-namespace ml::hud_manager {
+namespace ioj::hud_manager {
 struct FMissionDataCache;
 }
 
@@ -19,7 +19,7 @@ UCLASS()
 class SPACEGAMEPRESENTATION_API UMissionStatusWidget : public UUserWidget {
     GENERATED_BODY()
   public:
-    void set_mission_data(ml::hud_manager::FMissionDataCache const& data);
+    void set_mission_data(ioj::hud_manager::FMissionDataCache const& data);
     void set_mission_state(ioj::sim::MissionState const new_state);
     void set_mission_time(float const mission_time);
     void set_enemies_remaining(int32 const enemies_remaining);

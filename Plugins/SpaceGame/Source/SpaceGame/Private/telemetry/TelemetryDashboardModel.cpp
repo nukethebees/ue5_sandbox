@@ -293,7 +293,7 @@ auto legacy_analyze_level_telemetry_run(FLevelTelemetryReport const& record)
         return static_cast<float>(total);
     };
 
-    ml::reserve(record.battle_samples.Num(),
+    ioj::reserve(record.battle_samples.Num(),
                 result.battle_simulated_seconds,
                 result.battle_alive_entities,
                 result.battle_shots,

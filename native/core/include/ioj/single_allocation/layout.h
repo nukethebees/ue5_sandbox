@@ -7,7 +7,7 @@
 #include <memory>
 #include <type_traits>
 
-namespace ml::single_allocation_layout {
+namespace ioj::single_allocation_layout {
 
 struct LayoutPolicy {
     static constexpr std::int32_t capacity_granularity{64};

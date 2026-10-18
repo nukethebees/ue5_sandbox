@@ -6,7 +6,7 @@
 #include <Kismet/KismetMathLibrary.h>
 #include "Components/StaticMeshComponent.h"
 
-namespace ml {
+namespace ioj {
 auto get_best_display_name(AActor const& actor) -> FString {
     // GetActorLabel can return incorrect values for a CDO
     if (actor.HasAnyFlags(RF_ClassDefaultObject)) {
@@ -79,7 +79,7 @@ void fatal_if_actor_root_not_static(AActor const& actor) {
     UE_LOG(LogSandboxGameShared,
                Fatal,
                TEXT("%s root component is not static"),
-               *ml::get_best_display_name(actor));
+               *ioj::get_best_display_name(actor));
     }
 }
 

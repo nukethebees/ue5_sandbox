@@ -24,7 +24,7 @@ AShipTrainingTarget::AShipTrainingTarget()
     collision_box->SetCollisionObjectType(ECollisionChannel::ECC_Pawn);
     collision_box->SetMobility(EComponentMobility::Movable);
     collision_box->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-    collision_box->SetCollisionResponseToChannel(ml::collision::projectile,
+    collision_box->SetCollisionResponseToChannel(ioj::collision::projectile,
                                                  ECollisionResponse::ECR_Block);
 
     PrimaryActorTick.bCanEverTick = true;

@@ -70,7 +70,7 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
         std::int32_t health{};
         std::int32_t telemetry_active_count{};
     };
-    ml::TimeSeriesData<DamageSample> samples;
+    ioj::TimeSeriesData<DamageSample> samples;
     harness.on_end_tick = [&](LevelSim& level) {
         auto const& telemetry{level.get_level_telemetry_manager().get_active_entity_count_data()};
         auto const state{observe_entity(level, damaged_handle)};
@@ -142,7 +142,7 @@ void run_worldless_collision_damage(tests::SimulationFixture const& config) {
     auto const player_id{player->unique_entity_id};
     auto const capital_id{simulation.get_capital_ships().get_id(0)};
     simulation.get_player_ship_commands()->set_right_input(1.f);
-    ml::TimeSeriesData<Sample> samples;
+    ioj::TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim& level) {
         auto const events{level.get_spatial_query_manager().get_aabb_overlap_events()};
         auto const capital{observe_entity(level, capital_id)};

@@ -12,7 +12,7 @@
 UCLASS()
 class SHOOTERGAME_API UBTTask_AttackEnemy
     : public UBTTaskNode
-    , public ml::LogMsgMixin<"UBTTask_AttackEnemy", LogShooterGameAI> {
+    , public ioj::LogMsgMixin<"UBTTask_AttackEnemy", LogShooterGameAI> {
     GENERATED_BODY()
   public:
     UBTTask_AttackEnemy();

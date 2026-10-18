@@ -7,7 +7,7 @@
 #include <random>
 #include <vector>
 
-namespace ml::sandbox_ismc::packing_tests {
+namespace ioj::sandbox_ismc::packing_tests {
 struct Inputs {
     std::vector<std::array<float, 3>> positions;
     std::vector<std::array<float, 4>> rotations;
@@ -21,7 +21,7 @@ struct Inputs {
         for (std::size_t index{}; index < count; ++index) {
             positions[index] = {
                 262144 + offsets(random), -262144 + offsets(random), 1000000 + offsets(random)};
-            auto const q{ioj::normalized(ml::make_quaternion4f(
+            auto const q{ioj::normalized(ioj::make_quaternion4f(
                 normal(random), normal(random), normal(random), normal(random)))};
             rotations[index] = {q.x(), q.y(), q.z(), q.w()};
             if (index % 11 == 0) {

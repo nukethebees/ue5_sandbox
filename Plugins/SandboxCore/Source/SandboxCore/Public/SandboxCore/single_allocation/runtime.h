@@ -11,7 +11,7 @@
 #include <cassert>
 #include <cstddef>
 
-namespace ml::soa_storage {
+namespace ioj::soa_storage {
 
 using single_allocation_layout::capacity_block_bound;
 using single_allocation_layout::capacity_granularity;

@@ -86,7 +86,7 @@ void ATestFlySearchChase::handle_search(float dt) {
             UE_LOG(LogSandboxLearning,
                    Display,
                    TEXT("(%s) At destination. Finding new destination."),
-                   *ml::get_best_display_name(*this));
+                   *ioj::get_best_display_name(*this));
         }
 
         set_new_search_destination();
@@ -107,7 +107,7 @@ void ATestFlySearchChase::set_new_search_destination() {
         UE_LOG(LogSandboxLearning,
                Display,
                TEXT("(%s) New destination: %s"),
-               *ml::get_best_display_name(*this),
+               *ioj::get_best_display_name(*this),
                *search_destination.ToCompactString());
     }
 }
@@ -120,10 +120,10 @@ auto ATestFlySearchChase::scan_for_target() -> bool {
 
     GetActorBounds(false, origin, extent);
 
-    auto hits{ml::find_actors_within_cone(
+    auto hits{ioj::find_actors_within_cone(
         *this, vision.radius, extent.Z * 2.0, vision.half_angle_rad(), ThisClass::StaticClass())};
 
-    chase_target = ml::get_centre_actor_in_fov(*this, hits);
+    chase_target = ioj::get_centre_actor_in_fov(*this, hits);
     if (!chase_target.IsValid()) {
         return false;
     }

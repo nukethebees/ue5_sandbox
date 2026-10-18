@@ -3,7 +3,7 @@
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Misc/Optional.h>
 
-namespace ml::batch {
+namespace ioj::batch {
 struct FCullDistances {
     float min_distance{0.0f};
     float max_distance{0.0f};

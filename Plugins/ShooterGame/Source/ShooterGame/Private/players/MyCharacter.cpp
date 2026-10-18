@@ -48,7 +48,7 @@ AMyCharacter::AMyCharacter()
 
     // Create cameras using configurations
     int32 spring_arm_index{0};
-    for (auto const& config : ml::AMyCharacter::camera_configs) {
+    for (auto const& config : ioj::AMyCharacter::camera_configs) {
         auto& cc{cameras[config.camera_index]};
         cc = CreateDefaultSubobject<UCameraComponent>(
             StringCast<TCHAR>(config.component_name).Get());
@@ -72,7 +72,7 @@ AMyCharacter::AMyCharacter()
 
     TRY_INIT_PTR(capsule, GetCapsuleComponent());
 
-    capsule->SetCollisionResponseToChannel(ml::collision::interaction,
+    capsule->SetCollisionResponseToChannel(ioj::collision::interaction,
                                            ECollisionResponse::ECR_Ignore);
 }
 
@@ -171,7 +171,7 @@ void AMyCharacter::look(FInputActionValue const& value) {
     }
 }
 void AMyCharacter::cycle_camera() {
-    change_camera_to(ml::get_next(camera_mode));
+    change_camera_to(ioj::get_next(camera_mode));
 }
 
 // Combat

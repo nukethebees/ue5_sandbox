@@ -14,7 +14,7 @@
 
 class AActor;
 
-namespace ml {
+namespace ioj {
 
 /**
  * Returns the best available display name for an actor.
@@ -67,4 +67,4 @@ auto ensure_actor_exists(UWorld& world, TSubclassOf<T> subclass) -> T* {
 
     return actor;
 }
-} // namespace ml
+} // namespace ioj

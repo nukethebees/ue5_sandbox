@@ -12,7 +12,7 @@
 #include <concepts>
 #include <type_traits>
 
-namespace ml {
+namespace ioj {
 template <std::floating_point T>
 [[nodiscard]]
 auto almost_equal(TConstArrayView<T> const lhs,
@@ -26,7 +26,7 @@ auto almost_equal(TConstArrayView<T> const lhs,
         return true;
     }
 
-    return ml::kernel::almost_equal(lhs.GetData(), rhs.GetData(), lhs.Num(), tolerance);
+    return ioj::kernel::almost_equal(lhs.GetData(), rhs.GetData(), lhs.Num(), tolerance);
 }
 
 template <SupportsNum... Arrays>
@@ -38,14 +38,14 @@ auto all_num_equal_to(int32 const count, Arrays const&... arrays) -> bool {
 template <typename Array, typename Other, typename... Rest>
     requires (SupportsNum<Array> && SupportsNum<Other> && (SupportsNum<Rest> && ...))
 auto all_num_equal(Array const& array, Other const& other, Rest const&... rest) -> bool {
-    return all_num_equal_to(ml::num(array), other, rest...);
+    return all_num_equal_to(ioj::num(array), other, rest...);
 }
 
 auto SANDBOXCORE_API is_sorted_desc(TConstArrayView<int32> const xs) -> bool;
 
 template <typename... TArrays>
 void remove_at_swap_many_sorted_desc(TConstArrayView<int32> const indices, TArrays&... arrays) {
-    check(ml::is_sorted_desc(indices));
+    check(ioj::is_sorted_desc(indices));
 
     auto const n{indices.Num()};
     if (n < 1) {
@@ -68,7 +68,7 @@ template <typename Container, typename T>
         { container.Num() } -> std::same_as<int32>;
     }
 void fill(Container&& values, T const value) {
-    ml::kernel::fill(values.GetData(), value, values.Num());
+    ioj::kernel::fill(values.GetData(), value, values.Num());
 }
 
 inline void fill_indices(TArrayView<int32> const indices) {

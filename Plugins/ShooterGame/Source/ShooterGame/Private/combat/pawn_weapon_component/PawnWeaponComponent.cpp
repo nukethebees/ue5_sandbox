@@ -141,7 +141,7 @@ void UPawnWeaponComponent::on_weapon_added(AWeaponBase& weapon) {
         }
         default: {
             logger.log_warning(TEXT("%s"),
-                               *ml::make_unhandled_enum_case_warning(weapon_pickup_action));
+                               *ioj::make_unhandled_enum_case_warning(weapon_pickup_action));
             break;
         }
     }

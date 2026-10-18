@@ -10,8 +10,8 @@
 
 TEST_CLASS(S7CollisionGridRuntime, "Sandbox.LevelTests")
 {
-    inline static ml::FTestBatchOrchestratorLevelSetup level_setup{};
-    ml::FSoftTestAssertions checks{};
+    inline static ioj::FTestBatchOrchestratorLevelSetup level_setup{};
+    ioj::FSoftTestAssertions checks{};
 
     BEFORE_EACH()
     {
@@ -47,15 +47,15 @@ TEST_CLASS(S7CollisionGridRuntime, "Sandbox.LevelTests")
             auto check_level = [&](TOptional<FVector3f> const size,
                                    TOptional<FVector3f> const cells,
                                    TCHAR const* const label) {
-                auto definition{ml::example_levels::make_native_example()};
+                auto definition{ioj::example_levels::make_native_example()};
                 if (size.IsSet() || cells.IsSet()) {
                     definition.collision_grid =
-                        ml::FLevelCollisionGridDefinition{.level_size = size, .cell_size = cells};
+                        ioj::FLevelCollisionGridDefinition{.level_size = size, .cell_size = cells};
                 } else {
                     definition.collision_grid = NullOpt;
                 }
 
-                ml::FLevelLoader loader{*orchestrator};
+                ioj::FLevelLoader loader{*orchestrator};
                 if (!checks.is_true(static_cast<bool>(loader.load(definition)), label)) {
                     return;
                 }

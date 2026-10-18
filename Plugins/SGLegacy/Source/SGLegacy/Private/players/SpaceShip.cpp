@@ -309,7 +309,7 @@ void ASpaceShip::update_laser_firing(float dt) {
                     break;
                 }
 #if WITH_EDITOR
-                auto const actor_name{ml::get_best_display_name(*actor_hit)};
+                auto const actor_name{ioj::get_best_display_name(*actor_hit)};
                 UE_LOG(LogSandboxActor, Display, TEXT("Locked on to: %s"), *actor_name);
 #endif
                 set_lock_on_target(hit.GetActor());

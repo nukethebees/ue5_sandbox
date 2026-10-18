@@ -2,7 +2,7 @@
 
 #include <type_traits>
 
-namespace ml {
+namespace ioj {
 
 template <typename T>
 [[nodiscard]] constexpr auto
@@ -13,4 +13,4 @@ template <typename T>
     return count == 0 || (first >= minimum && first <= maximum && count - 1 <= maximum - first);
 }
 
-} // namespace ml
+} // namespace ioj

@@ -1,6 +1,6 @@
 #include "ShooterGame/players/PlayerSkills.h"
 
-namespace ml {
+namespace ioj {
 SHOOTERGAME_API auto get_display_name(EPlayerSkillName value) -> FName {
     switch (value) {
         case EPlayerSkillName::Strength: {
@@ -83,4 +83,4 @@ SHOOTERGAME_API auto get_display_string_view(EPlayerSkillName value) -> TStringV
 SHOOTERGAME_API auto get_display_text(EPlayerSkillName value) -> FText {
     return FText::FromStringView(get_display_string_view(value));
 }
-} // namespace ml
+} // namespace ioj

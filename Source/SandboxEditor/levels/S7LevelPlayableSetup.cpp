@@ -33,7 +33,7 @@ auto find_player(AS7LevelAuthoringDocument const& document, levels::EntityId con
         return nullptr;
     }
     auto const* const binding{document.entities.FindByPredicate(
-        [name = FName{ml::to_fstring(id.value)}](auto const& candidate) {
+        [name = FName{ioj::to_fstring(id.value)}](auto const& candidate) {
             return candidate.id == name;
         })};
     check(binding);
@@ -138,7 +138,7 @@ auto validate_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& docume
     if (!effective_config->is_valid(true)) {
         return std::unexpected{TEXT("The authored collision-grid settings are invalid.")};
     }
-    auto const build{ml::make_level_simulation_init_data(*effective_config,
+    auto const build{ioj::make_level_simulation_init_data(*effective_config,
                                                          {},
                                                          levels::authoring::to_unreal(*definition),
                                                          MoveTemp(player_spawn),

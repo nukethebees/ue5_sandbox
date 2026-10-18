@@ -2,12 +2,12 @@
 
 #include "MassEntityTypes.h"
 
-namespace ml {
+namespace ioj {
 template <typename T, typename... Ts>
 void add_fragments(auto& fragments) {
     fragments.Add(*T::StaticStruct());
     if constexpr (sizeof...(Ts)) {
-        ml::add_fragments<Ts...>(fragments);
+        ioj::add_fragments<Ts...>(fragments);
     }
 }
 

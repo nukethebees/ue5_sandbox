@@ -2,7 +2,7 @@
 
 #include "Engine/EngineTypes.h"
 
-namespace ml::collision {
+namespace ioj::collision {
 static constexpr ECollisionChannel projectile{ECC_GameTraceChannel1};
 static constexpr ECollisionChannel interaction{ECC_GameTraceChannel2};
 static constexpr ECollisionChannel description{ECC_GameTraceChannel3};

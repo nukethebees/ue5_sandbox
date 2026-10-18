@@ -5,7 +5,7 @@
 #include <Containers/ArrayView.h>
 #include <CoreMinimal.h>
 
-namespace ml {
+namespace ioj {
 struct FSoftTestAssertions;
 
 void check_all_teams_are(TConstArrayView<ETestTeam> teams,

@@ -12,20 +12,20 @@ namespace codegen_compile_fixture {
 void FValuesf::apply_permutation(TArrayView<int32> indices) {
     validate_array_sizes();
     check(indices.Num() == num());
-    ml::apply_permutation(xs, indices);
-    ml::apply_permutation(ys, indices);
+    ioj::apply_permutation(xs, indices);
+    ioj::apply_permutation(ys, indices);
 }
 
 void FValuesd::apply_permutation(TArrayView<int32> indices) {
     validate_array_sizes();
     check(indices.Num() == num());
-    ml::apply_permutation(xs, indices);
-    ml::apply_permutation(ys, indices);
+    ioj::apply_permutation(xs, indices);
+    ioj::apply_permutation(ys, indices);
 }
 
 void FScalari::apply_permutation(TArrayView<int32> indices) {
     validate_array_sizes();
     check(indices.Num() == num());
-    ml::apply_permutation(values, indices);
+    ioj::apply_permutation(values, indices);
 }
 } // namespace codegen_compile_fixture

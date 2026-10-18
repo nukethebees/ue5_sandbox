@@ -36,8 +36,8 @@ auto summarize_scatter_3d(FString stage, int32 const point_count, TArray<double>
             .point_count = point_count,
             .sample_count = samples.Num(),
             .minimum_microseconds = samples[0],
-            .median_microseconds = ml::ui::benchmark::percentile(samples, 0.5),
-            .percentile_95_microseconds = ml::ui::benchmark::percentile(samples, 0.95),
+            .median_microseconds = ioj::ui::benchmark::percentile(samples, 0.5),
+            .percentile_95_microseconds = ioj::ui::benchmark::percentile(samples, 0.95),
             .maximum_microseconds = samples.Last()};
 }
 } // namespace

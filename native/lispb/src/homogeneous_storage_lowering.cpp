@@ -474,8 +474,8 @@ auto homogeneous_storage_sort_nodes(LoweringContext& context, FunctionId const p
             .add(ir.expression_statement(ir.raw_expression("check(scratch_indices.Num() == n)"),
                                          {ir.types.dependency("check", "CoreMinimal.h")}))
             .add(ir.expression_statement(
-                ir.raw_expression("ml::fill_indices(scratch_indices)"),
-                {ir.types.dependency("ml::fill_indices", "SandboxCore/array_utils.h")}))
+                ir.raw_expression("ioj::fill_indices(scratch_indices)"),
+                {ir.types.dependency("ioj::fill_indices", "SandboxCore/array_utils.h")}))
             .add(ir.raw(std::move(sort_expression)))
             .add(ir.expression_statement(ir.raw_expression("apply_permutation(scratch_indices)")))
             .build();
@@ -760,7 +760,7 @@ auto homogeneous_storage_node(LoweringContext& context,
         ir.types.dependency("TArrayView", "Containers/ArrayView.h"),
         ir.types.dependency("EAllowShrinking", "Containers/AllowShrinking.h"),
         ir.types.dependency("check", "CoreMinimal.h"),
-        ir.types.dependency("ml::fill_indices", "SandboxCore/array_utils.h"),
+        ir.types.dependency("ioj::fill_indices", "SandboxCore/array_utils.h"),
         ir.types.dependency("std::forward", "utility")};
     dependencies.insert(dependencies.end(),
                         ir.types.dependencies(value_type).begin(),

@@ -37,7 +37,7 @@ class SHOOTERGAME_API ATestEnemyController : public AAIController {
     void on_target_perception_forgotten(AActor* Actor);
     void set_bb_value(FName const& name, auto const& value) {
         check(Blackboard);
-        ml::set_bb_value(*Blackboard, name, value);
+        ioj::set_bb_value(*Blackboard, name, value);
     }
     void visualise_vision_cone();
     void set_ai_state(EAIState state);

@@ -57,7 +57,7 @@ struct SPACEGAMEPRESENTATION_API FEntityOverlayCollectionResult {
 };
 
 [[nodiscard]] SPACEGAMEPRESENTATION_API auto
-    select_soft_target(std::span<::ml::presentation::AgentDisplayBatch const> batches,
+    select_soft_target(std::span<::ioj::presentation::AgentDisplayBatch const> batches,
                        ::ioj::sim::EntityTypeRadii const& entity_type_radii,
                        TConstArrayView<EEntityOverlayObjectiveRole> objective_roles,
                        FSoftTargetSelectionContext const& context,
@@ -65,7 +65,7 @@ struct SPACEGAMEPRESENTATION_API FEntityOverlayCollectionResult {
                        ::ioj::sim::EntityUniqueId current_target) -> FSoftTargetSelectionResult;
 
 [[nodiscard]] SPACEGAMEPRESENTATION_API auto
-    collect_entity_overlay_instances(std::span<::ml::presentation::AgentDisplayBatch const> batches,
+    collect_entity_overlay_instances(std::span<::ioj::presentation::AgentDisplayBatch const> batches,
                                      ::ioj::sim::EntityTypeRadii const& entity_type_radii,
                                      TConstArrayView<EEntityOverlayObjectiveRole> objective_roles,
                                      FEntityOverlayTeamColours const& team_colours,

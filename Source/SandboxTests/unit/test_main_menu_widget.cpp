@@ -120,7 +120,7 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Primary text remains readable against the canvas"),
                              palette.text_primary.GetLuminance() - palette.canvas.GetLuminance() >
                                  0.65f);
-        for (std::size_t index{}; index < ml::enum_count<EGameUiIcon>(); ++index) {
+        for (std::size_t index{}; index < ioj::enum_count<EGameUiIcon>(); ++index) {
             auto const icon_role{static_cast<EGameUiIcon>(index)};
             auto const& icon{ui_style.icon(icon_role)};
             TestRunner->TestTrue(
@@ -144,7 +144,7 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Configured panel background remains translucent"),
                              panel_color.A > 0.0f && panel_color.A < 0.95f);
 
-        auto const world_result{ml::get_editor_world()};
+        auto const world_result{ioj::get_editor_world()};
         if (!TestRunner->TestTrue(TEXT("Editor world is available"), world_result.has_value())) {
             return;
         }
@@ -166,7 +166,7 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
             return;
         }
 
-        auto const level_select_class{LoadClass<ml::s7::UScriptLevelSelectWidget>(
+        auto const level_select_class{LoadClass<ioj::s7::UScriptLevelSelectWidget>(
             nullptr, TEXT("/SpaceGame/UI/MainMenu/WBP_LevelSelect.WBP_LevelSelect_C"))};
         if (!TestRunner->TestTrue(TEXT("Level selector class loads"),
                                   IsValid(level_select_class))) {
@@ -177,7 +177,7 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         auto const slate_widget{widget->TakeWidget()};
 
         auto* const level_select_widget{
-            Cast<ml::s7::UScriptLevelSelectWidget>(widget->get_level_select_widget())};
+            Cast<ioj::s7::UScriptLevelSelectWidget>(widget->get_level_select_widget())};
         auto* const options_widget{widget->get_options_widget()};
         auto* const debug_settings_widget{widget->get_debug_settings_widget()};
         auto* const save_game_viewer{widget->get_save_game_viewer()};
@@ -205,22 +205,22 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         ioj::FLevelProgressSummary progress;
         TestRunner->TestTrue(
             TEXT("An uncompleted level uses the incomplete indicator"),
-            ml::s7::level_completion_indicator_state(progress, TOptional<float>{75.0f}) ==
-                ml::s7::ELevelCompletionIndicatorState::Incomplete);
+            ioj::s7::level_completion_indicator_state(progress, TOptional<float>{75.0f}) ==
+                ioj::s7::ELevelCompletionIndicatorState::Incomplete);
         progress.state = ioj::ELevelProgressState::Completed;
         progress.best_completion_time_seconds = 80.0f;
         TestRunner->TestTrue(
             TEXT("A completed level above par uses the completed indicator"),
-            ml::s7::level_completion_indicator_state(progress, TOptional<float>{75.0f}) ==
-                ml::s7::ELevelCompletionIndicatorState::Completed);
+            ioj::s7::level_completion_indicator_state(progress, TOptional<float>{75.0f}) ==
+                ioj::s7::ELevelCompletionIndicatorState::Completed);
         progress.best_completion_time_seconds = 70.0f;
         TestRunner->TestTrue(
             TEXT("A completed level below par upgrades the indicator"),
-            ml::s7::level_completion_indicator_state(progress, TOptional<float>{75.0f}) ==
-                ml::s7::ELevelCompletionIndicatorState::ParAchieved);
+            ioj::s7::level_completion_indicator_state(progress, TOptional<float>{75.0f}) ==
+                ioj::s7::ELevelCompletionIndicatorState::ParAchieved);
         TestRunner->TestTrue(TEXT("A completed level without a par uses the completed indicator"),
-                             ml::s7::level_completion_indicator_state(progress, NullOpt) ==
-                                 ml::s7::ELevelCompletionIndicatorState::Completed);
+                             ioj::s7::level_completion_indicator_state(progress, NullOpt) ==
+                                 ioj::s7::ELevelCompletionIndicatorState::Completed);
 
         auto const shell_frame{find_slate_descendant(slate_widget, FName{TEXT("SHiveFrame")})};
         if (!TestRunner->TestTrue(TEXT("Command deck uses one reusable Hive frame"),

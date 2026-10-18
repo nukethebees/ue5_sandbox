@@ -29,7 +29,7 @@ void UAmmoHUDWidget::set_current_ammo(FAmmoData new_ammo) {
     text = FText::Format(fmt, new_ammo.amount, max_ammo.amount);
 
     RETURN_IF_TRUE(max_ammo.is_empty());
-    RETURN_IF_TRUE(ml::is_continuous(max_ammo.type));
+    RETURN_IF_TRUE(ioj::is_continuous(max_ammo.type));
     ammo_percent = static_cast<float>(new_ammo.amount) / static_cast<float>(max_ammo.amount);
 
     ammo_text->SetText(text);

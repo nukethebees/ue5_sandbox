@@ -15,7 +15,7 @@ struct FActorCorners;
 UCLASS()
 class SHOOTERGAME_API UTargetOverlayHUDWidget
     : public UUserWidget
-    , public ml::LogMsgMixin<"UTargetOverlayHUDWidget", LogShooterGameUI> {
+    , public ioj::LogMsgMixin<"UTargetOverlayHUDWidget", LogShooterGameUI> {
     GENERATED_BODY()
   public:
     void update_target_screen_bounds(APlayerController& pc, FActorCorners const& corners);

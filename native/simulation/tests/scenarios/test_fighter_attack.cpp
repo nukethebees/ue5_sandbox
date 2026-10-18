@@ -172,7 +172,7 @@ void run_worldless_fighter_capital_obstruction(tests::SimulationFixture const& c
 void run_worldless_fighter_clear_navigation(tests::SimulationFixture const& config) {
     auto data{make_fighter_navigation_test_data(
         config,
-        {Transform3d{.location = ml::Vector3d{3000.f, 7000.f, 0.f}}},
+        {Transform3d{.location = ioj::Vector3d{3000.f, 7000.f, 0.f}}},
         Vector3f{{-20000.f, -7000.f, 0.f}},
         Vector3f{{20000.f, 0.f, 0.f}})};
     tests::WorldlessSimulationTest harness{std::move(data)};
@@ -226,8 +226,8 @@ void run_worldless_fighter_clear_navigation(tests::SimulationFixture const& conf
 void run_worldless_fighter_separation(tests::SimulationFixture const& config) {
     auto data{make_fighter_navigation_test_data(
         config,
-        {Transform3d{.location = ml::Vector3d{3000.f, 6950.f, 0.f}},
-         Transform3d{.location = ml::Vector3d{3000.f, 7050.f, 0.f}}},
+        {Transform3d{.location = ioj::Vector3d{3000.f, 6950.f, 0.f}},
+         Transform3d{.location = ioj::Vector3d{3000.f, 7050.f, 0.f}}},
         Vector3f{{-20000.f, -7000.f, 0.f}},
         Vector3f{{20000.f, 0.f, 0.f}})};
     tests::WorldlessSimulationTest harness{std::move(data)};
@@ -324,7 +324,7 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
                                   std::int32_t const fighter_count,
                                   SimTime const duration) -> DenseNavigationResult {
     std::vector<Transform3d> spawn_slots{};
-    spawn_slots.assign(fighter_count, Transform3d{.location = ml::Vector3d{3000.f, 7000.f, 0.f}});
+    spawn_slots.assign(fighter_count, Transform3d{.location = ioj::Vector3d{3000.f, 7000.f, 0.f}});
     auto data{make_fighter_navigation_test_data(
         config, spawn_slots, Vector3f{{-20000.f, -7000.f, 0.f}}, Vector3f{{20000.f, 0.f, 0.f}})};
     std::ranges::fill(
@@ -412,8 +412,8 @@ void run_worldless_fighter_hard_avoidance_authority(tests::SimulationFixture con
     Vector3f const obstacle_max{{1000.f, 1000.f, 1500.f}};
     auto data{make_fighter_navigation_test_data(
         config,
-        {Transform3d{.location = ml::Vector3d{3000.f, 31500.f, 0.f}},
-         Transform3d{.location = ml::Vector3d{3000.f, 31600.f, 0.f}}},
+        {Transform3d{.location = ioj::Vector3d{3000.f, 31500.f, 0.f}},
+         Transform3d{.location = ioj::Vector3d{3000.f, 31600.f, 0.f}}},
         Vector3f{{-15000.f, -30000.f, 0.f}},
         Vector3f{{15000.f, 0.f, 0.f}})};
     data.fighters.separation_strength = 3.f;
@@ -468,7 +468,7 @@ void run_worldless_fighter_hard_avoidance_authority(tests::SimulationFixture con
 void run_worldless_fighter_navigation_frequency(tests::SimulationFixture const& config) {
     auto data{make_fighter_navigation_test_data(
         config,
-        {Transform3d{.location = ml::Vector3d{3000.f, 7000.f, 0.f}}},
+        {Transform3d{.location = ioj::Vector3d{3000.f, 7000.f, 0.f}}},
         Vector3f{{-20000.f, -7000.f, 0.f}},
         Vector3f{{20000.f, 0.f, 0.f}})};
     tests::WorldlessSimulationTest harness{std::move(data)};

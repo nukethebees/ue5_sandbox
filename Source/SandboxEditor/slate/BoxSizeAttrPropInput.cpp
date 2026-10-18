@@ -13,7 +13,7 @@
 #include <Widgets/SBoxPanel.h>
 #include <Widgets/Text/STextBlock.h>
 
-namespace ml {
+namespace ioj {
 void SBoxSizeAttrPropInput::Construct(FArguments const& args) {
     value = args._value;
     on_value_changed = args._on_value_changed;

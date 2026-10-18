@@ -17,7 +17,7 @@
 UCLASS()
 class SHOOTERGAME_API AMyGameModeBase
     : public AGameModeBase
-    , public ml::LogMsgMixin<"AMyGameModeBase", LogShooterGameGameMode> {
+    , public ioj::LogMsgMixin<"AMyGameModeBase", LogShooterGameGameMode> {
     GENERATED_BODY()
   public:
     AMyGameModeBase();

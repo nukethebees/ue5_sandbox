@@ -5,7 +5,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace ml {
+namespace ioj {
 
 template <IsUnrealVector T>
 struct VectorTraits {

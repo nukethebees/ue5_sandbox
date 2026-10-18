@@ -37,7 +37,7 @@ struct FlightModelControllerState {
 
     ioj::sim::player::ScalarResponse brake_engagement_response{};
 
-    ml::Vector3d angular_velocity{};
+    ioj::Vector3d angular_velocity{};
 
     float persistent_forward_target_speed{};
 
@@ -45,7 +45,7 @@ struct FlightModelControllerState {
 
     float persistent_up_target_speed{};
 
-    ml::Vector3d time_since_rotation_input{100.0, 100.0, 100.0};
+    ioj::Vector3d time_since_rotation_input{100.0, 100.0, 100.0};
 
     ioj::sim::player::BoostBrakeState effective_action{};
 };

@@ -17,7 +17,7 @@ class AWeaponBase;
 UCLASS()
 class SHOOTERGAME_API AWeaponPickup
     : public AActor
-    , public ml::LogMsgMixin<"AWeaponPickup", LogShooterGameWeapon> {
+    , public ioj::LogMsgMixin<"AWeaponPickup", LogShooterGameWeapon> {
     GENERATED_BODY()
   public:
     AWeaponPickup();

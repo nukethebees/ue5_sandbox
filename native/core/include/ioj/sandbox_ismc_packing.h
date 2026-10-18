@@ -4,7 +4,7 @@
 
 #include <span>
 
-namespace ml::sandbox_ismc {
+namespace ioj::sandbox_ismc {
 
 // Production input is two AoS arrays: tightly packed float XYZ and float XYZW.
 // Byte views allow Unreal and native callers to share their object representations

@@ -17,8 +17,8 @@ void UTeamEntityTableWidget::NativePreConstruct() {
     Super::NativePreConstruct();
 
     if (IsDesignTime()) {
-        constexpr int32 n_teams{ml::enum_count<ETestTeam>()};
-        constexpr int32 n_types{ml::enum_count<ioj::sim::EntityType>()};
+        constexpr int32 n_teams{ioj::enum_count<ETestTeam>()};
+        constexpr int32 n_types{ioj::enum_count<ioj::sim::EntityType>()};
         for (int32 team{0}; team < n_teams; ++team) {
             for (int32 type{0}; type < n_types; ++type) {
                 values[team][type] = 10 + team + type;
@@ -47,9 +47,9 @@ void
     rebuild_table();
 }
 
-void UTeamEntityTableWidget::set_team_kill_matrix(ml::ship_hud::FTeamKillMatrix const& new_matrix) {
-    constexpr auto n_teams{ml::ship_hud::FTeamKillMatrix::team_count};
-    constexpr auto n_types{ml::ship_hud::FTeamKillMatrix::entity_type_count};
+void UTeamEntityTableWidget::set_team_kill_matrix(ioj::ship_hud::FTeamKillMatrix const& new_matrix) {
+    constexpr auto n_teams{ioj::ship_hud::FTeamKillMatrix::team_count};
+    constexpr auto n_types{ioj::ship_hud::FTeamKillMatrix::entity_type_count};
     for (int32 team{0}; team < n_teams; ++team) {
         auto const team_value{static_cast<ETestTeam>(team)};
         for (int32 type{0}; type < n_types; ++type) {
@@ -109,8 +109,8 @@ void UTeamEntityTableWidget::rebuild_table() {
 
     constexpr auto row_heading{0};
     constexpr auto first_team_column{1};
-    constexpr int32 n_teams{ml::enum_count<ETestTeam>()};
-    constexpr int32 n_types{ml::enum_count<ioj::sim::EntityType>()};
+    constexpr int32 n_teams{ioj::enum_count<ETestTeam>()};
+    constexpr int32 n_types{ioj::enum_count<ioj::sim::EntityType>()};
     auto const n_data_rows{n_types + (show_team_totals ? 1 : 0)};
 
     team_entity_grid->SetColumnFill(0, 1.f);
@@ -156,7 +156,7 @@ void UTeamEntityTableWidget::rebuild_table() {
                                1,
                                data_alignment)};
         heading->SetText(
-            FText::FromString(ml::to_fstring(ioj::to_string(ml::to_native(team_value)))));
+            FText::FromString(ioj::to_fstring(ioj::to_string(ioj::to_native(team_value)))));
         if (hud_style_) {
             auto heading_style{hud_style_->caption_text};
             auto const base_colour{heading_style.ColorAndOpacity.GetSpecifiedColor()};
@@ -189,7 +189,7 @@ void UTeamEntityTableWidget::rebuild_table() {
         }
         auto* const label{add_text(
             FString::Printf(TEXT("entity_type_%d"), type), row, 0, 1, entity_type_alignment)};
-        label->SetText(FText::FromString(ml::get_entity_short_name(type_value)));
+        label->SetText(FText::FromString(ioj::get_entity_short_name(type_value)));
         if (hud_style_) {
             ioj::apply_text_style(*label, hud_style_->caption_text);
         }

@@ -82,7 +82,7 @@ auto make_battle() -> ::ioj::sim::LevelSimInitData {
     spawns.view_locations().xs()[0] = -1000.f;
     spawns.view_locations().xs()[1] = 1000.f;
     data.level_events.initialisation.entity_count = 2;
-    for (auto const type : ml::EnumTraits<::ioj::sim::EntityType>::values) {
+    for (auto const type : ioj::EnumTraits<::ioj::sim::EntityType>::values) {
         data.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
     return data;
@@ -93,18 +93,18 @@ auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
     data.level_events = {};
     data.clock_settings.tick_rate = 10.0;
 
-    ml::FLevelBuilder builder;
+    ioj::FLevelBuilder builder;
     builder.set_metadata(
-        {.id = ml::FLevelId{FName{TEXT("scheduled-battle")}}, .title = TEXT("Scheduled Battle")});
+        {.id = ioj::FLevelId{FName{TEXT("scheduled-battle")}}, .title = TEXT("Scheduled Battle")});
     auto const hero{builder.add_entity({
-        .id = ml::FLevelEntityId{FName{TEXT("hero")}},
-        .archetype = ml::level_archetypes::capital_ship,
+        .id = ioj::FLevelEntityId{FName{TEXT("hero")}},
+        .archetype = ioj::level_archetypes::capital_ship,
         .team = ::ioj::Team::Blue,
         .position = FVector{-1000.0, 0.0, 0.0},
     })};
     auto const enemy{builder.add_entity({
-        .id = ml::FLevelEntityId{FName{TEXT("enemy")}},
-        .archetype = ml::level_archetypes::capital_ship,
+        .id = ioj::FLevelEntityId{FName{TEXT("enemy")}},
+        .archetype = ioj::level_archetypes::capital_ship,
         .team = ::ioj::Team::Red,
         .position = FVector{1000.0, 0.0, 0.0},
         .spawn_time_seconds = 0.21,
@@ -212,13 +212,13 @@ auto FLevelSimSpawnQueriesTest::RunTest(FString const&) -> bool {
     data.frame_memory_capacity_bytes = 16 * 1024 * 1024;
     data.turrets.target_refresh_frequency = 10.f;
     // Keep the muzzle outside the turret's collision bounds so it cannot block its own query.
-    data.turrets.fire_point_offset = ml::make_vector3f(20.f, 0.f, 0.f);
+    data.turrets.fire_point_offset = ioj::make_vector3f(20.f, 0.f, 0.f);
     auto& initial_storage{data.level_events.schedule.turret_spawns};
     data.level_events.schedule.add_initial_spawn_group(::ioj::sim::EntityType::Turret, 0, 1);
     initial_storage.add_uninitialised(1);
     auto const initial{initial_storage.get_view()};
     initial.entity_indices()[0] = data.level_events.initialisation.entity_count++;
-    ::ioj::set_vector(initial.view_locations(), 0, ml::make_vector3f(-1000.f, 1000.f, 0.f));
+    ::ioj::set_vector(initial.view_locations(), 0, ioj::make_vector3f(-1000.f, 1000.f, 0.f));
     ioj::set_rotation(initial.view_rotations(), 0, {});
     initial.teams()[0] = ::ioj::Team::Blue;
     initial.healths()[0] = 100;
@@ -261,8 +261,8 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
-    auto world{ml::get_editor_world()};
-    auto* config{ml::load_default_level_config()};
+    auto world{ioj::get_editor_world()};
+    auto* config{ioj::load_default_level_config()};
     if (!TestTrue(TEXT("Editor world is available for presentation"), world.has_value()) ||
         !TestTrue(TEXT("Presentation assets load"), IsValid(config))) {
         return false;
@@ -294,8 +294,8 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
     auto visible_data{make_battle()};
     add_mission(headless_data);
     add_mission(visible_data);
-    ml::FWorldlessSimulationTest headless_harness{MoveTemp(headless_data)};
-    ml::FWorldlessSimulationTest visible_harness{MoveTemp(visible_data)};
+    ioj::FWorldlessSimulationTest headless_harness{MoveTemp(headless_data)};
+    ioj::FWorldlessSimulationTest visible_harness{MoveTemp(visible_data)};
     auto& headless{headless_harness.get_simulation()};
     auto& visible{visible_harness.get_simulation()};
     TestEqual(TEXT("Presentation construction preserves initial entity count"),
@@ -313,7 +313,7 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
         std::vector<::ioj::Team> teams;
         std::vector<::ioj::sim::EntityType> types;
     };
-    using Samples = ml::TimeSeriesData<FEntitySnapshot>;
+    using Samples = ioj::TimeSeriesData<FEntitySnapshot>;
     Samples headless_samples;
     Samples visible_samples;
     auto record{[](Samples& samples, ::ioj::sim::LevelSim& simulation) {
@@ -391,8 +391,8 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
-    auto world{ml::get_editor_world()};
-    auto* config{ml::load_default_level_config()};
+    auto world{ioj::get_editor_world()};
+    auto* config{ioj::load_default_level_config()};
     if (!TestTrue(TEXT("Editor world is available for presentation"), world.has_value()) ||
         !TestTrue(TEXT("Presentation assets load"), IsValid(config))) {
         return false;
@@ -568,13 +568,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
-    auto world{ml::get_editor_world()};
-    auto* config{ml::load_default_level_config()};
+    auto world{ioj::get_editor_world()};
+    auto* config{ioj::load_default_level_config()};
     if (!TestTrue(TEXT("Editor world is available"), world.has_value()) ||
         !TestTrue(TEXT("Player assets load"), IsValid(config))) {
         return false;
     }
-    auto* actor{ml::spawn_player_ship(
+    auto* actor{ioj::spawn_player_ship(
         *world.value(), config->classes.player_ship_class, &config->player_ship)};
     if (!TestTrue(TEXT("Player actor is available"), IsValid(actor))) {
         return false;
@@ -680,19 +680,19 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
             ::ioj::set_vector(
                 requests.get_view().view_locations(),
                 spawn,
-                ml::to_native(FVector3f{0.0f, static_cast<float>(id * 10), 100000.0f}));
+                ioj::to_native(FVector3f{0.0f, static_cast<float>(id * 10), 100000.0f}));
             ioj::set_rotation(requests.get_view().view_rotations(),
                               spawn,
-                              ml::to_native(FRotator3f::ZeroRotator));
+                              ioj::to_native(FRotator3f::ZeroRotator));
             ::ioj::set_vector(requests.get_view().view_base_velocities(),
                               spawn,
-                              ml::to_native(FVector3f::ZeroVector));
+                              ioj::to_native(FVector3f::ZeroVector));
             requests.get_view().damages()[spawn] = 1;
             requests.get_view().speeds()[spawn] = 1000.0f;
             requests.get_view().max_distances()[spawn] =
                 requests.get_view().speeds()[spawn] * initial_lifetime;
             requests.get_view().instigator_ids()[spawn] = {};
-            requests.get_view().sources()[spawn] = {ml::to_native(ETestTeam::White),
+            requests.get_view().sources()[spawn] = {ioj::to_native(ETestTeam::White),
                                                     ::ioj::sim::EntityType::TubeSpinner};
             expected_material_data.Add(
                 {.colour = colour,
@@ -735,9 +735,9 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
         for (int32 index{}; index < active_count; ++index) {
             auto const source_index{presentation.visible_indices_[index]};
             auto const source_y{lasers.get_entities().view_locations().ys()[source_index]};
-            auto const decoded_y{packed[index].position[1] * ml::sandbox_ismc::position_quantum};
+            auto const decoded_y{packed[index].position[1] * ioj::sandbox_ismc::position_quantum};
             TestTrue(TEXT("Packed laser position matches its source within half a quantum"),
-                     FMath::Abs(decoded_y - source_y) <= ml::sandbox_ismc::position_quantum * 0.5f);
+                     FMath::Abs(decoded_y - source_y) <= ioj::sandbox_ismc::position_quantum * 0.5f);
             auto const id{FMath::RoundToInt(source_y / 10.f)};
             auto const& expected{expected_material_data[id - 1]};
             auto const actual{writer.custom_data(index)};

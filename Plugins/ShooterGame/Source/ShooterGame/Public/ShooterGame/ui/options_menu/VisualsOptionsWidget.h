@@ -20,7 +20,7 @@ class UVideoSettingRowWidget;
 UCLASS()
 class SHOOTERGAME_API UVisualsOptionsWidget
     : public UUserWidget
-    , public ml::LogMsgMixin<"UVisualsOptionsWidget"> {
+    , public ioj::LogMsgMixin<"UVisualsOptionsWidget"> {
     GENERATED_BODY()
   protected:
     void NativeConstruct() override;

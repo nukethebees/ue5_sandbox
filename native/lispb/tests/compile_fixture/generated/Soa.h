@@ -88,9 +88,9 @@ struct ApiView;
 struct ApiConstView;
 struct ApiRowsSingleLayoutColumns {
     template <typename T>
-    using ColLayout = ml::soa_storage::ColumnLayout<T>;
+    using ColLayout = ioj::soa_storage::ColumnLayout<T>;
 
-    ml::soa_storage::ColumnLayoutStart LayoutStart{};
+    ioj::soa_storage::ColumnLayoutStart LayoutStart{};
 
     ColLayout<float> ValuesColumn;
     ColLayout<ApiMask> MasksColumn;
@@ -110,8 +110,8 @@ struct ApiRowsSingleLayout {
     using byte_size_type = SIZE_T;
 
     static constexpr size_type capacity_granularity{
-        ml::soa_storage::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ml::soa_storage::LayoutPolicy::column_gap};
+        ioj::soa_storage::LayoutPolicy::capacity_granularity};
+    static constexpr byte_size_type column_gap{ioj::soa_storage::LayoutPolicy::column_gap};
 
     static constexpr ApiRowsSingleLayoutColumns columns{};
 
@@ -121,9 +121,9 @@ struct ApiRowsSingleLayout {
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::soa_storage::capacity_block_bound(columns.PositionsYsColumn)};
+        ioj::soa_storage::capacity_block_bound(columns.PositionsYsColumn)};
     static constexpr size_type max_capacity{
-        ml::soa_storage::maximum_capacity(capacity_block_bound)};
+        ioj::soa_storage::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return blocks == 0 ? 0 : columns.PositionsYsColumn.data_end(blocks);
     }
@@ -133,11 +133,11 @@ struct ApiRowsSingleLayout {
 struct ApiView_positions;
 struct ApiConstView_positions;
 template <bool Const>
-struct ApiView_positionsImpl : ml::soa_storage_detail::CompactViewOperations {
+struct ApiView_positionsImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = ApiCoordinatesSchema;
     using size_type = int32;
     using Layout = ApiRowsSingleLayout;
-    using Storage = ml::soa_storage::StorageState;
+    using Storage = ioj::soa_storage::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
@@ -164,11 +164,11 @@ struct ApiView_positionsImpl : ml::soa_storage_detail::CompactViewOperations {
     }
   private:
     template <typename T>
-    auto make_column_view(ml::soa_storage::ColumnLayout<T> const& layout) const {
-        return ml::soa_storage_detail::column_view<TArrayView<Element<T>>>(
+    auto make_column_view(ioj::soa_storage::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<TArrayView<Element<T>>>(
             state_, offset_, count_, layout);
     }
-    friend ml::soa_storage_detail::CompactViewOperations;
+    friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct ApiView_positionsImpl;
     State* state_{};
@@ -184,7 +184,7 @@ struct ApiConstView_positions : ApiView_positionsImpl<true> {
         return equivalent_type{xs()[index], ys()[index]};
     }
 };
-static_assert(ml::soa_storage_detail::validate_compact_view<ApiConstView_positions>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<ApiConstView_positions>());
 struct ApiView_positions : ApiView_positionsImpl<false> {
     using Base = ApiView_positionsImpl<false>;
     using Base::Base;
@@ -201,13 +201,13 @@ struct ApiView_positions : ApiView_positionsImpl<false> {
         return equivalent_type{xs()[index], ys()[index]};
     }
 };
-static_assert(ml::soa_storage_detail::validate_compact_view<ApiView_positions>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<ApiView_positions>());
 template <bool Const>
-struct ApiViewImpl : ml::soa_storage_detail::CompactViewOperations {
+struct ApiViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = ApiRowsSchema;
     using size_type = int32;
     using Layout = ApiRowsSingleLayout;
-    using Storage = ml::soa_storage::StorageState;
+    using Storage = ioj::soa_storage::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
@@ -241,11 +241,11 @@ struct ApiViewImpl : ml::soa_storage_detail::CompactViewOperations {
     }
   private:
     template <typename T>
-    auto make_column_view(ml::soa_storage::ColumnLayout<T> const& layout) const {
-        return ml::soa_storage_detail::column_view<TArrayView<Element<T>>>(
+    auto make_column_view(ioj::soa_storage::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<TArrayView<Element<T>>>(
             state_, offset_, count_, layout);
     }
-    friend ml::soa_storage_detail::CompactViewOperations;
+    friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct ApiViewImpl;
     State* state_{};
@@ -259,7 +259,7 @@ struct COMPILE_FIXTURE_API ApiConstView : ApiViewImpl<true> {
     [[nodiscard]] constexpr int schema_version() const { return 7; }
     float first_x() const;
 };
-static_assert(ml::soa_storage_detail::validate_compact_view<ApiConstView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<ApiConstView>());
 struct COMPILE_FIXTURE_API ApiView : ApiViewImpl<false> {
     using Base = ApiViewImpl<false>;
     using Base::Base;
@@ -269,17 +269,17 @@ struct COMPILE_FIXTURE_API ApiView : ApiViewImpl<false> {
     [[nodiscard]] constexpr auto mutable_version() -> int { return 8; }
     void assign_first(float value) { this->values()[0] = value; }
 };
-static_assert(ml::soa_storage_detail::validate_compact_view<ApiView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<ApiView>());
 // Columns:
 // values: float
 // masks: ApiMask
 // positions_xs: float
 // positions_ys: float
 struct COMPILE_FIXTURE_API ApiOwner
-    : protected ml::soa_storage::StorageState
-    , ml::soa_storage::StorageOperations {
+    : protected ioj::soa_storage::StorageState
+    , ioj::soa_storage::StorageOperations {
     using soa_schema = ApiRowsSchema;
-    using Operations = ml::soa_storage::StorageOperations;
+    using Operations = ioj::soa_storage::StorageOperations;
     using Layout = ApiRowsSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
@@ -345,14 +345,14 @@ struct COMPILE_FIXTURE_API ApiOwner
   private:
     std::pmr::memory_resource* resource_{};
     friend Operations;
-    friend ::ml::soa_storage_detail::StorageRequirements;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
     // Column pointers
     /* **************************************** */
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ml::soa_storage::LayoutCursor cursor{blocks};
+        ioj::soa_storage::LayoutCursor cursor{blocks};
         return {cursor.column_pointer(data, Layout::columns.ValuesColumn),
                 cursor.column_pointer(data, Layout::columns.MasksColumn),
                 cursor.column_pointer(data, Layout::columns.PositionsXsColumn),
@@ -366,7 +366,7 @@ struct COMPILE_FIXTURE_API ApiOwner
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
-        using ml::soa_storage::default_construct_n;
+        using ioj::soa_storage::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
         default_construct_n(columns.values, count);
         default_construct_n(columns.masks, count);
@@ -378,7 +378,7 @@ struct COMPILE_FIXTURE_API ApiOwner
                                  DataPointers<Byte> const& source,
                                  size_type count) {
         auto transfer = [count](auto* dst, auto const* src) {
-            ml::soa_storage::transfer_n<Overlapping>(dst, src, count);
+            ioj::soa_storage::transfer_n<Overlapping>(dst, src, count);
         };
         transfer(destination.values, source.values);
         transfer(destination.masks, source.masks);
@@ -398,16 +398,16 @@ struct COMPILE_FIXTURE_API ApiOwner
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
-        ml::soa_storage_detail::for_each_removal_run(
+        ioj::soa_storage_detail::for_each_removal_run(
             num_, indices, [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
     }
     template <typename Columns>
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ml::soa_storage_detail::SoaSourceFor<Columns, ApiOwner, size_type>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, ApiOwner, size_type>
     {
-        using ml::soa_storage::source_data;
+        using ioj::soa_storage::source_data;
         auto const& positions_view{source.view_positions()};
         return {source_data(source.values()),
                 source_data(source.masks()),
@@ -419,7 +419,7 @@ struct COMPILE_FIXTURE_API ApiOwner
                         size_type source_first,
                         size_type first,
                         size_type count)
-        requires ml::soa_storage_detail::SoaSourceFor<Columns, ApiOwner, size_type>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, ApiOwner, size_type>
     {
         transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
@@ -428,7 +428,7 @@ struct COMPILE_FIXTURE_API ApiOwner
                            size_type source_first,
                            size_type first,
                            size_type count)
-        requires ml::soa_storage_detail::SoaSourceFor<Columns, ApiOwner, size_type>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, ApiOwner, size_type>
     {
         transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }
@@ -458,9 +458,9 @@ struct EquivalentRowsSingleView;
 struct EquivalentRowsSingleConstView;
 struct EquivalentRowsSingleLayoutColumns {
     template <typename T>
-    using ColLayout = ml::soa_storage::ColumnLayout<T>;
+    using ColLayout = ioj::soa_storage::ColumnLayout<T>;
 
-    ml::soa_storage::ColumnLayoutStart LayoutStart{};
+    ioj::soa_storage::ColumnLayoutStart LayoutStart{};
 
     ColLayout<float> XsColumn;
     ColLayout<float> YsColumn;
@@ -477,8 +477,8 @@ struct EquivalentRowsSingleLayout {
     using byte_size_type = SIZE_T;
 
     static constexpr size_type capacity_granularity{
-        ml::soa_storage::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ml::soa_storage::LayoutPolicy::column_gap};
+        ioj::soa_storage::LayoutPolicy::capacity_granularity};
+    static constexpr byte_size_type column_gap{ioj::soa_storage::LayoutPolicy::column_gap};
 
     static constexpr EquivalentRowsSingleLayoutColumns columns{};
 
@@ -487,9 +487,9 @@ struct EquivalentRowsSingleLayout {
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::soa_storage::capacity_block_bound(columns.YsColumn)};
+        ioj::soa_storage::capacity_block_bound(columns.YsColumn)};
     static constexpr size_type max_capacity{
-        ml::soa_storage::maximum_capacity(capacity_block_bound)};
+        ioj::soa_storage::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return blocks == 0 ? 0 : columns.YsColumn.data_end(blocks);
     }
@@ -497,11 +497,11 @@ struct EquivalentRowsSingleLayout {
 };
 
 template <bool Const>
-struct EquivalentRowsSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
+struct EquivalentRowsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = EquivalentRowsSchema;
     using size_type = int32;
     using Layout = EquivalentRowsSingleLayout;
-    using Storage = ml::soa_storage::StorageState;
+    using Storage = ioj::soa_storage::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
@@ -528,11 +528,11 @@ struct EquivalentRowsSingleViewImpl : ml::soa_storage_detail::CompactViewOperati
     }
   private:
     template <typename T>
-    auto make_column_view(ml::soa_storage::ColumnLayout<T> const& layout) const {
-        return ml::soa_storage_detail::column_view<TArrayView<Element<T>>>(
+    auto make_column_view(ioj::soa_storage::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<TArrayView<Element<T>>>(
             state_, offset_, count_, layout);
     }
-    friend ml::soa_storage_detail::CompactViewOperations;
+    friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct EquivalentRowsSingleViewImpl;
     State* state_{};
@@ -547,7 +547,7 @@ struct EquivalentRowsSingleConstView : EquivalentRowsSingleViewImpl<true> {
         return equivalent_type{xs()[index], ys()[index]};
     }
 };
-static_assert(ml::soa_storage_detail::validate_compact_view<EquivalentRowsSingleConstView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<EquivalentRowsSingleConstView>());
 struct EquivalentRowsSingleView : EquivalentRowsSingleViewImpl<false> {
     using Base = EquivalentRowsSingleViewImpl<false>;
     using Base::Base;
@@ -556,15 +556,15 @@ struct EquivalentRowsSingleView : EquivalentRowsSingleViewImpl<false> {
         return equivalent_type{xs()[index], ys()[index]};
     }
 };
-static_assert(ml::soa_storage_detail::validate_compact_view<EquivalentRowsSingleView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<EquivalentRowsSingleView>());
 // Columns:
 // xs: float
 // ys: float
 struct EquivalentOwner
-    : protected ml::soa_storage::StorageState
-    , ml::soa_storage::StorageOperations {
+    : protected ioj::soa_storage::StorageState
+    , ioj::soa_storage::StorageOperations {
     using soa_schema = EquivalentRowsSchema;
-    using Operations = ml::soa_storage::StorageOperations;
+    using Operations = ioj::soa_storage::StorageOperations;
     using Layout = EquivalentRowsSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
@@ -630,14 +630,14 @@ struct EquivalentOwner
   private:
     std::pmr::memory_resource* resource_{};
     friend Operations;
-    friend ::ml::soa_storage_detail::StorageRequirements;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
     // Column pointers
     /* **************************************** */
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ml::soa_storage::LayoutCursor cursor{blocks};
+        ioj::soa_storage::LayoutCursor cursor{blocks};
         return {cursor.column_pointer(data, Layout::columns.XsColumn),
                 cursor.column_pointer(data, Layout::columns.YsColumn)};
     }
@@ -649,7 +649,7 @@ struct EquivalentOwner
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
-        using ml::soa_storage::default_construct_n;
+        using ioj::soa_storage::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
         default_construct_n(columns.xs, count);
         default_construct_n(columns.ys, count);
@@ -659,7 +659,7 @@ struct EquivalentOwner
                                  DataPointers<Byte> const& source,
                                  size_type count) {
         auto transfer = [count](auto* dst, auto const* src) {
-            ml::soa_storage::transfer_n<Overlapping>(dst, src, count);
+            ioj::soa_storage::transfer_n<Overlapping>(dst, src, count);
         };
         transfer(destination.xs, source.xs);
         transfer(destination.ys, source.ys);
@@ -677,16 +677,16 @@ struct EquivalentOwner
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
-        ml::soa_storage_detail::for_each_removal_run(
+        ioj::soa_storage_detail::for_each_removal_run(
             num_, indices, [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
     }
     template <typename Columns>
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ml::soa_storage_detail::SoaSourceFor<Columns, EquivalentOwner, size_type>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, EquivalentOwner, size_type>
     {
-        using ml::soa_storage::source_data;
+        using ioj::soa_storage::source_data;
         return {source_data(source.xs()), source_data(source.ys())};
     }
     template <typename Columns>
@@ -694,7 +694,7 @@ struct EquivalentOwner
                         size_type source_first,
                         size_type first,
                         size_type count)
-        requires ml::soa_storage_detail::SoaSourceFor<Columns, EquivalentOwner, size_type>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, EquivalentOwner, size_type>
     {
         transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
@@ -703,7 +703,7 @@ struct EquivalentOwner
                            size_type source_first,
                            size_type first,
                            size_type count)
-        requires ml::soa_storage_detail::SoaSourceFor<Columns, EquivalentOwner, size_type>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, EquivalentOwner, size_type>
     {
         transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }
@@ -850,22 +850,22 @@ struct FRows {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
+        ioj::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
     template <typename Other>
     void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
-        ml::copy_element(ids, dst_i, other.ids, src_i);
-        ml::copy_element(weights, dst_i, other.weights, src_i);
+        ioj::copy_element(ids, dst_i, other.ids, src_i);
+        ioj::copy_element(weights, dst_i, other.weights, src_i);
     }
 
     template <typename Other>
     void
         copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
-        ml::copy_elements(ids, dst_i, other.ids, src_i, count);
-        ml::copy_elements(weights, dst_i, other.weights, src_i, count);
+        ioj::copy_elements(ids, dst_i, other.ids, src_i, count);
+        ioj::copy_elements(weights, dst_i, other.weights, src_i, count);
     }
 
     template <typename Other>
@@ -877,22 +877,22 @@ struct FRows {
 
     template <typename Other>
     void append_from(Other const& other)
-        requires ml::SupportsApplyArrayPairsWith<FRows, Other>
+        requires ioj::SupportsApplyArrayPairsWith<FRows, Other>
     {
-        ml::append_from(ids, other.ids);
-        ml::append_from(weights, other.weights);
+        ioj::append_from(ids, other.ids);
+        ioj::append_from(weights, other.weights);
     }
 
     void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
+        ioj::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort<Compare>(*this, scratch_indices);
+        ioj::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -1003,20 +1003,20 @@ struct FChild {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
+        ioj::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
     template <typename Other>
     void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
-        ml::copy_element(values, dst_i, other.values, src_i);
+        ioj::copy_element(values, dst_i, other.values, src_i);
     }
 
     template <typename Other>
     void
         copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
-        ml::copy_elements(values, dst_i, other.values, src_i, count);
+        ioj::copy_elements(values, dst_i, other.values, src_i, count);
     }
 
     template <typename Other>
@@ -1028,21 +1028,21 @@ struct FChild {
 
     template <typename Other>
     void append_from(Other const& other)
-        requires ml::SupportsApplyArrayPairsWith<FChild, Other>
+        requires ioj::SupportsApplyArrayPairsWith<FChild, Other>
     {
-        ml::append_from(values, other.values);
+        ioj::append_from(values, other.values);
     }
 
     void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
+        ioj::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort<Compare>(*this, scratch_indices);
+        ioj::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -1144,22 +1144,22 @@ struct FParents {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
+        ioj::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
     template <typename Other>
     void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
-        ml::copy_element(keys, dst_i, other.keys, src_i);
-        ml::copy_element(children, dst_i, other.children, src_i);
+        ioj::copy_element(keys, dst_i, other.keys, src_i);
+        ioj::copy_element(children, dst_i, other.children, src_i);
     }
 
     template <typename Other>
     void
         copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
-        ml::copy_elements(keys, dst_i, other.keys, src_i, count);
-        ml::copy_elements(children, dst_i, other.children, src_i, count);
+        ioj::copy_elements(keys, dst_i, other.keys, src_i, count);
+        ioj::copy_elements(children, dst_i, other.children, src_i, count);
     }
 
     template <typename Other>
@@ -1171,9 +1171,9 @@ struct FParents {
 
     template <typename Other>
     void append_from(Other const& other)
-        requires ml::SupportsApplyArrayPairsWith<FParents, Other>
+        requires ioj::SupportsApplyArrayPairsWith<FParents, Other>
     {
-        ml::append_from(keys, other.keys);
+        ioj::append_from(keys, other.keys);
         children.append_from(other.children);
     }
 
@@ -1181,12 +1181,12 @@ struct FParents {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
+        ioj::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort<Compare>(*this, scratch_indices);
+        ioj::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -1223,9 +1223,9 @@ struct FParentsSingleView;
 struct FParentsSingleConstView;
 struct FParentsSingleLayoutColumns {
     template <typename T>
-    using ColLayout = ml::soa_storage::ColumnLayout<T>;
+    using ColLayout = ioj::soa_storage::ColumnLayout<T>;
 
-    ml::soa_storage::ColumnLayoutStart LayoutStart{};
+    ioj::soa_storage::ColumnLayoutStart LayoutStart{};
 
     ColLayout<int32> KeysColumn;
     ColLayout<int32> ChildrenValuesColumn;
@@ -1241,8 +1241,8 @@ struct FParentsSingleLayout {
     using byte_size_type = SIZE_T;
 
     static constexpr size_type capacity_granularity{
-        ml::soa_storage::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ml::soa_storage::LayoutPolicy::column_gap};
+        ioj::soa_storage::LayoutPolicy::capacity_granularity};
+    static constexpr byte_size_type column_gap{ioj::soa_storage::LayoutPolicy::column_gap};
 
     static constexpr FParentsSingleLayoutColumns columns{};
 
@@ -1252,9 +1252,9 @@ struct FParentsSingleLayout {
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::soa_storage::capacity_block_bound(columns.ChildrenValuesColumn)};
+        ioj::soa_storage::capacity_block_bound(columns.ChildrenValuesColumn)};
     static constexpr size_type max_capacity{
-        ml::soa_storage::maximum_capacity(capacity_block_bound)};
+        ioj::soa_storage::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return blocks == 0 ? 0 : columns.ChildrenValuesColumn.data_end(blocks);
     }
@@ -1264,11 +1264,11 @@ struct FParentsSingleLayout {
 struct FParentsSingleView_children;
 struct FParentsSingleConstView_children;
 template <bool Const>
-struct FParentsSingleView_childrenImpl : ml::soa_storage_detail::CompactViewOperations {
+struct FParentsSingleView_childrenImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = FChildSchema;
     using size_type = int32;
     using Layout = FParentsSingleLayout;
-    using Storage = ml::soa_storage::StorageState;
+    using Storage = ioj::soa_storage::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
@@ -1293,11 +1293,11 @@ struct FParentsSingleView_childrenImpl : ml::soa_storage_detail::CompactViewOper
     }
   private:
     template <typename T>
-    auto make_column_view(ml::soa_storage::ColumnLayout<T> const& layout) const {
-        return ml::soa_storage_detail::column_view<TArrayView<Element<T>>>(
+    auto make_column_view(ioj::soa_storage::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<TArrayView<Element<T>>>(
             state_, offset_, count_, layout);
     }
-    friend ml::soa_storage_detail::CompactViewOperations;
+    friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct FParentsSingleView_childrenImpl;
     State* state_{};
@@ -1308,18 +1308,18 @@ struct FParentsSingleConstView_children : FParentsSingleView_childrenImpl<true> 
     using Base = FParentsSingleView_childrenImpl<true>;
     using Base::Base;
 };
-static_assert(ml::soa_storage_detail::validate_compact_view<FParentsSingleConstView_children>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<FParentsSingleConstView_children>());
 struct FParentsSingleView_children : FParentsSingleView_childrenImpl<false> {
     using Base = FParentsSingleView_childrenImpl<false>;
     using Base::Base;
 };
-static_assert(ml::soa_storage_detail::validate_compact_view<FParentsSingleView_children>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<FParentsSingleView_children>());
 template <bool Const>
-struct FParentsSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
+struct FParentsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = FParentsSchema;
     using size_type = int32;
     using Layout = FParentsSingleLayout;
-    using Storage = ml::soa_storage::StorageState;
+    using Storage = ioj::soa_storage::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
@@ -1350,11 +1350,11 @@ struct FParentsSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
     }
   private:
     template <typename T>
-    auto make_column_view(ml::soa_storage::ColumnLayout<T> const& layout) const {
-        return ml::soa_storage_detail::column_view<TArrayView<Element<T>>>(
+    auto make_column_view(ioj::soa_storage::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<TArrayView<Element<T>>>(
             state_, offset_, count_, layout);
     }
-    friend ml::soa_storage_detail::CompactViewOperations;
+    friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct FParentsSingleViewImpl;
     State* state_{};
@@ -1365,20 +1365,20 @@ struct FParentsSingleConstView : FParentsSingleViewImpl<true> {
     using Base = FParentsSingleViewImpl<true>;
     using Base::Base;
 };
-static_assert(ml::soa_storage_detail::validate_compact_view<FParentsSingleConstView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<FParentsSingleConstView>());
 struct FParentsSingleView : FParentsSingleViewImpl<false> {
     using Base = FParentsSingleViewImpl<false>;
     using Base::Base;
 };
-static_assert(ml::soa_storage_detail::validate_compact_view<FParentsSingleView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<FParentsSingleView>());
 // Columns:
 // keys: int32
 // children_values: int32
 struct SingleParents
-    : protected ml::soa_storage::StorageState
-    , ml::soa_storage::StorageOperations {
+    : protected ioj::soa_storage::StorageState
+    , ioj::soa_storage::StorageOperations {
     using soa_schema = FParentsSchema;
-    using Operations = ml::soa_storage::StorageOperations;
+    using Operations = ioj::soa_storage::StorageOperations;
     using Layout = FParentsSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
@@ -1444,14 +1444,14 @@ struct SingleParents
   private:
     std::pmr::memory_resource* resource_{};
     friend Operations;
-    friend ::ml::soa_storage_detail::StorageRequirements;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
     // Column pointers
     /* **************************************** */
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ml::soa_storage::LayoutCursor cursor{blocks};
+        ioj::soa_storage::LayoutCursor cursor{blocks};
         return {cursor.column_pointer(data, Layout::columns.KeysColumn),
                 cursor.column_pointer(data, Layout::columns.ChildrenValuesColumn)};
     }
@@ -1463,7 +1463,7 @@ struct SingleParents
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
-        using ml::soa_storage::default_construct_n;
+        using ioj::soa_storage::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
         default_construct_n(columns.keys, count);
         default_construct_n(columns.children_values, count);
@@ -1473,7 +1473,7 @@ struct SingleParents
                                  DataPointers<Byte> const& source,
                                  size_type count) {
         auto transfer = [count](auto* dst, auto const* src) {
-            ml::soa_storage::transfer_n<Overlapping>(dst, src, count);
+            ioj::soa_storage::transfer_n<Overlapping>(dst, src, count);
         };
         transfer(destination.keys, source.keys);
         transfer(destination.children_values, source.children_values);
@@ -1491,16 +1491,16 @@ struct SingleParents
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
-        ml::soa_storage_detail::for_each_removal_run(
+        ioj::soa_storage_detail::for_each_removal_run(
             num_, indices, [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
     }
     template <typename Columns>
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ml::soa_storage_detail::SoaSourceFor<Columns, SingleParents, size_type>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, SingleParents, size_type>
     {
-        using ml::soa_storage::source_data;
+        using ioj::soa_storage::source_data;
         auto const& children_view{source.view_children()};
         return {source_data(source.keys()), source_data(children_view.values())};
     }
@@ -1509,7 +1509,7 @@ struct SingleParents
                         size_type source_first,
                         size_type first,
                         size_type count)
-        requires ml::soa_storage_detail::SoaSourceFor<Columns, SingleParents, size_type>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, SingleParents, size_type>
     {
         transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
@@ -1518,7 +1518,7 @@ struct SingleParents
                            size_type source_first,
                            size_type first,
                            size_type count)
-        requires ml::soa_storage_detail::SoaSourceFor<Columns, SingleParents, size_type>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, SingleParents, size_type>
     {
         transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }
@@ -1658,12 +1658,12 @@ struct FMaskRows8 {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
+        ioj::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort<Compare>(*this, scratch_indices);
+        ioj::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -1834,12 +1834,12 @@ struct FMaskRows9 {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
+        ioj::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort<Compare>(*this, scratch_indices);
+        ioj::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -2000,12 +2000,12 @@ struct FMaskRows16 {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
+        ioj::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort<Compare>(*this, scratch_indices);
+        ioj::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -2164,12 +2164,12 @@ struct FMaskRows17 {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
+        ioj::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort<Compare>(*this, scratch_indices);
+        ioj::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -2328,12 +2328,12 @@ struct FMaskRows32 {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
+        ioj::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort<Compare>(*this, scratch_indices);
+        ioj::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -2492,12 +2492,12 @@ struct FMaskRows33 {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
+        ioj::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort<Compare>(*this, scratch_indices);
+        ioj::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -2536,9 +2536,9 @@ struct RestrictionRowsSingleView;
 struct RestrictionRowsSingleConstView;
 struct RestrictionRowsSingleLayoutColumns {
     template <typename T>
-    using ColLayout = ml::soa_storage::ColumnLayout<T>;
+    using ColLayout = ioj::soa_storage::ColumnLayout<T>;
 
-    ml::soa_storage::ColumnLayoutStart LayoutStart{};
+    ioj::soa_storage::ColumnLayoutStart LayoutStart{};
 
     ColLayout<RestrictedLeaf> RestrictedColumn;
 
@@ -2553,8 +2553,8 @@ struct RestrictionRowsSingleLayout {
     using byte_size_type = SIZE_T;
 
     static constexpr size_type capacity_granularity{
-        ml::soa_storage::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ml::soa_storage::LayoutPolicy::column_gap};
+        ioj::soa_storage::LayoutPolicy::capacity_granularity};
+    static constexpr byte_size_type column_gap{ioj::soa_storage::LayoutPolicy::column_gap};
 
     static constexpr RestrictionRowsSingleLayoutColumns columns{};
 
@@ -2564,9 +2564,9 @@ struct RestrictionRowsSingleLayout {
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::soa_storage::capacity_block_bound(columns.RestrictedColumn)};
+        ioj::soa_storage::capacity_block_bound(columns.RestrictedColumn)};
     static constexpr size_type max_capacity{
-        ml::soa_storage::maximum_capacity(capacity_block_bound)};
+        ioj::soa_storage::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return blocks == 0 ? 0 : columns.RestrictedColumn.data_end(blocks);
     }
@@ -2574,11 +2574,11 @@ struct RestrictionRowsSingleLayout {
 };
 
 template <bool Const>
-struct RestrictionRowsSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
+struct RestrictionRowsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = RestrictionRowsSchema;
     using size_type = int32;
     using Layout = RestrictionRowsSingleLayout;
-    using Storage = ml::soa_storage::StorageState;
+    using Storage = ioj::soa_storage::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
@@ -2603,11 +2603,11 @@ struct RestrictionRowsSingleViewImpl : ml::soa_storage_detail::CompactViewOperat
     }
   private:
     template <typename T>
-    auto make_column_view(ml::soa_storage::ColumnLayout<T> const& layout) const {
-        return ml::soa_storage_detail::column_view<TArrayView<Element<T>>>(
+    auto make_column_view(ioj::soa_storage::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<TArrayView<Element<T>>>(
             state_, offset_, count_, layout);
     }
-    friend ml::soa_storage_detail::CompactViewOperations;
+    friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct RestrictionRowsSingleViewImpl;
     State* state_{};
@@ -2618,19 +2618,19 @@ struct RestrictionRowsSingleConstView : RestrictionRowsSingleViewImpl<true> {
     using Base = RestrictionRowsSingleViewImpl<true>;
     using Base::Base;
 };
-static_assert(ml::soa_storage_detail::validate_compact_view<RestrictionRowsSingleConstView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<RestrictionRowsSingleConstView>());
 struct RestrictionRowsSingleView : RestrictionRowsSingleViewImpl<false> {
     using Base = RestrictionRowsSingleViewImpl<false>;
     using Base::Base;
 };
-static_assert(ml::soa_storage_detail::validate_compact_view<RestrictionRowsSingleView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<RestrictionRowsSingleView>());
 // Columns:
 // restricted: RestrictedLeaf
 struct SingleRestrictionRows
-    : protected ml::soa_storage::StorageState
-    , ml::soa_storage::StorageOperations {
+    : protected ioj::soa_storage::StorageState
+    , ioj::soa_storage::StorageOperations {
     using soa_schema = RestrictionRowsSchema;
-    using Operations = ml::soa_storage::StorageOperations;
+    using Operations = ioj::soa_storage::StorageOperations;
     using Layout = RestrictionRowsSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
@@ -2695,14 +2695,14 @@ struct SingleRestrictionRows
   private:
     std::pmr::memory_resource* resource_{};
     friend Operations;
-    friend ::ml::soa_storage_detail::StorageRequirements;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
     // Column pointers
     /* **************************************** */
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ml::soa_storage::LayoutCursor cursor{blocks};
+        ioj::soa_storage::LayoutCursor cursor{blocks};
         return {cursor.column_pointer(data, Layout::columns.RestrictedColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
@@ -2713,7 +2713,7 @@ struct SingleRestrictionRows
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
-        using ml::soa_storage::default_construct_n;
+        using ioj::soa_storage::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
         default_construct_n(columns.restricted, count);
     }
@@ -2722,7 +2722,7 @@ struct SingleRestrictionRows
                                  DataPointers<Byte> const& source,
                                  size_type count) {
         auto transfer = [count](auto* dst, auto const* src) {
-            ml::soa_storage::transfer_n<Overlapping>(dst, src, count);
+            ioj::soa_storage::transfer_n<Overlapping>(dst, src, count);
         };
         transfer(destination.restricted, source.restricted);
     }
@@ -2739,16 +2739,16 @@ struct SingleRestrictionRows
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
-        ml::soa_storage_detail::for_each_removal_run(
+        ioj::soa_storage_detail::for_each_removal_run(
             num_, indices, [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
     }
     template <typename Columns>
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ml::soa_storage_detail::SoaSourceFor<Columns, SingleRestrictionRows, size_type>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, SingleRestrictionRows, size_type>
     {
-        using ml::soa_storage::source_data;
+        using ioj::soa_storage::source_data;
         return {source_data(source.restricted())};
     }
     template <typename Columns>
@@ -2756,7 +2756,7 @@ struct SingleRestrictionRows
                         size_type source_first,
                         size_type first,
                         size_type count)
-        requires ml::soa_storage_detail::SoaSourceFor<Columns, SingleRestrictionRows, size_type>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, SingleRestrictionRows, size_type>
     {
         transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
@@ -2765,7 +2765,7 @@ struct SingleRestrictionRows
                            size_type source_first,
                            size_type first,
                            size_type count)
-        requires ml::soa_storage_detail::SoaSourceFor<Columns, SingleRestrictionRows, size_type>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, SingleRestrictionRows, size_type>
     {
         transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }
@@ -2850,12 +2850,12 @@ struct FFixedChild {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
+        ioj::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort<Compare>(*this, scratch_indices);
+        ioj::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -2938,7 +2938,7 @@ struct TFixedChildStorage {
 
     void destroy_at(int32 const index) noexcept { tracked_.destroy_at(index); }
 
-    ml::TFixedStorage<FTracked, Capacity> tracked_;
+    ioj::TFixedStorage<FTracked, Capacity> tracked_;
 };
 
 struct FFixedRowsSchema;
@@ -3004,12 +3004,12 @@ struct FFixedRows {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
+        ioj::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort<Compare>(*this, scratch_indices);
+        ioj::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -3106,7 +3106,7 @@ struct TFixedRowsStorage {
         ids_.destroy_at(index);
     }
 
-    ml::TFixedStorage<int32, Capacity> ids_;
+    ioj::TFixedStorage<int32, Capacity> ids_;
     TFixedChildStorage<Capacity> children_;
 };
 

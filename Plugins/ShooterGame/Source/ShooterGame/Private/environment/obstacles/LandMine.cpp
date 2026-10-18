@@ -46,7 +46,7 @@ ALandMine::ALandMine()
     mesh_component->SetupAttachment(RootComponent);
     mesh_component->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
     // Allow destruction from bullets
-    mesh_component->SetCollisionResponseToChannel(ml::collision::projectile, ECR_Block);
+    mesh_component->SetCollisionResponseToChannel(ioj::collision::projectile, ECR_Block);
 
     // Create light component
     light_component->SetupAttachment(RootComponent);
@@ -122,7 +122,7 @@ void ALandMine::change_state(ELandMineState new_state) {
 
 #if !UE_BUILD_SHIPPING
     logger.log_verbose(TEXT("Setting mine %s to %s state."),
-                       *ml::get_best_display_name(*this),
+                       *ioj::get_best_display_name(*this),
                        *UEnum::GetValueAsString(current_state));
 #endif
 

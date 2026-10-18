@@ -23,7 +23,7 @@ namespace ioj::sim::range_query {
 using EntityCount = std::uint32_t;
 using RequestIndex = std::uint32_t;
 using RequestCount = std::uint32_t;
-using WorkerIndex = ml::ThreadIndex;
+using WorkerIndex = ioj::ThreadIndex;
 using WorkerCount = std::uint32_t;
 using MatchIndex = std::uint32_t;
 using MatchCount = std::uint32_t;
@@ -54,8 +54,8 @@ struct MatchSource {
 
 struct ScanSources {
     EntityTypeSizes offsets;
-    ml::EnumArray<EntityType, std::span<EntityInstanceHandle const>> handles;
-    ml::EnumArray<EntityType, Vectors3fConstView> locations;
+    ioj::EnumArray<EntityType, std::span<EntityInstanceHandle const>> handles;
+    ioj::EnumArray<EntityType, Vectors3fConstView> locations;
 };
 
 void collect_request_matches(collision::CollisionUniformGrid const& grid,
@@ -143,7 +143,7 @@ void SpatialQueryManager::collect_non_team_entities_in_range(
     std::span<Team const> const teams,
     float const radius,
     FrameRangeQueryResults& out_results,
-    ml::FrameMemoryResource* const scratch_resource) const {
+    ioj::FrameMemoryResource* const scratch_resource) const {
     using namespace range_query;
 
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::collect_non_team_entities_in_range_batch");
@@ -162,10 +162,10 @@ void SpatialQueryManager::collect_non_team_entities_in_range(
     }
 
     constexpr RequestCount grain_size{64};
-    auto const concurrency{ml::task_arena_concurrency(request_count, grain_size)};
+    auto const concurrency{ioj::task_arena_concurrency(request_count, grain_size)};
     tbb::task_arena arena{concurrency};
-    ml::FrameArray<WorkerScratch> workers{scratch_resource};
-    ml::FrameArray<MatchSource> match_sources{scratch_resource};
+    ioj::FrameArray<WorkerScratch> workers{scratch_resource};
+    ioj::FrameArray<MatchSource> match_sources{scratch_resource};
     ScanSources sources;
     sources.locations = locations_;
 
@@ -174,7 +174,7 @@ void SpatialQueryManager::collect_non_team_entities_in_range(
 
         // Map each entity type into a shared stamp index space.
         EntityCount entity_count{};
-        for (auto const type : ml::EnumTraits<EntityType>::values) {
+        for (auto const type : ioj::EnumTraits<EntityType>::values) {
             sources.offsets[type] = entity_count;
             entity_count += entity_tables_.lookups.for_type(type).row_count();
             // Bind each type's lookup table once before distributing requests.
@@ -208,14 +208,14 @@ void SpatialQueryManager::collect_non_team_entities_in_range(
         auto const max_grid_coord{grid.get_max_grid_coord()};
         auto const absolute_radius{std::abs(radius)};
         auto const radius_extent{
-            ml::make_vector3f(absolute_radius, absolute_radius, absolute_radius)};
+            ioj::make_vector3f(absolute_radius, absolute_radius, absolute_radius)};
         auto const radius_squared{radius * radius};
 
         // Scan each request once and retain matches in its worker's buffer.
         arena.execute([&] {
             tbb::parallel_for(work, [&](auto const& chunk) {
                 SANDBOX_PROFILE_SCOPE("scan_chunk");
-                auto const worker_index{ml::current_thread_index()};
+                auto const worker_index{ioj::current_thread_index()};
                 auto& worker{workers[worker_index]};
                 auto const end{chunk.end()};
 

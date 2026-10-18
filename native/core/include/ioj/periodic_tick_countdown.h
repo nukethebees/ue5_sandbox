@@ -14,7 +14,7 @@
 #include <utility>
 #include <vector>
 
-namespace ml {
+namespace ioj {
 template <std::signed_integral Counter>
 class PeriodicTickCountdownView {
   public:
@@ -78,11 +78,11 @@ class PeriodicTickCountdown {
         return remaining_ticks_[to_index(index)];
     }
 
-    void tick() noexcept { ml::tick_periodic_countdowns(remaining_ticks()); }
+    void tick() noexcept { ioj::tick_periodic_countdowns(remaining_ticks()); }
 
     void tick(counter_type const num_ticks) noexcept {
         assert(num_ticks >= 0);
-        ml::tick_periodic_countdowns(remaining_ticks(), num_ticks);
+        ioj::tick_periodic_countdowns(remaining_ticks(), num_ticks);
     }
 
     [[nodiscard]] auto is_ready(size_type const index) const noexcept -> bool {
@@ -140,8 +140,8 @@ class PeriodicTickCountdown {
     }
 
     void remove_at_swap(size_type const index, size_type const count) {
-        ml::remove_at_swap(remaining_ticks_, index, count);
-        ml::remove_at_swap(periods_, index, count);
+        ioj::remove_at_swap(remaining_ticks_, index, count);
+        ioj::remove_at_swap(periods_, index, count);
     }
 
     void reserve(size_type const count) {
@@ -183,8 +183,8 @@ class PeriodicTickCountdown {
     }
 
     void apply_permutation(std::span<std::int32_t> const indices) {
-        ml::apply_permutation(remaining_ticks(), indices);
-        ml::apply_permutation(periods(), indices);
+        ioj::apply_permutation(remaining_ticks(), indices);
+        ioj::apply_permutation(periods(), indices);
     }
 
     [[nodiscard]] auto remaining_ticks() noexcept -> std::span<counter_type> {

@@ -20,12 +20,12 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
 {
     TEST_METHOD(NavigationAndResume)
     {
-        auto const world_result{ml::get_editor_world()};
+        auto const world_result{ioj::get_editor_world()};
         if (!TestRunner->TestTrue(TEXT("Editor world is available"), world_result.has_value())) {
             return;
         }
 
-        auto* const ui_data{ml::test_batch_game_ui_data::get_data_asset()};
+        auto* const ui_data{ioj::test_batch_game_ui_data::get_data_asset()};
         if (!TestRunner->TestTrue(TEXT("Project UI data loads"), IsValid(ui_data))) {
             return;
         }

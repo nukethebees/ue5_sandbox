@@ -27,7 +27,7 @@
 
 #define LOCTEXT_NAMESPACE "FSandboxEditorModule"
 
-namespace ml::detail {
+namespace ioj::detail {
 auto null_action{
     FUIAction(FExecuteAction::CreateLambda([]() { UE_LOG(LogTemp, Warning, TEXT("Foo")); }))};
 }
@@ -138,7 +138,7 @@ void FSandboxEditorModule::create_sandbox_editor_toolbar_menu_items(FMenuBuilder
                                     FText::FromName(TEXT("Example Button")),
                                     FText::FromName(TEXT("Example Button Tooltip")),
                                     FSlateIcon(),
-                                    ml::detail::null_action);
+                                    ioj::detail::null_action);
                             }));
 }
 

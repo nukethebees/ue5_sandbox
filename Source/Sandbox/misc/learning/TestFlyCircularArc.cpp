@@ -192,7 +192,7 @@ void ATestFlyCircularArc::draw_shapes() const {
 
     auto const a0{(starting_point - circle_centre).GetSafeNormal()};
     auto const a1{(destination - circle_centre).GetSafeNormal()};
-    auto const angle_between{ml::get_angle_between_norm_lines(a0, a1)};
+    auto const angle_between{ioj::get_angle_between_norm_lines(a0, a1)};
 
     c.draw_point(mid_point);
 

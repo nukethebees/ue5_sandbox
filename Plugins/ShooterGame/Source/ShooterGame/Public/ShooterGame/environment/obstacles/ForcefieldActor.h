@@ -22,7 +22,7 @@ class UParticleSystemComponent;
 UCLASS()
 class SHOOTERGAME_API AForcefieldActor
     : public AActor
-    , public ml::LogMsgMixin<"Forcefield"> {
+    , public ioj::LogMsgMixin<"Forcefield"> {
     GENERATED_BODY()
   public:
     AForcefieldActor();

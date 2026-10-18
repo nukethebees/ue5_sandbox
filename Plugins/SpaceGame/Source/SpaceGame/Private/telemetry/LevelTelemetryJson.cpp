@@ -25,27 +25,27 @@
 namespace {
 
 auto serialized_name(::ioj::sim::EntityType const value) -> FString {
-    return ml::to_fstring(::ioj::sim::to_serialized_string(value));
+    return ioj::to_fstring(::ioj::sim::to_serialized_string(value));
 }
 
 auto serialized_name(::ioj::Team const value) -> FString {
-    return ml::to_fstring(::ioj::to_serialized_string(value));
+    return ioj::to_fstring(::ioj::to_serialized_string(value));
 }
 
 auto serialized_name(::ioj::sim::MissionMode const value) -> FString {
-    return ml::to_fstring(::ioj::sim::to_serialized_string(value));
+    return ioj::to_fstring(::ioj::sim::to_serialized_string(value));
 }
 
 auto serialized_name(::ioj::sim::MissionState const value) -> FString {
-    return ml::to_fstring(::ioj::sim::to_serialized_string(value));
+    return ioj::to_fstring(::ioj::sim::to_serialized_string(value));
 }
 
 auto serialized_name(::ioj::sim::MissionFailReason const value) -> FString {
-    return ml::to_fstring(::ioj::sim::to_serialized_string(value));
+    return ioj::to_fstring(::ioj::sim::to_serialized_string(value));
 }
 
 auto serialized_name(::ioj::sim::LevelTelemetryRunEndReason const value) -> FString {
-    return ml::to_fstring(::ioj::sim::to_serialized_string(value));
+    return ioj::to_fstring(::ioj::sim::to_serialized_string(value));
 }
 
 void set_optional_number(FJsonObject& object,
@@ -63,7 +63,7 @@ auto make_series(Series const& series) -> TSharedRef<FJsonObject> {
     TArray<TSharedPtr<FJsonValue>> ticks;
     TArray<TSharedPtr<FJsonValue>> values;
     auto const count{static_cast<int32>(series.num())};
-    ml::reserve(count, ticks, values);
+    ioj::reserve(count, ticks, values);
     for (int32 index{}; index < count; ++index) {
         ticks.Add(MakeShared<FJsonValueNumber>(static_cast<double>(series.time_at(index))));
         values.Add(MakeShared<FJsonValueNumber>(static_cast<double>(series.value_at(index))));
@@ -101,7 +101,7 @@ auto make_tick_series(::ioj::sim::LevelTelemetryTickSeries const& source)
                     source.active_entities_by_team_and_type[team_index][entity_type_index]));
         }
         active_by_team_and_type->SetObjectField(
-            serialized_name(ml::to_native(static_cast<ETestTeam>(team_index))), team);
+            serialized_name(ioj::to_native(static_cast<ETestTeam>(team_index))), team);
     }
     result->SetObjectField(TEXT("active_entities_by_team_and_type"), active_by_team_and_type);
 
@@ -339,7 +339,7 @@ template <typename Value>
 auto parse_tick_series(FJsonObject const& parent,
                        TCHAR const* const field,
                        FString const& path,
-                       ml::XYSeriesData<uint64, Value>& output) -> std::expected<void, FString> {
+                       ioj::XYSeriesData<uint64, Value>& output) -> std::expected<void, FString> {
     auto const object{required_object(parent, field, path)};
     if (!object) {
         return std::unexpected{object.error()};
@@ -409,19 +409,19 @@ auto parse_serialized_enum(FString const& value, FString const& path)
         std::string_view{utf8_value.Get(), static_cast<std::size_t>(utf8_value.Length())}};
     if constexpr (std::is_same_v<Enum, ETestTeam>) {
         if (auto const result{::ioj::try_parse_serialized_team(encoded)}) {
-            return ml::to_unreal(*result);
+            return ioj::to_unreal(*result);
         }
     } else if constexpr (std::is_same_v<Enum, ETestMissionMode>) {
         if (auto const result{::ioj::sim::try_parse_serialized_mission_mode(encoded)}) {
-            return ml::to_unreal(*result);
+            return ioj::to_unreal(*result);
         }
     } else if constexpr (std::is_same_v<Enum, ETestMissionState>) {
         if (auto const result{::ioj::sim::try_parse_serialized_mission_state(encoded)}) {
-            return ml::to_unreal(*result);
+            return ioj::to_unreal(*result);
         }
     } else if constexpr (std::is_same_v<Enum, ETestMissionFailReason>) {
         if (auto const result{::ioj::sim::try_parse_serialized_mission_fail_reason(encoded)}) {
-            return ml::to_unreal(*result);
+            return ioj::to_unreal(*result);
         }
     } else if constexpr (std::is_same_v<Enum, ::ioj::sim::LevelTelemetryRunEndReason>) {
         if (auto const result{
@@ -624,7 +624,7 @@ auto validate_serialized_report(FLevelTelemetryReport const& record)
         }
     }
     for (int32 team{}; team < ::ioj::sim::LevelTelemetryTickSeries::team_count; ++team) {
-        auto const team_name{serialized_name(ml::to_native(static_cast<ETestTeam>(team)))};
+        auto const team_name{serialized_name(ioj::to_native(static_cast<ETestTeam>(team)))};
         for (int32 type{}; type < ::ioj::sim::LevelTelemetryTickSeries::entity_type_count; ++type) {
             auto const type_name{serialized_name(static_cast<::ioj::sim::EntityType>(type))};
             auto const valid{validate_serialized_series(
@@ -897,7 +897,7 @@ auto deserialize_level_telemetry_run(FString const& json)
             READ_REQUIRED(
                 team,
                 parse_serialized_enum<ETestTeam>(winner_name, TEXT("completion.winning_team")));
-            result.completion.winning_team = ml::to_native(team);
+            result.completion.winning_team = ioj::to_native(team);
         }
     }
 
@@ -938,9 +938,9 @@ auto deserialize_level_telemetry_run(FString const& json)
         READ_REQUIRED(fail,
                       parse_serialized_enum<ETestMissionFailReason>(
                           fail_name, TEXT("completion.mission_fail_reason")));
-        result.completion.mission_mode = ml::to_native(mode);
-        result.completion.mission_state = ml::to_native(state);
-        result.completion.mission_fail_reason = ml::to_native(fail);
+        result.completion.mission_mode = ioj::to_native(mode);
+        result.completion.mission_state = ioj::to_native(state);
+        result.completion.mission_fail_reason = ioj::to_native(fail);
     }
     auto const* mission_elapsed{(*completion)->Values.Find(TEXT("mission_elapsed_seconds"))};
     if (mission_elapsed && (*mission_elapsed)->Type != EJson::Null) {
@@ -1013,7 +1013,7 @@ auto deserialize_level_telemetry_run(FString const& json)
         }
     }
     for (int32 team{}; team < ::ioj::sim::LevelTelemetryTickSeries::team_count; ++team) {
-        auto const team_name{serialized_name(ml::to_native(static_cast<ETestTeam>(team)))};
+        auto const team_name{serialized_name(ioj::to_native(static_cast<ETestTeam>(team)))};
         auto const team_object{required_object(
             **by_team,
             *team_name,

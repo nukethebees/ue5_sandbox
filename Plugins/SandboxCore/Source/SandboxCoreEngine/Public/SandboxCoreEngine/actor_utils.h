@@ -13,7 +13,7 @@
 
 #include <concepts>
 
-namespace ml {
+namespace ioj {
 template <typename T>
 auto get_first_actor(UWorld& world) -> T* {
     for (TActorIterator<T> it{&world}; it; ++it) {

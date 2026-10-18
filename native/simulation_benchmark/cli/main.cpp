@@ -4,7 +4,7 @@
 #include <iostream>
 
 auto main(int const argc, char const* const* argv) -> int {
-    auto command_line{ml::simulation_benchmark::parse_command_line(argc, argv)};
+    auto command_line{ioj::simulation_benchmark::parse_command_line(argc, argv)};
     if (!command_line.standard_output.empty()) {
         std::cout << command_line.standard_output;
     }
@@ -22,15 +22,15 @@ auto main(int const argc, char const* const* argv) -> int {
 
     for (auto const cap : options.fighter_stress_caps) {
         options.fighter_stress_cap = cap > 0 ? std::optional{cap} : std::nullopt;
-        auto result{ml::simulation_benchmark::run_benchmark(options, [] {
-            std::cerr << ml::simulation_benchmark::profiler_ready_message << '\n' << std::flush;
+        auto result{ioj::simulation_benchmark::run_benchmark(options, [] {
+            std::cerr << ioj::simulation_benchmark::profiler_ready_message << '\n' << std::flush;
         })};
         if (!result) {
             std::cerr << result.error() << '\n';
             return 1;
         }
 
-        std::cout << ml::simulation_benchmark::to_json(*result) << '\n';
+        std::cout << ioj::simulation_benchmark::to_json(*result) << '\n';
         options.profiler_connection_timeout_seconds.reset();
     }
     return 0;

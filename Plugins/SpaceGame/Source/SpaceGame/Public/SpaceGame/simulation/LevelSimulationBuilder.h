@@ -16,7 +16,7 @@ class ATestCapitalShipProxy;
 class ATestStaticTurretsProxy;
 class ATestTubeSpinnerProxy;
 
-namespace ml {
+namespace ioj {
 using FLevelSimBuildResult = std::expected<::ioj::sim::LevelSimInitData, FLevelStartErrors>;
 
 struct FProxyLevelSimBuild {

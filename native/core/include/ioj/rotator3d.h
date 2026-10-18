@@ -9,6 +9,6 @@ struct Rotator3d {
     double yaw{};
     double roll{};
 };
-auto to_quaternion(Rotator3d rotation) noexcept -> ml::Quaternion4d;
-auto to_rotator(ml::Quaternion4d q) noexcept -> Rotator3d;
+auto to_quaternion(Rotator3d rotation) noexcept -> ioj::Quaternion4d;
+auto to_rotator(ioj::Quaternion4d q) noexcept -> Rotator3d;
 }

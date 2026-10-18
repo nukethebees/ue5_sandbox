@@ -18,8 +18,8 @@ void AS7LevelAuthoringDocument::PostRegisterAllComponents() {
 }
 
 auto AS7LevelAuthoringDocument::collision_grid_overrides() const
-    -> ml::FLevelCollisionGridDefinition {
-    ml::FLevelCollisionGridDefinition result;
+    -> ioj::FLevelCollisionGridDefinition {
+    ioj::FLevelCollisionGridDefinition result;
     auto const* const config{level_config.Get()};
     auto const legacy{grid_override_schema_version == 0 && IsValid(config)};
     if (level_size != FVector3f::ZeroVector &&

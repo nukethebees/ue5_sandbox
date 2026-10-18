@@ -17,7 +17,7 @@ class URotatingActorComponent;
 UCLASS()
 class SHOOTERGAME_API ADroppableWaypoint
     : public AActor
-    , public ml::LogMsgMixin<"ADroppableWaypoint", LogShooterGameActor>
+    , public ioj::LogMsgMixin<"ADroppableWaypoint", LogShooterGameActor>
     , public IDescribable {
     GENERATED_BODY()
   public:

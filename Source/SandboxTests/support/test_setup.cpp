@@ -27,7 +27,7 @@
 #include <Tests/AutomationEditorCommon.h>
 #include <UnrealEdGlobals.h>
 
-namespace ml {
+namespace ioj {
 auto spawn_visibility_blocker(UWorld& world, FTransform const& transform, FName const name)
     -> AActor* {
     auto* const blocker{world.SpawnActor<AActor>(AActor::StaticClass(), transform)};

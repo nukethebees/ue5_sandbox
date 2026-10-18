@@ -18,9 +18,9 @@ struct LineTracesSingleView;
 struct LineTracesSingleConstView;
 struct LineTracesSingleLayoutColumns {
     template <typename T>
-    using ColLayout = ml::native_soa::ColumnLayout<T>;
+    using ColLayout = ioj::native_soa::ColumnLayout<T>;
 
-    ml::native_soa::ColumnLayoutStart LayoutStart{};
+    ioj::native_soa::ColumnLayoutStart LayoutStart{};
 
     ColLayout<float> StartsXsColumn;
     ColLayout<float> StartsYsColumn;
@@ -44,8 +44,8 @@ struct LineTracesSingleLayout {
     using byte_size_type = std::size_t;
 
     static constexpr size_type capacity_granularity{
-        ml::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
+        ioj::native_soa::LayoutPolicy::capacity_granularity};
+    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
 
     static constexpr LineTracesSingleLayoutColumns columns{};
 
@@ -54,8 +54,8 @@ struct LineTracesSingleLayout {
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::capacity_block_bound(columns.EndsZsColumn)};
-    static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
+        ioj::native_soa::capacity_block_bound(columns.EndsZsColumn)};
+    static constexpr size_type max_capacity{ioj::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return blocks == 0 ? 0 : columns.EndsZsColumn.data_end(blocks);
     }
@@ -63,11 +63,11 @@ struct LineTracesSingleLayout {
 };
 
 template <bool Const>
-struct LineTracesSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
+struct LineTracesSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = LineTracesSchema;
     using size_type = std::uint32_t;
     using Layout = LineTracesSingleLayout;
-    using Storage = ml::native_soa::StorageState;
+    using Storage = ioj::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
@@ -85,8 +85,8 @@ struct LineTracesSingleViewImpl : ml::soa_storage_detail::CompactViewOperations 
         , offset_{other.offset_}
         , count_{other.count_} {}
     auto view_starts() const {
-        using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+        using ioj::soa_storage_detail::three_column_view;
+        return three_column_view<ioj::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
             count_,
@@ -95,8 +95,8 @@ struct LineTracesSingleViewImpl : ml::soa_storage_detail::CompactViewOperations 
             Layout::columns.StartsZsColumn);
     }
     auto view_ends() const {
-        using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
+        using ioj::soa_storage_detail::three_column_view;
+        return three_column_view<ioj::Vector3SoAView<Element<float>>>(state_,
                                                                      offset_,
                                                                      count_,
                                                                      Layout::columns.EndsXsColumn,
@@ -116,11 +116,11 @@ struct LineTracesSingleViewImpl : ml::soa_storage_detail::CompactViewOperations 
     }
   private:
     template <typename T>
-    auto make_column_view(ml::native_soa::ColumnLayout<T> const& layout) const {
-        return ml::soa_storage_detail::column_view<std::span<Element<T>>>(
+    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
             state_, offset_, count_, layout);
     }
-    friend ml::soa_storage_detail::CompactViewOperations;
+    friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct LineTracesSingleViewImpl;
     State* state_{};
@@ -131,12 +131,12 @@ struct LineTracesSingleConstView : LineTracesSingleViewImpl<true> {
     using Base = LineTracesSingleViewImpl<true>;
     using Base::Base;
 };
-static_assert(ml::soa_storage_detail::validate_compact_view<LineTracesSingleConstView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<LineTracesSingleConstView>());
 struct LineTracesSingleView : LineTracesSingleViewImpl<false> {
     using Base = LineTracesSingleViewImpl<false>;
     using Base::Base;
 };
-static_assert(ml::soa_storage_detail::validate_compact_view<LineTracesSingleView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<LineTracesSingleView>());
 // Columns:
 // starts_xs: float
 // starts_ys: float
@@ -145,10 +145,10 @@ static_assert(ml::soa_storage_detail::validate_compact_view<LineTracesSingleView
 // ends_ys: float
 // ends_zs: float
 struct LineTraces
-    : protected ml::native_soa::StorageState
-    , ml::native_soa::StorageOperations {
+    : protected ioj::native_soa::StorageState
+    , ioj::native_soa::StorageOperations {
     using soa_schema = LineTracesSchema;
-    using Operations = ml::native_soa::StorageOperations;
+    using Operations = ioj::native_soa::StorageOperations;
     using Layout = LineTracesSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
@@ -223,14 +223,14 @@ struct LineTraces
   private:
     std::pmr::memory_resource* resource_{};
     friend Operations;
-    friend ::ml::soa_storage_detail::StorageRequirements;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
     // Column pointers
     /* **************************************** */
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ml::native_soa::LayoutCursor cursor{blocks};
+        ioj::native_soa::LayoutCursor cursor{blocks};
         return {cursor.column_pointer(data, Layout::columns.StartsXsColumn),
                 cursor.column_pointer(data, Layout::columns.StartsYsColumn),
                 cursor.column_pointer(data, Layout::columns.StartsZsColumn),
@@ -246,7 +246,7 @@ struct LineTraces
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
-        using ml::native_soa::default_construct_n;
+        using ioj::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
         default_construct_n(columns.starts_xs, count);
         default_construct_n(columns.starts_ys, count);
@@ -260,7 +260,7 @@ struct LineTraces
                                  DataPointers<Byte> const& source,
                                  size_type count) {
         auto transfer = [count](auto* dst, auto const* src) {
-            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
         };
         transfer(destination.starts_xs, source.starts_xs);
         transfer(destination.starts_ys, source.starts_ys);
@@ -282,16 +282,16 @@ struct LineTraces
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
-        ml::soa_storage_detail::for_each_removal_run(
+        ioj::soa_storage_detail::for_each_removal_run(
             num_, indices, [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
     }
     template <typename Columns>
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ml::soa_storage_detail::SoaSourceFor<Columns, LineTraces, size_type>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, LineTraces, size_type>
     {
-        using ml::native_soa::source_data;
+        using ioj::native_soa::source_data;
         auto const& starts_view{source.view_starts()};
         auto const& ends_view{source.view_ends()};
         return {source_data(starts_view.xs()),
@@ -306,7 +306,7 @@ struct LineTraces
                         size_type source_first,
                         size_type first,
                         size_type count)
-        requires ml::soa_storage_detail::SoaSourceFor<Columns, LineTraces, size_type>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, LineTraces, size_type>
     {
         transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
@@ -315,7 +315,7 @@ struct LineTraces
                            size_type source_first,
                            size_type first,
                            size_type count)
-        requires ml::soa_storage_detail::SoaSourceFor<Columns, LineTraces, size_type>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, LineTraces, size_type>
     {
         transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }

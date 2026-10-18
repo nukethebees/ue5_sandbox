@@ -327,15 +327,15 @@ void UCollisionGridVisualizationComponent::update_collision_bounds(
     entity_bounds_.Reset();
     entity_bounds_.Reserve(entity_count);
     for (int32 i{}; i < entity_count; ++i) {
-        entity_bounds_.Emplace(ml::to_unreal(::ioj::sim::collision::min_point_at(entity_aabbs, i)),
-                               ml::to_unreal(::ioj::sim::collision::max_point_at(entity_aabbs, i)));
+        entity_bounds_.Emplace(ioj::to_unreal(::ioj::sim::collision::min_point_at(entity_aabbs, i)),
+                               ioj::to_unreal(::ioj::sim::collision::max_point_at(entity_aabbs, i)));
     }
 
     auto const static_count{static_cast<int32>(static_aabbs.num())};
     static_bounds_.SetNumUninitialized(static_count, EAllowShrinking::No);
     for (int32 i{}; i < static_count; ++i) {
-        static_bounds_[i] = FBox3f{ml::to_unreal(::ioj::sim::collision::min_at(static_aabbs, i)),
-                                   ml::to_unreal(::ioj::sim::collision::max_at(static_aabbs, i))};
+        static_bounds_[i] = FBox3f{ioj::to_unreal(::ioj::sim::collision::min_at(static_aabbs, i)),
+                                   ioj::to_unreal(::ioj::sim::collision::max_at(static_aabbs, i))};
     }
 
     if (settings_changed) {
@@ -379,7 +379,7 @@ void UCollisionGridVisualizationComponent::clear() {
 
 auto UCollisionGridVisualizationComponent::CreateSceneProxy() -> FPrimitiveSceneProxy* {
     auto const has_valid_grid{::ioj::sim::collision::is_configured(
-        {{grid_dimensions_.X, grid_dimensions_.Y, grid_dimensions_.Z}, ml::to_native(cell_size_)})};
+        {{grid_dimensions_.X, grid_dimensions_.Y, grid_dimensions_.Z}, ioj::to_native(cell_size_)})};
     auto const has_collision_bounds{collision_bounds_visible_ &&
                                     (!entity_bounds_.IsEmpty() || !static_bounds_.IsEmpty())};
     if (!has_valid_grid || (!show_grid_ && !has_collision_bounds)) {

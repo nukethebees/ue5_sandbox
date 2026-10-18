@@ -46,7 +46,7 @@ void FTurretPresentation::begin_play_presentation(TArray<FTransform> initial_tra
     if (!actor_config) {
         UE_LOG(LogSandbox, Fatal, TEXT("FTurretPresentation actor_config is nullptr."));
     }
-    ml::fatal_if_uobject_ptrs_invalid({
+    ioj::fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(instances),
         SANDBOX_NAMED_UOBJECT_PTR(actor_config->mesh.Get()),
         SANDBOX_NAMED_UOBJECT_PTR(actor_config->team_visual_data.Get()),
@@ -65,8 +65,8 @@ void FTurretPresentation::begin_play_presentation(TArray<FTransform> initial_tra
     auto const rolls{rotations.rolls()};
     for (auto i{ismc_transforms.Num()}; i < count; ++i) {
         ismc_transforms.Emplace(
-            FRotator{ml::to_unreal(::ioj::Rotator3f{pitches[i], yaws[i], rolls[i]})},
-            FVector{ml::to_unreal(::ioj::vector_at(locations, i))});
+            FRotator{ioj::to_unreal(::ioj::Rotator3f{pitches[i], yaws[i], rolls[i]})},
+            FVector{ioj::to_unreal(::ioj::vector_at(locations, i))});
     }
     add_initial_visual_instances();
     validate_array_sizes();
@@ -80,12 +80,12 @@ void FTurretPresentation::update_visual_data() {
             ismc_transforms.RemoveAtSwap(change.index, EAllowShrinking::No);
             instances->RemoveInstance(change.index);
         } else {
-            FTransform const transform{FRotator{ml::to_unreal(change.rotation)},
-                                       FVector{ml::to_unreal(change.location)}};
+            FTransform const transform{FRotator{ioj::to_unreal(change.rotation)},
+                                       FVector{ioj::to_unreal(change.location)}};
             auto const index{instances->AddInstance(transform, is_world_space)};
             check(index == static_cast<int32>(change.index));
             ismc_transforms.Add(transform);
-            auto const colour{colours[ml::to_unreal(change.team)]};
+            auto const colour{colours[ioj::to_unreal(change.team)]};
             TArray<float> data{colour.R, colour.G, colour.B};
             instances->SetCustomData(index, data, false);
         }
@@ -109,7 +109,7 @@ void FTurretPresentation::end_tick_presentation() {
 
 void FTurretPresentation::configure_ismc() {
     instances->SetMobility(EComponentMobility::Static);
-    ml::batch::configure_ismc(*instances,
+    ioj::batch::configure_ismc(*instances,
                               {
                                   .mesh = actor_config->mesh.Get(),
                                   .num_custom_data_floats = n_custom_ismc_floats,
@@ -137,7 +137,7 @@ void FTurretPresentation::add_visual_instances(TArray<FTransform> const& transfo
 
     for (int32 i{0}; i < n_to_add; ++i) {
         auto const base{i * n_custom_ismc_floats};
-        auto const& colour{colour_cache[ml::to_unreal(teams[first_entity_index + i])]};
+        auto const& colour{colour_cache[ioj::to_unreal(teams[first_entity_index + i])]};
         custom_data[base + 0] = colour.R;
         custom_data[base + 1] = colour.G;
         custom_data[base + 2] = colour.B;
@@ -168,7 +168,7 @@ void FTurretPresentation::trigger_death_effects() {
 
         UNiagaraFunctionLibrary::SpawnSystemAtLocation(world,
                                                        explosion_system,
-                                                       FVector{ml::to_unreal(death_locations[i])} +
+                                                       FVector{ioj::to_unreal(death_locations[i])} +
                                                            location_offset,
                                                        FRotator::ZeroRotator,
                                                        scale,
@@ -180,7 +180,7 @@ void FTurretPresentation::trigger_death_effects() {
 
 void FTurretPresentation::validate_array_sizes() const {
     simulation().get_entities().validate();
-    ml::fatal_if_nums_not_equal({
+    ioj::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(static_cast<int32>(simulation().get_num_instances())),
         SANDBOX_NAMED_NUM(ismc_transforms),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
@@ -203,14 +203,14 @@ void FTurretPresentation::draw_debugging_shapes() const {
     auto const ids{entities.entity_ids()};
 
     for (int32 i{0}; i < n; ++i) {
-        auto const turret_location{FVector{ml::to_unreal(::ioj::vector_at(locations, i))}};
+        auto const turret_location{FVector{ioj::to_unreal(::ioj::vector_at(locations, i))}};
 
         if (draw_target_arrows_enabled) {
             auto const target_id{targets[i]};
 
             if (target_id.is_valid()) {
                 auto const target_location{
-                    FVector{ml::to_unreal(::ioj::vector_at(target_locations, i))}};
+                    FVector{ioj::to_unreal(::ioj::vector_at(target_locations, i))}};
                 drawer.draw_line(turret_location, target_location);
             }
         }

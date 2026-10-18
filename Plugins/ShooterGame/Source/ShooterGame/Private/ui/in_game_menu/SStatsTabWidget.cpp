@@ -23,7 +23,7 @@ void SStatsTabWidget::Construct(FArguments const& InArgs) {
                     [
                         SNew(STextBlock)
                             .Text(FText::FromString(TEXT("Stats content goes here")))
-                            .TextStyle(&ml::SandboxStyle::get(), "Sandbox.Text.Widget")
+                            .TextStyle(&ioj::SandboxStyle::get(), "Sandbox.Text.Widget")
                     ]
             ]
     ];

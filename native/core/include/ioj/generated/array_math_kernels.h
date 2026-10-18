@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <span>
 
-namespace ml {
+namespace ioj {
 void add_in_place(std::span<std::int32_t> data, std::int32_t value) noexcept;
 
 void add_in_place(std::span<float> data, float value) noexcept;
@@ -217,4 +217,4 @@ void dot_product_3d(std::span<double const> ax,
                     std::span<double const> by,
                     std::span<double const> bz,
                     std::span<double> out) noexcept;
-} // namespace ml
+} // namespace ioj

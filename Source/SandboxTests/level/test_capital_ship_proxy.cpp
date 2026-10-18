@@ -10,7 +10,7 @@
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
-namespace ml {
+namespace ioj {
 FTestCapitalShipProxyScenario::FTestCapitalShipProxyScenario(FSimulationTestContext& context)
     : FSimulationTestScenario{context} {
     TestCommandBuilder.Do([this] { spawn_proxies(context_.world, context_.config); });
@@ -34,10 +34,10 @@ void FTestCapitalShipProxyScenario::spawn_proxies(UWorld& world,
     default_health = capital_config->max_health;
     overridden_health = default_health + 1234;
 
-    ml::spawn_capital_proxy(
+    ioj::spawn_capital_proxy(
         world, config, checks, default_health_capital_name, FVector::ZeroVector);
 
-    auto* const overridden_health_proxy{ml::spawn_capital_proxy(
+    auto* const overridden_health_proxy{ioj::spawn_capital_proxy(
         world, config, checks, overridden_health_capital_name, FVector{2000.f, 0.f, 0.f})};
     if (!IsValid(overridden_health_proxy)) {
         return;
@@ -51,11 +51,11 @@ void FTestCapitalShipProxyScenario::spawn_proxies(UWorld& world,
 void FTestCapitalShipProxyScenario::resolve_proxy_ids(FProxyEntityMap const& proxy_entities) {
     checks.are_equal(proxy_entities.Num(), 2, TEXT("Correct number of proxies"));
 
-    TArray<ml::FProxyEntityBinding> const bindings{
+    TArray<ioj::FProxyEntityBinding> const bindings{
         {.test_name = default_health_capital_name, .id = &default_health_id},
         {.test_name = overridden_health_capital_name, .id = &overridden_health_id},
     };
-    ml::resolve_proxy_entity_bindings(proxy_entities, bindings, checks);
+    ioj::resolve_proxy_entity_bindings(proxy_entities, bindings, checks);
 
     checks.is_true(default_health_id.is_valid(), TEXT("Nullopt-health capital proxy is bound"));
     checks.is_true(overridden_health_id.is_valid(),

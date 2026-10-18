@@ -257,7 +257,7 @@ auto enum_range_check(LoweringContext& context,
                       std::string const& value) -> std::optional<std::string> {
     if (context.semantic.definitions()
             .enums.enum_array[context.semantic.definitions().enums.index(type)]) {
-        return "static_cast<std::size_t>(" + value + ") < ml::enum_count<" + field_alias + ">()";
+        return "static_cast<std::size_t>(" + value + ") < ioj::enum_count<" + field_alias + ">()";
     }
     if (auto const count{enum_count_value(context, type)}; count.has_value()) {
         return "static_cast<std::uint64_t>(" + value + ") < " + std::to_string(*count);
@@ -480,7 +480,7 @@ auto packed_field_expression(LoweringContext& context, schema::PackedSegmentId p
     -> std::string {
     auto const& field{packed_field};
     auto const value_name{packed_field_value_name(context, field)};
-    return "ml::packed_pack<" +
+    return "ioj::packed_pack<" +
            context.text(
                context.semantic.definitions()
                    .packed_fields.name[context.semantic.definitions().packed_fields.index(field)]) +
@@ -539,7 +539,7 @@ auto packed_value_text(LoweringContext& context,
     auto const field_layouts{packed_field_layouts(ir, packed, type_graph, storage_bits)};
 
     std::vector<TypeDependencyId> dependencies{
-        ir.types.dependency("ml::PackedField", "ioj/packed_value.h"),
+        ir.types.dependency("ioj::PackedField", "ioj/packed_value.h"),
         ir.types.dependency("assert", "cassert"),
         ir.types.dependency("std::strong_ordering", "compare"),
         ir.types.dependency("std::numeric_limits", "limits"),
@@ -564,7 +564,7 @@ auto packed_value_text(LoweringContext& context,
                                .name[context.declarations.packed_values.index(schema)]) +
               " {\n";
     output += "    using storage_type = " + std::string{ir.types.spelling(storage)} + ";\n";
-    output += "    static_assert(ml::valid_packed_storage<storage_type, " +
+    output += "    static_assert(ioj::valid_packed_storage<storage_type, " +
               std::to_string(storage_bits) + ">());\n";
 
     for (auto const layout : field_layouts) {
@@ -595,7 +595,7 @@ auto packed_value_text(LoweringContext& context,
         if (context.semantic.definitions()
                 .packed_fields.kind[context.semantic.definitions().packed_fields.index(*field)] ==
             PackedFieldKind::enumeration) {
-            output += "    static_assert(ml::valid_packed_enum<" + field_alias + ", " +
+            output += "    static_assert(ioj::valid_packed_enum<" + field_alias + ", " +
                       std::to_string(field_bits) + ">());\n";
             output += "    using " +
                       context.text(
@@ -648,7 +648,7 @@ auto packed_value_text(LoweringContext& context,
             context.text(context.semantic.definitions()
                              .packed_fields
                              .name[context.semantic.definitions().packed_fields.index(*field)]) +
-            "_field = ml::PackedField<storage_type, " + packed_field_type_alias(context, *field) +
+            "_field = ioj::PackedField<storage_type, " + packed_field_type_alias(context, *field) +
             ", " + std::to_string(offset) + ", " + std::to_string(field_bits) + ">;\n";
         if (quantized_type.kind() == schema::TypeDefinitionKind::linear_quantized) {
             output += "    inline static constexpr " + packed_field_type_alias(context, *field) +
@@ -1168,7 +1168,7 @@ auto packed_value_text(LoweringContext& context,
         output += "\n    [[nodiscard]] constexpr auto " + accessor + "() const noexcept -> " +
                   field_alias + " {\n";
         output +=
-            "        return ml::packed_extract<" +
+            "        return ioj::packed_extract<" +
             context.text(context.semantic.definitions()
                              .packed_fields
                              .name[context.semantic.definitions().packed_fields.index(field)]) +
@@ -1267,7 +1267,7 @@ auto packed_value_text(LoweringContext& context,
                       " const value) noexcept {\n";
             append_field_validation(context, output, field_layout, "value");
             output +=
-                "        value_ = ml::packed_insert<" +
+                "        value_ = ioj::packed_insert<" +
                 context.text(context.semantic.definitions()
                                  .packed_fields
                                  .name[context.semantic.definitions().packed_fields.index(field)]) +
@@ -1305,7 +1305,7 @@ auto packed_value_text(LoweringContext& context,
         if (context.semantic.definitions()
                 .packed_fields
                 .range_helper[context.semantic.definitions().packed_fields.index(field)]) {
-            dependencies.push_back(ir.types.dependency("ml::range_fits", "ioj/range_fits.h"));
+            dependencies.push_back(ir.types.dependency("ioj::range_fits", "ioj/range_fits.h"));
             output +=
                 "\n    [[nodiscard]] static constexpr auto " +
                 context.text(context.semantic.definitions()
@@ -1314,7 +1314,7 @@ auto packed_value_text(LoweringContext& context,
                 "_range_fits(" + field_alias + " const first, " + field_alias +
                 " const count) noexcept -> bool {\n";
             output +=
-                "        return ml::range_fits(first, count, " +
+                "        return ioj::range_fits(first, count, " +
                 context.text(context.semantic.definitions()
                                  .packed_fields
                                  .name[context.semantic.definitions().packed_fields.index(field)]) +
@@ -1353,7 +1353,7 @@ auto packed_value_text(LoweringContext& context,
             ? "invalid_value"
             : "";
     output += "};\n};\n";
-    output += "static_assert(ml::valid_packed_value_layout<" +
+    output += "static_assert(ioj::valid_packed_value_layout<" +
               context.text(context.declarations.packed_values
                                .name[context.declarations.packed_values.index(schema)]) +
               ">());";

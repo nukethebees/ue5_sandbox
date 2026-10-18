@@ -71,8 +71,8 @@ auto storage_operation_body(LoweringContext& context,
                             std::vector<std::string> arguments = {}) -> Nodes {
     auto& ir{context.ir};
     arguments.insert(arguments.begin(), "*this");
-    return {ir.raw("ml::soa_ops::" + operation + "(" + join(arguments, ", ") + ");",
-                   {ir.types.dependency("ml::soa_ops", "SandboxCore/soa_storage_ops.h")})};
+    return {ir.raw("ioj::soa_ops::" + operation + "(" + join(arguments, ", ") + ");",
+                   {ir.types.dependency("ioj::soa_ops", "SandboxCore/soa_storage_ops.h")})};
 }
 
 auto has_custom_remove_at_swap(LoweringContext& context, std::span<ResolvedMemberId const> members)
@@ -105,7 +105,7 @@ auto explicit_remove_at_swap_body(LoweringContext& context,
                                            *operation),
                           {ir.named("index"), ir.named("count"), ir.named("allow_shrinking")})
                 : ir.call(
-                      container_function(context, "ml::remove_at_swap"),
+                      container_function(context, "ioj::remove_at_swap"),
                       {ir.named(context.text(resolved_store.name[resolved_store.index(member)])),
                        ir.named("index"),
                        ir.named("count"),
@@ -360,11 +360,11 @@ auto soa_storage_functions(LoweringContext& context,
                                            ir.subscript(source, ir.named("src_i"))));
             } else {
                 copy_one.add(ir.expression_statement(
-                    ir.call(container_function(context, "ml::copy_element"),
+                    ir.call(container_function(context, "ioj::copy_element"),
                             {destination, ir.named("dst_i"), source, ir.named("src_i")})));
             }
             copy_range.add(ir.expression_statement(ir.call(
-                container_function(context, "ml::copy_elements"),
+                container_function(context, "ioj::copy_elements"),
                 {destination, ir.named("dst_i"), source, ir.named("src_i"), ir.named("count")})));
         }
         result.push_back([&] {
@@ -450,7 +450,7 @@ auto soa_storage_functions(LoweringContext& context,
                                 context.declarations.soas
                                     .members[context.declarations.soas.index(schema)])[index])]
                     ? ir.call(ir.member_access(destination, "append_from"), {source})
-                    : ir.call(container_function(context, "ml::append_from"),
+                    : ir.call(container_function(context, "ioj::append_from"),
                               {destination, source})};
             calls.add(ir.expression_statement(invocation));
         }
@@ -469,8 +469,8 @@ auto soa_storage_functions(LoweringContext& context,
             ir.set_function_requires_clause(
                 created_function,
                 ir.template_id(
-                    ir.named("ml::SupportsApplyArrayPairsWith",
-                             {ir.types.dependency("ml::SupportsApplyArrayPairsWith",
+                    ir.named("ioj::SupportsApplyArrayPairsWith",
+                             {ir.types.dependency("ioj::SupportsApplyArrayPairsWith",
                                                   "ioj/soa_concepts.h")}),
                     {ir.type_reference(ir.types.intern(context.text(
                          context.declarations.soas.name[context.declarations.soas.index(schema)]))),
@@ -510,9 +510,9 @@ auto soa_permutation_functions(LoweringContext& context, std::span<ResolvedMembe
                      ir.strings.intern("scratch_indices"))});
             ir.set_function_body(
                 created_function,
-                {ir.raw("ml::soa_ops::sort(*this, std::forward<Compare>(compare), "
+                {ir.raw("ioj::soa_ops::sort(*this, std::forward<Compare>(compare), "
                         "scratch_indices);",
-                        {ir.types.dependency("ml::soa_ops", "SandboxCore/soa_storage_ops.h"),
+                        {ir.types.dependency("ioj::soa_ops", "SandboxCore/soa_storage_ops.h"),
                          ir.types.dependency("std::forward", "utility")})});
             ir.function_flags(created_function).set_is_inline(true);
             ir.function_flags(created_function).set_define_in_header(true);
@@ -532,8 +532,8 @@ auto soa_permutation_functions(LoweringContext& context, std::span<ResolvedMembe
                     ir.strings.intern("scratch_indices"))});
             ir.set_function_body(
                 created_function,
-                {ir.raw("ml::soa_ops::sort<Compare>(*this, scratch_indices);",
-                        {ir.types.dependency("ml::soa_ops", "SandboxCore/soa_storage_ops.h")})});
+                {ir.raw("ioj::soa_ops::sort<Compare>(*this, scratch_indices);",
+                        {ir.types.dependency("ioj::soa_ops", "SandboxCore/soa_storage_ops.h")})});
             ir.function_flags(created_function).set_is_inline(true);
             ir.function_flags(created_function).set_define_in_header(true);
             ir.set_function_template(created_function,

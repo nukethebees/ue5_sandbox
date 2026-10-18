@@ -1,6 +1,6 @@
 #include "SpaceGamePresentation/entities/TestBatchActorCore.h"
 
-namespace ml::batch {
+namespace ioj::batch {
 void configure_ismc(UInstancedStaticMeshComponent& instances, FIsmcConfig const& config) {
     instances.SetMobility(EComponentMobility::Movable);
     instances.SetStaticMesh(config.mesh);

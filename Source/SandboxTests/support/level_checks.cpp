@@ -2,7 +2,7 @@
 
 #include <SandboxTests/support/SoftTestAssertions.h>
 
-namespace ml {
+namespace ioj {
 void check_all_teams_are(TConstArrayView<ETestTeam> const teams,
                          ETestTeam const expected_team,
                          FSoftTestAssertions& checks,

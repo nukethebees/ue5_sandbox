@@ -26,5 +26,5 @@ struct SHOOTERGAME_API FLandMinePayload {
   private:
     FTimerHandle timer_handle{};
 
-    static constexpr auto log{ml::LogMsgMixin<"FLandMinePayload">{}};
+    static constexpr auto log{ioj::LogMsgMixin<"FLandMinePayload">{}};
 };

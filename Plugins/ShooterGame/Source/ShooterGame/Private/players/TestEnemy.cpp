@@ -161,7 +161,7 @@ bool ATestEnemy::attack_actor(AActor& target) {
     UE_LOG(LogShooterGameCharacter,
            Warning,
            TEXT("%s"),
-           *ml::make_unhandled_enum_case_warning(combat_profile.attack_mode));
+           *ioj::make_unhandled_enum_case_warning(combat_profile.attack_mode));
 
     return false;
 }

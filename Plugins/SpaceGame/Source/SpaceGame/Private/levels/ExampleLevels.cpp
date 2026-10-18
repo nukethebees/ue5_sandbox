@@ -1,6 +1,6 @@
 #include <SpaceGame/levels/ExampleLevels.h>
 
-namespace ml::example_levels {
+namespace ioj::example_levels {
 auto make_native_example() -> FLevelDefinition {
     FLevelBuilder builder;
     builder.set_metadata(FLevelMetadata{

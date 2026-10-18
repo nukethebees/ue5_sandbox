@@ -27,11 +27,11 @@ void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
                            std::vector<std::uint32_t>& local_indices_to_remove,
                            EntityDeathInfo& entity_death_info,
                            EntityLedger& ledger,
-                           ml::FrameMemoryResource* const scratch_resource) {
+                           ioj::FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("resolve_damage_events");
 
     auto const n_direct_events{damage_events.num()};
-    ml::FrameArray<Health> applied_damages{scratch_resource};
+    ioj::FrameArray<Health> applied_damages{scratch_resource};
     applied_damages.set_num(n_direct_events);
     std::ranges::fill(applied_damages, Health{});
     auto const removal_count{local_indices_to_remove.size()};

@@ -4,7 +4,7 @@
 #include "Components/GridSlot.h"
 #include "SandboxGameShared/utilities/actor_utils.h"
 
-namespace ml {
+namespace ioj {
 auto get_grid_outer_coords(UGridPanel const& grid) -> FCoord {
     auto const slots{grid.GetSlots()};
 

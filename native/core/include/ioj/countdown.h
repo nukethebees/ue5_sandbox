@@ -4,7 +4,7 @@
 #include <concepts>
 #include <span>
 
-namespace ml {
+namespace ioj {
 template <std::signed_integral Counter>
 void tick_countdowns(std::span<Counter> const counters,
                      Counter& cleaner_counter,

@@ -24,7 +24,7 @@ struct Layout {
 };
 inline constexpr auto layout{[] {
     Layout result;
-    for (auto const type : ml::EnumTraits<EntityType>::values) {
+    for (auto const type : ioj::EnumTraits<EntityType>::values) {
         result.capacities[type] = has_health(type) ? entity_lifetime_capacities[type] : 0;
         result.offsets[type] = result.capacity;
         result.capacity += result.capacities[type];
@@ -114,7 +114,7 @@ class HealthTable {
     void initialise_rows(EntityFrameIndex const first,
                          std::span<Health const> const initial_values) {
         [[maybe_unused]] auto const count{static_cast<EntityFrameIndex>(initial_values.size())};
-        assert(ml::range_fits(first,
+        assert(ioj::range_fits(first,
                               count,
                               EntityInstanceHandle::index_minimum,
                               EntityInstanceHandle::index_maximum));
@@ -127,7 +127,7 @@ class HealthTable {
     void initialise_rows(EntityFrameIndex const first,
                          EntityFrameIndex const count,
                          Health const initial_value) {
-        assert(ml::range_fits(first,
+        assert(ioj::range_fits(first,
                               count,
                               EntityInstanceHandle::index_minimum,
                               EntityInstanceHandle::index_maximum));
@@ -152,7 +152,7 @@ class HealthTable {
     void apply_permutation(std::span<std::int32_t> const order) {
         assert(order.size() <= health_storage::layout.capacities[Type]);
         constexpr auto base{health_storage::layout.offsets[Type]};
-        ml::apply_permutation(std::span{values_}.subspan(base, order.size()), order);
+        ioj::apply_permutation(std::span{values_}.subspan(base, order.size()), order);
     }
   private:
     std::vector<Health> values_;

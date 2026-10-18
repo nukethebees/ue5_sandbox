@@ -20,7 +20,7 @@ TEST_CLASS(SaveGameViewerWidget, "Sandbox.UnitTests")
 {
     TEST_METHOD(DisplaysProfilesOutcomesAndReports)
     {
-        auto const world_result{ml::get_editor_world()};
+        auto const world_result{ioj::get_editor_world()};
         if (!TestRunner->TestTrue(TEXT("Editor world is available"), world_result.has_value())) {
             return;
         }

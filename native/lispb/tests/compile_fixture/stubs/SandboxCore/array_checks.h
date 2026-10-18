@@ -4,7 +4,7 @@
 
 #include <initializer_list>
 
-namespace ml {
+namespace ioj {
 
 inline void fatal_if_nums_not_equal(std::initializer_list<int32> const nums) {
     if (nums.size() < 2) {
@@ -16,4 +16,4 @@ inline void fatal_if_nums_not_equal(std::initializer_list<int32> const nums) {
     }
 }
 
-} // namespace ml
+} // namespace ioj

@@ -40,7 +40,7 @@ struct Buffers {
 using Kernel = void (*)(Buffers&, float) noexcept;
 
 void run_fused(Buffers& buffers, float const alpha) noexcept {
-    ml::lerp_3d_in_place(buffers.current_x,
+    ioj::lerp_3d_in_place(buffers.current_x,
                          buffers.current_y,
                          buffers.current_z,
                          buffers.target_x,
@@ -50,9 +50,9 @@ void run_fused(Buffers& buffers, float const alpha) noexcept {
 }
 
 void run_three_1d(Buffers& buffers, float const alpha) noexcept {
-    ml::lerp_1d_in_place(buffers.current_x, buffers.target_x, alpha);
-    ml::lerp_1d_in_place(buffers.current_y, buffers.target_y, alpha);
-    ml::lerp_1d_in_place(buffers.current_z, buffers.target_z, alpha);
+    ioj::lerp_1d_in_place(buffers.current_x, buffers.target_x, alpha);
+    ioj::lerp_1d_in_place(buffers.current_y, buffers.target_y, alpha);
+    ioj::lerp_1d_in_place(buffers.current_z, buffers.target_z, alpha);
 }
 
 void run_benchmark(benchmark::State& state, Kernel const kernel, std::int32_t const count) {

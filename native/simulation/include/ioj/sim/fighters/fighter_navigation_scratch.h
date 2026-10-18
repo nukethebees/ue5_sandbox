@@ -21,14 +21,14 @@ struct NavigationScratch {
         , trace_choice_indices{scratch_resource}
         , observed_risk_tiers{scratch_resource} {}
 
-    ml::FrameArray<std::uint32_t> ready_fighter_indices;
+    ioj::FrameArray<std::uint32_t> ready_fighter_indices;
     FrameVectors3f line_of_sight_starts;
     FrameVectors3f line_of_sight_ends;
-    ml::FrameArray<collision::SphereInBoundsResult> line_of_sight_results;
+    ioj::FrameArray<collision::SphereInBoundsResult> line_of_sight_results;
     TraceHits trace_hits;
-    ml::FrameArray<std::uint32_t> blocked_fighter_indices;
-    ml::FrameArray<std::uint32_t> trace_fighter_indices;
-    ml::FrameArray<std::int8_t> trace_choice_indices;
-    ml::FrameArray<std::uint8_t> observed_risk_tiers;
+    ioj::FrameArray<std::uint32_t> blocked_fighter_indices;
+    ioj::FrameArray<std::uint32_t> trace_fighter_indices;
+    ioj::FrameArray<std::int8_t> trace_choice_indices;
+    ioj::FrameArray<std::uint8_t> observed_risk_tiers;
 };
 }

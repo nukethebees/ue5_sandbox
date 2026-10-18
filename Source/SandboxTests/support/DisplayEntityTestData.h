@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace ml::tests {
+namespace ioj::tests {
 struct FDisplayEntityTestData {
     void add_defaulted(std::int32_t const count) {
         motion.add_defaulted(count);

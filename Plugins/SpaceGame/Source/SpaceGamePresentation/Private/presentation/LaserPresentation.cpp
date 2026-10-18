@@ -91,11 +91,11 @@ void FLaserPresentation::configure_ismc() {
 auto FLaserPresentation::source_colour(::ioj::sim::LaserSource const source) const -> FLinearColor {
     switch (source.type) {
         case ::ioj::sim::EntityType::PlayerShip:
-            return player_colours_[ml::to_unreal(source.team)];
+            return player_colours_[ioj::to_unreal(source.team)];
         case ::ioj::sim::EntityType::Fighter:
-            return fighter_colours_[ml::to_unreal(source.team)];
+            return fighter_colours_[ioj::to_unreal(source.team)];
         case ::ioj::sim::EntityType::Turret:
-            return turret_colours_[ml::to_unreal(source.team)];
+            return turret_colours_[ioj::to_unreal(source.team)];
         default:
             return FLinearColor::White;
     }
@@ -166,20 +166,20 @@ void FLaserPresentation::queue_hit_sparks() {
     auto const hit_details{simulation().get_hits()};
     auto const hit_ticks{simulation().get_hit_ticks()};
     auto const hit_ordinals{simulation().get_hit_ordinals()};
-    auto const count{ml::num(hit_details)};
+    auto const count{ioj::num(hit_details)};
     auto const& style{actor_config->impact_sparks};
     auto const locations{hit_details.view_locations()};
     auto const sources{hit_details.sources()};
     auto const directions{hit_details.view_emission_directions()};
 
     for (int32 index{0}; index < count; ++index) {
-        auto const location{ml::to_unreal(::ioj::vector_at(locations, index))};
+        auto const location{ioj::to_unreal(::ioj::vector_at(locations, index))};
         auto const colour{source_colour(sources[index])};
         spark_effects_->queue_burst({
             .emission =
                 {
                     .location = location,
-                    .direction = ml::to_unreal(::ioj::vector_at(directions, index)),
+                    .direction = ioj::to_unreal(::ioj::vector_at(directions, index)),
                     .colour = FVector3f{colour.R, colour.G, colour.B},
                     .seed = SpaceGame::LaserPresentation::Private::make_seed(
                         hit_ticks[index], location, hit_ordinals[index]),
@@ -191,7 +191,7 @@ void FLaserPresentation::queue_hit_sparks() {
 
 void FLaserPresentation::validate_array_sizes() const {
     simulation().get_entities().validate();
-    ml::fatal_if_nums_not_equal({
+    ioj::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(visible_indices_.Num()),
         SANDBOX_NAMED_NUM(instances->get_instance_count()),
     });

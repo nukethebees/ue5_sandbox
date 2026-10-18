@@ -5,7 +5,7 @@
 
 #include "ioj/sim/missions/mission_mode.h"
 #include "SpaceGame/missions/TestMissionMode.h"
-namespace ml {
+namespace ioj {
 [[nodiscard]] constexpr auto to_native(ETestMissionMode const value) noexcept
     -> ::ioj::sim::MissionMode {
     switch (value) {
@@ -54,4 +54,4 @@ static_assert(static_cast<int>(ETestMissionMode::KillEnemies) ==
               static_cast<int>(::ioj::sim::MissionMode::KillEnemies));
 static_assert(static_cast<int>(ETestMissionMode::KillEnemiesWithinTime) ==
               static_cast<int>(::ioj::sim::MissionMode::KillEnemiesWithinTime));
-} // namespace ml
+} // namespace ioj

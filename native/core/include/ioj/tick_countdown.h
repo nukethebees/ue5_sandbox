@@ -15,7 +15,7 @@
 #include <utility>
 #include <vector>
 
-namespace ml {
+namespace ioj {
 template <std::signed_integral Counter>
 class TickCountdownView {
   public:
@@ -91,7 +91,7 @@ class TickCountdown {
     }
 
     void tick() noexcept {
-        ml::tick_countdowns<counter_type>(counters(), cleaner_counter_, clean_interval_);
+        ioj::tick_countdowns<counter_type>(counters(), cleaner_counter_, clean_interval_);
     }
 
     [[nodiscard]] auto is_ready(size_type const index) const noexcept -> bool {
@@ -115,7 +115,7 @@ class TickCountdown {
 
     void consume(size_type const index) noexcept { (void)try_consume(index); }
 
-    void consume() noexcept { ml::consume_ready_countdowns(counters(), tick_value_); }
+    void consume() noexcept { ioj::consume_ready_countdowns(counters(), tick_value_); }
 
     void reset() {
         counters_.clear();
@@ -133,7 +133,7 @@ class TickCountdown {
     void add_uninitialised(size_type const count) { add_zeroed(count); }
 
     void remove_at_swap(size_type const index, size_type const count) {
-        ml::remove_at_swap(counters_, index, count);
+        ioj::remove_at_swap(counters_, index, count);
     }
 
     void set_num(size_type const count) { counters_.resize(static_cast<std::size_t>(count)); }
@@ -145,7 +145,7 @@ class TickCountdown {
     }
 
     void apply_permutation(std::span<std::int32_t> const indices) {
-        ml::apply_permutation(counters(), indices);
+        ioj::apply_permutation(counters(), indices);
     }
 
     [[nodiscard]] auto num() const noexcept -> size_type {

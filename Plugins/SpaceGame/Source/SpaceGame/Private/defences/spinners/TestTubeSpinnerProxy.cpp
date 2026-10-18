@@ -30,7 +30,7 @@ void ATestTubeSpinnerProxy::add_fire_points(int32 const n) {
             MakeUniqueObjectName(this, UArrowComponent::StaticClass(), TEXT("FirePoint"))};
 
         auto* fire_point{
-            ml::create_attached_instance_component<UArrowComponent>(*this, name, *mesh)};
+            ioj::create_attached_instance_component<UArrowComponent>(*this, name, *mesh)};
         if (!fire_point) {
             UE_LOG(LogSandboxLearning,
                    Warning,
@@ -46,10 +46,10 @@ void ATestTubeSpinnerProxy::add_fire_point() {
 }
 
 void ATestTubeSpinnerProxy::remove_fire_points(int32 const n) {
-    ml::destroy_components_at_array_end(fire_points, n);
+    ioj::destroy_components_at_array_end(fire_points, n);
 }
 void ATestTubeSpinnerProxy::remove_all_fire_points() {
-    ml::destroy_components_array(fire_points);
+    ioj::destroy_components_array(fire_points);
 }
 void ATestTubeSpinnerProxy::remove_fire_point() {
     remove_fire_points(1);
@@ -81,11 +81,11 @@ void ATestTubeSpinnerProxy::set_random_active_fire_point() {
     initial_active_fire_point = FMath::RandRange(0, n_fire_points);
 }
 void ATestTubeSpinnerProxy::set_random_active_fire_point_to_all_instances() {
-    ml::for_each_instance(*this, [](ThisClass& x) { x.set_random_active_fire_point(); });
+    ioj::for_each_instance(*this, [](ThisClass& x) { x.set_random_active_fire_point(); });
 }
 
 void ATestTubeSpinnerProxy::apply_asset_configuration() {
-    auto const* const config{ml::resolve_proxy_level_config(*this)};
+    auto const* const config{ioj::resolve_proxy_level_config(*this)};
     if (!IsValid(config)) {
         UE_LOG(LogSandboxLearning,
                Warning,
@@ -131,7 +131,7 @@ void ATestTubeSpinnerProxy::apply_asset_configuration() {
 void ATestTubeSpinnerProxy::apply_asset_configuration_to_all_instances() {
     FScopedTransaction const transaction{
         NSLOCTEXT("SpinnerProxy", "ApplyAll", "Apply configuration to all spinners")};
-    ml::for_each_instance(*this, [](ThisClass& x) { x.apply_asset_configuration(); });
+    ioj::for_each_instance(*this, [](ThisClass& x) { x.apply_asset_configuration(); });
 }
 
 #endif

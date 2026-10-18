@@ -16,7 +16,7 @@ auto path(FStringView const source) -> std::filesystem::path {
     return std::filesystem::path{*FString{source}};
 }
 auto result(std::expected<void, std::string> value) -> std::expected<void, FString> {
-    return value.transform_error([](auto const& error) { return ml::to_fstring(error); });
+    return value.transform_error([](auto const& error) { return ioj::to_fstring(error); });
 }
 }
 using namespace s7_source_session_detail;
@@ -107,7 +107,7 @@ auto FS7LevelSourceSession::path() const -> FString {
     return FString{session_.path().generic_wstring().c_str()};
 }
 auto FS7LevelSourceSession::buffer() const -> FString {
-    return ml::to_fstring(session_.buffer());
+    return ioj::to_fstring(session_.buffer());
 }
 auto FS7LevelSourceSession::revision() const -> uint64 {
     return session_.state().revision;
@@ -126,7 +126,7 @@ auto FS7LevelSourceSession::has_unapplied_buffer(FStringView const synchronized_
     return session_.state().unapplied(text(synchronized_digest));
 }
 auto FS7LevelSourceSession::source_digest(FStringView const source) -> FString {
-    return ml::to_fstring(levels::authoring::SourceSession::source_digest(text(source)));
+    return ioj::to_fstring(levels::authoring::SourceSession::source_digest(text(source)));
 }
 
 auto FS7LevelSourceSession::read() const

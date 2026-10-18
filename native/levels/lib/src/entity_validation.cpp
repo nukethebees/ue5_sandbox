@@ -36,13 +36,13 @@ auto validate_entities(LevelDefinition::Components const& definition, Diagnostic
         }
 
         state.player_found = state.player_found || is_player;
-        if (!std::ranges::contains(ml::EnumTraits<Team>::values, entity.team)) {
+        if (!std::ranges::contains(ioj::EnumTraits<Team>::values, entity.team)) {
             result.emplace_back(DiagnosticCode::UnsupportedTeam,
                                 "level.entities.team",
                                 entity_owner + " has an invalid team");
         }
 
-        if (!std::ranges::contains(ml::EnumTraits<EntityArchetype>::values, entity.archetype)) {
+        if (!std::ranges::contains(ioj::EnumTraits<EntityArchetype>::values, entity.archetype)) {
             result.emplace_back(DiagnosticCode::UnsupportedArchetype,
                                 "level.entities.archetype",
                                 entity_owner + " has an invalid archetype");
@@ -54,7 +54,7 @@ auto validate_entities(LevelDefinition::Components const& definition, Diagnostic
         }
 
         auto const placement_is_finite{
-            ml::is_finite(entity.position) && std::isfinite(entity.rotation.pitch) &&
+            ioj::is_finite(entity.position) && std::isfinite(entity.rotation.pitch) &&
             std::isfinite(entity.rotation.yaw) && std::isfinite(entity.rotation.roll)};
         if (!placement_is_finite) {
             result.emplace_back(DiagnosticCode::InvalidPlacement,

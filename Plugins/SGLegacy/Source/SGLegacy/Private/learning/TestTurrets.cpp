@@ -77,14 +77,14 @@ auto FTestTurretsSearchData::num_turrets_to_move() const -> int32 {
 }
 
 void FTestTurretsSearchData::add_uninitialised(int32 const n) {
-    ml::invoke_on_all([n](auto& array) { array.AddDefaulted(n); },
+    ioj::invoke_on_all([n](auto& array) { array.AddDefaulted(n); },
                       body_meshes,
                       cannon_meshes,
                       yaw_pivots,
                       pitch_pivots,
                       collision_shapes);
 
-    ml::invoke_on_all([n](auto& array) { array.AddUninitialized(n); },
+    ioj::invoke_on_all([n](auto& array) { array.AddUninitialized(n); },
                       location_xs,
                       location_ys,
                       location_zs,
@@ -93,18 +93,18 @@ void FTestTurretsSearchData::add_uninitialised(int32 const n) {
 }
 
 void FTestTurretsSearchData::reset() {
-    ml::invoke_on_all([](auto& x) { ml::destroy_components_array(x); },
+    ioj::invoke_on_all([](auto& x) { ioj::destroy_components_array(x); },
                       body_meshes,
                       cannon_meshes,
                       yaw_pivots,
                       pitch_pivots,
                       collision_shapes);
 
-    ml::reset(
+    ioj::reset(
         location_xs, location_ys, location_zs, yaw_radians, to_attack, attack_targets, healths);
 }
 bool FTestTurretsSearchData::array_sizes_consistent() const {
-    return ml::all_num_equal(body_meshes,
+    return ioj::all_num_equal(body_meshes,
                              cannon_meshes,
                              yaw_pivots,
                              pitch_pivots,
@@ -139,7 +139,7 @@ auto FTestTurretsAttackData::num_turrets_to_move() const -> int32 {
     return to_search.Num();
 }
 bool FTestTurretsAttackData::array_sizes_consistent() const {
-    return ml::all_num_equal(body_meshes,
+    return ioj::all_num_equal(body_meshes,
                              cannon_meshes,
                              yaw_pivots,
                              pitch_pivots,
@@ -159,14 +159,14 @@ bool FTestTurretsAttackData::array_sizes_consistent() const {
                              firing_cooldowns);
 }
 void FTestTurretsAttackData::reset() {
-    ml::invoke_on_all([](auto& x) { ml::destroy_components_array(x); },
+    ioj::invoke_on_all([](auto& x) { ioj::destroy_components_array(x); },
                       body_meshes,
                       cannon_meshes,
                       yaw_pivots,
                       pitch_pivots,
                       collision_shapes);
 
-    ml::reset(yaw_radians, yaw_radians, target_pitch_radians, target_yaw_radians);
+    ioj::reset(yaw_radians, yaw_radians, target_pitch_radians, target_yaw_radians);
 }
 
 ATestTurrets::ATestTurrets()
@@ -197,7 +197,7 @@ void ATestTurrets::OnConstruction(FTransform const& transform) {
 void ATestTurrets::BeginPlay() {
     Super::BeginPlay();
 
-    ml::fatal_if_uobject_ptrs_invalid({
+    ioj::fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(turret_config),
     });
     if (!turret_config->is_ready()) {
@@ -338,7 +338,7 @@ void ATestTurrets::update_target_rotations() {
     // Update yaws
     using T = float;
     for (int32 i{0}; i < n; ++i) {
-        ml::compute_desired_yaws_radians(TConstArrayView<T>{attacking.location_xs},
+        ioj::compute_desired_yaws_radians(TConstArrayView<T>{attacking.location_xs},
                                          TConstArrayView<T>{attacking.location_ys},
                                          TConstArrayView<T>{attacking.target_location_xs},
                                          TConstArrayView<T>{attacking.target_location_ys},
@@ -346,7 +346,7 @@ void ATestTurrets::update_target_rotations() {
     }
 }
 void ATestTurrets::integrate_rotations(float const dt) {
-    ml::rotate_towards_1d_radians_normalised_in_place(
+    ioj::rotate_towards_1d_radians_normalised_in_place(
         TArrayView<float>{attacking.yaw_radians},
         TConstArrayView<float>{attacking.target_yaw_radians},
         FMath::DegreesToRadians(yaw_rotation_speed_degrees),
@@ -520,7 +520,7 @@ void ATestTurrets::create_turrets(int32 const n) {
         pitch_pivot->SetupAttachment(yaw_pivot);
         cannon->SetupAttachment(pitch_pivot);
 
-        ml::register_components(collision, yaw_pivot, pitch_pivot, body, cannon);
+        ioj::register_components(collision, yaw_pivot, pitch_pivot, body, cannon);
 
         AddInstanceComponent(collision);
         // We use the first turret for positioning components

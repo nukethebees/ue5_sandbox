@@ -35,11 +35,11 @@ void UActorDescriptionScannerComponent::perform_raycast(APlayerController const&
     query_params.AddIgnoredActor(GetOwner());
 
     bool const hit{world->LineTraceSingleByChannel(
-        hit_result, start, end, ml::collision::description, query_params)};
+        hit_result, start, end, ioj::collision::description, query_params)};
 
     AActor* hit_actor{hit ? hit_result.GetActor() : nullptr};
     if (hit_actor) {
-        logger.log_very_verbose(TEXT("Hit %s"), *ml::get_best_display_name(*hit_actor));
+        logger.log_very_verbose(TEXT("Hit %s"), *ioj::get_best_display_name(*hit_actor));
     }
 
     // Check if hit actor implements IDescribable
@@ -61,10 +61,10 @@ void UActorDescriptionScannerComponent::perform_raycast(APlayerController const&
             update_outline(pc, *hit_actor);
 
             logger.log_very_verbose(TEXT("%s implements IDescribable"),
-                                    *ml::get_best_display_name(*hit_actor));
+                                    *ioj::get_best_display_name(*hit_actor));
         } else {
             logger.log_very_verbose(TEXT("%s doesn't implement IDescribable"),
-                                    *ml::get_best_display_name(*hit_actor));
+                                    *ioj::get_best_display_name(*hit_actor));
             on_target_screen_bounds_cleared.ExecuteIfBound();
         }
     } else {
@@ -82,7 +82,7 @@ void UActorDescriptionScannerComponent::set_hud_widget(UItemDescriptionHUDWidget
 }
 void UActorDescriptionScannerComponent::update_outline(APlayerController const& pc,
                                                        AActor const& actor) {
-    auto const box{ml::get_static_meshes_bounding_box(actor)};
-    auto const corners{ml::get_box_corners(box)};
+    auto const box{ioj::get_static_meshes_bounding_box(actor)};
+    auto const corners{ioj::get_box_corners(box)};
     on_target_screen_bounds_update.ExecuteIfBound(corners);
 }

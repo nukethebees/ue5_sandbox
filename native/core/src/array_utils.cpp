@@ -1,6 +1,6 @@
 #include <ioj/array_utils.h>
 
-namespace ml::kernel {
+namespace ioj::kernel {
 auto is_sorted_desc(std::int32_t const* const values, std::uint32_t const count) noexcept -> bool {
     for (std::uint32_t i{1}; i < count; ++i) {
         if (values[i - 1] < values[i]) {

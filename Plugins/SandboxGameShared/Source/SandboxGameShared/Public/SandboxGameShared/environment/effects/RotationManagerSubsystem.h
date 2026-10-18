@@ -20,7 +20,7 @@ class URotatingActorComponent;
 UCLASS()
 class SANDBOXGAMESHARED_API URotationManagerSubsystem
     : public UTickableWorldSubsystem
-    , public ml::LogMsgMixin<"URotationManagerSubsystem", LogSandboxGameShared> {
+    , public ioj::LogMsgMixin<"URotationManagerSubsystem", LogSandboxGameShared> {
     GENERATED_BODY()
   public:
     void add(USceneComponent& scene_component, URotatingActorComponent& component);

@@ -69,7 +69,7 @@ enum class EntityType : EntityTypeUnderlying {
 }
 
 } // namespace ioj::sim
-namespace ml {
+namespace ioj {
 template <>
 struct EnumTraits<::ioj::sim::EntityType> {
     inline static constexpr std::array values{::ioj::sim::EntityType::PlayerShip,
@@ -83,4 +83,4 @@ template <>
 [[nodiscard]] constexpr auto enum_count<::ioj::sim::EntityType>() noexcept -> std::size_t {
     return 5;
 }
-} // namespace ml
+} // namespace ioj

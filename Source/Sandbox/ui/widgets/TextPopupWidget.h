@@ -13,7 +13,7 @@ class SBox;
 
 class STextPopupWidget
     : public SCompoundWidget
-    , public ml::LogMsgMixin<"STextPopupWidget", LogSandboxUI> {
+    , public ioj::LogMsgMixin<"STextPopupWidget", LogSandboxUI> {
   public:
     // clang-format off
     SLATE_BEGIN_ARGS(STextPopupWidget) 

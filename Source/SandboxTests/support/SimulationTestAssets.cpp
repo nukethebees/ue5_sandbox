@@ -9,7 +9,7 @@
 #include <UObject/SoftObjectPtr.h>
 #include <UObject/UObjectGlobals.h>
 
-namespace ml {
+namespace ioj {
 auto load_default_level_config() -> USpaceGameLevelConfig* {
     static TSoftObjectPtr<USpaceGameLevelConfig> const default_config{
         FSoftObjectPath{TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/"

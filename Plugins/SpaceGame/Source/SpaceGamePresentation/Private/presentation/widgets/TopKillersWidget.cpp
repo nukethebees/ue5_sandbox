@@ -49,7 +49,7 @@ auto UTopKillersWidget::RebuildWidget() -> TSharedRef<SWidget> {
     return hud_style_ ? ioj::make_hud_panel(hud_style_.GetValue(), content) : content;
 }
 
-void UTopKillersWidget::set_top_killers(ml::ship_hud::FTopKillerEntries const& new_entries) {
+void UTopKillersWidget::set_top_killers(ioj::ship_hud::FTopKillerEntries const& new_entries) {
     top_killers = new_entries;
 
     rebuild_table();
@@ -179,19 +179,19 @@ void UTopKillersWidget::rebuild_table() {
                   column_entity,
                   entity_alignment,
                   FText::Format(INVTEXT("{0} {1}"),
-                                FText::FromString(ml::get_entity_class_name(
+                                FText::FromString(ioj::get_entity_class_name(
                                     top_killers.entity_types[entry_index])),
                                 top_killers.entity_ids[entry_index].index()));
         add_value(
             FString::Printf(TEXT("type_%d"), entry_index),
             column_type,
             entity_alignment,
-            FText::FromString(ml::get_entity_display_name(top_killers.entity_types[entry_index])));
+            FText::FromString(ioj::get_entity_display_name(top_killers.entity_types[entry_index])));
         auto* const team_text{add_value(FString::Printf(TEXT("team_%d"), entry_index),
                                         column_team,
                                         data_alignment,
-                                        FText::FromString(ml::to_fstring(ioj::to_string(
-                                            ml::to_native(top_killers.teams[entry_index])))))};
+                                        FText::FromString(ioj::to_fstring(ioj::to_string(
+                                            ioj::to_native(top_killers.teams[entry_index])))))};
         add_value(FString::Printf(TEXT("kills_%d"), entry_index),
                   column_kills,
                   data_alignment,

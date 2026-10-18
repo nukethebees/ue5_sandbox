@@ -56,7 +56,7 @@ auto FRowsConstView::get_const_view(int32 const offset, int32 const count) const
 }
 
 auto FRowsConstView::num() const noexcept -> int32 {
-    return ml::num(ids);
+    return ioj::num(ids);
 }
 
 auto FRowsConstView::is_empty() const noexcept -> bool {
@@ -64,7 +64,7 @@ auto FRowsConstView::is_empty() const noexcept -> bool {
 }
 
 void FRowsConstView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FRowsConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -113,7 +113,7 @@ auto FRowsView::get_const_view(int32 const offset, int32 const count) const -> C
 }
 
 auto FRowsView::num() const noexcept -> int32 {
-    return ml::num(ids);
+    return ioj::num(ids);
 }
 
 auto FRowsView::is_empty() const noexcept -> bool {
@@ -121,7 +121,7 @@ auto FRowsView::is_empty() const noexcept -> bool {
 }
 
 void FRowsView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FRowsView::slice(int32 const offset, int32 const count) -> View {
@@ -149,27 +149,27 @@ auto FRowsView::right(int32 const count) const -> ConstView {
 }
 
 void FRows::reset() {
-    ml::soa_ops::reset(*this);
+    ioj::soa_ops::reset(*this);
 }
 
 void FRows::reserve(int32 const count) {
-    ml::soa_ops::reserve(*this, count);
+    ioj::soa_ops::reserve(*this, count);
 }
 
 void FRows::add_uninitialised(int32 const count) {
-    ml::soa_ops::add_uninitialised(*this, count);
+    ioj::soa_ops::add_uninitialised(*this, count);
 }
 
 void FRows::add_defaulted(int32 const count) {
-    ml::soa_ops::add_defaulted(*this, count);
+    ioj::soa_ops::add_defaulted(*this, count);
 }
 
 void FRows::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::soa_ops::set_num(*this, count, allow_shrinking);
+    ioj::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void FRows::apply_permutation(TArrayView<int32> indices) {
-    ml::soa_ops::apply_permutation(*this, indices);
+    ioj::soa_ops::apply_permutation(*this, indices);
 }
 
 auto FRows::get_view() -> View {
@@ -206,7 +206,7 @@ auto FRows::get_const_view(int32 const offset, int32 const count) const -> Const
 }
 
 auto FRows::num() const noexcept -> int32 {
-    return ml::num(ids);
+    return ioj::num(ids);
 }
 
 auto FRows::is_empty() const noexcept -> bool {
@@ -214,7 +214,7 @@ auto FRows::is_empty() const noexcept -> bool {
 }
 
 void FRows::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FRows::slice(int32 const offset, int32 const count) -> View {
@@ -262,7 +262,7 @@ auto FChildConstView::get_const_view(int32 const offset, int32 const count) cons
 }
 
 auto FChildConstView::num() const noexcept -> int32 {
-    return ml::num(values);
+    return ioj::num(values);
 }
 
 auto FChildConstView::is_empty() const noexcept -> bool {
@@ -270,7 +270,7 @@ auto FChildConstView::is_empty() const noexcept -> bool {
 }
 
 void FChildConstView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FChildConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -316,7 +316,7 @@ auto FChildView::get_const_view(int32 const offset, int32 const count) const -> 
 }
 
 auto FChildView::num() const noexcept -> int32 {
-    return ml::num(values);
+    return ioj::num(values);
 }
 
 auto FChildView::is_empty() const noexcept -> bool {
@@ -324,7 +324,7 @@ auto FChildView::is_empty() const noexcept -> bool {
 }
 
 void FChildView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FChildView::slice(int32 const offset, int32 const count) -> View {
@@ -352,27 +352,27 @@ auto FChildView::right(int32 const count) const -> ConstView {
 }
 
 void FChild::reset() {
-    ml::soa_ops::reset(*this);
+    ioj::soa_ops::reset(*this);
 }
 
 void FChild::reserve(int32 const count) {
-    ml::soa_ops::reserve(*this, count);
+    ioj::soa_ops::reserve(*this, count);
 }
 
 void FChild::add_uninitialised(int32 const count) {
-    ml::soa_ops::add_uninitialised(*this, count);
+    ioj::soa_ops::add_uninitialised(*this, count);
 }
 
 void FChild::add_defaulted(int32 const count) {
-    ml::soa_ops::add_defaulted(*this, count);
+    ioj::soa_ops::add_defaulted(*this, count);
 }
 
 void FChild::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::soa_ops::set_num(*this, count, allow_shrinking);
+    ioj::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void FChild::apply_permutation(TArrayView<int32> indices) {
-    ml::soa_ops::apply_permutation(*this, indices);
+    ioj::soa_ops::apply_permutation(*this, indices);
 }
 
 auto FChild::get_view() -> View {
@@ -406,7 +406,7 @@ auto FChild::get_const_view(int32 const offset, int32 const count) const -> Cons
 }
 
 auto FChild::num() const noexcept -> int32 {
-    return ml::num(values);
+    return ioj::num(values);
 }
 
 auto FChild::is_empty() const noexcept -> bool {
@@ -414,7 +414,7 @@ auto FChild::is_empty() const noexcept -> bool {
 }
 
 void FChild::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FChild::slice(int32 const offset, int32 const count) -> View {
@@ -464,7 +464,7 @@ auto FParentsConstView::get_const_view(int32 const offset, int32 const count) co
 }
 
 auto FParentsConstView::num() const noexcept -> int32 {
-    return ml::num(keys);
+    return ioj::num(keys);
 }
 
 auto FParentsConstView::is_empty() const noexcept -> bool {
@@ -472,7 +472,7 @@ auto FParentsConstView::is_empty() const noexcept -> bool {
 }
 
 void FParentsConstView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FParentsConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -521,7 +521,7 @@ auto FParentsView::get_const_view(int32 const offset, int32 const count) const -
 }
 
 auto FParentsView::num() const noexcept -> int32 {
-    return ml::num(keys);
+    return ioj::num(keys);
 }
 
 auto FParentsView::is_empty() const noexcept -> bool {
@@ -529,7 +529,7 @@ auto FParentsView::is_empty() const noexcept -> bool {
 }
 
 void FParentsView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FParentsView::slice(int32 const offset, int32 const count) -> View {
@@ -557,27 +557,27 @@ auto FParentsView::right(int32 const count) const -> ConstView {
 }
 
 void FParents::reset() {
-    ml::soa_ops::reset(*this);
+    ioj::soa_ops::reset(*this);
 }
 
 void FParents::reserve(int32 const count) {
-    ml::soa_ops::reserve(*this, count);
+    ioj::soa_ops::reserve(*this, count);
 }
 
 void FParents::add_uninitialised(int32 const count) {
-    ml::soa_ops::add_uninitialised(*this, count);
+    ioj::soa_ops::add_uninitialised(*this, count);
 }
 
 void FParents::add_defaulted(int32 const count) {
-    ml::soa_ops::add_defaulted(*this, count);
+    ioj::soa_ops::add_defaulted(*this, count);
 }
 
 void FParents::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::soa_ops::set_num(*this, count, allow_shrinking);
+    ioj::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void FParents::apply_permutation(TArrayView<int32> indices) {
-    ml::soa_ops::apply_permutation(*this, indices);
+    ioj::soa_ops::apply_permutation(*this, indices);
 }
 
 auto FParents::get_view() -> View {
@@ -614,7 +614,7 @@ auto FParents::get_const_view(int32 const offset, int32 const count) const -> Co
 }
 
 auto FParents::num() const noexcept -> int32 {
-    return ml::num(keys);
+    return ioj::num(keys);
 }
 
 auto FParents::is_empty() const noexcept -> bool {
@@ -622,7 +622,7 @@ auto FParents::is_empty() const noexcept -> bool {
 }
 
 void FParents::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FParents::slice(int32 const offset, int32 const count) -> View {
@@ -672,7 +672,7 @@ auto FMaskRows8ConstView::get_const_view(int32 const offset, int32 const count) 
 }
 
 auto FMaskRows8ConstView::num() const noexcept -> int32 {
-    return ml::num(masks);
+    return ioj::num(masks);
 }
 
 auto FMaskRows8ConstView::is_empty() const noexcept -> bool {
@@ -680,7 +680,7 @@ auto FMaskRows8ConstView::is_empty() const noexcept -> bool {
 }
 
 void FMaskRows8ConstView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FMaskRows8ConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -729,7 +729,7 @@ auto FMaskRows8View::get_const_view(int32 const offset, int32 const count) const
 }
 
 auto FMaskRows8View::num() const noexcept -> int32 {
-    return ml::num(masks);
+    return ioj::num(masks);
 }
 
 auto FMaskRows8View::is_empty() const noexcept -> bool {
@@ -737,7 +737,7 @@ auto FMaskRows8View::is_empty() const noexcept -> bool {
 }
 
 void FMaskRows8View::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FMaskRows8View::slice(int32 const offset, int32 const count) -> View {
@@ -765,7 +765,7 @@ auto FMaskRows8View::right(int32 const count) const -> ConstView {
 }
 
 void FMaskRows8::apply_permutation(TArrayView<int32> indices) {
-    ml::soa_ops::apply_permutation(*this, indices);
+    ioj::soa_ops::apply_permutation(*this, indices);
 }
 
 auto FMaskRows8::get_view() -> View {
@@ -802,7 +802,7 @@ auto FMaskRows8::get_const_view(int32 const offset, int32 const count) const -> 
 }
 
 auto FMaskRows8::num() const noexcept -> int32 {
-    return ml::num(masks);
+    return ioj::num(masks);
 }
 
 auto FMaskRows8::is_empty() const noexcept -> bool {
@@ -810,7 +810,7 @@ auto FMaskRows8::is_empty() const noexcept -> bool {
 }
 
 void FMaskRows8::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FMaskRows8::slice(int32 const offset, int32 const count) -> View {
@@ -862,7 +862,7 @@ auto FMaskRows9ConstView::get_const_view(int32 const offset, int32 const count) 
 }
 
 auto FMaskRows9ConstView::num() const noexcept -> int32 {
-    return ml::num(masks);
+    return ioj::num(masks);
 }
 
 auto FMaskRows9ConstView::is_empty() const noexcept -> bool {
@@ -870,7 +870,7 @@ auto FMaskRows9ConstView::is_empty() const noexcept -> bool {
 }
 
 void FMaskRows9ConstView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FMaskRows9ConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -922,7 +922,7 @@ auto FMaskRows9View::get_const_view(int32 const offset, int32 const count) const
 }
 
 auto FMaskRows9View::num() const noexcept -> int32 {
-    return ml::num(masks);
+    return ioj::num(masks);
 }
 
 auto FMaskRows9View::is_empty() const noexcept -> bool {
@@ -930,7 +930,7 @@ auto FMaskRows9View::is_empty() const noexcept -> bool {
 }
 
 void FMaskRows9View::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FMaskRows9View::slice(int32 const offset, int32 const count) -> View {
@@ -958,7 +958,7 @@ auto FMaskRows9View::right(int32 const count) const -> ConstView {
 }
 
 void FMaskRows9::apply_permutation(TArrayView<int32> indices) {
-    ml::soa_ops::apply_permutation(*this, indices);
+    ioj::soa_ops::apply_permutation(*this, indices);
 }
 
 auto FMaskRows9::get_view() -> View {
@@ -998,7 +998,7 @@ auto FMaskRows9::get_const_view(int32 const offset, int32 const count) const -> 
 }
 
 auto FMaskRows9::num() const noexcept -> int32 {
-    return ml::num(masks);
+    return ioj::num(masks);
 }
 
 auto FMaskRows9::is_empty() const noexcept -> bool {
@@ -1006,7 +1006,7 @@ auto FMaskRows9::is_empty() const noexcept -> bool {
 }
 
 void FMaskRows9::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FMaskRows9::slice(int32 const offset, int32 const count) -> View {
@@ -1057,7 +1057,7 @@ auto FMaskRows16ConstView::get_const_view(int32 const offset, int32 const count)
 }
 
 auto FMaskRows16ConstView::num() const noexcept -> int32 {
-    return ml::num(masks);
+    return ioj::num(masks);
 }
 
 auto FMaskRows16ConstView::is_empty() const noexcept -> bool {
@@ -1065,7 +1065,7 @@ auto FMaskRows16ConstView::is_empty() const noexcept -> bool {
 }
 
 void FMaskRows16ConstView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FMaskRows16ConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -1114,7 +1114,7 @@ auto FMaskRows16View::get_const_view(int32 const offset, int32 const count) cons
 }
 
 auto FMaskRows16View::num() const noexcept -> int32 {
-    return ml::num(masks);
+    return ioj::num(masks);
 }
 
 auto FMaskRows16View::is_empty() const noexcept -> bool {
@@ -1122,7 +1122,7 @@ auto FMaskRows16View::is_empty() const noexcept -> bool {
 }
 
 void FMaskRows16View::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FMaskRows16View::slice(int32 const offset, int32 const count) -> View {
@@ -1150,7 +1150,7 @@ auto FMaskRows16View::right(int32 const count) const -> ConstView {
 }
 
 void FMaskRows16::apply_permutation(TArrayView<int32> indices) {
-    ml::soa_ops::apply_permutation(*this, indices);
+    ioj::soa_ops::apply_permutation(*this, indices);
 }
 
 auto FMaskRows16::get_view() -> View {
@@ -1187,7 +1187,7 @@ auto FMaskRows16::get_const_view(int32 const offset, int32 const count) const ->
 }
 
 auto FMaskRows16::num() const noexcept -> int32 {
-    return ml::num(masks);
+    return ioj::num(masks);
 }
 
 auto FMaskRows16::is_empty() const noexcept -> bool {
@@ -1195,7 +1195,7 @@ auto FMaskRows16::is_empty() const noexcept -> bool {
 }
 
 void FMaskRows16::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FMaskRows16::slice(int32 const offset, int32 const count) -> View {
@@ -1246,7 +1246,7 @@ auto FMaskRows17ConstView::get_const_view(int32 const offset, int32 const count)
 }
 
 auto FMaskRows17ConstView::num() const noexcept -> int32 {
-    return ml::num(masks);
+    return ioj::num(masks);
 }
 
 auto FMaskRows17ConstView::is_empty() const noexcept -> bool {
@@ -1254,7 +1254,7 @@ auto FMaskRows17ConstView::is_empty() const noexcept -> bool {
 }
 
 void FMaskRows17ConstView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FMaskRows17ConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -1303,7 +1303,7 @@ auto FMaskRows17View::get_const_view(int32 const offset, int32 const count) cons
 }
 
 auto FMaskRows17View::num() const noexcept -> int32 {
-    return ml::num(masks);
+    return ioj::num(masks);
 }
 
 auto FMaskRows17View::is_empty() const noexcept -> bool {
@@ -1311,7 +1311,7 @@ auto FMaskRows17View::is_empty() const noexcept -> bool {
 }
 
 void FMaskRows17View::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FMaskRows17View::slice(int32 const offset, int32 const count) -> View {
@@ -1339,7 +1339,7 @@ auto FMaskRows17View::right(int32 const count) const -> ConstView {
 }
 
 void FMaskRows17::apply_permutation(TArrayView<int32> indices) {
-    ml::soa_ops::apply_permutation(*this, indices);
+    ioj::soa_ops::apply_permutation(*this, indices);
 }
 
 auto FMaskRows17::get_view() -> View {
@@ -1376,7 +1376,7 @@ auto FMaskRows17::get_const_view(int32 const offset, int32 const count) const ->
 }
 
 auto FMaskRows17::num() const noexcept -> int32 {
-    return ml::num(masks);
+    return ioj::num(masks);
 }
 
 auto FMaskRows17::is_empty() const noexcept -> bool {
@@ -1384,7 +1384,7 @@ auto FMaskRows17::is_empty() const noexcept -> bool {
 }
 
 void FMaskRows17::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FMaskRows17::slice(int32 const offset, int32 const count) -> View {
@@ -1435,7 +1435,7 @@ auto FMaskRows32ConstView::get_const_view(int32 const offset, int32 const count)
 }
 
 auto FMaskRows32ConstView::num() const noexcept -> int32 {
-    return ml::num(masks);
+    return ioj::num(masks);
 }
 
 auto FMaskRows32ConstView::is_empty() const noexcept -> bool {
@@ -1443,7 +1443,7 @@ auto FMaskRows32ConstView::is_empty() const noexcept -> bool {
 }
 
 void FMaskRows32ConstView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FMaskRows32ConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -1492,7 +1492,7 @@ auto FMaskRows32View::get_const_view(int32 const offset, int32 const count) cons
 }
 
 auto FMaskRows32View::num() const noexcept -> int32 {
-    return ml::num(masks);
+    return ioj::num(masks);
 }
 
 auto FMaskRows32View::is_empty() const noexcept -> bool {
@@ -1500,7 +1500,7 @@ auto FMaskRows32View::is_empty() const noexcept -> bool {
 }
 
 void FMaskRows32View::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FMaskRows32View::slice(int32 const offset, int32 const count) -> View {
@@ -1528,7 +1528,7 @@ auto FMaskRows32View::right(int32 const count) const -> ConstView {
 }
 
 void FMaskRows32::apply_permutation(TArrayView<int32> indices) {
-    ml::soa_ops::apply_permutation(*this, indices);
+    ioj::soa_ops::apply_permutation(*this, indices);
 }
 
 auto FMaskRows32::get_view() -> View {
@@ -1565,7 +1565,7 @@ auto FMaskRows32::get_const_view(int32 const offset, int32 const count) const ->
 }
 
 auto FMaskRows32::num() const noexcept -> int32 {
-    return ml::num(masks);
+    return ioj::num(masks);
 }
 
 auto FMaskRows32::is_empty() const noexcept -> bool {
@@ -1573,7 +1573,7 @@ auto FMaskRows32::is_empty() const noexcept -> bool {
 }
 
 void FMaskRows32::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FMaskRows32::slice(int32 const offset, int32 const count) -> View {
@@ -1624,7 +1624,7 @@ auto FMaskRows33ConstView::get_const_view(int32 const offset, int32 const count)
 }
 
 auto FMaskRows33ConstView::num() const noexcept -> int32 {
-    return ml::num(masks);
+    return ioj::num(masks);
 }
 
 auto FMaskRows33ConstView::is_empty() const noexcept -> bool {
@@ -1632,7 +1632,7 @@ auto FMaskRows33ConstView::is_empty() const noexcept -> bool {
 }
 
 void FMaskRows33ConstView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FMaskRows33ConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -1681,7 +1681,7 @@ auto FMaskRows33View::get_const_view(int32 const offset, int32 const count) cons
 }
 
 auto FMaskRows33View::num() const noexcept -> int32 {
-    return ml::num(masks);
+    return ioj::num(masks);
 }
 
 auto FMaskRows33View::is_empty() const noexcept -> bool {
@@ -1689,7 +1689,7 @@ auto FMaskRows33View::is_empty() const noexcept -> bool {
 }
 
 void FMaskRows33View::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FMaskRows33View::slice(int32 const offset, int32 const count) -> View {
@@ -1717,7 +1717,7 @@ auto FMaskRows33View::right(int32 const count) const -> ConstView {
 }
 
 void FMaskRows33::apply_permutation(TArrayView<int32> indices) {
-    ml::soa_ops::apply_permutation(*this, indices);
+    ioj::soa_ops::apply_permutation(*this, indices);
 }
 
 auto FMaskRows33::get_view() -> View {
@@ -1754,7 +1754,7 @@ auto FMaskRows33::get_const_view(int32 const offset, int32 const count) const ->
 }
 
 auto FMaskRows33::num() const noexcept -> int32 {
-    return ml::num(masks);
+    return ioj::num(masks);
 }
 
 auto FMaskRows33::is_empty() const noexcept -> bool {
@@ -1762,7 +1762,7 @@ auto FMaskRows33::is_empty() const noexcept -> bool {
 }
 
 void FMaskRows33::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FMaskRows33::slice(int32 const offset, int32 const count) -> View {
@@ -1811,7 +1811,7 @@ auto FFixedChildConstView::get_const_view(int32 const offset, int32 const count)
 }
 
 auto FFixedChildConstView::num() const noexcept -> int32 {
-    return ml::num(tracked);
+    return ioj::num(tracked);
 }
 
 auto FFixedChildConstView::is_empty() const noexcept -> bool {
@@ -1819,7 +1819,7 @@ auto FFixedChildConstView::is_empty() const noexcept -> bool {
 }
 
 void FFixedChildConstView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FFixedChildConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -1865,7 +1865,7 @@ auto FFixedChildView::get_const_view(int32 const offset, int32 const count) cons
 }
 
 auto FFixedChildView::num() const noexcept -> int32 {
-    return ml::num(tracked);
+    return ioj::num(tracked);
 }
 
 auto FFixedChildView::is_empty() const noexcept -> bool {
@@ -1873,7 +1873,7 @@ auto FFixedChildView::is_empty() const noexcept -> bool {
 }
 
 void FFixedChildView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FFixedChildView::slice(int32 const offset, int32 const count) -> View {
@@ -1901,7 +1901,7 @@ auto FFixedChildView::right(int32 const count) const -> ConstView {
 }
 
 void FFixedChild::apply_permutation(TArrayView<int32> indices) {
-    ml::soa_ops::apply_permutation(*this, indices);
+    ioj::soa_ops::apply_permutation(*this, indices);
 }
 
 auto FFixedChild::get_view() -> View {
@@ -1935,7 +1935,7 @@ auto FFixedChild::get_const_view(int32 const offset, int32 const count) const ->
 }
 
 auto FFixedChild::num() const noexcept -> int32 {
-    return ml::num(tracked);
+    return ioj::num(tracked);
 }
 
 auto FFixedChild::is_empty() const noexcept -> bool {
@@ -1943,7 +1943,7 @@ auto FFixedChild::is_empty() const noexcept -> bool {
 }
 
 void FFixedChild::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FFixedChild::slice(int32 const offset, int32 const count) -> View {
@@ -1993,7 +1993,7 @@ auto FFixedRowsConstView::get_const_view(int32 const offset, int32 const count) 
 }
 
 auto FFixedRowsConstView::num() const noexcept -> int32 {
-    return ml::num(ids);
+    return ioj::num(ids);
 }
 
 auto FFixedRowsConstView::is_empty() const noexcept -> bool {
@@ -2001,7 +2001,7 @@ auto FFixedRowsConstView::is_empty() const noexcept -> bool {
 }
 
 void FFixedRowsConstView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FFixedRowsConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -2050,7 +2050,7 @@ auto FFixedRowsView::get_const_view(int32 const offset, int32 const count) const
 }
 
 auto FFixedRowsView::num() const noexcept -> int32 {
-    return ml::num(ids);
+    return ioj::num(ids);
 }
 
 auto FFixedRowsView::is_empty() const noexcept -> bool {
@@ -2058,7 +2058,7 @@ auto FFixedRowsView::is_empty() const noexcept -> bool {
 }
 
 void FFixedRowsView::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FFixedRowsView::slice(int32 const offset, int32 const count) -> View {
@@ -2086,7 +2086,7 @@ auto FFixedRowsView::right(int32 const count) const -> ConstView {
 }
 
 void FFixedRows::apply_permutation(TArrayView<int32> indices) {
-    ml::soa_ops::apply_permutation(*this, indices);
+    ioj::soa_ops::apply_permutation(*this, indices);
 }
 
 auto FFixedRows::get_view() -> View {
@@ -2123,7 +2123,7 @@ auto FFixedRows::get_const_view(int32 const offset, int32 const count) const -> 
 }
 
 auto FFixedRows::num() const noexcept -> int32 {
-    return ml::num(ids);
+    return ioj::num(ids);
 }
 
 auto FFixedRows::is_empty() const noexcept -> bool {
@@ -2131,7 +2131,7 @@ auto FFixedRows::is_empty() const noexcept -> bool {
 }
 
 void FFixedRows::validate_array_sizes() const {
-    ml::soa_ops::validate_array_sizes(*this);
+    ioj::soa_ops::validate_array_sizes(*this);
 }
 
 auto FFixedRows::slice(int32 const offset, int32 const count) -> View {

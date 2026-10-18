@@ -19,7 +19,7 @@ class USizeBox;
 UCLASS()
 class SHOOTERGAME_API UInventorySlotWidget
     : public UUserWidget
-    , public ml::LogMsgMixin<"UInventorySlotWidget", LogShooterGameUI> {
+    , public ioj::LogMsgMixin<"UInventorySlotWidget", LogShooterGameUI> {
     GENERATED_BODY()
   public:
     void set_inventory_slot(FInventoryEntry const& new_inventory_slot) {

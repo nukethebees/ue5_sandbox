@@ -113,7 +113,7 @@ void ATestFlySeekDestroy::handle_search(float dt) {
             UE_LOG(LogSandboxLearning,
                    Display,
                    TEXT("(%s) At destination. Finding new destination."),
-                   *ml::get_best_display_name(*this));
+                   *ioj::get_best_display_name(*this));
         }
 
         set_new_search_destination();
@@ -135,7 +135,7 @@ void ATestFlySeekDestroy::set_new_search_destination() {
         UE_LOG(LogSandboxLearning,
                Display,
                TEXT("(%s) New destination: %s"),
-               *ml::get_best_display_name(*this),
+               *ioj::get_best_display_name(*this),
                *search_state.destination.ToCompactString());
     }
 }
@@ -145,10 +145,10 @@ auto ATestFlySeekDestroy::scan_for_target() -> bool {
 
     GetActorBounds(false, origin, extent);
 
-    auto hits{ml::find_actors_within_cone(
+    auto hits{ioj::find_actors_within_cone(
         *this, vision.radius, extent.Z * 2.0, vision.half_angle_rad(), ThisClass::StaticClass())};
 
-    target_state.target = ml::get_centre_actor_in_fov(*this, hits);
+    target_state.target = ioj::get_centre_actor_in_fov(*this, hits);
     if (!target_state.target.IsValid()) {
         return false;
     }

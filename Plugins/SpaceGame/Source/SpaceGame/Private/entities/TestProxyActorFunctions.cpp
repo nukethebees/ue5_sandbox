@@ -10,7 +10,7 @@
 #include <EngineUtils.h>
 #endif
 
-namespace ml {
+namespace ioj {
 #if WITH_EDITOR
 auto resolve_proxy_level_config(AActor const& actor) -> USpaceGameLevelConfig* {
     auto* const world{actor.GetWorld()};

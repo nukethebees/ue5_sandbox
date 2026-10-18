@@ -12,7 +12,7 @@ class AActor;
 class APlayerController;
 class UGridPanel;
 
-namespace ml {
+namespace ioj {
 namespace detail {
 using UpdateBoundsFn = void (*)(APlayerController&, FVector, FVector2D&);
 }

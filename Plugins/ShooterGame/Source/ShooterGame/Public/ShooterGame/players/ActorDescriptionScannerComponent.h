@@ -23,7 +23,7 @@ DECLARE_DELEGATE(FOnTargetScreenBoundsCleared);
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SHOOTERGAME_API UActorDescriptionScannerComponent
     : public UActorComponent
-    , public ml::LogMsgMixin<"UActorDescriptionScannerComponent", LogShooterGameActor> {
+    , public ioj::LogMsgMixin<"UActorDescriptionScannerComponent", LogShooterGameActor> {
     GENERATED_BODY()
   public:
     UActorDescriptionScannerComponent();

@@ -50,16 +50,16 @@ auto make_report(FString profile_id, TConstArrayView<FScoreRecord> records) -> F
         auto const& record{records[i]};
         auto& outcome{report.outcomes.AddDefaulted_GetRef()};
         outcome.outcome_id = profile_adapter::make_outcome_id(record, i);
-        outcome.display_name = ml::format_level_display_name(record.level_name);
+        outcome.display_name = ioj::format_level_display_name(record.level_name);
         outcome.completed_at = record.date;
         outcome.simulation_duration_seconds = record.time_seconds;
         outcome.kills = record.kills;
-        outcome.result = ml::to_fstring(sim::to_string(ml::to_native(record.end_state)));
+        outcome.result = ioj::to_fstring(sim::to_string(ioj::to_native(record.end_state)));
 
         profile_adapter::add_statistic(
             outcome,
             TEXT("Mission mode"),
-            ml::to_fstring(sim::to_string(ml::to_native(record.mission_mode))));
+            ioj::to_fstring(sim::to_string(ioj::to_native(record.mission_mode))));
         switch (record.mission_mode) {
             case ETestMissionMode::None: {
                 break;
@@ -91,7 +91,7 @@ auto make_report(FString profile_id, TConstArrayView<FScoreRecord> records) -> F
             profile_adapter::add_statistic(
                 outcome,
                 TEXT("Failure reason"),
-                ml::to_fstring(sim::to_string(ml::to_native(record.fail_reason))));
+                ioj::to_fstring(sim::to_string(ioj::to_native(record.fail_reason))));
         }
     }
     return report;

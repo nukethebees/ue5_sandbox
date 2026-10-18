@@ -22,10 +22,10 @@ struct FrameRangeQueryResults {
         directions.set_num(count);
     }
 
-    ml::FrameArray<EntityUniqueId> entities;
-    ml::FrameArray<float> distances;
+    ioj::FrameArray<EntityUniqueId> entities;
+    ioj::FrameArray<float> distances;
     FrameVectors3f directions;
-    ml::FrameArray<IndexSpan> ranges;
+    ioj::FrameArray<IndexSpan> ranges;
   private:
     friend struct SpatialQueryManager;
     bool query_started_{};

@@ -24,7 +24,7 @@ void AKatinaGameMode::BeginPlay() {
     Super::BeginPlay();
 
     TRY_INIT_PTR(world, GetWorld());
-    ml::get_first_actor(*world, boss);
+    ioj::get_first_actor(*world, boss);
 
     WARN_IF_EXPR_ELSE(boss == nullptr) {
         boss->on_target_reached.BindUObject(this, &ThisClass::on_boss_target_reached);

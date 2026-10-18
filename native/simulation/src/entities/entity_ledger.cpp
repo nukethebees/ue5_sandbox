@@ -21,7 +21,7 @@ void EntityLedger::reset_frame_output() {
 auto EntityLedger::require_history_index(EntityUniqueId const id) const -> std::uint32_t {
     auto const index{ids_.history_index(id)};
     if (index == EntityIdAllocator::invalid_index) {
-        ml::fatal_error(
+        ioj::fatal_error(
             std::format("Combat accounting references unknown entity ID {}", id.raw_value()));
     }
     return index;

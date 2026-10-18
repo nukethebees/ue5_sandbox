@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace ml {
+namespace ioj {
 enum class ELockFreeMPSCQueueInitResult : std::uint8_t {
     Success,
     AlreadyInitialised,

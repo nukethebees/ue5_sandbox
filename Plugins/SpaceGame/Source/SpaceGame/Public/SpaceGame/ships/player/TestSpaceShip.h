@@ -121,7 +121,7 @@ class SPACEGAME_API ATestSpaceShip
     /* **************************************** */
     // Diagnostics
     /* **************************************** */
-    auto get_speed_samples() const noexcept -> std::span<ml::Vector2d const>;
+    auto get_speed_samples() const noexcept -> std::span<ioj::Vector2d const>;
     auto get_speed_sample_index() const noexcept -> int32;
 #endif
 

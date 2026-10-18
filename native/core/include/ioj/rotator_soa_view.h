@@ -6,7 +6,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace ml::soa_storage_detail {
+namespace ioj::soa_storage_detail {
 
 template <typename T,
           template <typename> typename Span,
@@ -98,4 +98,4 @@ class RotatorSoAView {
     size_type count_{};
 };
 
-} // namespace ml::soa_storage_detail
+} // namespace ioj::soa_storage_detail

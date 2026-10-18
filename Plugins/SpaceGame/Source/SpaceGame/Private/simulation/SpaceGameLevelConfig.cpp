@@ -13,7 +13,7 @@
 #include <Misc/DataValidation.h>
 #endif
 
-auto ml::s7_level_config::load_canonical() -> USpaceGameLevelConfig* {
+auto ioj::s7_level_config::load_canonical() -> USpaceGameLevelConfig* {
     return LoadObject<USpaceGameLevelConfig>(nullptr, canonical_object_path);
 }
 
@@ -45,7 +45,7 @@ auto collision_class_lists_are_valid(FCollisionGridConfig const& config) -> bool
 auto collision_grid_dimensions_are_valid(FCollisionGridConfig const& config) -> bool {
     auto const dimensions{config.calculate_grid_dimensions()};
     return ::ioj::sim::collision::is_configured(
-        {{dimensions.X, dimensions.Y, dimensions.Z}, ml::to_native(config.cell_size)});
+        {{dimensions.X, dimensions.Y, dimensions.Z}, ioj::to_native(config.cell_size)});
 }
 }
 
@@ -58,7 +58,7 @@ FCollisionGridConfig::FCollisionGridConfig()
 
 auto FCollisionGridConfig::calculate_grid_dimensions() const noexcept -> FIntVector3 {
     auto const dimensions{::ioj::sim::collision::calculate_grid_dimensions(
-        ml::to_native(grid_size), ml::to_native(cell_size))};
+        ioj::to_native(grid_size), ioj::to_native(cell_size))};
     return {dimensions.x(), dimensions.y(), dimensions.z()};
 }
 

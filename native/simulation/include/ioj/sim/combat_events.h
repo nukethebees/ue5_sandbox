@@ -17,7 +17,7 @@ class CombatEvents {
         ledger_.record_shots(instigators);
     }
     void prepare(EntityLookupTables const& indexes,
-                 ml::FrameMemoryResource* const scratch_resource) {
+                 ioj::FrameMemoryResource* const scratch_resource) {
         damage_.prepare(indexes, scratch_resource);
     }
     auto events_for(EntityType type) const -> DirectDamageEvents::ConstView {

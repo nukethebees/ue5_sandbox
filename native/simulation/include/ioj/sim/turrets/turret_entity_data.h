@@ -22,9 +22,9 @@ struct TurretEntityDataSingleView;
 struct TurretEntityDataSingleConstView;
 struct TurretEntityDataSingleLayoutColumns {
     template <typename T>
-    using ColLayout = ml::native_soa::ColumnLayout<T>;
+    using ColLayout = ioj::native_soa::ColumnLayout<T>;
 
-    ml::native_soa::ColumnLayoutStart LayoutStart{};
+    ioj::native_soa::ColumnLayoutStart LayoutStart{};
 
     ColLayout<EntityUniqueId> EntityIdsColumn;
     ColLayout<std::uint32_t> IntegralBiasesColumn;
@@ -83,8 +83,8 @@ struct TurretEntityDataSingleLayout {
     using byte_size_type = std::size_t;
 
     static constexpr size_type capacity_granularity{
-        ml::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
+        ioj::native_soa::LayoutPolicy::capacity_granularity};
+    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
 
     static constexpr TurretEntityDataSingleLayoutColumns columns{};
 
@@ -94,8 +94,8 @@ struct TurretEntityDataSingleLayout {
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::capacity_block_bound(columns.TargetVelocitiesZsColumn)};
-    static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
+        ioj::native_soa::capacity_block_bound(columns.TargetVelocitiesZsColumn)};
+    static constexpr size_type max_capacity{ioj::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return blocks == 0 ? 0 : columns.TargetVelocitiesZsColumn.data_end(blocks);
     }
@@ -103,11 +103,11 @@ struct TurretEntityDataSingleLayout {
 };
 
 template <bool Const>
-struct TurretEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
+struct TurretEntityDataSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = TurretEntityDataSchema;
     using size_type = std::uint32_t;
     using Layout = TurretEntityDataSingleLayout;
-    using Storage = ml::native_soa::StorageState;
+    using Storage = ioj::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
@@ -127,8 +127,8 @@ struct TurretEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOpera
     auto entity_ids() const { return make_column_view(Layout::columns.EntityIdsColumn); }
     auto integral_biases() const { return make_column_view(Layout::columns.IntegralBiasesColumn); }
     auto view_locations() const {
-        using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+        using ioj::soa_storage_detail::three_column_view;
+        return three_column_view<ioj::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
             count_,
@@ -137,8 +137,8 @@ struct TurretEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOpera
             Layout::columns.LocationsZsColumn);
     }
     auto view_fire_point_locations() const {
-        using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+        using ioj::soa_storage_detail::three_column_view;
+        return three_column_view<ioj::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
             count_,
@@ -147,10 +147,10 @@ struct TurretEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOpera
             Layout::columns.FirePointLocationsZsColumn);
     }
     auto view_rotations() const {
-        using ml::soa_storage_detail::three_column_view;
+        using ioj::soa_storage_detail::three_column_view;
         return three_column_view<std::conditional_t<Const,
-                                                    ml::native_soa::RotatorSoAConstView<float>,
-                                                    ml::native_soa::RotatorSoAView<float>>>(
+                                                    ioj::native_soa::RotatorSoAConstView<float>,
+                                                    ioj::native_soa::RotatorSoAView<float>>>(
             state_,
             offset_,
             count_,
@@ -169,8 +169,8 @@ struct TurretEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOpera
     }
     auto target_ids() const { return make_column_view(Layout::columns.TargetIdsColumn); }
     auto view_target_locations() const {
-        using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+        using ioj::soa_storage_detail::three_column_view;
+        return three_column_view<ioj::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
             count_,
@@ -179,8 +179,8 @@ struct TurretEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOpera
             Layout::columns.TargetLocationsZsColumn);
     }
     auto view_target_velocities() const {
-        using ml::soa_storage_detail::three_column_view;
-        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+        using ioj::soa_storage_detail::three_column_view;
+        return three_column_view<ioj::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
             count_,
@@ -221,11 +221,11 @@ struct TurretEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOpera
     }
   private:
     template <typename T>
-    auto make_column_view(ml::native_soa::ColumnLayout<T> const& layout) const {
-        return ml::soa_storage_detail::column_view<std::span<Element<T>>>(
+    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
             state_, offset_, count_, layout);
     }
-    friend ml::soa_storage_detail::CompactViewOperations;
+    friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct TurretEntityDataSingleViewImpl;
     State* state_{};
@@ -236,12 +236,12 @@ struct TurretEntityDataSingleConstView : TurretEntityDataSingleViewImpl<true> {
     using Base = TurretEntityDataSingleViewImpl<true>;
     using Base::Base;
 };
-static_assert(ml::soa_storage_detail::validate_compact_view<TurretEntityDataSingleConstView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<TurretEntityDataSingleConstView>());
 struct TurretEntityDataSingleView : TurretEntityDataSingleViewImpl<false> {
     using Base = TurretEntityDataSingleViewImpl<false>;
     using Base::Base;
 };
-static_assert(ml::soa_storage_detail::validate_compact_view<TurretEntityDataSingleView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<TurretEntityDataSingleView>());
 // Columns:
 // entity_ids: EntityUniqueId
 // integral_biases: std::uint32_t
@@ -267,10 +267,10 @@ static_assert(ml::soa_storage_detail::validate_compact_view<TurretEntityDataSing
 // target_velocities_ys: float
 // target_velocities_zs: float
 struct TurretEntityData
-    : protected ml::native_soa::StorageState
-    , ml::native_soa::StorageOperations {
+    : protected ioj::native_soa::StorageState
+    , ioj::native_soa::StorageOperations {
     using soa_schema = TurretEntityDataSchema;
-    using Operations = ml::native_soa::StorageOperations;
+    using Operations = ioj::native_soa::StorageOperations;
     using Layout = TurretEntityDataSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
@@ -379,14 +379,14 @@ struct TurretEntityData
   private:
     std::pmr::memory_resource* resource_{};
     friend Operations;
-    friend ::ml::soa_storage_detail::StorageRequirements;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
     // Column pointers
     /* **************************************** */
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ml::native_soa::LayoutCursor cursor{blocks};
+        ioj::native_soa::LayoutCursor cursor{blocks};
         return {cursor.column_pointer(data, Layout::columns.EntityIdsColumn),
                 cursor.column_pointer(data, Layout::columns.IntegralBiasesColumn),
                 cursor.column_pointer(data, Layout::columns.LocationsXsColumn),
@@ -420,7 +420,7 @@ struct TurretEntityData
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
-        using ml::native_soa::default_construct_n;
+        using ioj::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
         default_construct_n(columns.entity_ids, count);
         default_construct_n(columns.integral_biases, count);
@@ -451,7 +451,7 @@ struct TurretEntityData
                                  DataPointers<Byte> const& source,
                                  size_type count) {
         auto transfer = [count](auto* dst, auto const* src) {
-            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
         };
         transfer(destination.entity_ids, source.entity_ids);
         transfer(destination.integral_biases, source.integral_biases);
@@ -492,16 +492,16 @@ struct TurretEntityData
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
-        ml::soa_storage_detail::for_each_removal_run(
+        ioj::soa_storage_detail::for_each_removal_run(
             num_, indices, [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
     }
     template <typename Columns>
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ml::soa_storage_detail::SoaSourceFor<Columns, TurretEntityData, size_type>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, TurretEntityData, size_type>
     {
-        using ml::native_soa::source_data;
+        using ioj::native_soa::source_data;
         auto const& locations_view{source.view_locations()};
         auto const& fire_point_locations_view{source.view_fire_point_locations()};
         auto const& rotations_view{source.view_rotations()};
@@ -536,7 +536,7 @@ struct TurretEntityData
                         size_type source_first,
                         size_type first,
                         size_type count)
-        requires ml::soa_storage_detail::SoaSourceFor<Columns, TurretEntityData, size_type>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, TurretEntityData, size_type>
     {
         transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
@@ -545,7 +545,7 @@ struct TurretEntityData
                            size_type source_first,
                            size_type first,
                            size_type count)
-        requires ml::soa_storage_detail::SoaSourceFor<Columns, TurretEntityData, size_type>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, TurretEntityData, size_type>
     {
         transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }

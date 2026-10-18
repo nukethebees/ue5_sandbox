@@ -18,7 +18,7 @@ class SS7LevelScriptEditor;
 
 class SANDBOXEDITOR_API FSandboxEditorModule
     : public IModuleInterface
-    , public ml::LogMsgMixin<"FSandboxEditorModule"> {
+    , public ioj::LogMsgMixin<"FSandboxEditorModule"> {
   public:
     static FName const s7_level_script_editor_tab_id;
 

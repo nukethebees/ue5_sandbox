@@ -15,9 +15,9 @@ void AMassBulletWeapon::BeginPlay() {
 void AMassBulletWeapon::OnConstruction(FTransform const& Transform) {
     TRY_INIT_PTR(world, GetWorld());
 
-    ml::get_or_create_actor_singleton<AMassBulletVisualizationActor>(*world);
+    ioj::get_or_create_actor_singleton<AMassBulletVisualizationActor>(*world);
 
-    if (auto* actor{ml::get_or_create_actor_singleton<AMassBulletSubsystemData>(*world)}) {
+    if (auto* actor{ioj::get_or_create_actor_singleton<AMassBulletSubsystemData>(*world)}) {
         RETURN_IF_NULLPTR(actor);
         RETURN_IF_NULLPTR(bullet_data);
         actor->add_bullet_type(*bullet_data);

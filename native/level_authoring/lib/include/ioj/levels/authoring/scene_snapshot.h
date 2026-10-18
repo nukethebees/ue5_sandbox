@@ -5,7 +5,7 @@
 namespace ioj::levels::authoring {
 struct SceneEntityProperties {
     std::string label{};
-    ml::Vector3d scale{1.0, 1.0, 1.0};
+    ioj::Vector3d scale{1.0, 1.0, 1.0};
     bool class_matches{true};
 };
 

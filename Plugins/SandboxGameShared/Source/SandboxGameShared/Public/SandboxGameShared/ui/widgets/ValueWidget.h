@@ -56,7 +56,7 @@ class SANDBOXGAMESHARED_API UValueWidget : public UUserWidget {
     template <typename T>
     static auto to_text(T const& value, FNumberFormattingOptions const* const options = nullptr)
         -> FText {
-        if constexpr (ml::Numeric<T>) {
+        if constexpr (ioj::Numeric<T>) {
             return FText::AsNumber(value, options);
         } else if constexpr (requires { FText::FromStringView(value); }) {
             return FText::FromStringView(value);

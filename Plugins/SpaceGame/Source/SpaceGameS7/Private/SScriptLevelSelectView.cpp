@@ -15,9 +15,9 @@
 #include <Widgets/SBoxPanel.h>
 #include <Widgets/Text/STextBlock.h>
 
-#include "generated/ml/s7/SScriptLevelSelectView.slate.generated.h"
+#include "generated/ioj/s7/SScriptLevelSelectView.slate.generated.h"
 
-namespace ml::s7 {
+namespace ioj::s7 {
 using ioj::levels::authoring::ELevelCatalogCategory;
 
 void SScriptLevelSelectView::Construct(FArguments const& args) {
@@ -30,7 +30,7 @@ void SScriptLevelSelectView::Construct(FArguments const& args) {
     on_battle_simulation_only_changed_ = args._OnBattleSimulationOnlyChanged;
     on_launch_ = args._OnLaunch;
 
-    ChildSlot[SlateGenerated::ml::s7::SScriptLevelSelectViewBuilder{*this}.BuildRoot(
+    ChildSlot[SlateGenerated::ioj::s7::SScriptLevelSelectViewBuilder{*this}.BuildRoot(
         &style_->chrome().body_background, build_header(), build_catalog(), build_details())];
 }
 
@@ -181,7 +181,7 @@ auto SScriptLevelSelectView::build_header() -> TSharedRef<SWidget> {
                                                &SScriptLevelSelectView::handle_category_selected,
                                                ELevelCatalogCategory::Benchmark)};
 
-    return SlateGenerated::ml::s7::SScriptLevelSelectViewBuilder{*this}.BuildHeader(
+    return SlateGenerated::ioj::s7::SScriptLevelSelectViewBuilder{*this}.BuildHeader(
         &style_->chrome().frame_border,
         &style_->text(EGameTextStyle::Caption),
         &style_->text(EGameTextStyle::Heading3),
@@ -193,7 +193,7 @@ auto SScriptLevelSelectView::build_header() -> TSharedRef<SWidget> {
 auto SScriptLevelSelectView::build_catalog() -> TSharedRef<SWidget> {
     auto const catalog_scroll{SNew(SScrollBox).ScrollBarStyle(&style_->chrome().scroll_bar) +
                               SScrollBox::Slot()[SAssignNew(catalog_rows_, SVerticalBox)]};
-    return SlateGenerated::ml::s7::SScriptLevelSelectViewBuilder{*this}.BuildCatalog(
+    return SlateGenerated::ioj::s7::SScriptLevelSelectViewBuilder{*this}.BuildCatalog(
         &style_->chrome().navigation_background,
         &style_->text(EGameTextStyle::Caption),
         &style_->text(EGameTextStyle::Heading3),
@@ -507,4 +507,4 @@ void SScriptLevelSelectView::focus_level(int32 const button_index) {
         level_buttons_[button_index]->focus();
     }
 }
-} // namespace ml::s7
+} // namespace ioj::s7

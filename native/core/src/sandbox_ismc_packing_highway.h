@@ -2,7 +2,7 @@
 
 #include "ioj/sandbox_ismc_packing.h"
 
-namespace ml::sandbox_ismc::highway_avx2 {
+namespace ioj::sandbox_ismc::highway_avx2 {
 
 auto pack_positions(std::span<std::byte const> positions,
                     Vector3f root,

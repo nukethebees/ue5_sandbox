@@ -14,7 +14,7 @@
 #include <utility>
 #include <vector>
 
-namespace ml::native_soa_tests {
+namespace ioj::native_soa_tests {
 using namespace native_soa_fixture;
 
 TEST(NativeSoa, PmrResourcesAndMoves) {

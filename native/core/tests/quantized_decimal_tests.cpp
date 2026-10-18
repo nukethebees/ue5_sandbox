@@ -10,14 +10,14 @@
 namespace {
 template <typename IntegerType, typename FractionType, std::size_t DecimalPlaces>
 concept SupportsQuantizedDecimal =
-    requires { typename ml::TQuantizedDecimal<IntegerType, FractionType, DecimalPlaces>; };
+    requires { typename ioj::TQuantizedDecimal<IntegerType, FractionType, DecimalPlaces>; };
 
-using CompactDecimal = ml::TQuantizedDecimal<std::int16_t, std::uint8_t, 2>;
-using SmallDecimal = ml::TQuantizedDecimal<std::int8_t, std::uint8_t, 2>;
-using OnePlaceDecimal = ml::TQuantizedDecimal<std::int16_t, std::uint8_t, 1>;
-using TwoPlaceDecimal = ml::TQuantizedDecimal<std::int16_t, std::uint8_t, 2>;
-using ThreePlaceDecimal = ml::TQuantizedDecimal<std::int16_t, std::uint16_t, 3>;
-using WholeDecimal = ml::TQuantizedDecimal<std::int16_t, std::uint8_t, 0>;
+using CompactDecimal = ioj::TQuantizedDecimal<std::int16_t, std::uint8_t, 2>;
+using SmallDecimal = ioj::TQuantizedDecimal<std::int8_t, std::uint8_t, 2>;
+using OnePlaceDecimal = ioj::TQuantizedDecimal<std::int16_t, std::uint8_t, 1>;
+using TwoPlaceDecimal = ioj::TQuantizedDecimal<std::int16_t, std::uint8_t, 2>;
+using ThreePlaceDecimal = ioj::TQuantizedDecimal<std::int16_t, std::uint16_t, 3>;
+using WholeDecimal = ioj::TQuantizedDecimal<std::int16_t, std::uint8_t, 0>;
 
 static_assert(SupportsQuantizedDecimal<std::int16_t, std::uint8_t, 2>);
 static_assert(!SupportsQuantizedDecimal<std::uint16_t, std::uint8_t, 2>);

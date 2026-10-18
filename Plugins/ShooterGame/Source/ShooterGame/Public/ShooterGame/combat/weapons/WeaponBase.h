@@ -21,7 +21,7 @@ UCLASS(Abstract)
 class SHOOTERGAME_API AWeaponBase
     : public AActor
     , public IInventoryItem
-    , public ml::LogMsgMixin<"AWeaponBase", LogShooterGameWeapon> {
+    , public ioj::LogMsgMixin<"AWeaponBase", LogShooterGameWeapon> {
     GENERATED_BODY()
   public:
     AWeaponBase();

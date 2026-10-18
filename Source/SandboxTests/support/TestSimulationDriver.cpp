@@ -20,7 +20,7 @@
 
 #include <limits>
 
-namespace ml {
+namespace ioj {
 TestSimulationDriver::TestSimulationDriver(UWorld& world, ATestBatchOrchestrator& orchestrator)
     : world{world}
     , orchestrator{orchestrator} {
@@ -29,7 +29,7 @@ TestSimulationDriver::TestSimulationDriver(UWorld& world, ATestBatchOrchestrator
 }
 
 auto TestSimulationDriver::from_world(UWorld& world) -> TestSimulationDriver {
-    auto* orchestrator{ml::get_first_actor<ATestBatchOrchestrator>(world)};
+    auto* orchestrator{ioj::get_first_actor<ATestBatchOrchestrator>(world)};
     if (!IsValid(orchestrator)) {
         UE_LOG(LogSandboxTest, Fatal, TEXT("orchestrator is nullptr"));
     }

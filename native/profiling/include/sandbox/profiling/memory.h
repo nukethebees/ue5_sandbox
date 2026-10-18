@@ -9,7 +9,7 @@
 #define IOJ_TRACY_MEMORY_API
 #endif
 
-namespace ml {
+namespace ioj {
 namespace profiling {
 enum class MemoryDomain : std::uint8_t {
     PersistentRoot,

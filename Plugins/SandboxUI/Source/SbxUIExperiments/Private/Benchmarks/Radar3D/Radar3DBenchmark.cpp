@@ -47,8 +47,8 @@ auto summarize(FString stage, int32 const contact_count, TArray<double> samples)
             .contact_count = contact_count,
             .sample_count = samples.Num(),
             .minimum_microseconds = samples[0],
-            .median_microseconds = ml::ui::benchmark::percentile(samples, 0.5),
-            .percentile_95_microseconds = ml::ui::benchmark::percentile(samples, 0.95),
+            .median_microseconds = ioj::ui::benchmark::percentile(samples, 0.5),
+            .percentile_95_microseconds = ioj::ui::benchmark::percentile(samples, 0.95),
             .maximum_microseconds = samples.Last()};
 }
 } // namespace

@@ -52,7 +52,7 @@ auto USpaceSaveSubsystem::get(UGameInstance const* const game_instance) -> USpac
     return IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>() : nullptr;
 }
 
-auto ioj::summarize_level_progress(ml::FLevelId const level_id,
+auto ioj::summarize_level_progress(ioj::FLevelId const level_id,
                                    TConstArrayView<FScoreRecord> const records)
     -> FLevelProgressSummary {
     FLevelProgressSummary summary;
@@ -110,12 +110,12 @@ auto USpaceSaveSubsystem::get_active_profile_id() const -> FString const& {
     return profile_manager_.get_active_profile_id();
 }
 
-auto USpaceSaveSubsystem::get_level_progress(ml::FLevelId const level_id) const
+auto USpaceSaveSubsystem::get_level_progress(ioj::FLevelId const level_id) const
     -> ioj::FLevelProgressSummary {
     return ioj::summarize_level_progress(level_id, profile_manager_.get_active_records());
 }
 
-auto USpaceSaveSubsystem::is_level_completed(ml::FLevelId const level_id) const -> bool {
+auto USpaceSaveSubsystem::is_level_completed(ioj::FLevelId const level_id) const -> bool {
     return get_level_progress(level_id).state == ioj::ELevelProgressState::Completed;
 }
 

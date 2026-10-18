@@ -10,7 +10,7 @@
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
-namespace ml {
+namespace ioj {
 void add_selected_patrol_points_to_selected_paths() {
     auto* selected_actors{GEditor->GetSelectedActors()};
 

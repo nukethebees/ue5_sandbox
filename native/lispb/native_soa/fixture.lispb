@@ -4,7 +4,7 @@
   :header-include "native_soa_types.h"
   :prelude #cpp{#define NATIVE_SOA_FIXTURE_API}cpp#
   :backend standard-library
-  :namespace ml::native_soa_fixture
+  :namespace ioj::native_soa_fixture
   (record Pair
     (member x float)
     (member y float))

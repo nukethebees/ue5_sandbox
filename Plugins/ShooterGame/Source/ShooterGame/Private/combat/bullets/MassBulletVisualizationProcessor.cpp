@@ -48,8 +48,8 @@ UMassBulletVisualizationProcessor::UMassBulletVisualizationProcessor()
     AutoExecuteQuery = executor;
 
     SetProcessingPhase(EMassProcessingPhase::PostPhysics);
-    ExecutionOrder.ExecuteAfter.Add(ml::ProcessorGroupNames::CollisionHandling);
-    ExecutionOrder.ExecuteInGroup = ml::ProcessorGroupNames::CollisionVisualization;
+    ExecutionOrder.ExecuteAfter.Add(ioj::ProcessorGroupNames::CollisionHandling);
+    ExecutionOrder.ExecuteInGroup = ioj::ProcessorGroupNames::CollisionVisualization;
 
     if (HasAnyFlags(RF_ClassDefaultObject)) {
         bRequiresGameThreadExecution = true;

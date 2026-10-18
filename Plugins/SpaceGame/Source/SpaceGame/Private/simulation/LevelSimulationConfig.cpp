@@ -38,7 +38,7 @@ auto make_simulation_config(FCapitalShipConfig const& source) -> ::ioj::sim::Cap
     result.fighter_spawn_slots_relative_transforms.reserve(
         source.fighter_spawn_slots_relative_transforms.Num());
     for (auto const& transform : source.fighter_spawn_slots_relative_transforms) {
-        result.fighter_spawn_slots_relative_transforms.push_back(ml::to_native(transform));
+        result.fighter_spawn_slots_relative_transforms.push_back(ioj::to_native(transform));
     }
     result.max_health = source.max_health;
     return result;
@@ -78,7 +78,7 @@ auto make_simulation_config(FTurretConfig const& source) -> ::ioj::sim::TurretSi
     ::ioj::sim::TurretSimConfig result;
     result.detection_radius = source.detection_radius;
     result.target_refresh_frequency = source.target_refresh_frequency;
-    result.fire_point_offset = ml::to_native(FVector3f{source.fire_point_offset.GetLocation()});
+    result.fire_point_offset = ioj::to_native(FVector3f{source.fire_point_offset.GetLocation()});
     result.laser = make_simulation_config(source.laser);
     result.max_health = source.max_health;
     return result;
@@ -88,8 +88,8 @@ auto make_simulation_config(FTubeSpinnerConfig const& source) -> ::ioj::sim::Spi
     ::ioj::sim::SpinnerSimConfig result;
     result.fire_point_offsets.reserve(static_cast<std::size_t>(source.fire_point_offsets.Num()));
     for (auto const& offset : source.fire_point_offsets) {
-        result.fire_point_offsets.push_back({ml::to_native(FVector3f{offset.GetLocation()}),
-                                             ml::to_native(FRotator3f{offset.Rotator()})});
+        result.fire_point_offsets.push_back({ioj::to_native(FVector3f{offset.GetLocation()}),
+                                             ioj::to_native(FRotator3f{offset.Rotator()})});
     }
     result.yaw_rotation_speed_degrees = source.yaw_rotation_speed_degrees;
     result.laser = make_simulation_config(source.laser);

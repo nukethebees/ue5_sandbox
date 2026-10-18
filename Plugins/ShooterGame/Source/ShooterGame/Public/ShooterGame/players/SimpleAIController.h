@@ -15,7 +15,7 @@ class UAISenseConfig_Sight;
 UCLASS()
 class SHOOTERGAME_API ASimpleAIController
     : public AAIController
-    , public ml::LogMsgMixin<"ASimpleAIController", LogShooterGameAI> {
+    , public ioj::LogMsgMixin<"ASimpleAIController", LogShooterGameAI> {
     GENERATED_BODY()
   public:
     ASimpleAIController();

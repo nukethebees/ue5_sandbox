@@ -300,17 +300,17 @@ class FSpaceDustSceneProxy final : public FPrimitiveSceneProxy {
     int32 particle_count_{};
 };
 
-auto to_native_settings(FSpaceDustSettings const& settings) -> ml::space_dust::Tuning {
+auto to_native_settings(FSpaceDustSettings const& settings) -> ioj::space_dust::Tuning {
     return {
         .enabled = settings.enabled,
         .particle_count = settings.particle_count,
         .random_seed = static_cast<uint32>(FMath::Max(settings.random_seed, 0)),
-        .volume_dimensions = ml::make_vector3f(static_cast<float>(settings.volume_dimensions.X),
+        .volume_dimensions = ioj::make_vector3f(static_cast<float>(settings.volume_dimensions.X),
                                                static_cast<float>(settings.volume_dimensions.Y),
                                                static_cast<float>(settings.volume_dimensions.Z)),
         .particle_size = settings.particle_size,
         .brightness = settings.brightness,
-        .colour = ml::make_vector3f(settings.colour.R, settings.colour.G, settings.colour.B),
+        .colour = ioj::make_vector3f(settings.colour.R, settings.colour.G, settings.colour.B),
         .minimum_visible_speed = settings.minimum_visible_speed,
         .full_visible_speed = settings.full_visible_speed,
         .streak_seconds = settings.streak_seconds,
@@ -321,7 +321,7 @@ auto to_native_settings(FSpaceDustSettings const& settings) -> ml::space_dust::T
     };
 }
 
-auto apply_native_settings(FSpaceDustSettings settings, ml::space_dust::Tuning const& native)
+auto apply_native_settings(FSpaceDustSettings settings, ioj::space_dust::Tuning const& native)
     -> FSpaceDustSettings {
     settings.enabled = native.enabled;
     settings.particle_count = native.particle_count;
@@ -347,14 +347,14 @@ auto apply_native_settings(FSpaceDustSettings settings, ml::space_dust::Tuning c
 
 auto normalise_space_dust_settings(FSpaceDustSettings settings) -> FSpaceDustSettings {
     return apply_native_settings(settings,
-                                 ml::space_dust::normalise_tuning(to_native_settings(settings)));
+                                 ioj::space_dust::normalise_tuning(to_native_settings(settings)));
 }
 
 auto make_space_dust_translation_phase(FVector const world_location,
                                        FVector const volume_dimensions) -> FVector3f {
-    auto const phase{ml::space_dust::make_translation_phase(
+    auto const phase{ioj::space_dust::make_translation_phase(
         {world_location.X, world_location.Y, world_location.Z},
-        ml::make_vector3f(static_cast<float>(volume_dimensions.X),
+        ioj::make_vector3f(static_cast<float>(volume_dimensions.X),
                           static_cast<float>(volume_dimensions.Y),
                           static_cast<float>(volume_dimensions.Z)))};
     return FVector3f{phase.x(), phase.y(), phase.z()};

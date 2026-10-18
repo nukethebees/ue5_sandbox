@@ -2,7 +2,7 @@
 
 #include <utility>
 
-namespace ml {
+namespace ioj {
 template <auto Fn, typename... Ts>
 constexpr void invoke_on_all(Ts&&... values) {
     ((void)Fn(std::forward<Ts>(values)), ...);

@@ -39,11 +39,11 @@ void ATestUniformFieldFly1::BeginPlay() {
         return;
     }
 
-    if (!ml::actor_is_within(*this, *field, false)) {
+    if (!ioj::actor_is_within(*this, *field, false)) {
         UE_LOG(LogSandboxLearning,
                Error,
                TEXT("%s is not within the vector field"),
-               *ml::get_best_display_name(*this));
+               *ioj::get_best_display_name(*this));
         SetActorTickEnabled(false);
         return;
     }
@@ -147,7 +147,7 @@ void ATestUniformFieldFly1::display_destination() {
     DrawDebugSphere(world, destination, acceptance_radius, 8, colour, false, 0.f, 0u, thickness);
 }
 bool ATestUniformFieldFly1::is_oob() const {
-    return !ml::actor_is_within(*this, *field, false);
+    return !ioj::actor_is_within(*this, *field, false);
 }
 bool ATestUniformFieldFly1::assert_field_exists() {
     if (field == nullptr) {

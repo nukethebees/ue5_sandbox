@@ -19,12 +19,12 @@ enum class EReflectedFixture : uint8 {
 
 using EReflectedFixtureUnderlying = uint8;
 
-namespace ml {
+namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<::EReflectedFixture>() noexcept -> std::size_t {
     return 1;
 }
-} // namespace ml
+} // namespace ioj
 
 auto LexToString(EReflectedFixture const value) -> TCHAR const*;
 

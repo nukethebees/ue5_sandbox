@@ -25,7 +25,7 @@ namespace ioj::sim::fighters {
 struct Sim;
 }
 
-namespace ml {
+namespace ioj {
 struct TestSimulationDriver {
     using time_type = double;
 

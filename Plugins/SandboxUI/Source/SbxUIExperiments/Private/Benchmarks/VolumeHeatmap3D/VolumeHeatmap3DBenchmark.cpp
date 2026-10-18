@@ -6,7 +6,7 @@
 #include "Math/UnrealMathUtility.h"
 #include "RenderingThread.h"
 
-namespace ml::ui::volume_heatmap_3d_benchmark {
+namespace ioj::ui::volume_heatmap_3d_benchmark {
 auto make_grid(int32 const dimension) -> FVolumeHeatmap3DGrid {
     FVolumeHeatmap3DGrid grid;
     grid.dimensions = {dimension, dimension, dimension};
@@ -47,8 +47,8 @@ auto summarize(FString stage,
             .slice_count = slice_count,
             .sample_count = samples.Num(),
             .minimum_microseconds = samples[0],
-            .median_microseconds = ml::ui::benchmark::percentile(samples, 0.5),
-            .percentile_95_microseconds = ml::ui::benchmark::percentile(samples, 0.95),
+            .median_microseconds = ioj::ui::benchmark::percentile(samples, 0.5),
+            .percentile_95_microseconds = ioj::ui::benchmark::percentile(samples, 0.95),
             .maximum_microseconds = samples.Last()};
 }
 
@@ -117,13 +117,13 @@ auto run_volume_heatmap_3d_benchmark(FVolumeHeatmap3DBenchmarkOptions const& opt
     FVolumeHeatmap3DBenchmarkReport report;
     for (int32 const dimension : options.grid_dimensions) {
         if (dimension > 0 && dimension <= 128) {
-            ml::ui::volume_heatmap_3d_benchmark::benchmark_case(
+            ioj::ui::volume_heatmap_3d_benchmark::benchmark_case(
                 report, options, dimension, options.fixed_slice_count);
         }
     }
     for (int32 const slice_count : options.slice_counts) {
         if (slice_count >= 8 && slice_count <= 256) {
-            ml::ui::volume_heatmap_3d_benchmark::benchmark_case(
+            ioj::ui::volume_heatmap_3d_benchmark::benchmark_case(
                 report, options, options.fixed_grid_dimension, slice_count);
         }
     }

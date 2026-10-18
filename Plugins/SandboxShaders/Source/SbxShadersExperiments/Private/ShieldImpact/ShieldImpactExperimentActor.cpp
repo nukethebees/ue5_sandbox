@@ -8,7 +8,7 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogShieldImpactExperiment, Log, All);
 
-namespace ml::shaders::shield_impact {
+namespace ioj::shaders::shield_impact {
 constexpr TCHAR material_path[]{
     TEXT("/SandboxShaders/Experiments/ShieldImpact/M_ShieldImpact.M_ShieldImpact")};
 }
@@ -32,7 +32,7 @@ AShieldImpactExperimentActor::AShieldImpactExperimentActor() {
     }
 
     static ConstructorHelpers::FObjectFinder<UMaterialInterface> const impact_material{
-        ml::shaders::shield_impact::material_path};
+        ioj::shaders::shield_impact::material_path};
     if (impact_material.Succeeded()) {
         shield_material_ = impact_material.Object;
         shield_mesh_->SetMaterial(0, shield_material_);
@@ -132,7 +132,7 @@ int32 AShieldImpactExperimentActor::active_impact_count() const {
 void AShieldImpactExperimentActor::ensure_material() {
     if (!IsValid(shield_material_)) {
         shield_material_ =
-            LoadObject<UMaterialInterface>(nullptr, ml::shaders::shield_impact::material_path);
+            LoadObject<UMaterialInterface>(nullptr, ioj::shaders::shield_impact::material_path);
     }
     if (!IsValid(shield_material_)) {
         return;

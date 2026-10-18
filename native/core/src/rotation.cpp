@@ -1,6 +1,6 @@
 #include <ioj/rotation.h>
 
-namespace ml::kernel {
+namespace ioj::kernel {
 template void rotate_towards_1d_degrees<float>(
     float const*, float const*, float, float, float*, std::uint32_t) noexcept;
 template void rotate_towards_1d_radians<float>(

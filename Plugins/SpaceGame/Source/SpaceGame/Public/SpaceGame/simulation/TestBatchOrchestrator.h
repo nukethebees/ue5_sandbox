@@ -70,7 +70,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void set_presentation_enabled(bool enabled);
     void set_collision_grid_override(FVector3f level_size, FVector3f cell_size);
     void clear_collision_grid_override();
-    void set_level_definition(ml::FLevelDefinition definition) {
+    void set_level_definition(ioj::FLevelDefinition definition) {
         if (definition.collision_grid.IsSet()) {
             auto const& grid{definition.collision_grid.GetValue()};
             set_collision_grid_override(
@@ -206,8 +206,8 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void load_authored_level();
     auto should_initialise_in_begin_play() const noexcept -> bool;
     auto initialise_simulation(USpaceGameLevelConfig const& effective_config,
-                               ml::FLevelStartErrors& errors,
-                               TOptional<ml::FProxyLevelSimBuild>& proxy_build,
+                               ioj::FLevelStartErrors& errors,
+                               TOptional<ioj::FProxyLevelSimBuild>& proxy_build,
                                ioj::sim::collision::GridGeometry& grid_geometry) -> bool;
     void handle_level_start_failure(FString message);
 
@@ -264,7 +264,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     TOptional<FLevelPresentation> level_presentation_;
     TArray<FTransform> initial_turret_transforms_;
     FLevelTelemetryEnvironment telemetry_environment_;
-    TOptional<ml::FLevelDefinition> level_definition_;
+    TOptional<ioj::FLevelDefinition> level_definition_;
     bool launched_paused_{};
     ioj::FLevelLaunchOptions launch_options_{};
     FString level_source_sha256_{};

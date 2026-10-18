@@ -6,7 +6,7 @@
 #include <span>
 #include <utility>
 
-namespace ml {
+namespace ioj {
 // indices[new_index] is the old row index that belongs at new_index.
 // The indices are restored before returning so one permutation can be applied to every stream.
 // Keep scratch indices signed to mark visited rows with their bitwise complement.

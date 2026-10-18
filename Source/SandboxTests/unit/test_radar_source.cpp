@@ -12,11 +12,11 @@
 
 #include <vector>
 
-namespace ml::test_radar_source {
-auto make_view(ml::tests::FDisplayEntityTestData const& entities,
+namespace ioj::test_radar_source {
+auto make_view(ioj::tests::FDisplayEntityTestData const& entities,
                std::span<::ioj::sim::EntityUniqueId const> ids = {})
-    -> std::vector<::ml::presentation::AgentDisplayBatch> {
-    std::vector<::ml::presentation::AgentDisplayBatch> batches;
+    -> std::vector<::ioj::presentation::AgentDisplayBatch> {
+    std::vector<::ioj::presentation::AgentDisplayBatch> batches;
     auto const count{entities.num()};
     batches.reserve(count);
     for (int32 i{}; i < count; ++i) {
@@ -30,15 +30,15 @@ auto make_view(ml::tests::FDisplayEntityTestData const& entities,
     return batches;
 }
 
-void add_entity(ml::tests::FDisplayEntityTestData& entities,
+void add_entity(ioj::tests::FDisplayEntityTestData& entities,
                 FVector3f const location,
                 ETestTeam const team,
                 ::ioj::sim::EntityType const type,
                 bool const alive = true) {
     auto const index{entities.num()};
     entities.add_defaulted(1);
-    ::ioj::set_vector(entities.motion.get_view().view_locations(), index, ml::to_native(location));
-    entities.teams[index] = ml::to_native(team);
+    ::ioj::set_vector(entities.motion.get_view().view_locations(), index, ioj::to_native(location));
+    entities.teams[index] = ioj::to_native(team);
     entities.entity_types[index] = type;
     auto const owner{::ioj::sim::EntityUniqueId(static_cast<std::uint32_t>(index),
                                                 entities.entity_types[index])};
@@ -74,28 +74,28 @@ auto nonlinear_settings() -> FRadarSettings {
     settings.combat_display_radius = 0.45f;
     return sanitize_radar_settings(settings);
 }
-} // namespace ml::test_radar_source
+} // namespace ioj::test_radar_source
 
 TEST_CLASS(RadarSource, "Sandbox.UnitTests")
 {
     TEST_METHOD(FiltersMapsAndOrdersContacts)
     {
-        ml::tests::FDisplayEntityTestData entities;
-        ml::test_radar_source::add_entity(
+        ioj::tests::FDisplayEntityTestData entities;
+        ioj::test_radar_source::add_entity(
             entities, FVector3f::ZeroVector, ETestTeam::Blue, ::ioj::sim::EntityType::PlayerShip);
-        ml::test_radar_source::add_entity(
+        ioj::test_radar_source::add_entity(
             entities, {50.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Fighter);
-        ml::test_radar_source::add_entity(
+        ioj::test_radar_source::add_entity(
             entities, {0.0f, 50.0f, 25.0f}, ETestTeam::Green, ::ioj::sim::EntityType::CapitalShip);
-        ml::test_radar_source::add_entity(
+        ioj::test_radar_source::add_entity(
             entities, {-50.0f, 0.0f, 0.0f}, ETestTeam::Yellow, ::ioj::sim::EntityType::Turret);
-        ml::test_radar_source::add_entity(
+        ioj::test_radar_source::add_entity(
             entities, {0.0f, -50.0f, 0.0f}, ETestTeam::White, ::ioj::sim::EntityType::TubeSpinner);
-        ml::test_radar_source::add_entity(
+        ioj::test_radar_source::add_entity(
             entities, {100.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Turret);
-        ml::test_radar_source::add_entity(
+        ioj::test_radar_source::add_entity(
             entities, {25.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Fighter, false);
-        ml::test_radar_source::add_entity(
+        ioj::test_radar_source::add_entity(
             entities, {101.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::CapitalShip);
 
         std::vector<::ioj::sim::EntityUniqueId> ids;
@@ -114,13 +114,13 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
 
         FRadarFrame frame;
         auto& instances{frame.instances};
-        auto const result{collect_radar_instances(ml::test_radar_source::make_view(entities, ids),
+        auto const result{collect_radar_instances(ioj::test_radar_source::make_view(entities, ids),
                                                   objective_roles,
                                                   colours,
                                                   FTransform::Identity,
                                                   ids[0],
                                                   ETestTeam::Blue,
-                                                  ml::test_radar_source::linear_settings(),
+                                                  ioj::test_radar_source::linear_settings(),
                                                   frame)};
 
         TestRunner->TestEqual(
@@ -128,25 +128,25 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         TestRunner->TestEqual(
             TEXT("Only in-range contacts and the player are visible"), result.visible_count, 5);
         TestRunner->TestEqual(TEXT("Normal fighter is drawn first"),
-                              ml::test_radar_source::glyph(instances[0]),
+                              ioj::test_radar_source::glyph(instances[0]),
                               ERadarGlyph::Fighter);
         TestRunner->TestEqual(TEXT("Unsupported type maps to unknown"),
-                              ml::test_radar_source::glyph(instances[1]),
+                              ioj::test_radar_source::glyph(instances[1]),
                               ERadarGlyph::Unknown);
         TestRunner->TestEqual(TEXT("Objective follows normal contacts"),
-                              ml::test_radar_source::glyph(instances[2]),
+                              ioj::test_radar_source::glyph(instances[2]),
                               ERadarGlyph::CapitalShip);
         TestRunner->TestEqual(TEXT("Objective preserves its role"),
-                              ml::test_radar_source::flags(instances[2]),
+                              ioj::test_radar_source::flags(instances[2]),
                               ERadarContactFlags::DefendObjective);
         TestRunner->TestEqual(TEXT("Second objective preserves input order"),
-                              ml::test_radar_source::glyph(instances[3]),
+                              ioj::test_radar_source::glyph(instances[3]),
                               ERadarGlyph::Turret);
         TestRunner->TestEqual(TEXT("Second objective preserves its role"),
-                              ml::test_radar_source::flags(instances[3]),
+                              ioj::test_radar_source::flags(instances[3]),
                               ERadarContactFlags::DestroyObjective);
         TestRunner->TestEqual(TEXT("Player is always last"),
-                              ml::test_radar_source::glyph(instances.Last()),
+                              ioj::test_radar_source::glyph(instances.Last()),
                               ERadarGlyph::Player);
         TestRunner->TestTrue(TEXT("Player is central"),
                              instances.Last().radar_position.IsNearlyZero());
@@ -157,13 +157,13 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                               pack_radar_color(FLinearColor{0.0f, 0.0f, 1.0f, 1.0f}),
                               0xffff0000u);
 
-        auto zero_range_settings{ml::test_radar_source::linear_settings()};
+        auto zero_range_settings{ioj::test_radar_source::linear_settings()};
         zero_range_settings.maximum_range = UE_SMALL_NUMBER;
         zero_range_settings.combat_range = UE_SMALL_NUMBER;
         zero_range_settings.tactical_range = UE_SMALL_NUMBER;
         zero_range_settings.combat_display_radius = 1.0f;
         auto const zero_range_result{
-            collect_radar_instances(ml::test_radar_source::make_view(entities, ids),
+            collect_radar_instances(ioj::test_radar_source::make_view(entities, ids),
                                     objective_roles,
                                     colours,
                                     FTransform::Identity,
@@ -177,14 +177,14 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
 
     TEST_METHOD(UsesPlayerRelativeContactColours)
     {
-        ml::tests::FDisplayEntityTestData entities;
-        ml::test_radar_source::add_entity(
+        ioj::tests::FDisplayEntityTestData entities;
+        ioj::test_radar_source::add_entity(
             entities, FVector3f::ZeroVector, ETestTeam::Blue, ::ioj::sim::EntityType::PlayerShip);
-        ml::test_radar_source::add_entity(
+        ioj::test_radar_source::add_entity(
             entities, {10.0f, 0.0f, 0.0f}, ETestTeam::Blue, ::ioj::sim::EntityType::Fighter);
-        ml::test_radar_source::add_entity(
+        ioj::test_radar_source::add_entity(
             entities, {20.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::CapitalShip);
-        ml::test_radar_source::add_entity(
+        ioj::test_radar_source::add_entity(
             entities, {30.0f, 0.0f, 0.0f}, ETestTeam::White, ::ioj::sim::EntityType::Turret);
 
         std::vector<::ioj::sim::EntityUniqueId> ids;
@@ -202,13 +202,13 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         FRadarFrame frame;
         auto& instances{frame.instances};
 
-        static_cast<void>(collect_radar_instances(ml::test_radar_source::make_view(entities, ids),
+        static_cast<void>(collect_radar_instances(ioj::test_radar_source::make_view(entities, ids),
                                                   objective_roles,
                                                   colours,
                                                   FTransform::Identity,
                                                   ids[0],
                                                   ETestTeam::Blue,
-                                                  ml::test_radar_source::linear_settings(),
+                                                  ioj::test_radar_source::linear_settings(),
                                                   frame));
 
         TestRunner->TestEqual(
@@ -227,12 +227,12 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         auto const world_contact{
             FVector3f{player_location + no_roll_rotation.RotateVector(FVector{local_contact})}};
 
-        ml::tests::FDisplayEntityTestData entities;
-        ml::test_radar_source::add_entity(entities,
+        ioj::tests::FDisplayEntityTestData entities;
+        ioj::test_radar_source::add_entity(entities,
                                           FVector3f{player_location},
                                           ETestTeam::Blue,
                                           ::ioj::sim::EntityType::PlayerShip);
-        ml::test_radar_source::add_entity(
+        ioj::test_radar_source::add_entity(
             entities, world_contact, ETestTeam::Red, ::ioj::sim::EntityType::Fighter);
         std::vector<::ioj::sim::EntityUniqueId> ids;
         for (int32 index{}; index < entities.num(); ++index) {
@@ -247,22 +247,22 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         auto& no_roll_instances{no_roll_frame.instances};
         auto& rolled_instances{rolled_frame.instances};
 
-        static_cast<void>(collect_radar_instances(ml::test_radar_source::make_view(entities, ids),
+        static_cast<void>(collect_radar_instances(ioj::test_radar_source::make_view(entities, ids),
                                                   objective_roles,
                                                   colours,
                                                   FTransform{no_roll_rotation, player_location},
                                                   ids[0],
                                                   ETestTeam::Blue,
-                                                  ml::test_radar_source::linear_settings(),
+                                                  ioj::test_radar_source::linear_settings(),
                                                   no_roll_frame));
         static_cast<void>(
-            collect_radar_instances(ml::test_radar_source::make_view(entities, ids),
+            collect_radar_instances(ioj::test_radar_source::make_view(entities, ids),
                                     objective_roles,
                                     colours,
                                     FTransform{FRotator{28.0, 37.0, 120.0}, player_location},
                                     ids[0],
                                     ETestTeam::Blue,
-                                    ml::test_radar_source::linear_settings(),
+                                    ioj::test_radar_source::linear_settings(),
                                     rolled_frame));
 
         TestRunner->TestEqual(
@@ -271,7 +271,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
             TEXT("Rolled orientation emits contact and player"), rolled_instances.Num(), 2);
         TestRunner->TestTrue(
             TEXT("Roll does not rotate the contact field"),
-            ml::test_radar_source::nearly_equal(no_roll_instances[0].radar_position,
+            ioj::test_radar_source::nearly_equal(no_roll_instances[0].radar_position,
                                                 rolled_instances[0].radar_position));
         TestRunner->TestTrue(
             TEXT("Yaw and pitch recover player-relative height"),
@@ -284,12 +284,12 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
 
     TEST_METHOD(NonlinearMappingUsesStableSemanticAnchors)
     {
-        auto const settings{ml::test_radar_source::nonlinear_settings()};
-        auto const centre{ml::radar_source::to_radar_position(FVector3f::ZeroVector, settings)};
+        auto const settings{ioj::test_radar_source::nonlinear_settings()};
+        auto const centre{ioj::radar_source::to_radar_position(FVector3f::ZeroVector, settings)};
         auto const combat{
-            ml::radar_source::to_radar_position({settings.combat_range, 0.0f, 0.0f}, settings)};
+            ioj::radar_source::to_radar_position({settings.combat_range, 0.0f, 0.0f}, settings)};
         auto const maximum{
-            ml::radar_source::to_radar_position({settings.maximum_range, 0.0f, 0.0f}, settings)};
+            ioj::radar_source::to_radar_position({settings.maximum_range, 0.0f, 0.0f}, settings)};
 
         TestRunner->TestTrue(TEXT("The centre maps exactly to the origin"), centre.IsZero());
         TestRunner->TestTrue(
@@ -298,7 +298,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("The maximum range maps exactly to the edge"),
                              FMath::IsNearlyEqual(maximum.X, 1.0f, UE_KINDA_SMALL_NUMBER));
         TestRunner->TestTrue(TEXT("The tactical boundary maps near eighty percent"),
-                             FMath::IsNearlyEqual(ml::radar_source::to_radar_display_radius(
+                             FMath::IsNearlyEqual(ioj::radar_source::to_radar_display_radius(
                                                       settings.tactical_range, settings),
                                                   0.8f,
                                                   0.01f));
@@ -306,15 +306,15 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         auto previous_radius{0.0f};
         for (int32 distance{1}; distance <= 2000; ++distance) {
             auto const radius{
-                ml::radar_source::to_radar_display_radius(static_cast<float>(distance), settings)};
+                ioj::radar_source::to_radar_display_radius(static_cast<float>(distance), settings)};
             TestRunner->TestTrue(TEXT("Mapping is strictly monotonic"), radius > previous_radius);
             previous_radius = radius;
         }
 
         for (auto const boundary : {settings.combat_range, settings.tactical_range}) {
-            auto const before{ml::radar_source::to_radar_display_radius(boundary - 1.0f, settings)};
-            auto const at{ml::radar_source::to_radar_display_radius(boundary, settings)};
-            auto const after{ml::radar_source::to_radar_display_radius(boundary + 1.0f, settings)};
+            auto const before{ioj::radar_source::to_radar_display_radius(boundary - 1.0f, settings)};
+            auto const at{ioj::radar_source::to_radar_display_radius(boundary, settings)};
+            auto const after{ioj::radar_source::to_radar_display_radius(boundary + 1.0f, settings)};
             TestRunner->TestTrue(TEXT("Movement remains finite across a semantic boundary"),
                                  FMath::IsFinite(before) && FMath::IsFinite(at) &&
                                      FMath::IsFinite(after));
@@ -325,11 +325,11 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
 
     TEST_METHOD(NonlinearMappingPreservesBearingAndCompressesHeight)
     {
-        auto const settings{ml::test_radar_source::nonlinear_settings()};
+        auto const settings{ioj::test_radar_source::nonlinear_settings()};
         FVector2f const planar_deltas[]{
             {80.0f, 60.0f}, {-80.0f, 60.0f}, {-80.0f, -60.0f}, {80.0f, -60.0f}};
         for (auto const planar_delta : planar_deltas) {
-            auto const mapped{ml::radar_source::to_radar_position(
+            auto const mapped{ioj::radar_source::to_radar_position(
                 {planar_delta.X, planar_delta.Y, 0.0f}, settings)};
             auto const cross{planar_delta.X * mapped.Y - planar_delta.Y * mapped.X};
             auto const dot{planar_delta.X * mapped.X + planar_delta.Y * mapped.Y};
@@ -339,9 +339,9 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
 
         auto previous_height{0.0f};
         for (float const height : {25.0f, 100.0f, 400.0f, 1000.0f}) {
-            auto const above{ml::radar_source::to_radar_position({0.0f, 0.0f, height}, settings).Z};
+            auto const above{ioj::radar_source::to_radar_position({0.0f, 0.0f, height}, settings).Z};
             auto const below{
-                ml::radar_source::to_radar_position({0.0f, 0.0f, -height}, settings).Z};
+                ioj::radar_source::to_radar_position({0.0f, 0.0f, -height}, settings).Z};
             TestRunner->TestTrue(TEXT("Vertical compression is signed and symmetric"),
                                  above > 0.0f && FMath::IsNearlyEqual(above, -below));
             TestRunner->TestTrue(TEXT("Vertical compression is strictly monotonic"),
@@ -352,11 +352,11 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
 
     TEST_METHOD(ContactMappingDoesNotDependOnOtherContacts)
     {
-        auto const settings{ml::test_radar_source::nonlinear_settings()};
-        ml::tests::FDisplayEntityTestData entities;
-        ml::test_radar_source::add_entity(
+        auto const settings{ioj::test_radar_source::nonlinear_settings()};
+        ioj::tests::FDisplayEntityTestData entities;
+        ioj::test_radar_source::add_entity(
             entities, FVector3f::ZeroVector, ETestTeam::Blue, ::ioj::sim::EntityType::PlayerShip);
-        ml::test_radar_source::add_entity(
+        ioj::test_radar_source::add_entity(
             entities, {250.0f, -80.0f, 40.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Fighter);
         std::vector<::ioj::sim::EntityUniqueId> ids;
         for (int32 index{}; index < entities.num(); ++index) {
@@ -368,7 +368,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         FRadarContactColours colours;
         FRadarFrame frame;
 
-        static_cast<void>(collect_radar_instances(ml::test_radar_source::make_view(entities, ids),
+        static_cast<void>(collect_radar_instances(ioj::test_radar_source::make_view(entities, ids),
                                                   objective_roles,
                                                   colours,
                                                   FTransform::Identity,
@@ -378,14 +378,14 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                                                   frame));
         auto const original_position{frame.instances[0].radar_position};
 
-        ml::test_radar_source::add_entity(entities,
+        ioj::test_radar_source::add_entity(entities,
                                           {1500.0f, 100.0f, 0.0f},
                                           ETestTeam::Green,
                                           ::ioj::sim::EntityType::CapitalShip);
         ids.push_back(::ioj::sim::EntityUniqueId(static_cast<std::uint32_t>(entities.num() - 1),
                                                  entities.entity_types.back()));
         objective_roles.Add(EEntityOverlayObjectiveRole::None);
-        static_cast<void>(collect_radar_instances(ml::test_radar_source::make_view(entities, ids),
+        static_cast<void>(collect_radar_instances(ioj::test_radar_source::make_view(entities, ids),
                                                   objective_roles,
                                                   colours,
                                                   FTransform::Identity,
@@ -394,7 +394,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                                                   settings,
                                                   frame));
         TestRunner->TestTrue(TEXT("An unrelated contact does not move an existing contact"),
-                             ml::test_radar_source::nearly_equal(
+                             ioj::test_radar_source::nearly_equal(
                                  original_position, frame.instances[0].radar_position));
         TestRunner->TestTrue(TEXT("Frame carries the combat display radius"),
                              FMath::IsNearlyEqual(frame.combat_display_radius, 0.45f));
@@ -404,15 +404,15 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
 
     TEST_METHOD(FixedMaximumRangeExcludesAllOutOfRangeContacts)
     {
-        auto const settings{ml::test_radar_source::nonlinear_settings()};
-        ml::tests::FDisplayEntityTestData entities;
-        ml::test_radar_source::add_entity(
+        auto const settings{ioj::test_radar_source::nonlinear_settings()};
+        ioj::tests::FDisplayEntityTestData entities;
+        ioj::test_radar_source::add_entity(
             entities, FVector3f::ZeroVector, ETestTeam::Blue, ::ioj::sim::EntityType::PlayerShip);
-        ml::test_radar_source::add_entity(
+        ioj::test_radar_source::add_entity(
             entities, {1999.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Fighter);
-        ml::test_radar_source::add_entity(
+        ioj::test_radar_source::add_entity(
             entities, {2000.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::CapitalShip);
-        ml::test_radar_source::add_entity(
+        ioj::test_radar_source::add_entity(
             entities, {1600.0f, 0.0f, 1200.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Turret);
         std::vector<::ioj::sim::EntityUniqueId> ids;
         for (int32 index{}; index < entities.num(); ++index) {
@@ -425,7 +425,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         objective_roles[3] = EEntityOverlayObjectiveRole::Defend;
         FRadarFrame frame;
 
-        auto const result{collect_radar_instances(ml::test_radar_source::make_view(entities, ids),
+        auto const result{collect_radar_instances(ioj::test_radar_source::make_view(entities, ids),
                                                   objective_roles,
                                                   FRadarContactColours{},
                                                   FTransform::Identity,
@@ -437,7 +437,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                               result.visible_count,
                               2);
         TestRunner->TestEqual(TEXT("The in-range contact remains visible"),
-                              ml::test_radar_source::glyph(frame.instances[0]),
+                              ioj::test_radar_source::glyph(frame.instances[0]),
                               ERadarGlyph::Fighter);
     }
 };

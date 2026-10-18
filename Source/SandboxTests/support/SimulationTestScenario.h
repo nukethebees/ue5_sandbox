@@ -15,7 +15,7 @@ class FTestCommandBuilder;
 class USpaceGameLevelConfig;
 class UWorld;
 
-namespace ml {
+namespace ioj {
 struct FSimulationTestContext {
     ATestBatchOrchestrator& orchestrator;
     FAutomationTestBase& automation_test;

@@ -11,8 +11,8 @@
 #include <utility>
 
 namespace ioj::sim::fighters {
-using ml::native_math::safe_normal;
-using ml::native_math::sin_cos;
+using ioj::native_math::safe_normal;
+using ioj::native_math::sin_cos;
 namespace {
 inline constexpr float half_weight{0.5f};
 inline constexpr float sqrt_three_over_two{0.8660254f};
@@ -49,8 +49,8 @@ constexpr auto combine_hashes(std::uint32_t const first, std::uint32_t const sec
 auto make_avoidance_frame(Vector3f const preferred_direction, float const float_bias) noexcept
     -> AvoidanceFrame {
     auto const reference_axis{std::abs(preferred_direction.z()) < 0.9f
-                                  ? ml::make_vector3f(0.0f, 0.0f, 1.0f)
-                                  : ml::make_vector3f(0.0f, 1.0f, 0.0f)};
+                                  ? ioj::make_vector3f(0.0f, 0.0f, 1.0f)
+                                  : ioj::make_vector3f(0.0f, 1.0f, 0.0f)};
     auto const first_lateral{safe_normal(ioj::cross(reference_axis, preferred_direction))};
     auto const second_lateral{safe_normal(ioj::cross(preferred_direction, first_lateral))};
     auto const roll_angle{float_bias * two_pi};
@@ -152,7 +152,7 @@ auto make_coincident_separation_direction(EntityUniqueId const self,
     float angle_sin;
     float angle_cos;
     sin_cos(angle, angle_sin, angle_cos);
-    auto const direction{ml::make_vector3f(radial * angle_cos, radial * angle_sin, z)};
+    auto const direction{ioj::make_vector3f(radial * angle_cos, radial * angle_sin, z)};
     return self == first ? direction : -direction;
 }
 
@@ -215,7 +215,7 @@ auto observe_separation(Vector3f const fighter_location,
 
     std::array<Vector3f, separation_neighbour_limit> directions_to_neighbours;
     std::array<float, separation_neighbour_limit> neighbour_weights;
-    auto separation_observation{ml::make_vector3f(0.0f, 0.0f, 0.0f)};
+    auto separation_observation{ioj::make_vector3f(0.0f, 0.0f, 0.0f)};
     auto closest_distance_squared{no_neighbour_distance_squared};
     auto const neighbour_count{static_cast<std::uint32_t>(neighbours.size())};
     for (std::uint32_t neighbour_index{}; neighbour_index < neighbour_count; ++neighbour_index) {

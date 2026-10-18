@@ -20,7 +20,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogEntityOverlayBenchmark, Log, All);
 namespace {
 auto make_view(::ioj::sim::TurretEntityData const& entities,
                ::ioj::sim::HealthTable const& health_table)
-    -> std::array<::ml::presentation::AgentDisplayBatch, 1> {
+    -> std::array<::ioj::presentation::AgentDisplayBatch, 1> {
     auto const data{entities.get_const_view()};
     return {{{::ioj::sim::EntityType::Turret,
               data.entity_ids(),
@@ -58,7 +58,7 @@ auto write_debug_frames(FString const& output_directory) -> bool {
     };
     ::ioj::sim::Health const health[]{0, 25, 50, 75, 100, 75, 100, 100, 100, 50};
     ::ioj::sim::EntityTypeRadii entity_type_radii;
-    for (auto const type : ml::EnumTraits<::ioj::sim::EntityType>::values) {
+    for (auto const type : ioj::EnumTraits<::ioj::sim::EntityType>::values) {
         entity_type_radii[type] = 200.0f;
     }
     auto const count{UE_ARRAY_COUNT(positions)};
@@ -67,9 +67,9 @@ auto write_debug_frames(FString const& output_directory) -> bool {
         entities.get_view().entity_ids()[index] = ::ioj::sim::EntityUniqueId(
             static_cast<std::uint32_t>(index), ::ioj::sim::EntityType::Turret);
         ::ioj::set_vector(
-            entities.get_view().view_locations(), index, ml::to_native(positions[index]));
+            entities.get_view().view_locations(), index, ioj::to_native(positions[index]));
         entities.get_view().teams()[index] =
-            static_cast<::ioj::Team>(index % ml::enum_count<::ioj::Team>());
+            static_cast<::ioj::Team>(index % ioj::enum_count<::ioj::Team>());
     }
     health_table.initialise_rows<::ioj::sim::EntityType::Turret>(0, health);
 

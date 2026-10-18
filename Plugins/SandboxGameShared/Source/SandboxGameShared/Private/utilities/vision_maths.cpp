@@ -7,12 +7,12 @@
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
 
-namespace ml {
+namespace ioj {
 auto get_abs_angle_from_fwd_vector(FVector standing_pt, FVector fwd, AActor const& target)
     -> double {
     auto const to_target{target.GetActorLocation() - standing_pt};
     auto const to_target_norm{to_target.GetSafeNormal()};
-    auto const angle_between{ml::get_angle_between_norm_lines(fwd, to_target_norm)};
+    auto const angle_between{ioj::get_angle_between_norm_lines(fwd, to_target_norm)};
 
     return angle_between;
 }
@@ -122,11 +122,11 @@ auto get_centre_actor_in_fov(AActor const& actor, TArrayView<AActor*> options) -
     if (num_hits > 1) {
         auto const pos{actor.GetActorLocation()};
         auto const fwd{actor.GetActorForwardVector()};
-        auto target_angle{ml::get_abs_angle_from_fwd_vector(pos, fwd, *result)};
+        auto target_angle{ioj::get_abs_angle_from_fwd_vector(pos, fwd, *result)};
 
         for (int32 i{1}; i < num_hits; ++i) {
             auto* hit_actor{options[i]};
-            auto const hit_angle{ml::get_abs_angle_from_fwd_vector(pos, fwd, *hit_actor)};
+            auto const hit_angle{ioj::get_abs_angle_from_fwd_vector(pos, fwd, *hit_actor)};
 
             if (hit_angle < target_angle) {
                 result = hit_actor;

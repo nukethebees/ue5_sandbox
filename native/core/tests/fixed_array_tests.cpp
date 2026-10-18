@@ -92,21 +92,21 @@ struct ThrowingValue {
     ConstructionCounts& counts_;
 };
 
-static_assert(std::is_nothrow_move_constructible_v<ml::FixedArray<MoveOnlyValue, 3>>);
-static_assert(!std::is_nothrow_move_constructible_v<ml::FixedArray<ThrowingValue, 3>>);
+static_assert(std::is_nothrow_move_constructible_v<ioj::FixedArray<MoveOnlyValue, 3>>);
+static_assert(!std::is_nothrow_move_constructible_v<ioj::FixedArray<ThrowingValue, 3>>);
 
 TEST(NativeCoreFixedArray, CleansUpAfterThrowingCopyConstruction) {
     for (std::int32_t prefix{}; prefix < 3; ++prefix) {
         SCOPED_TRACE(prefix);
         ConstructionCounts counts;
         {
-            ml::FixedArray<ThrowingValue, 3> source;
+            ioj::FixedArray<ThrowingValue, 3> source;
             source.emplace_back(counts);
             source.emplace_back(counts);
             source.emplace_back(counts);
             counts.copies_before_throw = prefix;
 
-            EXPECT_THROW((ml::FixedArray<ThrowingValue, 3>{source}), std::runtime_error);
+            EXPECT_THROW((ioj::FixedArray<ThrowingValue, 3>{source}), std::runtime_error);
             EXPECT_EQ(counts.live, 3);
             EXPECT_EQ(source.num(), 3);
         }
@@ -119,13 +119,13 @@ TEST(NativeCoreFixedArray, CleansUpAfterThrowingMoveConstruction) {
         SCOPED_TRACE(prefix);
         ConstructionCounts counts;
         {
-            ml::FixedArray<ThrowingValue, 3> source;
+            ioj::FixedArray<ThrowingValue, 3> source;
             source.emplace_back(counts);
             source.emplace_back(counts);
             source.emplace_back(counts);
             counts.moves_before_throw = prefix;
 
-            EXPECT_THROW((ml::FixedArray<ThrowingValue, 3>{std::move(source)}), std::runtime_error);
+            EXPECT_THROW((ioj::FixedArray<ThrowingValue, 3>{std::move(source)}), std::runtime_error);
             EXPECT_EQ(counts.live, 3);
             // NOLINTNEXTLINE(bugprone-use-after-move): Check the failed move's source range.
             EXPECT_EQ(source.num(), 3);
@@ -143,7 +143,7 @@ TEST(NativeCoreFixedArray, CleansUpAfterThrowingInitializerListConstruction) {
                 ThrowingValue{counts}, ThrowingValue{counts}, ThrowingValue{counts}};
             counts.copies_before_throw = prefix;
 
-            EXPECT_THROW((ml::FixedArray<ThrowingValue, 3>{source}), std::runtime_error);
+            EXPECT_THROW((ioj::FixedArray<ThrowingValue, 3>{source}), std::runtime_error);
             EXPECT_EQ(counts.live, 3);
         }
         EXPECT_EQ(counts.live, 0);
@@ -178,7 +178,7 @@ auto write_results(std::span<ResultHandle> const output,
     return result_count;
 }
 
-void expect_results(ml::FixedArray<ResultHandle, 8> const& values,
+void expect_results(ioj::FixedArray<ResultHandle, 8> const& values,
                     std::int32_t const expected_count,
                     std::int32_t const expected_generation) {
     ASSERT_EQ(values.num(), expected_count);
@@ -197,12 +197,12 @@ TEST(NativeCoreFixedStorage, DefersLifetimeAndPreservesAlignment) {
     EXPECT_EQ(LifetimeTrackedValue::live_count, 0);
 
     {
-        ml::TFixedStorage<LifetimeTrackedValue, 3> storage;
-        ml::TFixedStorage<OverAlignedValue, 1> aligned_storage;
-        ml::TFixedStorage<std::int32_t, 0> empty_storage;
+        ioj::TFixedStorage<LifetimeTrackedValue, 3> storage;
+        ioj::TFixedStorage<OverAlignedValue, 1> aligned_storage;
+        ioj::TFixedStorage<std::int32_t, 0> empty_storage;
 
-        static_assert(ml::TFixedStorage<LifetimeTrackedValue, 3>::capacity() == 3);
-        static_assert(ml::TFixedStorage<std::int32_t, 0>::capacity() == 0);
+        static_assert(ioj::TFixedStorage<LifetimeTrackedValue, 3>::capacity() == 3);
+        static_assert(ioj::TFixedStorage<std::int32_t, 0>::capacity() == 0);
         EXPECT_EQ(LifetimeTrackedValue::live_count, 0);
 
         auto& first{storage.construct_at(0, 10)};
@@ -227,11 +227,11 @@ TEST(NativeCoreFixedStorage, DefersLifetimeAndPreservesAlignment) {
 }
 
 TEST(NativeCoreFixedArray, SupportsZeroCapacityInitializersAndNativeViews) {
-    ml::FixedArray<std::int32_t, 0> empty;
-    ml::FixedArray<std::int32_t, 4> values{10, 20};
+    ioj::FixedArray<std::int32_t, 0> empty;
+    ioj::FixedArray<std::int32_t, 4> values{10, 20};
 
-    static_assert(ml::FixedArray<std::int32_t, 4>::capacity() == 4);
-    static_assert(ml::FixedArray<std::int32_t, 0>::capacity() == 0);
+    static_assert(ioj::FixedArray<std::int32_t, 4>::capacity() == 4);
+    static_assert(ioj::FixedArray<std::int32_t, 0>::capacity() == 0);
     static_assert(std::is_same_v<decltype(values.num()), std::uint32_t>);
 
     empty.reserve(0);
@@ -251,14 +251,14 @@ TEST(NativeCoreFixedArray, SupportsZeroCapacityInitializersAndNativeViews) {
 }
 
 TEST(NativeCoreFixedArray, AddsEmplacesAndResizesItsActiveRange) {
-    ml::FixedArray<std::string, 4> values;
+    ioj::FixedArray<std::string, 4> values;
 
     EXPECT_EQ(values.add("first"), 0);
     auto& second{values.emplace_back("second")};
     EXPECT_EQ(values.add(std::string{"third"}), 2);
     EXPECT_EQ(values.data() + 1, &second);
 
-    ml::FixedArray<std::int32_t, 4> defaults;
+    ioj::FixedArray<std::int32_t, 4> defaults;
     defaults.add_defaulted(3);
     defaults[1] = 42;
     defaults.set_num(2);
@@ -274,10 +274,10 @@ TEST(NativeCoreFixedArray, AddsEmplacesAndResizesItsActiveRange) {
 }
 
 TEST(NativeCoreFixedArray, CopiesMovesAndSupportsMoveOnlyValues) {
-    ml::FixedArray<std::string, 3> source{"alpha", "beta"};
-    ml::FixedArray<std::string, 3> copied{source};
-    ml::FixedArray<std::string, 3> moved{std::move(source)};
-    ml::FixedArray<std::string, 3> assigned;
+    ioj::FixedArray<std::string, 3> source{"alpha", "beta"};
+    ioj::FixedArray<std::string, 3> copied{source};
+    ioj::FixedArray<std::string, 3> moved{std::move(source)};
+    ioj::FixedArray<std::string, 3> assigned;
 
     assigned = copied;
     assigned = std::move(moved);
@@ -290,10 +290,10 @@ TEST(NativeCoreFixedArray, CopiesMovesAndSupportsMoveOnlyValues) {
     EXPECT_EQ(assigned[0], "alpha");
     EXPECT_EQ(assigned[1], "beta");
 
-    ml::FixedArray<MoveOnlyValue, 2> move_only;
+    ioj::FixedArray<MoveOnlyValue, 2> move_only;
     move_only.emplace_back(10);
     move_only.emplace_back(20);
-    ml::FixedArray<MoveOnlyValue, 2> moved_only{std::move(move_only)};
+    ioj::FixedArray<MoveOnlyValue, 2> moved_only{std::move(move_only)};
 
     // NOLINTNEXTLINE(bugprone-use-after-move): Verify the defined moved-from state.
     EXPECT_TRUE(move_only.is_empty());
@@ -305,7 +305,7 @@ TEST(NativeCoreFixedArray, DestroysRemovedElementsAndReusesStorage) {
     EXPECT_EQ(LifetimeTrackedValue::live_count, 0);
 
     {
-        ml::FixedArray<LifetimeTrackedValue, 4> values;
+        ioj::FixedArray<LifetimeTrackedValue, 4> values;
         values.emplace_back(10);
         values.emplace_back(20);
         values.emplace_back(30);
@@ -320,7 +320,7 @@ TEST(NativeCoreFixedArray, DestroysRemovedElementsAndReusesStorage) {
         EXPECT_EQ(LifetimeTrackedValue::live_count, 0);
     }
 
-    ml::FixedArray<std::int32_t, 8> values;
+    ioj::FixedArray<std::int32_t, 8> values;
     values.reserve(8);
     for (std::int32_t iteration{}; iteration < 64; ++iteration) {
         values.set_num(8);
@@ -335,7 +335,7 @@ TEST(NativeCoreFixedArray, DestroysRemovedElementsAndReusesStorage) {
 }
 
 TEST(NativeCoreFixedArray, SupportsUninitialisedQueryResultBuffers) {
-    ml::FixedArray<ResultHandle, 8> results;
+    ioj::FixedArray<ResultHandle, 8> results;
 
     results.set_num_uninitialised(write_results(results.capacity_view(), 3, 10));
     expect_results(results, 3, 10);
@@ -361,11 +361,11 @@ TEST(NativeCoreFixedArray, SupportsUninitialisedQueryResultBuffers) {
 }
 
 TEST(NativeCoreFixedArray, CopiesAndMovesUninitialisedQueryResults) {
-    ml::FixedArray<ResultHandle, 8> source;
+    ioj::FixedArray<ResultHandle, 8> source;
     source.set_num_uninitialised(write_results(source.capacity_view(), 4, 27));
 
-    ml::FixedArray<ResultHandle, 8> copied{source};
-    ml::FixedArray<ResultHandle, 8> moved{std::move(source)};
+    ioj::FixedArray<ResultHandle, 8> copied{source};
+    ioj::FixedArray<ResultHandle, 8> moved{std::move(source)};
 
     // NOLINTNEXTLINE(bugprone-use-after-move): Verify the defined moved-from state.
     EXPECT_TRUE(source.is_empty());

@@ -62,7 +62,7 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
         std::int32_t alive_entities{};
         std::int32_t kills{};
     };
-    ml::TimeSeriesData<Sample> samples;
+    ioj::TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim& simulation) {
         auto const target_state{observe_entity(simulation, target)};
         samples.add(harness.get_time(),

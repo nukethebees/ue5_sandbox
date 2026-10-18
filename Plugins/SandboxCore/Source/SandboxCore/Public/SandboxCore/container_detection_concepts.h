@@ -7,7 +7,7 @@
 #include <concepts>
 #include <type_traits>
 
-namespace ml::details {
+namespace ioj::details {
 template <typename T>
 concept HasUnrealNum = requires(T const& value) {
     { value.Num() } -> std::convertible_to<int32>;

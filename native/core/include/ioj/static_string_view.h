@@ -4,7 +4,7 @@
 #include <string_view>
 #include <utility>
 
-namespace ml {
+namespace ioj {
 class StaticStringView {
   public:
     template <std::size_t N>

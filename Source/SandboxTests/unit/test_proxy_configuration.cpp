@@ -20,7 +20,7 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
     BEFORE_EACH()
     {
         world = UWorld::CreateWorld(EWorldType::Editor, false);
-        auto* const source{ml::load_default_level_config()};
+        auto* const source{ioj::load_default_level_config()};
         if (!TestRunner->TestNotNull(TEXT("Default config loads"), source)) {
             return;
         }
@@ -99,7 +99,7 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
                              arrows(*first, TEXT("fighter_spawn_slots"))[0] == points[0]);
         TestRunner->TestEqual(TEXT("Save does not modify stale asset"),
                               stale->capital_ships.fighter_spawn_slots,
-                              ml::load_default_level_config()->capital_ships.fighter_spawn_slots);
+                              ioj::load_default_level_config()->capital_ships.fighter_spawn_slots);
     }
 
     TEST_METHOD(CapitalBlueprintApplySurvivesConstructionRerun)

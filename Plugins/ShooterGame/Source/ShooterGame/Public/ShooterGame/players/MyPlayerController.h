@@ -52,8 +52,8 @@ struct FMyPlayerControllerHud {
 UCLASS()
 class SHOOTERGAME_API AMyPlayerController
     : public APlayerController
-    , public ml::LogMsgMixin<"MyPlayerController", LogShooterGameController>
-    , public ml::EnhancedInputMixin {
+    , public ioj::LogMsgMixin<"MyPlayerController", LogShooterGameController>
+    , public ioj::EnhancedInputMixin {
     GENERATED_BODY()
   public:
     AMyPlayerController();

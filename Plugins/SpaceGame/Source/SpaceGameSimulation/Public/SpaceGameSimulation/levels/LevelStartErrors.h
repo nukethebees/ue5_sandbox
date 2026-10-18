@@ -2,7 +2,7 @@
 
 #include <CoreMinimal.h>
 
-namespace ml {
+namespace ioj {
 struct FLevelStartErrors {
     void add(FString message) { messages_.Add(MoveTemp(message)); }
 

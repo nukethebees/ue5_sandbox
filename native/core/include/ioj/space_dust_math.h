@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <limits>
 
-namespace ml::space_dust {
+namespace ioj::space_dust {
 inline constexpr std::int32_t maximum_particle_count{2048};
 
 struct Tuning {

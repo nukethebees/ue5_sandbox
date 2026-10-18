@@ -19,7 +19,7 @@ class SPACEGAMEPRESENTATION_API UTopKillersWidget : public UUserWidget {
   public:
     static constexpr int32 max_entries{5};
 
-    void set_top_killers(ml::ship_hud::FTopKillerEntries const& new_entries);
+    void set_top_killers(ioj::ship_hud::FTopKillerEntries const& new_entries);
     void set_team_colours(UTestTeamVisualData::FColourArray const& new_colours);
     void apply_hud_style(ioj::FGameHudStyle const& style);
     void set_font_size(int32 const new_font_size);
@@ -43,7 +43,7 @@ class SPACEGAMEPRESENTATION_API UTopKillersWidget : public UUserWidget {
     void rebuild_table();
     void set_text_style(UTextBlock& text, ETextJustify::Type alignment) const;
 
-    ml::ship_hud::FTopKillerEntries top_killers{};
+    ioj::ship_hud::FTopKillerEntries top_killers{};
     UTestTeamVisualData::FColourArray team_colours{};
     TOptional<ioj::FGameHudStyle> hud_style_{};
 };

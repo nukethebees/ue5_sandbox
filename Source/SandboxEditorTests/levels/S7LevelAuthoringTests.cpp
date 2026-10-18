@@ -41,20 +41,20 @@
 #include <expected>
 
 namespace {
-auto emit_source(ml::FLevelDefinition const& definition) -> std::expected<FString, FString> {
+auto emit_source(ioj::FLevelDefinition const& definition) -> std::expected<FString, FString> {
     auto checked{ioj::levels::authoring::to_native(definition)};
     if (!checked) {
-        return std::unexpected{ml::to_fstring(ioj::levels::format_diagnostics(checked.error()))};
+        return std::unexpected{ioj::to_fstring(ioj::levels::format_diagnostics(checked.error()))};
     }
     auto source{ioj::levels::authoring::emit_editor_level_source(*checked)};
     if (!source) {
-        return std::unexpected{ml::to_fstring(ioj::levels::format_diagnostics(source.error()))};
+        return std::unexpected{ioj::to_fstring(ioj::levels::format_diagnostics(source.error()))};
     }
-    return ml::to_fstring(*source);
+    return ioj::to_fstring(*source);
 }
 
 auto collect_level(ULevel const& level, AS7LevelAuthoringDocument const& document)
-    -> std::expected<ml::FLevelDefinition, FString> {
+    -> std::expected<ioj::FLevelDefinition, FString> {
     return ioj::editor::collect_s7_editor_level(level, document).transform([](auto const& checked) {
         return ioj::levels::authoring::to_unreal(checked);
     });
@@ -62,11 +62,11 @@ auto collect_level(ULevel const& level, AS7LevelAuthoringDocument const& documen
 
 auto make_plan(ULevel const& level,
                AS7LevelAuthoringDocument const& document,
-               ml::FLevelDefinition const& definition)
+               ioj::FLevelDefinition const& definition)
     -> std::expected<ioj::editor::FS7LevelSyncPlan, FString> {
     auto checked{ioj::levels::authoring::to_native(definition)};
     if (!checked) {
-        return std::unexpected{ml::to_fstring(ioj::levels::format_diagnostics(checked.error()))};
+        return std::unexpected{ioj::to_fstring(ioj::levels::format_diagnostics(checked.error()))};
     }
     return ioj::editor::make_s7_level_sync_plan(level, document, MoveTemp(*checked));
 }
@@ -154,9 +154,9 @@ auto make_preview_fixture(bool const observer_camera = false) -> FPreviewFixture
 }
 
 template <typename TTestRunner>
-auto assert_valid_definition(TTestRunner& test_runner, ml::FLevelDefinition const& definition)
+auto assert_valid_definition(TTestRunner& test_runner, ioj::FLevelDefinition const& definition)
     -> bool {
-    auto const validation{ml::validate_level(definition)};
+    auto const validation{ioj::validate_level(definition)};
     if (test_runner.TestTrue(TEXT("Fixture definition is valid"), static_cast<bool>(validation))) {
         return true;
     }
@@ -261,7 +261,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
     {
         auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
         auto const created{ioj::editor::create_level_authoring_document(*world->GetCurrentLevel())};
-        auto* const canonical{ml::s7_level_config::load_canonical()};
+        auto* const canonical{ioj::s7_level_config::load_canonical()};
         if (!TestRunner->TestTrue(TEXT("Authoring document is created"), created.has_value()) ||
             !TestRunner->TestNotNull(TEXT("Canonical S7 config loads"), canonical)) {
             return;
@@ -438,7 +438,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
         auto const incoming_cells{FVector3f{7000.f, 8000.f, 22000.f}};
         definition->collision_grid =
-            ml::FLevelCollisionGridDefinition{.level_size = NullOpt, .cell_size = incoming_cells};
+            ioj::FLevelCollisionGridDefinition{.level_size = NullOpt, .cell_size = incoming_cells};
         auto const plan{
             make_plan(*fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
         if (!TestRunner->TestTrue(TEXT("Partial replacement plans"), plan.has_value())) {
@@ -480,7 +480,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         ioj::levels::authoring::FDefinitionReader reader;
         auto const read{reader.read_level_source(*source)};
         if (!TestRunner->TestTrue(TEXT("Partial grid reads"), static_cast<bool>(read))) {
-            TestRunner->AddError(ml::to_fstring(ioj::levels::format_diagnostics(read.error())));
+            TestRunner->AddError(ioj::to_fstring(ioj::levels::format_diagnostics(read.error())));
             return;
         }
         auto const& grid{read->collision_grid};
@@ -872,7 +872,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
         player->set_team(ETestTeam::Blue);
         enemy->set_team(ETestTeam::Red);
-        document->level_config = ml::s7_level_config::load_canonical();
+        document->level_config = ioj::s7_level_config::load_canonical();
         document->level_id = TEXT("objective-round-trip");
         document->title = TEXT("Objective Round Trip");
         document->entities = {{.id = TEXT("player"), .actor = player},
@@ -1015,7 +1015,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             TestRunner->AddError(definition.error());
             return;
         }
-        definition->camera->target_entity_ids = {ml::FLevelEntityId{TEXT("enemy")}};
+        definition->camera->target_entity_ids = {ioj::FLevelEntityId{TEXT("enemy")}};
         if (!assert_valid_definition(*TestRunner, *definition)) {
             return;
         }
@@ -1045,7 +1045,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
         TestRunner->TestTrue(TEXT("Camera target is applied"),
                              collected->camera->target_entity_ids ==
-                                 TArray<ml::FLevelEntityId>{ml::FLevelEntityId{TEXT("enemy")}});
+                                 TArray<ioj::FLevelEntityId>{ioj::FLevelEntityId{TEXT("enemy")}});
     }
 
     TEST_METHOD(PreviewReportsPlayerToCameraViewpointChange)
@@ -1060,8 +1060,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             return;
         }
         definition->player_entity_id = {};
-        definition->camera = ml::FLevelCameraDefinition{
-            .target_entity_ids = {ml::FLevelEntityId{TEXT("enemy")}},
+        definition->camera = ioj::FLevelCameraDefinition{
+            .target_entity_ids = {ioj::FLevelEntityId{TEXT("enemy")}},
             .offset_direction = FVector{-1.0, 0.0, 0.0},
             .distance = 1000.0,
         };
@@ -1157,13 +1157,13 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
         document->level_config = level_config;
 
-        ml::FLevelBuilder builder;
-        builder.set_metadata({.id = ml::FLevelId{TEXT("add")}, .title = TEXT("Add")});
-        builder.set_camera({.target_entity_ids = {ml::FLevelEntityId{TEXT("ship")}},
+        ioj::FLevelBuilder builder;
+        builder.set_metadata({.id = ioj::FLevelId{TEXT("add")}, .title = TEXT("Add")});
+        builder.set_camera({.target_entity_ids = {ioj::FLevelEntityId{TEXT("ship")}},
                             .offset_direction = FVector{-1.0, 0.0, 0.0},
                             .distance = 1000.0});
-        builder.add_entity({.id = ml::FLevelEntityId{TEXT("ship")},
-                            .archetype = ml::level_archetypes::capital_ship,
+        builder.add_entity({.id = ioj::FLevelEntityId{TEXT("ship")},
+                            .archetype = ioj::level_archetypes::capital_ship,
                             .team = ::ioj::Team::Blue,
                             .position = FVector{100.0, 200.0, 300.0},
                             .rotation = FRotator{10.0, 20.0, 30.0}});
@@ -1218,13 +1218,13 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         document->level_config = level_config;
         document->entities = {{.id = TEXT("ship"), .actor = actor}};
 
-        ml::FLevelBuilder builder;
-        builder.set_metadata({.id = ml::FLevelId{TEXT("update")}, .title = TEXT("Update")});
-        builder.set_camera({.target_entity_ids = {ml::FLevelEntityId{TEXT("ship")}},
+        ioj::FLevelBuilder builder;
+        builder.set_metadata({.id = ioj::FLevelId{TEXT("update")}, .title = TEXT("Update")});
+        builder.set_camera({.target_entity_ids = {ioj::FLevelEntityId{TEXT("ship")}},
                             .offset_direction = FVector{-1.0, 0.0, 0.0},
                             .distance = 1000.0});
-        builder.add_entity({.id = ml::FLevelEntityId{TEXT("ship")},
-                            .archetype = ml::level_archetypes::capital_ship,
+        builder.add_entity({.id = ioj::FLevelEntityId{TEXT("ship")},
+                            .archetype = ioj::level_archetypes::capital_ship,
                             .team = ::ioj::Team::Blue,
                             .position = FVector{100.0, 200.0, 300.0},
                             .rotation = FRotator{10.0, 20.0, 30.0}});
@@ -1277,13 +1277,13 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         document->level_config = level_config;
         document->entities = {{.id = TEXT("ship"), .actor = actor}};
 
-        ml::FLevelBuilder builder;
-        builder.set_metadata({.id = ml::FLevelId{TEXT("replace")}, .title = TEXT("Replace")});
-        builder.set_camera({.target_entity_ids = {ml::FLevelEntityId{TEXT("ship")}},
+        ioj::FLevelBuilder builder;
+        builder.set_metadata({.id = ioj::FLevelId{TEXT("replace")}, .title = TEXT("Replace")});
+        builder.set_camera({.target_entity_ids = {ioj::FLevelEntityId{TEXT("ship")}},
                             .offset_direction = FVector{-1.0, 0.0, 0.0},
                             .distance = 1000.0});
-        builder.add_entity({.id = ml::FLevelEntityId{TEXT("ship")},
-                            .archetype = ml::level_archetypes::capital_ship,
+        builder.add_entity({.id = ioj::FLevelEntityId{TEXT("ship")},
+                            .archetype = ioj::level_archetypes::capital_ship,
                             .team = ::ioj::Team::Blue});
         auto const plan{make_plan(*world->GetCurrentLevel(), *document, builder.finish())};
         if (!TestRunner->TestTrue(TEXT("Preview builds"), plan.has_value())) {
@@ -1334,13 +1334,13 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         document->entities = {{.id = TEXT("kept"), .actor = kept},
                               {.id = TEXT("removed"), .actor = removed}};
 
-        ml::FLevelBuilder builder;
-        builder.set_metadata({.id = ml::FLevelId{TEXT("remove")}, .title = TEXT("Remove")});
-        builder.set_camera({.target_entity_ids = {ml::FLevelEntityId{TEXT("kept")}},
+        ioj::FLevelBuilder builder;
+        builder.set_metadata({.id = ioj::FLevelId{TEXT("remove")}, .title = TEXT("Remove")});
+        builder.set_camera({.target_entity_ids = {ioj::FLevelEntityId{TEXT("kept")}},
                             .offset_direction = FVector{-1.0, 0.0, 0.0},
                             .distance = 1000.0});
-        builder.add_entity({.id = ml::FLevelEntityId{TEXT("kept")},
-                            .archetype = ml::level_archetypes::capital_ship,
+        builder.add_entity({.id = ioj::FLevelEntityId{TEXT("kept")},
+                            .archetype = ioj::level_archetypes::capital_ship,
                             .team = ::ioj::Team::Blue});
         auto const plan{make_plan(*world->GetCurrentLevel(), *document, builder.finish())};
         if (!TestRunner->TestTrue(TEXT("Preview builds"), plan.has_value())) {
@@ -1383,15 +1383,15 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         document->description = TEXT("Unchanged");
         document->entities = {{.id = TEXT("existing"), .actor = existing}};
 
-        ml::FLevelBuilder builder;
-        builder.set_metadata({.id = ml::FLevelId{TEXT("invalid-later-class")},
+        ioj::FLevelBuilder builder;
+        builder.set_metadata({.id = ioj::FLevelId{TEXT("invalid-later-class")},
                               .title = TEXT("Invalid Later Class")});
-        builder.set_player_entity(ml::FLevelEntityId{TEXT("player")});
-        builder.add_entity({.id = ml::FLevelEntityId{TEXT("player")},
-                            .archetype = ml::level_archetypes::player_fighter,
+        builder.set_player_entity(ioj::FLevelEntityId{TEXT("player")});
+        builder.add_entity({.id = ioj::FLevelEntityId{TEXT("player")},
+                            .archetype = ioj::level_archetypes::player_fighter,
                             .team = ::ioj::Team::Blue});
-        builder.add_entity({.id = ml::FLevelEntityId{TEXT("capital")},
-                            .archetype = ml::level_archetypes::capital_ship,
+        builder.add_entity({.id = ioj::FLevelEntityId{TEXT("capital")},
+                            .archetype = ioj::level_archetypes::capital_ship,
                             .team = ::ioj::Team::Red});
         auto const plan{make_plan(*world->GetCurrentLevel(), *document, builder.finish())};
         if (!TestRunner->TestTrue(TEXT("Preview builds with valid classes"), plan.has_value())) {
@@ -1440,14 +1440,14 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         document->level_config = level_config;
         document->level_id = TEXT("original");
 
-        ml::FLevelBuilder builder;
+        ioj::FLevelBuilder builder;
         builder.set_metadata(
-            {.id = ml::FLevelId{TEXT("invalid-team")}, .title = TEXT("Invalid Team")});
-        builder.set_camera({.target_entity_ids = {ml::FLevelEntityId{TEXT("ship")}},
+            {.id = ioj::FLevelId{TEXT("invalid-team")}, .title = TEXT("Invalid Team")});
+        builder.set_camera({.target_entity_ids = {ioj::FLevelEntityId{TEXT("ship")}},
                             .offset_direction = FVector{-1.0, 0.0, 0.0},
                             .distance = 1000.0});
-        builder.add_entity({.id = ml::FLevelEntityId{TEXT("ship")},
-                            .archetype = ml::level_archetypes::capital_ship,
+        builder.add_entity({.id = ioj::FLevelEntityId{TEXT("ship")},
+                            .archetype = ioj::level_archetypes::capital_ship,
                             .team = static_cast<::ioj::Team>(255)});
         auto const definition{builder.finish()};
 
@@ -1478,13 +1478,13 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
         document->level_config = level_config;
 
-        ml::FLevelBuilder builder;
-        builder.set_metadata({.id = ml::FLevelId{TEXT("bindings")}, .title = TEXT("Bindings")});
-        builder.set_camera({.target_entity_ids = {ml::FLevelEntityId{TEXT("ship")}},
+        ioj::FLevelBuilder builder;
+        builder.set_metadata({.id = ioj::FLevelId{TEXT("bindings")}, .title = TEXT("Bindings")});
+        builder.set_camera({.target_entity_ids = {ioj::FLevelEntityId{TEXT("ship")}},
                             .offset_direction = FVector{-1.0, 0.0, 0.0},
                             .distance = 1000.0});
-        builder.add_entity({.id = ml::FLevelEntityId{TEXT("ship")},
-                            .archetype = ml::level_archetypes::capital_ship,
+        builder.add_entity({.id = ioj::FLevelEntityId{TEXT("ship")},
+                            .archetype = ioj::level_archetypes::capital_ship,
                             .team = ::ioj::Team::Blue});
         auto const definition{builder.finish()};
 
@@ -1553,29 +1553,29 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
         auto const original_label{updated->GetActorLabel()};
 
-        ml::FLevelBuilder builder;
-        builder.set_metadata({.id = ml::FLevelId{TEXT("after")},
+        ioj::FLevelBuilder builder;
+        builder.set_metadata({.id = ioj::FLevelId{TEXT("after")},
                               .title = TEXT("After"),
                               .description = TEXT("After description")});
-        builder.set_camera({.target_entity_ids = {ml::FLevelEntityId{TEXT("add")}},
+        builder.set_camera({.target_entity_ids = {ioj::FLevelEntityId{TEXT("add")}},
                             .offset_direction = FVector{-1.0, 0.0, 0.0},
                             .distance = 1000.0});
         builder.set_mission({.mode = ioj::levels::LevelMissionMode::KillEnemies,
                              .kill_count = 1,
-                             .hero_entity_ids = {ml::FLevelEntityId{TEXT("add")}},
-                             .required_kill_entity_ids = {ml::FLevelEntityId{TEXT("replace")}}});
-        builder.add_entity({.id = ml::FLevelEntityId{TEXT("update")},
-                            .archetype = ml::level_archetypes::capital_ship,
+                             .hero_entity_ids = {ioj::FLevelEntityId{TEXT("add")}},
+                             .required_kill_entity_ids = {ioj::FLevelEntityId{TEXT("replace")}}});
+        builder.add_entity({.id = ioj::FLevelEntityId{TEXT("update")},
+                            .archetype = ioj::level_archetypes::capital_ship,
                             .team = ::ioj::Team::Blue,
                             .position = FVector{100.0, 200.0, 300.0},
                             .rotation = FRotator{10.0, 20.0, 30.0},
                             .spawn_time_seconds = 3.0});
-        builder.add_entity({.id = ml::FLevelEntityId{TEXT("replace")},
-                            .archetype = ml::level_archetypes::static_turret,
+        builder.add_entity({.id = ioj::FLevelEntityId{TEXT("replace")},
+                            .archetype = ioj::level_archetypes::static_turret,
                             .team = ::ioj::Team::Red,
                             .position = FVector{400.0, 500.0, 600.0}});
-        builder.add_entity({.id = ml::FLevelEntityId{TEXT("add")},
-                            .archetype = ml::level_archetypes::capital_ship,
+        builder.add_entity({.id = ioj::FLevelEntityId{TEXT("add")},
+                            .archetype = ioj::level_archetypes::capital_ship,
                             .team = ::ioj::Team::Blue,
                             .position = FVector{700.0, 800.0, 900.0}});
         auto const definition{builder.finish()};
@@ -1870,13 +1870,13 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             return;
         }
 
-        ml::FLevelBuilder builder;
-        builder.set_metadata({.id = ml::FLevelId{TEXT("delayed")}, .title = TEXT("Delayed")});
-        builder.set_camera({.target_entity_ids = {ml::FLevelEntityId{TEXT("ship")}},
+        ioj::FLevelBuilder builder;
+        builder.set_metadata({.id = ioj::FLevelId{TEXT("delayed")}, .title = TEXT("Delayed")});
+        builder.set_camera({.target_entity_ids = {ioj::FLevelEntityId{TEXT("ship")}},
                             .offset_direction = FVector{-1.0, 0.0, 0.0},
                             .distance = 1000.0});
-        builder.add_entity({.id = ml::FLevelEntityId{TEXT("ship")},
-                            .archetype = ml::level_archetypes::capital_ship,
+        builder.add_entity({.id = ioj::FLevelEntityId{TEXT("ship")},
+                            .archetype = ioj::level_archetypes::capital_ship,
                             .team = ::ioj::Team::Blue,
                             .spawn_time_seconds = 2.5});
         auto const plan{make_plan(*world->GetCurrentLevel(), *document, builder.finish())};
@@ -1995,7 +1995,7 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(TEXT("PIE fixture"), fixture.is_valid())) {
             return;
         }
-        fixture.document->level_config = ml::s7_level_config::load_canonical();
+        fixture.document->level_config = ioj::s7_level_config::load_canonical();
         fixture.enemy->SetActorLocation(FVector{30000.0, 0.0, 0.0});
         fixture.document->entities[1].spawn_time_seconds = 5.0;
         if (observer) {

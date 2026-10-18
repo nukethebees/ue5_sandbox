@@ -4,11 +4,11 @@ class UObject;
 class USpaceGameLevelConfig;
 struct FCapitalShipConfig;
 struct FFighterConfig;
-namespace ml {
+namespace ioj {
 struct FSoftTestAssertions;
 }
 
-namespace ml {
+namespace ioj {
 auto load_default_level_config() -> USpaceGameLevelConfig*;
 auto get_default_level_config(FSoftTestAssertions& checks) -> USpaceGameLevelConfig const*;
 auto duplicate_level_config(USpaceGameLevelConfig const& config, UObject& outer)

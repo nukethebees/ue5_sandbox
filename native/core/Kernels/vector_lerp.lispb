@@ -3,7 +3,7 @@
     (header "include/ioj/generated/vector_lerp_kernels.h")
     (source "src/generated/vector_lerp_kernels.cpp")
     (header-include "ioj/generated/vector_lerp_kernels.h")
-    (namespace ml))
+    (namespace ioj))
 
   (type-set floating float double)
 

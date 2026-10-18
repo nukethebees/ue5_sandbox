@@ -3,7 +3,7 @@
 #include "Containers/Array.h"
 #include "Math/UnrealMathUtility.h"
 
-namespace ml::ui::benchmark {
+namespace ioj::ui::benchmark {
 inline auto percentile(TArray<double> const& sorted_samples, double const fraction) -> double {
     check(!sorted_samples.IsEmpty());
     auto const index{FMath::Clamp(

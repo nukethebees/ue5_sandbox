@@ -910,7 +910,7 @@ auto unreal_projection_header(LoweringContext& context,
                        context.declarations.enum_unreal_projections
                            .name[context.declarations.enum_unreal_projections.index(projection)]))};
         result.add(ir.namespace_node(
-            ir.strings.intern("ml"),
+            ir.strings.intern("ioj"),
             {enum_count_specialization(
                 ir,
                 enum_type,
@@ -926,7 +926,7 @@ auto unreal_conversion_header(LoweringContext& context,
                               EnumUnrealProjectionId projection) -> std::string {
     auto const native_name{native_enum_name(context, settings, schema)};
     std::ostringstream output;
-    output << "namespace ml {\n"
+    output << "namespace ioj {\n"
            << "[[nodiscard]] constexpr auto to_native("
            << context.text(
                   context.declarations.enum_unreal_projections
@@ -999,7 +999,7 @@ auto unreal_conversion_header(LoweringContext& context,
                                    .name[context.declarations.enumerators.index(value)])
                << "));\n";
     }
-    output << "} // namespace ml\n";
+    output << "} // namespace ioj\n";
     return output.str();
 }
 
@@ -1049,7 +1049,7 @@ auto lower_enum(LoweringContext& context,
         if (has(NativeEnumHelper::traits) ||
             context.declarations.enums.enum_array[context.declarations.enums.index(schema)]) {
             emission.header_global = {ir.namespace_node(
-                ir.strings.intern("ml"), native_enum_traits(context, settings, schema))};
+                ir.strings.intern("ioj"), native_enum_traits(context, settings, schema))};
         }
         if (context.declarations.enums.unreal_projection[context.declarations.enums.index(schema)]
                 .has_value()) {
@@ -1158,7 +1158,7 @@ auto lower_enum(LoweringContext& context,
         emission.header_prefix.push_back(
             ir.include(ir.store_text("ioj/enum_traits.h"), IncludeStyle::quoted));
         emission.header_global.push_back(ir.namespace_node(
-            ir.strings.intern("ml"),
+            ir.strings.intern("ioj"),
             {enum_count_specialization(
                 ir,
                 ir.types.intern("::" + qualified_enum_name(context, settings, schema)),

@@ -23,7 +23,7 @@ struct FPoolWarmupConfig {
 UCLASS()
 class SHOOTERGAME_API AObjectPoolWarmer
     : public AActor
-    , public ml::LogMsgMixin<"AObjectPoolWarmer"> {
+    , public ioj::LogMsgMixin<"AObjectPoolWarmer"> {
     GENERATED_BODY()
   public:
     AObjectPoolWarmer();

@@ -37,7 +37,7 @@ constexpr std::string_view valid_source = R"(
     (header "ArrayKernels.h")
     (source "ArrayKernels.cpp")
     (header-include "ArrayKernels.h")
-    (namespace ml)
+    (namespace ioj)
     (export COMPILE_FIXTURE_API))
   (type-set numeric int32 float double)
   (map multiply
@@ -58,7 +58,7 @@ constexpr std::string_view standard_source = R"(
     (source "standard/ArrayKernels.cpp")
     (tests "standard/ArrayKernelsTests.cpp")
     (header-include "standard/ArrayKernels.h")
-    (namespace ml::standard))
+    (namespace ioj::standard))
   (type-set numeric uint32 float)
   (map multiply
     (types numeric)
@@ -77,7 +77,7 @@ constexpr std::string_view component_standard_source = R"(
     (header "standard/VectorLerp.h")
     (source "standard/VectorLerp.cpp")
     (header-include "standard/VectorLerp.h")
-    (namespace ml::standard))
+    (namespace ioj::standard))
   (type-set floating float)
   (component-map lerp_3d
     (components x y z)
@@ -134,7 +134,7 @@ auto literal_source(std::string_view const types, std::string_view const literal
     (header "ArrayKernels.h")
     (source "ArrayKernels.cpp")
     (header-include "ArrayKernels.h")
-    (namespace ml)
+    (namespace ioj)
     (export COMPILE_FIXTURE_API))
   (type-set numeric )"} +
            std::string{types} + R"()
@@ -224,7 +224,7 @@ TEST(KernelRenderer, RejectsInvalidIntegralReferenceFixtures) {
     (source "ArrayKernels.cpp")
     (tests "ArrayKernelsTests.cpp")
     (header-include "ArrayKernels.h")
-    (namespace ml))
+    (namespace ioj))
   (type-set integral int32)
   (map calculate
     (types integral)
@@ -253,7 +253,7 @@ TEST(KernelReferenceEvaluator, EvaluatesEveryOperatorForEveryNumericType) {
     (source "ArrayKernels.cpp")
     (tests "ArrayKernelsTests.cpp")
     (header-include "ArrayKernels.h")
-    (namespace ml))
+    (namespace ioj))
   (type-set numeric int32 uint32 float double)
   (map calculate
     (types numeric)
@@ -299,9 +299,9 @@ TEST(KernelParser, RejectsInvalidEmissionProfiles) {
     EXPECT_THROW(static_cast<void>(parse_document("bad.lispb", duplicate)), std::runtime_error);
 
     auto ignored_export{std::string{standard_source}};
-    ignored_export.replace(ignored_export.find("    (namespace ml::standard)"),
-                           std::string{"    (namespace ml::standard)"}.size(),
-                           "    (namespace ml::standard)\n    (export UNUSED_API)");
+    ignored_export.replace(ignored_export.find("    (namespace ioj::standard)"),
+                           std::string{"    (namespace ioj::standard)"}.size(),
+                           "    (namespace ioj::standard)\n    (export UNUSED_API)");
     EXPECT_THROW(static_cast<void>(parse_document("bad.lispb", ignored_export)),
                  std::runtime_error);
 }
@@ -313,7 +313,7 @@ TEST(KernelRenderer, ExpandsStorageCartesianProductWithoutRewritingExpression) {
     (header "ArrayKernels.h")
     (source "ArrayKernels.cpp")
     (header-include "ArrayKernels.h")
-    (namespace ml)
+    (namespace ioj)
     (export COMPILE_FIXTURE_API))
   (type-set numeric float)
   (map difference
@@ -374,14 +374,14 @@ TEST(KernelRenderer, RendersNamedConstantsForEachConcreteFloatingType) {
     (header "ArrayKernels.h")
     (source "ArrayKernels.cpp")
     (header-include "ArrayKernels.h")
-    (namespace ml)
+    (namespace ioj)
     (export COMPILE_FIXTURE_API))
   (emit standard
     (header "standard/ArrayKernels.h")
     (source "standard/ArrayKernels.cpp")
     (tests "standard/ArrayKernelsTests.cpp")
     (header-include "standard/ArrayKernels.h")
-    (namespace ml))
+    (namespace ioj))
   (type-set floating float double)
   (map classify
     (types floating)
@@ -417,7 +417,7 @@ TEST(KernelRenderer, TreatsBareNanAndInfAsOperandReferences) {
     (header "ArrayKernels.h")
     (source "ArrayKernels.cpp")
     (header-include "ArrayKernels.h")
-    (namespace ml)
+    (namespace ioj)
     (export COMPILE_FIXTURE_API))
   (type-set floating float)
   (map add

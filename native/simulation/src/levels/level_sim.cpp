@@ -25,14 +25,14 @@ namespace level_simulation {
 // Participating teams
 /* **************************************** */
 static void finalise_participating_teams(LevelSimInitData& data) {
-    std::array<std::uint8_t, ml::enum_count<Team>()> included{};
+    std::array<std::uint8_t, ioj::enum_count<Team>()> included{};
     auto const included_count{included.size()};
     auto include = [&included](Team const team) {
         auto const team_index{static_cast<std::int32_t>(team)};
         if (team_index >= 0 && static_cast<std::size_t>(team_index) < included_count) {
             included[team_index] = 1;
         } else {
-            ml::log_error(std::format("Ignoring invalid participating team {}", team_index));
+            ioj::log_error(std::format("Ignoring invalid participating team {}", team_index));
         }
     };
 
@@ -70,7 +70,7 @@ static void finalise_participating_teams(LevelSimInitData& data) {
 /* **************************************** */
 LevelSim::LevelSim(GameMemory& game_memory, LevelSimInitData data)
     : frame_memory_block_{game_memory.acquire_block(data.frame_memory_capacity_bytes,
-                                                    ml::FrameMemoryResource::backing_alignment)}
+                                                    ioj::FrameMemoryResource::backing_alignment)}
     , frame_memory_{std::span<std::byte>{frame_memory_block_.data(),
                                          frame_memory_block_.size_bytes()}}
     , query_manager_{entity_tables_, &game_memory.memory_resource()}
@@ -135,7 +135,7 @@ void LevelSim::finish_initialisation() {
     initialise_telemetry();
     event_manager_.configure_mission();
     {
-        ml::FrameScratchScope scratch_scope{frame_memory_};
+        ioj::FrameScratchScope scratch_scope{frame_memory_};
         mission_manager_.begin_play(&frame_memory_);
     }
 
@@ -357,7 +357,7 @@ void LevelSim::advance(time_type const dt) {
         // Thinking
         /* -------------------------------------------------------------------------------- */
         {
-            ml::FrameScratchScope scratch_scope{frame_memory_};
+            ioj::FrameScratchScope scratch_scope{frame_memory_};
             auto* const scratch_resource{&frame_memory_};
 
             SANDBOX_PROFILE_SCOPE("Thinking");
@@ -394,7 +394,7 @@ void LevelSim::advance(time_type const dt) {
 
             // Simulate projectiles
             {
-                ml::FrameScratchScope scratch_scope{frame_memory_};
+                ioj::FrameScratchScope scratch_scope{frame_memory_};
                 lasers_phase.simulate(tick_period, &frame_memory_);
             }
 
@@ -419,7 +419,7 @@ void LevelSim::advance(time_type const dt) {
 
             // Move dynamic entities
             {
-                ml::FrameScratchScope scratch_scope{frame_memory_};
+                ioj::FrameScratchScope scratch_scope{frame_memory_};
                 auto* const scratch_resource{&frame_memory_};
                 fighters_phase.apply_movement(scratch_resource);
                 spinners_phase.apply_movement(scratch_resource);
@@ -439,7 +439,7 @@ void LevelSim::advance(time_type const dt) {
                 overlap_candidates_.erase(duplicates.begin(), duplicates.end());
 
                 refresh_spatial_index();
-                ml::FrameScratchScope scratch_scope{frame_memory_};
+                ioj::FrameScratchScope scratch_scope{frame_memory_};
                 auto const overlaps{
                     // Detection creates a new scratch-backed result for this tick.
                     // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
@@ -456,7 +456,7 @@ void LevelSim::advance(time_type const dt) {
             clock_.transition_to(SimulationPhase::Resolution);
 
             {
-                ml::FrameScratchScope scratch_scope{frame_memory_};
+                ioj::FrameScratchScope scratch_scope{frame_memory_};
 
                 // Prepare combat events
                 combat_events_.prepare(entity_tables_.lookups, &frame_memory_);
@@ -476,13 +476,13 @@ void LevelSim::advance(time_type const dt) {
 
             // Evaluate final health and deaths before invalidating row mappings.
             {
-                ml::FrameScratchScope scratch_scope{frame_memory_};
+                ioj::FrameScratchScope scratch_scope{frame_memory_};
                 mission_manager_.mission_tick(&frame_memory_);
             }
 
             // Clean up entities and indexes
             {
-                ml::FrameScratchScope scratch_scope{frame_memory_};
+                ioj::FrameScratchScope scratch_scope{frame_memory_};
 
                 SANDBOX_PROFILE_SCOPE("ResolutionCommit");
                 clock_.transition_to(SimulationPhase::ResolutionCommit);

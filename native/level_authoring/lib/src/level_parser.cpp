@@ -11,7 +11,7 @@ namespace {
 using detail::AstParser;
 
 auto vector(AstParser& parser, s7::NodeIndex const node, std::string const& node_path)
-    -> ml::Vector3d {
+    -> ioj::Vector3d {
     auto const values{parser.list(node, node_path)};
     if (values.size() != 3) {
         parser.error(DiagnosticCode::InvalidType, node_path, "Expected three numeric components");
@@ -195,8 +195,8 @@ void assign_generated_entity_ids(std::vector<EntitySpawnDefinition>& entities) {
         }
     }
 
-    std::array<std::array<std::size_t, ml::EnumTraits<EntityArchetype>::values.size()>,
-               ml::EnumTraits<Team>::values.size()>
+    std::array<std::array<std::size_t, ioj::EnumTraits<EntityArchetype>::values.size()>,
+               ioj::EnumTraits<Team>::values.size()>
         next_indices{};
     for (auto& entity : entities) {
         if (!entity.id.empty()) {

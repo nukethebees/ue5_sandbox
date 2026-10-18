@@ -1,6 +1,6 @@
 #pragma once
 
-namespace ml {
+namespace ioj {
 struct SpeedResponse {
     float settling_time{3.f};
     float damping_ratio{0.5f};

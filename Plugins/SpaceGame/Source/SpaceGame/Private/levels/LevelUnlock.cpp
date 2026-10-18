@@ -1,6 +1,6 @@
 #include "SpaceGame/levels/LevelUnlock.h"
 
-namespace ml {
+namespace ioj {
 FLevelUnlockEvaluator::FLevelUnlockEvaluator(FCompletionQuery completion_query,
                                              FTitleQuery title_query,
                                              bool const force_unlocked)

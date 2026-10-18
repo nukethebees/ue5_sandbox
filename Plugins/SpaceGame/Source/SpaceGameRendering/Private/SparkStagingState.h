@@ -4,5 +4,5 @@
 #include "SparkUploadBuffer.h"
 
 struct FSparkStagingState {
-    ml::MultiBuffer<FSparkUploadBuffer, 3> buffers;
+    ioj::MultiBuffer<FSparkUploadBuffer, 3> buffers;
 };

@@ -31,7 +31,7 @@ struct FCollisionSettings {
     uint8 notify_rigid_body_collision{0u};
 };
 
-namespace ml {
+namespace ioj {
 auto SANDBOXCOREENGINE_API copy_collision_settings(UPrimitiveComponent const& component)
     -> FCollisionSettings;
 void SANDBOXCOREENGINE_API apply_collision_settings(UPrimitiveComponent& component,

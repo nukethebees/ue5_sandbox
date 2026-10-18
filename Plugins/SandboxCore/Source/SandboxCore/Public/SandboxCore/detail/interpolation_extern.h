@@ -2,7 +2,7 @@
 
 #include "interpolation.tpp"
 
-namespace ml::kernel {
+namespace ioj::kernel {
 #define ML_EXTERN_FN(T)                                                      \
     extern template SANDBOXCORE_API void lerp_1d<T>(T * RESTRICT out,        \
                                                     T const* RESTRICT from,  \

@@ -36,7 +36,7 @@ auto get_level_entity_id(std::span<EntityUniqueId const> const level_entity_ids,
 /* **************************************** */
 // Construction and lifecycle
 /* **************************************** */
-void MissionManager::begin_play(ml::FrameMemoryResource* const scratch_resource) {
+void MissionManager::begin_play(ioj::FrameMemoryResource* const scratch_resource) {
     prepare_objectives(scratch_resource);
 
     switch (mission_mode) {
@@ -46,7 +46,7 @@ void MissionManager::begin_play(ml::FrameMemoryResource* const scratch_resource)
         }
         case MissionMode::SurviveTime: {
             if (entity_ids_that_must_survive.empty()) {
-                ml::log_error("MissionManager: SurviveTime requires at least one entity that "
+                ioj::log_error("MissionManager: SurviveTime requires at least one entity that "
                               "must survive");
                 set_mission_state(MissionState::Disabled);
                 break;
@@ -59,7 +59,7 @@ void MissionManager::begin_play(ml::FrameMemoryResource* const scratch_resource)
             [[fallthrough]];
         case MissionMode::KillEnemies: {
             if (hero_entity_ids.empty()) {
-                ml::log_error("MissionManager: Kill missions require at least one hero entity");
+                ioj::log_error("MissionManager: Kill missions require at least one hero entity");
                 set_mission_state(MissionState::Disabled);
                 break;
             }
@@ -75,7 +75,7 @@ void MissionManager::begin_play(ml::FrameMemoryResource* const scratch_resource)
         }
 
         default: {
-            ml::fatal_error("MissionManager: Unhandled MissionMode.");
+            ioj::fatal_error("MissionManager: Unhandled MissionMode.");
         }
     }
 }
@@ -180,7 +180,7 @@ void MissionManager::consume_level_events(LevelMissionEventGroups::ConstView con
                 break;
             }
             default: {
-                ml::fatal_error(std::format("Unsupported level mission event type: {}",
+                ioj::fatal_error(std::format("Unsupported level mission event type: {}",
                                             static_cast<std::int32_t>(types[index])));
             }
         }
@@ -248,7 +248,7 @@ void MissionManager::add_hero_entity(EntityUniqueId id) {
 
 void MissionManager::add_entity_that_must_survive(EntityUniqueId id) {
     if (!has_health(id.entity_type())) {
-        ml::fatal_error("Survival objectives require an entity with health");
+        ioj::fatal_error("Survival objectives require an entity with health");
     }
     assert(mission_state == MissionState::NotStarted || mission_state == MissionState::Running);
     assert(entity_ledger.is_valid_unique_id(id));
@@ -260,7 +260,7 @@ void MissionManager::add_entity_that_must_survive(EntityUniqueId id) {
 
 void MissionManager::add_entity_required_to_kill(EntityUniqueId id) {
     if (!has_health(id.entity_type())) {
-        ml::fatal_error("Required-kill objectives require an entity with health");
+        ioj::fatal_error("Required-kill objectives require an entity with health");
     }
     assert(mission_state == MissionState::NotStarted || mission_state == MissionState::Running);
     assert(entity_ledger.is_valid_unique_id(id));
@@ -291,12 +291,12 @@ void MissionManager::objective_event_dispatched() {
 /* **************************************** */
 // Tick and state transitions
 /* **************************************** */
-void MissionManager::mission_tick(ml::FrameMemoryResource* const scratch_resource) {
+void MissionManager::mission_tick(ioj::FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("MissionManager::mission_tick");
 
     switch (mission_state) {
         case MissionState::NotStarted: {
-            ml::fatal_error("MissionManager ticking but not started.");
+            ioj::fatal_error("MissionManager ticking but not started.");
         }
         case MissionState::Running: {
             break;
@@ -307,7 +307,7 @@ void MissionManager::mission_tick(ml::FrameMemoryResource* const scratch_resourc
             return;
         }
         default: {
-            ml::fatal_error("MissionManager: Unhandled MissionState.");
+            ioj::fatal_error("MissionManager: Unhandled MissionState.");
         }
     }
 
@@ -339,7 +339,7 @@ void MissionManager::mission_tick(ml::FrameMemoryResource* const scratch_resourc
             break;
         }
         default: {
-            ml::fatal_error("MissionManager: Unhandled MissionMode.");
+            ioj::fatal_error("MissionManager: Unhandled MissionMode.");
         }
     }
 }
@@ -381,7 +381,7 @@ void MissionManager::set_mission_state(MissionState const new_state,
             return;
         }
         default: {
-            ml::fatal_error("MissionManager: Unhandled MissionState.");
+            ioj::fatal_error("MissionManager: Unhandled MissionState.");
         }
     }
 }
@@ -432,10 +432,10 @@ void MissionManager::update_mission_kills() {
 /* **************************************** */
 void MissionManager::update_objective_health(std::span<EntityUniqueId const> const ids,
                                              std::span<ShipHealth> const output,
-                                             ml::FrameMemoryResource* const scratch_resource) {
+                                             ioj::FrameMemoryResource* const scratch_resource) {
     auto const count{static_cast<EntityTypeRuns::Count>(ids.size())};
-    ml::FrameArray<EntityTypeRuns::Offset> order{scratch_resource};
-    ml::FrameArray<EntityInstanceHandle> handles{scratch_resource};
+    ioj::FrameArray<EntityTypeRuns::Offset> order{scratch_resource};
+    ioj::FrameArray<EntityInstanceHandle> handles{scratch_resource};
     order.set_num(count);
     handles.set_num(count);
     auto const runs{entity_tables_.lookups.lookup_handles(ids, order, handles)};
@@ -458,7 +458,7 @@ void MissionManager::update_objective_health(std::span<EntityUniqueId const> con
         }
     }
 }
-void MissionManager::prepare_objectives(ml::FrameMemoryResource* const scratch_resource) {
+void MissionManager::prepare_objectives(ioj::FrameMemoryResource* const scratch_resource) {
     auto initialise_pending = [&](auto const& ids, auto& healths) {
         auto const first{healths.size()};
         healths.resize(ids.size());

@@ -19,7 +19,7 @@ DECLARE_MULTICAST_DELEGATE_OneParam(FOnVideoSettingChanged, EVideoRowSettingChan
 UCLASS()
 class SHOOTERGAME_API UVideoSettingRowWidget
     : public UUserWidget
-    , public ml::LogMsgMixin<"UVideoSettingRowWidget"> {
+    , public ioj::LogMsgMixin<"UVideoSettingRowWidget"> {
     GENERATED_BODY()
   public:
     void initialize_with_row_data(VideoRow const& row_data);

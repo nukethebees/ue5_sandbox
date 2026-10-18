@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <span>
 
-namespace ml::soa_storage_detail {
+namespace ioj::soa_storage_detail {
 
 // Indices describe the original rows in strictly descending order.
 template <typename Size, typename Copy>

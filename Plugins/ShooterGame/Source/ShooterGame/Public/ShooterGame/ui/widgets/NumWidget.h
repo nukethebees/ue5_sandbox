@@ -17,7 +17,7 @@
 template <typename T>
 class SNumWidget
     : public SCompoundWidget
-    , public ml::LogMsgMixin<"SNumWidget", LogShooterGameUI> {
+    , public ioj::LogMsgMixin<"SNumWidget", LogShooterGameUI> {
   public:
     // clang-format off
     SLATE_BEGIN_ARGS(SNumWidget) {}
@@ -76,7 +76,7 @@ UCLASS()
 class UFloatNumWidget
     : public UWidget
     , public UNumWidgetMixins
-    , public ml::LogMsgMixin<"UFloatNumWidget"> {
+    , public ioj::LogMsgMixin<"UFloatNumWidget"> {
     GENERATED_BODY()
     friend class UNumWidgetMixins;
   public:
@@ -92,7 +92,7 @@ UCLASS()
 class UIntNumWidget
     : public UWidget
     , public UNumWidgetMixins
-    , public ml::LogMsgMixin<"UIntNumWidget"> {
+    , public ioj::LogMsgMixin<"UIntNumWidget"> {
     GENERATED_BODY()
     friend class UNumWidgetMixins;
   public:

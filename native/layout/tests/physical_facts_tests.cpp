@@ -11,7 +11,7 @@
 
 namespace ioj::layout::physical_facts_tests {
 TEST(PhysicalFacts, GeneratedCppAgreesForPointersNestedRecordsAndAlignedExternalMembers) {
-    using namespace ml::native_soa_fixture;
+    using namespace ioj::native_soa_fixture;
     EditorSession editor;
     auto document{editor.load(std::filesystem::path{IOJ_SOURCE_DIR} / "lispb/project.lispb",
                               "native-soa-fixture")};
@@ -62,7 +62,7 @@ TEST(PhysicalFacts, GeneratedCppAgreesForPointersNestedRecordsAndAlignedExternal
 }
 
 TEST(PhysicalFacts, SingleOnlySchemasUseOwnerFactsAndLayoutsHaveNoPhysicalObject) {
-    using namespace ml::native_soa_fixture;
+    using namespace ioj::native_soa_fixture;
     EditorSession editor;
     auto document{editor.load(std::filesystem::path{IOJ_SOURCE_DIR} / "lispb/project.lispb",
                               "native-soa-fixture")};
@@ -72,7 +72,7 @@ TEST(PhysicalFacts, SingleOnlySchemasUseOwnerFactsAndLayoutsHaveNoPhysicalObject
     owner.size_bytes = sizeof(ApiOwner);
     owner.alignment_bytes = alignof(ApiOwner);
     owner.origin = FactOrigin::compiler_probe;
-    profile.set("ml::native_soa_fixture::ApiOwner", owner);
+    profile.set("ioj::native_soa_fixture::ApiOwner", owner);
     std::array requests{
         AnalysisRequest{.type = *document.find_type("native_soa_fixture", "ApiRows"),
                         .abi = &profile},

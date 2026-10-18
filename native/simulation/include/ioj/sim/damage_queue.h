@@ -15,7 +15,7 @@ class DamageQueue {
         spans_ = {};
     }
     void prepare(EntityLookupTables const& indexes,
-                 ml::FrameMemoryResource* const scratch_resource);
+                 ioj::FrameMemoryResource* const scratch_resource);
     auto events_for(EntityType type) const -> DirectDamageEvents::ConstView {
         auto const span{spans_[type]};
         return events_.get_const_view(span.offset, span.count);
@@ -23,6 +23,6 @@ class DamageQueue {
     auto all_events() const -> DirectDamageEvents const& { return events_; }
   private:
     DirectDamageEvents events_;
-    ml::EnumArray<EntityType, IndexSpan> spans_{};
+    ioj::EnumArray<EntityType, IndexSpan> spans_{};
 };
 }

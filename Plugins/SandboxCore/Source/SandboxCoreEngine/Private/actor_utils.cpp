@@ -1,6 +1,6 @@
 #include <SandboxCoreEngine/actor_utils.h>
 
-namespace ml {
+namespace ioj {
 auto is_actor_in_world(UWorld const& world, AActor const* const target) -> bool {
     if (!IsValid(target)) {
         return false;

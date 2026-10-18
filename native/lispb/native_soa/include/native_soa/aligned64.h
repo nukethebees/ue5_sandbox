@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace ml::native_soa_fixture {
+namespace ioj::native_soa_fixture {
 struct alignas(64) Aligned64 {
     std::int32_t value{64};
 };

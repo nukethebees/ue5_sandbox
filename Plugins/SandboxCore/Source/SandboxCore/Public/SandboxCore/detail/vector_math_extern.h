@@ -2,7 +2,7 @@
 
 #include "vector_math.tpp"
 
-namespace ml::kernel {
+namespace ioj::kernel {
 #define ML_EXTERN_FN(T)                                                    \
     extern template SANDBOXCORE_API void add_vector3<T>(T * RESTRICT,      \
                                                         T * RESTRICT,      \

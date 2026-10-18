@@ -37,7 +37,7 @@
 
 #include <vector>
 
-namespace ml::level_simulation_builder {
+namespace ioj::level_simulation_builder {
 using FProxyEntityIndexMap = TMap<AActor const*, uint32>;
 
 auto resolve_entity_index(FProxyEntityIndexMap const& entities, AActor const& actor) -> uint32 {
@@ -122,8 +122,8 @@ auto proxy_fits_collision_grid(AActor const& actor,
     auto const bounds{::ioj::sim::collision::make_entity_world_bounds(
         data.entity_bounds,
         type,
-        ml::to_native(FVector3f{transform.GetLocation()}),
-        ioj::to_quaternion(ml::to_native(FRotator3f{transform.Rotator()})))};
+        ioj::to_native(FVector3f{transform.GetLocation()}),
+        ioj::to_quaternion(ioj::to_native(FRotator3f{transform.Rotator()})))};
     auto const coordinates{
         ::ioj::sim::collision::to_cell_coord_bounds(data.grid_geometry, bounds.min, bounds.max)};
     if (::ioj::sim::collision::is_cell_coord_in_bounds(data.grid_geometry, coordinates.min) &&
@@ -135,8 +135,8 @@ auto proxy_fits_collision_grid(AActor const& actor,
     auto const half_size{FVector3f{grid.dimensions.x() * grid.cell_dimensions.x() * 0.5f,
                                    grid.dimensions.y() * grid.cell_dimensions.y() * 0.5f,
                                    grid.dimensions.z() * grid.cell_dimensions.z() * 0.5f}};
-    auto const min{ml::to_unreal(bounds.min)};
-    auto const max{ml::to_unreal(bounds.max)};
+    auto const min{ioj::to_unreal(bounds.min)};
+    auto const max{ioj::to_unreal(bounds.max)};
     errors.add(FString::Printf(
         TEXT("Actor '%s' has collision bounds %s to %s outside the grid (%s to %s) in '%s'. "
              "Increase collision_grid.grid_size or move the actor."),
@@ -163,7 +163,7 @@ void append_fighter_spawn_slot_errors(
                     TEXT("fighter spawn slot %d at %s intersects the capital collision bounds plus "
                          "fighter clearance"),
                     error.first_slot,
-                    *ml::to_unreal(location).ToString()));
+                    *ioj::to_unreal(location).ToString()));
                 break;
             }
             case ::ioj::levels::FighterSpawnSlotValidationErrorKind::SlotsOverlap:
@@ -189,7 +189,7 @@ void validate_fighter_spawn_slots(::ioj::sim::CapitalShipSimConfig const& capita
 }
 }
 
-namespace ml {
+namespace ioj {
 auto FProxyLevelSimBuild::bind_proxy_entities(::ioj::sim::LevelSim const& simulation) const
     -> FProxyEntityMap {
     auto const capital_count{capital_proxies.Num()};
@@ -266,7 +266,7 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
         IsValid(socket) ? static_cast<float>(socket->RelativeLocation.Size()) : 0.f;
     auto const dimensions{config.collision_grid.calculate_grid_dimensions()};
     data.grid_geometry = {{dimensions.X, dimensions.Y, dimensions.Z},
-                          ml::to_native(config.collision_grid.cell_size)};
+                          ioj::to_native(config.collision_grid.cell_size)};
 
     ioj::FLevelCollisionHost::EntityMeshes meshes{};
     meshes[::ioj::sim::EntityType::PlayerShip] = player_collision_mesh;
@@ -377,10 +377,10 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
             events.entity_indices()[i] = allocate_entity_index(*proxy);
             events.target_entity_indices()[i] = ::ioj::sim::invalid_level_entity_index;
             ::ioj::set_vector(
-                events.view_locations(), i, ml::to_native(FVector3f{transform.GetLocation()}));
+                events.view_locations(), i, ioj::to_native(FVector3f{transform.GetLocation()}));
             ioj::set_rotation(
-                events.view_rotations(), i, ml::to_native(FRotator3f{transform.Rotator()}));
-            events.teams()[i] = ml::to_native(proxy->get_team());
+                events.view_rotations(), i, ioj::to_native(FRotator3f{transform.Rotator()}));
+            events.teams()[i] = ioj::to_native(proxy->get_team());
             events.healths()[i] = proxy->get_health().Get(config.capital_ships.max_health);
             events.initial_fighter_spawn_delays()[i] = proxy->get_initial_spawn_delay().Get(0.f);
             events.fighter_spawn_cooldowns()[i] =
@@ -400,10 +400,10 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
             build.initial_turret_transforms.Add(transform);
             events.entity_indices()[i] = allocate_entity_index(*proxy);
             ::ioj::set_vector(
-                events.view_locations(), i, ml::to_native(FVector3f{transform.GetLocation()}));
+                events.view_locations(), i, ioj::to_native(FVector3f{transform.GetLocation()}));
             ioj::set_rotation(
-                events.view_rotations(), i, ml::to_native(FRotator3f{transform.Rotator()}));
-            events.teams()[i] = ml::to_native(proxy->get_team());
+                events.view_rotations(), i, ioj::to_native(FRotator3f{transform.Rotator()}));
+            events.teams()[i] = ioj::to_native(proxy->get_team());
             events.healths()[i] = proxy->get_health().Get(config.turrets.max_health);
             events.laser_damages()[i] = proxy->get_laser_damage().Get(config.turrets.laser.damage);
         }
@@ -419,7 +419,7 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
             auto const& transform{proxy->GetActorTransform()};
             events.entity_indices()[i] = allocate_entity_index(*proxy);
             ::ioj::set_vector(
-                events.view_locations(), i, ml::to_native(FVector3f{transform.GetLocation()}));
+                events.view_locations(), i, ioj::to_native(FVector3f{transform.GetLocation()}));
             events.yaws()[i] = transform.Rotator().Yaw;
             events.initial_fire_point_indices()[i] = proxy->get_initial_active_fire_point();
         }

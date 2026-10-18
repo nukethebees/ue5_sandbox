@@ -16,7 +16,7 @@
 #include <GameFramework/PlayerController.h>
 #include <Kismet/GameplayStatics.h>
 
-namespace ml {
+namespace ioj {
 namespace {
 void add_error(FLevelLoadResult& result, ELevelLoadErrorCode const code, FString message) {
     result.errors.Add(FLevelLoadError{.code = code, .message = MoveTemp(message)});
@@ -68,7 +68,7 @@ auto spawn_player(UWorld& world,
                   FSpawnedActorTransaction& transaction,
                   FLevelLoadResult& result) -> ATestSpaceShip* {
     auto const entity{level_entity_table_detail::get(entities, player_index)};
-    auto const team{ml::to_unreal(entity.team)};
+    auto const team{ioj::to_unreal(entity.team)};
     auto const transform{FTransform{entity.rotation, entity.position}};
     auto* const player{
         world.SpawnActorDeferred<ATestSpaceShip>(config.classes.player_ship_class, transform)};

@@ -6,7 +6,7 @@
 
 namespace ioj::levels {
 struct LevelCollisionGridDefinition {
-    std::optional<ml::Vector3d> level_size{};
-    std::optional<ml::Vector3d> cell_size{};
+    std::optional<ioj::Vector3d> level_size{};
+    std::optional<ioj::Vector3d> cell_size{};
 };
 }

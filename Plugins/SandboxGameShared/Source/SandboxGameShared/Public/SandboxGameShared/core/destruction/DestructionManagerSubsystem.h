@@ -14,7 +14,7 @@
 UCLASS()
 class SANDBOXGAMESHARED_API UDestructionManagerSubsystem
     : public UTickableWorldSubsystem
-    , public ml::LogMsgMixin<"UDestructionManagerSubsystem", LogSandboxGameShared> {
+    , public ioj::LogMsgMixin<"UDestructionManagerSubsystem", LogSandboxGameShared> {
     GENERATED_BODY()
   public:
     void queue_destruction(AActor* actor);

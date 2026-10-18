@@ -4,7 +4,7 @@
 
 #include <CoreMinimal.h>
 
-namespace ml {
+namespace ioj {
 struct SPACEGAMESIMULATION_API FLevelId {
     FName value{NAME_None};
 

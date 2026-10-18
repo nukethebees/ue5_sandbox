@@ -341,7 +341,7 @@ auto column_pointer_nodes(LoweringContext& context, SingleAllocationModelId mode
     ir.set_function_noexcept(capacity_blocks);
 
     NodeListBuilder result{ir};
-    result.add(ir.raw("friend Operations;\nfriend ::ml::soa_storage_detail::StorageRequirements;"))
+    result.add(ir.raw("friend Operations;\nfriend ::ioj::soa_storage_detail::StorageRequirements;"))
         .new_lines(1)
         .append(section_header(context, "Column pointers"))
         .new_lines(1)
@@ -470,7 +470,7 @@ auto column_copying_nodes(LoweringContext& context, SingleAllocationModelId mode
                                           ir.strings.intern("columns"),
                                           ir.call(ir.named("get_data"))),
                               ir.expression_statement(ir.raw_expression(
-                                  "ml::soa_storage_detail::for_each_removal_run(num_, indices, "
+                                  "ioj::soa_storage_detail::for_each_removal_run(num_, indices, "
                                   "[&](size_type index, size_type source, size_type count) { "
                                   "copy_columns(columns, index, source, count); })"))});
         return created_function;
@@ -516,7 +516,7 @@ auto source_pointers_node(LoweringContext& context, SingleAllocationModelId mode
             ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Columns"))}));
         ir.set_function_requires_clause(
             created_function,
-            ir.template_id(ir.named("ml::soa_storage_detail::SoaSourceFor"),
+            ir.template_id(ir.named("ioj::soa_storage_detail::SoaSourceFor"),
                            {ir.type_reference(ir.types.intern("Columns")),
                             ir.type_reference(ir.types.intern(
                                 context.text(model_store.owner_name[model_store_index]))),
@@ -549,7 +549,7 @@ auto source_copy_node(LoweringContext& context,
             ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Columns"))}));
         ir.set_function_requires_clause(
             created_function,
-            ir.template_id(ir.named("ml::soa_storage_detail::SoaSourceFor"),
+            ir.template_id(ir.named("ioj::soa_storage_detail::SoaSourceFor"),
                            {ir.type_reference(ir.types.intern("Columns")),
                             ir.type_reference(ir.types.intern(
                                 context.text(model_store.owner_name[model_store.index(model)]))),
@@ -773,7 +773,7 @@ auto compact_view_node(LoweringContext& context,
                                            element + ">, " + prefix + "View<" + element + ">>")};
             if (pointer_view && !rotation_view) {
                 view_type = ir.types.intern(
-                    "ml::Vector3SoAView<Element<float>>",
+                    "ioj::Vector3SoAView<Element<float>>",
                     {ir.types.dependency("vector_soa_view", "ioj/vector_soa_view.h")});
             }
             std::vector<Expr> arguments{
@@ -802,7 +802,7 @@ auto compact_view_node(LoweringContext& context,
                     ir.types.intern("auto"))};
                 ir.set_function_body(
                     created_function,
-                    {ir.raw(std::string{"using ml::soa_storage_detail::"} +
+                    {ir.raw(std::string{"using ioj::soa_storage_detail::"} +
                             (pointer_view ? "three_column_view;" : "strided_vector_view;")),
                      ir.return_statement(
                          ir.call(ir.named(std::string{pointer_view ? "three_column_view<"
@@ -903,7 +903,7 @@ auto compact_view_node(LoweringContext& context,
                 ir.set_function_body(
                     created_function,
                     {ir.return_statement(ir.call(
-                        ir.named("ml::soa_storage_detail::column_view<" +
+                        ir.named("ioj::soa_storage_detail::column_view<" +
                                  context.text(model_store.span_template[model_store.index(model)]) +
                                  "<Element<T>>>"),
                         {ir.named("state_"),
@@ -917,7 +917,7 @@ auto compact_view_node(LoweringContext& context,
                 return created_function;
             }()))
         .new_lines(1)
-        .add(ir.friend_type(ir.types.intern("ml::soa_storage_detail::CompactViewOperations")))
+        .add(ir.friend_type(ir.types.intern("ioj::soa_storage_detail::CompactViewOperations")))
         .new_lines(1)
         .add(ir.friend_declaration(
             ir.strings.intern(name),
@@ -936,7 +936,7 @@ auto compact_view_node(LoweringContext& context,
     auto const created_record{
         ir.record(ir.strings.intern(name), children.build(), RecordKind::struct_)};
     ir.set_record_bases(created_record,
-                        {ir.types.intern("ml::soa_storage_detail::CompactViewOperations")});
+                        {ir.types.intern("ioj::soa_storage_detail::CompactViewOperations")});
     ir.set_record_template(created_record,
                            ir.template_declaration({ir.value_template_parameter(
                                ir.types.intern("bool"), ir.strings.intern("Const"))}));
@@ -946,7 +946,7 @@ auto compact_view_node(LoweringContext& context,
 auto view_validation_nodes(LoweringContext& context, std::string const& name) -> Nodes {
     auto& ir{context.ir};
     return {ir.static_assertion(
-        ir.store_text("ml::soa_storage_detail::validate_compact_view<" + name + ">()"), {})};
+        ir.store_text("ioj::soa_storage_detail::validate_compact_view<" + name + ">()"), {})};
 }
 
 } // namespace

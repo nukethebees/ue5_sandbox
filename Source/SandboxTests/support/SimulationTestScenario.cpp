@@ -2,7 +2,7 @@
 
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
-namespace ml {
+namespace ioj {
 void FSimulationTestScenario::tear_down() {
     context_.orchestrator.clear_end_tick_test_hook();
     on_tear_down();

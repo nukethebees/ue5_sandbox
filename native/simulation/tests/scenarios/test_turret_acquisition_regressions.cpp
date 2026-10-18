@@ -20,7 +20,7 @@ void run_worldless_turret_acquisition_regression(
                           ? data.turrets.detection_radius + 1.f
                           : 1000.f)};
         tests::add_turret_spawn(data,
-                                ml::make_vector3f(distance, 0.f, 0.f),
+                                ioj::make_vector3f(distance, 0.f, 0.f),
                                 {},
                                 friendly ? Team::Blue : Team::Red,
                                 data.turrets.max_health,

@@ -28,7 +28,7 @@ class AMyCharacter;
 UCLASS()
 class SHOOTERGAME_API UInGamePlayerMenu
     : public UUserWidget
-    , public ml::LogMsgMixin<"UInGamePlayerMenu", LogShooterGameUI> {
+    , public ioj::LogMsgMixin<"UInGamePlayerMenu", LogShooterGameUI> {
     GENERATED_BODY()
   public:
     void set_inventory(UInventoryComponent& inventory);

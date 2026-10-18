@@ -51,7 +51,7 @@ void run_worldless_simultaneous_capital_reassignment(tests::SimulationFixture co
 
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    ml::TimeSeriesData<Sample> samples;
+    ioj::TimeSeriesData<Sample> samples;
     std::vector<EntityUniqueId> killed_capitals{};
     harness.on_end_tick = [&](LevelSim& simulation) {
         auto const& capitals{simulation.get_capital_ships()};

@@ -8,7 +8,7 @@
 
 class UObject;
 
-namespace ml {
+namespace ioj {
 struct SANDBOXCOREENGINE_API NamedUObjectPtr {
     UObject const* object{nullptr};
     TCHAR const* name{nullptr};
@@ -32,7 +32,7 @@ SANDBOXCOREENGINE_API void fatal_if_uobject_ptrs_invalid(
     std::initializer_list<std::initializer_list<NamedUObjectPtr>> ptr_batches);
 
 #define SANDBOX_NAMED_UOBJECT_PTR(ptr) \
-    ml::NamedUObjectPtr {              \
+    ioj::NamedUObjectPtr {              \
         ptr, TEXT(#ptr)                \
     }
 }

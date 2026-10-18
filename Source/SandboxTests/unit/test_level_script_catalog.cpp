@@ -288,9 +288,9 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
         auto const& campaign{result.campaigns[0].definition.GetValue()};
         TestRunner->TestEqual(TEXT("Campaign order is retained"), campaign.level_ids.Num(), 2);
         TestRunner->TestTrue(TEXT("First declared level remains first"),
-                             campaign.level_ids[0] == ml::FLevelId{FName{TEXT("bravo")}});
+                             campaign.level_ids[0] == ioj::FLevelId{FName{TEXT("bravo")}});
         TestRunner->TestTrue(TEXT("Second declared level remains second"),
-                             campaign.level_ids[1] == ml::FLevelId{FName{TEXT("alpha")}});
+                             campaign.level_ids[1] == ioj::FLevelId{FName{TEXT("alpha")}});
     }
 
     TEST_METHOD(RejectsMissingCampaignAndUnlockReferences)
@@ -409,7 +409,7 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
             if (campaign) {
                 TestRunner->TestTrue(TEXT("Cross-listed level reference is retained"),
                                      campaign.definition->level_ids ==
-                                         TArray<ml::FLevelId>{ml::FLevelId{FName{TEXT("alpha")}}});
+                                         TArray<ioj::FLevelId>{ioj::FLevelId{FName{TEXT("alpha")}}});
             }
         }
     }

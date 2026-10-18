@@ -141,11 +141,11 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
         }
         auto const read{session.read()};
         if (!TestRunner->TestTrue(TEXT("Buffer parses"), static_cast<bool>(read))) {
-            TestRunner->AddError(ml::to_fstring(ioj::levels::format_diagnostics(read.error())));
+            TestRunner->AddError(ioj::to_fstring(ioj::levels::format_diagnostics(read.error())));
             return;
         }
         TestRunner->TestEqual(TEXT("Sibling library supplies title"),
-                              ml::to_fstring(read->components().metadata.title),
+                              ioj::to_fstring(read->components().metadata.title),
                               FString{TEXT("From Sibling Library")});
 
         session.set_buffer(source.Replace(TEXT("shared-title"), TEXT("\"From Buffer\"")));
@@ -153,11 +153,11 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(TEXT("Edited buffer parses without saving"),
                                   static_cast<bool>(edited_read))) {
             TestRunner->AddError(
-                ml::to_fstring(ioj::levels::format_diagnostics(edited_read.error())));
+                ioj::to_fstring(ioj::levels::format_diagnostics(edited_read.error())));
             return;
         }
         TestRunner->TestEqual(TEXT("Preview input comes from the buffer"),
-                              ml::to_fstring(edited_read->components().metadata.title),
+                              ioj::to_fstring(edited_read->components().metadata.title),
                               FString{TEXT("From Buffer")});
         FString unchanged_disk_source;
         FFileHelper::LoadFileToString(unchanged_disk_source, *source_path);

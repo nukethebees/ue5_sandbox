@@ -45,8 +45,8 @@ struct FrameVectors3f {
         assert(zs_.num() == num());
     }
   private:
-    ml::FrameArray<float> xs_;
-    ml::FrameArray<float> ys_;
-    ml::FrameArray<float> zs_;
+    ioj::FrameArray<float> xs_;
+    ioj::FrameArray<float> ys_;
+    ioj::FrameArray<float> zs_;
 };
 } // namespace ioj

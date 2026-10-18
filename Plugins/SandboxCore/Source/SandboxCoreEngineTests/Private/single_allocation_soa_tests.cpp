@@ -11,7 +11,7 @@
 
 TEST_CLASS(SingleAllocationSoa, "SandboxCoreEngine.UnitTests")
 {
-    using Owner = ml::soa_test_fixture::SingleRows;
+    using Owner = ioj::soa_test_fixture::SingleRows;
 
     TEST_METHOD(PmrResourcesControlConstructionAndMoveAssignment)
     {
@@ -41,7 +41,7 @@ TEST_CLASS(SingleAllocationSoa, "SandboxCoreEngine.UnitTests")
 
     TEST_METHOD(LogicalCompactApi)
     {
-        using namespace ml::soa_test_fixture;
+        using namespace ioj::soa_test_fixture;
         ApiOwner owner{sbx::memory::mimalloc_resource()};
         owner.set_num(2);
         auto view{owner.get_view()};

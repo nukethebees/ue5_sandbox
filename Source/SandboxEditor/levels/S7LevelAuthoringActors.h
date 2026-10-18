@@ -11,15 +11,15 @@ class USpaceGameLevelConfig;
 
 namespace ioj::editor {
 struct FS7LevelResolvedActor {
-    ml::EResolvedLevelArchetype archetype{};
+    ioj::EResolvedLevelArchetype archetype{};
     ::ioj::Team team{};
 };
 
 auto resolve_s7_level_actor(AActor const& actor) -> TOptional<FS7LevelResolvedActor>;
-auto s7_level_actor_class(ml::EResolvedLevelArchetype archetype,
+auto s7_level_actor_class(ioj::EResolvedLevelArchetype archetype,
                           USpaceGameLevelConfig const& config) -> UClass*;
 void configure_s7_level_actor(AActor& actor,
-                              ml::EResolvedLevelArchetype archetype,
+                              ioj::EResolvedLevelArchetype archetype,
                               ETestTeam team,
                               USpaceGameLevelConfig& config,
                               FTransform const& transform,

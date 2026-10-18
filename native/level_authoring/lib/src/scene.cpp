@@ -15,11 +15,11 @@ auto near(double const lhs, double const rhs) -> bool {
 auto same_number(double const lhs, double const rhs) -> bool {
     return lhs == rhs || (std::isnan(lhs) && std::isnan(rhs));
 }
-auto same_vector(ml::Vector3d const& lhs, ml::Vector3d const& rhs) -> bool {
+auto same_vector(ioj::Vector3d const& lhs, ioj::Vector3d const& rhs) -> bool {
     return same_number(lhs.x(), rhs.x()) && same_number(lhs.y(), rhs.y()) &&
            same_number(lhs.z(), rhs.z());
 }
-auto near_vector(ml::Vector3d const& lhs, ml::Vector3d const& rhs) -> bool {
+auto near_vector(ioj::Vector3d const& lhs, ioj::Vector3d const& rhs) -> bool {
     return near(lhs.x(), rhs.x()) && near(lhs.y(), rhs.y()) && near(lhs.z(), rhs.z());
 }
 auto quaternion(ioj::Rotator3d const r) -> std::array<double, 4> {
@@ -57,7 +57,7 @@ auto operator==(LevelCameraDefinition const& lhs, LevelCameraDefinition const& r
            same_number(lhs.distance, rhs.distance);
 }
 
-auto operator==(std::optional<ml::Vector3d> const& lhs, std::optional<ml::Vector3d> const& rhs)
+auto operator==(std::optional<ioj::Vector3d> const& lhs, std::optional<ioj::Vector3d> const& rhs)
     -> bool {
     return lhs.has_value() == rhs.has_value() && (!lhs || same_vector(*lhs, *rhs));
 }

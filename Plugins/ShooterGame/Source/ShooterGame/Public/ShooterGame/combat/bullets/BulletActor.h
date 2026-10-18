@@ -20,7 +20,7 @@ class UStaticMeshComponent;
 UCLASS()
 class SHOOTERGAME_API ABulletActor
     : public AActor
-    , public ml::LogMsgMixin<"ABulletActor", LogShooterGameActor> {
+    , public ioj::LogMsgMixin<"ABulletActor", LogShooterGameActor> {
     GENERATED_BODY()
   public:
     ABulletActor();

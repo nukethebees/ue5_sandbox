@@ -32,11 +32,11 @@ void UStatsMenuWidget::NativeOnInitialized() {
 
     skills_grid_2->SetColumnFill(0, 2.0f);
     skills_grid_2->SetColumnFill(1, 1.0f);
-    for (auto skill : ml::EPlayerSkillName_values) {
+    for (auto skill : ioj::EPlayerSkillName_values) {
         auto const i{std::to_underlying(skill)};
 
         auto* label_tb{NewObject<UTextBlock>(this)};
-        label_tb->SetText(ml::get_display_text(skill));
+        label_tb->SetText(ioj::get_display_text(skill));
         skills_grid_2->AddChildToGrid(label_tb, i, 0);
         skills_labels.Add(label_tb);
 

@@ -13,7 +13,7 @@ class UInventoryComponent;
 
 class SInGameMenuWidget
     : public SCompoundWidget
-    , public ml::LogMsgMixin<"SInGameMenuWidget", LogShooterGameUI> {
+    , public ioj::LogMsgMixin<"SInGameMenuWidget", LogShooterGameUI> {
   public:
     // clang-format off
     SLATE_BEGIN_ARGS(SInGameMenuWidget) {}

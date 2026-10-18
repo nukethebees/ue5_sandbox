@@ -21,8 +21,8 @@ auto UMissionStatusWidget::RebuildWidget() -> TSharedRef<SWidget> {
 }
 
 auto UMissionStatusWidget::check_widget_bindings() const -> bool {
-    ml::FErrorMsg error_msg;
-    if (ml::report_invalid_uobject_ptrs(
+    ioj::FErrorMsg error_msg;
+    if (ioj::report_invalid_uobject_ptrs(
             {
                 SANDBOX_NAMED_UOBJECT_PTR(mission_mode_widget),
                 SANDBOX_NAMED_UOBJECT_PTR(mission_time_widget),
@@ -60,7 +60,7 @@ void UMissionStatusWidget::NativePreConstruct() {
     }
 }
 
-void UMissionStatusWidget::set_mission_data(ml::hud_manager::FMissionDataCache const& data) {
+void UMissionStatusWidget::set_mission_data(ioj::hud_manager::FMissionDataCache const& data) {
     set_mission_values(data.static_data.mission_mode,
                        data.status_data.mission_state,
                        data.status_data.mission_stopwatch,
@@ -71,15 +71,15 @@ void UMissionStatusWidget::set_mission_data(ml::hud_manager::FMissionDataCache c
 void UMissionStatusWidget::set_mission_mode(ioj::sim::MissionMode const new_mode,
                                             ioj::sim::MissionState const initial_state) {
     current_mission_mode = new_mode;
-    auto const mode_name{ml::to_fstring(ioj::sim::to_display_string(new_mode))};
-    auto const state_name{ml::to_fstring(ioj::sim::to_string(initial_state))};
+    auto const mode_name{ioj::to_fstring(ioj::sim::to_display_string(new_mode))};
+    auto const state_name{ioj::to_fstring(ioj::sim::to_string(initial_state))};
     mission_mode_widget->update(mode_name, FStringView{state_name});
     apply_mission_state_style(initial_state);
 }
 
 void UMissionStatusWidget::set_mission_state(ioj::sim::MissionState const new_state) {
-    auto const mode_name{ml::to_fstring(ioj::sim::to_display_string(current_mission_mode))};
-    auto const state_name{ml::to_fstring(ioj::sim::to_string(new_state))};
+    auto const mode_name{ioj::to_fstring(ioj::sim::to_display_string(current_mission_mode))};
+    auto const state_name{ioj::to_fstring(ioj::sim::to_string(new_state))};
     mission_mode_widget->update(mode_name, FStringView{state_name});
     apply_mission_state_style(new_state);
 }

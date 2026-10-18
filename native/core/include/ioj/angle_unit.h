@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace ml {
+namespace ioj {
 enum class AngleUnit : std::uint8_t {
     Degrees,
     Radians,

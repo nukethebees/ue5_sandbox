@@ -106,10 +106,10 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
         auto const start_cycles{FPlatformTime::Cycles64()};
         FVector3f root{FVector3f::ZeroVector};
         if (instance_count > 0) {
-            auto const center{ml::sandbox_ismc::position_root(
-                ml::make_vector3f(
+            auto const center{ioj::sandbox_ismc::position_root(
+                ioj::make_vector3f(
                     position_bounds.Min.X, position_bounds.Min.Y, position_bounds.Min.Z),
-                ml::make_vector3f(
+                ioj::make_vector3f(
                     position_bounds.Max.X, position_bounds.Max.Y, position_bounds.Max.Z))};
             if (!position_bounds.IsValid || !center) {
                 UE_LOG(
@@ -122,7 +122,7 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
             }
             root = FVector3f{center->x(), center->y(), center->z()};
         }
-        buffer.position_root_quantum = FVector4f{root, ml::sandbox_ismc::position_quantum};
+        buffer.position_root_quantum = FVector4f{root, ioj::sandbox_ismc::position_quantum};
         auto instances{MakeArrayView(buffer.instances)};
         auto custom_data{MakeArrayView(buffer.custom_data)};
         auto const chunk_count{FMath::DivideAndRoundUp(instance_count, instance_chunk_size)};

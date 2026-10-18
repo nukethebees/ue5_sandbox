@@ -8,15 +8,15 @@
 
 namespace {
 struct InterceptCase {
-    ml::Vector3f shooter_position;
-    ml::Vector3f target_position;
-    ml::Vector3f target_velocity;
+    ioj::Vector3f shooter_position;
+    ioj::Vector3f target_position;
+    ioj::Vector3f target_velocity;
     float projectile_speed;
     float expected_time;
 };
 
-constexpr auto v3(float const x, float const y, float const z) noexcept -> ml::Vector3f {
-    return ml::make_vector3f(x, y, z);
+constexpr auto v3(float const x, float const y, float const z) noexcept -> ioj::Vector3f {
+    return ioj::make_vector3f(x, y, z);
 }
 
 void expect_intercept_geometry(InterceptCase const& test_case, float const intercept_time) {
@@ -34,9 +34,9 @@ void expect_intercept_geometry(InterceptCase const& test_case, float const inter
 }
 
 using BatchSolver = void (*)(float*,
-                             ml::Vector3fSoAConstView,
-                             ml::Vector3fSoAConstView,
-                             ml::Vector3fSoAConstView,
+                             ioj::Vector3fSoAConstView,
+                             ioj::Vector3fSoAConstView,
+                             ioj::Vector3fSoAConstView,
                              float) noexcept;
 }
 
@@ -50,7 +50,7 @@ TEST(NativeCoreProjectileIntercept, SolvesScalarCases) {
     };
 
     for (auto const& test_case : cases) {
-        auto const result{ml::solve_intercept_time(test_case.shooter_position,
+        auto const result{ioj::solve_intercept_time(test_case.shooter_position,
                                                    test_case.target_position,
                                                    test_case.target_velocity,
                                                    test_case.projectile_speed)};
@@ -67,7 +67,7 @@ TEST(NativeCoreProjectileIntercept, RejectsDegenerateAndEscapingTargets) {
     };
 
     for (auto const& test_case : cases) {
-        EXPECT_EQ(ml::solve_intercept_time(test_case.shooter_position,
+        EXPECT_EQ(ioj::solve_intercept_time(test_case.shooter_position,
                                            test_case.target_position,
                                            test_case.target_velocity,
                                            test_case.projectile_speed),
@@ -89,15 +89,15 @@ TEST(NativeCoreProjectileIntercept, BatchImplementationsMatchExpectedResults) {
 
     auto const count{static_cast<std::int32_t>(expected.size())};
     auto const shooters{
-        ml::Vector3fSoAConstView{shooter_x.data(), shooter_y.data(), shooter_z.data(), count}};
+        ioj::Vector3fSoAConstView{shooter_x.data(), shooter_y.data(), shooter_z.data(), count}};
     auto const targets{
-        ml::Vector3fSoAConstView{target_x.data(), target_y.data(), target_z.data(), count}};
+        ioj::Vector3fSoAConstView{target_x.data(), target_y.data(), target_z.data(), count}};
     auto const velocities{
-        ml::Vector3fSoAConstView{velocity_x.data(), velocity_y.data(), velocity_z.data(), count}};
+        ioj::Vector3fSoAConstView{velocity_x.data(), velocity_y.data(), velocity_z.data(), count}};
     constexpr BatchSolver solvers[]{
-        ml::detail::solve_intercept_times_aos::solve_intercept_times,
-        ml::detail::solve_intercept_times_struct_loop::solve_intercept_times,
-        ml::detail::solve_intercept_times_soa_loop::solve_intercept_times,
+        ioj::detail::solve_intercept_times_aos::solve_intercept_times,
+        ioj::detail::solve_intercept_times_struct_loop::solve_intercept_times,
+        ioj::detail::solve_intercept_times_soa_loop::solve_intercept_times,
     };
 
     for (auto const solve : solvers) {

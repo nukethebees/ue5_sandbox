@@ -1,6 +1,6 @@
 #include "SpaceGame/levels/ObserverCameraTransform.h"
 
-namespace ml {
+namespace ioj {
 auto make_observer_camera_transform(TConstArrayView<FVector> const target_positions,
                                     FVector const offset_direction,
                                     double const distance) -> TOptional<FObserverCameraTransform> {

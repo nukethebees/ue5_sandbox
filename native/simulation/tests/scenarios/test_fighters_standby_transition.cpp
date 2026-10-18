@@ -40,7 +40,7 @@ void run_worldless_fighters_standby_transition(tests::SimulationFixture const& c
         std::vector<Vector3f> velocities{};
         std::vector<EntityUniqueId> parents{};
     };
-    ml::TimeSeriesData<Sample> samples;
+    ioj::TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim&) {
         Sample sample{.capital_count = capitals.get_num_instances()};
         auto const tasks{fighters.get_tasks()};

@@ -24,7 +24,7 @@ void UTargetOverlayHUDWidget::update_target_screen_bounds(APlayerController& pc,
                 &pc, world_pos, pos_2d, bPlayerViewportRelative);
         }};
 
-    auto bounds{ml::get_screen_bounds<update_bounds>(pc, corners)};
+    auto bounds{ioj::get_screen_bounds<update_bounds>(pc, corners)};
 
     canvas_slot->SetPosition(bounds.get_centre());
     canvas_slot->SetSize(bounds.size + outline_padding);

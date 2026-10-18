@@ -6,7 +6,7 @@
 
 #include <concepts>
 
-namespace ml {
+namespace ioj {
 template <typename T>
 concept HasNumAndGetData = requires(T const& value) {
     { value.Num() } -> std::convertible_to<int32>;

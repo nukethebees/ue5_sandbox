@@ -19,7 +19,7 @@
 #include <thread>
 #include <vector>
 
-namespace ml::simulation_benchmark {
+namespace ioj::simulation_benchmark {
 namespace {
 struct FrameMemorySummary {
     std::size_t peak_claimed_bytes{};
@@ -517,4 +517,4 @@ auto to_json(BenchmarkResult const& result) -> std::string {
            << ",\"tracy_enabled\":" << (result.tracy_enabled ? "true" : "false") << "}}";
     return output.str();
 }
-} // namespace ml::simulation_benchmark
+} // namespace ioj::simulation_benchmark

@@ -7,7 +7,7 @@
 #include <cstddef>
 #include <utility>
 
-namespace ml {
+namespace ioj {
 template <typename T>
 concept LockFreeMPSCQueueLike = requires(T queue) {
     typename T::view_type;

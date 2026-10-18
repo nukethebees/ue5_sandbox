@@ -6,7 +6,7 @@
 
 #include <initializer_list>
 
-namespace ml {
+namespace ioj {
 void fatal_if_nums_not_equal(std::initializer_list<NamedNum> const values) {
     if (values.size() <= 1) {
         return;

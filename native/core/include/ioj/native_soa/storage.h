@@ -29,7 +29,7 @@
 #include <sbx/memory.h>
 #endif
 
-namespace ml::native_soa {
+namespace ioj::native_soa {
 
 #if NATIVE_SOA_MIMALLOC
 template <typename T>
@@ -73,8 +73,8 @@ using soa_storage_detail::source_data;
 
 template <typename Destination, typename Source>
 auto is_external_source(Destination const& destination, Source const& source) -> bool {
-    auto const address{ml::address_cast(source.data())};
-    auto const begin{ml::address_cast(destination.data())};
+    auto const address{ioj::address_cast(source.data())};
+    auto const begin{ioj::address_cast(destination.data())};
     return address < begin || address >= begin + destination.size() * sizeof(*destination.data());
 }
 
@@ -133,7 +133,7 @@ using StorageOperations =
 
 }
 
-namespace ml::native_soa {
+namespace ioj::native_soa {
 template <typename T>
 using Vector2View = soa_storage_detail::VectorView<T, 2, std::span>;
 template <typename T>

@@ -6,7 +6,7 @@
 #include <memory_resource>
 #include <span>
 
-namespace ml {
+namespace ioj {
 struct FrameMemoryFailure {
     std::size_t requested_bytes{};
     std::size_t alignment{};

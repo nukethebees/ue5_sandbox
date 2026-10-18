@@ -5,7 +5,7 @@
 #include <concepts>
 #include <type_traits>
 
-namespace ml {
+namespace ioj {
 template <typename T>
 concept IsUnrealVector = requires(std::remove_cvref_t<T> const& value) {
     requires std::floating_point<std::remove_cvref_t<decltype(value.X)>>;

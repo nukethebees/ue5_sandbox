@@ -5,7 +5,7 @@
 
 class AActor;
 
-namespace ml {
+namespace ioj {
 class FTestBatchOrchestratorResetScenario final : public FSimulationTestScenario {
 
     static constexpr int32 blocker_count{3};

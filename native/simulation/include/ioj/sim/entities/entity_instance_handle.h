@@ -19,24 +19,24 @@ using QuantisedHealth = std::uint8_t;
 
 struct EntityInstanceHandle {
     using storage_type = std::uint32_t;
-    static_assert(ml::valid_packed_storage<storage_type, 32>());
+    static_assert(ioj::valid_packed_storage<storage_type, 32>());
 
     // index
     using index_type = std::uint32_t;
-    using index_field = ml::PackedField<storage_type, index_type, 0, 18>;
+    using index_field = ioj::PackedField<storage_type, index_type, 0, 18>;
     inline static constexpr index_type index_minimum{static_cast<index_type>(0)};
     inline static constexpr index_type index_maximum{
         static_cast<index_type>(index_field::value_mask)};
 
     // team
     using team_type = ::ioj::Team;
-    static_assert(ml::valid_packed_enum<team_type, 3>());
+    static_assert(ioj::valid_packed_enum<team_type, 3>());
     using team_underlying_type = std::underlying_type_t<team_type>;
-    using team_field = ml::PackedField<storage_type, team_type, 18, 3>;
+    using team_field = ioj::PackedField<storage_type, team_type, 18, 3>;
 
     // health_state
     using health_state_type = std::uint8_t;
-    using health_state_field = ml::PackedField<storage_type, health_state_type, 21, 2>;
+    using health_state_field = ioj::PackedField<storage_type, health_state_type, 21, 2>;
     inline static constexpr health_state_type health_state_minimum{
         static_cast<health_state_type>(0)};
     inline static constexpr health_state_type health_state_maximum{
@@ -58,51 +58,51 @@ struct EntityInstanceHandle {
                                             team_type const team_value,
                                             health_state_type const health_state_value) noexcept {
         assert((index_value >= index_minimum && index_value <= index_maximum));
-        assert(static_cast<std::size_t>(team_value) < ml::enum_count<team_type>());
+        assert(static_cast<std::size_t>(team_value) < ioj::enum_count<team_type>());
         assert((health_state_value >= health_state_minimum &&
                 health_state_value <= health_state_maximum));
-        value_ = static_cast<storage_type>(ml::packed_pack<index_field>(index_value) |
-                                           ml::packed_pack<team_field>(team_value) |
-                                           ml::packed_pack<health_state_field>(health_state_value));
+        value_ = static_cast<storage_type>(ioj::packed_pack<index_field>(index_value) |
+                                           ioj::packed_pack<team_field>(team_value) |
+                                           ioj::packed_pack<health_state_field>(health_state_value));
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return value_ != invalid_value &&
                ((index() >= index_minimum && index() <= index_maximum)) &&
-               static_cast<std::size_t>(team()) < ml::enum_count<team_type>() &&
+               static_cast<std::size_t>(team()) < ioj::enum_count<team_type>() &&
                ((health_state() >= health_state_minimum && health_state() <= health_state_maximum));
     }
 
     [[nodiscard]] constexpr auto operator<=>(EntityInstanceHandle const&) const noexcept = default;
 
     [[nodiscard]] constexpr auto index() const noexcept -> index_type {
-        return ml::packed_extract<index_field>(value_);
+        return ioj::packed_extract<index_field>(value_);
     }
 
     constexpr void set_index(index_type const value) noexcept {
         assert((value >= index_minimum && value <= index_maximum));
-        value_ = ml::packed_insert<index_field>(value_, value);
+        value_ = ioj::packed_insert<index_field>(value_, value);
     }
 
     [[nodiscard]] constexpr auto team() const noexcept -> team_type {
-        return ml::packed_extract<team_field>(value_);
+        return ioj::packed_extract<team_field>(value_);
     }
 
     constexpr void set_team(team_type const value) noexcept {
-        assert(static_cast<std::size_t>(value) < ml::enum_count<team_type>());
-        value_ = ml::packed_insert<team_field>(value_, value);
+        assert(static_cast<std::size_t>(value) < ioj::enum_count<team_type>());
+        value_ = ioj::packed_insert<team_field>(value_, value);
     }
 
     [[nodiscard]] constexpr auto health_state() const noexcept -> health_state_type {
-        return ml::packed_extract<health_state_field>(value_);
+        return ioj::packed_extract<health_state_field>(value_);
     }
 
     constexpr void set_health_state(health_state_type const value) noexcept {
         assert((value >= health_state_minimum && value <= health_state_maximum));
-        value_ = ml::packed_insert<health_state_field>(value_, value);
+        value_ = ioj::packed_insert<health_state_field>(value_, value);
     }
   private:
     storage_type value_{invalid_value};
 };
-static_assert(ml::valid_packed_value_layout<EntityInstanceHandle>());
+static_assert(ioj::valid_packed_value_layout<EntityInstanceHandle>());
 } // namespace ioj::sim

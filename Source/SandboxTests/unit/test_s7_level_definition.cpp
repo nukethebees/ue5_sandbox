@@ -63,7 +63,7 @@ constexpr TCHAR scheduled_level[]{LR"(
 )"};
 
 auto contains_error(::ioj::levels::authoring::FLevelDefinitionReadResult const& result,
-                    ml::ELevelValidationErrorCode const code) -> bool {
+                    ioj::ELevelValidationErrorCode const code) -> bool {
     return !result &&
            std::ranges::any_of(result.error(), [code](ioj::levels::Diagnostic const& error) {
                return error.code == code;
@@ -79,7 +79,7 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         auto const result{reader.read_level_source(scheduled_level)};
         if (!TestRunner->TestTrue(TEXT("Scheduled script produces a definition"),
                                   static_cast<bool>(result))) {
-            TestRunner->AddError(ml::to_fstring(::ioj::levels::format_diagnostics(result.error())));
+            TestRunner->AddError(ioj::to_fstring(::ioj::levels::format_diagnostics(result.error())));
             return;
         }
 
@@ -103,7 +103,7 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
         if (!TestRunner->TestTrue(TEXT("Script produces a definition"),
                                   static_cast<bool>(result))) {
-            TestRunner->AddError(ml::to_fstring(::ioj::levels::format_diagnostics(result.error())));
+            TestRunner->AddError(ioj::to_fstring(::ioj::levels::format_diagnostics(result.error())));
             return;
         }
 
@@ -111,14 +111,14 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Definition has four entities"), definition.entities.num(), 4);
         TestRunner->TestTrue(TEXT("Stable level id is decoded"),
                              definition.metadata.id ==
-                                 ml::FLevelId{FName{TEXT("scripted-example")}});
+                                 ioj::FLevelId{FName{TEXT("scripted-example")}});
         TestRunner->TestEqual(
             TEXT("Title is decoded"), definition.metadata.title, FString{TEXT("Scripted Example")});
         TestRunner->TestEqual(
             TEXT("Par time is decoded"), definition.metadata.par_time_seconds.GetValue(), 75.5f);
         TestRunner->TestTrue(TEXT("Player id is decoded"),
                              definition.player_entity_id ==
-                                 ml::FLevelEntityId{FName{TEXT("player")}});
+                                 ioj::FLevelEntityId{FName{TEXT("player")}});
         TestRunner->TestTrue(
             TEXT("Player position is decoded"),
             definition.entities.positions.get_const_view()[0].Equals(FVector{100.0, 200.0, 300.0}));
@@ -153,7 +153,7 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
                               static_cast<bool>(result));
         TestRunner->TestFalse(
             TEXT("Scheme error is reported"),
-            ml::to_fstring(::ioj::levels::format_diagnostics(result.error())).IsEmpty());
+            ioj::to_fstring(::ioj::levels::format_diagnostics(result.error())).IsEmpty());
         TestRunner->TestTrue(
             TEXT("Evaluation error is classified"),
             contains_error(result, ioj::levels::DiagnosticCode::ScriptEvaluationFailed));
@@ -166,7 +166,7 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
         if (!TestRunner->TestTrue(TEXT("Camera script produces a definition"),
                                   static_cast<bool>(result))) {
-            TestRunner->AddError(ml::to_fstring(::ioj::levels::format_diagnostics(result.error())));
+            TestRunner->AddError(ioj::to_fstring(::ioj::levels::format_diagnostics(result.error())));
             return;
         }
 
@@ -243,7 +243,7 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         auto const& criteria{result->unlock_criteria};
         TestRunner->TestEqual(TEXT("Both criteria are decoded"), criteria.Num(), 2);
         TestRunner->TestTrue(TEXT("First prerequisite id is decoded"),
-                             criteria[0].Get<ml::FLevelCompletedUnlockCriterion>().level_id ==
-                                 ml::FLevelId{FName{TEXT("first-level")}});
+                             criteria[0].Get<ioj::FLevelCompletedUnlockCriterion>().level_id ==
+                                 ioj::FLevelId{FName{TEXT("first-level")}});
     }
 };

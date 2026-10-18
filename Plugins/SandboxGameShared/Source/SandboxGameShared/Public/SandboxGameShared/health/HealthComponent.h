@@ -21,7 +21,7 @@ DECLARE_MULTICAST_DELEGATE(FOnDeath);
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SANDBOXGAMESHARED_API UHealthComponent
     : public UActorComponent
-    , public ml::LogMsgMixin<"UHealthComponent", LogSandboxGameShared> {
+    , public ioj::LogMsgMixin<"UHealthComponent", LogSandboxGameShared> {
     GENERATED_BODY()
   public:
     UHealthComponent();

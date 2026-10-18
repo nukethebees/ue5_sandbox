@@ -16,7 +16,7 @@
 #include <cstdlib>
 #include <limits>
 
-namespace ml {
+namespace ioj {
 auto QuantisedPotential::get_strength(float strength) -> Value {
     return std::min(max_strength_coord, static_cast<Value>(strength / 0.1f));
 }
@@ -87,7 +87,7 @@ void ATestUniformField::on_world_match_starting() {
         UE_LOG(LogSandboxLearning,
                Verbose,
                TEXT("%s::on_world_match_starting"),
-               *ml::get_best_display_name(*this));
+               *ioj::get_best_display_name(*this));
     }
 
     on_field_pre_construction.Broadcast(*this);
@@ -255,7 +255,7 @@ void ATestUniformField::update_cells() {
     max_abs_strength = FMath::Sqrt(max_abs_strength);
 
     ParallelFor(n_cells, [this](int32 i) -> void {
-        using QP = ml::QuantisedPotential;
+        using QP = ioj::QuantisedPotential;
 
         auto& cell{this->cells[i]};
         cell.old_quantised_potential = cell.new_quantised_potential;

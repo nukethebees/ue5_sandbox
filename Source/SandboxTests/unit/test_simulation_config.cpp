@@ -18,7 +18,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
     TEST_METHOD(FixedTickLoopConfigCreatesNativeLoop)
     {
         FFixedTickLoopConfig const config{.tick_rate = 20.0, .time_scale = 2.0};
-        auto loop{ml::make_fixed_tick_loop(config)};
+        auto loop{ioj::make_fixed_tick_loop(config)};
 
         TestRunner->TestEqual(TEXT("Tick rate is copied into native state"), loop.tick_rate, 20.0);
         TestRunner->TestEqual(TEXT("Time scale is copied into native state"), loop.time_scale, 2.0);
@@ -48,7 +48,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
                               simulation_defaults.thrust_energy_max,
                               1.f);
 
-        auto const* const source{ml::load_default_level_config()};
+        auto const* const source{ioj::load_default_level_config()};
         if (!TestRunner->TestNotNull(TEXT("Default level config loads"), source)) {
             return;
         }
@@ -79,8 +79,8 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
             auto const native_bounds{::ioj::sim::collision::make_entity_world_bounds(
                 bounds,
                 type,
-                ml::make_vector3f(position.X, position.Y, position.Z),
-                ml::make_quaternion4f(orientation.X, orientation.Y, orientation.Z, orientation.W))};
+                ioj::make_vector3f(position.X, position.Y, position.Z),
+                ioj::make_quaternion4f(orientation.X, orientation.Y, orientation.Z, orientation.W))};
             FBox3f const actual{
                 FVector3f{native_bounds.min.x(), native_bounds.min.y(), native_bounds.min.z()},
                 FVector3f{native_bounds.max.x(), native_bounds.max.y(), native_bounds.max.z()}};
@@ -101,7 +101,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
                              defaults.calculate_grid_dimensions() == FIntVector3{400, 400, 5});
         TestRunner->TestTrue(TEXT("Default collision-grid config is valid"), defaults.is_valid());
 
-        auto const* const source{ml::load_default_level_config()};
+        auto const* const source{ioj::load_default_level_config()};
         if (!TestRunner->TestNotNull(TEXT("Default level config loads"), source)) {
             return;
         }
@@ -155,7 +155,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
 
     TEST_METHOD(DuplicatePreservesNestedValuesAndAssetReferences)
     {
-        auto const* const source{ml::load_default_level_config()};
+        auto const* const source{ioj::load_default_level_config()};
         if (!TestRunner->TestNotNull(TEXT("Default level config loads"), source)) {
             return;
         }
@@ -222,7 +222,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
                               defaults.dense_traffic_neighbour_threshold,
                               4);
 
-        auto const* const source{ml::load_default_level_config()};
+        auto const* const source{ioj::load_default_level_config()};
         if (!TestRunner->TestNotNull(TEXT("Default level config loads"), source)) {
             return;
         }
@@ -263,7 +263,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
 
     TEST_METHOD(FighterSpawnSlotsHaveClearance)
     {
-        auto const* const config{ml::load_default_level_config()};
+        auto const* const config{ioj::load_default_level_config()};
         if (!TestRunner->TestNotNull(TEXT("Default level config loads"), config) ||
             !TestRunner->TestNotNull(TEXT("Fighter mesh loads"), config->fighters.mesh.Get())) {
             return;
@@ -284,14 +284,14 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Authored fighter spawn slots have collision clearance"),
                              minimum_distance >= clearance_radius * 2.f);
 
-        auto const result{ml::make_level_simulation_init_data(*config)};
+        auto const result{ioj::make_level_simulation_init_data(*config)};
         TestRunner->TestTrue(TEXT("Authored fighter spawn slots pass level-start validation"),
                              result.has_value());
     }
 
     TEST_METHOD(RuntimeConfigStartsTurretTrialZero)
     {
-        auto const* const source{ml::load_default_level_config()};
+        auto const* const source{ioj::load_default_level_config()};
         auto const* const runtime{
             LoadObject<USpaceGameLevelConfig>(nullptr,
                                               TEXT("/SpaceGame/Levels/DA_GameRuntimeLevelConfig."
@@ -325,13 +325,13 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         }
 
         auto const result{
-            ml::make_level_simulation_init_data(*runtime, {}, scripted_definition.value())};
+            ioj::make_level_simulation_init_data(*runtime, {}, scripted_definition.value())};
         TestRunner->TestTrue(TEXT("Runtime config starts Turret Trial 0"), result.has_value());
     }
 
     TEST_METHOD(FighterSpawnSlotValidationRejectsInvalidLevelGeometry)
     {
-        auto const* const source{ml::load_default_level_config()};
+        auto const* const source{ioj::load_default_level_config()};
         if (!TestRunner->TestNotNull(TEXT("Default level config loads"), source) ||
             !TestRunner->TestNotNull(TEXT("Capital mesh loads"),
                                      source->capital_ships.mesh.Get())) {
@@ -342,7 +342,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
             DuplicateObject<USpaceGameLevelConfig>(source, GetTransientPackage())};
         inside_capital->capital_ships.fighter_spawn_slots_relative_transforms[0].SetLocation(
             source->capital_ships.mesh->GetBounds().Origin);
-        auto const capital_result{ml::make_level_simulation_init_data(*inside_capital)};
+        auto const capital_result{ioj::make_level_simulation_init_data(*inside_capital)};
         TestRunner->TestFalse(TEXT("A fighter slot inside its capital aborts level loading"),
                               capital_result.has_value());
         if (!capital_result) {
@@ -356,7 +356,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         overlapping_fighters->capital_ships.fighter_spawn_slots_relative_transforms[1].SetLocation(
             overlapping_fighters->capital_ships.fighter_spawn_slots_relative_transforms[0]
                 .GetLocation());
-        auto const fighter_result{ml::make_level_simulation_init_data(*overlapping_fighters)};
+        auto const fighter_result{ioj::make_level_simulation_init_data(*overlapping_fighters)};
         TestRunner->TestFalse(TEXT("Overlapping fighter slots abort level loading"),
                               fighter_result.has_value());
         if (!fighter_result) {
@@ -368,7 +368,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
 
     TEST_METHOD(RejectsOverlappingStaticCollisionClassLists)
     {
-        auto const* const source{ml::load_default_level_config()};
+        auto const* const source{ioj::load_default_level_config()};
         if (!TestRunner->TestNotNull(TEXT("Default level config loads"), source)) {
             return;
         }

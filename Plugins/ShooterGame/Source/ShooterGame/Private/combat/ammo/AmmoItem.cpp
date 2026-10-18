@@ -17,7 +17,7 @@ AAmmoItem::AAmmoItem()
     collision_box->SetupAttachment(RootComponent);
     collision_box->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
     collision_box->SetCollisionResponseToAllChannels(ECR_Ignore);
-    collision_box->SetCollisionResponseToChannel(ml::collision::interaction, ECR_Block);
+    collision_box->SetCollisionResponseToChannel(ioj::collision::interaction, ECR_Block);
     collision_box->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 
     mesh_component->SetupAttachment(RootComponent);

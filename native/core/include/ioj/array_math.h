@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <type_traits>
 
-namespace ml::kernel {
+namespace ioj::kernel {
 template <typename T, typename Index>
 auto collect_indices_less_equal(T const* values,
                                 std::type_identity_t<Index> const count,

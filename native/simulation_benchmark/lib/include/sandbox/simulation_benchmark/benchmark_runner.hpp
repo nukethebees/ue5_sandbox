@@ -9,7 +9,7 @@
 #include <expected>
 #include <string>
 
-namespace ml::simulation_benchmark {
+namespace ioj::simulation_benchmark {
 inline constexpr double simulation_tick_rate_hz{60.0};
 inline constexpr char profiler_ready_message[]{"native-simulation-benchmark: profiler-ready"};
 
@@ -79,4 +79,4 @@ struct BenchmarkResult {
                                  ProfilerReadyCallback profiler_ready = nullptr)
     -> std::expected<BenchmarkResult, std::string>;
 [[nodiscard]] auto to_json(BenchmarkResult const& result) -> std::string;
-} // namespace ml::simulation_benchmark
+} // namespace ioj::simulation_benchmark

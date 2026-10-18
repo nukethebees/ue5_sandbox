@@ -33,7 +33,7 @@ void ULevelSelect2Widget::populate_level_buttons(TArray<FName> const& level_name
 
         button->set_level_path(level_name);
         button->set_level_display_name(
-            FText::FromString(ml::format_level_display_name(level_name)));
+            FText::FromString(ioj::format_level_display_name(level_name)));
 
         auto* slot{level_select_grid->AddChildToGrid(button, row, col)};
         slot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Fill);

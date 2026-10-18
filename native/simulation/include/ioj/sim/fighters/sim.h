@@ -44,9 +44,9 @@ struct FighterLevelData {
 
 struct Sim {
     using EntityStorage = FighterEntityData;
-    using EntityBuffers = ml::MultiBuffer<EntityStorage, 2>;
+    using EntityBuffers = ioj::MultiBuffer<EntityStorage, 2>;
     using Task = FighterTask;
-    static constexpr auto n_task_types{ml::enum_count<Task>()};
+    static constexpr auto n_task_types{ioj::enum_count<Task>()};
     using TaskSpans = std::array<IndexSpan, n_task_types>;
     using TaskCounts = std::array<std::uint32_t, n_task_types>;
     using TaskView = EntityStorage::View;
@@ -141,11 +141,11 @@ struct Sim {
     void begin_play();
     void update_entity_lookup_table();
     void prepare_tick(float dt);
-    void think(float dt, ml::FrameMemoryResource* const scratch_resource);
-    void plan_movement(float dt, ml::FrameMemoryResource* const scratch_resource);
-    void apply_movement(ml::FrameMemoryResource* const scratch_resource);
-    void generate_fire_commands(ml::FrameMemoryResource* const scratch_resource);
-    void resolve_damage_events(ml::FrameMemoryResource* const scratch_resource);
+    void think(float dt, ioj::FrameMemoryResource* const scratch_resource);
+    void plan_movement(float dt, ioj::FrameMemoryResource* const scratch_resource);
+    void apply_movement(ioj::FrameMemoryResource* const scratch_resource);
+    void generate_fire_commands(ioj::FrameMemoryResource* const scratch_resource);
+    void resolve_damage_events(ioj::FrameMemoryResource* const scratch_resource);
     void publish_deaths();
     void remove_components();
     void remove_entities();
@@ -165,11 +165,11 @@ struct Sim {
     /* **************************************** */
     // Movement
     /* **************************************** */
-    void move(float dt, TaskView fighters, ml::FrameMemoryResource* const scratch_resource);
-    void update_navigation_steering(ml::FrameMemoryResource* const scratch_resource);
+    void move(float dt, TaskView fighters, ioj::FrameMemoryResource* const scratch_resource);
+    void update_navigation_steering(ioj::FrameMemoryResource* const scratch_resource);
     void collect_navigation_updates(NavigationScratch& scratch);
     void update_separation_observations(NavigationScratch& scratch,
-                                        ml::FrameMemoryResource* scratch_resource);
+                                        ioj::FrameMemoryResource* scratch_resource);
     void apply_separation_steering();
     void scan_preferred_navigation(NavigationScratch& scratch,
                                    float clearance,
@@ -187,7 +187,7 @@ struct Sim {
     /* **************************************** */
     // Combat
     /* **************************************** */
-    void handle_firing(TaskView data, ml::FrameMemoryResource* const scratch_resource);
+    void handle_firing(TaskView data, ioj::FrameMemoryResource* const scratch_resource);
 
     /* **************************************** */
     // Spawning
@@ -214,7 +214,7 @@ struct Sim {
     /* **************************************** */
     void set_target_id_unchecked(std::uint32_t fighter_index, EntityUniqueId new_target) noexcept;
     void set_target_id(EntityUniqueId fighter, EntityUniqueId new_target) noexcept;
-    void refresh_target_data(ml::FrameMemoryResource* const scratch_resource);
+    void refresh_target_data(ioj::FrameMemoryResource* const scratch_resource);
 
     /* **************************************** */
     // Tasks
@@ -242,12 +242,12 @@ struct Sim {
     float collision_radius_{};
     float fire_point_distance_{};
     bool diagnostics_enabled_{};
-    std::array<std::uint8_t, ml::enum_count<Team>()> participant_mask{};
-    std::array<std::int32_t, ml::enum_count<Team>()> remaining_team_capacity{};
+    std::array<std::uint8_t, ioj::enum_count<Team>()> participant_mask{};
+    std::array<std::int32_t, ioj::enum_count<Team>()> remaining_team_capacity{};
     std::int32_t per_team_limit{};
     SimClock const& simulation_clock;
     std::int16_t attack_retry_cooldown_tick_value{0};
-    std::array<std::int16_t, ml::enum_count<NavigationRiskTier>()> navigation_tick_periods{};
+    std::array<std::int16_t, ioj::enum_count<NavigationRiskTier>()> navigation_tick_periods{};
     float minimum_navigation_lookahead_time{};
 
     std::int8_t awareness_restart_ticks_{};

@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <numbers>
 
-namespace ml::native_math {
+namespace ioj::native_math {
 template <std::floating_point T>
 auto is_nearly_zero(T const x, T const y, T const z, T const tolerance) noexcept -> bool {
     return std::abs(x) <= tolerance && std::abs(y) <= tolerance && std::abs(z) <= tolerance;

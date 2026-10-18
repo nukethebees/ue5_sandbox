@@ -21,7 +21,7 @@ class UNiagaraDataChannelWriter;
 UCLASS()
 class SANDBOXGAMESHARED_API UNiagaraNdcWriterSubsystem
     : public UWorldSubsystem
-    , public ml::LogMsgMixin<"UNiagaraNdcWriterSubsystem", LogSandboxGameShared> {
+    , public ioj::LogMsgMixin<"UNiagaraNdcWriterSubsystem", LogSandboxGameShared> {
     GENERATED_BODY()
   public:
     struct QueueView {
@@ -35,8 +35,8 @@ class SANDBOXGAMESHARED_API UNiagaraNdcWriterSubsystem
 
     using NdcAsset = UNiagaraDataChannelAsset;
     using NdcWriter = UNiagaraDataChannelWriter;
-    using Queue = ml::LockFreeMPSCQueueSoA<QueueView, FVector, FVector>;
-    using MonitoredQueue = ml::MonitoredLockFreeMPSCQueue<Queue>;
+    using Queue = ioj::LockFreeMPSCQueueSoA<QueueView, FVector, FVector>;
+    using MonitoredQueue = ioj::MonitoredLockFreeMPSCQueue<Queue>;
 
     static constexpr std::size_t n_queue_elements_default{5000};
 

@@ -75,9 +75,9 @@ struct Sim {
     void begin_play();
     void update_entity_lookup_table();
     void prepare_tick(float dt);
-    void think(float dt, ml::FrameMemoryResource* const scratch_resource);
-    void generate_fire_commands(ml::FrameMemoryResource* const scratch_resource);
-    void resolve_damage_events(ml::FrameMemoryResource* scratch_resource);
+    void think(float dt, ioj::FrameMemoryResource* const scratch_resource);
+    void generate_fire_commands(ioj::FrameMemoryResource* const scratch_resource);
+    void resolve_damage_events(ioj::FrameMemoryResource* scratch_resource);
     void publish_deaths();
     void remove_components();
     void remove_entities();
@@ -96,17 +96,17 @@ struct Sim {
     /* **************************************** */
     // Searching
     /* **************************************** */
-    void perform_search(ml::FrameMemoryResource* scratch_resource);
-    void refresh_target_data(ml::FrameMemoryResource* const scratch_resource);
+    void perform_search(ioj::FrameMemoryResource* scratch_resource);
+    void refresh_target_data(ioj::FrameMemoryResource* const scratch_resource);
     void perform_search_on_slice(std::uint32_t begin,
                                  std::uint32_t end,
                                  float radius,
-                                 ml::FrameMemoryResource* scratch_resource);
+                                 ioj::FrameMemoryResource* scratch_resource);
 
     /* **************************************** */
     // Attacking
     /* **************************************** */
-    void fire_at_enemies(ml::FrameMemoryResource* const scratch_resource);
+    void fire_at_enemies(ioj::FrameMemoryResource* const scratch_resource);
     auto get_disengage_radius() const -> float;
 
     /* **************************************** */

@@ -39,8 +39,8 @@ Each update rebuilds complete handles for all active rows. Health changes are no
   expires when its owning scratch scope ends or its frame resource resets. Caller ownership does
   not permit it to outlive that resource.
 
-Simulation operations receive a borrowed `ml::FrameMemoryResource*`; temporary containers accept
-`std::pmr::memory_resource*` and retain their allocator for cleanup. `ml::FrameScratchScope` guards
+Simulation operations receive a borrowed `ioj::FrameMemoryResource*`; temporary containers accept
+`std::pmr::memory_resource*` and retain their allocator for cleanup. `ioj::FrameScratchScope` guards
 an allocation epoch and reclaims the underlying resource on exit. Declare the scope before its
 temporary containers, destroy those containers and release query buffers before scope exit, and
 complete all parallel work before reclamation. Keep no borrowed views past that boundary. Reclaim

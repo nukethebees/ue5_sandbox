@@ -32,7 +32,7 @@ TEST_CLASS(SpawnActors, "SandboxCoreEngine.LevelTests")
 
             auto pre_spawn_call_count{0};
             auto post_spawn_call_count{0};
-            ml::spawn_actors<AActor>(
+            ioj::spawn_actors<AActor>(
                 world,
                 AActor::StaticClass(),
                 actors,
@@ -98,7 +98,7 @@ TEST_CLASS(SpawnActors, "SandboxCoreEngine.LevelTests")
             auto pre_spawn_callback_count{0};
             auto post_spawn_callback_count{0};
 
-            ml::spawn_actors<AActor>(
+            ioj::spawn_actors<AActor>(
                 world,
                 actors,
                 [this,
@@ -163,44 +163,44 @@ TEST_CLASS(SpawnActors, "SandboxCoreEngine.LevelTests")
     {
         TestCommandBuilder.Do([this] {
             auto& world{spawner->GetWorld()};
-            auto const initial_count{ml::count_actors<ATriggerBox>(world)};
+            auto const initial_count{ioj::count_actors<ATriggerBox>(world)};
             auto* const first{world.SpawnActor<ATriggerBox>()};
             auto* const second{world.SpawnActor<ATriggerBox>()};
 
             TestRunner->TestEqual(TEXT("Count includes both spawned actors"),
-                                  ml::count_actors<ATriggerBox>(world),
+                                  ioj::count_actors<ATriggerBox>(world),
                                   initial_count + 2);
             TestRunner->TestTrue(TEXT("First actor is in its world"),
-                                 ml::is_actor_in_world(world, first));
+                                 ioj::is_actor_in_world(world, first));
             TestRunner->TestFalse(TEXT("Null actor is not in the world"),
-                                  ml::is_actor_in_world(world, nullptr));
+                                  ioj::is_actor_in_world(world, nullptr));
             auto* const actor_without_world{NewObject<AActor>()};
             TestRunner->TestFalse(TEXT("Actor outside the world is rejected"),
-                                  ml::is_actor_in_world(world, actor_without_world));
+                                  ioj::is_actor_in_world(world, actor_without_world));
             TestRunner->TestNotNull(TEXT("First actor query returns an actor"),
-                                    ml::get_first_actor<ATriggerBox>(world));
+                                    ioj::get_first_actor<ATriggerBox>(world));
 
-            auto actors{ml::get_actors<ATriggerBox>(world)};
+            auto actors{ioj::get_actors<ATriggerBox>(world)};
             TestRunner->TestEqual(
                 TEXT("Get actors matches count"), actors.Num(), initial_count + 2);
             TestRunner->TestTrue(TEXT("Get actors includes first"), actors.Contains(first));
             TestRunner->TestTrue(TEXT("Get actors includes second"), actors.Contains(second));
 
             TArray<ATriggerBox*> appended{first};
-            ml::append_actors(world, appended);
+            ioj::append_actors(world, appended);
             TestRunner->TestEqual(TEXT("Append actors preserves existing entries"),
                                   appended.Num(),
                                   initial_count + 3);
             TestRunner->TestTrue(TEXT("Existing entry remains first"), appended[0] == first);
 
             int32 visit_count{};
-            ml::for_each_instance(*first, [&visit_count](ATriggerBox&) { ++visit_count; });
+            ioj::for_each_instance(*first, [&visit_count](ATriggerBox&) { ++visit_count; });
             TestRunner->TestEqual(
                 TEXT("For each visits every instance"), visit_count, initial_count + 2);
 
             second->Destroy();
             TestRunner->TestFalse(TEXT("Destroyed actor is no longer in the world"),
-                                  ml::is_actor_in_world(world, second));
+                                  ioj::is_actor_in_world(world, second));
         });
     }
 
@@ -208,14 +208,14 @@ TEST_CLASS(SpawnActors, "SandboxCoreEngine.LevelTests")
     {
         TestCommandBuilder.Do([this] {
             auto& world{spawner->GetWorld()};
-            auto const initial_count{ml::count_actors<ATriggerBox>(world)};
-            auto* const first{ml::get_or_create_actor_singleton<ATriggerBox>(world)};
-            auto* const second{ml::get_or_create_actor_singleton<ATriggerBox>(world)};
+            auto const initial_count{ioj::count_actors<ATriggerBox>(world)};
+            auto* const first{ioj::get_or_create_actor_singleton<ATriggerBox>(world)};
+            auto* const second{ioj::get_or_create_actor_singleton<ATriggerBox>(world)};
 
             TestRunner->TestNotNull(TEXT("Singleton is available"), first);
             TestRunner->TestTrue(TEXT("Singleton call reuses the same actor"), first == second);
             TestRunner->TestEqual(TEXT("Only one singleton actor is created"),
-                                  ml::count_actors<ATriggerBox>(world),
+                                  ioj::count_actors<ATriggerBox>(world),
                                   initial_count + 1);
         });
     }

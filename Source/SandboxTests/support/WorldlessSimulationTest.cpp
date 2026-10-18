@@ -16,7 +16,7 @@
 #include <Engine/StaticMesh.h>
 #include <Engine/StaticMeshSocket.h>
 
-namespace ml {
+namespace ioj {
 auto make_worldless_simulation_test_data(USpaceGameLevelConfig const& config)
     -> ::ioj::sim::LevelSimInitData {
     check(IsValid(config.classes.player_ship_class));
@@ -34,7 +34,7 @@ auto make_worldless_player_spawn(USpaceGameLevelConfig const& config, FTransform
     check(player);
     auto result{player->make_spawn_data()};
     result.config = make_simulation_config(config.player_ship);
-    result.transform = ml::to_native(transform);
+    result.transform = ioj::to_native(transform);
     return result;
 }
 
@@ -62,7 +62,7 @@ auto add_worldless_capital_spawn(::ioj::sim::LevelSimInitData& data,
     auto const events{storage.get_view()};
     events.entity_indices()[index] = data.level_events.initialisation.entity_count++;
     events.target_entity_indices()[index] = target_entity_index;
-    ::ioj::set_vector(events.view_locations(), index, ml::to_native(FVector3f{location}));
+    ::ioj::set_vector(events.view_locations(), index, ioj::to_native(FVector3f{location}));
     events.teams()[index] = static_cast<::ioj::Team>(team);
     events.healths()[index] = health == INDEX_NONE ? data.capital_ships.max_health : health;
     events.initial_fighter_spawn_delays()[index] = initial_spawn_delay;

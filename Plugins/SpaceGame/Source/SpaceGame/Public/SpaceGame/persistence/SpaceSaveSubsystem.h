@@ -26,7 +26,7 @@ struct SPACEGAME_API FLevelProgressSummary {
     int32 best_kills{};
 };
 
-SPACEGAME_API auto summarize_level_progress(ml::FLevelId level_id,
+SPACEGAME_API auto summarize_level_progress(ioj::FLevelId level_id,
                                             TConstArrayView<FScoreRecord> records)
     -> FLevelProgressSummary;
 }
@@ -41,9 +41,9 @@ class SPACEGAME_API USpaceSaveSubsystem : public UGameInstanceSubsystem {
     static auto get(UGameInstance const* game_instance) -> USpaceSaveSubsystem*;
     [[nodiscard]] auto get_profiles() const -> TConstArrayView<FSaveProfileMetadata>;
     [[nodiscard]] auto get_active_profile_id() const -> FString const&;
-    [[nodiscard]] auto get_level_progress(ml::FLevelId level_id) const
+    [[nodiscard]] auto get_level_progress(ioj::FLevelId level_id) const
         -> ioj::FLevelProgressSummary;
-    [[nodiscard]] auto is_level_completed(ml::FLevelId level_id) const -> bool;
+    [[nodiscard]] auto is_level_completed(ioj::FLevelId level_id) const -> bool;
     [[nodiscard]] auto has_active_profile() const -> bool;
     [[nodiscard]] auto unlock_all_missions() const -> bool;
     [[nodiscard]] auto start_levels_paused() const -> bool;
