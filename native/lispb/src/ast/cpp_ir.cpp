@@ -180,6 +180,16 @@ auto CppIR::variable(CppTypeId type, IdentifierId name, std::optional<Expr> init
     return ir_detail::node(NodeKind::variable_declaration_stmt, index);
 }
 
+auto CppIR::variable(CppTypeId type, std::string_view name, std::optional<Expr> initializer)
+    -> NodeId {
+    return variable(type, strings.intern(name), initializer);
+}
+
+auto CppIR::variable(std::string_view type, std::string_view name, std::optional<Expr> initializer)
+    -> NodeId {
+    return variable(types.intern(type), strings.intern(name), initializer);
+}
+
 auto CppIR::static_assertion(StringId condition, StringId message) -> NodeId {
     auto const index{static_assert_nodes_.condition.size()};
     static_assert_nodes_.condition.push_back(condition);
@@ -360,6 +370,14 @@ auto CppIR::function(Expr name, CppTypeId return_type) -> FunctionId {
     return append_function(name, return_type, FunctionKind::ordinary);
 }
 
+auto CppIR::function(std::string_view name, CppTypeId return_type) -> FunctionId {
+    return function(strings.intern(name), return_type);
+}
+
+auto CppIR::function(std::string_view name, std::string_view return_type) -> FunctionId {
+    return function(strings.intern(name), types.intern(return_type));
+}
+
 auto CppIR::append_function(Expr name, CppTypeId return_type, FunctionKind kind) -> FunctionId {
     FunctionId const result{static_cast<std::uint32_t>(functions_.name.size())};
     functions_.name.push_back(name);
@@ -398,6 +416,17 @@ auto CppIR::parameter(CppTypeId type, IdentifierId name, std::optional<StringId>
     parameters_.name.push_back(string_id(name));
     parameters_.default_value.push_back(default_value);
     return result;
+}
+
+auto CppIR::parameter(CppTypeId type, std::string_view name, std::optional<StringId> default_value)
+    -> FunctionParameterId {
+    return parameter(type, strings.intern(name), default_value);
+}
+
+auto CppIR::parameter(std::string_view type,
+                      std::string_view name,
+                      std::optional<StringId> default_value) -> FunctionParameterId {
+    return parameter(types.intern(type), strings.intern(name), default_value);
 }
 
 auto CppIR::member_initializer(IdentifierId member, StringId value) -> MemberInitializerId {

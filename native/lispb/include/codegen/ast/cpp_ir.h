@@ -146,6 +146,12 @@ class CppIR {
     }
     auto variable(CppTypeId type, IdentifierId name, std::optional<Expr> initializer = {})
         -> NodeId;
+    auto variable(CppTypeId type, std::string_view name, std::optional<Expr> initializer = {})
+        -> NodeId;
+    // Text type overloads intern spellings without dependencies; use CppTypeId for resolved types.
+    auto variable(std::string_view type,
+                  std::string_view name,
+                  std::optional<Expr> initializer = {}) -> NodeId;
     auto static_assertion(StringId condition, StringId message) -> NodeId;
     auto access(Access value = Access::public_,
                 AccessIndentation indentation = AccessIndentation::outdented) -> NodeId;
@@ -237,10 +243,18 @@ class CppIR {
     // Require an actual return type; use the dedicated constructor/destructor factories otherwise.
     auto function(IdentifierId name, CppTypeId return_type) -> FunctionId;
     auto function(Expr name, CppTypeId return_type) -> FunctionId;
+    auto function(std::string_view name, CppTypeId return_type) -> FunctionId;
+    auto function(std::string_view name, std::string_view return_type) -> FunctionId;
     auto constructor(IdentifierId name, bool is_explicit = false) -> FunctionId;
     auto destructor(IdentifierId name) -> FunctionId;
     auto parameter(CppTypeId type,
                    IdentifierId name = {},
+                   std::optional<StringId> default_value = {}) -> FunctionParameterId;
+    auto parameter(CppTypeId type,
+                   std::string_view name,
+                   std::optional<StringId> default_value = {}) -> FunctionParameterId;
+    auto parameter(std::string_view type,
+                   std::string_view name = {},
                    std::optional<StringId> default_value = {}) -> FunctionParameterId;
     auto member_initializer(IdentifierId member, StringId value) -> MemberInitializerId;
     void set_function_parameters(FunctionId function,
