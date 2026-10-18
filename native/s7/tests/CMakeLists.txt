@@ -14,6 +14,7 @@ target_include_directories(sandbox-s7-tests SYSTEM
 target_link_libraries(sandbox-s7-tests
   PRIVATE
     sandbox-s7
+    GTest::gtest_main
     sandbox::native_defaults
 )
 ioj_enable_warnings(sandbox-s7-tests)

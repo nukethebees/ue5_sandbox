@@ -33,6 +33,7 @@ add_executable(native-memory-tests)
 target_sources(native-memory-tests PRIVATE tests/root_arena_tests.cpp)
 target_link_libraries(native-memory-tests PRIVATE
   native-memory
+  GTest::gtest_main
   sandbox::native_defaults
 )
 ioj_enable_warnings(native-memory-tests)

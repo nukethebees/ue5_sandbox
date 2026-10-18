@@ -1,108 +1,70 @@
 #include "native/memory/root_arena.h"
 
+#include <gtest/gtest.h>
+
 #include <array>
 #include <cstddef>
-#include <iostream>
-#include <string_view>
 #include <utility>
 
 namespace ioj::memory::tests {
-auto expect(bool const condition, std::string_view const message) -> bool {
-    if (!condition) {
-        std::cerr << "FAILED: " << message << '\n';
-    }
-    return condition;
-}
+class RootArenaTest : public testing::Test {
+  protected:
+    alignas(64) std::array<std::byte, 512> backing_{};
+    RootArena arena_{backing_.data(), backing_.size()};
+};
 
-auto reuses_returned_blocks() -> bool {
-    alignas(64) std::array<std::byte, 512> backing{};
-    RootArena arena{backing.data(), backing.size()};
-
+TEST_F(RootArenaTest, ReusesReturnedBlocks) {
     std::byte* first_address{};
     {
-        auto block{arena.try_acquire_block(128, 64)};
-        if (!expect(static_cast<bool>(block), "initial block acquisition succeeds")) {
-            return false;
-        }
+        auto block{arena_.try_acquire_block(128, 64)};
+        ASSERT_TRUE(block);
         first_address = block.data();
-        if (!expect(arena.get_statistics().live_block_bytes == 128,
-                    "live block bytes include the allocation")) {
-            return false;
-        }
+        EXPECT_EQ(arena_.get_statistics().live_block_bytes, 128);
     }
 
-    auto reused{arena.try_acquire_block(128, 64)};
-    return expect(static_cast<bool>(reused), "replacement block acquisition succeeds") &&
-           expect(reused.data() == first_address, "returned block address is reused") &&
-           expect(arena.get_statistics().claimed_bytes == 128,
-                  "reuse does not claim additional root bytes");
+    auto reused{arena_.try_acquire_block(128, 64)};
+    ASSERT_TRUE(reused);
+    EXPECT_EQ(reused.data(), first_address);
+    EXPECT_EQ(arena_.get_statistics().claimed_bytes, 128);
 }
 
-auto reports_exact_exhaustion_diagnostics() -> bool {
-    alignas(64) std::array<std::byte, 512> backing{};
-    RootArena arena{backing.data(), backing.size()};
-    auto live_block{arena.try_acquire_block(128, 64)};
-    if (!expect(static_cast<bool>(live_block), "diagnostic setup allocation succeeds")) {
-        return false;
-    }
+TEST_F(RootArenaTest, ReportsExactExhaustionDiagnostics) {
+    auto live_block{arena_.try_acquire_block(128, 64)};
+    ASSERT_TRUE(live_block);
+    EXPECT_FALSE(arena_.try_acquire_block(1024, 32));
 
-    auto exhaustion{arena.try_acquire_block(1024, 32)};
-    if (!expect(!static_cast<bool>(exhaustion), "oversized block acquisition fails")) {
-        return false;
-    }
-    auto const failure{arena.get_last_allocation_failure()};
-    return expect(failure != nullptr, "allocation failure is recorded") &&
-           expect(failure->requested_bytes == 1024, "requested bytes are exact") &&
-           expect(failure->alignment == 32, "requested alignment is exact") &&
-           expect(failure->claimed_bytes == 128, "claimed bytes are exact") &&
-           expect(failure->total_capacity_bytes == 512, "root capacity is exact");
+    auto const failure{arena_.get_last_allocation_failure()};
+    ASSERT_NE(failure, nullptr);
+    EXPECT_EQ(failure->requested_bytes, 1024);
+    EXPECT_EQ(failure->alignment, 32);
+    EXPECT_EQ(failure->claimed_bytes, 128);
+    EXPECT_EQ(failure->total_capacity_bytes, 512);
 }
 
-auto moving_a_block_transfers_its_range() -> bool {
-    alignas(64) std::array<std::byte, 512> backing{};
-    RootArena arena{backing.data(), backing.size()};
-    auto source{arena.try_acquire_block(128, 64)};
-    if (!expect(static_cast<bool>(source), "move setup allocation succeeds")) {
-        return false;
-    }
+TEST_F(RootArenaTest, MovingABlockTransfersItsRange) {
+    auto source{arena_.try_acquire_block(128, 64)};
+    ASSERT_TRUE(source);
     auto* const address{source.data()};
-
     Block destination{std::move(source)};
+
     // NOLINTNEXTLINE(bugprone-use-after-move): Verify the defined moved-from state.
-    if (!expect(!static_cast<bool>(source), "moved-from block is empty") ||
-        !expect(destination.data() == address, "move preserves the block address") ||
-        !expect(arena.get_statistics().live_block_count == 1,
-                "move does not alter the live block count")) {
-        return false;
-    }
+    EXPECT_FALSE(source);
+    EXPECT_EQ(destination.data(), address);
+    EXPECT_EQ(arena_.get_statistics().live_block_count, 1);
 
     destination = {};
-    if (!expect(arena.get_statistics().live_block_count == 0, "reset releases the moved block")) {
-        return false;
-    }
-    auto reused{arena.try_acquire_block(128, 64)};
-    return expect(static_cast<bool>(reused), "released moved block can be reacquired") &&
-           expect(reused.data() == address, "reacquired moved block preserves its address");
+    EXPECT_EQ(arena_.get_statistics().live_block_count, 0);
+    auto reused{arena_.try_acquire_block(128, 64)};
+    ASSERT_TRUE(reused);
+    EXPECT_EQ(reused.data(), address);
 }
 
-auto pmr_deallocation_returns_the_range() -> bool {
-    alignas(64) std::array<std::byte, 512> backing{};
-    RootArena arena{backing.data(), backing.size()};
-    auto& resource{arena.memory_resource()};
-
+TEST_F(RootArenaTest, PmrDeallocationReturnsTheRange) {
+    auto& resource{arena_.memory_resource()};
     auto* const first{resource.allocate(128, 64)};
     resource.deallocate(first, 128, 64);
     auto* const second{resource.allocate(128, 64)};
-
-    auto const passed{expect(second == first, "PMR deallocation returns its range")};
+    EXPECT_EQ(second, first);
     resource.deallocate(second, 128, 64);
-    return passed;
 }
-}
-
-auto main() -> int {
-    using namespace ioj::memory::tests;
-    auto const passed{reuses_returned_blocks() && reports_exact_exhaustion_diagnostics() &&
-                      moving_a_block_transfers_its_range() && pmr_deallocation_returns_the_range()};
-    return passed ? 0 : 1;
 }
