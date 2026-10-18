@@ -1,13 +1,13 @@
 #pragma once
 
+#include <ioj/layout/analysis_settings.hpp>
 #include <ioj/layout/document_id.hpp>
 #include <ioj/layout/document_io_state.hpp>
-#include <ioj/layout/revision.hpp>
-#include <ioj/layout/variants.hpp>
-#include <ioj/layout/analysis_settings.hpp>
-#include <ioj/layout/transaction.hpp>
 #include <ioj/layout/frozen_sources.hpp>
+#include <ioj/layout/revision.hpp>
 #include <ioj/layout/source_id.hpp>
+#include <ioj/layout/transaction.hpp>
+#include <ioj/layout/variants.hpp>
 
 #include <codegen/schema/manifest.h>
 #include <codegen/schema/schema_version.h>
@@ -56,7 +56,8 @@ class DocumentState {
     std::map<lispb::codegen::ModuleHandle, lispb::codegen::sexpr::SourceFileId> source_files;
     std::vector<lispb::codegen::sexpr::SourceFileId> source_order;
     std::map<lispb::codegen::sexpr::SourceFileId, SourceId> source_ids;
-    std::map<lispb::codegen::sexpr::SourceFileId, lispb::codegen::sexpr::SourceFileId> render_origins;
+    std::map<lispb::codegen::sexpr::SourceFileId, lispb::codegen::sexpr::SourceFileId>
+        render_origins;
     FrozenSources baseline_sources;
     Transaction history;
     std::vector<std::size_t> transaction_ends;

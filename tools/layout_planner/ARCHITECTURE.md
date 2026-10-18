@@ -1,88 +1,74 @@
 # Memory layout planner architecture
 
-The headless API lives in `native/layout/lib`, with GoogleTest coverage in
-`native/layout/tests`. LispB owns parsing, compiler storage, semantic resolution,
-and canonical source rendering. The SDL/ImGui application consumes the document
-and analysis APIs; it does not mutate compiler columns.
+The headless library lives in `native/layout/lib`. LispB supplies parsing,
+semantic resolution and source rendering. The SDL/ImGui application submits
+changes and reads the resulting document and analysis tables.
 
-## Document and transactions
+## Ownership and replay
 
-`EditorSession` owns the shared compiler stores, strings, source text, and
-diagnostics. It creates documents and must outlive them. `Document` holds its
-module roots, source handles, physical variants, and history directly by value.
-It borrows the session so its edit and query methods remain convenient.
-`Transaction` queues
-instructions in parallel columns. Names resolve in instruction order, so later
-instructions can use a declaration created or renamed earlier in the transaction.
+`EditorSession` owns durable command/source strings, diagnostics and resettable
+compiler workspaces. `Document` identifies one session-owned document. Moving a
+document does not move its storage or invalidate queued transactions.
 
-Documents move without relocating the session's stores. Transactions identify
-their document by a session-local `DocumentId`, so a queued transaction survives
-a document move. Query objects borrow declarations and module handles directly;
-they do not retain a manifest. Reacquire borrowed query views after a move.
+Transactions contain typed instructions in SoA columns. Names resolve in
+instruction order, allowing create-then-edit and rename-then-edit operations.
+Accepted history stores instructions and transaction boundaries. Undo and redo
+move a cursor; replay rebuilds the model from the retained initial inputs and
+the accepted instruction prefix. There are no model snapshots or checkpoints.
 
-Applying an instruction appends immutable declaration/module versions to the
-compiler's SoA stores. Intermediate versions may be invalid. Commit resolves and
-validates the final schema before publishing its roots. Rejection retains the
-previous document, cursor, and redo branch; diagnostics remain available through
-the session's `diagnostics()` and `last_diagnostic_begin()`.
+Instructions can leave intermediate states invalid. A new transaction resolves
+and validates its final schema before acceptance. On rejection, diagnostics are
+published and the previous accepted prefix is rebuilt without losing redo.
+Physical experiments can produce unavailable analysis results without making
+the authored schema invalid.
 
-Accepted history consists of forward module-root splices and changed source and
-variant versions. Undo and redo move the cursor, replay the accepted prefix from
-the loaded baseline, then resolve the graph once. They do not reparse files or
-append declaration versions. Saving leaves the baseline and history intact.
+Persistent declaration, source and variant IDs survive replay. Compiler and
+analysis row handles belong to the current rebuilt workspace. Reacquire query
+views after processing changes. Workspace reset clears source text and strings
+as well as syntax and semantic rows, retaining reusable buffer capacity.
 
-Declaration IDs survive typed edits, rename, move, and replay. Semantic `TypeId`s
-belong to the resolved graph revision. Variants use durable declaration IDs and
-member names; named member edits update their overrides. Variants are session
-experiments and are not written into LispB source files.
+## Inputs and publication
 
-`Variants` stores authored settings in SoA form. `ResolvedVariant` is one analysis
-projection using graph-local type IDs. `VariantId{}` selects the baseline. Member
-keys use interned `IdentifierId`s from the session's LispB string store.
+Initial source and registry include contents are retained in memory. Commands
+capture their text and profile inputs. Replay does not reread files from disk.
+Variants and analysis settings share the document's undo history but remain
+session-local; they do not change the saved LispB format.
 
-## Reading and writing
+Save and Save As publish rendered sources independently of replay. They preserve
+history, attached comments and literal contents, and check for external file
+changes. Last-written content receipts support those checks. Rendering produces
+temporary output rather than retaining a revision-indexed source cache.
 
-Tests and consumers use source text and named queries:
+## Analysis and UI
 
-```cpp
-EditorSession editor;
-auto document = editor.from_source(source);
-auto transaction = document.transaction();
-transaction.set_field_bits("game", "ShipState", "health", 12);
-document.commit(transaction);
-auto bits = document.query().module("game").packed_value("ShipState")
-                    .field("health").bits();
-```
+`AnalysisStorage` owns SoA tables for semantic encodings, physical layouts,
+packed fields, SoA allocations, relationships, workloads and distributions.
+Small optional groups represent values calculated and consumed together.
+Independent facts, such as cache and page coverage, remain independent.
 
-Missing query results propagate as empty optionals. Query objects borrow document
-storage. Raw declaration and whole-source replacement support all LispB forms;
-named methods provide convenient structural and field edits.
+LispB schemas in `native/layout/schema` define the analysis tables. The
+`layout-analysis` generation target emits their vector storage, views and
+accessors into the build directory. Generated reset operations clear all
+columns while retaining capacity. Numerical passes remain ordinary C++.
 
-Canonical rendering writes changed files as complete files. Comment provenance
-follows their owning modules, declarations, and children. Literal payloads and
-file line endings are retained; incidental whitespace is not a persistence
-contract. Save checks external changes and stages files before publishing them.
-Project source membership participates in the same history as schema edits.
+`Analyzer` borrows its inputs, output tables and diagnostic context. Ordered
+passes resolve dependencies, calculate layouts, then evaluate relationships and
+workloads. Identical requests share rows within one run. Each run clears and
+rebuilds the tables; comparisons read existing rows instead of copying results.
 
-## Analysis and presentation
+Missing ABI facts remain unknown. Semantic widths do not imply object sizes.
+Cache/page results describe modeled footprints, not measured traffic or
+latency. Analysis errors are recorded centrally, never copied into result rows.
+Parser errors are published with durable source coordinates before reset.
 
-`Analyzer` combines the resolved graph, explicit ABI facts, workloads, and variant
-overrides. `LayoutWorkspace` supplies the resolved analysis inputs; it has no
-authored document or undo history. `PlannerSession` recomputes results when the
-document revision or analysis inputs change. Analysis errors also enter the
-session diagnostic container.
-
-Physical sizes remain unknown when target facts are absent. Semantic bit widths
-do not establish C++ object size/alignment. Cache/page results describe modeled
-footprints rather than measured traffic. These rules are shared by tests and UI.
-
-The UI owns selection, text drafts, docking, and preferences. Its declaration and
-source editors submit transactions; dependency lists and analysis tables consume
-the resolved results. C++ generation remains available through the LispB CLI.
+`PlannerController` drains queued UI actions and runs analysis once for the
+resulting model and selection. Drawing consumes the last completed results and
+queues further actions. Unchanged frames perform no analysis. Selection,
+unsubmitted drafts, docking and preferences stay outside undo history.
 
 ## Validation
 
-Parameterized tests use inline LispB sources, transaction functions, and public
-verification callbacks. The opt-in `native-layout-document-benchmark` runs 1,000
-mixed transactions against a project and reports commit/undo/redo plus selected
-analysis latency and process memory. It is not a timing assertion in CTest.
+Parameterized tests use LispB source, public change/query APIs and expected
+results. The opt-in document benchmark measures replay plus analysis latency
+and memory over a bounded edit/undo/redo history. Timing is reported separately
+from correctness tests.

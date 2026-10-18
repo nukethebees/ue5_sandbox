@@ -2,10 +2,10 @@
 
 #include <ioj/layout/document_source.hpp>
 #include <ioj/layout/document_state.hpp>
+#include <ioj/layout/rendered_source.hpp>
 #include <ioj/layout/revision.hpp>
 #include <ioj/layout/transaction.hpp>
 #include <ioj/layout/variants.hpp>
-#include <ioj/layout/rendered_source.hpp>
 
 #include <lispb/schema/document_query.h>
 #include <lispb/schema/type_graph.h>

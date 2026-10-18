@@ -1,6 +1,7 @@
 #pragma once
 
 #include <lispb/indices.h>
+
 #include <vector>
 
 namespace ioj::layout {

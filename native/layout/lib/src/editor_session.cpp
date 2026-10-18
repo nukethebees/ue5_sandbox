@@ -16,7 +16,7 @@ auto EditorSession::from_source(std::string_view const source, std::string_view 
     return from_sources(std::span{&input, 1}, registry);
 }
 auto EditorSession::from_sources(std::span<DocumentSource const> const sources,
-                                  std::string_view const registry) -> Document {
+                                 std::string_view const registry) -> Document {
     auto const id{create_document()};
     begin_operation(id);
     Document document{*this, id};
@@ -36,8 +36,8 @@ auto EditorSession::from_sources(std::span<DocumentSource const> const sources,
     }
     return document;
 }
-auto EditorSession::load(std::filesystem::path const& project_path,
-                          std::string_view const target) -> Document {
+auto EditorSession::load(std::filesystem::path const& project_path, std::string_view const target)
+    -> Document {
     auto const id{create_document()};
     begin_operation(id);
     Document document{*this, id};
@@ -117,12 +117,18 @@ void EditorSession::record_error(std::string_view const message) {
     record_diagnostic(lispb::DiagnosticSeverity::error, message);
 }
 auto EditorSession::record_diagnostic(lispb::DiagnosticSeverity const severity,
-                                       std::string_view const message,
-                                       std::string_view const path,
-                                       std::uint32_t const line,
-                                       std::uint32_t const column) -> lispb::DiagnosticId {
-    return diagnostics_.add(current_document_, current_operation_, current_instruction_,
-                            severity, message, path, line, column);
+                                      std::string_view const message,
+                                      std::string_view const path,
+                                      std::uint32_t const line,
+                                      std::uint32_t const column) -> lispb::DiagnosticId {
+    return diagnostics_.add(current_document_,
+                            current_operation_,
+                            current_instruction_,
+                            severity,
+                            message,
+                            path,
+                            line,
+                            column);
 }
 void EditorSession::capture_diagnostics(DocumentId const document) {
     auto& scratch{storage(document)};
@@ -133,10 +139,14 @@ void EditorSession::capture_diagnostics(DocumentId const document) {
         auto const location{scratch.sources.location(span)};
         auto message{std::string{scratch.diagnostics.message(id)}};
         message += scratch.sources.expansion_text(span);
-        diagnostics_.add(document, current_operation_, current_instruction_,
-                          scratch.diagnostics.severity(id), message, location.path,
-                          span.file.value == 0 ? 0 : location.line,
-                          span.file.value == 0 ? 0 : location.column);
+        diagnostics_.add(document,
+                         current_operation_,
+                         current_instruction_,
+                         scratch.diagnostics.severity(id),
+                         message,
+                         location.path,
+                         span.file.value == 0 ? 0 : location.line,
+                         span.file.value == 0 ? 0 : location.column);
     }
     scratch.diagnostics.clear();
 }

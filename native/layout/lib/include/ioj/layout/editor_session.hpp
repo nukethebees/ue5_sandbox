@@ -52,10 +52,10 @@ class EditorSession {
     void set_instruction(std::optional<InstructionId> instruction);
     void record_error(std::string_view message);
     auto record_diagnostic(lispb::DiagnosticSeverity severity,
-                            std::string_view message,
-                            std::string_view path = {},
-                            std::uint32_t line = 0,
-                            std::uint32_t column = 0) -> lispb::DiagnosticId;
+                           std::string_view message,
+                           std::string_view path = {},
+                           std::uint32_t line = 0,
+                           std::uint32_t column = 0) -> lispb::DiagnosticId;
     // Publish parser rows once before scratch reset, then empty the scratch diagnostic table.
     void capture_diagnostics(DocumentId document);
   private:

@@ -60,6 +60,7 @@ ioj_enable_warnings(lispb-project CODEGEN)
 
 add_library(lispb-schema)
 target_sources(lispb-schema PRIVATE
+  src/compiler_storage.cpp
   src/ast/cpp_types.cpp
   src/declaration_schema.cpp
   src/declarations.cpp

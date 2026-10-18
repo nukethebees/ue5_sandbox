@@ -194,7 +194,7 @@ void Analyzer::analyze(AnalysisContext& context, std::span<AnalysisRequest const
         }
         AnalysisRun run{.analysis = id};
         storage.totals.push_back(compute_element_totals(context, request, id));
-        auto const kind{context.types.definition(request.type).kind()};
+        [[maybe_unused]] auto const kind{context.types.definition(request.type).kind()};
         if (request.accesses) {
             assert(kind == lispb::schema::TypeDefinitionKind::packed ||
                    kind == lispb::schema::TypeDefinitionKind::record ||

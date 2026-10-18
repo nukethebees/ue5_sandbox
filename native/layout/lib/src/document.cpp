@@ -1,5 +1,7 @@
 #include <ioj/layout/document.hpp>
+
 #include <ioj/layout/editor_session.hpp>
+
 #include <codegen/sexpr/source_error.h>
 
 #include <cassert>
@@ -7,23 +9,36 @@
 #include <utility>
 
 namespace ioj::layout {
-Document::Document(EditorSession& session, DocumentId id) : session_{&session}, id_{id} {}
+Document::Document(EditorSession& session, DocumentId id)
+    : session_{&session}
+    , id_{id} {}
 Document::~Document() {
-    if (id_.value != 0) { session_->release_document(id_); }
+    if (id_.value != 0) {
+        session_->release_document(id_);
+    }
 }
 Document::Document(Document&& other) noexcept
-    : session_{other.session_}, id_{std::exchange(other.id_, DocumentId{})} {}
+    : session_{other.session_}
+    , id_{std::exchange(other.id_, DocumentId{})} {}
 auto Document::operator=(Document&& other) noexcept -> Document& {
     if (this != &other) {
-        if (id_.value != 0) { session_->release_document(id_); }
+        if (id_.value != 0) {
+            session_->release_document(id_);
+        }
         session_ = other.session_;
         id_ = std::exchange(other.id_, DocumentId{});
     }
     return *this;
 }
-auto Document::state() const -> DocumentState& { return session_->state(id_); }
-auto Document::valid() const -> bool { return id_.value != 0 && state().valid; }
-auto Document::id() const -> DocumentId { return id_; }
+auto Document::state() const -> DocumentState& {
+    return session_->state(id_);
+}
+auto Document::valid() const -> bool {
+    return id_.value != 0 && state().valid;
+}
+auto Document::id() const -> DocumentId {
+    return id_;
+}
 auto Document::query() const -> lispb::schema::DocumentQuery {
     assert(valid());
     auto const& current{state()};
@@ -33,38 +48,62 @@ auto Document::types() const -> lispb::schema::TypeGraph const& {
     assert(valid());
     return state().types;
 }
-auto Document::variants() const -> Variants const& { return state().variants; }
-auto Document::analysis_settings() const -> AnalysisSettings const& { return state().analysis_settings; }
-auto Document::find_type(std::string_view module, std::string_view name) const -> std::optional<lispb::schema::TypeId> {
+auto Document::variants() const -> Variants const& {
+    return state().variants;
+}
+auto Document::analysis_settings() const -> AnalysisSettings const& {
+    return state().analysis_settings;
+}
+auto Document::find_type(std::string_view module, std::string_view name) const
+    -> std::optional<lispb::schema::TypeId> {
     auto const& graph{types()};
     auto const& strings{state().storage().strings};
     for (auto const type : graph.types()) {
-        if (strings.view(graph.module_name(type)) == module && strings.view(graph.name(type)) == name) { return type; }
+        if (strings.view(graph.module_name(type)) == module &&
+            strings.view(graph.name(type)) == name) {
+            return type;
+        }
     }
     return {};
 }
-auto Document::find_declaration(lispb::schema::TypeIdentity const& identity) const -> std::optional<lispb::schema::DeclarationId> {
+auto Document::find_declaration(lispb::schema::TypeIdentity const& identity) const
+    -> std::optional<lispb::schema::DeclarationId> {
     auto const type{types().find(identity)};
-    if (!type) { return {}; }
-    return state().declaration_ids.at(types().source_declaration(*type));
+    if (!type) {
+        return {};
+    }
+    auto const& declarations{state().declaration_ids};
+    auto const found{declarations.find(types().source_declaration(*type))};
+    return found == declarations.end() ? std::nullopt : std::optional{found->second};
 }
-auto Document::declaration_type(lispb::schema::DeclarationId declaration) const -> std::optional<lispb::schema::TypeId> {
+auto Document::declaration_type(lispb::schema::DeclarationId declaration) const
+    -> std::optional<lispb::schema::TypeId> {
     auto const& graph{types()};
     auto const& identities{state().declaration_ids};
     for (auto const type : graph.types()) {
         auto const found{identities.find(graph.source_declaration(type))};
-        if (found != identities.end() && found->second == declaration) { return type; }
+        if (found != identities.end() && found->second == declaration) {
+            return type;
+        }
     }
     return {};
 }
-auto Document::session() const -> EditorSession& { return *session_; }
+auto Document::session() const -> EditorSession& {
+    return *session_;
+}
 auto Document::transaction() const -> Transaction {
     assert(valid());
     return {*session_, id_};
 }
-auto Document::revision() const -> Revision { return state().revision; }
-auto Document::can_undo() const -> bool { return state().position != 0; }
-auto Document::can_redo() const -> bool { return state().position < state().transaction_ends.size(); }
+auto Document::revision() const -> Revision {
+    return state().revision;
+}
+auto Document::can_undo() const -> bool {
+    return state().position != 0;
+}
+auto Document::can_redo() const -> bool {
+    return state().position < state().transaction_ends.size();
+}
 
 auto Document::reconstruct(std::size_t position) -> lispb::codegen::Manifest {
     auto& current{state()};
@@ -72,7 +111,9 @@ auto Document::reconstruct(std::size_t position) -> lispb::codegen::Manifest {
     session_->set_instruction(std::nullopt);
     current.restore_baseline();
     auto candidate{current.manifest()};
-    if (position != 0) { current.history.apply(current, candidate, current.transaction_ends[position - 1]); }
+    if (position != 0) {
+        current.history.apply(current, candidate, current.transaction_ends[position - 1]);
+    }
     return candidate;
 }
 auto Document::replay(std::size_t position) -> bool {
@@ -100,7 +141,9 @@ auto Document::commit(Transaction const& transaction) -> bool {
     assert(valid());
     assert(transaction.session_ == session_ && transaction.owner_ == id_);
     session_->begin_operation(id_);
-    if (transaction.kinds_.empty()) { return true; }
+    if (transaction.kinds_.empty()) {
+        return true;
+    }
 
     auto& current{state()};
     auto const position{current.position};
@@ -110,13 +153,16 @@ auto Document::commit(Transaction const& transaction) -> bool {
         auto const previous_sources{current.source_order};
         current.changed = false;
         transaction.apply(current, candidate, transaction.kinds_.size());
-        auto const changed{current.changed || candidate.modules != previous_modules || current.source_order != previous_sources};
+        auto const changed{current.changed || candidate.modules != previous_modules ||
+                           current.source_order != previous_sources};
         current.types = lispb::schema::resolve_type_graph(candidate);
         current.modules = std::move(candidate.modules);
         current.valid = true;
         session_->capture_diagnostics(id_);
         session_->set_instruction(std::nullopt);
-        if (!changed) { return true; }
+        if (!changed) {
+            return true;
+        }
 
         auto const retained{position == 0 ? 0 : current.transaction_ends[position - 1]};
         current.history.truncate(retained);
@@ -134,22 +180,30 @@ auto Document::commit(Transaction const& transaction) -> bool {
     }
 
     // Rebuild the accepted prefix; failed instructions never enter the history.
-    auto const restored{replay(position)};
+    [[maybe_unused]] auto const restored{replay(position)};
     assert(restored);
     return false;
 }
 auto Document::undo() -> bool {
-    if (!can_undo()) { return false; }
+    if (!can_undo()) {
+        return false;
+    }
     session_->begin_operation(id_);
     auto const result{replay(state().position - 1)};
-    if (result) { ++state().revision; }
+    if (result) {
+        ++state().revision;
+    }
     return result;
 }
 auto Document::redo() -> bool {
-    if (!can_redo()) { return false; }
+    if (!can_redo()) {
+        return false;
+    }
     session_->begin_operation(id_);
     auto const result{replay(state().position + 1)};
-    if (result) { ++state().revision; }
+    if (result) {
+        ++state().revision;
+    }
     return result;
 }
 }

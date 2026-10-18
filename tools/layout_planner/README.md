@@ -75,6 +75,10 @@ SoA column-type, and capacity overrides. Select an active variant to analyze it;
 expand **Compare variants** to compare two variants. Variant changes share
 document undo/redo but do not modify saved LispB files.
 
+Element counts, allocation strategies, profiles and access workloads also share
+undo/redo. These analysis settings remain session-local. Controls queue changes;
+the next frame displays the results of processing the complete batch.
+
 Missing physical facts remain **Unknown**. Semantic bit widths do not imply a
 standalone C++ size or alignment. Cache/page figures describe modeled storage
 and access footprints, not measured throughput or latency; supplied ABI and

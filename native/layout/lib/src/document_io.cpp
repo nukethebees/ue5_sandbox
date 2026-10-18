@@ -1,6 +1,6 @@
 #include "document_io.hpp"
-#include "document_file_updates.hpp"
 
+#include "document_file_updates.hpp"
 #include <ioj/layout/document.hpp>
 #include <ioj/layout/document_state.hpp>
 #include <ioj/layout/editor_session.hpp>
@@ -50,8 +50,11 @@ auto render(DocumentState const& state, SourceFileId file) -> std::string {
         }
     }
     auto const origin{state.render_origins.find(file)};
-    return lispb::schema::render_source_file(state.storage(), state.comments, modules,
-        origin == state.render_origins.end() ? file : origin->second);
+    return lispb::schema::render_source_file(state.storage(),
+                                             state.comments,
+                                             modules,
+                                             origin == state.render_origins.end() ? file
+                                                                                  : origin->second);
 }
 void freeze_registry(DocumentState& state, SourceFileId root) {
     auto& storage{state.storage()};
@@ -59,8 +62,8 @@ void freeze_registry(DocumentState& state, SourceFileId root) {
     auto& frozen{state.io.registry};
     std::vector<SourceFileId> parents, targets;
     std::vector<std::string> includes;
-    auto const parsed{lispb::codegen::parse_type_registry(storage, root,
-        [&](SourceFileId parent, std::string_view include) {
+    auto const parsed{lispb::codegen::parse_type_registry(
+        storage, root, [&](SourceFileId parent, std::string_view include) {
             std::string const spelling{include};
             auto const path{std::filesystem::weakly_canonical(
                 storage.sources.filesystem_path(parent).parent_path() / spelling)};
@@ -80,7 +83,10 @@ void freeze_registry(DocumentState& state, SourceFileId root) {
         frozen.parents.push_back(rows.at(parents[index]));
         frozen.targets.push_back(rows.at(targets[index]));
         frozen.includes.push_back(strings.intern(includes[index]));
-        auto const ordinal{static_cast<std::size_t>(std::count(parents.begin(), parents.begin() + static_cast<std::ptrdiff_t>(index), parents[index]))};
+        auto const ordinal{static_cast<std::size_t>(
+            std::count(parents.begin(),
+                       parents.begin() + static_cast<std::ptrdiff_t>(index),
+                       parents[index]))};
         auto const span{storage.sources.include_spans(parents[index])[ordinal]};
         frozen.begins.push_back(span.offset);
         frozen.ends.push_back(span.end_offset);
@@ -104,9 +110,13 @@ auto sources_span(lispb::CompilerStorage& storage, SourceFileId file, std::strin
     assert(false && "Selected target has a source list");
     return {};
 }
-void set_project(DocumentState& state, lispb::CompilerStorage& storage, SourceFileId file,
-    std::filesystem::path const& path, std::filesystem::path const& root,
-    std::filesystem::path const& registry, std::string_view target) {
+void set_project(DocumentState& state,
+                 lispb::CompilerStorage& storage,
+                 SourceFileId file,
+                 std::filesystem::path const& path,
+                 std::filesystem::path const& root,
+                 std::filesystem::path const& registry,
+                 std::string_view target) {
     auto const span{sources_span(storage, file, target)};
     auto const original{storage.sources.text(file)};
     std::string comments;
@@ -130,8 +140,9 @@ void set_project(DocumentState& state, lispb::CompilerStorage& storage, SourceFi
     state.io.sources_end = span.end_offset;
     state.io.source_comments = strings.retain(comments);
 }
-void initialize_inputs(DocumentState& state, std::span<DocumentSource const> sources,
-    std::string_view registry) {
+void initialize_inputs(DocumentState& state,
+                       std::span<DocumentSource const> sources,
+                       std::string_view registry) {
     // Inputs may borrow the session pool that these insertions grow.
     std::vector<std::string> paths, texts;
     std::string const registry_text{registry};
@@ -152,8 +163,9 @@ void initialize_inputs(DocumentState& state, std::span<DocumentSource const> sou
     auto const file{state.storage().sources.add("document-types.lispb", registry_text)};
     freeze_registry(state, file);
 }
-void load_inputs(DocumentState& state, std::filesystem::path const& path,
-    std::string_view target_value) {
+void load_inputs(DocumentState& state,
+                 std::filesystem::path const& path,
+                 std::string_view target_value) {
     std::string const target_name{target_value};
     auto const destination{std::filesystem::absolute(path).lexically_normal()};
     auto& storage{state.storage()};
@@ -222,7 +234,9 @@ auto project_text(DocumentState const& state, std::span<RenderedSource const> so
     result.replace(state.io.sources_begin, state.io.sources_end - state.io.sources_begin, list);
     return result;
 }
-void accept_sources(DocumentState& state, std::span<RenderedSource const> sources, bool all_written) {
+void accept_sources(DocumentState& state,
+                    std::span<RenderedSource const> sources,
+                    bool all_written) {
     auto& strings{state.session->command_strings()};
     std::map<lispb::IdentifierId, lispb::StringId> saved;
     state.io.saved_order.clear();
@@ -230,7 +244,7 @@ void accept_sources(DocumentState& state, std::span<RenderedSource const> source
         auto const path{strings.intern(source.path)};
         auto const previous{state.io.saved_sources.find(path)};
         auto const unchanged{previous != state.io.saved_sources.end() &&
-            strings.view(previous->second) == source.text};
+                             strings.view(previous->second) == source.text};
         auto const text{unchanged ? previous->second : strings.retain(source.text)};
         saved.emplace(path, text);
         state.io.saved_order.push_back(path);
@@ -274,11 +288,11 @@ void DocumentState::restore_baseline() {
     std::vector<document_io::SourceFileId> files;
     for (std::size_t index{}; index < registry.sources.paths.size(); ++index) {
         files.push_back(compiler.sources.add(strings.view(registry.sources.paths[index]),
-            strings.view(registry.sources.texts[index])));
+                                             strings.view(registry.sources.texts[index])));
     }
     assert(!files.empty());
-    auto const parsed{lispb::codegen::parse_type_registry(compiler, files.front(),
-        [&](document_io::SourceFileId parent, std::string_view include) {
+    auto const parsed{lispb::codegen::parse_type_registry(
+        compiler, files.front(), [&](document_io::SourceFileId parent, std::string_view include) {
             for (std::size_t index{}; index < registry.parents.size(); ++index) {
                 if (files[registry.parents[index]] == parent &&
                     strings.view(registry.includes[index]) == include) {
@@ -291,7 +305,7 @@ void DocumentState::restore_baseline() {
     registered_types = parsed.types.entries;
     for (std::size_t index{}; index < baseline_sources.paths.size(); ++index) {
         auto const file{compiler.sources.add(strings.view(baseline_sources.paths[index]),
-            strings.view(baseline_sources.texts[index]))};
+                                             strings.view(baseline_sources.texts[index]))};
         auto const source{lispb::codegen::parse_module_source(compiler, file)};
         source_order.push_back(file);
         source_ids.emplace(file, SourceId{InstructionId{}, static_cast<std::uint32_t>(index + 1)});
@@ -300,8 +314,9 @@ void DocumentState::restore_baseline() {
             source_files.emplace(module, file);
             if (module.kind() == lispb::codegen::ModuleKind::normal) {
                 auto const& declarations{compiler.declarations};
-                for (auto const declaration : declarations.items(declarations.normal_modules.declarations[
-                    declarations.normal_modules.index(module)])) {
+                for (auto const declaration : declarations.items(
+                         declarations.normal_modules
+                             .declarations[declarations.normal_modules.index(module)])) {
                     register_declaration(declaration);
                 }
             }
@@ -322,8 +337,9 @@ auto Document::sources() const -> std::vector<RenderedSource> {
     auto const& value{state()};
     std::vector<RenderedSource> result;
     for (auto const file : value.source_order) {
-        result.push_back({value.source_ids.at(file), std::string{value.storage().sources.path(file)},
-            document_io::render(value, file)});
+        result.push_back({value.source_ids.at(file),
+                          std::string{value.storage().sources.path(file)},
+                          document_io::render(value, file)});
     }
     return result;
 }
@@ -333,12 +349,16 @@ auto Document::declaration_source(std::string_view module_name, std::string_view
     auto const& store{value.storage().declarations};
     for (auto const module : value.modules) {
         auto const settings{store.module_settings(module)};
-        if (module.kind() != lispb::codegen::ModuleKind::normal || store.strings().view(
-            store.module_settings_store.name[store.module_settings_store.index(settings)]) != module_name) {
+        if (module.kind() != lispb::codegen::ModuleKind::normal ||
+            store.strings().view(
+                store.module_settings_store.name[store.module_settings_store.index(settings)]) !=
+                module_name) {
             continue;
         }
-        for (auto const declaration : store.items(store.normal_modules.declarations[store.normal_modules.index(module)])) {
-            if (store.strings().view(lispb::codegen::declaration_name(store, declaration)) == name) {
+        for (auto const declaration :
+             store.items(store.normal_modules.declarations[store.normal_modules.index(module)])) {
+            if (store.strings().view(lispb::codegen::declaration_name(store, declaration)) ==
+                name) {
                 return lispb::schema::render_declaration_source(store, declaration);
             }
         }
@@ -399,8 +419,10 @@ auto Document::save() -> bool {
             }
             auto const expected{value.io.persisted_sources.find(saved->second)};
             if (expected != value.io.persisted_sources.end() &&
-                document_io::read(root / strings.view(saved->second)) != strings.view(expected->second)) {
-                throw std::invalid_argument{"Renamed source changed on disk: " + std::string{strings.view(saved->second)}};
+                document_io::read(root / strings.view(saved->second)) !=
+                    strings.view(expected->second)) {
+                throw std::invalid_argument{"Renamed source changed on disk: " +
+                                            std::string{strings.view(saved->second)}};
             }
             if (!current_paths.contains(saved->second)) {
                 removed.insert(saved->second);
@@ -409,7 +431,8 @@ auto Document::save() -> bool {
         DocumentFileUpdates updates;
         for (auto const& source : rendered) {
             auto const saved{value.io.saved_sources.find(strings.find(source.path))};
-            if (saved == value.io.saved_sources.end() || strings.view(saved->second) != source.text) {
+            if (saved == value.io.saved_sources.end() ||
+                strings.view(saved->second) != source.text) {
                 updates.write(root / source.path, source.text);
             }
         }
@@ -446,33 +469,42 @@ auto Document::save_as(std::filesystem::path const& path, std::string_view targe
             return save();
         }
         if (target.empty() || !std::ranges::all_of(target, [](unsigned char character) {
-            return std::isalnum(character) != 0 || character == '_' || character == '-';
-        })) {
-            throw std::invalid_argument{"Expected a target name containing letters, digits, '_' or '-'"};
+                return std::isalnum(character) != 0 || character == '_' || character == '-';
+            })) {
+            throw std::invalid_argument{
+                "Expected a target name containing letters, digits, '_' or '-'"};
         }
         if (std::filesystem::exists(destination)) {
-            throw std::invalid_argument{"Project destination already exists: " + destination.string()};
+            throw std::invalid_argument{"Project destination already exists: " +
+                                        destination.string()};
         }
         auto const rendered{sources()};
         auto const root{destination.parent_path()};
         bool const has_project{!strings.view(value.io.project_path).empty()};
-        auto const registry{has_project ? std::filesystem::path{strings.view(value.io.registry_path)} : root / "types.lispb"};
+        auto const registry{has_project
+                                ? std::filesystem::path{strings.view(value.io.registry_path)}
+                                : root / "types.lispb"};
         std::set<std::string> destinations{lispb::codegen::output_path_key(destination)};
         if (!destinations.insert(lispb::codegen::output_path_key(registry)).second) {
             throw std::invalid_argument{"Project destination collides with the type registry"};
         }
         if (!has_project && std::filesystem::exists(registry)) {
-            throw std::invalid_argument{"Type registry destination already exists: " + registry.string()};
+            throw std::invalid_argument{"Type registry destination already exists: " +
+                                        registry.string()};
         }
         std::string text{"(lispb-project :language-version 1 :project-root \".\"\n  (cpp-schema "};
-        text += target + "\n    :types " + document_io::quote(registry.generic_string()) + "\n    :sources (";
+        text += target + "\n    :types " + document_io::quote(registry.generic_string()) +
+                "\n    :sources (";
         for (auto const& source : rendered) {
             auto const source_path{root / document_io::relative_path(source.path)};
             if (!destinations.insert(lispb::codegen::output_path_key(source_path)).second) {
-                throw std::invalid_argument{"Source destination collides with another project file: " + source_path.string()};
+                throw std::invalid_argument{
+                    "Source destination collides with another project file: " +
+                    source_path.string()};
             }
             if (std::filesystem::exists(source_path)) {
-                throw std::invalid_argument{"Source destination already exists: " + source_path.string()};
+                throw std::invalid_argument{"Source destination already exists: " +
+                                            source_path.string()};
             }
             text += document_io::quote(source.path) + ' ';
         }

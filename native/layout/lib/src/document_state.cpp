@@ -14,7 +14,8 @@ auto DocumentState::register_declaration(lispb::codegen::DeclarationHandle decla
     if (auto const found{declaration_ids.find(declaration)}; found != declaration_ids.end()) {
         return found->second;
     }
-    auto const [found, inserted]{creation_ids.emplace(std::pair{current_instruction_id, creation_slot++}, next_declaration_id)};
+    auto const [found, inserted]{creation_ids.emplace(
+        std::pair{current_instruction_id, creation_slot++}, next_declaration_id)};
     if (inserted) {
         ++next_declaration_id.value;
     }

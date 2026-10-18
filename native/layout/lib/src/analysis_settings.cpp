@@ -7,17 +7,26 @@ void AnalysisSettings::erase_declaration(lispb::schema::DeclarationId declaratio
     union_distributions.erase(declaration);
     tagged_union_distributions.erase(declaration);
 }
-void AnalysisSettings::rename_member(lispb::schema::DeclarationId declaration, std::string_view before, std::string_view after) {
+void AnalysisSettings::rename_member(lispb::schema::DeclarationId declaration,
+                                     std::string_view before,
+                                     std::string_view after) {
     auto const found{access_sets.find(declaration)};
-    if (found == access_sets.end()) { return; }
+    if (found == access_sets.end()) {
+        return;
+    }
     auto const member{found->second.find(before)};
-    if (member == found->second.end()) { return; }
+    if (member == found->second.end()) {
+        return;
+    }
     auto const operation{member->second};
     found->second.erase(member);
     found->second.emplace(after, operation);
 }
-void AnalysisSettings::erase_member(lispb::schema::DeclarationId declaration, std::string_view name) {
+void AnalysisSettings::erase_member(lispb::schema::DeclarationId declaration,
+                                    std::string_view name) {
     auto const found{access_sets.find(declaration)};
-    if (found != access_sets.end()) { found->second.erase(std::string{name}); }
+    if (found != access_sets.end()) {
+        found->second.erase(std::string{name});
+    }
 }
 }

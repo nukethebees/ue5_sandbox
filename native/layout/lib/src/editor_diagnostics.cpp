@@ -10,13 +10,13 @@ namespace ioj::layout {
 EditorDiagnostics::EditorDiagnostics(lispb::Strings& strings)
     : strings_{strings} {}
 auto EditorDiagnostics::add(DocumentId const document,
-                             OperationId const operation,
-                             std::optional<InstructionId> const instruction,
-                             lispb::DiagnosticSeverity const severity,
-                             std::string_view const message,
-                             std::string_view const path,
-                             std::uint32_t const line,
-                             std::uint32_t const column) -> lispb::DiagnosticId {
+                            OperationId const operation,
+                            std::optional<InstructionId> const instruction,
+                            lispb::DiagnosticSeverity const severity,
+                            std::string_view const message,
+                            std::string_view const path,
+                            std::uint32_t const line,
+                            std::uint32_t const column) -> lispb::DiagnosticId {
     assert(messages_.size() < std::numeric_limits<std::uint32_t>::max());
     auto const id{lispb::DiagnosticId{static_cast<std::uint32_t>(messages_.size())}};
 

@@ -46,10 +46,12 @@ auto load_type_registry(lispb::CompilerStorage& storage, std::filesystem::path c
 
 auto parse_type_registry(lispb::CompilerStorage& storage, sexpr::SourceFileId const root)
     -> LoadedTypeRegistry {
-    return parse_type_registry(storage, root, [&](sexpr::SourceFileId file, std::string_view include) {
-        auto const path{std::filesystem::weakly_canonical(storage.sources.filesystem_path(file).parent_path() / include)};
-        return storage.sources.load(path);
-    });
+    return parse_type_registry(
+        storage, root, [&](sexpr::SourceFileId file, std::string_view include) {
+            auto const path{std::filesystem::weakly_canonical(
+                storage.sources.filesystem_path(file).parent_path() / include)};
+            return storage.sources.load(path);
+        });
 }
 
 auto parse_type_registry(lispb::CompilerStorage& storage,
@@ -64,8 +66,10 @@ auto parse_type_registry(lispb::CompilerStorage& storage,
     std::set<sexpr::SourceFileId> active;
     auto parse = [&](auto&& self, sexpr::SourceFileId const file) -> void {
         if (active.contains(file)) {
-            storage.diagnostics.fail(syntax.sources(), {.file = file},
-                "Cyclic type registry include: " + std::string{storage.sources.path(file)});
+            storage.diagnostics.fail(syntax.sources(),
+                                     {.file = file},
+                                     "Cyclic type registry include: " +
+                                         std::string{storage.sources.path(file)});
         }
         if (!loaded.insert(file).second) {
             return;
@@ -82,7 +86,8 @@ auto parse_type_registry(lispb::CompilerStorage& storage,
                 sexpr::Fields const include{fields_parser, form, "include", 1};
                 include.validate({});
                 try {
-                    auto const target{resolve_include(file, fields_parser.text(include.positional(0), "include path"))};
+                    auto const target{resolve_include(
+                        file, fields_parser.text(include.positional(0), "include path"))};
                     self(self, target);
                     include_targets.push_back(target);
                     include_spans.push_back(syntax.span(form));
@@ -97,8 +102,9 @@ auto parse_type_registry(lispb::CompilerStorage& storage,
             }
             auto [name, type]{parser.parse_type_definition(form, result.types)};
             if (!result.types.bind(name, type)) {
-                fields_parser.fail(form, "duplicate type definition '" +
-                    std::string{storage.strings.view(name)} + "'");
+                fields_parser.fail(form,
+                                   "duplicate type definition '" +
+                                       std::string{storage.strings.view(name)} + "'");
             }
             result.declarations.emplace(name, form);
         }

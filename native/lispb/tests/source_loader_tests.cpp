@@ -98,6 +98,29 @@
 namespace lispb::codegen {
 namespace {
 
+TEST(CompilerStorage, RebuildsAfterFullResetWithoutRetainingSourceText) {
+    CompilerStorage storage;
+    constexpr std::string_view source{
+        "(module game :header \"Game.h\" (record Value (member count std::uint32_t)))"};
+    std::optional<std::size_t> populated_bytes;
+    for (int iteration{}; iteration < 3; ++iteration) {
+        storage.reset();
+        EXPECT_EQ(storage.strings.byte_size(), 0U);
+        EXPECT_EQ(storage.diagnostics.size(), 0U);
+
+        auto const file{storage.sources.add("reset.lispb", source)};
+        auto const loaded{parse_module_source(storage, file)};
+        ASSERT_EQ(loaded.modules.size(), 1U);
+        EXPECT_EQ(storage.sources.text(file), source);
+        EXPECT_TRUE(storage.sources.include_targets(file).empty());
+        auto const bytes{storage.strings.byte_size()};
+        if (populated_bytes) {
+            EXPECT_EQ(bytes, *populated_bytes);
+        }
+        populated_bytes = bytes;
+    }
+}
+
 class TemporaryManifest {
   public:
     TemporaryManifest() {

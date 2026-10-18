@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ioj/layout/instruction_id.hpp>
+
 #include <compare>
 #include <cstdint>
 

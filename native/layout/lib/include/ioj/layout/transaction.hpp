@@ -1,10 +1,11 @@
 #pragma once
+#include <ioj/layout/analysis_settings.hpp>
 #include <ioj/layout/document_id.hpp>
+#include <ioj/layout/instruction_id.hpp>
 #include <ioj/layout/revision.hpp>
 #include <ioj/layout/transaction_kind.hpp>
 #include <ioj/layout/variant_id.hpp>
-#include <ioj/layout/instruction_id.hpp>
-#include <ioj/layout/analysis_settings.hpp>
+
 #include <lispb/indices.h>
 
 #include <cstdint>
@@ -142,10 +143,18 @@ class Transaction {
     void set_soa_allocation_strategy(SoaAllocationStrategy value);
     void set_abi_profile(AbiProfile const& profile);
     void set_comparison_abi_profile(std::optional<AbiProfile> const& profile);
-    void set_access_set(std::string_view module, std::string_view declaration, AccessSet const& accesses);
-    void set_varint_distribution(std::string_view module, std::string_view declaration, std::span<IntegerVarintDistributionEntry const> entries);
-    void set_union_distribution(std::string_view module, std::string_view declaration, std::span<UnionDistributionEntry const> entries);
-    void set_tagged_union_distribution(std::string_view module, std::string_view declaration, std::span<TaggedUnionDistributionEntry const> entries);
+    void set_access_set(std::string_view module,
+                        std::string_view declaration,
+                        AccessSet const& accesses);
+    void set_varint_distribution(std::string_view module,
+                                 std::string_view declaration,
+                                 std::span<IntegerVarintDistributionEntry const> entries);
+    void set_union_distribution(std::string_view module,
+                                std::string_view declaration,
+                                std::span<UnionDistributionEntry const> entries);
+    void set_tagged_union_distribution(std::string_view module,
+                                       std::string_view declaration,
+                                       std::span<TaggedUnionDistributionEntry const> entries);
   private:
     friend class Document;
     friend class DocumentState;
