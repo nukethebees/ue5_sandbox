@@ -74,21 +74,12 @@
 #include <lispb/strings.h>
 
 #include <algorithm>
-#include <array>
-#include <cassert>
 #include <cctype>
 #include <cstddef>
-#include <cstdint>
-#include <functional>
-#include <iterator>
-#include <map>
-#include <optional>
+#include <format>
 #include <ranges>
-#include <set>
-#include <span>
 #include <string>
 #include <string_view>
-#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -102,8 +93,12 @@ auto CanonicalRenderer::text(StringId value) const -> std::string_view {
 auto CanonicalRenderer::text(IdentifierId value) const -> std::string_view {
     return store_.strings().view(value);
 }
-auto CanonicalRenderer::quote(StringId value) -> std::string {
-    return quote(text(value));
+auto CanonicalRenderer::render_declaration_schema(codegen::DeclarationHandle const declaration)
+    -> std::string {
+    return ir_.render(build_declaration_schema(declaration));
+}
+auto CanonicalRenderer::render_module(codegen::ModuleHandle const module) -> std::string {
+    return ir_.render(build_module(module));
 }
 auto CanonicalRenderer::access_keyword(codegen::Access access) -> std::string_view {
     switch (access) {
@@ -116,169 +111,123 @@ auto CanonicalRenderer::access_keyword(codegen::Access access) -> std::string_vi
     }
     std::unreachable();
 }
-auto CanonicalRenderer::quote(std::string_view const value) -> std::string {
-    std::string result{"\""};
-    for (auto const character : value) {
-        switch (character) {
-            case '\\':
-                result += "\\\\";
-                break;
-            case '"':
-                result += "\\\"";
-                break;
-            case '\n':
-                result += "\\n";
-                break;
-            case '\r':
-                result += "\\r";
-                break;
-            case '\t':
-                result += "\\t";
-                break;
-            default:
-                result += character;
-                break;
-        }
-    }
-    result += '"';
-    return result;
-}
-auto CanonicalRenderer::render_type_ref(codegen::TypeRefId id) -> std::string {
+auto CanonicalRenderer::build_type_ref(codegen::TypeRefId const id) -> Expr {
     auto const& types{store_.type_refs};
-    auto const type_index{types.index(id)};
-    auto const name{text(types.name[type_index])};
+    auto const index{types.index(id)};
+    auto const name{text(types.name[index])};
     auto const needs_quotes{name.empty() || name.starts_with('#') ||
                             (name.starts_with(':') && !name.starts_with("::")) ||
                             std::ranges::any_of(name, [](unsigned char character) {
                                 return std::isspace(character) != 0 || character == '(' ||
                                        character == ')' || character == '"' || character == ';';
                             })};
-    auto const rendered_name{needs_quotes ? quote(name) : std::string{name}};
-    if (text(types.suffix[type_index]).empty() && !types.nested[type_index].has_value()) {
+    auto const rendered_name{needs_quotes ? ir_.string(name) : ir_.atom(name)};
+    if (text(types.suffix[index]).empty() && !types.nested[index].has_value()) {
         return rendered_name;
     }
-    auto result{std::string{"(type-ref "} + rendered_name};
-    if (!text(types.suffix[type_index]).empty()) {
-        result += " :suffix " + quote(text(types.suffix[type_index]));
+
+    auto result{ir_.form("type-ref", {rendered_name})};
+    if (!text(types.suffix[index]).empty()) {
+        result.field("suffix", ir_.string(text(types.suffix[index])));
     }
-    if (types.nested[type_index].has_value()) {
-        result += " :nested " + quote(text(*types.nested[type_index]));
+    if (types.nested[index].has_value()) {
+        result.field("nested", ir_.string(text(*types.nested[index])));
     }
-    return result + ')';
+    return result.build();
 }
-auto CanonicalRenderer::render_enum_value(lispb::codegen::EnumeratorId const& value)
-    -> std::string {
+auto CanonicalRenderer::build_enum_value(codegen::EnumeratorId const value) -> Expr {
     auto const& enumerators{store_.enumerators};
-    auto const value_index{enumerators.index(value)};
-
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write("(value {}", text(enumerators.name[value_index]));
-    if (enumerators.initializer[value_index].has_value()) {
-        write("\n      :value {}", quote(text(*enumerators.initializer[value_index])));
+    auto const index{enumerators.index(value)};
+    auto result{ir_.form("value", {ir_.atom(text(enumerators.name[index]))})};
+    if (enumerators.initializer[index].has_value()) {
+        result.field("value", ir_.string(text(*enumerators.initializer[index])));
     }
-    if (enumerators.display_name[value_index].has_value()) {
-        write("\n      :display-name {}", quote(text(*enumerators.display_name[value_index])));
+    if (enumerators.display_name[index].has_value()) {
+        result.field("display-name", ir_.string(text(*enumerators.display_name[index])));
     }
-    if (enumerators.hidden[value_index]) {
-        output += "\n      :hidden true";
+    if (enumerators.hidden[index]) {
+        result.field("hidden", ir_.atom("true"));
     }
-    if (enumerators.serialized_name[value_index].has_value()) {
-        write("\n      :serialized-name {}",
-              quote(text(*enumerators.serialized_name[value_index])));
+    if (enumerators.serialized_name[index].has_value()) {
+        result.field("serialized-name", ir_.string(text(*enumerators.serialized_name[index])));
     }
-    if (enumerators.sentinel[value_index]) {
-        output += "\n      :sentinel true";
+    if (enumerators.sentinel[index]) {
+        result.field("sentinel", ir_.atom("true"));
     }
-    output += ')';
-    return output;
+    return result.build();
 }
-auto CanonicalRenderer::render_enum_unreal_projection(
-    lispb::codegen::EnumUnrealProjectionId const& projection) -> std::string {
-    auto const& enum_unreal_projections{store_.enum_unreal_projections};
-    auto const projection_index{enum_unreal_projections.index(projection)};
-
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write("(unreal-projection {}\n      :header {}\n      :header-include {}\n      "
-          ":conversion-header {}\n      :native-header-include {}",
-          text(enum_unreal_projections.name[projection_index]),
-          quote(text(enum_unreal_projections.header[projection_index])),
-          quote(text(enum_unreal_projections.header_include[projection_index])),
-          quote(text(enum_unreal_projections.conversion_header[projection_index])),
-          quote(text(enum_unreal_projections.native_header_include[projection_index])));
-    if (enum_unreal_projections.enum_array[projection_index]) {
-        output += "\n      :enum-array true";
+auto CanonicalRenderer::build_enum_unreal_projection(
+    codegen::EnumUnrealProjectionId const projection) -> Expr {
+    auto const& projections{store_.enum_unreal_projections};
+    auto const index{projections.index(projection)};
+    auto result{ir_.form("unreal-projection", {ir_.atom(text(projections.name[index]))})};
+    result.field("header", ir_.string(text(projections.header[index])))
+        .field("header-include", ir_.string(text(projections.header_include[index])))
+        .field("conversion-header", ir_.string(text(projections.conversion_header[index])))
+        .field("native-header-include", ir_.string(text(projections.native_header_include[index])));
+    if (projections.enum_array[index]) {
+        result.field("enum-array", ir_.atom("true"));
     }
-    if (enum_unreal_projections.reflection[projection_index] != codegen::EnumReflection::uenum) {
-        write("\n      :reflection {}",
-              codegen::enum_reflection_name(enum_unreal_projections.reflection[projection_index]));
+    if (projections.reflection[index] != codegen::EnumReflection::uenum) {
+        result.field("reflection",
+                     ir_.atom(codegen::enum_reflection_name(projections.reflection[index])));
     }
-    output += ')';
-    return output;
+    return result.build();
 }
-auto CanonicalRenderer::render_enum(lispb::codegen::DeclarationHandle const& schema)
-    -> std::string {
+auto CanonicalRenderer::build_enum(codegen::DeclarationHandle const schema) -> Expr {
     auto const& enums{store_.enums};
-    auto const schema_index{enums.index(schema)};
-
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write("(enum {}", text(enums.name[schema_index]));
-    if (enums.underlying_type[schema_index].has_value()) {
-        write(" {}", render_type_ref(*enums.underlying_type[schema_index]));
+    auto const index{enums.index(schema)};
+    auto const name{ir_.atom(text(enums.name[index]))};
+    auto result{enums.underlying_type[index].has_value()
+                    ? ir_.form("enum", {name, build_type_ref(*enums.underlying_type[index])})
+                    : ir_.form("enum", {name})};
+    if (enums.bit_width[index].has_value()) {
+        result.field("bit-width", number(static_cast<unsigned>(*enums.bit_width[index])));
     }
-    if (enums.bit_width[schema_index].has_value()) {
-        write("\n    :bit-width {}", static_cast<unsigned>(*enums.bit_width[schema_index]));
+    if (enums.signedness[index] != EnumSignedness::unspecified) {
+        result.field(
+            "signed",
+            ir_.atom(enums.signedness[index] == EnumSignedness::signed_ ? "true" : "false"));
     }
-    if (enums.signedness[schema_index] != EnumSignedness::unspecified) {
-        write("\n    :signed {}",
-              (enums.signedness[schema_index] == EnumSignedness::signed_ ? "true" : "false"));
+    if (enums.reflection[index] != codegen::EnumReflection::none) {
+        result.field("reflection",
+                     ir_.atom(codegen::enum_reflection_name(enums.reflection[index])));
     }
-    if (enums.reflection[schema_index] != codegen::EnumReflection::none) {
-        write("\n    :reflection {}",
-              codegen::enum_reflection_name(enums.reflection[schema_index]));
+    if (enums.enum_array[index]) {
+        result.field("enum-array", ir_.atom("true"));
     }
-    if (enums.enum_array[schema_index]) {
-        output += "\n    :enum-array true";
+    if (enums.count[index].has_value()) {
+        result.field("count", ir_.atom(text(*enums.count[index])));
     }
-    if (enums.count[schema_index].has_value()) {
-        write("\n    :count {}", text(*enums.count[schema_index]));
-    }
-    auto const conversions{items(enums.conversions[schema_index])};
+    auto const conversions{items(enums.conversions[index])};
     if (!conversions.empty()) {
-        auto const conversions_count{conversions.size()};
-        output += "\n    :conversions (";
-        for (std::size_t index{}; index < conversions_count; ++index) {
-            write(
-                "{}{}", (index == 0 ? "" : " "), codegen::enum_conversion_name(conversions[index]));
+        std::vector<Expr> values;
+        for (auto const conversion : conversions) {
+            values.push_back(ir_.atom(codegen::enum_conversion_name(conversion)));
         }
-        output += ')';
+        result.field("conversions", ir_.list(values));
     }
-    if (enums.export_specifier[schema_index].value != 0) {
-        write("\n    :export-specifier {}", text(enums.export_specifier[schema_index]));
+    if (enums.export_specifier[index].value != 0) {
+        result.field("export-specifier", ir_.atom(text(enums.export_specifier[index])));
     }
-    if (enums.native_api[schema_index]) {
-        output += "\n    :native-api true";
+    if (enums.native_api[index]) {
+        result.field("native-api", ir_.atom("true"));
     }
-    auto const helpers{items(enums.helpers[schema_index])};
+    auto const helpers{items(enums.helpers[index])};
     if (!helpers.empty()) {
-        auto const helpers_count{helpers.size()};
-        output += "\n    :helpers (";
-        for (std::size_t index{}; index < helpers_count; ++index) {
-            write(
-                "{}{}", (index == 0 ? "" : " "), codegen::native_enum_helper_name(helpers[index]));
+        std::vector<Expr> values;
+        for (auto const helper : helpers) {
+            values.push_back(ir_.atom(codegen::native_enum_helper_name(helper)));
         }
-        output += ')';
+        result.field("helpers", ir_.list(values));
     }
-    for (auto const& value : items(enums.values[schema_index])) {
-        write("\n    {}", render_enum_value(value));
+    for (auto const value : items(enums.values[index])) {
+        result.add(build_enum_value(value));
     }
-    if (enums.unreal_projection[schema_index].has_value()) {
-        write("\n    {}", render_enum_unreal_projection(*enums.unreal_projection[schema_index]));
+    if (enums.unreal_projection[index].has_value()) {
+        result.add(build_enum_unreal_projection(*enums.unreal_projection[index]));
     }
-    output += ')';
-    return output;
+    return result.build();
 }
 auto CanonicalRenderer::packed_field_kind_name(codegen::PackedFieldKind const kind)
     -> std::string_view {
@@ -330,931 +279,705 @@ auto CanonicalRenderer::storage_operation_name(codegen::StorageOperation const o
     }
     return "reset";
 }
-void CanonicalRenderer::render_function(std::string& output,
-                                        lispb::codegen::FunctionSchemaId const& function,
-                                        std::string_view const indent,
-                                        std::string_view const kind) {
+auto CanonicalRenderer::build_parameter(codegen::ParameterId const parameter) -> Expr {
     auto const& parameters{store_.parameters};
+    auto const index{parameters.index(parameter)};
+    auto result{
+        ir_.form("parameter",
+                 {ir_.atom(text(parameters.name[index])), build_type_ref(parameters.type[index])})};
+    if (parameters.default_value[index].has_value()) {
+        result.field("default", ir_.string(text(*parameters.default_value[index])));
+    }
+    return result.build();
+}
+auto CanonicalRenderer::build_function(codegen::FunctionSchemaId const function,
+                                       std::string_view const kind) -> Expr {
     auto const& functions{store_.functions};
-    auto const function_index{functions.index(function)};
-
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write("{}({} {} {}",
-          indent,
-          kind,
-          text(functions.name[function_index]),
-          render_type_ref(functions.return_type[function_index]));
-    if (!texts(functions.body_lines[function_index]).empty()) {
-        write("\n{}  :body ", indent);
-        render_quoted_list(output, texts(functions.body_lines[function_index]));
+    auto const index{functions.index(function)};
+    auto result{ir_.form(
+        kind,
+        {ir_.atom(text(functions.name[index])), build_type_ref(functions.return_type[index])})};
+    if (!texts(functions.body_lines[index]).empty()) {
+        result.field("body", string_list(texts(functions.body_lines[index])));
     }
-    if (!texts(functions.dependencies[function_index]).empty()) {
-        write("\n{}  :dependencies ", indent);
-        render_quoted_list(output, texts(functions.dependencies[function_index]));
+    if (!texts(functions.dependencies[index]).empty()) {
+        result.field("dependencies", string_list(texts(functions.dependencies[index])));
     }
-    if (functions.trailing_return_type[function_index].has_value()) {
-        write("\n{}  :trailing-return-type {}",
-              indent,
-              render_type_ref(*functions.trailing_return_type[function_index]));
+    if (functions.trailing_return_type[index].has_value()) {
+        result.field("trailing-return-type",
+                     build_type_ref(*functions.trailing_return_type[index]));
     }
-    if (functions.is_const[function_index]) {
-        write("\n{}  :const true", indent);
+    if (functions.is_const[index]) {
+        result.field("const", ir_.atom("true"));
     }
-    if (functions.is_noexcept[function_index]) {
-        write("\n{}  :noexcept true", indent);
+    if (functions.is_noexcept[index]) {
+        result.field("noexcept", ir_.atom("true"));
     }
-    if (functions.is_static[function_index]) {
-        write("\n{}  :static true", indent);
+    if (functions.is_static[index]) {
+        result.field("static", ir_.atom("true"));
     }
-    if (functions.is_constexpr[function_index]) {
-        write("\n{}  :constexpr true", indent);
+    if (functions.is_constexpr[index]) {
+        result.field("constexpr", ir_.atom("true"));
     }
-    if (functions.is_nodiscard[function_index]) {
-        write("\n{}  :nodiscard true", indent);
+    if (functions.is_nodiscard[index]) {
+        result.field("nodiscard", ir_.atom("true"));
     }
-    if (functions.is_inline[function_index]) {
-        write("\n{}  :inline true", indent);
+    if (functions.is_inline[index]) {
+        result.field("inline", ir_.atom("true"));
     }
-    if (functions.definition_in_source[function_index]) {
-        write("\n{}  :definition-in-source true", indent);
+    if (functions.definition_in_source[index]) {
+        result.field("definition-in-source", ir_.atom("true"));
     }
-    if (functions.template_parameters[function_index].has_value()) {
-        write("\n{}  :template-parameters {}",
-              indent,
-              quote(text(*functions.template_parameters[function_index])));
+    if (functions.template_parameters[index].has_value()) {
+        result.field("template-parameters",
+                     ir_.string(text(*functions.template_parameters[index])));
     }
-    if (functions.requires_clause[function_index].has_value()) {
-        write(
-            "\n{}  :requires {}", indent, quote(text(*functions.requires_clause[function_index])));
+    if (functions.requires_clause[index].has_value()) {
+        result.field("requires", ir_.string(text(*functions.requires_clause[index])));
     }
-    for (auto const& parameter : items(functions.parameters[function_index])) {
-        auto const parameter_index{parameters.index(parameter)};
-        write("\n{}  (parameter {} {}",
-              indent,
-              text(parameters.name[parameter_index]),
-              render_type_ref(parameters.type[parameter_index]));
-        if (parameters.default_value[parameter_index].has_value()) {
-            write(" :default {}", quote(*parameters.default_value[parameter_index]));
-        }
-        output += ')';
+    for (auto const parameter : items(functions.parameters[index])) {
+        result.add(build_parameter(parameter));
     }
-    output += ')';
+    return result.build();
 }
-auto CanonicalRenderer::render_semantic_relation(
-    lispb::codegen::SemanticRelationId const& relationship) -> std::string {
-    auto const& semantic_relations{store_.semantic_relations};
-    auto const relationship_index{semantic_relations.index(relationship)};
-
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write("(relation {} {}",
-          semantic_relation_kind_name(semantic_relations.kind[relationship_index]),
-          render_type_ref(semantic_relations.target[relationship_index]));
-    if (semantic_relations.unit[relationship_index].has_value()) {
-        write(" :unit {}",
-              semantic_relation_unit_name(*semantic_relations.unit[relationship_index]));
+auto CanonicalRenderer::build_semantic_relation(codegen::SemanticRelationId const relationship)
+    -> Expr {
+    auto const& relations{store_.semantic_relations};
+    auto const index{relations.index(relationship)};
+    auto result{ir_.form("relation",
+                         {ir_.atom(semantic_relation_kind_name(relations.kind[index])),
+                          build_type_ref(relations.target[index])})};
+    if (relations.unit[index].has_value()) {
+        result.field("unit", ir_.atom(semantic_relation_unit_name(*relations.unit[index])));
     }
-    output += ')';
-    return output;
+    return result.build();
 }
-auto CanonicalRenderer::render_packed_segment(codegen::PackedSegmentId const segment)
-    -> std::string {
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    [&]() {
-        auto const value{segment};
-        switch (value.kind()) {
-            case lispb::codegen::PackedSegmentKind::field: {
-                auto const& fields{store_.packed_fields};
-                auto const field_index{fields.index(value)};
-
-                write("(field {} {} :bits ",
-                      text(fields.name[field_index]),
-                      render_type_ref(fields.type[field_index]));
-                if (fields.bits[field_index].has_value()) {
-                    write("{}", *fields.bits[field_index]);
-                } else {
-                    output += "auto";
-                }
-                if (fields.kind[field_index] != codegen::PackedFieldKind::unsigned_integer) {
-                    write(" :kind {}", packed_field_kind_name(fields.kind[field_index]));
-                }
-                if (fields.range_helper[field_index]) {
-                    output += " :range-helper true";
-                }
-                if (fields.default_value[field_index].has_value()) {
-                    write(" :default {}",
-                          format_packed_integer(*fields.default_value[field_index]));
-                }
-                if (fields.minimum_value[field_index].has_value()) {
-                    write(" :minimum {}",
-                          format_packed_integer(*fields.minimum_value[field_index]));
-                }
-                if (fields.maximum_value[field_index].has_value()) {
-                    write(" :maximum {}",
-                          format_packed_integer(*fields.maximum_value[field_index]));
-                }
-                for (auto const code : items(fields.named_codes[field_index])) {
-                    write("\n      {}", render_named_code(code));
-                }
-                if (fields.relationship[field_index].has_value()) {
-                    write("\n      {}",
-                          render_semantic_relation(*fields.relationship[field_index]));
-                }
-                break;
+auto CanonicalRenderer::build_packed_segment(codegen::PackedSegmentId const segment) -> Expr {
+    switch (segment.kind()) {
+        case codegen::PackedSegmentKind::field: {
+            auto const& fields{store_.packed_fields};
+            auto const index{fields.index(segment)};
+            auto result{ir_.form(
+                "field", {ir_.atom(text(fields.name[index])), build_type_ref(fields.type[index])})};
+            result.field("bits",
+                         fields.bits[index].has_value() ? number(*fields.bits[index])
+                                                        : ir_.atom("auto"));
+            if (fields.kind[index] != codegen::PackedFieldKind::unsigned_integer) {
+                result.field("kind", ir_.atom(packed_field_kind_name(fields.kind[index])));
             }
-            case lispb::codegen::PackedSegmentKind::reserved: {
-                auto const& reserved_bits{store_.packed_reserved_bits};
-                auto const reserved_index{reserved_bits.index(value)};
-
-                write("(reserved {} :bits {}",
-                      text(reserved_bits.name[reserved_index]),
-                      reserved_bits.bits[reserved_index]);
-                break;
+            if (fields.range_helper[index]) {
+                result.field("range-helper", ir_.atom("true"));
             }
-            default:
-                std::unreachable();
+            if (fields.default_value[index].has_value()) {
+                result.field("default",
+                             ir_.atom(format_packed_integer(*fields.default_value[index])));
+            }
+            if (fields.minimum_value[index].has_value()) {
+                result.field("minimum",
+                             ir_.atom(format_packed_integer(*fields.minimum_value[index])));
+            }
+            if (fields.maximum_value[index].has_value()) {
+                result.field("maximum",
+                             ir_.atom(format_packed_integer(*fields.maximum_value[index])));
+            }
+            for (auto const code : items(fields.named_codes[index])) {
+                result.add(build_named_code(code));
+            }
+            if (fields.relationship[index].has_value()) {
+                result.add(build_semantic_relation(*fields.relationship[index]));
+            }
+            return result.build();
         }
-        output += ')';
-    }();
-    return output;
+        case codegen::PackedSegmentKind::reserved: {
+            auto const& reserved_bits{store_.packed_reserved_bits};
+            auto const index{reserved_bits.index(segment)};
+            return ir_.form("reserved", {ir_.atom(text(reserved_bits.name[index]))})
+                .field("bits", number(reserved_bits.bits[index]))
+                .build();
+        }
+        default:
+            std::unreachable();
+    }
 }
-auto CanonicalRenderer::render_packed_value(lispb::codegen::DeclarationHandle const& schema)
-    -> std::string {
-    auto const& packed_values{store_.packed_values};
-    auto const schema_index{packed_values.index(schema)};
-
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write("(packed-value {}\n    :storage {}",
-          text(packed_values.name[schema_index]),
-          render_type_ref(packed_values.storage_type[schema_index]));
-    if (packed_values.byte_order[schema_index].has_value()) {
-        write("\n    :byte-order {}",
-              packed_byte_order_name(*packed_values.byte_order[schema_index]));
+auto CanonicalRenderer::build_packed_value(codegen::DeclarationHandle const schema) -> Expr {
+    auto const& values{store_.packed_values};
+    auto const index{values.index(schema)};
+    auto result{ir_.form("packed-value", {ir_.atom(text(values.name[index]))})};
+    result.field("storage", build_type_ref(values.storage_type[index]));
+    if (values.byte_order[index].has_value()) {
+        result.field("byte-order", ir_.atom(packed_byte_order_name(*values.byte_order[index])));
     }
-    if (packed_values.bit_order[schema_index].has_value()) {
-        write("\n    :bit-order {}", packed_bit_order_name(*packed_values.bit_order[schema_index]));
+    if (values.bit_order[index].has_value()) {
+        result.field("bit-order", ir_.atom(packed_bit_order_name(*values.bit_order[index])));
     }
-    if (packed_values.invalid_value[schema_index].has_value()) {
-        write("\n    :invalid-value {}", *packed_values.invalid_value[schema_index]);
+    if (values.invalid_value[index].has_value()) {
+        result.field("invalid-value", number(*values.invalid_value[index]));
     }
-    if (packed_values.export_specifier[schema_index].value != 0) {
-        write("\n    :export-specifier {}", text(packed_values.export_specifier[schema_index]));
+    if (values.export_specifier[index].value != 0) {
+        result.field("export-specifier", ir_.atom(text(values.export_specifier[index])));
     }
-    if (packed_values.mutable_value[schema_index]) {
-        output += "\n    :mutable true";
+    if (values.mutable_value[index]) {
+        result.field("mutable", ir_.atom("true"));
     }
-    for (auto const& segment : items(packed_values.segments[schema_index])) {
-        write("\n    {}", render_packed_segment(segment));
+    for (auto const segment : items(values.segments[index])) {
+        result.add(build_packed_segment(segment));
     }
-    output += ')';
-    return output;
+    return result.build();
 }
-auto CanonicalRenderer::render_named_code(lispb::codegen::PackedNamedCodeId const& code)
-    -> std::string {
-    auto const& packed_named_codes{store_.packed_named_codes};
-    auto const code_index{packed_named_codes.index(code)};
-
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write("(code {} :value {}",
-          text(packed_named_codes.name[code_index]),
-          format_packed_integer(packed_named_codes.value[code_index]));
-    if (packed_named_codes.sentinel[code_index]) {
-        output += " :sentinel true";
+auto CanonicalRenderer::build_named_code(codegen::PackedNamedCodeId const code) -> Expr {
+    auto const& codes{store_.packed_named_codes};
+    auto const index{codes.index(code)};
+    auto result{ir_.form("code", {ir_.atom(text(codes.name[index]))})};
+    result.field("value", ir_.atom(format_packed_integer(codes.value[index])));
+    if (codes.sentinel[index]) {
+        result.field("sentinel", ir_.atom("true"));
     }
-    output += ')';
-    return output;
+    return result.build();
 }
-auto CanonicalRenderer::render_integer_scalar(lispb::codegen::DeclarationHandle const& schema)
-    -> std::string {
-    auto const& integer_scalars{store_.integer_scalars};
-    auto const schema_index{integer_scalars.index(schema)};
-
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write("(integer-scalar {}\n    :signed {}\n    :minimum {}\n    :maximum {}\n    :bit-width ",
-          text(integer_scalars.name[schema_index]),
-          (integer_scalars.signedness[schema_index] ? "true" : "false"),
-          format_packed_integer(integer_scalars.minimum_value[schema_index]),
-          format_packed_integer(integer_scalars.maximum_value[schema_index]));
-    if (integer_scalars.bit_width[schema_index].has_value()) {
-        write("{}", *integer_scalars.bit_width[schema_index]);
-    } else {
-        output += "auto";
+auto CanonicalRenderer::build_integer_scalar(codegen::DeclarationHandle const schema) -> Expr {
+    auto const& scalars{store_.integer_scalars};
+    auto const index{scalars.index(schema)};
+    auto result{ir_.form("integer-scalar", {ir_.atom(text(scalars.name[index]))})};
+    result.field("signed", ir_.atom(scalars.signedness[index] ? "true" : "false"))
+        .field("minimum", ir_.atom(format_packed_integer(scalars.minimum_value[index])))
+        .field("maximum", ir_.atom(format_packed_integer(scalars.maximum_value[index])))
+        .field("bit-width",
+               scalars.bit_width[index].has_value() ? number(*scalars.bit_width[index])
+                                                    : ir_.atom("auto"));
+    if (scalars.cpp_emission[index] != codegen::IntegerScalarCppEmission::none) {
+        result.field("cpp-emission",
+                     ir_.atom(integer_scalar_cpp_emission_name(scalars.cpp_emission[index])));
     }
-    if (integer_scalars.cpp_emission[schema_index] != codegen::IntegerScalarCppEmission::none) {
-        write("\n    :cpp-emission {}",
-              integer_scalar_cpp_emission_name(integer_scalars.cpp_emission[schema_index]));
+    if (scalars.cpp_type[index].has_value()) {
+        result.field("cpp-type", build_type_ref(*scalars.cpp_type[index]));
     }
-    if (integer_scalars.cpp_type[schema_index].has_value()) {
-        write("\n    :cpp-type {}", render_type_ref(*integer_scalars.cpp_type[schema_index]));
+    for (auto const code : items(scalars.named_codes[index])) {
+        result.add(build_named_code(code));
     }
-    for (auto const& code : items(integer_scalars.named_codes[schema_index])) {
-        write("\n    {}", render_named_code(code));
+    if (scalars.relationship[index].has_value()) {
+        result.add(build_semantic_relation(*scalars.relationship[index]));
     }
-    if (integer_scalars.relationship[schema_index].has_value()) {
-        write("\n    {}", render_semantic_relation(*integer_scalars.relationship[schema_index]));
+    return result.build();
+}
+auto CanonicalRenderer::build_linear_quantized(codegen::DeclarationHandle const schema) -> Expr {
+    auto const& values{store_.linear_quantizeds};
+    auto const index{values.index(schema)};
+    return ir_.form("linear-quantized", {ir_.atom(text(values.name[index]))})
+        .field("source", build_type_ref(values.source[index]))
+        .field("bits", number(values.bit_width[index]))
+        .field("reserved-codes", number(values.reserved_codes[index]))
+        .field("clipping", ir_.atom(quantization_clipping_name(values.clipping[index])))
+        .build();
+}
+auto CanonicalRenderer::build_integer_varint(codegen::DeclarationHandle const schema) -> Expr {
+    auto const& values{store_.integer_varints};
+    auto const index{values.index(schema)};
+    return ir_.form("integer-varint", {ir_.atom(text(values.name[index]))})
+        .field("source", build_type_ref(values.source[index]))
+        .field("encoding", ir_.atom(integer_varint_encoding_name(values.encoding[index])))
+        .build();
+}
+auto CanonicalRenderer::build_fixed_point(codegen::DeclarationHandle const schema) -> Expr {
+    auto const& values{store_.fixed_points};
+    auto const index{values.index(schema)};
+    auto result{ir_.form("fixed-point", {ir_.atom(text(values.name[index]))})};
+    result.field("signed", ir_.atom(values.signedness[index] ? "true" : "false"))
+        .field("total-bits", number(values.total_bits[index]))
+        .field("fractional-bits", number(values.fractional_bits[index]))
+        .field("rounding", ir_.atom(fixed_point_rounding_name(values.rounding[index])));
+    if (values.minimum_value[index].has_value()) {
+        result.field("minimum", ir_.atom(text(*values.minimum_value[index])));
     }
-    output += ')';
-    return output;
-}
-auto CanonicalRenderer::render_linear_quantized(lispb::codegen::DeclarationHandle const& schema)
-    -> std::string {
-    auto const& linear_quantizeds{store_.linear_quantizeds};
-    auto const schema_index{linear_quantizeds.index(schema)};
-
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write(
-        "(linear-quantized {}\n    :source {}\n    :bits {}\n    :reserved-codes {}\n    :clipping "
-        "{})",
-        text(linear_quantizeds.name[schema_index]),
-        render_type_ref(linear_quantizeds.source[schema_index]),
-        linear_quantizeds.bit_width[schema_index],
-        linear_quantizeds.reserved_codes[schema_index],
-        quantization_clipping_name(linear_quantizeds.clipping[schema_index]));
-    return output;
-}
-auto CanonicalRenderer::render_integer_varint(lispb::codegen::DeclarationHandle const& schema)
-    -> std::string {
-    auto const& integer_varints{store_.integer_varints};
-    auto const schema_index{integer_varints.index(schema)};
-
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write("(integer-varint {}\n    :source {}\n    :encoding {})",
-          text(integer_varints.name[schema_index]),
-          render_type_ref(integer_varints.source[schema_index]),
-          integer_varint_encoding_name(integer_varints.encoding[schema_index]));
-    return output;
-}
-auto CanonicalRenderer::render_fixed_point(lispb::codegen::DeclarationHandle const& schema)
-    -> std::string {
-    auto const& fixed_points{store_.fixed_points};
-    auto const schema_index{fixed_points.index(schema)};
-
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write("(fixed-point {}\n    :signed {}\n    :total-bits {}\n    :fractional-bits {}\n    "
-          ":rounding {}",
-          text(fixed_points.name[schema_index]),
-          (fixed_points.signedness[schema_index] ? "true" : "false"),
-          fixed_points.total_bits[schema_index],
-          fixed_points.fractional_bits[schema_index],
-          fixed_point_rounding_name(fixed_points.rounding[schema_index]));
-    if (fixed_points.minimum_value[schema_index].has_value()) {
-        write("\n    :minimum {}", text(*fixed_points.minimum_value[schema_index]));
+    if (values.maximum_value[index].has_value()) {
+        result.field("maximum", ir_.atom(text(*values.maximum_value[index])));
     }
-    if (fixed_points.maximum_value[schema_index].has_value()) {
-        write("\n    :maximum {}", text(*fixed_points.maximum_value[schema_index]));
-    }
-    output += ')';
-    return output;
+    return result.build();
 }
-auto CanonicalRenderer::render_mini_float(lispb::codegen::DeclarationHandle const& schema)
-    -> std::string {
-    auto const& mini_floats{store_.mini_floats};
-    auto const schema_index{mini_floats.index(schema)};
-
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write("(mini-float {}\n    :sign-bits {}\n    :exponent-bits {}\n    "
-          ":significand-bits {}\n    :bias {})",
-          text(mini_floats.name[schema_index]),
-          mini_floats.sign_bits[schema_index],
-          mini_floats.exponent_bits[schema_index],
-          mini_floats.significand_bits[schema_index],
-          mini_floats.exponent_bias[schema_index]);
-    return output;
+auto CanonicalRenderer::build_mini_float(codegen::DeclarationHandle const schema) -> Expr {
+    auto const& values{store_.mini_floats};
+    auto const index{values.index(schema)};
+    return ir_.form("mini-float", {ir_.atom(text(values.name[index]))})
+        .field("sign-bits", number(values.sign_bits[index]))
+        .field("exponent-bits", number(values.exponent_bits[index]))
+        .field("significand-bits", number(values.significand_bits[index]))
+        .field("bias", number(values.exponent_bias[index]))
+        .build();
 }
-auto CanonicalRenderer::render_optional_sentinel(lispb::codegen::DeclarationHandle const& schema)
-    -> std::string {
-    auto const& optional_sentinels{store_.optional_sentinels};
-    auto const schema_index{optional_sentinels.index(schema)};
-
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write("(optional-sentinel {}\n    :source {}\n    :sentinel {})",
-          text(optional_sentinels.name[schema_index]),
-          render_type_ref(optional_sentinels.source[schema_index]),
-          text(optional_sentinels.sentinel[schema_index]));
-    return output;
+auto CanonicalRenderer::build_optional_sentinel(codegen::DeclarationHandle const schema) -> Expr {
+    auto const& values{store_.optional_sentinels};
+    auto const index{values.index(schema)};
+    return ir_.form("optional-sentinel", {ir_.atom(text(values.name[index]))})
+        .field("source", build_type_ref(values.source[index]))
+        .field("sentinel", ir_.atom(text(values.sentinel[index])))
+        .build();
 }
-auto
-    CanonicalRenderer::render_optional_presence_bit(lispb::codegen::DeclarationHandle const& schema)
-        -> std::string {
-    auto const& optional_presence_bits{store_.optional_presence_bits};
-    auto const schema_index{optional_presence_bits.index(schema)};
-
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write("(optional-presence-bit {}\n    :source {})",
-          text(optional_presence_bits.name[schema_index]),
-          render_type_ref(optional_presence_bits.source[schema_index]));
-    return output;
+auto CanonicalRenderer::build_optional_presence_bit(codegen::DeclarationHandle const schema)
+    -> Expr {
+    auto const& values{store_.optional_presence_bits};
+    auto const index{values.index(schema)};
+    return ir_.form("optional-presence-bit", {ir_.atom(text(values.name[index]))})
+        .field("source", build_type_ref(values.source[index]))
+        .build();
 }
-auto CanonicalRenderer::render_record(lispb::codegen::DeclarationHandle const& schema)
-    -> std::string {
+auto CanonicalRenderer::build_record(codegen::DeclarationHandle const schema) -> Expr {
     auto const& records{store_.records};
-    auto const schema_index{records.index(schema)};
-
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write("(record {}", text(records.name[schema_index]));
-    if (records.export_specifier[schema_index].value != 0) {
-        write("\n    :export-specifier {}", text(records.export_specifier[schema_index]));
+    auto const index{records.index(schema)};
+    auto result{ir_.form("record", {ir_.atom(text(records.name[index]))})};
+    if (records.export_specifier[index].value != 0) {
+        result.field("export-specifier", ir_.atom(text(records.export_specifier[index])));
     }
-    if (records.comparison[schema_index] != codegen::RecordComparison::none) {
-        write("\n    :comparison {}",
-              (records.comparison[schema_index] == codegen::RecordComparison::equality
-                   ? "equality"
-                   : "three-way"));
+    if (records.comparison[index] != codegen::RecordComparison::none) {
+        result.field("comparison",
+                     ir_.atom(records.comparison[index] == codegen::RecordComparison::equality
+                                  ? "equality"
+                                  : "three-way"));
     }
-    if (records.comparison_noexcept[schema_index]) {
-        output += "\n    :comparison-noexcept true";
+    if (records.comparison_noexcept[index]) {
+        result.field("comparison-noexcept", ir_.atom("true"));
     }
-    for (auto const& member : items(records.members[schema_index])) {
-        write("\n    {}", render_aggregate_child(store_.record_members, "member", member));
+    for (auto const member : items(records.members[index])) {
+        result.add(build_aggregate_child(store_.record_members, "member", member));
     }
-    for (auto const& function : items(records.functions[schema_index])) {
-        output += '\n';
-        render_function(output, function, "    ");
+    for (auto const function : items(records.functions[index])) {
+        result.add(build_function(function));
     }
-    output += ')';
-    return output;
+    return result.build();
 }
-auto CanonicalRenderer::render_union(lispb::codegen::DeclarationHandle const& schema)
-    -> std::string {
+auto CanonicalRenderer::build_union(codegen::DeclarationHandle const schema) -> Expr {
     auto const& unions{store_.unions};
-    auto const schema_index{unions.index(schema)};
-
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write("(union {}", text(unions.name[schema_index]));
-    if (unions.export_specifier[schema_index].value != 0) {
-        write("\n    :export-specifier {}", text(unions.export_specifier[schema_index]));
+    auto const index{unions.index(schema)};
+    auto result{ir_.form("union", {ir_.atom(text(unions.name[index]))})};
+    if (unions.export_specifier[index].value != 0) {
+        result.field("export-specifier", ir_.atom(text(unions.export_specifier[index])));
     }
-    for (auto const& alternative : items(unions.alternatives[schema_index])) {
-        write("\n    {}",
-              render_aggregate_child(store_.union_alternatives, "alternative", alternative));
+    for (auto const alternative : items(unions.alternatives[index])) {
+        result.add(build_aggregate_child(store_.union_alternatives, "alternative", alternative));
     }
-    output += ')';
-    return output;
+    return result.build();
 }
-auto CanonicalRenderer::render_tagged_union_alternative(
-    lispb::codegen::TaggedUnionAlternativeId const& alternative) -> std::string {
-    auto const& tagged_union_alternatives{store_.tagged_union_alternatives};
-    auto const alternative_index{tagged_union_alternatives.index(alternative)};
-
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write("(alternative {} {} :tag {}",
-          text(tagged_union_alternatives.name[alternative_index]),
-          render_type_ref(tagged_union_alternatives.type[alternative_index]),
-          text(tagged_union_alternatives.tag[alternative_index]));
-    if (tagged_union_alternatives.count[alternative_index].has_value()) {
-        write(" :count {}", *tagged_union_alternatives.count[alternative_index]);
+auto CanonicalRenderer::build_tagged_union_alternative(
+    codegen::TaggedUnionAlternativeId const alternative) -> Expr {
+    auto const& alternatives{store_.tagged_union_alternatives};
+    auto const index{alternatives.index(alternative)};
+    auto result{ir_.form(
+        "alternative",
+        {ir_.atom(text(alternatives.name[index])), build_type_ref(alternatives.type[index])})};
+    result.field("tag", ir_.atom(text(alternatives.tag[index])));
+    if (alternatives.count[index].has_value()) {
+        result.field("count", number(*alternatives.count[index]));
     }
-    output += ')';
-    return output;
+    return result.build();
 }
-auto CanonicalRenderer::render_tagged_union(lispb::codegen::DeclarationHandle const& schema)
-    -> std::string {
-    auto const& tagged_unions{store_.tagged_unions};
-    auto const schema_index{tagged_unions.index(schema)};
-
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write("(tagged-union {}\n    :discriminant {}",
-          text(tagged_unions.name[schema_index]),
-          render_type_ref(tagged_unions.discriminant[schema_index]));
-    if (tagged_unions.export_specifier[schema_index].value != 0) {
-        write("\n    :export-specifier {}", text(tagged_unions.export_specifier[schema_index]));
+auto CanonicalRenderer::build_tagged_union(codegen::DeclarationHandle const schema) -> Expr {
+    auto const& unions{store_.tagged_unions};
+    auto const index{unions.index(schema)};
+    auto result{ir_.form("tagged-union", {ir_.atom(text(unions.name[index]))})};
+    result.field("discriminant", build_type_ref(unions.discriminant[index]));
+    if (unions.export_specifier[index].value != 0) {
+        result.field("export-specifier", ir_.atom(text(unions.export_specifier[index])));
     }
-    for (auto const& alternative : items(tagged_unions.alternatives[schema_index])) {
-        write("\n    {}", render_tagged_union_alternative(alternative));
+    for (auto const alternative : items(unions.alternatives[index])) {
+        result.add(build_tagged_union_alternative(alternative));
     }
-    output += ')';
-    return output;
+    return result.build();
 }
-auto CanonicalRenderer::render_soa_member(lispb::codegen::SoaMemberId const& member)
-    -> std::string {
+auto CanonicalRenderer::build_soa_member(codegen::SoaMemberId const member) -> Expr {
     auto const& dimensions{store_.soa_mask_dimensions};
-    auto const& soa_members{store_.soa_members};
-    auto const member_index{soa_members.index(member)};
-
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write("(member {} {} {}",
-          text(soa_members.name[member_index]),
-          soa_member_kind_name(soa_members.kind[member_index]),
-          render_type_ref(soa_members.type[member_index]));
-    if (soa_members.fixed_schema[member_index].has_value()) {
-        write("\n      :fixed-schema {}", text(*soa_members.fixed_schema[member_index]));
+    auto const& members{store_.soa_members};
+    auto const index{members.index(member)};
+    auto result{ir_.form("member",
+                         {ir_.atom(text(members.name[index])),
+                          ir_.atom(soa_member_kind_name(members.kind[index])),
+                          build_type_ref(members.type[index])})};
+    if (members.fixed_schema[index].has_value()) {
+        result.field("fixed-schema", ir_.atom(text(*members.fixed_schema[index])));
     }
-    if (soa_members.nested_schema[member_index].has_value()) {
-        write("\n      :nested-schema {}", text(*soa_members.nested_schema[member_index]));
+    if (members.nested_schema[index].has_value()) {
+        result.field("nested-schema", ir_.atom(text(*members.nested_schema[index])));
     }
-    if (soa_members.mask_field[member_index]) {
-        output += "\n      :mask-field true";
+    if (members.mask_field[index]) {
+        result.field("mask-field", ir_.atom("true"));
     }
-    auto const mask_dimensions{items(soa_members.mask_dimensions[member_index])};
-    auto const dimension_count{mask_dimensions.size()};
+    auto const mask_dimensions{items(members.mask_dimensions[index])};
     if (!mask_dimensions.empty()) {
-        output += "\n      :mask-dimensions (";
-        for (std::size_t index{}; index < dimension_count; ++index) {
-            auto const dimension{mask_dimensions[index]};
+        std::vector<Expr> values;
+        for (auto const dimension : mask_dimensions) {
             auto const dimension_index{dimensions.index(dimension)};
-            write("{}({} {})",
-                  (index == 0 ? "" : " "),
-                  text(dimensions.index_name[dimension_index]),
-                  quote(dimensions.extent[dimension_index]));
+            values.push_back(ir_.list({ir_.atom(text(dimensions.index_name[dimension_index])),
+                                       ir_.string(text(dimensions.extent[dimension_index]))}));
         }
-        output += ')';
+        result.field("mask-dimensions", ir_.list(values));
     }
-    if (soa_members.relationship[member_index].has_value()) {
-        write("\n      {}", render_semantic_relation(*soa_members.relationship[member_index]));
+    if (members.relationship[index].has_value()) {
+        result.add(build_semantic_relation(*members.relationship[index]));
     }
-    output += ')';
-    return output;
+    return result.build();
 }
-auto CanonicalRenderer::render_soa(lispb::codegen::DeclarationHandle const& schema) -> std::string {
+auto CanonicalRenderer::build_soa(codegen::DeclarationHandle const schema) -> Expr {
     auto const& soas{store_.soas};
-    auto const schema_index{soas.index(schema)};
-
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write("(struct {}", text(soas.name[schema_index]));
-    if (soas.view_name[schema_index].has_value()) {
-        write("\n    :view-name {}", text(*soas.view_name[schema_index]));
+    auto const index{soas.index(schema)};
+    auto result{ir_.form("struct", {ir_.atom(text(soas.name[index]))})};
+    if (soas.view_name[index].has_value()) {
+        result.field("view-name", ir_.atom(text(*soas.view_name[index])));
     }
-    if (soas.const_view_name[schema_index].has_value()) {
-        write("\n    :const-view-name {}", text(*soas.const_view_name[schema_index]));
+    if (soas.const_view_name[index].has_value()) {
+        result.field("const-view-name", ir_.atom(text(*soas.const_view_name[index])));
     }
-    auto const operations{items(soas.operations[schema_index])};
+    auto const operations{items(soas.operations[index])};
     if (!operations.empty()) {
-        auto const operations_count{operations.size()};
-        output += "\n    :operations (";
-        for (std::size_t index{}; index < operations_count; ++index) {
-            write("{}{}", (index == 0 ? "" : " "), storage_operation_name(operations[index]));
+        std::vector<Expr> values;
+        for (auto const operation : operations) {
+            values.push_back(ir_.atom(storage_operation_name(operation)));
         }
-        output += ')';
+        result.field("operations", ir_.list(values));
     }
-    if (soas.export_specifier[schema_index].value != 0) {
-        write("\n    :export-specifier {}", text(soas.export_specifier[schema_index]));
+    if (soas.export_specifier[index].value != 0) {
+        result.field("export-specifier", ir_.atom(text(soas.export_specifier[index])));
     }
-    if (!texts(soas.using_declarations[schema_index]).empty()) {
-        output += "\n    :using-declarations ";
-        render_quoted_list(output, texts(soas.using_declarations[schema_index]));
+    if (!texts(soas.using_declarations[index]).empty()) {
+        result.field("using-declarations", string_list(texts(soas.using_declarations[index])));
     }
-    if (soas.equivalent_type[schema_index].has_value()) {
-        write("\n    :equivalent-type {}", render_type_ref(*soas.equivalent_type[schema_index]));
+    if (soas.equivalent_type[index].has_value()) {
+        result.field("equivalent-type", build_type_ref(*soas.equivalent_type[index]));
     }
-    auto const components{texts(soas.vector_components[schema_index])};
+    auto const components{texts(soas.vector_components[index])};
     if (!components.empty()) {
-        auto const components_count{components.size()};
-        output += "\n    :vector-components (";
-        for (std::size_t index{}; index < components_count; ++index) {
-            if (index != 0) {
-                output += ' ';
-            }
-            write("{}", components[index]);
-        }
-        output += ')';
+        result.field("vector-components", atom_list(components));
     }
-    if (soas.copy_element_memberwise[schema_index]) {
-        output += "\n    :copy-element-memberwise true";
+    if (soas.copy_element_memberwise[index]) {
+        result.field("copy-element-memberwise", ir_.atom("true"));
     }
-    if (soas.layout_only[schema_index]) {
-        output += "\n    :layout-only true";
+    if (soas.layout_only[index]) {
+        result.field("layout-only", ir_.atom("true"));
     }
-    if (soas.storage[schema_index]) {
-        write("\n    :storage {}", codegen::soa_storage_name(*soas.storage[schema_index]));
+    if (soas.storage[index]) {
+        result.field("storage", ir_.atom(codegen::soa_storage_name(*soas.storage[index])));
     }
-    if (soas.field_mask_name[schema_index].has_value()) {
-        write("\n    :field-mask-name {}", text(*soas.field_mask_name[schema_index]));
+    if (soas.field_mask_name[index].has_value()) {
+        result.field("field-mask-name", ir_.atom(text(*soas.field_mask_name[index])));
     }
-    if (soas.field_enum_name[schema_index].has_value()) {
-        write("\n    :field-enum-name {}", text(*soas.field_enum_name[schema_index]));
+    if (soas.field_enum_name[index].has_value()) {
+        result.field("field-enum-name", ir_.atom(text(*soas.field_enum_name[index])));
     }
-    for (auto const& member : items(soas.members[schema_index])) {
-        write("\n    {}", render_soa_member(member));
+    for (auto const member : items(soas.members[index])) {
+        result.add(build_soa_member(member));
     }
-    for (auto const& function : items(soas.functions[schema_index])) {
-        output += '\n';
-        render_function(output, function, "    ");
+    for (auto const function : items(soas.functions[index])) {
+        result.add(build_function(function));
     }
-    for (auto const& function : items(soas.const_view_functions[schema_index])) {
-        output += '\n';
-        render_function(output, function, "    ", "view-function");
+    for (auto const function : items(soas.const_view_functions[index])) {
+        result.add(build_function(function, "view-function"));
     }
-    for (auto const& function : items(soas.mutable_view_functions[schema_index])) {
-        output += '\n';
-        render_function(output, function, "    ", "mutable-view-function");
+    for (auto const function : items(soas.mutable_view_functions[index])) {
+        result.add(build_function(function, "mutable-view-function"));
     }
-    if (soas.array_allocator[schema_index]) {
-        write("\n    :array-allocator {}", render_type_ref(*soas.array_allocator[schema_index]));
+    if (soas.array_allocator[index]) {
+        result.field("array-allocator", build_type_ref(*soas.array_allocator[index]));
     }
-    if (soas.fixed[schema_index].has_value()) {
+    if (soas.fixed[index].has_value()) {
         auto const& fixed_soas{store_.fixed_soas};
-        auto const fixed_index{fixed_soas.index(*soas.fixed[schema_index])};
-
-        write("\n    (fixed {}", text(fixed_soas.storage_name[fixed_index]));
+        auto const fixed_index{fixed_soas.index(*soas.fixed[index])};
+        auto fixed{ir_.form("fixed", {ir_.atom(text(fixed_soas.storage_name[fixed_index]))})};
         auto const containers{texts(fixed_soas.containers[fixed_index])};
         if (!containers.empty()) {
-            auto const container_count{containers.size()};
-            output += " :containers (";
-            for (std::size_t index{}; index < container_count; ++index) {
-                write("{}{}", (index == 0 ? "" : " "), containers[index]);
-            }
-            output += ')';
+            fixed.field("containers", atom_list(containers));
         }
-        output += ')';
+        result.add(fixed.build());
     }
-    if (soas.single_allocation[schema_index].has_value()) {
-        write("\n    (single-allocation {}", text(*soas.single_allocation[schema_index]));
-        output += ')';
+    if (soas.single_allocation[index].has_value()) {
+        result.add(ir_.form("single-allocation", {ir_.atom(text(*soas.single_allocation[index]))})
+                       .build());
     }
-    output += ')';
-    return output;
+    return result.build();
 }
-auto CanonicalRenderer::render_vector_soa(lispb::codegen::DeclarationHandle const& schema)
-    -> std::string {
-    auto const& vector_soas{store_.vector_soas};
-    auto const schema_index{vector_soas.index(schema)};
-
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write("(vector-soa {}\n    :value-type {}\n    :components ",
-          text(vector_soas.name[schema_index]),
-          render_type_ref(vector_soas.value_type[schema_index]));
-    render_quoted_list(output, texts(vector_soas.components[schema_index]));
-    if (!texts(vector_soas.equivalent_members[schema_index]).empty()) {
-        output += "\n    :equivalent-members ";
-        render_quoted_list(output, texts(vector_soas.equivalent_members[schema_index]));
+auto CanonicalRenderer::build_vector_soa(codegen::DeclarationHandle const schema) -> Expr {
+    auto const& soas{store_.vector_soas};
+    auto const index{soas.index(schema)};
+    auto result{ir_.form("vector-soa", {ir_.atom(text(soas.name[index]))})};
+    result.field("value-type", build_type_ref(soas.value_type[index]))
+        .field("components", string_list(texts(soas.components[index])));
+    if (!texts(soas.equivalent_members[index]).empty()) {
+        result.field("equivalent-members", string_list(texts(soas.equivalent_members[index])));
     }
-    if (vector_soas.equivalent_accessors[schema_index]) {
-        output += "\n    :equivalent-accessors true";
+    if (soas.equivalent_accessors[index]) {
+        result.field("equivalent-accessors", ir_.atom("true"));
     }
-    if (vector_soas.equivalent_constructor[schema_index].has_value()) {
-        write("\n    :equivalent-constructor {}",
-              text(*vector_soas.equivalent_constructor[schema_index]));
+    if (soas.equivalent_constructor[index].has_value()) {
+        result.field("equivalent-constructor", ir_.atom(text(*soas.equivalent_constructor[index])));
     }
-    write("\n    :equivalent-type {}", render_type_ref(vector_soas.equivalent_type[schema_index]));
-    if (vector_soas.export_specifier[schema_index].value != 0) {
-        write("\n    :export-specifier {}", text(vector_soas.export_specifier[schema_index]));
+    result.field("equivalent-type", build_type_ref(soas.equivalent_type[index]));
+    if (soas.export_specifier[index].value != 0) {
+        result.field("export-specifier", ir_.atom(text(soas.export_specifier[index])));
     }
-    if (vector_soas.fixed[schema_index].has_value()) {
+    if (soas.fixed[index].has_value()) {
         auto const& fixed_soas{store_.fixed_soas};
-        auto const fixed_index{fixed_soas.index(*vector_soas.fixed[schema_index])};
-
-        write("\n    (fixed {}", text(fixed_soas.storage_name[fixed_index]));
+        auto const fixed_index{fixed_soas.index(*soas.fixed[index])};
+        auto fixed{ir_.form("fixed", {ir_.atom(text(fixed_soas.storage_name[fixed_index]))})};
         auto const containers{texts(fixed_soas.containers[fixed_index])};
         if (!containers.empty()) {
-            output += " :containers ";
-            render_quoted_list(output, containers);
+            fixed.field("containers", string_list(containers));
         }
-        output += ')';
+        result.add(fixed.build());
     }
-    output += ')';
-    return output;
+    return result.build();
 }
-auto CanonicalRenderer::render_homogeneous_layout(lispb::codegen::DeclarationHandle const& schema)
-    -> std::string {
-    auto const& homogeneous_values{store_.homogeneous_values};
-    auto const& homogeneous_layouts{store_.homogeneous_layouts};
-    auto const schema_index{homogeneous_layouts.index(schema)};
-
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write("(layout {}\n    :components ", text(homogeneous_layouts.name[schema_index]));
-    render_quoted_list(output, texts(homogeneous_layouts.components[schema_index]));
-    if (!texts(homogeneous_layouts.input_members[schema_index]).empty()) {
-        output += "\n    :input-members ";
-        render_quoted_list(output, texts(homogeneous_layouts.input_members[schema_index]));
+auto CanonicalRenderer::build_homogeneous_layout(codegen::DeclarationHandle const schema) -> Expr {
+    auto const& values{store_.homogeneous_values};
+    auto const& layouts{store_.homogeneous_layouts};
+    auto const index{layouts.index(schema)};
+    auto result{ir_.form("layout", {ir_.atom(text(layouts.name[index]))})};
+    result.field("components", string_list(texts(layouts.components[index])));
+    if (!texts(layouts.input_members[index]).empty()) {
+        result.field("input-members", string_list(texts(layouts.input_members[index])));
     }
-    if (homogeneous_layouts.export_specifier[schema_index].value != 0) {
-        write("\n    :export-specifier {}",
-              text(homogeneous_layouts.export_specifier[schema_index]));
+    if (layouts.export_specifier[index].value != 0) {
+        result.field("export-specifier", ir_.atom(text(layouts.export_specifier[index])));
     }
-    for (auto const& value : items(homogeneous_layouts.value_types[schema_index])) {
-        auto const value_index{homogeneous_values.index(value)};
-        write("\n    (value-type {} {}",
-              render_type_ref(homogeneous_values.type[value_index]),
-              text(homogeneous_values.suffix[value_index]));
-        if (homogeneous_values.equivalent_type[value_index].has_value()) {
-            write("\n      :equivalent-type {}",
-                  render_type_ref(*homogeneous_values.equivalent_type[value_index]));
+    for (auto const value : items(layouts.value_types[index])) {
+        auto const value_index{values.index(value)};
+        auto child{ir_.form("value-type",
+                            {build_type_ref(values.type[value_index]),
+                             ir_.atom(text(values.suffix[value_index]))})};
+        if (values.equivalent_type[value_index].has_value()) {
+            child.field("equivalent-type", build_type_ref(*values.equivalent_type[value_index]));
         }
-        auto const input_types{items(homogeneous_values.input_types[value_index])};
+        auto const input_types{items(values.input_types[value_index])};
         if (!input_types.empty()) {
-            auto const input_count{input_types.size()};
-            output += "\n      :input-types (";
-            for (std::size_t index{}; index < input_count; ++index) {
-                write("{}{}", (index == 0 ? "" : " "), render_type_ref(input_types[index]));
+            std::vector<Expr> types;
+            for (auto const input_type : input_types) {
+                types.push_back(build_type_ref(input_type));
             }
-            output += ')';
+            child.field("input-types", ir_.list(types));
         }
-        output += ')';
+        result.add(child.build());
     }
-    output += ')';
-    return output;
+    return result.build();
 }
-auto CanonicalRenderer::render_static_table(lispb::codegen::DeclarationHandle const& schema)
-    -> std::string {
-    auto const& static_table_groups{store_.static_table_groups};
-    auto const& static_table_columns{store_.static_table_columns};
-    auto const& static_tables{store_.static_tables};
-    auto const schema_index{static_tables.index(schema)};
-
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write("(table {}", text(static_tables.name[schema_index]));
-    if (static_tables.export_specifier[schema_index].value != 0) {
-        write("\n    :export-specifier {}", text(static_tables.export_specifier[schema_index]));
+auto CanonicalRenderer::build_static_table(codegen::DeclarationHandle const schema) -> Expr {
+    auto const& groups{store_.static_table_groups};
+    auto const& columns{store_.static_table_columns};
+    auto const& tables{store_.static_tables};
+    auto const index{tables.index(schema)};
+    auto result{ir_.form("table", {ir_.atom(text(tables.name[index]))})};
+    if (tables.export_specifier[index].value != 0) {
+        result.field("export-specifier", ir_.atom(text(tables.export_specifier[index])));
     }
-    for (auto const& row : items(static_tables.rows[schema_index])) {
-        write("\n    (row {})",
-              text(store_.static_table_rows.name[store_.static_table_rows.index(row)]));
+    for (auto const row : items(tables.rows[index])) {
+        result.add(
+            ir_.form("row",
+                     {ir_.atom(
+                         text(store_.static_table_rows.name[store_.static_table_rows.index(row)]))})
+                .build());
     }
-    for (auto const& column : items(static_tables.columns[schema_index])) {
-        auto const column_index{static_table_columns.index(column)};
-        write("\n    (column {} {})",
-              text(static_table_columns.name[column_index]),
-              render_type_ref(static_table_columns.type[column_index]));
+    for (auto const column : items(tables.columns[index])) {
+        auto const column_index{columns.index(column)};
+        result.add(ir_.form("column",
+                            {ir_.atom(text(columns.name[column_index])),
+                             build_type_ref(columns.type[column_index])})
+                       .build());
     }
-    for (auto const& group : items(static_tables.groups[schema_index])) {
-        auto const group_index{static_table_groups.index(group)};
-        write("\n    (group {} {} :columns ",
-              text(static_table_groups.name[group_index]),
-              render_type_ref(static_table_groups.type[group_index]));
-        render_quoted_list(output, texts(static_table_groups.columns[group_index]));
-        output += ')';
+    for (auto const group : items(tables.groups[index])) {
+        auto const group_index{groups.index(group)};
+        result.add(ir_.form("group",
+                            {ir_.atom(text(groups.name[group_index])),
+                             build_type_ref(groups.type[group_index])})
+                       .field("columns", string_list(texts(groups.columns[group_index])))
+                       .build());
     }
-    output += ')';
-    return output;
+    return result.build();
 }
-auto CanonicalRenderer::render_facade(lispb::codegen::DeclarationHandle const& schema)
-    -> std::string {
-    auto const& parameters{store_.parameters};
-    auto const& facade_methods{store_.facade_methods};
+auto CanonicalRenderer::build_facade(codegen::DeclarationHandle const schema) -> Expr {
+    auto const& methods{store_.facade_methods};
     auto const& facades{store_.facades};
-    auto const schema_index{facades.index(schema)};
-
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write("(facade {} {} {}",
-          text(facades.name[schema_index]),
-          render_type_ref(facades.target_type[schema_index]),
-          text(facades.target_member_name[schema_index]));
-    if (!texts(facades.validation_lines[schema_index]).empty()) {
-        output += "\n    :validation ";
-        render_quoted_list(output, texts(facades.validation_lines[schema_index]));
+    auto const index{facades.index(schema)};
+    auto result{ir_.form("facade",
+                         {ir_.atom(text(facades.name[index])),
+                          build_type_ref(facades.target_type[index]),
+                          ir_.atom(text(facades.target_member_name[index]))})};
+    if (!texts(facades.validation_lines[index]).empty()) {
+        result.field("validation", string_list(texts(facades.validation_lines[index])));
     }
-    if (!texts(facades.validation_dependencies[schema_index]).empty()) {
-        output += "\n    :validation-dependencies ";
-        render_quoted_list(output, texts(facades.validation_dependencies[schema_index]));
+    if (!texts(facades.validation_dependencies[index]).empty()) {
+        result.field("validation-dependencies",
+                     string_list(texts(facades.validation_dependencies[index])));
     }
-    if (facades.export_specifier[schema_index].value != 0) {
-        write("\n    :export-specifier {}", text(facades.export_specifier[schema_index]));
+    if (facades.export_specifier[index].value != 0) {
+        result.field("export-specifier", ir_.atom(text(facades.export_specifier[index])));
     }
-    if (access_keyword(facades.bind_access[schema_index]) != "public") {
-        write("\n    :bind-access {}", access_keyword(facades.bind_access[schema_index]));
+    if (access_keyword(facades.bind_access[index]) != "public") {
+        result.field("bind-access", ir_.atom(access_keyword(facades.bind_access[index])));
     }
-    if (access_keyword(facades.method_access[schema_index]) != "public") {
-        write("\n    :method-access {}", access_keyword(facades.method_access[schema_index]));
+    if (access_keyword(facades.method_access[index]) != "public") {
+        result.field("method-access", ir_.atom(access_keyword(facades.method_access[index])));
     }
-    if (!texts(facades.friends[schema_index]).empty()) {
-        output += "\n    :friends ";
-        render_quoted_list(output, texts(facades.friends[schema_index]));
+    if (!texts(facades.friends[index]).empty()) {
+        result.field("friends", string_list(texts(facades.friends[index])));
     }
-    if (codegen::record_keyword(facades.friend_kind[schema_index]) != "class") {
-        write("\n    :friend-kind {}", codegen::record_keyword(facades.friend_kind[schema_index]));
+    if (codegen::record_keyword(facades.friend_kind[index]) != "class") {
+        result.field("friend-kind", ir_.atom(codegen::record_keyword(facades.friend_kind[index])));
     }
-    if (facades.definitions_in_source[schema_index]) {
-        output += "\n    :definitions-in-source true";
+    if (facades.definitions_in_source[index]) {
+        result.field("definitions-in-source", ir_.atom("true"));
     }
-    if (facades.reference_target[schema_index]) {
-        output += "\n    :target-storage reference";
+    if (facades.reference_target[index]) {
+        result.field("target-storage", ir_.atom("reference"));
     }
-    for (auto const& method : items(facades.methods[schema_index])) {
-        auto const method_index{facade_methods.index(method)};
-        write("\n    (method {} {}",
-              text(facade_methods.name[method_index]),
-              render_type_ref(facade_methods.return_type[method_index]));
-        if (facade_methods.is_const[method_index]) {
-            output += "\n      :const true";
+    for (auto const method : items(facades.methods[index])) {
+        auto const method_index{methods.index(method)};
+        auto child{ir_.form("method",
+                            {ir_.atom(text(methods.name[method_index])),
+                             build_type_ref(methods.return_type[method_index])})};
+        if (methods.is_const[method_index]) {
+            child.field("const", ir_.atom("true"));
         }
-        if (facade_methods.is_noexcept[method_index]) {
-            output += "\n      :noexcept true";
+        if (methods.is_noexcept[method_index]) {
+            child.field("noexcept", ir_.atom("true"));
         }
-        if (facade_methods.target_name[method_index].has_value()) {
-            write("\n      :target-name {}", text(*facade_methods.target_name[method_index]));
+        if (methods.target_name[method_index].has_value()) {
+            child.field("target-name", ir_.atom(text(*methods.target_name[method_index])));
         }
-        for (auto const& parameter : items(facade_methods.parameters[method_index])) {
-            auto const parameter_index{parameters.index(parameter)};
-            write("\n      (parameter {} {}",
-                  text(parameters.name[parameter_index]),
-                  render_type_ref(parameters.type[parameter_index]));
-            if (parameters.default_value[parameter_index].has_value()) {
-                write(" :default {}", quote(*parameters.default_value[parameter_index]));
-            }
-            output += ')';
+        for (auto const parameter : items(methods.parameters[method_index])) {
+            child.add(build_parameter(parameter));
         }
-        output += ')';
+        result.add(child.build());
     }
-    output += ')';
-    return output;
+    return result.build();
 }
-auto CanonicalRenderer::render_settings_schema(lispb::codegen::DeclarationHandle const& schema)
-    -> std::string {
+auto CanonicalRenderer::build_settings_schema(codegen::DeclarationHandle const schema) -> Expr {
     auto const& schemas{store_.settings_schemas};
-    auto const row{schemas.index(schema)};
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write("(settings-schema {}\n    :target {}\n    :target-header {}",
-          text(schemas.name[row]),
-          text(schemas.target[row]),
-          quote(text(schemas.target_header[row])));
-    auto const paths{items(schemas.paths[row])};
-    auto const members{items(schemas.members[row])};
+    auto const index{schemas.index(schema)};
+    auto result{ir_.form("settings-schema", {ir_.atom(text(schemas.name[index]))})};
+    result.field("target", ir_.atom(text(schemas.target[index])))
+        .field("target-header", ir_.string(text(schemas.target_header[index])));
+    auto const paths{items(schemas.paths[index])};
+    auto const members{items(schemas.members[index])};
     auto const count{paths.size()};
-    for (std::size_t index{}; index < count; ++index) {
-        write("\n    (field {} {})", quote(text(paths[index])), quote(text(members[index])));
+    for (std::size_t field_index{}; field_index < count; ++field_index) {
+        result.add(
+            ir_.form("field",
+                     {ir_.string(text(paths[field_index])), ir_.string(text(members[field_index]))})
+                .build());
     }
-    output += ')';
-    return output;
+    return result.build();
 }
-
-auto CanonicalRenderer::render_declaration_schema(codegen::DeclarationHandle const declaration)
-    -> std::string {
-    return [&]() -> std::string {
-        auto const value{declaration};
-        switch (value.kind()) {
-            case lispb::codegen::DeclarationKind::enumeration: {
-
-                return render_enum(value);
-            }
-            case lispb::codegen::DeclarationKind::integer_scalar: {
-
-                return render_integer_scalar(value);
-            }
-            case lispb::codegen::DeclarationKind::linear_quantized: {
-
-                return render_linear_quantized(value);
-            }
-            case lispb::codegen::DeclarationKind::integer_varint: {
-
-                return render_integer_varint(value);
-            }
-            case lispb::codegen::DeclarationKind::fixed_point: {
-
-                return render_fixed_point(value);
-            }
-            case lispb::codegen::DeclarationKind::optional_sentinel: {
-
-                return render_optional_sentinel(value);
-            }
-            case lispb::codegen::DeclarationKind::optional_presence_bit: {
-
-                return render_optional_presence_bit(value);
-            }
-            case lispb::codegen::DeclarationKind::mini_float: {
-
-                return render_mini_float(value);
-            }
-            case lispb::codegen::DeclarationKind::packed_value: {
-
-                return render_packed_value(value);
-            }
-            case lispb::codegen::DeclarationKind::record: {
-
-                return render_record(value);
-            }
-            case lispb::codegen::DeclarationKind::union_type: {
-
-                return render_union(value);
-            }
-            case lispb::codegen::DeclarationKind::tagged_union: {
-
-                return render_tagged_union(value);
-            }
-            case lispb::codegen::DeclarationKind::soa: {
-
-                return render_soa(value);
-            }
-            case lispb::codegen::DeclarationKind::vector_soa: {
-
-                return render_vector_soa(value);
-            }
-            case lispb::codegen::DeclarationKind::homogeneous_layout: {
-
-                return render_homogeneous_layout(value);
-            }
-            case lispb::codegen::DeclarationKind::static_table: {
-
-                return render_static_table(value);
-            }
-            case lispb::codegen::DeclarationKind::facade: {
-
-                return render_facade(value);
-            }
-            case lispb::codegen::DeclarationKind::settings_schema: {
-                return render_settings_schema(value);
-            }
-            default:
-                std::unreachable();
-        }
-    }();
+auto CanonicalRenderer::build_declaration_schema(codegen::DeclarationHandle const declaration)
+    -> Expr {
+    switch (declaration.kind()) {
+        case codegen::DeclarationKind::enumeration:
+            return build_enum(declaration);
+        case codegen::DeclarationKind::integer_scalar:
+            return build_integer_scalar(declaration);
+        case codegen::DeclarationKind::linear_quantized:
+            return build_linear_quantized(declaration);
+        case codegen::DeclarationKind::integer_varint:
+            return build_integer_varint(declaration);
+        case codegen::DeclarationKind::fixed_point:
+            return build_fixed_point(declaration);
+        case codegen::DeclarationKind::optional_sentinel:
+            return build_optional_sentinel(declaration);
+        case codegen::DeclarationKind::optional_presence_bit:
+            return build_optional_presence_bit(declaration);
+        case codegen::DeclarationKind::mini_float:
+            return build_mini_float(declaration);
+        case codegen::DeclarationKind::packed_value:
+            return build_packed_value(declaration);
+        case codegen::DeclarationKind::record:
+            return build_record(declaration);
+        case codegen::DeclarationKind::union_type:
+            return build_union(declaration);
+        case codegen::DeclarationKind::tagged_union:
+            return build_tagged_union(declaration);
+        case codegen::DeclarationKind::soa:
+            return build_soa(declaration);
+        case codegen::DeclarationKind::vector_soa:
+            return build_vector_soa(declaration);
+        case codegen::DeclarationKind::homogeneous_layout:
+            return build_homogeneous_layout(declaration);
+        case codegen::DeclarationKind::static_table:
+            return build_static_table(declaration);
+        case codegen::DeclarationKind::facade:
+            return build_facade(declaration);
+        case codegen::DeclarationKind::settings_schema:
+            return build_settings_schema(declaration);
+        default:
+            std::unreachable();
+    }
 }
-auto CanonicalRenderer::render_module(codegen::ModuleHandle const module) -> std::string {
-    auto const& soa_allocator_variants{store_.soa_allocator_variants};
+auto CanonicalRenderer::build_module(codegen::ModuleHandle const module) -> Expr {
+    auto const& allocators{store_.soa_allocator_variants};
     auto const settings{store_.module_settings(module)};
     auto const& settings_store{store_.module_settings_store};
-    auto const settings_index{settings_store.index(settings)};
+    auto const index{settings_store.index(settings)};
     auto const head{module.kind() == codegen::ModuleKind::normal     ? "module"
                     : module.kind() == codegen::ModuleKind::settings ? "settings-module"
                                                                      : "umbrella-module"};
-    std::string output;
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write("({} {}\n  :header {}",
-          head,
-          text(settings_store.name[settings_index]),
-          quote(text(settings_store.header[settings_index])));
-    if (settings_store.source[settings_index].has_value()) {
-        write("\n  :source {}", quote(text(*settings_store.source[settings_index])));
+    auto result{ir_.form(head, {ir_.atom(text(settings_store.name[index]))})};
+    result.field("header", ir_.string(text(settings_store.header[index])));
+    if (settings_store.source[index].has_value()) {
+        result.field("source", ir_.string(text(*settings_store.source[index])));
     }
-    if (settings_store.header_include[settings_index].has_value()) {
-        write("\n  :header-include {}", quote(*settings_store.header_include[settings_index]));
+    if (settings_store.header_include[index].has_value()) {
+        result.field("header-include", ir_.string(text(*settings_store.header_include[index])));
     }
-    if (settings_store.namespace_name[settings_index].has_value()) {
-        write("\n  :namespace {}", text(*settings_store.namespace_name[settings_index]));
+    if (settings_store.namespace_name[index].has_value()) {
+        result.field("namespace", ir_.atom(text(*settings_store.namespace_name[index])));
     }
-    if (!settings_store.include_order[settings_index].empty()) {
-        output += "\n  :include-order ";
-        render_quoted_list(output, texts(settings_store.include_order[settings_index]));
+    if (!settings_store.include_order[index].empty()) {
+        result.field("include-order", string_list(texts(settings_store.include_order[index])));
     }
-    if (!settings_store.prelude_lines[settings_index].empty()) {
-        output += "\n  :prelude ";
-        render_quoted_list(output, texts(settings_store.prelude_lines[settings_index]));
+    if (!settings_store.prelude_lines[index].empty()) {
+        result.field("prelude", string_list(texts(settings_store.prelude_lines[index])));
     }
 
     if (module.kind() == codegen::ModuleKind::umbrella) {
-        auto const& umbrella_modules{store_.umbrella_modules};
-        auto const umbrella_index{umbrella_modules.index(module)};
-
-        output += "\n  :headers ";
-        render_quoted_list(output, texts(umbrella_modules.headers[umbrella_index]));
-        output += ')';
-        return output;
+        auto const& modules{store_.umbrella_modules};
+        result.field("headers", string_list(texts(modules.headers[modules.index(module)])));
+        return result.build();
     }
     if (module.kind() == codegen::ModuleKind::settings) {
-        render_settings_module(output, module);
-        output += ')';
-        return output;
+        build_settings_module(result, module);
+        return result.build();
     }
+
     auto const& modules{store_.normal_modules};
     auto const module_index{modules.index(module)};
-
     if (modules.enum_helper_namespace[module_index].has_value()) {
-        write("\n  :helper-namespace {}", text(*modules.enum_helper_namespace[module_index]));
+        result.field("helper-namespace",
+                     ir_.atom(text(*modules.enum_helper_namespace[module_index])));
     }
     if (modules.soa_backend[module_index] == codegen::SoaBackend::standard_library) {
-        output += "\n  :backend standard-library";
+        result.field("backend", ir_.atom("standard-library"));
     }
-    for (auto const& allocator : items(modules.soa_array_allocators[module_index])) {
-        auto const allocator_index{soa_allocator_variants.index(allocator)};
-        write("\n  (array-allocator {} {})",
-              text(soa_allocator_variants.prefix[allocator_index]),
-              render_type_ref(soa_allocator_variants.allocator[allocator_index]));
+    for (auto const allocator : items(modules.soa_array_allocators[module_index])) {
+        auto const allocator_index{allocators.index(allocator)};
+        result.add(ir_.form("array-allocator",
+                            {ir_.atom(text(allocators.prefix[allocator_index])),
+                             build_type_ref(allocators.allocator[allocator_index])})
+                       .build());
     }
-    for (auto const& declaration : items(modules.declarations[module_index])) {
-        write("\n  {}", render_declaration_schema(declaration));
+    for (auto const declaration : items(modules.declarations[module_index])) {
+        result.add(build_declaration_schema(declaration));
     }
-    output += ')';
-    return output;
+    return result.build();
 }
-void CanonicalRenderer::render_settings_module(std::string& output,
-                                               codegen::ModuleHandle const module) {
+void CanonicalRenderer::build_settings_module(codegen::sexpr::FormBuilder& result,
+                                              codegen::ModuleHandle const module) {
     auto const& settings{store_.settings};
     auto const& controls{store_.setting_controls};
     auto const& categories{store_.setting_categories};
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
     auto const& modules{store_.settings_modules};
     auto const index{modules.index(module)};
-    write("\n  :api-name {}\n  :state-name {}",
-          text(modules.api_name[index]),
-          text(modules.state_name[index]));
+    result.field("api-name", ir_.atom(text(modules.api_name[index])))
+        .field("state-name", ir_.atom(text(modules.state_name[index])));
     if (modules.export_specifier[index].value != 0) {
-        write("\n  :export-specifier {}", text(modules.export_specifier[index]));
+        result.field("export-specifier", ir_.atom(text(modules.export_specifier[index])));
     }
     for (auto const category : items(modules.categories[index])) {
         auto const category_index{categories.index(category)};
-        write("\n  (category {} {})",
-              text(categories.name[category_index]),
-              quote(categories.label[category_index]));
+        result.add(ir_.form("category",
+                            {ir_.atom(text(categories.name[category_index])),
+                             ir_.string(text(categories.label[category_index]))})
+                       .build());
     }
     for (auto const setting : items(modules.settings_list[index])) {
         auto const row{settings.index(setting)};
@@ -1266,18 +989,18 @@ void CanonicalRenderer::render_settings_module(std::string& output,
                           : settings.device[row] == codegen::SettingDevice::keyboard_mouse
                               ? "keyboard-mouse"
                               : "controller"};
-        write("\n  (setting {} {}\n    :category {}\n    :value-type {}\n    :backend "
-              "{}\n    :apply {}\n    :device {}",
-              text(settings.name[row]),
-              quote(settings.label[row]),
-              text(settings.category[row]),
-              render_type_ref(settings.value_type[row]),
-              text(settings.backend[row]),
-              apply,
-              device);
+        auto child{
+            ir_.form("setting",
+                     {ir_.atom(text(settings.name[row])), ir_.string(text(settings.label[row]))})};
+        child.field("category", ir_.atom(text(settings.category[row])))
+            .field("value-type", build_type_ref(settings.value_type[row]))
+            .field("backend", ir_.atom(text(settings.backend[row])))
+            .field("apply", ir_.atom(apply))
+            .field("device", ir_.atom(device));
         if (settings.tooltip[row]) {
-            write("\n    :tooltip {}", quote(*settings.tooltip[row]));
+            child.field("tooltip", ir_.string(text(*settings.tooltip[row])));
         }
+
         auto const control{controls.index(settings.control[row])};
         std::string_view kind;
         switch (controls.kind[control]) {
@@ -1297,26 +1020,29 @@ void CanonicalRenderer::render_settings_module(std::string& output,
                 kind = "custom";
                 break;
         }
-        write("\n    (control {}", kind);
+        auto control_form{ir_.form("control", {ir_.atom(kind)})};
         if (controls.options_provider[control]) {
-            write(" :options-provider {}", quote(*controls.options_provider[control]));
+            control_form.field("options-provider",
+                               ir_.string(text(*controls.options_provider[control])));
         }
         if (controls.availability_provider[control]) {
-            write(" :availability-provider {}", quote(*controls.availability_provider[control]));
+            control_form.field("availability-provider",
+                               ir_.string(text(*controls.availability_provider[control])));
         }
         if (controls.minimum[control]) {
-            write(" :min {:.17g}", *controls.minimum[control]);
+            control_form.field("min", ir_.atom(std::format("{:.17g}", *controls.minimum[control])));
         }
         if (controls.maximum[control]) {
-            write(" :max {:.17g}", *controls.maximum[control]);
+            control_form.field("max", ir_.atom(std::format("{:.17g}", *controls.maximum[control])));
         }
         if (controls.step[control]) {
-            write(" :step {:.17g}", *controls.step[control]);
+            control_form.field("step", ir_.atom(std::format("{:.17g}", *controls.step[control])));
         }
         if (controls.custom_row[control]) {
-            write(" :custom-row {}", quote(*controls.custom_row[control]));
+            control_form.field("custom-row", ir_.string(text(*controls.custom_row[control])));
         }
-        output += "))";
+        child.add(control_form.build());
+        result.add(child.build());
     }
 }
 

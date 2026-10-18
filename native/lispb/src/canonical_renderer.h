@@ -1,18 +1,20 @@
 #pragma once
 
-#include <ioj/format_writer.h>
-
 #include <codegen/ast/access.h>
 #include <codegen/schema/declarations.h>
+#include <codegen/sexpr/output.h>
 #include <lispb/strings.h>
 
-#include <iterator>
-#include <optional>
+#include <format>
 #include <ranges>
 #include <string>
 #include <string_view>
+#include <type_traits>
+#include <vector>
 
 namespace lispb::schema::detail {
+
+using codegen::sexpr::Expr;
 
 class CanonicalRenderer {
   public:
@@ -22,7 +24,6 @@ class CanonicalRenderer {
   private:
     auto text(StringId value) const -> std::string_view;
     auto text(IdentifierId value) const -> std::string_view;
-    auto quote(StringId value) -> std::string;
     static auto access_keyword(codegen::Access access) -> std::string_view;
     template <typename Id>
     auto items(codegen::SchemaRange<Id> range) const {
@@ -32,81 +33,78 @@ class CanonicalRenderer {
     auto texts(codegen::SchemaRange<Id> range) const {
         return store_.items(range) | std::views::transform([this](Id id) { return text(id); });
     }
-    auto quote(std::string_view const value) -> std::string;
-    auto render_type_ref(codegen::TypeRefId id) -> std::string;
-    auto render_enum_value(lispb::codegen::EnumeratorId const& value) -> std::string;
-    auto render_enum_unreal_projection(lispb::codegen::EnumUnrealProjectionId const& projection)
-        -> std::string;
-    auto render_enum(lispb::codegen::DeclarationHandle const& schema) -> std::string;
-    auto packed_field_kind_name(codegen::PackedFieldKind const kind) -> std::string_view;
-    auto soa_member_kind_name(codegen::SoaMemberKind const kind) -> std::string_view;
-    auto storage_operation_name(codegen::StorageOperation const operation) -> std::string_view;
-    void render_quoted_list(std::string& output, auto const& values) {
-        auto write{ioj::FormatWriter{std::back_inserter(output)}};
-        output += '(';
-        auto const count{values.size()};
-        for (std::size_t index{}; index < count; ++index) {
-            write("{}{}", (index == 0 ? "" : " "), quote(values[index]));
+    auto number(auto const value) -> Expr { return ir_.atom(std::format("{}", value)); }
+    auto string_list(auto const& values) -> Expr {
+        std::vector<Expr> expressions;
+        for (auto const value : values) {
+            expressions.push_back(ir_.string(value));
         }
-        output += ')';
+        return ir_.list(expressions);
     }
-    void render_function(std::string& output,
-                         lispb::codegen::FunctionSchemaId const& function,
-                         std::string_view const indent,
-                         std::string_view const kind = "function");
-    auto render_semantic_relation(lispb::codegen::SemanticRelationId const& relationship)
-        -> std::string;
-    auto render_packed_segment(codegen::PackedSegmentId const segment) -> std::string;
-    auto render_packed_value(lispb::codegen::DeclarationHandle const& schema) -> std::string;
-    auto render_named_code(lispb::codegen::PackedNamedCodeId const& code) -> std::string;
-    auto render_integer_scalar(lispb::codegen::DeclarationHandle const& schema) -> std::string;
-    auto render_linear_quantized(lispb::codegen::DeclarationHandle const& schema) -> std::string;
-    auto render_integer_varint(lispb::codegen::DeclarationHandle const& schema) -> std::string;
-    auto render_fixed_point(lispb::codegen::DeclarationHandle const& schema) -> std::string;
-    auto render_mini_float(lispb::codegen::DeclarationHandle const& schema) -> std::string;
-    auto render_optional_sentinel(lispb::codegen::DeclarationHandle const& schema) -> std::string;
-    auto render_optional_presence_bit(lispb::codegen::DeclarationHandle const& schema)
-        -> std::string;
+    auto atom_list(auto const& values) -> Expr {
+        std::vector<Expr> expressions;
+        for (auto const value : values) {
+            expressions.push_back(ir_.atom(value));
+        }
+        return ir_.list(expressions);
+    }
+    auto build_type_ref(codegen::TypeRefId id) -> Expr;
+    auto build_enum_value(codegen::EnumeratorId value) -> Expr;
+    auto build_enum_unreal_projection(codegen::EnumUnrealProjectionId projection) -> Expr;
+    auto build_enum(codegen::DeclarationHandle schema) -> Expr;
+    auto packed_field_kind_name(codegen::PackedFieldKind kind) -> std::string_view;
+    auto soa_member_kind_name(codegen::SoaMemberKind kind) -> std::string_view;
+    auto storage_operation_name(codegen::StorageOperation operation) -> std::string_view;
+    auto build_parameter(codegen::ParameterId parameter) -> Expr;
+    auto build_function(codegen::FunctionSchemaId function, std::string_view kind = "function")
+        -> Expr;
+    auto build_semantic_relation(codegen::SemanticRelationId relationship) -> Expr;
+    auto build_packed_segment(codegen::PackedSegmentId segment) -> Expr;
+    auto build_packed_value(codegen::DeclarationHandle schema) -> Expr;
+    auto build_named_code(codegen::PackedNamedCodeId code) -> Expr;
+    auto build_integer_scalar(codegen::DeclarationHandle schema) -> Expr;
+    auto build_linear_quantized(codegen::DeclarationHandle schema) -> Expr;
+    auto build_integer_varint(codegen::DeclarationHandle schema) -> Expr;
+    auto build_fixed_point(codegen::DeclarationHandle schema) -> Expr;
+    auto build_mini_float(codegen::DeclarationHandle schema) -> Expr;
+    auto build_optional_sentinel(codegen::DeclarationHandle schema) -> Expr;
+    auto build_optional_presence_bit(codegen::DeclarationHandle schema) -> Expr;
     template <typename Child>
-    auto render_aggregate_child(auto const& columns, std::string_view const head, Child const child)
-        -> std::string {
-        auto const child_index{columns.index(child)};
-        std::string output;
-        auto write{ioj::FormatWriter{std::back_inserter(output)}};
-        write("({} {} {}",
-              head,
-              text(columns.name[child_index]),
-              render_type_ref(columns.type[child_index]));
-        if (columns.count[child_index].has_value()) {
-            write(" :count {}", *columns.count[child_index]);
+    auto build_aggregate_child(auto const& columns, std::string_view head, Child const child)
+        -> Expr {
+        auto const index{columns.index(child)};
+        auto result{ir_.form(
+            head, {ir_.atom(text(columns.name[index])), build_type_ref(columns.type[index])})};
+        if (columns.count[index].has_value()) {
+            result.field("count", number(*columns.count[index]));
         }
-        if constexpr (std::is_same_v<Child, lispb::codegen::RecordMemberId>) {
-            if (columns.initializer[child_index]) {
-                write(" :initializer {}", quote(*columns.initializer[child_index]));
+        if constexpr (std::is_same_v<Child, codegen::RecordMemberId>) {
+            if (columns.initializer[index]) {
+                result.field("initializer", ir_.string(text(*columns.initializer[index])));
             }
-            if (columns.relationship[child_index].has_value()) {
-                write("\n      {}", render_semantic_relation(*columns.relationship[child_index]));
+            if (columns.relationship[index].has_value()) {
+                result.add(build_semantic_relation(*columns.relationship[index]));
             }
         }
-        output += ')';
-        return output;
+        return result.build();
     }
-    auto render_record(lispb::codegen::DeclarationHandle const& schema) -> std::string;
-    auto render_union(lispb::codegen::DeclarationHandle const& schema) -> std::string;
-    auto
-        render_tagged_union_alternative(lispb::codegen::TaggedUnionAlternativeId const& alternative)
-            -> std::string;
-    auto render_tagged_union(lispb::codegen::DeclarationHandle const& schema) -> std::string;
-    auto render_soa_member(lispb::codegen::SoaMemberId const& member) -> std::string;
-    auto render_soa(lispb::codegen::DeclarationHandle const& schema) -> std::string;
-    auto render_vector_soa(lispb::codegen::DeclarationHandle const& schema) -> std::string;
-    auto render_homogeneous_layout(lispb::codegen::DeclarationHandle const& schema) -> std::string;
-    auto render_static_table(lispb::codegen::DeclarationHandle const& schema) -> std::string;
-    auto render_facade(lispb::codegen::DeclarationHandle const& schema) -> std::string;
-    auto render_settings_schema(lispb::codegen::DeclarationHandle const& schema) -> std::string;
-    void render_settings_module(std::string& output, codegen::ModuleHandle const module);
+    auto build_record(codegen::DeclarationHandle schema) -> Expr;
+    auto build_union(codegen::DeclarationHandle schema) -> Expr;
+    auto build_tagged_union_alternative(codegen::TaggedUnionAlternativeId alternative) -> Expr;
+    auto build_tagged_union(codegen::DeclarationHandle schema) -> Expr;
+    auto build_soa_member(codegen::SoaMemberId member) -> Expr;
+    auto build_soa(codegen::DeclarationHandle schema) -> Expr;
+    auto build_vector_soa(codegen::DeclarationHandle schema) -> Expr;
+    auto build_homogeneous_layout(codegen::DeclarationHandle schema) -> Expr;
+    auto build_static_table(codegen::DeclarationHandle schema) -> Expr;
+    auto build_facade(codegen::DeclarationHandle schema) -> Expr;
+    auto build_settings_schema(codegen::DeclarationHandle schema) -> Expr;
+    auto build_declaration_schema(codegen::DeclarationHandle declaration) -> Expr;
+    auto build_module(codegen::ModuleHandle module) -> Expr;
+    void build_settings_module(codegen::sexpr::FormBuilder& result, codegen::ModuleHandle module);
   private:
     codegen::Declarations const& store_;
+    codegen::sexpr::SExprIR ir_;
 };
 
 } // namespace lispb::schema::detail

@@ -177,6 +177,7 @@ target_link_libraries(lispb-schema
   PRIVATE
     lispb-paths
     native-core-headers
+    lispb-sexpr-output
 )
 ioj_enable_warnings(lispb-schema CODEGEN)
 
