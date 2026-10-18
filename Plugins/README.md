@@ -8,7 +8,6 @@ Use this map to find the owner before following a plugin's own README or source 
 | Core and shared game systems | `SandboxCore`, `SandboxGameShared`, `SandboxISMC`, `SandboxMesh`, `SandboxNiagara` |
 | Rendering, materials, and UI | `SandboxShaders`, `SandboxMaterialExprs`, `SandboxUI`, `USFLoader` |
 | Game and authoring | `SpaceGame`, `SandboxEditorTools`, `ShooterGame`, `SGLegacy` |
-| Third-party/editor integration | `VisualStudioTools` |
 
 Several plugins already have local documentation: [SpaceGame](SpaceGame/README.md),
 [SandboxCore storage](SandboxCore/Source/SandboxCore/single_allocation_storage.md),
