@@ -8,6 +8,8 @@ target_sources(native-ismc
     src/packing.cpp
     src/packing_scalar.cpp
     include/ioj/ismc/packing.h
+    include/ioj/ismc/quat32.h
+    include/ioj/ismc/quat32_packing.h
     include/ioj/ismc/transform.h
     include/ioj/ismc/render.h
 )

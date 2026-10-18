@@ -79,8 +79,11 @@ declarations, LOD restrictions, frustum visibility and queued update/recreation/
 
 `ioj::ismc::PackedTransform` (also `FSandboxISMCRenderInstance`) is little endian,
 standard layout, trivially copyable, 12 bytes, alignment 4. Compile-time assertions fix every offset.
-The `sandbox_ismc_render` module in `lispb/schema/sandbox_ismc.lispb` owns `PackedTransform`
-and `Quat32` storage, emitted into `ioj/ismc/render.h`. In the memory
+The `sandbox_ismc_render` and `sandbox_ismc_quat32` modules in `lispb/schema/sandbox_ismc.lispb`
+own `PackedTransform` and `Quat32` storage, emitted into `ioj/ismc/render.h` and
+`ioj/ismc/quat32.h`, respectively. Quaternion packing and unpacking live in
+`ioj/ismc/quat32_packing.h`; position quantization and combined error bounds live in
+`ioj/ismc/transform.h`. In the memory
 planner, refresh `sandbox-code` and select `sandbox_ismc_render / PackedTransform` to inspect the
 record and its nested fields. Encoding and decoding remain in handwritten C++ and HLSL.
 
