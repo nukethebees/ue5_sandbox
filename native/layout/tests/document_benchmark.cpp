@@ -162,6 +162,8 @@ auto run(char const* project, char const* target, int seconds) -> int {
     }
     report_samples("redo+analysis", redos);
     report_memory("redone");
+    std::cout << "diagnostics=" << editor.diagnostics().size()
+              << " retained_string_bytes=" << editor.command_strings().byte_size() << '\n';
     if (commits.size() != transactions || undos.size() != transactions ||
         redos.size() != transactions) {
         std::cerr << "Benchmark exceeded its " << seconds
