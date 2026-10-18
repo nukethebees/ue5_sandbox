@@ -142,12 +142,8 @@ TEST(SandboxISMCPacking, ScalarBatchPreservesPaddingAndBoundsUseSourceGeometry) 
         output,
         &bounds);
     EXPECT_TRUE(bounds.valid);
-    EXPECT_EQ(bounds.minimum.x(), -4);
-    EXPECT_EQ(bounds.minimum.y(), -34);
-    EXPECT_EQ(bounds.minimum.z(), 6);
-    EXPECT_EQ(bounds.maximum.x(), 24);
-    EXPECT_EQ(bounds.maximum.y(), 8);
-    EXPECT_EQ(bounds.maximum.z(), 42);
+    EXPECT_EQ(bounds.minimum, make_vector3f(-4, -34, 6));
+    EXPECT_EQ(bounds.maximum, make_vector3f(24, 8, 42));
     for (auto const& packed : output) {
         EXPECT_EQ(packed.reserved, 0xbeef);
         EXPECT_EQ(packed.rotation.bits, 0x80200803U);
@@ -182,9 +178,7 @@ TEST(SandboxISMCPacking, PositionDomainChoosesAnAlignedCentreAndRejectsExcessRan
     auto const root{position_root(make_vector3f(-480000, -1608, 1600000),
                                   make_vector3f(480000, 1624, 1600320))};
     ASSERT_TRUE(root.has_value());
-    EXPECT_EQ(root->x(), 0);
-    EXPECT_EQ(root->y(), 16);
-    EXPECT_EQ(root->z(), 1600160);
+    EXPECT_EQ(*root, make_vector3f(0, 16, 1600160));
     EXPECT_FALSE(
         position_root(make_vector3f(-524288, 0, 0), make_vector3f(524288, 0, 0)).has_value());
     EXPECT_FALSE(position_root(make_vector3f(1, 0, 0), make_vector3f(0, 0, 0)).has_value());

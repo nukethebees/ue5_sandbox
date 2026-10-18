@@ -3,82 +3,55 @@
 #include <gtest/gtest.h>
 
 #include <array>
-#include <span>
 
-TEST(NativeCoreVectorLerp, SupportsTwoDimensionalScalarAndArrayAlpha) {
-    std::array<float, 3> from_x{0.f, 10.f, -4.f};
-    std::array<float, 3> from_y{5.f, 10.f, 4.f};
-    std::array<float, 3> const to_x{10.f, 20.f, 4.f};
-    std::array<float, 3> const to_y{15.f, 0.f, -4.f};
-    std::array<float, 3> const alpha{0.f, .5f, 1.f};
+using NativeCoreVectorLerp = testing::TestWithParam<int>;
 
-    ml::lerp_2d_in_place(from_x, from_y, to_x, to_y, alpha);
+TEST_P(NativeCoreVectorLerp, ScalarAndArrayAlpha) {
+    auto const dimensions{GetParam()};
+    std::array<std::array<float, 3>, 3> from{{{0, 10, -4}, {5, 10, 4}, {-2, 8, 0}}};
+    std::array<std::array<float, 3>, 3> const to{{{10, 20, 4}, {15, 0, -4}, {2, 0, 12}}};
+    std::array<std::array<float, 3>, 3> const expected{{{0, 15, 4}, {5, 5, -4}, {-2, 4, 12}}};
+    std::array<float, 3> const alpha{0, .5f, 1};
+    if (dimensions == 2) {
+        ml::lerp_2d_in_place(from[0], from[1], to[0], to[1], alpha);
+    } else {
+        ml::lerp_3d_in_place(from[0], from[1], from[2], to[0], to[1], to[2], alpha);
+    }
 
-    EXPECT_EQ(from_x, (std::array<float, 3>{0.f, 15.f, 4.f}));
-    EXPECT_EQ(from_y, (std::array<float, 3>{5.f, 5.f, -4.f}));
-
-    std::array<double, 2> const from_double_x{0., 10.};
-    std::array<double, 2> const from_double_y{2., 6.};
-    std::array<double, 2> const to_double_x{4., 2.};
-    std::array<double, 2> const to_double_y{6., 10.};
-    std::array<double, 2> out_double_x{};
-    std::array<double, 2> out_double_y{};
-
-    ml::lerp_2d(
-        from_double_x, from_double_y, to_double_x, to_double_y, .25, out_double_x, out_double_y);
-
-    EXPECT_EQ(out_double_x, (std::array<double, 2>{1., 8.}));
-    EXPECT_EQ(out_double_y, (std::array<double, 2>{3., 7.}));
+    std::array<std::array<double, 2>, 3> const from_double{{{0, 10}, {2, 6}, {8, -4}}};
+    std::array<std::array<double, 2>, 3> const to_double{{{4, 2}, {6, 10}, {0, 8}}};
+    std::array<std::array<double, 2>, 3> const expected_double{{{1, 8}, {3, 7}, {6, -1}}};
+    std::array<std::array<double, 2>, 3> output{};
+    if (dimensions == 2) {
+        ml::lerp_2d(
+            from_double[0], from_double[1], to_double[0], to_double[1], .25, output[0], output[1]);
+    } else {
+        ml::lerp_3d(from_double[0],
+                    from_double[1],
+                    from_double[2],
+                    to_double[0],
+                    to_double[1],
+                    to_double[2],
+                    .25,
+                    output[0],
+                    output[1],
+                    output[2]);
+    }
+    for (auto axis{0}; axis < dimensions; ++axis) {
+        EXPECT_EQ(from[axis], expected[axis]) << axis;
+        EXPECT_EQ(output[axis], expected_double[axis]) << axis;
+    }
 }
 
-TEST(NativeCoreVectorLerp, SupportsThreeDimensionalScalarAndArrayAlpha) {
-    std::array<float, 3> from_x{0.f, 10.f, -4.f};
-    std::array<float, 3> from_y{5.f, 10.f, 4.f};
-    std::array<float, 3> from_z{-2.f, 8.f, 0.f};
-    std::array<float, 3> const to_x{10.f, 20.f, 4.f};
-    std::array<float, 3> const to_y{15.f, 0.f, -4.f};
-    std::array<float, 3> const to_z{2.f, 0.f, 12.f};
-    std::array<float, 3> const alpha{0.f, .5f, 1.f};
+INSTANTIATE_TEST_SUITE_P(Dimensions,
+                         NativeCoreVectorLerp,
+                         testing::Values(2, 3),
+                         [](auto const& info) {
+                             return info.param == 2 ? "TwoDimensions" : "ThreeDimensions";
+                         });
 
-    ml::lerp_3d_in_place(from_x, from_y, from_z, to_x, to_y, to_z, alpha);
-
-    EXPECT_EQ(from_x, (std::array<float, 3>{0.f, 15.f, 4.f}));
-    EXPECT_EQ(from_y, (std::array<float, 3>{5.f, 5.f, -4.f}));
-    EXPECT_EQ(from_z, (std::array<float, 3>{-2.f, 4.f, 12.f}));
-
-    std::array<double, 2> const from_double_x{0., 10.};
-    std::array<double, 2> const from_double_y{2., 6.};
-    std::array<double, 2> const from_double_z{8., -4.};
-    std::array<double, 2> const to_double_x{4., 2.};
-    std::array<double, 2> const to_double_y{6., 10.};
-    std::array<double, 2> const to_double_z{0., 8.};
-    std::array<double, 2> out_double_x{};
-    std::array<double, 2> out_double_y{};
-    std::array<double, 2> out_double_z{};
-
-    ml::lerp_3d(from_double_x,
-                from_double_y,
-                from_double_z,
-                to_double_x,
-                to_double_y,
-                to_double_z,
-                .25,
-                out_double_x,
-                out_double_y,
-                out_double_z);
-
-    EXPECT_EQ(out_double_x, (std::array<double, 2>{1., 8.}));
-    EXPECT_EQ(out_double_y, (std::array<double, 2>{3., 7.}));
-    EXPECT_EQ(out_double_z, (std::array<double, 2>{6., -1.}));
-}
-
-TEST(NativeCoreVectorLerp, SupportsEmptyThreeDimensionalRanges) {
-    std::array<float, 0> current_x{};
-    std::array<float, 0> current_y{};
-    std::array<float, 0> current_z{};
-    std::array<float, 0> const target_x{};
-    std::array<float, 0> const target_y{};
-    std::array<float, 0> const target_z{};
-
-    ml::lerp_3d_in_place(current_x, current_y, current_z, target_x, target_y, target_z, .5f);
+TEST(NativeCoreVectorLerpEmpty, SupportsThreeDimensionalRanges) {
+    std::array<std::array<float, 0>, 3> current{};
+    std::array<std::array<float, 0>, 3> const target{};
+    ml::lerp_3d_in_place(current[0], current[1], current[2], target[0], target[1], target[2], .5f);
 }

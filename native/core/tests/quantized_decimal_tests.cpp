@@ -36,61 +36,44 @@ static_assert(std::is_standard_layout_v<CompactDecimal>);
 static_assert(sizeof(CompactDecimal) == 4);
 }
 
-TEST(NativeCoreQuantizedDecimal, ConstructsZeroAndPositiveValues) {
-    TwoPlaceDecimal const default_value{};
-    TwoPlaceDecimal const zero{0.0};
-    TwoPlaceDecimal const whole{123.0};
-    TwoPlaceDecimal const fractional{17.42};
+struct DecimalCase {
+    char const* name;
+    double input;
+    int integer;
+    int fraction;
+};
+using DecimalConstruction = testing::TestWithParam<DecimalCase>;
 
-    EXPECT_EQ(default_value.integer(), 0);
-    EXPECT_EQ(default_value.fraction(), 0);
-    EXPECT_EQ(zero, default_value);
-    EXPECT_EQ(whole.integer(), 123);
-    EXPECT_EQ(whole.fraction(), 0);
-    EXPECT_EQ(fractional.integer(), 17);
-    EXPECT_EQ(fractional.fraction(), 42);
-    EXPECT_NEAR(fractional.to_floating_point(), 17.42, 1e-12);
+TEST_P(DecimalConstruction, RoundsToCanonicalRepresentation) {
+    auto const& test{GetParam()};
+    TwoPlaceDecimal const value{test.input};
+    EXPECT_EQ(value.integer(), test.integer);
+    EXPECT_EQ(value.fraction(), test.fraction);
+    EXPECT_NEAR(value.to_floating_point(), test.integer + test.fraction / 100.0, 1e-12);
 }
 
-TEST(NativeCoreQuantizedDecimal, SupportsDifferentDecimalPlaceCounts) {
-    WholeDecimal const whole{17.6};
-    OnePlaceDecimal const one_place{17.42};
-    TwoPlaceDecimal const two_places{17.42};
-    ThreePlaceDecimal const three_places{17.425};
+constexpr DecimalCase decimal_cases[]{{"Zero", 0.0, 0, 0},
+                                      {"Whole", 123.0, 123, 0},
+                                      {"Fraction", 17.42, 17, 42},
+                                      {"RoundsDown", 1.234, 1, 23},
+                                      {"PositiveHalf", 1.125, 1, 13},
+                                      {"NegativeHalf", -1.125, -2, 87},
+                                      {"Carry", 1.999, 2, 0},
+                                      {"NegativeWhole", -17.0, -17, 0},
+                                      {"NegativeFraction", -17.42, -18, 58},
+                                      {"NegativeSubunit", -0.42, -1, 58}};
+INSTANTIATE_TEST_SUITE_P(NativeCoreQuantizedDecimal,
+                         DecimalConstruction,
+                         testing::ValuesIn(decimal_cases),
+                         [](auto const& info) { return info.param.name; });
 
-    EXPECT_EQ(whole.integer(), 18);
-    EXPECT_EQ(whole.fraction(), 0);
-    EXPECT_EQ(one_place.fraction(), 4);
-    EXPECT_EQ(two_places.fraction(), 42);
-    EXPECT_EQ(three_places.fraction(), 425);
-}
-
-TEST(NativeCoreQuantizedDecimal, RoundsAndCarries) {
-    TwoPlaceDecimal const rounds_down{1.234};
-    TwoPlaceDecimal const positive_half{1.125};
-    TwoPlaceDecimal const negative_half{-1.125};
-    TwoPlaceDecimal const carries{1.999};
-
-    EXPECT_EQ(rounds_down.fraction(), 23);
-    EXPECT_EQ(positive_half.fraction(), 13);
-    EXPECT_EQ(negative_half.integer(), -2);
-    EXPECT_EQ(negative_half.fraction(), 87);
-    EXPECT_EQ(carries.integer(), 2);
-    EXPECT_EQ(carries.fraction(), 0);
-}
-
-TEST(NativeCoreQuantizedDecimal, UsesCanonicalNegativeRepresentation) {
-    TwoPlaceDecimal const whole{-17.0};
-    TwoPlaceDecimal const fractional{-17.42};
-    TwoPlaceDecimal const less_than_one{-0.42};
-
-    EXPECT_EQ(whole.integer(), -17);
-    EXPECT_EQ(whole.fraction(), 0);
-    EXPECT_EQ(fractional.integer(), -18);
-    EXPECT_EQ(fractional.fraction(), 58);
-    EXPECT_NEAR(fractional.to_floating_point(), -17.42, 1e-12);
-    EXPECT_EQ(less_than_one.integer(), -1);
-    EXPECT_EQ(less_than_one.fraction(), 58);
+TEST(NativeCoreQuantizedDecimal, DefaultValueAndDecimalPlaceCounts) {
+    EXPECT_EQ(TwoPlaceDecimal{}, TwoPlaceDecimal{0.0});
+    EXPECT_EQ(WholeDecimal{17.6}.integer(), 18);
+    EXPECT_EQ(WholeDecimal{17.6}.fraction(), 0);
+    EXPECT_EQ(OnePlaceDecimal{17.42}.fraction(), 4);
+    EXPECT_EQ(TwoPlaceDecimal{17.42}.fraction(), 42);
+    EXPECT_EQ(ThreePlaceDecimal{17.425}.fraction(), 425);
 }
 
 TEST(NativeCoreQuantizedDecimal, SaturatesAndHandlesNonFiniteInput) {
