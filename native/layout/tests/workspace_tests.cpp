@@ -6,7 +6,10 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <cstdint>
+#include <string>
 #include <string_view>
+#include <vector>
 
 namespace ioj::layout {
 namespace workspace_tests {
@@ -63,14 +66,10 @@ TEST(DocumentVariants, MixedSchemaAndVariantEditsUndoAsOneTransaction) {
     edit.set_variant_capacity(variant, "game", "Ships", 42);
     ASSERT_TRUE(doc.commit(edit));
     auto const& settings{doc.variants().settings(variant)};
-    ASSERT_EQ(settings.packed_storage.size(), 1);
-    ASSERT_EQ(settings.field_widths.size(), 1);
-    ASSERT_EQ(settings.column_spelling.size(), 1);
-    ASSERT_EQ(settings.capacities.size(), 1);
-    EXPECT_EQ(settings.packed_storage.front(), "std::uint32_t");
-    EXPECT_EQ(settings.field_widths.front(), 20);
-    EXPECT_EQ(settings.column_spelling.front(), "std::uint16_t");
-    EXPECT_EQ(settings.capacities.front(), 42);
+    EXPECT_EQ(settings.packed_storage, (std::vector<std::string>{"std::uint32_t"}));
+    EXPECT_EQ(settings.field_widths, (std::vector<std::uint32_t>{20}));
+    EXPECT_EQ(settings.column_spelling, (std::vector<std::string>{"std::uint16_t"}));
+    EXPECT_EQ(settings.capacities, (std::vector<std::uint64_t>{42}));
     ASSERT_TRUE(doc.undo());
     EXPECT_EQ(doc.query().module("game").packed_value("State").field("health").bits(), 8);
     EXPECT_EQ(doc.variants().settings(variant), VariantSettings{});
@@ -101,7 +100,9 @@ TEST(DocumentSettings, AllAnalysisInputsShareSchemaHistory) {
     EditorSession editor;
     auto doc{editor.from_source(source)};
     ASSERT_TRUE(doc.valid());
-    auto const original_abi{std::string{doc.analysis_settings().abi.name()}};
+    auto const original{doc.analysis_settings()};
+    auto const type{doc.find_type("game", "Ships").value()};
+    auto const owner{doc.find_declaration(doc.types().identity(type)).value()};
     auto edit{doc.transaction()};
     edit.set_element_count(100'000);
     edit.set_default_soa_capacity(500);
@@ -112,24 +113,21 @@ TEST(DocumentSettings, AllAnalysisInputsShareSchemaHistory) {
     edit.set_comparison_abi_profile(AbiProfile::host_common());
     edit.set_access_set("game", "Ships", {{"values", AccessOperation::write}});
     ASSERT_TRUE(doc.commit(edit));
-    auto const& settings{doc.analysis_settings()};
-    EXPECT_EQ(settings.element_count, 100'000);
-    EXPECT_EQ(settings.default_soa_capacity, 500);
-    EXPECT_EQ(settings.access_operation, AccessOperation::read_write);
-    EXPECT_EQ(settings.access_multiplicity, 8);
-    EXPECT_EQ(settings.soa_allocation_strategy, SoaAllocationStrategy::aligned_contiguous);
-    EXPECT_EQ(settings.abi.name(), "unknown target");
-    ASSERT_TRUE(settings.comparison_abi);
-    EXPECT_EQ(settings.access_sets.begin()->second.at("values"), AccessOperation::write);
+    AnalysisSettings const expected{.abi = AbiProfile{"unknown target"},
+                                    .comparison_abi = AbiProfile::host_common(),
+                                    .element_count = 100'000,
+                                    .default_soa_capacity = 500,
+                                    .access_multiplicity = 8,
+                                    .access_operation = AccessOperation::read_write,
+                                    .soa_allocation_strategy =
+                                        SoaAllocationStrategy::aligned_contiguous,
+                                    .access_sets = {{owner, {{"values", AccessOperation::write}}}}};
+    EXPECT_EQ(doc.analysis_settings(), expected);
     EXPECT_FALSE(doc.dirty());
     ASSERT_TRUE(doc.undo());
-    EXPECT_EQ(doc.analysis_settings().element_count, 1);
-    EXPECT_EQ(doc.analysis_settings().abi.name(), original_abi);
-    EXPECT_FALSE(doc.analysis_settings().comparison_abi);
-    EXPECT_TRUE(doc.analysis_settings().access_sets.empty());
+    EXPECT_EQ(doc.analysis_settings(), original);
     ASSERT_TRUE(doc.redo());
-    EXPECT_EQ(doc.analysis_settings().element_count, 100'000);
-    EXPECT_EQ(doc.analysis_settings().access_multiplicity, 8);
+    EXPECT_EQ(doc.analysis_settings(), expected);
 }
 
 TEST(DocumentSettings, DistributionOwnersSurviveRenameAndRestoreAfterDeletion) {

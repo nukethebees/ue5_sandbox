@@ -24,10 +24,7 @@ namespace planner_type_tests {
 struct CapabilityCase {
     char const* name;
     char const* declaration;
-    DeclarationKind kind;
-    bool editable;
-    bool physical;
-    bool variants;
+    DeclarationCapabilities expected;
     char const* backend{"standard-library"};
 };
 
@@ -42,12 +39,7 @@ TEST_P(DeclarationCapabilityTest, ReportsAuthoringAndAnalysisCapabilities) {
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto const type{document.find_type("test", "Value")};
     ASSERT_TRUE(type);
-    auto const capabilities{declaration_capabilities(document.types(), *type)};
-    EXPECT_EQ(capabilities.kind, test.kind);
-    EXPECT_TRUE(capabilities.inspectable);
-    EXPECT_EQ(capabilities.editable, test.editable);
-    EXPECT_EQ(capabilities.physical_analysis_available, test.physical);
-    EXPECT_EQ(capabilities.supports_variant_overrides, test.variants);
+    EXPECT_EQ(declaration_capabilities(document.types(), *type), test.expected);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -56,44 +48,26 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(
         CapabilityCase{"Enumeration",
                        "(enum Value std::uint8_t (value First))",
-                       DeclarationKind::enumeration,
-                       true,
-                       true,
-                       false},
+                       {DeclarationKind::enumeration, true, true, true, false}},
         CapabilityCase{
             "Packed",
             "(packed-value Value :storage std::uint8_t (field bits std::uint8_t :bits 8))",
-            DeclarationKind::packed,
-            true,
-            true,
-            true},
+            {DeclarationKind::packed, true, true, true, true}},
         CapabilityCase{"StandardSoa",
                        "(struct Value (member values array float))",
-                       DeclarationKind::soa,
-                       true,
-                       true,
-                       true},
+                       {DeclarationKind::soa, true, true, true, true}},
         CapabilityCase{"UnrealSoa",
                        "(struct Value (member values array float))",
-                       DeclarationKind::soa,
-                       false,
-                       false,
-                       false,
+                       {DeclarationKind::soa, true, false, false, false},
                        "unreal"},
         CapabilityCase{"StandardVector",
                        "(vector-soa Value :value-type float :equivalent-type Vector :components (x "
                        "y) :equivalent-members (x y))",
-                       DeclarationKind::vector_soa,
-                       false,
-                       true,
-                       true},
+                       {DeclarationKind::vector_soa, true, false, true, true}},
         CapabilityCase{"UnrealVector",
                        "(vector-soa Value :value-type float :equivalent-type Vector :components (x "
                        "y) :equivalent-members (x y))",
-                       DeclarationKind::vector_soa,
-                       false,
-                       false,
-                       false,
+                       {DeclarationKind::vector_soa, true, false, false, false},
                        "unreal"}),
     [](auto const& info) { return info.param.name; });
 

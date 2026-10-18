@@ -6,6 +6,8 @@
 #include <optional>
 namespace ioj::layout {
 struct AggregateLayout {
+    auto operator==(AggregateLayout const&) const -> bool = default;
+
     RowRange members{};
     std::optional<std::uint64_t> size_bytes{};
     std::optional<std::uint64_t> alignment_bytes{};

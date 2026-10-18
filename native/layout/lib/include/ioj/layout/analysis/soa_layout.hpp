@@ -6,6 +6,8 @@
 #include <optional>
 namespace ioj::layout {
 struct SoaLayout {
+    auto operator==(SoaLayout const&) const -> bool = default;
+
     RowRange columns{};
     std::uint64_t capacity{};
     bool capacity_overridden{};

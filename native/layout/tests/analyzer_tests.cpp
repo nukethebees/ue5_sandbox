@@ -8,16 +8,10 @@
 namespace ioj::layout {
 namespace analyzer_tests {
 
-class RepresentationTest : public testing::TestWithParam<AnalysisCase> {};
+class RepresentationTest : public AnalysisTest {};
 
 TEST_P(RepresentationTest, ReportsSemanticAndEncodingFacts) {
-    EditorSession editor;
-    auto const& test{GetParam()};
-    auto const document{editor.from_source(test.source)};
-    ASSERT_TRUE(document.valid());
-    AnalysisStorage storage;
-    AnalysisContext context{document, storage};
-    test.verify(context);
+    verify_case();
 }
 
 AnalysisCase const cases[]{
@@ -28,9 +22,7 @@ AnalysisCase const cases[]{
           (value Count :value "16"))))",
      [](AnalysisContext& context) {
          auto const run{run_analysis(context, "Value", {.element_count = 1})};
-         auto const type{context.document.find_type("game", "Value").value()};
-         auto const& result{
-             context.storage.scalars.enum_domain[context.storage.scalars.find(type)].value()};
+         auto const& result{scalar_result(context, context.storage.scalars.enum_domain)};
          auto const& backing{context.storage.types.enum_backing[run.analysis.value].value()};
          EXPECT_EQ(result.live_value_count, 2);
          EXPECT_EQ(result.reserved_value_count, 2);
@@ -44,9 +36,7 @@ AnalysisCase const cases[]{
         (enum Value std::int8_t (value Low :value "-4") (value High :value "3"))))",
      [](AnalysisContext& context) {
          auto const run{run_analysis(context, "Value", {.element_count = 1})};
-         auto const type{context.document.find_type("game", "Value").value()};
-         auto const& result{
-             context.storage.scalars.enum_domain[context.storage.scalars.find(type)].value()};
+         auto const& result{scalar_result(context, context.storage.scalars.enum_domain)};
          auto const& backing{context.storage.types.enum_backing[run.analysis.value].value()};
          EXPECT_EQ(result.signed_domain, true);
          EXPECT_EQ(result.minimum_required_bits, 3);
@@ -57,14 +47,11 @@ AnalysisCase const cases[]{
      R"((module game :header "Game.h"
         (enum Value std::uint8_t (value Mask :value "1 << 3") (value Next))))",
      [](AnalysisContext& context) {
-         run_analysis(context);
-         auto const type{context.document.find_type("game", "Value").value()};
-         auto const& result{
-             context.storage.scalars.enum_domain[context.storage.scalars.find(type)].value()};
+         run_analysis(context, "Value", {}, true);
+         auto const& result{scalar_result(context, context.storage.scalars.enum_domain)};
          EXPECT_FALSE(context.storage.codes.code[result.codes.begin + 0]);
          EXPECT_FALSE(context.storage.codes.code[result.codes.begin + 1]);
          EXPECT_FALSE(result.minimum_required_bits);
-         EXPECT_TRUE(has_analysis_diagnostics(context));
      }},
     {"ScalarDomainAndSentinel",
      R"((module game :header "Game.h"
@@ -72,26 +59,28 @@ AnalysisCase const cases[]{
           (code Invalid :value 15 :sentinel true))))",
      [](AnalysisContext& context) {
          run_analysis(context, "Value", {.element_count = 1});
-         auto const type{context.document.find_type("game", "Value").value()};
-         auto const& result{
-             context.storage.scalars.integer_domain[context.storage.scalars.find(type)].value()};
-         EXPECT_EQ(result.live_value_count, 11);
-         EXPECT_EQ(result.sentinel_code_count, 1);
-         EXPECT_EQ(result.minimum_required_bits, 4);
-         EXPECT_EQ(result.effective_bit_width, 4);
-         EXPECT_EQ(result.unused_codes, 4);
+         auto const& result{scalar_result(context, context.storage.scalars.integer_domain)};
+         EXPECT_EQ(result,
+                   (IntegerDomain{.maximum_value = 10,
+                                  .live_value_count = 11,
+                                  .sentinel_code_count = 1,
+                                  .required_code_count = 12,
+                                  .minimum_required_bits = 4,
+                                  .effective_bit_width = 4,
+                                  .unused_codes = 4,
+                                  .codes = {result.codes.begin, 1}}));
      }},
     {"FullUnsignedDomain",
      R"((module game :header "Game.h"
         (integer-scalar Value :signed false :minimum 0 :maximum 18446744073709551615)))",
      [](AnalysisContext& context) {
          run_analysis(context, "Value", {.element_count = 1});
-         auto const type{context.document.find_type("game", "Value").value()};
-         auto const& result{
-             context.storage.scalars.integer_domain[context.storage.scalars.find(type)].value()};
-         EXPECT_EQ(result.effective_bit_width, 64);
-         EXPECT_EQ(result.unused_codes, 0);
-         EXPECT_FALSE(result.live_value_count);
+         auto const& result{scalar_result(context, context.storage.scalars.integer_domain)};
+         EXPECT_EQ(result,
+                   (IntegerDomain{.maximum_value = std::numeric_limits<std::uint64_t>::max(),
+                                  .minimum_required_bits = 64,
+                                  .effective_bit_width = 64,
+                                  .unused_codes = 0}));
      }},
     {"OptionalPolicies",
      R"((module game :header "Game.h"
@@ -107,12 +96,12 @@ AnalysisCase const cases[]{
          std::array const requests{
              AnalysisRequest{.type = sentinel, .abi = &abi, .element_count = 100},
              AnalysisRequest{.type = presence, .abi = &abi, .element_count = 100}};
-         Analyzer::analyze(context, requests);
+         analyze_requests(context, requests);
          auto const& storage{context.storage};
          auto const& first{
-             storage.scalars.optional_sentinel_encoding[storage.scalars.find(sentinel)].value()};
+             scalar_result(context, storage.scalars.optional_sentinel_encoding, "Sentinel")};
          auto const& second{
-             storage.scalars.optional_presence_encoding[storage.scalars.find(presence)].value()};
+             scalar_result(context, storage.scalars.optional_presence_encoding, "Presence")};
          EXPECT_EQ(first.encoded_storage_bits, 4);
          EXPECT_EQ(storage.totals[0].total_encoded_bits, 400);
          EXPECT_EQ(second.encoded_storage_bits, 5);
@@ -128,14 +117,11 @@ AnalysisCase const cases[]{
         (optional-presence-bit Value :source Domain)))",
      [](AnalysisContext& context) {
          run_analysis(
-             context, "Value", {.element_count = std::numeric_limits<std::uint64_t>::max()});
-         auto const type{context.document.find_type("game", "Value").value()};
+             context, "Value", {.element_count = std::numeric_limits<std::uint64_t>::max()}, true);
          auto const& result{
-             context.storage.scalars.optional_presence_encoding[context.storage.scalars.find(type)]
-                 .value()};
+             scalar_result(context, context.storage.scalars.optional_presence_encoding)};
          EXPECT_EQ(result.encoded_storage_bits, 65);
          EXPECT_FALSE(context.storage.totals[0].total_encoded_bits);
-         EXPECT_TRUE(has_analysis_diagnostics(context));
      }},
     {"QuantizationPrecision",
      R"((module game :header "Game.h"
@@ -150,11 +136,10 @@ AnalysisCase const cases[]{
          std::array const requests{
              AnalysisRequest{.type = coarse, .abi = &abi, .element_count = 10},
              AnalysisRequest{.type = fine, .abi = &abi, .element_count = 10}};
-         Analyzer::analyze(context, requests);
+         analyze_requests(context, requests);
          auto const& storage{context.storage};
-         auto const& first{
-             storage.scalars.quantized_encoding[storage.scalars.find(coarse)].value()};
-         auto const& second{storage.scalars.quantized_encoding[storage.scalars.find(fine)].value()};
+         auto const& first{scalar_result(context, storage.scalars.quantized_encoding, "Coarse")};
+         auto const& second{scalar_result(context, storage.scalars.quantized_encoding, "Fine")};
          EXPECT_TRUE(compare_runs(context, 0, 1));
          EXPECT_EQ(first.usable_code_count.value, 254);
          EXPECT_NEAR(static_cast<double>(first.resolution), 200.0 / 253, 1e-12);
@@ -171,10 +156,7 @@ AnalysisCase const cases[]{
         (linear-quantized Value :source Domain :bits 64 :reserved-codes 0 :clipping reject)))",
      [](AnalysisContext& context) {
          run_analysis(context, "Value", {.element_count = 1});
-         auto const type{context.document.find_type("game", "Value").value()};
-         auto const& result{
-             context.storage.scalars.quantized_encoding[context.storage.scalars.find(type)]
-                 .value()};
+         auto const& result{scalar_result(context, context.storage.scalars.quantized_encoding)};
          EXPECT_TRUE(result.total_code_count.two_to_64);
          EXPECT_TRUE(result.usable_code_count.two_to_64);
          EXPECT_GT(result.resolution, 0);
@@ -184,9 +166,7 @@ AnalysisCase const cases[]{
         (fixed-point Value :signed true :total-bits 12 :fractional-bits 4 :rounding toward-zero)))",
      [](AnalysisContext& context) {
          run_analysis(context, "Value", {.element_count = 10});
-         auto const type{context.document.find_type("game", "Value").value()};
-         auto const& result{
-             context.storage.scalars.fixed_encoding[context.storage.scalars.find(type)].value()};
+         auto const& result{scalar_result(context, context.storage.scalars.fixed_encoding)};
          EXPECT_EQ(result.whole_bits, 7);
          EXPECT_EQ(result.resolution, 0.0625L);
          EXPECT_EQ(result.minimum_value, -128.0L);
@@ -198,9 +178,7 @@ AnalysisCase const cases[]{
         (mini-float Value :sign-bits 1 :exponent-bits 5 :significand-bits 10 :bias 15)))",
      [](AnalysisContext& context) {
          run_analysis(context, "Value", {.element_count = 10});
-         auto const type{context.document.find_type("game", "Value").value()};
-         auto const& result{
-             context.storage.scalars.float_encoding[context.storage.scalars.find(type)].value()};
+         auto const& result{scalar_result(context, context.storage.scalars.float_encoding)};
          EXPECT_EQ(result.total_bits, 16);
          EXPECT_EQ(result.zero_code_count, 2);
          EXPECT_EQ(result.infinity_code_count, 2);
@@ -213,14 +191,11 @@ AnalysisCase const cases[]{
      R"((module game :header "Game.h"
         (mini-float Value :sign-bits 1 :exponent-bits 5 :significand-bits 10 :bias -32768)))",
      [](AnalysisContext& context) {
-         run_analysis(context, "Value", {.element_count = 1});
-         auto const type{context.document.find_type("game", "Value").value()};
-         auto const& result{
-             context.storage.scalars.float_encoding[context.storage.scalars.find(type)].value()};
+         run_analysis(context, "Value", {.element_count = 1}, true);
+         auto const& result{scalar_result(context, context.storage.scalars.float_encoding)};
          EXPECT_EQ(result.minimum_normal_exponent, 32769);
          EXPECT_FALSE(result.maximum_finite);
          EXPECT_FALSE(result.minimum_positive_normal);
-         EXPECT_TRUE(has_analysis_diagnostics(context));
      }},
     {"VarintDistribution",
      R"((module game :header "Game.h"
@@ -240,10 +215,9 @@ AnalysisCase const cases[]{
          EXPECT_EQ(values.total_extent_bytes[distribution], 10);
          EXPECT_EQ(values.expected_extent_bytes[distribution], 2.0L);
          EXPECT_EQ(values.expected_selected_extent_bytes[distribution], 200.0L);
-         auto const empty{run_analysis(context, "Value", {.distribution_requested = true})};
+         auto const empty{run_analysis(context, "Value", {.distribution_requested = true}, true)};
          EXPECT_FALSE(
              context.storage.distributions.expected_extent_bytes[empty.distribution->value]);
-         EXPECT_TRUE(has_analysis_diagnostics(context));
      }},
     {"SignedVarintComparison",
      R"((module game :header "Game.h"
@@ -258,13 +232,13 @@ AnalysisCase const cases[]{
          std::array const requests{
              AnalysisRequest{.type = first, .abi = &abi, .element_count = 100},
              AnalysisRequest{.type = second, .abi = &abi, .element_count = 100}};
-         Analyzer::analyze(context, requests);
+         analyze_requests(context, requests);
          EXPECT_TRUE(compare_runs(context, 0, 1));
          EXPECT_EQ(context.storage.totals[0].minimum_total_bytes, 100);
          EXPECT_EQ(context.storage.totals[1].maximum_total_bytes, 200);
          auto const& scalars{context.storage.scalars};
-         EXPECT_EQ(scalars.varint_encoding[scalars.find(first)]->maximum_encoded_bytes,
-                   scalars.varint_encoding[scalars.find(second)]->maximum_encoded_bytes);
+         EXPECT_EQ(scalar_result(context, scalars.varint_encoding, "Signed").maximum_encoded_bytes,
+                   scalar_result(context, scalars.varint_encoding, "Zigzag").maximum_encoded_bytes);
      }},
     {"IncompatibleSources",
      R"((module game :header "Game.h"
@@ -286,9 +260,9 @@ AnalysisCase const cases[]{
                  context.document.find_type("game", std::string{"Second"} + suffix).value()};
              std::array const requests{AnalysisRequest{.type = first, .abi = &abi},
                                        AnalysisRequest{.type = second, .abi = &abi}};
-             Analyzer::analyze(context, requests);
+             analyze_requests(context, requests);
              EXPECT_FALSE(compare_runs(context, 0, 1));
-             EXPECT_TRUE(has_analysis_diagnostics(context));
+             expect_analysis_diagnostics(context);
          }
      }},
     {"VarintInvalidAndOverflowedWeights",
@@ -297,33 +271,29 @@ AnalysisCase const cases[]{
         (integer-varint Value :source Domain :encoding unsigned)))",
      [](AnalysisContext& context) {
          std::array const invalid{IntegerVarintDistributionEntry{.value = 129, .weight = 1}};
-         auto const rejected{run_analysis(context, "Value", {.varint_distribution = invalid})};
+         auto const rejected{
+             run_analysis(context, "Value", {.varint_distribution = invalid}, true)};
          auto const row{rejected.distribution->value};
          EXPECT_EQ(context.storage.distributions.entries[row].count, 0);
          EXPECT_FALSE(context.storage.distributions.expected_extent_bytes[row]);
-         EXPECT_TRUE(has_analysis_diagnostics(context));
          std::array const overflow{IntegerVarintDistributionEntry{
              .value = 128, .weight = std::numeric_limits<std::uint64_t>::max()}};
-         auto const run{run_analysis(context, "Value", {.varint_distribution = overflow})};
+         auto const run{run_analysis(context, "Value", {.varint_distribution = overflow}, true)};
          EXPECT_FALSE(context.storage.distributions.total_extent_bytes[run.distribution->value]);
          EXPECT_EQ(context.storage.distributions.expected_extent_bytes[run.distribution->value],
                    2.0L);
-         EXPECT_TRUE(has_analysis_diagnostics(context));
      }},
     {"FullWidthFixedPointOverflow",
      R"((module game :header "Game.h"
         (fixed-point Value :signed true :total-bits 64 :fractional-bits 0 :rounding nearest-even)))",
      [](AnalysisContext& context) {
          run_analysis(
-             context, "Value", {.element_count = std::numeric_limits<std::uint64_t>::max()});
-         auto const type{context.document.find_type("game", "Value").value()};
-         auto const& result{
-             context.storage.scalars.fixed_encoding[context.storage.scalars.find(type)].value()};
+             context, "Value", {.element_count = std::numeric_limits<std::uint64_t>::max()}, true);
+         auto const& result{scalar_result(context, context.storage.scalars.fixed_encoding)};
          EXPECT_EQ(result.total_bits, 64);
          EXPECT_EQ(result.minimum_raw_value,
                    lispb::codegen::PackedIntegerValue{std::numeric_limits<std::int64_t>::min()});
          EXPECT_FALSE(context.storage.totals[0].total_encoded_bits);
-         EXPECT_TRUE(has_analysis_diagnostics(context));
      }},
     {"VarintAggregateOverflow",
      R"((module game :header "Game.h"
@@ -331,13 +301,10 @@ AnalysisCase const cases[]{
         (integer-varint Value :source Domain :encoding zigzag)))",
      [](AnalysisContext& context) {
          run_analysis(
-             context, "Value", {.element_count = std::numeric_limits<std::uint64_t>::max()});
-         auto const type{context.document.find_type("game", "Value").value()};
-         auto const& result{
-             context.storage.scalars.varint_encoding[context.storage.scalars.find(type)].value()};
+             context, "Value", {.element_count = std::numeric_limits<std::uint64_t>::max()}, true);
+         auto const& result{scalar_result(context, context.storage.scalars.varint_encoding)};
          EXPECT_EQ(result.maximum_encoded_bytes, 10);
          EXPECT_FALSE(context.storage.totals[0].maximum_total_bytes);
-         EXPECT_TRUE(has_analysis_diagnostics(context));
      }}};
 
 INSTANTIATE_TEST_SUITE_P(Source,

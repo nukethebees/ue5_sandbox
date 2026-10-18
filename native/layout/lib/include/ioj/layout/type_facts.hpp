@@ -15,9 +15,9 @@ struct TypeFacts {
     // Complete-object sizeof, including tail padding; also the stride in an array.
     std::uint64_t size_bytes{};
     std::uint64_t alignment_bytes{};
-    std::optional<bool> integer_signed;
-    std::optional<std::uint32_t> unsigned_value_bits;
-    std::string provenance;
+    std::optional<bool> integer_signed{};
+    std::optional<std::uint32_t> unsigned_value_bits{};
+    std::string provenance{};
     FactOrigin origin{FactOrigin::unspecified};
 };
 

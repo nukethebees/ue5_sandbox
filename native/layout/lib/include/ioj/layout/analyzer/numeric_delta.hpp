@@ -8,6 +8,8 @@
 namespace ioj::layout {
 
 struct NumericDelta {
+    auto operator==(NumericDelta const&) const -> bool = default;
+
     NumericDeltaDirection direction{NumericDeltaDirection::unchanged};
     std::uint64_t magnitude{};
     std::optional<double> percentage{};

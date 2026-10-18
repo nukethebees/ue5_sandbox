@@ -15,6 +15,8 @@
 namespace ioj::layout {
 
 struct IntegerDomain {
+    auto operator==(IntegerDomain const&) const -> bool = default;
+
     bool signedness{};
     lispb::codegen::PackedIntegerValue minimum_value{};
     lispb::codegen::PackedIntegerValue maximum_value{};

@@ -11,9 +11,11 @@
 namespace ioj::layout {
 
 struct ExternalProbeRequest {
-    std::vector<std::string> spellings;
-    std::vector<std::string> headers;
-    std::vector<std::string> diagnostics;
+    auto operator==(ExternalProbeRequest const&) const -> bool = default;
+
+    std::vector<std::string> spellings{};
+    std::vector<std::string> headers{};
+    std::vector<std::string> diagnostics{};
 };
 
 // Complete-object probe subjects and known headers from the selected external group.

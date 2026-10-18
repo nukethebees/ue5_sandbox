@@ -14,20 +14,11 @@ namespace ioj::layout {
 namespace analyzer_common_tests {
 
 TEST(Analyzer, ReportsFactualNumericDeltas) {
-    auto const increased{numeric_delta(100, 150)};
-    ASSERT_TRUE(increased.has_value());
-    EXPECT_EQ(increased->direction, NumericDeltaDirection::increased);
-    EXPECT_EQ(increased->magnitude, 50);
-    EXPECT_DOUBLE_EQ(*increased->percentage, 50.0);
+    EXPECT_EQ(numeric_delta(100, 150), (NumericDelta{NumericDeltaDirection::increased, 50, 50.0}));
 
-    auto const decreased{numeric_delta(150, 100)};
-    ASSERT_TRUE(decreased.has_value());
-    EXPECT_EQ(decreased->direction, NumericDeltaDirection::decreased);
-    EXPECT_EQ(decreased->magnitude, 50);
+    EXPECT_EQ(numeric_delta(100, 50), (NumericDelta{NumericDeltaDirection::decreased, 50, 50.0}));
 
-    auto const zero_baseline{numeric_delta(0, 1)};
-    ASSERT_TRUE(zero_baseline.has_value());
-    EXPECT_FALSE(zero_baseline->percentage.has_value());
+    EXPECT_EQ(numeric_delta(0, 1), (NumericDelta{NumericDeltaDirection::increased, 1}));
     EXPECT_FALSE(numeric_delta(std::nullopt, 1).has_value());
 }
 
@@ -108,30 +99,22 @@ TEST(AbiProfile, ExposesExplicitX86MemoryFactsWithProvenance) {
 }
 
 TEST(AbiProfile, RetainsFullyDescribedIdentitySeparatelyFromFactProvenance) {
-    AbiProfile abi{"Windows shipping",
-                   {.platform = "Windows",
-                    .architecture = "x86-64",
-                    .abi = "Microsoft x64",
-                    .compiler = "MSVC 19.44",
-                    .build_configuration = "Shipping"}};
+    AbiProfileIdentity const identity{.platform = "Windows",
+                                      .architecture = "x86-64",
+                                      .abi = "Microsoft x64",
+                                      .compiler = "MSVC 19.44",
+                                      .build_configuration = "Shipping"};
+    AbiProfile abi{"Windows shipping", identity};
     abi.set("word",
             {.size_bytes = 8,
              .alignment_bytes = 8,
              .integer_signed = false,
              .unsigned_value_bits = 64,
              .provenance = "generated probe output"});
-    abi.set_memory_facts({.cache_line_bytes = 64,
-                          .page_bytes = 4'096,
-                          .l1_data_cache_bytes = std::nullopt,
-                          .l2_cache_bytes = std::nullopt,
-                          .l3_cache_bytes = std::nullopt,
-                          .provenance = "selected machine profile"});
+    abi.set_memory_facts(
+        {.cache_line_bytes = 64, .page_bytes = 4'096, .provenance = "selected machine profile"});
 
-    EXPECT_EQ(abi.identity().platform, "Windows");
-    EXPECT_EQ(abi.identity().architecture, "x86-64");
-    EXPECT_EQ(abi.identity().abi, "Microsoft x64");
-    EXPECT_EQ(abi.identity().compiler, "MSVC 19.44");
-    EXPECT_EQ(abi.identity().build_configuration, "Shipping");
+    EXPECT_EQ(abi.identity(), identity);
     EXPECT_EQ(abi.find("word")->provenance, "generated probe output");
     EXPECT_EQ(abi.memory_facts().provenance, "selected machine profile");
 }
@@ -147,15 +130,9 @@ TEST(AbiProfile, LeavesUnspecifiedIdentityAndFactsUnknown) {
              .unsigned_value_bits = 64,
              .provenance = {}});
 
-    EXPECT_FALSE(abi.identity().platform.has_value());
-    EXPECT_EQ(abi.identity().architecture, "x86-64");
-    EXPECT_FALSE(abi.identity().abi.has_value());
-    EXPECT_FALSE(abi.identity().compiler.has_value());
-    EXPECT_FALSE(abi.identity().build_configuration.has_value());
+    EXPECT_EQ(abi.identity(), (AbiProfileIdentity{.architecture = "x86-64"}));
     EXPECT_TRUE(abi.find("word")->provenance.empty());
-    EXPECT_FALSE(abi.memory_facts().cache_line_bytes.has_value());
-    EXPECT_FALSE(abi.memory_facts().page_bytes.has_value());
-    EXPECT_TRUE(abi.memory_facts().provenance.empty());
+    EXPECT_EQ(abi.memory_facts(), MemoryFacts{});
 }
 
 TEST(AbiProfile, ParsesAndSerializesGeneratedTargetFactsDeterministically) {
@@ -180,33 +157,30 @@ memory-provenance "machine profile"
     auto const parsed{parse_abi_profile(source)};
     ASSERT_TRUE(parsed.has_value()) << parsed.error().message;
     EXPECT_EQ(parsed->name(), "Windows x64 Debug");
-    EXPECT_EQ(parsed->identity().platform, "Windows");
-    EXPECT_EQ(parsed->identity().architecture, "AMD64");
-    EXPECT_EQ(parsed->identity().abi, "Microsoft x64");
-    EXPECT_EQ(parsed->identity().compiler, "MSVC 19.44");
-    EXPECT_EQ(parsed->identity().build_configuration, "Debug");
-    ASSERT_TRUE(parsed->find("EntityId").has_value());
-    EXPECT_EQ(parsed->find("EntityId")->size_bytes, 4);
-    EXPECT_EQ(parsed->find("EntityId")->alignment_bytes, 4);
-    EXPECT_EQ(parsed->find("EntityId")->integer_signed, false);
-    EXPECT_EQ(parsed->find("EntityId")->unsigned_value_bits, 32);
-    EXPECT_EQ(parsed->find("EntityId")->provenance, "probe uint32");
+    EXPECT_EQ(parsed->identity(),
+              (AbiProfileIdentity{.platform = "Windows",
+                                  .architecture = "AMD64",
+                                  .abi = "Microsoft x64",
+                                  .compiler = "MSVC 19.44",
+                                  .build_configuration = "Debug"}));
+    EXPECT_EQ(parsed->find("EntityId"),
+              (TypeFacts{.size_bytes = 4,
+                         .alignment_bytes = 4,
+                         .integer_signed = false,
+                         .unsigned_value_bits = 32,
+                         .provenance = "probe uint32"}));
     EXPECT_EQ(parsed->find("float")->integer_signed, std::nullopt);
-    EXPECT_EQ(parsed->memory_facts().cache_line_bytes, 64);
-    EXPECT_EQ(parsed->memory_facts().page_bytes, 4'096);
-    EXPECT_EQ(parsed->memory_facts().l1_data_cache_bytes, 32'768);
-    EXPECT_EQ(parsed->memory_facts().l2_cache_bytes, std::nullopt);
-    EXPECT_EQ(parsed->memory_facts().l3_cache_bytes, 0);
-    EXPECT_EQ(parsed->memory_facts().provenance, "machine profile");
+    EXPECT_EQ(parsed->memory_facts(),
+              (MemoryFacts{.cache_line_bytes = 64,
+                           .page_bytes = 4096,
+                           .l1_data_cache_bytes = 32768,
+                           .l3_cache_bytes = 0,
+                           .provenance = "machine profile"}));
 
     auto const serialized{serialize_abi_profile(*parsed)};
     auto const reparsed{parse_abi_profile(serialized)};
     ASSERT_TRUE(reparsed.has_value()) << reparsed.error().message;
-    EXPECT_EQ(reparsed->name(), parsed->name());
-    EXPECT_EQ(reparsed->identity(), parsed->identity());
-    EXPECT_EQ(reparsed->types(), parsed->types());
-    EXPECT_EQ(reparsed->representations(), parsed->representations());
-    EXPECT_EQ(reparsed->memory_facts(), parsed->memory_facts());
+    EXPECT_EQ(*reparsed, *parsed);
     EXPECT_EQ(serialize_abi_profile(*reparsed), serialized);
 }
 
@@ -219,16 +193,10 @@ memory-provenance ""
 )profile")};
 
     ASSERT_TRUE(parsed.has_value()) << parsed.error().message;
-    EXPECT_FALSE(parsed->identity().platform.has_value());
-    EXPECT_EQ(parsed->identity().architecture, "arm64");
-    EXPECT_FALSE(parsed->identity().abi.has_value());
-    EXPECT_FALSE(parsed->memory_facts().cache_line_bytes.has_value());
-    EXPECT_FALSE(parsed->memory_facts().page_bytes.has_value());
-    EXPECT_TRUE(parsed->memory_facts().provenance.empty());
-    ASSERT_TRUE(parsed->find("word").has_value());
-    EXPECT_EQ(parsed->find("word")->integer_signed, true);
-    EXPECT_FALSE(parsed->find("word")->unsigned_value_bits.has_value());
-    EXPECT_TRUE(parsed->find("word")->provenance.empty());
+    EXPECT_EQ(parsed->identity(), (AbiProfileIdentity{.architecture = "arm64"}));
+    EXPECT_EQ(parsed->memory_facts(), MemoryFacts{});
+    EXPECT_EQ(parsed->find("word"),
+              (TypeFacts{.size_bytes = 8, .alignment_bytes = 8, .integer_signed = true}));
     EXPECT_FALSE(parsed->find("unknown").has_value());
 }
 

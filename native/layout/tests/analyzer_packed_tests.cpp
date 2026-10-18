@@ -6,16 +6,10 @@
 namespace ioj::layout {
 namespace analyzer_packed_tests {
 
-class PackedAnalysisTest : public testing::TestWithParam<AnalysisCase> {};
+class PackedAnalysisTest : public AnalysisTest {};
 
 TEST_P(PackedAnalysisTest, ReportsPhysicalAndSemanticFacts) {
-    EditorSession editor;
-    auto const& test{GetParam()};
-    auto const document{editor.from_source(test.source)};
-    ASSERT_TRUE(document.valid());
-    AnalysisStorage storage;
-    AnalysisContext context{document, storage};
-    test.verify(context);
+    verify_case();
 }
 
 AnalysisCase const cases[]{
@@ -40,7 +34,6 @@ AnalysisCase const cases[]{
          EXPECT_EQ(context.storage.totals[0].total_storage_bytes, 400);
          EXPECT_EQ(context.storage.totals[0].total_reserved_bits, 400);
          EXPECT_EQ(context.storage.totals[0].total_unused_bits, 400);
-         EXPECT_FALSE(has_analysis_diagnostics(context));
      }},
     {"MostSignificantFirst",
      R"((module game :header "Game.h"
@@ -116,7 +109,7 @@ AnalysisCase const cases[]{
              AnalysisRequest{.type = type,
                              .abi = &abi,
                              .element_count = std::numeric_limits<std::uint64_t>::max()}};
-         Analyzer::analyze(context, requests);
+         analyze_requests(context, requests, true);
          auto const& storage{context.storage};
          auto const& first{storage.types.packed[storage.runs[0].analysis.value].value()};
          auto const& second{storage.types.packed[storage.runs[1].analysis.value].value()};
@@ -128,7 +121,6 @@ AnalysisCase const cases[]{
          EXPECT_FALSE(missing.storage_bits);
          EXPECT_FALSE(missing.storage_facts);
          EXPECT_FALSE(storage.totals[3].total_storage_bytes);
-         EXPECT_TRUE(has_analysis_diagnostics(context));
      }},
     {"SelectedAccess",
      R"((module game :header "Game.h"
@@ -141,15 +133,18 @@ AnalysisCase const cases[]{
              context, "Value", {.element_count = 100, .multiplicity = 3, .accesses = &accesses})};
          auto const row{run.access->value};
          auto const& result{context.storage.workloads};
-         EXPECT_EQ(result.bits[row].useful, 800);
-         EXPECT_EQ(result.bits[row].logical_read, 2400);
+         EXPECT_EQ(result.bits[row],
+                   (PayloadFootprint{.useful = 800,
+                                     .read = 800,
+                                     .write = 0,
+                                     .logical_read = 2400,
+                                     .logical_write = 0}));
          EXPECT_EQ(result.storage_bytes[row], 400);
          EXPECT_EQ(result.packed_waste[row].unselected_field_bits, 2000);
          EXPECT_EQ(result.packed_waste[row].reserved_bits, 400);
          EXPECT_EQ(result.cache[row].count, 7);
          AccessSet const invalid{{"future", AccessOperation::read}};
-         run_analysis(context, "Value", {.element_count = 100, .accesses = &invalid});
-         EXPECT_TRUE(has_analysis_diagnostics(context));
+         run_analysis(context, "Value", {.element_count = 100, .accesses = &invalid}, true);
      }}};
 
 INSTANTIATE_TEST_SUITE_P(Source,
@@ -180,7 +175,7 @@ TEST_P(RelationshipCapacityTest, DerivesWidthFromTargetExtent) {
     ASSERT_TRUE(document.valid());
     AnalysisStorage storage;
     AnalysisContext context{document, storage};
-    run_analysis(context, "Handle", {.default_capacity = test.extent});
+    run_analysis(context, "Handle", {.default_capacity = test.extent}, test.expected_bits > 8);
     ASSERT_EQ(storage.relationships.metrics.size(), 1);
     auto const& metrics{storage.relationships.metrics[0].value()};
     EXPECT_EQ(metrics.minimum_required_bits, test.expected_bits);

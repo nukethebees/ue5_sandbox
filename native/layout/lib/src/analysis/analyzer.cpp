@@ -27,12 +27,7 @@ namespace ioj::layout {
 namespace analysis_detail {
 
 auto same_abi(AbiProfile const& first, AbiProfile const& second) -> bool {
-    return &first == &second ||
-           (first.name() == second.name() && first.identity() == second.identity() &&
-            first.types() == second.types() &&
-            first.representations() == second.representations() &&
-            first.memory_facts() == second.memory_facts() &&
-            first.object_pointer_representation() == second.object_pointer_representation());
+    return &first == &second || first == second;
 }
 
 auto same_scenario(AnalysisRequest const& first, AnalysisRequest const& second) -> bool {
@@ -50,22 +45,9 @@ auto same_workload(AnalysisRequest const& first, AnalysisRequest const& second) 
         (first.accesses && *first.accesses != *second.accesses)) {
         return false;
     }
-    return std::ranges::equal(first.varint_distribution,
-                              second.varint_distribution,
-                              [](auto const& left, auto const& right) {
-                                  return left.value == right.value && left.weight == right.weight;
-                              }) &&
-           std::ranges::equal(first.union_distribution,
-                              second.union_distribution,
-                              [](auto const& left, auto const& right) {
-                                  return left.alternative_name == right.alternative_name &&
-                                         left.weight == right.weight;
-                              }) &&
-           std::ranges::equal(first.tagged_union_distribution,
-                              second.tagged_union_distribution,
-                              [](auto const& left, auto const& right) {
-                                  return left.tag == right.tag && left.weight == right.weight;
-                              });
+    return std::ranges::equal(first.varint_distribution, second.varint_distribution) &&
+           std::ranges::equal(first.union_distribution, second.union_distribution) &&
+           std::ranges::equal(first.tagged_union_distribution, second.tagged_union_distribution);
 }
 
 auto resolve_variant(Document const& document, VariantId id) -> ResolvedVariant {

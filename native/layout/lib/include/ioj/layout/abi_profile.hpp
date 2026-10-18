@@ -17,6 +17,7 @@ namespace ioj::layout {
 class AbiProfile {
   public:
     explicit AbiProfile(std::string name = {}, AbiProfileIdentity identity = {});
+    auto operator==(AbiProfile const&) const -> bool = default;
 
     static auto host_common() -> AbiProfile;
 

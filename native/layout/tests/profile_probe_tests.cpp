@@ -66,9 +66,7 @@ TEST(ProfileProbe, CollectsExactExternalUsesAndUnsupportedDiagnostics) {
     })};
     ASSERT_NE(external, inventory.end());
     EXPECT_EQ(external->uses.size(), 13);
-    auto const repeated{external_probe_request(types, selected)};
-    EXPECT_EQ(repeated.spellings, probe.spellings);
-    EXPECT_EQ(repeated.diagnostics, probe.diagnostics);
+    EXPECT_EQ(external_probe_request(types, selected), probe);
 }
 
 class UnsupportedProbeTest : public testing::TestWithParam<char const*> {};
@@ -104,17 +102,14 @@ TEST(ProfileProbe, UnionsHeadersAcrossAliasesAndDeduplicatesIncludes) {
     auto const& types{document.types()};
     auto const selected{*types.find_registered(types.strings().find("external_a"))};
     auto const request{external_probe_request(types, selected)};
-    EXPECT_EQ(request.spellings,
-              (std::vector<std::string>{"sdk::ExternalValue", "sdk::ExternalValue*"}));
-    EXPECT_EQ(request.headers,
-              (std::vector<std::string>{
-                  "sdk/Extra Detail.hpp", "sdk/config.hpp", "sdk/external_value.hpp"}));
-    EXPECT_TRUE(request.diagnostics.empty());
+    ExternalProbeRequest const expected{
+        .spellings = {"sdk::ExternalValue", "sdk::ExternalValue*"},
+        .headers = {"sdk/Extra Detail.hpp", "sdk/config.hpp", "sdk/external_value.hpp"}};
+    EXPECT_EQ(request, expected);
     for (auto const name : {"external_a", "external_b", "external_unused"}) {
         auto const repeated{
             external_probe_request(types, *types.find_registered(types.strings().find(name)))};
-        EXPECT_EQ(repeated.spellings, request.spellings);
-        EXPECT_EQ(repeated.headers, request.headers);
+        EXPECT_EQ(repeated, expected);
     }
     auto headers{request.headers};
     headers.push_back("sdk/external_value.hpp");
@@ -137,8 +132,9 @@ TEST(ProfileProbe, IncludesHeadersIntroducedByResolvedUses) {
     auto const inventory{external_dependencies(document.types())};
     ASSERT_EQ(inventory.size(), 1);
     auto const request{external_probe_request(document.types(), inventory.front().types.front())};
-    EXPECT_EQ(request.headers, (std::vector<std::string>{"cstdint"}));
-    EXPECT_EQ(request.spellings, (std::vector<std::string>{"std::uint16_t", "std::uint16_t*"}));
+    ExternalProbeRequest const expected{.spellings = {"std::uint16_t", "std::uint16_t*"},
+                                        .headers = {"cstdint"}};
+    EXPECT_EQ(request, expected);
 }
 
 class InvalidProbeHeaderTest : public testing::TestWithParam<char const*> {};
@@ -171,11 +167,11 @@ type "void*" 8 8 non-integer unknown "generic target representation" compiler-pr
     AnalysisContext context{document, storage};
     Analyzer::analyze(context, requests);
     auto const exact{storage.components.element_facts[0]};
-    ASSERT_TRUE(exact);
-    EXPECT_EQ(exact->size_bytes, 16);
-    EXPECT_EQ(exact->alignment_bytes, 8);
-    EXPECT_EQ(exact->origin, FactOrigin::compiler_probe);
-    EXPECT_EQ(exact->provenance, "exact target measurement");
+    TypeFacts const expected{.size_bytes = 16,
+                             .alignment_bytes = 8,
+                             .provenance = "exact target measurement",
+                             .origin = FactOrigin::compiler_probe};
+    EXPECT_EQ(exact, expected);
     EXPECT_FALSE(storage.components.element_facts[1]);
     profile->set_object_pointer_representation("void*");
     Analyzer::analyze(context, requests);

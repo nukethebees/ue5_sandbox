@@ -7,6 +7,8 @@
 
 namespace ioj::layout {
 struct DeclarationCapabilities {
+    auto operator==(DeclarationCapabilities const&) const -> bool = default;
+
     DeclarationKind kind{DeclarationKind::external};
     bool inspectable{};
     bool editable{};

@@ -7,6 +7,8 @@
 namespace ioj::layout {
 
 struct IntegerVarintDistributionEntry {
+    auto operator==(IntegerVarintDistributionEntry const&) const -> bool = default;
+
     lispb::codegen::PackedIntegerValue value{};
     std::uint64_t weight{};
 };

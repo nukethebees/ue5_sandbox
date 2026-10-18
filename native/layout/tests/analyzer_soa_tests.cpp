@@ -6,16 +6,10 @@
 namespace ioj::layout {
 namespace analyzer_soa_tests {
 
-class SoaAnalysisTest : public testing::TestWithParam<AnalysisCase> {};
+class SoaAnalysisTest : public AnalysisTest {};
 
 TEST_P(SoaAnalysisTest, ReportsColumnsAllocationsAndAccess) {
-    EditorSession editor;
-    auto const& test{GetParam()};
-    auto const document{editor.from_source(test.source)};
-    ASSERT_TRUE(document.valid());
-    AnalysisStorage storage;
-    AnalysisContext context{document, storage};
-    test.verify(context);
+    verify_case();
 }
 
 AnalysisCase const cases[]{
@@ -39,7 +33,8 @@ AnalysisCase const cases[]{
              run_analysis(context,
                           "Value",
                           {.default_capacity = 3,
-                           .allocation_strategy = SoaAllocationStrategy::aligned_contiguous})};
+                           .allocation_strategy = SoaAllocationStrategy::aligned_contiguous},
+                          true)};
          auto const& result{context.storage.types.soa[run.analysis.value].value()};
          auto const& columns{context.storage.columns};
          EXPECT_EQ(columns.allocation_offset_bytes[result.columns.begin], 0);
@@ -60,27 +55,40 @@ AnalysisCase const cases[]{
                              .abi = &abi,
                              .default_capacity = 3,
                              .allocation_strategy = SoaAllocationStrategy::aligned_contiguous}};
-         Analyzer::analyze(context, requests);
+         analyze_requests(context, requests);
          auto const& storage{context.storage};
          auto const& separate{storage.types.soa[storage.runs[0].analysis.value].value()};
          auto const& contiguous{storage.types.soa[storage.runs[1].analysis.value].value()};
-         EXPECT_EQ(separate.allocation_count, 2);
-         EXPECT_EQ(separate.total_payload_bytes, 15);
-         EXPECT_EQ(contiguous.allocation_count, 1);
+         SoaLayout expected{.columns = {separate.columns.begin, 2},
+                            .capacity = 3,
+                            .allocation_count = 2,
+                            .bytes_per_logical_element = 5,
+                            .total_payload_bytes = 15,
+                            .total_allocation_bytes = 15,
+                            .total_alignment_padding_bytes = 0};
+         EXPECT_EQ(separate, expected);
+         expected.columns = {contiguous.columns.begin, 2};
+         expected.allocation_strategy = SoaAllocationStrategy::aligned_contiguous;
+         expected.allocation_count = 1;
+         expected.total_allocation_bytes = 16;
+         expected.total_alignment_padding_bytes = 1;
+         expected.allocation_alignment_bytes = 4;
+         EXPECT_EQ(contiguous, expected);
          EXPECT_EQ(storage.columns.allocation_offset_bytes[contiguous.columns.begin + 1], 4);
          EXPECT_EQ(storage.columns.padding_before_bytes[contiguous.columns.begin + 1], 1);
-         EXPECT_EQ(contiguous.total_allocation_bytes, 16);
      }},
     {"ColumnOverflow",
      R"((module game :header "Game.h" :backend standard-library
         (struct Value (member values array double))))",
      [](AnalysisContext& context) {
-         auto const run{run_analysis(
-             context, "Value", {.default_capacity = std::numeric_limits<std::uint64_t>::max()})};
+         auto const run{
+             run_analysis(context,
+                          "Value",
+                          {.default_capacity = std::numeric_limits<std::uint64_t>::max()},
+                          true)};
          auto const& result{context.storage.types.soa[run.analysis.value].value()};
          EXPECT_FALSE(result.total_payload_bytes);
          EXPECT_FALSE(context.storage.columns.total_bytes[result.columns.begin]);
-         EXPECT_TRUE(has_analysis_diagnostics(context));
      }},
     {"TargetComparison",
      R"((module game :header "Game.h" :backend standard-library
@@ -100,7 +108,7 @@ AnalysisCase const cases[]{
              AnalysisRequest{.type = type, .abi = &abi, .default_capacity = 3},
              AnalysisRequest{.type = type, .abi = &wide, .default_capacity = 3},
              AnalysisRequest{.type = type, .abi = &unknown, .default_capacity = 3}};
-         Analyzer::analyze(context, requests);
+         analyze_requests(context, requests, true);
          auto const& storage{context.storage};
          auto const first{storage.types.soa[storage.runs[0].analysis.value]->columns.begin + 1};
          auto const second{storage.types.soa[storage.runs[1].analysis.value]->columns.begin + 1};
@@ -121,20 +129,22 @@ AnalysisCase const cases[]{
                                       .accesses = &accesses})};
          auto const row{run.access->value};
          auto const& access{context.storage.workloads};
-         EXPECT_EQ(access.bytes[row].useful, 40);
-         EXPECT_EQ(access.bytes[row].logical_read, 120);
+         EXPECT_EQ(
+             access.bytes[row],
+             (PayloadFootprint{
+                 .useful = 40, .read = 40, .write = 0, .logical_read = 120, .logical_write = 0}));
          EXPECT_EQ(access.unselected_payload_bytes[row], 80);
          EXPECT_EQ(access.capacity_slack_bytes[row], 1080);
          EXPECT_EQ(access.cache[row].count, 1);
          run_analysis(context,
                       "Value",
-                      {.element_count = 101, .default_capacity = 100, .accesses = &accesses});
-         EXPECT_TRUE(has_analysis_diagnostics(context));
+                      {.element_count = 101, .default_capacity = 100, .accesses = &accesses},
+                      true);
          AccessSet const missing{{"missing", AccessOperation::read}};
          run_analysis(context,
                       "Value",
-                      {.element_count = 10, .default_capacity = 100, .accesses = &missing});
-         EXPECT_TRUE(has_analysis_diagnostics(context));
+                      {.element_count = 10, .default_capacity = 100, .accesses = &missing},
+                      true);
      }},
     {"RecordSoaComparison",
      R"((module game :header "Game.h" :backend standard-library
@@ -153,13 +163,12 @@ AnalysisCase const cases[]{
                                                    .element_count = 100,
                                                    .default_capacity = 100,
                                                    .accesses = &accesses}};
-         Analyzer::analyze(context, requests);
+         analyze_requests(context, requests);
          auto const record{context.storage.runs[0].access->value};
          auto const soa{context.storage.runs[1].access->value};
          auto const& access{context.storage.workloads};
          EXPECT_EQ(access.bytes[record].useful, access.bytes[soa].useful);
          EXPECT_GT(access.cache[record].count.value(), access.cache[soa].count.value());
-         EXPECT_FALSE(has_analysis_diagnostics(context));
      }}};
 
 INSTANTIATE_TEST_SUITE_P(Source,

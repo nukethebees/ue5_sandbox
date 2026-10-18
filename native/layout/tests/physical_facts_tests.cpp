@@ -1,10 +1,4 @@
-#include "document_test_support.hpp"
-#include <ioj/layout/abi_profile.hpp>
-#include <ioj/layout/analysis/analysis_context.hpp>
-#include <ioj/layout/analysis/analysis_request.hpp>
-#include <ioj/layout/analysis/analysis_storage.hpp>
-#include <ioj/layout/analysis/analyzer.hpp>
-#include <ioj/layout/editor_session.hpp>
+#include "analyzer_test_fixtures.hpp"
 
 #include <gtest/gtest.h>
 #include <native_soa_types.h>
@@ -91,7 +85,7 @@ TEST(PhysicalFacts, SingleOnlySchemasUseOwnerFactsAndLayoutsHaveNoPhysicalObject
     ASSERT_TRUE(facts);
     EXPECT_EQ(facts->size_bytes, sizeof(ApiOwner));
     EXPECT_FALSE(storage.types.physical[storage.runs[1].analysis.value]);
-    EXPECT_GT(editor.diagnostics().size(), 0);
+    expect_analysis_diagnostics(context);
 }
 
 struct PhysicalCase {
@@ -113,10 +107,9 @@ TEST_P(PhysicalSpelling, DoesNotGuessUnsupportedOrMissingRepresentations) {
         AnalysisRequest{.type = *document.find_type("test", "Value"), .abi = &profile}};
     AnalysisStorage storage;
     AnalysisContext context{document, storage};
-    Analyzer::analyze(context, requests);
+    analyze_requests(context, requests, !test.known);
     auto const& facts{storage.types.physical[storage.runs.front().analysis.value]};
     EXPECT_EQ(facts.has_value(), test.known);
-    EXPECT_EQ(editor.diagnostics().size() == 0, test.known);
 }
 INSTANTIATE_TEST_SUITE_P(
     Uses,
