@@ -8,7 +8,6 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
-#include <vector>
 
 namespace lispb::schema::detail {
 
@@ -28,18 +27,7 @@ class CanonicalRenderer {
         return store_.items(range);
     }
     auto string_list(auto const& values) -> Expr {
-        std::vector<Expr> expressions;
-        for (auto const value : values) {
-            expressions.push_back(ir_.string(value));
-        }
-        return ir_.list(expressions);
-    }
-    auto atom_list(auto const& values) -> Expr {
-        std::vector<Expr> expressions;
-        for (auto const value : values) {
-            expressions.push_back(ir_.atom(value));
-        }
-        return ir_.list(expressions);
+        return ir_.list(values, [this](auto value) { return ir_.string(value); });
     }
     auto build_type_ref(codegen::TypeRefId id) -> Expr;
     auto build_enum_value(codegen::EnumeratorId value) -> Expr;
@@ -68,9 +56,7 @@ class CanonicalRenderer {
         auto const index{columns.index(child)};
         auto result{
             ir_.form(head, {ir_.atom(columns.name[index]), build_type_ref(columns.type[index])})};
-        if (columns.count[index].has_value()) {
-            result.field("count", *columns.count[index]);
-        }
+        result.optional_field("count", columns.count[index]);
         if constexpr (std::is_same_v<Child, codegen::RecordMemberId>) {
             if (columns.initializer[index]) {
                 result.field("initializer", ir_.string(*columns.initializer[index]));

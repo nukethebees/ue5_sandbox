@@ -8,6 +8,7 @@
 #include <concepts>
 #include <format>
 #include <initializer_list>
+#include <ranges>
 #include <span>
 #include <string>
 #include <string_view>
@@ -47,6 +48,17 @@ class SExprIR {
     }
     auto list(std::span<Expr const> values) -> Expr;
     auto list(std::initializer_list<Expr> values) -> Expr;
+    template <std::ranges::input_range Range, typename Projection>
+    auto list(Range const& values, Projection projection) -> Expr {
+        std::vector<Expr> expressions;
+        if constexpr (std::ranges::sized_range<Range const>) {
+            expressions.reserve(std::ranges::size(values));
+        }
+        for (auto const& value : values) {
+            expressions.push_back(projection(value));
+        }
+        return list(expressions);
+    }
     auto form(std::string_view head, std::initializer_list<Expr> positional = {}) -> FormBuilder;
     template <Serialized T>
     auto form(T head, std::initializer_list<Expr> positional = {}) -> FormBuilder;
