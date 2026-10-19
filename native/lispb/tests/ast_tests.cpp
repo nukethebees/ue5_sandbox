@@ -660,6 +660,16 @@ TEST(Ast, AppliesStaticAndDefaultArgumentRulesToFunctionForms) {
               "}");
 }
 
+TEST(Ast, RendersEmptyEnumsWithoutAnEnumerator) {
+    CompilerTestContext context;
+    auto& ir{context.ir};
+
+    EXPECT_EQ(ir.render(ir.enumeration(ir.strings.intern("Empty"), {}, {})),
+              "enum class Empty {\n\n};");
+    EXPECT_EQ(ir.render(ir.enumeration(ir.strings.intern("Empty"), {}, {}, {}, false)),
+              "enum Empty {\n\n};");
+}
+
 TEST(Ast, RendersEnumsAndExportedFreeFunctions) {
     CompilerTestContext context;
     [[maybe_unused]] auto& ir{context.ir};

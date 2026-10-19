@@ -10047,5 +10047,16 @@ TEST(Validation, NormalModuleReservesFixedSoaStorageAndContainerNames) {
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))));
 }
 
+TEST(Validation, RejectsEmptySettingsSchema) {
+    CompilerTestContext context;
+    auto manifest{parse_test_manifest(context, R"(
+(module settings :header "Settings.h"
+  (settings-schema Empty
+    :target Empty
+    :target-header "Empty.h")))")};
+
+    EXPECT_THROW(lower_test_manifest(context, std::move(manifest)), std::invalid_argument);
+}
+
 } // namespace
 } // namespace lispb::codegen

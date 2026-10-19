@@ -3978,9 +3978,14 @@ class Validator {
         require_qualified_identifier(schemas.target[row], "Settings target type");
         require_non_blank_value(schemas.target_header[row], "Settings target header");
 
+        auto const schema_paths{declarations_.items(schemas.paths[row])};
+        if (schema_paths.empty()) {
+            throw std::invalid_argument{"Settings schema requires at least one field"};
+        }
+
         std::set<std::string> paths;
         std::set<std::string> field_names;
-        for (auto const path : declarations_.items(schemas.paths[row])) {
+        for (auto const path : schema_paths) {
             auto const name{text(path)};
             require_non_blank_value(name, "Settings field path");
             auto const field_name{settings_schema_field_name(name)};

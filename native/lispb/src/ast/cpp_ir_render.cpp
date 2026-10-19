@@ -231,6 +231,20 @@ void CppIR::append_node(std::string& output, NodeId node, RenderContext const& c
     auto type = [&](CppTypeId id) { output += types.spelling(id); };
     auto text = [&](StringId id) { output += strings.view(id); };
     auto expr = [&](Expr id) { append_expr(output, id); };
+    auto template_prefix = [&](TemplateId declaration) {
+        if (declaration) {
+            indent();
+            append_template(output, declaration);
+            output += '\n';
+        }
+    };
+    auto include = [&](std::string_view path, bool system) {
+        indent();
+        output += "#include ";
+        output += system ? '<' : '"';
+        output += path;
+        output += system ? '>' : '"';
+    };
     auto initialize = [&](Expr value) {
         auto const direct_list{value.kind() == ExprKind::initializer_list &&
                                !initializer_exprs_.type[value.index()]};
@@ -241,6 +255,17 @@ void CppIR::append_node(std::string& output, NodeId node, RenderContext const& c
         if (!direct_list) {
             output += '}';
         }
+    };
+    auto member = [&](auto const& members, std::string_view prefix) {
+        indent();
+        output += prefix;
+        type(members.type[i]);
+        output += ' ';
+        output += strings.view(members.name[i]);
+        if (auto const initializer{members.initializer[i]}) {
+            initialize(initializer);
+        }
+        output += ';';
     };
     switch (node.kind()) {
         case NodeKind::raw:
@@ -399,12 +424,7 @@ void CppIR::append_node(std::string& output, NodeId node, RenderContext const& c
         }
         case NodeKind::include: {
             auto const path{strings.view(include_nodes_.path[i])};
-            auto const system{include_is_system(path, include_nodes_.style[i])};
-            indent();
-            output += "#include ";
-            output += system ? '<' : '"';
-            output += path;
-            output += system ? '>' : '"';
+            include(path, include_is_system(path, include_nodes_.style[i]));
             break;
         }
         case NodeKind::include_dependencies: {
@@ -414,16 +434,11 @@ void CppIR::append_node(std::string& output, NodeId node, RenderContext const& c
                     output += "\n\n";
                 }
                 bool first{true};
-                for (auto const& include : group) {
+                for (auto const& path : group) {
                     if (!first) {
                         output += '\n';
                     }
-                    indent();
-                    output += "#include ";
-                    auto const system{include_is_system(include)};
-                    output += system ? '<' : '"';
-                    output += include;
-                    output += system ? '>' : '"';
+                    include(path, include_is_system(path));
                     first = false;
                 }
                 first_group = false;
@@ -431,11 +446,7 @@ void CppIR::append_node(std::string& output, NodeId node, RenderContext const& c
             break;
         }
         case NodeKind::forward_declaration:
-            if (auto const declaration{forward_declaration_nodes_.template_declaration[i]}) {
-                indent();
-                append_template(output, declaration);
-                output += '\n';
-            }
+            template_prefix(forward_declaration_nodes_.template_declaration[i]);
             indent();
             output += record_keyword(forward_declaration_nodes_.kind[i]);
             output += ' ';
@@ -443,11 +454,7 @@ void CppIR::append_node(std::string& output, NodeId node, RenderContext const& c
             output += ';';
             break;
         case NodeKind::friend_declaration:
-            if (auto const declaration{friend_declaration_nodes_.template_declaration[i]}) {
-                indent();
-                append_template(output, declaration);
-                output += '\n';
-            }
+            template_prefix(friend_declaration_nodes_.template_declaration[i]);
             indent();
             output += "friend ";
             if (auto const friend_type{friend_declaration_nodes_.type[i]}; friend_type.value != 0) {
@@ -460,11 +467,7 @@ void CppIR::append_node(std::string& output, NodeId node, RenderContext const& c
             output += ';';
             break;
         case NodeKind::using_declaration:
-            if (auto const declaration{using_declaration_nodes_.template_declaration[i]}) {
-                indent();
-                append_template(output, declaration);
-                output += '\n';
-            }
+            template_prefix(using_declaration_nodes_.template_declaration[i]);
             indent();
             output += "using ";
             text(using_declaration_nodes_.name[i]);
@@ -473,51 +476,18 @@ void CppIR::append_node(std::string& output, NodeId node, RenderContext const& c
             output += ';';
             break;
         case NodeKind::instance_member:
-            indent();
-            type(instance_members_.type[i]);
-            output += ' ';
-            output += strings.view(instance_members_.name[i]);
-            if (auto const initializer{instance_members_.initializer[i]}) {
-                initialize(initializer);
-            }
-            output += ';';
+            member(instance_members_, "");
             break;
         case NodeKind::static_member: {
-            if (auto const parameters{static_members_.template_declaration[i]}) {
-                indent();
-                append_template(output, parameters);
-                output += '\n';
-            }
-            indent();
-            if (static_members_.is_inline[i]) {
-                output += "inline ";
-            }
-            output += "static ";
-            type(static_members_.type[i]);
-            output += ' ';
-            output += strings.view(static_members_.name[i]);
-            if (auto const initializer{static_members_.initializer[i]}) {
-                initialize(initializer);
-            }
-            output += ';';
+            template_prefix(static_members_.template_declaration[i]);
+            member(static_members_, static_members_.is_inline[i] ? "inline static " : "static ");
             break;
         }
         case NodeKind::constexpr_member: {
-            if (auto const parameters{constexpr_members_.template_declaration[i]}) {
-                indent();
-                append_template(output, parameters);
-                output += '\n';
-            }
-            indent();
-            if (constexpr_members_.is_inline[i]) {
-                output += "inline ";
-            }
-            output += "static constexpr ";
-            type(constexpr_members_.type[i]);
-            output += ' ';
-            output += strings.view(constexpr_members_.name[i]);
-            initialize(constexpr_members_.initializer[i]);
-            output += ';';
+            template_prefix(constexpr_members_.template_declaration[i]);
+            member(constexpr_members_,
+                   constexpr_members_.is_inline[i] ? "inline static constexpr "
+                                                   : "static constexpr ");
             break;
         }
         case NodeKind::function: {
@@ -591,17 +561,12 @@ void CppIR::append_node(std::string& output, NodeId node, RenderContext const& c
                     output += '\n';
                 }
             }
-            if (range.count == 0) {
-                output += ',';
-            }
             close("};");
             break;
         }
         case NodeKind::struct_: {
             if (auto const parameters{struct_nodes_.template_declaration[i]}) {
-                indent();
-                append_template(output, parameters);
-                output += '\n';
+                template_prefix(parameters);
                 if (auto const clause{struct_nodes_.requires_clause[i]}) {
                     indent();
                     output += "    requires ";
