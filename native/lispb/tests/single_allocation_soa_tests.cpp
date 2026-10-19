@@ -100,7 +100,7 @@ auto render(std::string_view declarations) -> std::string {
     auto const files{render_test_manifest(
         context,
         parse_test_manifest(context,
-                            "(module test :header \"Test.h\" :source \"Test.cpp\" " +
+                            R"((module test :header "Test.h" :source "Test.cpp" )" +
                                 std::string{declarations} + ")"))};
     return files.front().content;
 }
@@ -208,7 +208,7 @@ TEST(SingleAllocationSoa, CommonApiIsEmittedForEveryRequestedRepresentation) {
              {SoaStorage::vector, SoaStorage::single_allocation, SoaStorage::both}) {
             SCOPED_TRACE(static_cast<int>(backend));
             SCOPED_TRACE(soa_storage_name(policy));
-            std::string source{"(module api :header \"Api.h\" :source \"Api.cpp\" :backend "};
+            std::string source{R"((module api :header "Api.h" :source "Api.cpp" :backend )"};
             source += backend == SoaBackend::unreal ? "unreal" : "standard-library";
             source += R"(
                 (struct LogicalRows :view-name NamedView :const-view-name NamedConstView

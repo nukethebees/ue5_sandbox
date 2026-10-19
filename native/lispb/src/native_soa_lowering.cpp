@@ -375,7 +375,7 @@ using size_type = std::uint32_t;
                       "-> equivalent_type {{ return ",
                       native_spelling(std::string{ir.types.spelling(*equivalent_type)}));
                 if (equivalent_constructor.value == 0) {
-                    out += "{";
+                    out += '{';
                 } else {
                     write("{}(", ir.strings.view(equivalent_constructor));
                 }

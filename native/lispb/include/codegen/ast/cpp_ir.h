@@ -321,9 +321,9 @@ class CppIR {
     }
     // Require a positive formatting count.
     auto lines(int count) -> NodeId;
-    auto declaration(FunctionId spec) -> NodeId;
-    auto header_function(FunctionId spec) -> NodeId;
-    auto definition(FunctionId spec,
+    auto declaration(FunctionId function) -> NodeId;
+    auto header_function(FunctionId function) -> NodeId;
+    auto definition(FunctionId function,
                     std::optional<StringId> owner = {},
                     std::optional<ReturnSyntax> syntax = {},
                     bool header = false) -> NodeId;
@@ -372,7 +372,7 @@ class CppIR {
     auto render(Expr expr) const -> std::string;
     auto render(NodeId node, RenderContext const& context = {}) const -> std::string;
     auto render(CppFileId file) const -> std::string;
-    auto render_nodes(std::span<NodeId const> nodes,
+    auto render_nodes(std::span<NodeId const> values,
                       RenderContext const& context,
                       int newlines) const -> std::string;
     void collect_dependencies(Expr expr, std::vector<TypeDependencyId>& result) const;

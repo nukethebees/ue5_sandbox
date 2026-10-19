@@ -469,20 +469,8 @@ class TypeGraphBuilder {
                                  << 24) |
                                 0xffffffu};
                         }
-                        case lispb::codegen::DeclarationKind::homogeneous_layout: {
-
-                            return lispb::schema::TypeDefinitionId{
-                                (static_cast<std::uint32_t>(lispb::schema::TypeDefinitionKind::soa)
-                                 << 24) |
-                                0xffffffu};
-                        }
-                        case lispb::codegen::DeclarationKind::soa: {
-
-                            return lispb::schema::TypeDefinitionId{
-                                (static_cast<std::uint32_t>(lispb::schema::TypeDefinitionKind::soa)
-                                 << 24) |
-                                0xffffffu};
-                        }
+                        case lispb::codegen::DeclarationKind::homogeneous_layout:
+                        case lispb::codegen::DeclarationKind::soa:
                         case lispb::codegen::DeclarationKind::vector_soa: {
 
                             return lispb::schema::TypeDefinitionId{

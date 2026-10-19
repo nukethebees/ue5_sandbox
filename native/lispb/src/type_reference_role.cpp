@@ -83,7 +83,7 @@ auto type_reference_role_text(Strings const& strings, TypeReferenceRole const& r
             break;
     }
     if (role.subject.value != 0) {
-        result += " ";
+        result += ' ';
         result += strings.view(role.subject);
     }
     if (role.part != TypeReferencePart::dependency &&

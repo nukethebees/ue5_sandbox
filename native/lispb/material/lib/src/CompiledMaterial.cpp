@@ -501,8 +501,8 @@ auto deserialize(std::span<std::uint8_t const> const bytes)
     }
     compiled.source_path = *source_path;
     compiled.source_hash = *source_hash;
-    compiled.material.settings = {.name = std::move(*name),
-                                  .package_path = std::move(*package_path),
+    compiled.material.settings = {.name = *name,
+                                  .package_path = *package_path,
                                   .domain = static_cast<MaterialDomain>(*domain),
                                   .blend_mode = static_cast<BlendMode>(*blend_mode),
                                   .shading_model = static_cast<ShadingModel>(*shading_model),
@@ -592,7 +592,7 @@ auto deserialize(std::span<std::uint8_t const> const bytes)
         if (!dependency) {
             return std::unexpected{dependency.error()};
         }
-        compiled.material.texture_dependencies.push_back(std::move(*dependency));
+        compiled.material.texture_dependencies.push_back(*dependency);
     }
     if (reader.remaining() != 0) {
         return std::unexpected{"compiled material artifact has trailing data"};

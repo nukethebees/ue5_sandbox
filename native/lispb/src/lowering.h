@@ -48,7 +48,7 @@ auto lower_enum(LoweringContext& context,
 auto lower_soa_declaration(LoweringContext& context,
                            DeclarationHandle schema,
                            ModuleHandle module,
-                           std::map<IdentifierId, DeclarationHandle> const& expanded,
+                           std::map<IdentifierId, DeclarationHandle> const& schemas,
                            std::optional<SoaAllocatorVariantId> allocator_variant = std::nullopt)
     -> DeclarationEmission;
 auto lower_homogeneous(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission;

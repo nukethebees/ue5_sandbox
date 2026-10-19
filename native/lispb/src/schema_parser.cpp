@@ -315,7 +315,7 @@ auto SchemaParser::parse_function(Declarations& declarations, sexpr::FormId cons
     records.body_lines[record_index] = declarations.range(body_lines);
     records.dependencies[record_index] =
         declarations.range(identifier_list_or(fields, "dependencies"));
-    records.trailing_return_type[record_index] = std::move(trailing_return_type);
+    records.trailing_return_type[record_index] = trailing_return_type;
     records.is_const[record_index] = is_const;
     records.is_noexcept[record_index] = boolean_or(fields, "noexcept");
     records.is_static[record_index] = is_static;
@@ -446,7 +446,7 @@ auto SchemaParser::parse_member(Declarations& declarations, sexpr::FormId const 
     records.nested_schema[record_index] = optional_identifier(fields, "nested-schema");
     records.mask_field[record_index] = boolean_or(fields, "mask-field");
     records.mask_dimensions[record_index] = declarations.range(mask_dimensions);
-    records.relationship[record_index] = std::move(relationship);
+    records.relationship[record_index] = relationship;
     return record_id;
 }
 
@@ -542,11 +542,11 @@ auto SchemaParser::parse_soa(Declarations& declarations, sexpr::FormId const for
     records.mutable_view_functions[record_index] = declarations.range(mutable_view_functions);
     records.using_declarations[record_index] =
         declarations.range(text_id_list_or(fields, "using-declarations"));
-    records.equivalent_type[record_index] = std::move(equivalent_type);
+    records.equivalent_type[record_index] = equivalent_type;
     records.copy_element_memberwise[record_index] = boolean_or(fields, "copy-element-memberwise");
     records.layout_only[record_index] = boolean_or(fields, "layout-only");
-    records.fixed[record_index] = std::move(fixed);
-    records.single_allocation[record_index] = std::move(single_allocation);
+    records.fixed[record_index] = fixed;
+    records.single_allocation[record_index] = single_allocation;
     records.array_allocator[record_index] =
         fields.optional("array-allocator")
             ? std::optional{parse_type_ref(declarations, *fields.optional("array-allocator"))}
@@ -568,7 +568,7 @@ auto SchemaParser::parse_module_settings(Declarations& declarations, sexpr::Fiel
     auto const record_index{records.index(record_id)};
     records.name[record_index] = parser_.identifier(fields.positional(0), "module name");
     records.header[record_index] = parser_.text_id(fields.required("header"), "module header");
-    records.source[record_index] = std::move(source);
+    records.source[record_index] = source;
     records.header_include[record_index] = optional_text_id(fields, "header-include");
     records.namespace_name[record_index] = optional_identifier(fields, "namespace");
     records.include_order[record_index] =
@@ -807,7 +807,7 @@ auto SchemaParser::parse_packed_field(Declarations& declarations, sexpr::FormId 
             ? std::nullopt
             : std::optional<PackedIntegerValue>{packed_integer(*maximum, "packed field maximum")};
     records.named_codes[record_index] = declarations.range(named_codes);
-    records.relationship[record_index] = std::move(relationship);
+    records.relationship[record_index] = relationship;
     records.default_value[record_index] =
         !fields.optional("default").has_value()
             ? std::nullopt
@@ -961,7 +961,7 @@ auto SchemaParser::parse_enum(Declarations& declarations, sexpr::FormId const fo
     records.count[record_index] = optional_identifier(fields, "count");
     records.conversions[record_index] = declarations.range(conversions);
     records.export_specifier[record_index] = parse_export_specifier(fields);
-    records.unreal_projection[record_index] = std::move(unreal_projection);
+    records.unreal_projection[record_index] = unreal_projection;
     records.bit_width[record_index] = bit_width;
     records.reflection[record_index] = reflection;
     records.signedness[record_index] = schema::EnumSignedness::unspecified;
@@ -1266,7 +1266,7 @@ auto SchemaParser::parse_record_member(Declarations& declarations, sexpr::FormId
         !count.has_value()
             ? std::nullopt
             : std::optional<std::uint64_t>{unsigned_integer(*count, "record member count")};
-    records.relationship[record_index] = std::move(relationship);
+    records.relationship[record_index] = relationship;
     records.initializer[record_index] = optional_text_id(fields, "initializer");
     return record_id;
 }
@@ -1475,7 +1475,7 @@ auto SchemaParser::parse_integer_scalar(Declarations& declarations, sexpr::FormI
         packed_integer(fields.required("maximum"), "integer scalar maximum");
     records.bit_width[record_index] = bit_width;
     records.named_codes[record_index] = declarations.range(named_codes);
-    records.relationship[record_index] = std::move(relationship);
+    records.relationship[record_index] = relationship;
     records.cpp_emission[record_index] = cpp_emission;
     records.cpp_type[record_index] = !cpp_type.has_value()
                                        ? std::nullopt
@@ -1689,7 +1689,7 @@ auto SchemaParser::parse_layout(Declarations& declarations, sexpr::FormId const 
             records.type[record_index] = parse_type_ref(declarations, value.positional(0));
             records.suffix[record_index] =
                 parser_.text_id(value.positional(1), "homogeneous type suffix");
-            records.equivalent_type[record_index] = std::move(equivalent);
+            records.equivalent_type[record_index] = equivalent;
             records.input_types[record_index] = declarations.range(inputs);
             value_types.push_back(record_id);
         }
@@ -1740,7 +1740,7 @@ auto SchemaParser::parse_vector_soa(Declarations& declarations, sexpr::FormId co
     records.equivalent_type[record_index] =
         parse_type_ref(declarations, fields.required("equivalent-type"));
     records.export_specifier[record_index] = parse_export_specifier(fields);
-    records.fixed[record_index] = std::move(fixed);
+    records.fixed[record_index] = fixed;
     records.equivalent_accessors[record_index] = boolean_or(fields, "equivalent-accessors");
     return record_id;
 }

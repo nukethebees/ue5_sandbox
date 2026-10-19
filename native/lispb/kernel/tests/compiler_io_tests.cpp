@@ -89,7 +89,7 @@ class TemporaryProject {
 };
 
 auto compile(TemporaryProject const& project,
-             std::vector<std::filesystem::path> inputs,
+             std::vector<std::filesystem::path> const& inputs,
              lispb::KernelProfile const profile = lispb::KernelProfile::unreal,
              bool const check = false) -> int {
     auto const root{project.path({})};

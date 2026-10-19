@@ -8,12 +8,14 @@
 #include <lispb/target_groups.h>
 #include <lispb/target_id.h>
 
+#include <cassert>
 #include <filesystem>
 #include <map>
 #include <optional>
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 namespace lispb {
 class Strings;
@@ -56,8 +58,21 @@ class Project {
   private:
     TargetColumns cpp_schema_, slate_, kernel_, material_;
     TargetGroups groups_;
-    [[nodiscard]] auto columns(TargetId target) const -> TargetColumns const&;
-    [[nodiscard]] auto columns(TargetId target) -> TargetColumns&;
+    [[nodiscard]] auto columns(this auto& self, TargetId target) -> decltype(auto) {
+        switch (target.kind()) {
+            case TargetKind::cpp_schema:
+                return (self.cpp_schema_);
+            case TargetKind::slate:
+                return (self.slate_);
+            case TargetKind::kernel:
+                return (self.kernel_);
+            case TargetKind::material:
+                return (self.material_);
+            default:
+                assert(false);
+                std::unreachable();
+        }
+    }
     [[nodiscard]] auto store_paths(std::span<std::filesystem::path const> paths)
         -> codegen::sexpr::HandleRange;
     [[nodiscard]] auto paths(codegen::sexpr::HandleRange range) const

@@ -87,7 +87,7 @@ auto declaration_nodes(LoweringContext& context, std::span<FunctionId const> con
 }
 
 auto view_struct(LoweringContext& context,
-                 std::string name,
+                 std::string_view name,
                  std::string const& view_name,
                  std::string const& const_view_name,
                  std::span<ResolvedMemberId const> members,
@@ -129,7 +129,7 @@ auto view_struct(LoweringContext& context,
         }
     }
     auto const created_record{
-        ir.record(ir.strings.intern(std::move(name)), nodes.build(), RecordKind::struct_)};
+        ir.record(ir.strings.intern(name), nodes.build(), RecordKind::struct_)};
     ir.set_record_export_specifier(
         created_record,
         context.declarations.soas.export_specifier[context.declarations.soas.index(schema)]);

@@ -549,7 +549,7 @@ auto packed_value_text(LoweringContext& context,
                         ir.types.dependencies(storage).begin(),
                         ir.types.dependencies(storage).end());
     if (auto dependency{dependency_for_integer(ir, storage)}) {
-        dependencies.push_back(std::move(*dependency));
+        dependencies.push_back(*dependency);
     }
 
     auto const export_specifier{
@@ -582,7 +582,7 @@ auto packed_value_text(LoweringContext& context,
                             ir.types.dependencies(field_type).begin(),
                             ir.types.dependencies(field_type).end());
         if (auto dependency{dependency_for_integer(ir, field_type)}) {
-            dependencies.push_back(std::move(*dependency));
+            dependencies.push_back(*dependency);
         }
         output +=
             "\n    // " +
@@ -1365,8 +1365,8 @@ auto packed_value_text(LoweringContext& context,
 
 auto lower_packed_value(LoweringContext& context,
                         DeclarationHandle schema,
-                        schema::TypeId const type_id) -> DeclarationEmission {
-    auto const packed{context.semantic.definition(type_id)};
+                        schema::TypeId const semantic_type) -> DeclarationEmission {
+    auto const packed{context.semantic.definition(semantic_type)};
     return {.header = {packed_value_text(context, schema, packed, context.semantic)}};
 }
 

@@ -64,7 +64,7 @@ auto homogeneous_function(LoweringContext& context,
                           std::string_view name,
                           CppTypeId return_type,
                           std::vector<FunctionParameterId> parameters,
-                          std::string body,
+                          std::string_view body,
                           FunctionReceiver receiver = FunctionReceiver::unqualified,
                           ReturnSyntax return_syntax = ReturnSyntax::direct,
                           TemplateId function_template = {},
@@ -142,7 +142,7 @@ auto component_assignments(LoweringContext& context,
 
 auto homogeneous_pointer_struct(LoweringContext& context,
                                 DeclarationHandle layout,
-                                std::string name,
+                                std::string_view name,
                                 std::string const& pointer_type) -> NodeId {
     auto& ir{context.ir};
     NodeListBuilder members{ir};
@@ -162,7 +162,7 @@ auto homogeneous_pointer_struct(LoweringContext& context,
             members.new_lines();
         }
     }
-    return ir.record(ir.strings.intern(std::move(name)), members.build(), RecordKind::struct_);
+    return ir.record(ir.strings.intern(name), members.build(), RecordKind::struct_);
 }
 
 auto homogeneous_storage_prelude_nodes(LoweringContext& context,
@@ -250,7 +250,7 @@ auto homogeneous_storage_access_nodes(LoweringContext& context, DeclarationHandl
     auto add = [&context, &result](std::string_view name,
                                    CppTypeId return_type,
                                    std::vector<FunctionParameterId> parameters,
-                                   std::string body,
+                                   std::string_view body,
                                    FunctionReceiver receiver = FunctionReceiver::unqualified,
                                    ReturnSyntax return_syntax = ReturnSyntax::direct,
                                    TemplateId function_template = {}) {
@@ -258,7 +258,7 @@ auto homogeneous_storage_access_nodes(LoweringContext& context, DeclarationHandl
                                         name,
                                         return_type,
                                         std::move(parameters),
-                                        std::move(body),
+                                        body,
                                         receiver,
                                         return_syntax,
                                         function_template,
@@ -370,13 +370,13 @@ auto homogeneous_storage_copy_nodes(LoweringContext& context, DeclarationHandle 
         ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Other"))})};
     auto add = [&](std::string_view name,
                    std::vector<FunctionParameterId> parameters,
-                   auto body,
+                   auto const& body,
                    ReturnSyntax syntax = ReturnSyntax::trailing) {
         result.add(homogeneous_function(context,
                                         name,
                                         ir.types.intern("void"),
                                         std::move(parameters),
-                                        std::move(body),
+                                        body,
                                         FunctionReceiver::unqualified,
                                         syntax,
                                         function_template,
@@ -411,7 +411,7 @@ auto homogeneous_storage_sort_nodes(LoweringContext& context, FunctionId const p
     auto const scratch_indices{ir.parameter("TArrayView<int32>", "scratch_indices")};
     NodeListBuilder result{ir};
     result.add(ir.declaration(permutation), 1);
-    auto sort_body = [&ir](std::string sort_expression) {
+    auto sort_body = [&ir](std::string_view sort_expression) {
         NodeListBuilder body{ir};
         return body.add(ir.expr_stmt(ir.raw_expr("validate_array_sizes()")))
             .add(ir.variable("auto const", "n", ir.raw_expr("num()")))
@@ -420,7 +420,7 @@ auto homogeneous_storage_sort_nodes(LoweringContext& context, FunctionId const p
             .add(ir.expr_stmt(
                 ir.raw_expr("ioj::fill_indices(scratch_indices)"),
                 {ir.types.dependency("ioj::fill_indices", "SandboxCore/array_utils.h")}))
-            .add(ir.raw(std::move(sort_expression)))
+            .add(ir.raw(sort_expression))
             .add(ir.expr_stmt(ir.raw_expr("apply_permutation(scratch_indices)")))
             .build();
     };
@@ -460,11 +460,11 @@ auto homogeneous_storage_array_operation_nodes(LoweringContext& context, Declara
     auto const count{ir.parameter("size_type const", "count")};
     auto const allow_shrinking{ir.parameter("EAllowShrinking const", "allow_shrinking")};
     NodeListBuilder result{ir};
-    auto add_each = [&](std::string name,
+    auto add_each = [&](std::string_view name,
                         std::vector<FunctionParameterId> parameters,
                         std::string const& expression) {
         result.add(homogeneous_function(context,
-                                        std::move(name),
+                                        name,
                                         ir.types.intern("void"),
                                         std::move(parameters),
                                         component_statements(context, layout, expression),

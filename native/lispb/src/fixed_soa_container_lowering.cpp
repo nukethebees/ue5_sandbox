@@ -128,7 +128,7 @@ auto fixed_function(LoweringContext& context,
                     std::string_view name,
                     CppTypeId return_type,
                     std::vector<FunctionParameterId> parameters,
-                    std::string body,
+                    std::string_view body,
                     FunctionReceiver receiver = FunctionReceiver::unqualified,
                     ReturnSyntax return_syntax = ReturnSyntax::direct,
                     TemplateId function_template = {},
@@ -152,7 +152,7 @@ auto compact_function_writer(LoweringContext& context, NodeListBuilder& nodes) {
     return [&context, &nodes](std::string_view name,
                               CppTypeId return_type,
                               std::vector<FunctionParameterId> parameters,
-                              std::string body,
+                              std::string_view body,
                               FunctionReceiver receiver = FunctionReceiver::unqualified,
                               ReturnSyntax return_syntax = ReturnSyntax::direct,
                               TemplateId function_template = {},
@@ -162,7 +162,7 @@ auto compact_function_writer(LoweringContext& context, NodeListBuilder& nodes) {
                                            name,
                                            return_type,
                                            std::move(parameters),
-                                           std::move(body),
+                                           body,
                                            receiver,
                                            return_syntax,
                                            function_template,
@@ -408,14 +408,14 @@ auto fixed_container_access_nodes(LoweringContext& context, DeclarationHandle sc
     auto add = [&](std::string_view name,
                    std::string_view type,
                    std::vector<FunctionParameterId> parameters,
-                   std::string body,
+                   std::string_view body,
                    FunctionReceiver receiver = FunctionReceiver::unqualified,
                    TemplateId function_template = {},
                    int new_lines = 1) {
         return write(name,
                      ir.types.intern(type),
                      std::move(parameters),
-                     std::move(body),
+                     body,
                      receiver,
                      ReturnSyntax::trailing,
                      function_template,
@@ -426,21 +426,23 @@ auto fixed_container_access_nodes(LoweringContext& context, DeclarationHandle sc
         add("capacity", "size_type", {}, "return capacity_value;", FunctionReceiver::static_)};
     ir.set_function_noexcept(capacity);
     ir.function_flags(capacity).set_is_constexpr(true);
-    auto query =
-        [&](std::string_view name, std::string_view type, std::string body, int new_lines = 1) {
-            ir.set_function_noexcept(
-                add(name, type, {}, std::move(body), FunctionReceiver::const_, {}, new_lines));
-        };
+    auto query = [&](std::string_view name,
+                     std::string_view type,
+                     std::string_view body,
+                     int new_lines = 1) {
+        ir.set_function_noexcept(
+            add(name, type, {}, body, FunctionReceiver::const_, {}, new_lines));
+    };
     query("num", "size_type", "return size_;");
     query("is_empty", "bool", "return size_ == 0;");
     query("is_full", "bool", "return size_ == capacity();", 2);
     auto getters = [&](std::string_view name,
                        std::string_view type,
                        FunctionReceiver receiver,
-                       std::string body,
-                       std::string range_body) {
-        add(name, type, {}, std::move(body), receiver);
-        add(name, type, range_parameters, std::move(range_body), receiver);
+                       std::string_view body,
+                       std::string_view range_body) {
+        add(name, type, {}, body, receiver);
+        add(name, type, range_parameters, range_body, receiver);
     };
     getters("get_view",
             "View",
@@ -459,9 +461,9 @@ auto fixed_container_access_nodes(LoweringContext& context, DeclarationHandle sc
             "check_view_range(offset, count); return storage_.get_const_view(offset, count);");
     auto slices = [&](std::string_view type,
                       FunctionReceiver receiver,
-                      std::string body,
+                      std::string_view body,
                       int trailing_new_lines = 1) {
-        add("slice", type, range_parameters, std::move(body), receiver);
+        add("slice", type, range_parameters, body, receiver);
         add("left", type, {count}, "return slice(0, count);", receiver);
         add("right",
             type,
@@ -516,7 +518,7 @@ auto fixed_container_set_nodes(LoweringContext& context,
     auto const members{resolve_members(context, schema)};
     std::vector<FunctionId> setters;
     if (auto set{soa_set_function(context, schema, members, false)}; set.has_value()) {
-        setters.push_back(std::move(*set));
+        setters.push_back(*set);
     } else {
         for (auto const function_id : context.declarations.items(
                  context.declarations.soas

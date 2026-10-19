@@ -69,7 +69,8 @@ class TypeGraph {
     auto find_declared(codegen::ModuleHandle module, IdentifierId name) const
         -> std::optional<TypeId>;
     auto find_registered(IdentifierId name) const -> std::optional<TypeId>;
-    auto find_named(IdentifierId name, codegen::ModuleHandle module) const -> std::optional<TypeId>;
+    auto find_named(IdentifierId identifier, codegen::ModuleHandle module) const
+        -> std::optional<TypeId>;
     auto find_reference(codegen::TypeRefId reference, codegen::ModuleHandle module) const
         -> std::optional<TypeId>;
     // Every authored occurrence is bound before semantic definitions and lowering.

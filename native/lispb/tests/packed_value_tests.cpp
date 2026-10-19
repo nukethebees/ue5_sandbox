@@ -165,7 +165,7 @@ auto lower(CompilerTestContext& context, ModuleHandle module) -> std::string {
                                           Manifest{manifest_schema_version,
                                                    make_test_registry(context),
                                                    context.storage.declarations,
-                                                   {std::move(module)}})};
+                                                   {module}})};
     EXPECT_EQ(files.size(), 1);
     return files.front().content;
 }
@@ -206,34 +206,35 @@ auto lower_known_enum(CompilerTestContext& context, ModuleHandle module, Declara
     }();
     auto const files{render_test_manifest(
         context,
-        Manifest{
-            manifest_schema_version,
-            make_test_registry(context,
-                               {{"state", context.storage.cpp_types.add("FighterStateKind")}}),
-            context.storage.declarations,
-            {[&] {
-                 auto const new_normal_modules{
-                     context.storage.declarations.normal_modules.append()};
-                 context.storage.declarations.normal_modules
-                     .settings[context.storage.declarations.normal_modules.index(
-                         new_normal_modules)] = [&] {
-                     auto const new_module_settings_store{
-                         context.storage.declarations.module_settings_store.append()};
-                     context.storage.declarations.module_settings_store
-                         .name[context.storage.declarations.module_settings_store.index(
-                             new_module_settings_store)] = context.storage.strings.intern("enums");
-                     context.storage.declarations.module_settings_store
-                         .header[context.storage.declarations.module_settings_store.index(
-                             new_module_settings_store)] = context.storage.strings.add("Enums.h");
-                     return new_module_settings_store;
-                 }();
-                 context.storage.declarations.normal_modules
-                     .declarations[context.storage.declarations.normal_modules.index(
-                         new_normal_modules)] =
-                     context.storage.declarations.range<DeclarationHandle>({std::move(schema)});
-                 return new_normal_modules;
-             }(),
-             std::move(module)}})};
+        Manifest{manifest_schema_version,
+                 make_test_registry(context,
+                                    {{"state", context.storage.cpp_types.add("FighterStateKind")}}),
+                 context.storage.declarations,
+                 {[&] {
+                      auto const new_normal_modules{
+                          context.storage.declarations.normal_modules.append()};
+                      context.storage.declarations.normal_modules
+                          .settings[context.storage.declarations.normal_modules.index(
+                              new_normal_modules)] = [&] {
+                          auto const new_module_settings_store{
+                              context.storage.declarations.module_settings_store.append()};
+                          context.storage.declarations.module_settings_store
+                              .name[context.storage.declarations.module_settings_store.index(
+                                  new_module_settings_store)] =
+                              context.storage.strings.intern("enums");
+                          context.storage.declarations.module_settings_store
+                              .header[context.storage.declarations.module_settings_store.index(
+                                  new_module_settings_store)] =
+                              context.storage.strings.add("Enums.h");
+                          return new_module_settings_store;
+                      }();
+                      context.storage.declarations.normal_modules
+                          .declarations[context.storage.declarations.normal_modules.index(
+                              new_normal_modules)] =
+                          context.storage.declarations.range<DeclarationHandle>({schema});
+                      return new_normal_modules;
+                  }(),
+                  module}})};
     EXPECT_EQ(files.size(), 2);
     return files.back().content;
 }
@@ -445,14 +446,14 @@ auto scalar_backed_manifest(CompilerTestContext& context,
                  }()});
              return new_normal_modules;
          }(),
-         std::move(module)}};
+         module}};
 }
 
 auto lower_scalar_backed(CompilerTestContext& context,
                          ModuleHandle module,
                          bool const signedness = false) -> std::string {
-    auto const files{render_test_manifest(
-        context, scalar_backed_manifest(context, std::move(module), signedness))};
+    auto const files{
+        render_test_manifest(context, scalar_backed_manifest(context, module, signedness))};
     EXPECT_EQ(files.size(), 2);
     return files.back().content;
 }
@@ -1565,7 +1566,7 @@ TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    auto const header{lower(context, std::move(module))};
+    auto const header{lower(context, module)};
 
     EXPECT_NE(header.find("using storage_type = std::uint32_t;"), std::string::npos);
     EXPECT_NE(header.find("ioj::valid_packed_storage<storage_type, 32>()"), std::string::npos);
@@ -1631,7 +1632,7 @@ TEST(PackedValue, EmitsAssertBackedMutationOnlyWhenRequested) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    auto const header{lower(context, std::move(module))};
+    auto const header{lower(context, module)};
 
     EXPECT_EQ(header.find("try_make(entity_index_type const entity_index_value"),
               std::string::npos);
@@ -1686,7 +1687,7 @@ TEST(PackedValue, UsesFieldAliasesAcrossImmutableAndMutablePublicApis) {
             }();
             return context.storage.declarations.range(rows_3);
         }();
-        auto const header{lower(context, std::move(module))};
+        auto const header{lower(context, module)};
         auto const text{compact(header)};
 
         expect_type_only_in_alias_definitions(header, "std::uint32_t", 2);
@@ -1868,7 +1869,7 @@ TEST(PackedValue, UsesBooleanFieldAliasWithoutChangingStatusTypes) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    auto const text{compact(lower(context, std::move(module)))};
+    auto const text{compact(lower(context, module))};
 
     EXPECT_NE(text.find("usingflag_type=bool;"), std::string::npos);
     EXPECT_NE(text.find("explicitconstexprFighterState(flag_typeconstflag_value)noexcept"),
@@ -1940,7 +1941,7 @@ TEST(PackedValue, ReservedSegmentsOccupyBitsWithoutGeneratingValueApi) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    auto const header{lower(context, std::move(module))};
+    auto const header{lower(context, module)};
 
     EXPECT_NE(header.find("ioj::PackedField<storage_type, entity_index_type, 0, 20>"),
               std::string::npos);
@@ -2042,7 +2043,7 @@ TEST(PackedValue, MostSignificantFirstSegmentsDriveGeneratedNumericOffsets) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    auto const header{lower(context, std::move(module))};
+    auto const header{lower(context, module)};
 
     EXPECT_NE(header.find("ioj::PackedField<storage_type, entity_index_type, 12, 20>"),
               std::string::npos);
@@ -2084,7 +2085,7 @@ TEST(PackedValue, MostSignificantFirstEnumDomainCanExcludeInvalidRawValue) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    auto const header{lower_known_enum(context, std::move(module), [&] {
+    auto const header{lower_known_enum(context, module, [&] {
         auto const new_enums{context.storage.declarations.enums.append()};
         context.storage.declarations.enums
             .name[context.storage.declarations.enums.index(new_enums)] =
@@ -2154,7 +2155,7 @@ TEST(PackedValue, SerializedByteOrderDoesNotChangeHostNumericOffsets) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    auto const header{lower(context, std::move(module))};
+    auto const header{lower(context, module)};
 
     EXPECT_NE(header.find("ioj::PackedField<storage_type, entity_index_type, 0, 24>"),
               std::string::npos);
@@ -2246,7 +2247,7 @@ TEST(PackedValue, LowersSignedArbitraryWidthFieldWithSafeSignExtension) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    auto const header{lower(context, std::move(module))};
+    auto const header{lower(context, module)};
 
     EXPECT_NE(header.find("using delta_type = std::int32_t;"), std::string::npos);
     EXPECT_NE(header.find("delta() const noexcept -> delta_type"), std::string::npos);
@@ -2389,7 +2390,7 @@ TEST(PackedValue, DerivesAndEnforcesSignedSemanticRangeWithNamedSentinel) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    auto const header{lower(context, std::move(module))};
+    auto const header{lower(context, module)};
 
     EXPECT_NE(header.find("ioj::PackedField<storage_type, temperature_type, 0, 8>"),
               std::string::npos);
@@ -2404,7 +2405,7 @@ TEST(PackedValue, DerivesAndEnforcesSignedSemanticRangeWithNamedSentinel) {
 TEST(PackedValue, LowersSharedIntegerScalarDomainForPackedPlacement) {
     CompilerTestContext context;
     auto module{valid_module(context)};
-    auto const header{lower_scalar_backed(context, std::move(module))};
+    auto const header{lower_scalar_backed(context, module)};
 
     EXPECT_NE(header.find("using entity_index_type = std::uint16_t;"), std::string::npos);
     EXPECT_NE(header.find("ioj::PackedField<storage_type, entity_index_type, 0, 12>"),
@@ -2421,7 +2422,7 @@ TEST(PackedValue, LowersSharedIntegerScalarDomainForPackedPlacement) {
 TEST(PackedValue, LowersSignedSharedIntegerScalarToSmallestNativeAccessor) {
     CompilerTestContext context;
     auto module{valid_module(context)};
-    auto const header{lower_scalar_backed(context, std::move(module), true)};
+    auto const header{lower_scalar_backed(context, module, true)};
 
     EXPECT_NE(header.find("using entity_index_type = std::int8_t;"), std::string::npos);
     EXPECT_NE(header.find("ioj::PackedField<storage_type, entity_index_type, 0, 8>"),
@@ -3902,7 +3903,7 @@ TEST(PackedValue, RejectsCompetingMiniFloatPlacementFacts) {
 TEST(PackedValue, RejectsCompetingOrMismatchedIntegerScalarFieldDomain) {
     CompilerTestContext context;
     auto module{valid_module(context)};
-    auto manifest{scalar_backed_manifest(context, std::move(module))};
+    auto manifest{scalar_backed_manifest(context, module)};
 
     manifest.modules.back() = [&] {
         auto row_4{context.storage.declarations.normal_modules.clone(manifest.modules.back())};
@@ -4156,7 +4157,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -4185,7 +4186,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -4208,7 +4209,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -4243,7 +4244,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -4273,7 +4274,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -4362,7 +4363,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -4450,7 +4451,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -4494,7 +4495,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_2);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -4543,7 +4544,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -4561,7 +4562,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -4589,7 +4590,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -4623,7 +4624,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -4658,7 +4659,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -4687,7 +4688,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -4717,7 +4718,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -4747,7 +4748,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -4804,7 +4805,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -4861,7 +4862,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -5003,7 +5004,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -5186,7 +5187,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -5242,7 +5243,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -5297,7 +5298,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -5341,7 +5342,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -5438,7 +5439,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -5535,7 +5536,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -5632,7 +5633,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -5745,7 +5746,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -5858,7 +5859,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -5908,7 +5909,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -5958,7 +5959,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
     context.storage.declarations.normal_modules
@@ -6008,7 +6009,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 }
 
 TEST(PackedValue, RejectsGeneratedApiCollisions) {
@@ -6055,7 +6056,7 @@ TEST(PackedValue, RejectsGeneratedApiCollisions) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower(context, std::move(module)), std::invalid_argument);
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
 }
 
 TEST(PackedValue, RejectsDescriptorAndRawFactoryNameCollisions) {
@@ -6254,7 +6255,7 @@ TEST(PackedValue, ValidatesKnownEnumUnderlyingType) {
         manifest_schema_version,
         make_test_registry(context, {{"state", context.storage.cpp_types.add("FighterStateKind")}}),
         context.storage.declarations,
-        {std::move(enums), std::move(module)}};
+        {enums, module}};
 
     try {
         static_cast<void>(lower_test_manifest(context, manifest));
@@ -6401,8 +6402,7 @@ TEST(PackedValue, ValidatesKnownEnumEncodedWidthWithoutEmittingPerValueAssertion
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_known_enum(context, std::move(module), std::move(schema)),
-                 std::invalid_argument);
+    EXPECT_THROW(lower_known_enum(context, module, schema), std::invalid_argument);
 }
 
 TEST(PackedValue, OmitsSentinelAssertionWhenTheKnownEnumDomainExcludesIt) {
@@ -6423,7 +6423,7 @@ TEST(PackedValue, OmitsSentinelAssertionWhenTheKnownEnumDomainExcludesIt) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    auto const header{lower_known_enum(context, std::move(module), [&] {
+    auto const header{lower_known_enum(context, module, [&] {
         auto const new_enums{context.storage.declarations.enums.append()};
         context.storage.declarations.enums
             .name[context.storage.declarations.enums.index(new_enums)] =
@@ -6596,8 +6596,7 @@ TEST(PackedValue, ResolvesImplicitValuesAfterExplicitHexadecimalValues) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_known_enum(context, std::move(module), std::move(schema)),
-                 std::invalid_argument);
+    EXPECT_THROW(lower_known_enum(context, module, schema), std::invalid_argument);
 }
 
 TEST(PackedValue, RejectsKnownEnumValuesOutsideTheirUnderlyingType) {
@@ -6796,8 +6795,7 @@ TEST(PackedValue, AllowsEnumAliasesAndUsesStructuralCountSemantics) {
              }()});
     context.storage.declarations.enums.count[context.storage.declarations.enums.index(schema)] =
         context.storage.strings.intern("COUNT");
-    EXPECT_NO_THROW(
-        static_cast<void>(lower_known_enum(context, std::move(module), std::move(schema))));
+    EXPECT_NO_THROW(static_cast<void>(lower_known_enum(context, module, schema)));
 }
 
 TEST(PackedValue, EmitsCompactFallbackForOpaqueKnownEnumValues) {
@@ -6829,7 +6827,7 @@ TEST(PackedValue, EmitsCompactFallbackForOpaqueKnownEnumValues) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    auto const header{lower_known_enum(context, std::move(module), [&] {
+    auto const header{lower_known_enum(context, module, [&] {
         auto const new_enums{context.storage.declarations.enums.append()};
         context.storage.declarations.enums
             .name[context.storage.declarations.enums.index(new_enums)] =
@@ -7130,7 +7128,7 @@ TEST(PackedValue, DerivesAutoWidthFromEnumSemanticDomain) {
                                           Manifest{manifest_schema_version,
                                                    make_test_registry(context),
                                                    context.storage.declarations,
-                                                   {std::move(enums), std::move(module)}})};
+                                                   {enums, module}})};
 
     auto const generated{
         std::ranges::find(files, std::filesystem::path{"Packed.h"}, &GeneratedFile::path)};
@@ -7264,7 +7262,7 @@ TEST(PackedValue, SentinelCodeCanIncreaseDerivedIntegerWidth) {
         return context.storage.declarations.range(rows_3);
     }();
 
-    auto const header{lower(context, std::move(module))};
+    auto const header{lower(context, module)};
 
     EXPECT_NE(header.find("ioj::PackedField<storage_type, entity_index_type, 0, 4>"),
               std::string::npos);

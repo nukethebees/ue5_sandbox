@@ -632,15 +632,14 @@ auto normal_module(CompilerTestContext& context,
         }();
         context.storage.declarations.normal_modules
             .declarations[context.storage.declarations.normal_modules.index(new_normal_modules)] =
-            context.storage.declarations.range<lispb::codegen::DeclarationHandle>(
-                std::move(declarations));
+            context.storage.declarations.range<lispb::codegen::DeclarationHandle>(declarations);
         return new_normal_modules;
     }();
 }
 
 auto normal_soa_module(CompilerTestContext& context,
                        lispb::codegen::DeclarationHandle schema,
-                       std::vector<lispb::codegen::SoaAllocatorVariantId> allocators = {},
+                       std::vector<lispb::codegen::SoaAllocatorVariantId> const& allocators = {},
                        SoaBackend backend = SoaBackend::unreal) -> lispb::codegen::ModuleHandle {
     std::vector<SoaAllocatorVariantId> allocator_handles;
     for (auto const& allocator : allocators) {
@@ -667,8 +666,7 @@ auto normal_soa_module(CompilerTestContext& context,
         }();
         context.storage.declarations.normal_modules
             .declarations[context.storage.declarations.normal_modules.index(new_normal_modules)] =
-            context.storage.declarations.range<lispb::codegen::DeclarationHandle>(
-                {std::move(schema)});
+            context.storage.declarations.range<lispb::codegen::DeclarationHandle>({schema});
         context.storage.declarations.normal_modules
             .soa_backend[context.storage.declarations.normal_modules.index(new_normal_modules)] =
             backend;
@@ -952,7 +950,7 @@ auto valid_linear_quantized_manifest(CompilerTestContext& context) -> Manifest {
     return lispb::codegen::Manifest{manifest_schema_version,
                                     make_test_registry(context),
                                     context.storage.declarations,
-                                    {std::move(scalar), std::move(representations)}};
+                                    {scalar, representations}};
 }
 
 auto valid_integer_varint_manifest(
@@ -1056,7 +1054,7 @@ auto valid_integer_varint_manifest(
     return lispb::codegen::Manifest{manifest_schema_version,
                                     make_test_registry(context),
                                     context.storage.declarations,
-                                    {std::move(scalar), std::move(representations)}};
+                                    {scalar, representations}};
 }
 
 auto valid_fixed_point_manifest(CompilerTestContext& context, bool const signedness = true)
@@ -1097,7 +1095,7 @@ auto valid_fixed_point_manifest(CompilerTestContext& context, bool const signedn
     return lispb::codegen::Manifest{manifest_schema_version,
                                     make_test_registry(context),
                                     context.storage.declarations,
-                                    {std::move(representations)}};
+                                    {representations}};
 }
 
 auto valid_mini_float_manifest(CompilerTestContext& context) -> Manifest {
@@ -1136,7 +1134,7 @@ auto valid_mini_float_manifest(CompilerTestContext& context) -> Manifest {
     return lispb::codegen::Manifest{manifest_schema_version,
                                     make_test_registry(context),
                                     context.storage.declarations,
-                                    {std::move(representations)}};
+                                    {representations}};
 }
 
 auto valid_optional_sentinel_manifest(CompilerTestContext& context) -> Manifest {
@@ -1180,7 +1178,7 @@ auto valid_optional_sentinel_manifest(CompilerTestContext& context) -> Manifest 
     return lispb::codegen::Manifest{manifest_schema_version,
                                     make_test_registry(context),
                                     context.storage.declarations,
-                                    {std::move(scalar), std::move(representations)}};
+                                    {scalar, representations}};
 }
 
 auto valid_optional_presence_bit_manifest(CompilerTestContext& context) -> Manifest {
@@ -1221,7 +1219,7 @@ auto valid_optional_presence_bit_manifest(CompilerTestContext& context) -> Manif
     return lispb::codegen::Manifest{manifest_schema_version,
                                     make_test_registry(context),
                                     context.storage.declarations,
-                                    {std::move(scalar), std::move(representations)}};
+                                    {scalar, representations}};
 }
 
 auto valid_static_table_module(CompilerTestContext& context) -> lispb::codegen::ModuleHandle {
@@ -1387,7 +1385,7 @@ TEST(Validation, RejectsEmptyModuleNames) {
         return row_0;
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -1408,7 +1406,7 @@ TEST(Validation, RejectsInvalidEnumDefinitions) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
@@ -1439,7 +1437,7 @@ TEST(Validation, RejectsInvalidEnumDefinitions) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
@@ -1470,7 +1468,7 @@ TEST(Validation, RejectsInvalidEnumDefinitions) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
@@ -1494,7 +1492,7 @@ TEST(Validation, RejectsInvalidEnumDefinitions) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -1529,7 +1527,7 @@ TEST(Validation, RejectsEnumSemanticWidthsThatCannotRepresentKnownValues) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
@@ -1561,7 +1559,7 @@ TEST(Validation, RejectsEnumSemanticWidthsThatCannotRepresentKnownValues) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
@@ -1630,7 +1628,7 @@ TEST(Validation, RejectsEnumSemanticWidthsThatCannotRepresentKnownValues) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
@@ -1699,7 +1697,7 @@ TEST(Validation, RejectsEnumSemanticWidthsThatCannotRepresentKnownValues) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))));
+    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 }
 
 TEST(Validation, AppliesExplicitEnumSignednessToTheSemanticDomain) {
@@ -1771,7 +1769,7 @@ TEST(Validation, AppliesExplicitEnumSignednessToTheSemanticDomain) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
@@ -1855,7 +1853,7 @@ TEST(Validation, AppliesExplicitEnumSignednessToTheSemanticDomain) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
@@ -1939,7 +1937,7 @@ TEST(Validation, AppliesExplicitEnumSignednessToTheSemanticDomain) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))));
+    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 }
 
 TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
@@ -1959,7 +1957,7 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
@@ -1977,7 +1975,7 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
@@ -2007,7 +2005,7 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
@@ -2037,7 +2035,7 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
@@ -2068,7 +2066,7 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
@@ -2098,7 +2096,7 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
@@ -2112,10 +2110,10 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
             context.storage.strings.add("Scalars.cpp");
         return row_0;
     }();
-    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))));
+    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
     module = valid_integer_scalar_module(context);
-    auto const lowered{lower_test_manifest(context, manifest_with(context, std::move(module)))};
+    auto const lowered{lower_test_manifest(context, manifest_with(context, module))};
     ASSERT_EQ(lowered.size(), 1U);
     auto const header{context.ir.modules.header[context.ir.modules.index(lowered.front())]};
     ASSERT_NE(header.value, 0U);
@@ -2148,7 +2146,7 @@ TEST(Validation, ValidatesIntegerScalarCppConstantsPolicy) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
@@ -2167,7 +2165,7 @@ TEST(Validation, ValidatesIntegerScalarCppConstantsPolicy) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
@@ -2206,7 +2204,7 @@ TEST(Validation, ValidatesIntegerScalarCppConstantsPolicy) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))));
+    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
     module = valid_integer_scalar_module(context);
     context.storage.declarations.normal_modules
@@ -2284,7 +2282,7 @@ TEST(Validation, ValidatesIntegerScalarCppConstantsPolicy) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
@@ -2323,7 +2321,7 @@ TEST(Validation, ValidatesIntegerScalarCppConstantsPolicy) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
@@ -2376,7 +2374,7 @@ TEST(Validation, ValidatesIntegerScalarCppConstantsPolicy) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
@@ -2443,7 +2441,7 @@ TEST(Validation, ValidatesIntegerScalarCppConstantsPolicy) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -2738,7 +2736,7 @@ TEST(Validation, ValidatesRecordMemberRelationshipUnits) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))));
+    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 }
 
 TEST(Validation, ValidatesSoaMemberRelationshipUnits) {
@@ -2974,7 +2972,7 @@ TEST(Validation, ValidatesSoaMemberRelationshipUnits) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))));
+    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 }
 
 TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
@@ -3076,7 +3074,7 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
             }();
             return context.storage.declarations.range(rows_1);
         }();
-        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                      std::invalid_argument);
     }
 
@@ -3114,7 +3112,7 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))));
+    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
     module = valid_integer_scalar_module(context);
     context.storage.declarations.normal_modules
@@ -3150,7 +3148,7 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
@@ -3187,7 +3185,7 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
@@ -3224,7 +3222,7 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))));
+    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 }
 
 TEST(Validation, ValidatesLinearQuantizedRepresentationsAndEmitsOnlyConfiguredHeader) {
@@ -3989,7 +3987,7 @@ TEST(Validation, RejectsInvalidEnumModuleConfiguration) {
             context.storage.strings.intern("project");
         return row_0;
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
@@ -4003,14 +4001,14 @@ TEST(Validation, RejectsInvalidEnumModuleConfiguration) {
             .reset();
         return row_0;
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
     context.storage.declarations.normal_modules
         .enum_helper_namespace[context.storage.declarations.normal_modules.index(module)] =
         context.storage.strings.intern("bad-name");
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
@@ -4035,7 +4033,7 @@ TEST(Validation, RejectsInvalidEnumModuleConfiguration) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
@@ -4079,7 +4077,7 @@ TEST(Validation, RejectsInvalidEnumModuleConfiguration) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -4133,7 +4131,7 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
             }();
             return context.storage.declarations.range(rows_3);
         }();
-        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(invalid))),
+        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, invalid)),
                      std::invalid_argument);
     }
     auto unreal{valid_enum_module(context)};
@@ -4153,7 +4151,7 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(unreal))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, unreal)),
                  std::invalid_argument);
 
     auto module{valid_native_enum_module(context)};
@@ -4171,7 +4169,7 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
                 .front());
         return context.storage.declarations.range(rows);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_native_enum_module(context);
@@ -4190,7 +4188,7 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_native_enum_module(context);
@@ -4208,7 +4206,7 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))));
+    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
     module = valid_native_enum_module(context);
     context.storage.declarations.normal_modules
@@ -4227,7 +4225,7 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_native_enum_module(context);
@@ -4246,7 +4244,7 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_native_enum_module(context);
@@ -4291,7 +4289,7 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
@@ -4333,7 +4331,7 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -4361,7 +4359,7 @@ TEST(Validation, RejectsIncompleteOrAmbiguousSerializedEnumNames) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
@@ -4452,7 +4450,7 @@ TEST(Validation, RejectsIncompleteOrAmbiguousSerializedEnumNames) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -4500,7 +4498,7 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))));
+    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
     for (auto const* code : {"2", "0", "-1", "unknown_code", "0x2"}) {
         SCOPED_TRACE(code);
@@ -4557,7 +4555,7 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
             }();
             return context.storage.declarations.range(rows_1);
         }();
-        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                      std::invalid_argument);
     }
 
@@ -4614,7 +4612,7 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))));
+    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
     module = valid_enum_module(context);
     context.storage.declarations.normal_modules
@@ -4657,7 +4655,7 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
@@ -4676,7 +4674,7 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
@@ -4709,7 +4707,7 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
@@ -4805,7 +4803,7 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
@@ -4865,7 +4863,7 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
@@ -4926,7 +4924,7 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -5042,9 +5040,9 @@ TEST(Validation, SupportsSignedEnumValuesWhenTheyFitTheUnderlyingType) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(static_cast<void>(lower_test_manifest(
-                     context, manifest_with(context, std::move(module), types))),
-                 std::invalid_argument);
+    EXPECT_THROW(
+        static_cast<void>(lower_test_manifest(context, manifest_with(context, module, types))),
+        std::invalid_argument);
 }
 
 TEST(Validation, RequiresKnownSemanticFactsWhenEnumBackingIsDerived) {
@@ -5210,9 +5208,8 @@ TEST(Validation, RequiresKnownSemanticFactsWhenEnumBackingIsDerived) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(
-        static_cast<void>(lower_test_manifest(context, manifest_with(context, std::move(module)))),
-        std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(lower_test_manifest(context, manifest_with(context, module))),
+                 std::invalid_argument);
 }
 
 TEST(Validation, RejectsInvalidStaticTableModuleConfiguration) {
@@ -5220,7 +5217,7 @@ TEST(Validation, RejectsInvalidStaticTableModuleConfiguration) {
     auto module{valid_static_table_module(context)};
     context.storage.declarations.normal_modules
         .declarations[context.storage.declarations.normal_modules.index(module)] = {};
-    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))));
+    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
     module = valid_static_table_module(context);
     context.storage.declarations.normal_modules
@@ -5233,7 +5230,7 @@ TEST(Validation, RejectsInvalidStaticTableModuleConfiguration) {
             context.storage.strings.add("Tables.cpp");
         return row_0;
     }();
-    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))));
+    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
     module = valid_static_table_module(context);
     context.storage.declarations.normal_modules
@@ -5250,7 +5247,7 @@ TEST(Validation, RejectsInvalidStaticTableModuleConfiguration) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_static_table_module(context);
@@ -5268,7 +5265,7 @@ TEST(Validation, RejectsInvalidStaticTableModuleConfiguration) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -5288,7 +5285,7 @@ TEST(Validation, RejectsInvalidStaticTableNamesAndTypes) {
                 .front());
         return context.storage.declarations.range(rows);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_static_table_module(context);
@@ -5320,7 +5317,7 @@ TEST(Validation, RejectsInvalidStaticTableNamesAndTypes) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_static_table_module(context);
@@ -5352,7 +5349,7 @@ TEST(Validation, RejectsInvalidStaticTableNamesAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_static_table_module(context);
@@ -5387,7 +5384,7 @@ TEST(Validation, RejectsInvalidStaticTableNamesAndTypes) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_static_table_module(context);
@@ -5426,7 +5423,7 @@ TEST(Validation, RejectsInvalidStaticTableNamesAndTypes) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -5464,7 +5461,7 @@ TEST(Validation, RejectsStaticTableColumnsCollidingWithGeneratedApis) {
             }();
             return context.storage.declarations.range(rows_3);
         }();
-        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                      std::invalid_argument);
     }
 }
@@ -5541,7 +5538,7 @@ TEST(Validation, RejectsInvalidStaticTableGroups) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(duplicate_group))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, duplicate_group)),
                  std::invalid_argument);
 
     auto invalid_name{module};
@@ -5573,7 +5570,7 @@ TEST(Validation, RejectsInvalidStaticTableGroups) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(invalid_name))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, invalid_name)),
                  std::invalid_argument);
 
     auto unknown_type{module};
@@ -5610,7 +5607,7 @@ TEST(Validation, RejectsInvalidStaticTableGroups) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(unknown_type))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, unknown_type)),
                  std::invalid_argument);
 
     auto empty_columns{module};
@@ -5642,7 +5639,7 @@ TEST(Validation, RejectsInvalidStaticTableGroups) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(empty_columns))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, empty_columns)),
                  std::invalid_argument);
 
     auto unknown_column{module};
@@ -5675,7 +5672,7 @@ TEST(Validation, RejectsInvalidStaticTableGroups) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(unknown_column))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, unknown_column)),
                  std::invalid_argument);
 
     auto duplicate_column{module};
@@ -5710,7 +5707,7 @@ TEST(Validation, RejectsInvalidStaticTableGroups) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(duplicate_column))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, duplicate_column)),
                  std::invalid_argument);
 }
 
@@ -5792,7 +5789,7 @@ TEST(Validation, RejectsStaticTableGroupGetterCollisions) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -5809,7 +5806,7 @@ TEST(Validation, RejectsEmptyModuleOutputs) {
         return row_0;
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -5827,7 +5824,7 @@ TEST(Validation, RejectsEmptyOptionalModuleSettings) {
         return row_0;
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_soa_module(context);
@@ -5841,7 +5838,7 @@ TEST(Validation, RejectsEmptyOptionalModuleSettings) {
             context.storage.strings.intern("");
         return row_0;
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -5859,7 +5856,7 @@ TEST(Validation, RejectsDuplicateAndEmptyIncludeOrderPrefixes) {
                 {context.storage.strings.add("Project/"), context.storage.strings.add("Project/")});
         return row_0;
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_soa_module(context);
@@ -5873,7 +5870,7 @@ TEST(Validation, RejectsDuplicateAndEmptyIncludeOrderPrefixes) {
             context.storage.declarations.range<lispb::StringId>({context.storage.strings.add("")});
         return row_0;
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -5891,7 +5888,7 @@ TEST(Validation, RejectsMalformedQualifiedNamespaces) {
         return row_0;
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -5922,7 +5919,7 @@ TEST(Validation, RejectsDuplicateModuleNames) {
     lispb::codegen::Manifest const manifest{manifest_schema_version,
                                             make_test_registry(context),
                                             context.storage.declarations,
-                                            {std::move(first), std::move(second)}};
+                                            {first, second}};
 
     EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 }
@@ -5975,7 +5972,7 @@ TEST(Validation, RejectsKeywordsAndReservedIdentifiers) {
             }();
             return context.storage.declarations.range(rows_3);
         }();
-        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                      std::invalid_argument);
     }
 
@@ -5990,38 +5987,37 @@ TEST(Validation, RejectsKeywordsAndReservedIdentifiers) {
             context.storage.strings.intern("project::namespace");
         return row_0;
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
 TEST(Validation, RejectsEmptyTypeSpellings) {
     CompilerTestContext context;
     auto module{valid_soa_module(context)};
-    EXPECT_THROW(lower_test_manifest(context,
-                                     manifest_with(context,
-                                                   std::move(module),
-                                                   {{"empty", context.storage.cpp_types.add("")}})),
-                 std::invalid_argument);
+    EXPECT_THROW(
+        lower_test_manifest(
+            context,
+            manifest_with(context, module, {{"empty", context.storage.cpp_types.add("")}})),
+        std::invalid_argument);
 }
 
 TEST(Validation, RejectsInvalidTypeDependencyAndOperationSpellings) {
     CompilerTestContext context;
     auto empty_header{context.storage.cpp_types.add(
         "FValue", {context.storage.cpp_types.dependency("FValue", "")})};
-    EXPECT_THROW(lower_test_manifest(context,
-                                     manifest_with(context,
-                                                   valid_soa_module(context),
-                                                   {{"value", std::move(empty_header)}})),
-                 std::invalid_argument);
+    EXPECT_THROW(
+        lower_test_manifest(
+            context, manifest_with(context, valid_soa_module(context), {{"value", empty_header}})),
+        std::invalid_argument);
 
     auto const invalid_operation{context.storage.cpp_types.add("FValue")};
     context.storage.cpp_types.set_operation(
         invalid_operation, TypeOperation::remove_at_swap, "bad-name");
-    EXPECT_THROW(lower_test_manifest(context,
-                                     manifest_with(context,
-                                                   valid_soa_module(context),
-                                                   {{"value", std::move(invalid_operation)}})),
-                 std::invalid_argument);
+    EXPECT_THROW(
+        lower_test_manifest(
+            context,
+            manifest_with(context, valid_soa_module(context), {{"value", invalid_operation}})),
+        std::invalid_argument);
 }
 
 TEST(Validation, RejectsEmptySoaNames) {
@@ -6042,7 +6038,7 @@ TEST(Validation, RejectsEmptySoaNames) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -6090,7 +6086,7 @@ TEST(Validation, RejectsDuplicateSoaMembers) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -6125,7 +6121,7 @@ TEST(Validation, RejectsMalformedSoaMemberIdentifiers) {
         return context.storage.declarations.range(rows_3);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -6147,7 +6143,7 @@ TEST(Validation, RejectsIncompleteSoaFieldMaskDeclarations) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_mask_soa_module(context);
@@ -6166,7 +6162,7 @@ TEST(Validation, RejectsIncompleteSoaFieldMaskDeclarations) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -6205,7 +6201,7 @@ TEST(Validation, RejectsInvalidSoaFieldMaskMembers) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_mask_soa_module(context);
@@ -6235,7 +6231,7 @@ TEST(Validation, RejectsInvalidSoaFieldMaskMembers) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_soa_module(context);
@@ -6265,7 +6261,7 @@ TEST(Validation, RejectsInvalidSoaFieldMaskMembers) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -6367,7 +6363,7 @@ TEST(Validation, RejectsInvalidSoaMaskDimensions) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_mask_soa_module(context);
@@ -6418,7 +6414,7 @@ TEST(Validation, RejectsInvalidSoaMaskDimensions) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -6454,7 +6450,7 @@ TEST(Validation, RejectsMembersCollidingWithGeneratedStorageApis) {
             }();
             return context.storage.declarations.range(rows_3);
         }();
-        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                      std::invalid_argument);
     }
 
@@ -6481,7 +6477,7 @@ TEST(Validation, RejectsMembersCollidingWithGeneratedStorageApis) {
         }();
         return context.storage.declarations.range(rows_2);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(homogeneous))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, homogeneous)),
                  std::invalid_argument);
 
     auto vector{valid_vector_module(context)};
@@ -6506,7 +6502,7 @@ TEST(Validation, RejectsMembersCollidingWithGeneratedStorageApis) {
         }();
         return context.storage.declarations.range(rows_2);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(vector))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, vector)),
                  std::invalid_argument);
 }
 
@@ -6546,7 +6542,7 @@ TEST(Validation, RejectsUnknownSoaTypeReferences) {
         return context.storage.declarations.range(rows_3);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -6581,7 +6577,7 @@ TEST(Validation, RejectsFixedSchemasOnArrayMembers) {
         return context.storage.declarations.range(rows_3);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -6643,7 +6639,7 @@ TEST(Validation, RejectsOpaqueNestedMembersInFixedSoas) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -6708,7 +6704,7 @@ TEST(Validation, RejectsUnknownNestedFixedSchemas) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -6773,7 +6769,7 @@ TEST(Validation, RejectsFixedSchemaCycles) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -6797,7 +6793,7 @@ TEST(Validation, RejectsCollidingGeneratedSoaTypeNames) {
         return context.storage.declarations.range(rows);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -6857,7 +6853,7 @@ TEST(Validation, RejectsDuplicateFixedStorageAndContainerNames) {
         return context.storage.declarations.range(rows);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_soa_module(context);
@@ -6885,7 +6881,7 @@ TEST(Validation, RejectsDuplicateFixedStorageAndContainerNames) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -6903,7 +6899,7 @@ TEST(Validation, RejectsSoaModulesWithoutSourceOutput) {
         return row_0;
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -6926,7 +6922,7 @@ TEST(Validation, RejectsEmptyOptionalSoaViewNames) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -6957,7 +6953,7 @@ TEST(Validation, RejectsBlankSoaUsingDeclarations) {
             return context.storage.declarations.range(rows_1);
         }();
 
-        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                      std::invalid_argument);
     }
 }
@@ -7038,7 +7034,7 @@ TEST(Validation, RejectsDuplicateCustomSoaFunctionParameters) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -7122,7 +7118,7 @@ TEST(Validation, RejectsNonTrailingCustomSoaDefaultArguments) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_soa_module(context);
@@ -7181,7 +7177,7 @@ TEST(Validation, RejectsNonTrailingCustomSoaDefaultArguments) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -7224,7 +7220,7 @@ TEST(Validation, RejectsUnknownCustomSoaDependencies) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_soa_module(context);
@@ -7264,7 +7260,7 @@ TEST(Validation, RejectsUnknownCustomSoaDependencies) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -7305,7 +7301,7 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_soa_module(context);
@@ -7346,7 +7342,7 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_soa_module(context);
@@ -7387,7 +7383,7 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_soa_module(context);
@@ -7431,7 +7427,7 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_soa_module(context);
@@ -7469,7 +7465,7 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_soa_module(context);
@@ -7507,7 +7503,7 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -7550,7 +7546,7 @@ TEST(Validation, RejectsCustomSoaFunctionsCollidingWithGeneratedApisAndTypeNames
             }();
             return context.storage.declarations.range(rows_1);
         }();
-        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                      std::invalid_argument);
     }
 }
@@ -7573,8 +7569,7 @@ TEST(Validation, RejectsMalformedExportSpecifiers) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(soa))),
-                 std::invalid_argument);
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, soa)), std::invalid_argument);
 
     auto homogeneous{valid_homogeneous_module(context)};
     context.storage.declarations.normal_modules
@@ -7592,7 +7587,7 @@ TEST(Validation, RejectsMalformedExportSpecifiers) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(homogeneous))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, homogeneous)),
                  std::invalid_argument);
 
     auto facade{valid_facade_module(context)};
@@ -7611,7 +7606,7 @@ TEST(Validation, RejectsMalformedExportSpecifiers) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(facade))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, facade)),
                  std::invalid_argument);
 
     auto table{valid_static_table_module(context)};
@@ -7630,7 +7625,7 @@ TEST(Validation, RejectsMalformedExportSpecifiers) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(table))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, table)),
                  std::invalid_argument);
 }
 
@@ -7688,7 +7683,7 @@ TEST(Validation, RejectsDuplicateHomogeneousComponents) {
             return new_homogeneous_layouts;
         }()});
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -7726,7 +7721,7 @@ TEST(Validation, RejectsHomogeneousLayoutsWithoutValueTypes) {
             return new_homogeneous_layouts;
         }()});
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -7744,7 +7739,7 @@ TEST(Validation, RejectsHomogeneousModulesWithoutSourceOutput) {
         return row_0;
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -7765,7 +7760,7 @@ TEST(Validation, RejectsDuplicateHomogeneousLayoutNames) {
         return context.storage.declarations.range(rows);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -7811,7 +7806,7 @@ TEST(Validation, RejectsDuplicateHomogeneousValueSuffixes) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -7848,7 +7843,7 @@ TEST(Validation, RejectsMalformedHomogeneousSuffixes) {
         return context.storage.declarations.range(rows_3);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -7927,7 +7922,7 @@ TEST(Validation, RejectsCollidingHomogeneousStorageNames) {
                  return new_homogeneous_layouts;
              }()});
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -8003,7 +7998,7 @@ TEST(Validation, RejectsDuplicateHomogeneousEquivalentSpecialisations) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -8058,7 +8053,7 @@ TEST(Validation, RejectsDuplicateHomogeneousInputTypes) {
         return context.storage.declarations.range(rows_3);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -8155,7 +8150,7 @@ TEST(Validation, RejectsHomogeneousInputOverloadsWithMoreThanThreeComponents) {
         return context.storage.declarations.range(rows_3);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -8216,7 +8211,7 @@ TEST(Validation, RejectsHomogeneousInputComponentsWithDuplicateInitials) {
         return context.storage.declarations.range(rows_3);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -8241,7 +8236,7 @@ TEST(Validation, RejectsHomogeneousComponentParameterCollisionsWithoutInputTypes
         return context.storage.declarations.range(rows_1);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -8288,7 +8283,7 @@ TEST(Validation, RejectsVectorsWithMoreThanThreeComponents) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -8312,7 +8307,7 @@ TEST(Validation, RejectsDuplicateVectorComponents) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -8330,7 +8325,7 @@ TEST(Validation, RejectsVectorModulesWithoutSourceOutput) {
         return row_0;
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -8353,7 +8348,7 @@ TEST(Validation, RejectsMalformedVectorStorageIdentifiers) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -8378,7 +8373,7 @@ TEST(Validation, RejectsVectorComponentsWithDuplicateParameterInitials) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -8400,7 +8395,7 @@ TEST(Validation, RejectsFacadesWithoutMethods) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -8442,7 +8437,7 @@ TEST(Validation, RejectsMalformedFacadeMethodIdentifiers) {
         return context.storage.declarations.range(rows_3);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -8464,7 +8459,7 @@ TEST(Validation, RejectsOutOfLineFacadesWithoutSourceOutput) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -8482,7 +8477,7 @@ TEST(Validation, AllowsInlineFacadesInModulesWithSourceOutput) {
         return row_0;
     }();
 
-    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))));
+    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 }
 
 TEST(Validation, RejectsDuplicateFacadeMethodParameters) {
@@ -8554,7 +8549,7 @@ TEST(Validation, RejectsDuplicateFacadeMethodParameters) {
         return context.storage.declarations.range(rows_3);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -8593,7 +8588,7 @@ TEST(Validation, RejectsDuplicateFacadeMethodSignatures) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -8634,7 +8629,7 @@ TEST(Validation, RejectsFacadeOverloadsDifferingOnlyByNoexcept) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -8691,7 +8686,7 @@ TEST(Validation, RejectsFacadeMethodsCollidingWithBind) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -8768,7 +8763,7 @@ TEST(Validation, RejectsNonTrailingFacadeDefaultArguments) {
         return context.storage.declarations.range(rows_3);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -8792,7 +8787,7 @@ TEST(Validation, RejectsUnknownFacadeValidationDependencies) {
         return context.storage.declarations.range(rows_1);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -8820,7 +8815,7 @@ TEST(Validation, RejectsInvalidFacadeFriendAndMemberCollisions) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_facade_module(context);
@@ -8839,7 +8834,7 @@ TEST(Validation, RejectsInvalidFacadeFriendAndMemberCollisions) {
         }();
         return context.storage.declarations.range(rows_1);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_facade_module(context);
@@ -8876,7 +8871,7 @@ TEST(Validation, RejectsInvalidFacadeFriendAndMemberCollisions) {
         }();
         return context.storage.declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -8900,7 +8895,7 @@ TEST(Validation, RejectsDuplicateUmbrellaHeaders) {
         context.storage.declarations.range<lispb::StringId>(
             {context.storage.strings.add("Value.h"), context.storage.strings.add("Value.h")});
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -8920,7 +8915,7 @@ TEST(Validation, RejectsUmbrellaModulesWithoutHeaders) {
         return new_module_settings_store;
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -8969,7 +8964,7 @@ TEST(Validation, RejectsUnsupportedUmbrellaSourceAndNamespaceSettings) {
             context.storage.strings.intern("project");
         return row_0;
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -9118,7 +9113,7 @@ TEST(Validation, RejectsInvalidSettingsDefinitions) {
         }();
         return context.storage.declarations.range(rows_2);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -9180,12 +9175,12 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
              return new_enums;
          }()},
         "Mixed.cpp");
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = normal_module(
         context,
-        {std::move(vector),
+        {vector,
          [&] {
              auto const new_records{context.storage.declarations.records.append()};
              context.storage.declarations.records
@@ -9213,7 +9208,7 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
              return new_records;
          }()},
         "Mixed.cpp");
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     auto layout = [&] {
@@ -9260,7 +9255,7 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
     }();
     module = normal_module(
         context,
-        {std::move(layout),
+        {layout,
          [&] {
              auto const new_records{context.storage.declarations.records.append()};
              context.storage.declarations.records
@@ -9288,7 +9283,7 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
              return new_records;
          }()},
         "Mixed.cpp");
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     layout = [&] {
@@ -9335,7 +9330,7 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
     }();
     module = normal_module(
         context,
-        {std::move(layout),
+        {layout,
          [&] {
              auto const new_records{context.storage.declarations.records.append()};
              context.storage.declarations.records
@@ -9363,7 +9358,7 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
              return new_records;
          }()},
         "Mixed.cpp");
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     auto soa = [&] {
@@ -9394,7 +9389,7 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
     }();
     module = normal_module(
         context,
-        {std::move(soa),
+        {soa,
          [&] {
              auto const new_enums{context.storage.declarations.enums.append()};
              context.storage.declarations.enums
@@ -9420,7 +9415,7 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
              return new_enums;
          }()},
         "Mixed.cpp");
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = normal_module(
@@ -9475,7 +9470,7 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
                  }()});
              return new_records;
          }()});
-    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))));
+    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 }
 
 TEST(Validation, NormalModuleAppliesSourceRequirementsPerDeclaration) {
@@ -9550,17 +9545,17 @@ TEST(Validation, NormalModuleAppliesSourceRequirementsPerDeclaration) {
         return new_homogeneous_layouts;
     }();
     auto module = normal_module(context, {facade, layout}, "Mixed.cpp");
-    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))));
+    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
-    module = normal_module(context, {std::move(layout)});
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    module = normal_module(context, {layout});
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     auto const source_facade{context.storage.declarations.facades.clone(facade)};
     context.storage.declarations.facades
         .definitions_in_source[context.storage.declarations.facades.index(source_facade)] = true;
-    module = normal_module(context, {std::move(source_facade)});
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    module = normal_module(context, {source_facade});
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
@@ -9618,7 +9613,7 @@ TEST(Validation, NormalModuleCanMixIndependentEnumApis) {
                  }()});
              return new_enums;
          }()});
-    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))));
+    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 }
 
 TEST(Validation, NormalModuleMatchesSoaAllocatorVariantRestrictions) {
@@ -9642,7 +9637,7 @@ TEST(Validation, NormalModuleMatchesSoaAllocatorVariantRestrictions) {
     }()};
     auto module{
         normal_soa_module(context, plain_soa(context), {allocator}, SoaBackend::standard_library)};
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = normal_soa_module(
@@ -9663,7 +9658,7 @@ TEST(Validation, NormalModuleMatchesSoaAllocatorVariantRestrictions) {
             }();
             return new_soa_allocator_variants;
         }()});
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     auto fixed{plain_soa(context)};
@@ -9676,8 +9671,8 @@ TEST(Validation, NormalModuleMatchesSoaAllocatorVariantRestrictions) {
             .containers[context.storage.declarations.fixed_soas.index(new_fixed_soas)] = {};
         return new_fixed_soas;
     }();
-    module = normal_soa_module(context, std::move(fixed), {allocator});
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    module = normal_soa_module(context, fixed, {allocator});
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     auto equivalent{plain_soa(context)};
@@ -9689,8 +9684,8 @@ TEST(Validation, NormalModuleMatchesSoaAllocatorVariantRestrictions) {
             context.storage.strings.intern("int32");
         return new_type_refs;
     }();
-    module = normal_soa_module(context, std::move(equivalent), {allocator});
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    module = normal_soa_module(context, equivalent, {allocator});
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     auto functions{plain_soa(context)};
@@ -9711,8 +9706,8 @@ TEST(Validation, NormalModuleMatchesSoaAllocatorVariantRestrictions) {
             }();
             return new_functions;
         }()});
-    module = normal_soa_module(context, std::move(functions), {allocator});
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    module = normal_soa_module(context, functions, {allocator});
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     auto mutable_functions{plain_soa(context)};
@@ -9733,8 +9728,8 @@ TEST(Validation, NormalModuleMatchesSoaAllocatorVariantRestrictions) {
             }();
             return new_functions;
         }()});
-    module = normal_soa_module(context, std::move(mutable_functions), {allocator});
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    module = normal_soa_module(context, mutable_functions, {allocator});
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     auto declarations{plain_soa(context)};
@@ -9742,8 +9737,8 @@ TEST(Validation, NormalModuleMatchesSoaAllocatorVariantRestrictions) {
         .using_declarations[context.storage.declarations.soas.index(declarations)] =
         context.storage.declarations.range<lispb::StringId>(
             {context.storage.strings.add("value_type = int32")});
-    module = normal_soa_module(context, std::move(declarations), {allocator});
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    module = normal_soa_module(context, declarations, {allocator});
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     auto nested{plain_soa(context)};
@@ -9769,8 +9764,8 @@ TEST(Validation, NormalModuleMatchesSoaAllocatorVariantRestrictions) {
                 context.storage.strings.intern("Missing");
             return new_soa_members;
         }()});
-    module = normal_soa_module(context, std::move(nested), {allocator});
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    module = normal_soa_module(context, nested, {allocator});
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = [&] {
@@ -9800,13 +9795,13 @@ TEST(Validation, NormalModuleMatchesSoaAllocatorVariantRestrictions) {
             context.storage.declarations.range<lispb::codegen::SoaAllocatorVariantId>({allocator});
         return new_normal_modules;
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = normal_soa_module(context, plain_soa(context), {allocator});
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
-    auto const files{render_modules(
-        context.ir, lower_test_manifest(context, manifest_with(context, std::move(module))))};
+    auto const files{
+        render_modules(context.ir, lower_test_manifest(context, manifest_with(context, module)))};
     ASSERT_EQ(files.size(), 2U);
     EXPECT_NE(files.front().content.find("struct CustomData"), std::string::npos);
 }
@@ -9837,7 +9832,7 @@ TEST(Validation, FieldMaskSoaCannotUseArrayAllocatorVariants) {
                            valid_mask_soa_module(context))])
             .front()};
     auto normal{normal_soa_module(context, masked, {allocator})};
-    auto normal_manifest{manifest_with(context, std::move(normal))};
+    auto normal_manifest{manifest_with(context, normal)};
     EXPECT_THROW(lispb::schema::resolve_type_graph(normal_manifest), std::invalid_argument);
     EXPECT_THROW(lower_test_manifest(context, normal_manifest), std::invalid_argument);
 
@@ -9845,7 +9840,7 @@ TEST(Validation, FieldMaskSoaCannotUseArrayAllocatorVariants) {
     context.storage.declarations.normal_modules
         .soa_array_allocators[context.storage.declarations.normal_modules.index(legacy)] =
         context.storage.declarations.range<lispb::codegen::SoaAllocatorVariantId>({allocator});
-    auto legacy_manifest{manifest_with(context, std::move(legacy))};
+    auto legacy_manifest{manifest_with(context, legacy)};
     EXPECT_THROW(lispb::schema::resolve_type_graph(legacy_manifest), std::invalid_argument);
 }
 
@@ -9893,12 +9888,12 @@ TEST(Validation, NormalModuleReservesFixedSoaStorageAndContainerNames) {
              return new_records;
          }()},
         "Mixed.cpp");
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = normal_module(
         context,
-        {std::move(fixed),
+        {fixed,
          [&] {
              auto const new_records{context.storage.declarations.records.append()};
              context.storage.declarations.records
@@ -9926,7 +9921,7 @@ TEST(Validation, NormalModuleReservesFixedSoaStorageAndContainerNames) {
              return new_records;
          }()},
         "Mixed.cpp");
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     auto vector = [&] {
@@ -9971,7 +9966,7 @@ TEST(Validation, NormalModuleReservesFixedSoaStorageAndContainerNames) {
     }();
     module = normal_module(
         context,
-        {std::move(vector),
+        {vector,
          [&] {
              auto const new_records{context.storage.declarations.records.append()};
              context.storage.declarations.records
@@ -9999,7 +9994,7 @@ TEST(Validation, NormalModuleReservesFixedSoaStorageAndContainerNames) {
              return new_records;
          }()},
         "Mixed.cpp");
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))),
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     auto valid{plain_soa(context)};
@@ -10016,7 +10011,7 @@ TEST(Validation, NormalModuleReservesFixedSoaStorageAndContainerNames) {
     }();
     module = normal_module(
         context,
-        {std::move(valid),
+        {valid,
          [&] {
              auto const new_records{context.storage.declarations.records.append()};
              context.storage.declarations.records
@@ -10044,7 +10039,7 @@ TEST(Validation, NormalModuleReservesFixedSoaStorageAndContainerNames) {
              return new_records;
          }()},
         "Mixed.cpp");
-    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, std::move(module))));
+    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 }
 
 TEST(Validation, RejectsEmptySettingsSchema) {

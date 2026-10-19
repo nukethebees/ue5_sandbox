@@ -61,24 +61,24 @@ auto CppIR::save_dependencies(std::span<TypeDependencyId const> values) -> ir::R
 auto CppIR::dependency_list(ir::Range range) const -> std::span<TypeDependencyId const> {
     return ir::range_values(dependencies_, range);
 }
-auto CppIR::line_comment(StringId value) -> NodeId {
+auto CppIR::line_comment(StringId text) -> NodeId {
     auto const index{line_comment_nodes_.text.size()};
-    line_comment_nodes_.text.push_back(value);
+    line_comment_nodes_.text.push_back(text);
     return ir_detail::node(NodeKind::line_comment, index);
 }
 
-auto CppIR::block_comment(StringId value) -> NodeId {
+auto CppIR::block_comment(StringId text) -> NodeId {
     auto const index{block_comment_nodes_.text.size()};
-    block_comment_nodes_.text.push_back(value);
+    block_comment_nodes_.text.push_back(text);
     return ir_detail::node(NodeKind::block_comment, index);
 }
 
-auto CppIR::line_comment(std::string_view value) -> NodeId {
-    return line_comment(strings.add(value));
+auto CppIR::line_comment(std::string_view text) -> NodeId {
+    return line_comment(strings.add(text));
 }
 
-auto CppIR::block_comment(std::string_view value) -> NodeId {
-    return block_comment(strings.add(value));
+auto CppIR::block_comment(std::string_view text) -> NodeId {
+    return block_comment(strings.add(text));
 }
 
 auto CppIR::line_directive(std::uint32_t line, std::string_view path) -> NodeId {
@@ -317,24 +317,25 @@ auto CppIR::record(Expr name, std::span<NodeId const> children, RecordKind kind)
     return RecordId{ir_detail::node(NodeKind::struct_, index).value};
 }
 
-void CppIR::set_record_bases(RecordId record, std::span<CppTypeId const> value) {
-    struct_nodes_.bases[record.index()] = save_types(value);
+void CppIR::set_record_bases(RecordId record, std::span<CppTypeId const> bases) {
+    struct_nodes_.bases[record.index()] = save_types(bases);
 }
 
-void CppIR::set_record_template(RecordId record, TemplateId value) {
-    struct_nodes_.template_declaration[record.index()] = value;
+void CppIR::set_record_template(RecordId record, TemplateId declaration) {
+    struct_nodes_.template_declaration[record.index()] = declaration;
 }
 
-void CppIR::set_record_requires_clause(RecordId record, Expr value) {
-    struct_nodes_.requires_clause[record.index()] = value;
+void CppIR::set_record_requires_clause(RecordId record, Expr clause) {
+    struct_nodes_.requires_clause[record.index()] = clause;
 }
 
-void CppIR::set_record_export_specifier(RecordId record, IdentifierId value) {
-    struct_nodes_.export_specifier[record.index()] = value;
+void CppIR::set_record_export_specifier(RecordId record, IdentifierId specifier) {
+    struct_nodes_.export_specifier[record.index()] = specifier;
 }
 
-void CppIR::set_record_dependencies(RecordId record, std::span<TypeDependencyId const> value) {
-    struct_nodes_.dependencies[record.index()] = save_dependencies(value);
+void CppIR::set_record_dependencies(RecordId record,
+                                    std::span<TypeDependencyId const> dependencies) {
+    struct_nodes_.dependencies[record.index()] = save_dependencies(dependencies);
 }
 
 auto CppIR::namespace_node(IdentifierId name, std::span<NodeId const> children) -> NodeId {
@@ -420,8 +421,8 @@ auto CppIR::member_initializer(IdentifierId member, StringId value) -> MemberIni
 }
 
 void CppIR::set_function_parameters(FunctionId function,
-                                    std::span<FunctionParameterId const> values) {
-    functions_.parameters[function.value] = ir::save_range(parameter_references_, values);
+                                    std::span<FunctionParameterId const> parameters) {
+    functions_.parameters[function.value] = ir::save_range(parameter_references_, parameters);
 }
 
 void CppIR::set_function_body(FunctionId function,
@@ -445,16 +446,16 @@ void CppIR::set_function_deleted(FunctionId function) {
 }
 
 void CppIR::set_function_dependencies(FunctionId function,
-                                      std::span<TypeDependencyId const> value) {
-    functions_.dependencies[function.value] = save_dependencies(value);
+                                      std::span<TypeDependencyId const> dependencies) {
+    functions_.dependencies[function.value] = save_dependencies(dependencies);
 }
 
-void CppIR::set_function_name(FunctionId function, IdentifierId value) {
-    set_function_name(function, named(value));
+void CppIR::set_function_name(FunctionId function, IdentifierId name) {
+    set_function_name(function, named(name));
 }
 
-void CppIR::set_function_name(FunctionId function, Expr value) {
-    functions_.name[function.value] = value;
+void CppIR::set_function_name(FunctionId function, Expr name) {
+    functions_.name[function.value] = name;
 }
 
 void CppIR::set_function_return_type(FunctionId function, CppTypeId type, ReturnSyntax syntax) {
@@ -485,16 +486,16 @@ void CppIR::set_function_receiver(FunctionId function, FunctionReceiver receiver
     functions_.receiver[function.value] = receiver;
 }
 
-void CppIR::set_function_export_specifier(FunctionId function, IdentifierId value) {
-    functions_.export_specifier[function.value] = value;
+void CppIR::set_function_export_specifier(FunctionId function, IdentifierId specifier) {
+    functions_.export_specifier[function.value] = specifier;
 }
 
-void CppIR::set_function_template(FunctionId function, TemplateId value) {
-    functions_.template_declaration[function.value] = value;
+void CppIR::set_function_template(FunctionId function, TemplateId declaration) {
+    functions_.template_declaration[function.value] = declaration;
 }
 
-void CppIR::set_function_requires_clause(FunctionId function, Expr value) {
-    functions_.requires_clause[function.value] = value;
+void CppIR::set_function_requires_clause(FunctionId function, Expr clause) {
+    functions_.requires_clause[function.value] = clause;
 }
 
 auto CppIR::function_flags(FunctionId function) -> FunctionFlags& {

@@ -24,24 +24,6 @@
 
 namespace lispb {
 
-auto Project::columns(TargetId const target) const -> TargetColumns const& {
-    switch (target.kind()) {
-        case TargetKind::cpp_schema:
-            return cpp_schema_;
-        case TargetKind::slate:
-            return slate_;
-        case TargetKind::kernel:
-            return kernel_;
-        case TargetKind::material:
-            return material_;
-        default:
-            assert(false);
-            std::unreachable();
-    }
-}
-auto Project::columns(TargetId const target) -> TargetColumns& {
-    return const_cast<TargetColumns&>(std::as_const(*this).columns(target));
-}
 auto Project::store_paths(std::span<std::filesystem::path const> const paths)
     -> codegen::sexpr::HandleRange {
     codegen::sexpr::HandleRange const result{static_cast<std::uint32_t>(paths_.size()),

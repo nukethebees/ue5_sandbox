@@ -46,10 +46,10 @@
 namespace lispb::codegen::detail {
 namespace {
 
-auto container_function(LoweringContext& context, std::string spelling) -> Expr {
+auto container_function(LoweringContext& context, std::string_view spelling) -> Expr {
     auto& ir{context.ir};
     auto const dependency{ir.types.dependency(spelling, "SandboxCore/container_ops.h")};
-    return ir.named(std::move(spelling), {std::move(dependency)});
+    return ir.named(spelling, {dependency});
 }
 
 auto has_custom_function(LoweringContext& context,
@@ -66,15 +66,15 @@ auto has_custom_function(LoweringContext& context,
 auto parameter_type(LoweringContext& context, CppTypeId type, ParameterPassing const passing)
     -> CppTypeId {
     auto& ir{context.ir};
-    return qualify(ir, std::move(type), passing == ParameterPassing::value ? " const" : " const&");
+    return qualify(ir, type, passing == ParameterPassing::value ? " const" : " const&");
 }
 
 auto storage_operation_body(LoweringContext& context,
                             std::string const& operation,
-                            std::vector<std::string> arguments = {}) -> Nodes {
+                            std::initializer_list<std::string_view> arguments = {}) -> Nodes {
     auto& ir{context.ir};
     std::vector<Expr> values{ir.unary(UnaryOperator::dereference, ir.named("this"))};
-    for (auto const& argument : arguments) {
+    for (auto const argument : arguments) {
         values.push_back(ir.named(argument));
     }
     return {ir.expr_stmt(
@@ -172,7 +172,7 @@ auto soa_set_function(LoweringContext& context,
             ir, resolved_store.element_type[resolved_store.index(member)], "::equivalent_type")};
         parameters.push_back(ir.parameter(
             parameter_type(context,
-                           std::move(equivalent_type),
+                           equivalent_type,
                            ir.types.operation_parameter_passing(
                                resolved_store.container_type[resolved_store.index(member)],
                                TypeOperation::set_element)),
@@ -236,7 +236,7 @@ auto soa_add_function(LoweringContext& context,
             ir, resolved_store.element_type[resolved_store.index(member)], "::equivalent_type")};
         parameters.push_back(ir.parameter(
             parameter_type(context,
-                           std::move(equivalent_type),
+                           equivalent_type,
                            ir.types.operation_parameter_passing(
                                resolved_store.container_type[resolved_store.index(member)],
                                TypeOperation::add_element)),
@@ -279,7 +279,7 @@ auto soa_storage_functions(LoweringContext& context,
     };
     auto add = [&](std::string_view name,
                    std::initializer_list<FunctionParameterId> parameters,
-                   Nodes body) {
+                   Nodes const& body) {
         auto const function{ir.function(name, "void")};
         ir.set_function_parameters(function, parameters);
         ir.set_function_body(function, body);
@@ -288,7 +288,7 @@ auto soa_storage_functions(LoweringContext& context,
     };
     auto add_template = [&](std::string_view name,
                             std::initializer_list<FunctionParameterId> parameters,
-                            Nodes body) {
+                            Nodes const& body) {
         auto const function{add(name, parameters, body)};
         ir.function_flags(function).set_is_inline(true);
         ir.function_flags(function).set_define_in_header(true);
@@ -318,7 +318,7 @@ auto soa_storage_functions(LoweringContext& context,
                             context, "remove_at_swap", {"index", "count", "allow_shrinking"})};
         auto const function{add("remove_at_swap",
                                 {ir.parameter("int32 const", "index"), count, allow_shrinking},
-                                std::move(body))};
+                                body)};
         ir.function_flags(function).set_is_inline(true);
         ir.function_flags(function).set_define_in_header(true);
     }
@@ -417,7 +417,7 @@ auto soa_permutation_functions(LoweringContext& context, std::span<ResolvedMembe
     auto const apply_body{storage_operation_body(context, "apply_permutation", {"indices"})};
     auto function = [&](std::string_view name,
                         std::initializer_list<FunctionParameterId> parameters,
-                        Nodes body,
+                        Nodes const& body,
                         TemplateId function_template = {}) {
         auto const created{ir.function(name, "void")};
         ir.set_function_parameters(created, parameters);

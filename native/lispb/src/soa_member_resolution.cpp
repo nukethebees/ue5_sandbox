@@ -68,7 +68,7 @@ auto resolve_members(LoweringContext& context, DeclarationHandle schema)
                                     allocator_dependencies.begin(),
                                     allocator_dependencies.end());
             }
-            spelling += ">";
+            spelling += '>';
             dependencies.insert(dependencies.begin(),
                                 ir.types.dependency(spelling, "Containers/Array.h"));
             auto const container{ir.types.add(spelling, dependencies)};

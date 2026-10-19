@@ -2853,7 +2853,7 @@ TEST(SemanticTypeGraph, RejectsInvalidAndDuplicateDeclaredIdentities) {
     lispb::codegen::CompilerTestContext context;
     [[maybe_unused]] auto& storage{context.storage};
     auto const make_module = [&](std::string name,
-                                 std::vector<lispb::codegen::DeclarationHandle> enums) {
+                                 std::vector<lispb::codegen::DeclarationHandle> const& enums) {
         std::vector<lispb::codegen::DeclarationHandle> declarations;
         for (auto const& value : enums) {
             declarations.push_back(value);

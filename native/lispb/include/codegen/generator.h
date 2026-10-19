@@ -15,7 +15,7 @@ class TypeGraph;
 namespace lispb::codegen {
 class CppIR;
 struct Manifest;
-auto lower_modules(CppIR& ir, Manifest& input, schema::TypeGraph const& graph)
+auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph)
     -> std::vector<ModuleId>;
 auto render_modules(CppIR& ir, std::span<ModuleId const> modules) -> std::vector<GeneratedFile>;
 void compile_schema(CompilerStorage& storage,

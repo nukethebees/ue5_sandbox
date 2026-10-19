@@ -59,7 +59,7 @@ auto indentation(std::string_view const text, std::size_t const offset) -> std::
 
 auto same_line(std::string_view const text, std::size_t const begin, std::size_t const end)
     -> bool {
-    return text.substr(begin, end - begin).find('\n') == std::string_view::npos;
+    return !text.substr(begin, end - begin).contains('\n');
 }
 
 } // namespace
@@ -231,7 +231,7 @@ auto SourceComments::apply(CompilerStorage const& storage,
                            SourceFileId const file,
                            std::string canonical) const -> std::string {
     auto const original{file.value == 0 ? std::string_view{} : storage.sources.text(file)};
-    auto const newline{original.find("\r\n") == std::string_view::npos ? "\n" : "\r\n"};
+    auto const newline{original.contains("\r\n") ? "\r\n" : "\n"};
     if (newline == std::string_view{"\r\n"}) {
         std::string converted;
         for (auto const character : canonical) {

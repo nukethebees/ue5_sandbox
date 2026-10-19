@@ -311,7 +311,7 @@ auto lower_soa_impl(LoweringContext& context,
                                       const_api,
                                       mutable_api,
                                       schemas))
-        .add(std::move(storage));
+        .add(storage);
 
     NodeListBuilder source{ir};
     bool has_source_definition{};

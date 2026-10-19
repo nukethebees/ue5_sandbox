@@ -33,18 +33,19 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 namespace lispb::codegen::detail {
 namespace {
 
-auto adjacent(LoweringContext& context, Nodes nodes) -> Nodes {
+auto adjacent(LoweringContext& context, Nodes const& nodes) -> Nodes {
     auto& ir{context.ir};
     NodeListBuilder result{ir};
     auto const count{nodes.size()};
     for (std::size_t index{}; index < count; ++index) {
-        result.add(std::move(nodes[index]));
+        result.add(nodes[index]);
         if (index + 1 < count) {
             result.new_lines(1);
         }
@@ -52,11 +53,11 @@ auto adjacent(LoweringContext& context, Nodes nodes) -> Nodes {
     return result.build();
 }
 
-auto section_header(LoweringContext& context, std::string title) -> Nodes {
+auto section_header(LoweringContext& context, std::string_view title) -> Nodes {
     auto& ir{context.ir};
     return adjacent(context,
                     {ir.block_comment("****************************************"),
-                     ir.line_comment(std::move(title)),
+                     ir.line_comment(title),
                      ir.block_comment("****************************************")});
 }
 
@@ -64,12 +65,12 @@ auto inline_function(LoweringContext& context, FunctionId spec) -> NodeId {
     auto& ir{context.ir};
     context.ir.function_flags(spec).set_is_inline(true);
     context.ir.function_flags(spec).set_define_in_header(true);
-    return ir.header_function(std::move(spec));
+    return ir.header_function(spec);
 }
 
 auto compact_function(LoweringContext& context, FunctionId spec) -> NodeId {
     context.ir.function_formatting(spec).body_layout = FunctionBodyLayout::compact;
-    return inline_function(context, std::move(spec));
+    return inline_function(context, spec);
 }
 
 auto column_access(LoweringContext& context,
@@ -163,14 +164,14 @@ auto storage_lifetime_nodes(LoweringContext& context, SingleAllocationModelId mo
     result.append(section_header(context, "Lifetime"))
         .new_lines(1)
         .append(adjacent(context,
-                         {inline_function(context, std::move(default_constructor)),
-                          inline_function(context, std::move(resource_constructor)),
-                          compact_function(context, std::move(resource_accessor)),
-                          compact_function(context, std::move(destructor)),
-                          ir.declaration(std::move(copy_constructor)),
-                          ir.declaration(std::move(copy_assignment)),
-                          inline_function(context, std::move(move_constructor)),
-                          inline_function(context, std::move(move_assignment))}));
+                         {inline_function(context, default_constructor),
+                          inline_function(context, resource_constructor),
+                          compact_function(context, resource_accessor),
+                          compact_function(context, destructor),
+                          ir.declaration(copy_constructor),
+                          ir.declaration(copy_assignment),
+                          inline_function(context, move_constructor),
+                          inline_function(context, move_assignment)}));
     return result.build();
 }
 
@@ -269,8 +270,8 @@ auto storage_access_nodes(LoweringContext& context, SingleAllocationModelId mode
         ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Self"))}));
     return adjacent(context,
                     {data_pointers_node(context, model),
-                     inline_function(context, std::move(get_data)),
-                     inline_function(context, std::move(get_data_offset))});
+                     inline_function(context, get_data),
+                     inline_function(context, get_data_offset)});
 }
 
 auto column_pointer_nodes(LoweringContext& context, SingleAllocationModelId model) -> Nodes {
@@ -320,9 +321,9 @@ auto column_pointer_nodes(LoweringContext& context, SingleAllocationModelId mode
         .new_lines(1)
         .append(section_header(context, "Column pointers"))
         .new_lines(1)
-        .append(adjacent(context,
-                         {inline_function(context, std::move(make_data)),
-                          compact_function(context, std::move(capacity_blocks))}));
+        .append(adjacent(
+            context,
+            {inline_function(context, make_data), compact_function(context, capacity_blocks)}));
     return result.build();
 }
 
@@ -435,9 +436,7 @@ auto column_copying_nodes(LoweringContext& context, SingleAllocationModelId mode
                                   "copy_columns(columns, index, source, count); })"))});
         return created_function;
     }())};
-    return adjacent(
-        context,
-        {std::move(transfer), std::move(swap_remove), std::move(copy), std::move(remove_indices)});
+    return adjacent(context, {transfer, swap_remove, copy, remove_indices});
 }
 
 auto source_pointers_node(LoweringContext& context, SingleAllocationModelId model) -> NodeId {
@@ -933,7 +932,7 @@ auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationMod
     }
     ir.set_function_body(constructor, {}, constructor_initializers);
     columns.new_lines(2)
-        .add(inline_function(context, std::move(constructor)))
+        .add(inline_function(context, constructor))
         .new_lines(1)
         .add(ir.raw(columns_name + "(" + columns_name + " const&) = delete;\nauto operator=(" +
                     columns_name + " const&) -> " + columns_name + "& = delete;"));

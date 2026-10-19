@@ -35,23 +35,23 @@ auto CppFiles::epilogue(CppFileId file) const -> std::span<StringId const> {
 auto CppFiles::include_order(CppFileId file) const -> std::span<StringId const> {
     return text(include_order_[index(file)]);
 }
-void CppFiles::set_nodes(CppFileId file, std::span<NodeId const> values) {
-    nodes_[index(file)] = save_nodes(values);
+void CppFiles::set_nodes(CppFileId file, std::span<NodeId const> nodes) {
+    nodes_[index(file)] = save_nodes(nodes);
 }
-void CppFiles::set_prologue(CppFileId file, std::span<StringId const> values) {
-    prologue_[index(file)] = save_text(values);
+void CppFiles::set_prologue(CppFileId file, std::span<StringId const> text) {
+    prologue_[index(file)] = save_text(text);
 }
-void CppFiles::set_epilogue(CppFileId file, std::span<StringId const> values) {
-    epilogue_[index(file)] = save_text(values);
+void CppFiles::set_epilogue(CppFileId file, std::span<StringId const> text) {
+    epilogue_[index(file)] = save_text(text);
 }
-void CppFiles::set_include_order(CppFileId file, std::span<StringId const> values) {
-    include_order_[index(file)] = save_text(values);
+void CppFiles::set_include_order(CppFileId file, std::span<StringId const> prefixes) {
+    include_order_[index(file)] = save_text(prefixes);
 }
-auto CppFiles::save_nodes(std::span<NodeId const> values) -> ir::Range {
-    return ir::save_range(node_references_, values);
+auto CppFiles::save_nodes(std::span<NodeId const> nodes) -> ir::Range {
+    return ir::save_range(node_references_, nodes);
 }
-auto CppFiles::save_text(std::span<StringId const> values) -> ir::Range {
-    return ir::save_range(text_references_, values);
+auto CppFiles::save_text(std::span<StringId const> text) -> ir::Range {
+    return ir::save_range(text_references_, text);
 }
 auto CppFiles::text(ir::Range range) const -> std::span<StringId const> {
     return ir::range_values(text_references_, range);

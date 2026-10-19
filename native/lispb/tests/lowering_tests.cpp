@@ -63,7 +63,7 @@ struct RenderedModule {
 
 auto render_soa(CompilerTestContext& context,
                 DeclarationHandle schema,
-                std::vector<std::pair<std::string_view, CppTypeId>> registrations = {})
+                std::vector<std::pair<std::string_view, CppTypeId>> const& registrations = {})
     -> RenderedModule {
     auto const files{render_test_manifest(
         context,
@@ -98,7 +98,7 @@ auto render_soa(CompilerTestContext& context,
                 context.storage.declarations.normal_modules
                     .declarations[context.storage.declarations.normal_modules.index(
                         new_normal_modules)] =
-                    context.storage.declarations.range<DeclarationHandle>({std::move(schema)});
+                    context.storage.declarations.range<DeclarationHandle>({schema});
                 return new_normal_modules;
             }()}})};
     EXPECT_EQ(files.size(), 2);
@@ -110,7 +110,7 @@ auto render_enum(CompilerTestContext& context, ModuleHandle module) -> RenderedM
                                           Manifest{manifest_schema_version,
                                                    make_test_registry(context),
                                                    context.storage.declarations,
-                                                   {std::move(module)}})};
+                                                   {module}})};
     EXPECT_EQ(files.size(), 2);
     return RenderedModule{files[0].content, files[1].content};
 }
@@ -120,7 +120,7 @@ auto render_settings(CompilerTestContext& context, ModuleHandle module) -> Rende
                                           Manifest{manifest_schema_version,
                                                    make_test_registry(context),
                                                    context.storage.declarations,
-                                                   {std::move(module)}})};
+                                                   {module}})};
     EXPECT_EQ(files.size(), 2);
     return RenderedModule{files[0].content, files[1].content};
 }
@@ -181,7 +181,7 @@ TEST(Lowering, EmitsOnlyRequestedStorageOperations) {
     context.storage.declarations.soas.operations[context.storage.declarations.soas.index(schema)] =
         context.storage.declarations.range<StorageOperation>(all_storage_operations());
 
-    auto const output{render_soa(context, std::move(schema))};
+    auto const output{render_soa(context, schema)};
 
     EXPECT_NE(output.source.find("void FData::reset()"), std::string::npos);
     EXPECT_NE(output.source.find("void FData::reserve(int32 const count)"), std::string::npos);
@@ -197,7 +197,7 @@ TEST(Lowering, EmitsOnlyRequestedStorageOperations) {
     EXPECT_NE(output.header.find("void append_from("), std::string::npos);
 
     auto no_operations{basic_schema(context)};
-    auto const minimal{render_soa(context, std::move(no_operations))};
+    auto const minimal{render_soa(context, no_operations)};
     EXPECT_EQ(minimal.header.find("void remove_at_swap("), std::string::npos);
     EXPECT_EQ(minimal.header.find("void copy_element("), std::string::npos);
     EXPECT_EQ(minimal.header.find("void append_from("), std::string::npos);
@@ -402,13 +402,12 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
                 .front()
                 .content};
         for (auto const& [candidate, candidate_spelling] : selections) {
-            EXPECT_EQ(selected.find(candidate_spelling) != std::string::npos, candidate == helper)
+            EXPECT_EQ(selected.contains(candidate_spelling), candidate == helper)
                 << spelling << ": " << candidate_spelling;
         }
         EXPECT_NE(selected.find("enum_count<"), std::string::npos);
         EXPECT_EQ(selected.find("std::array names"), std::string::npos);
-        EXPECT_EQ(selected.find("<string_view>") != std::string::npos,
-                  helper != NativeEnumHelper::traits);
+        EXPECT_EQ(selected.contains("<string_view>"), helper != NativeEnumHelper::traits);
         EXPECT_EQ(selected.find("<unordered_map>"), std::string::npos);
     }
 }
@@ -1631,7 +1630,7 @@ TEST(Lowering, AppliesEveryStorageOperationToEveryMember) {
     auto schema{basic_schema(context)};
     context.storage.declarations.soas.operations[context.storage.declarations.soas.index(schema)] =
         context.storage.declarations.range<StorageOperation>(all_storage_operations());
-    auto const output{render_soa(context, std::move(schema))};
+    auto const output{render_soa(context, schema)};
 
     std::vector<std::pair<std::string const*, std::string>> const expectations{
         {&output.source, "ioj::soa_ops::reset(*this);"},
@@ -1731,10 +1730,10 @@ TEST(Lowering, PreservesCustomNestedRemovalOperation) {
         return new_soas;
     }()};
 
-    auto const output{render_soa(context,
-                                 std::move(schema),
-                                 {{"registered", std::move(registered)},
-                                  {"generic", context.storage.cpp_types.add("FGeneric")}})};
+    auto const output{render_soa(
+        context,
+        schema,
+        {{"registered", registered}, {"generic", context.storage.cpp_types.add("FGeneric")}})};
 
     auto const removal{output.header.find("void remove_at_swap(")};
     ASSERT_NE(removal, std::string::npos);
@@ -1788,8 +1787,7 @@ TEST(Lowering, CustomRemovalDoesNotRequireGenericContainerHelpers) {
                 {StorageOperation::remove_at_swap});
         return new_soas;
     }()};
-    auto const output{
-        render_soa(context, std::move(schema), {{"registered", std::move(registered)}})};
+    auto const output{render_soa(context, schema, {{"registered", registered}})};
     EXPECT_NE(output.header.find("#include \"Project/Registered.h\""), std::string::npos);
     EXPECT_NE(output.header.find("registered.erase_swap(index, count, allow_shrinking);"),
               std::string::npos);
@@ -1832,7 +1830,7 @@ TEST(Lowering, UsesSharedConventionalNestedRemovalOperation) {
                 {StorageOperation::remove_at_swap});
         return new_soas;
     }()};
-    auto const output{render_soa(context, std::move(schema), {{"nested", std::move(nested)}})};
+    auto const output{render_soa(context, schema, {{"nested", nested}})};
 
     EXPECT_NE(
         output.header.find("ioj::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);"),
@@ -1845,7 +1843,7 @@ TEST(Lowering, SourceOnlyStorageHelpersDoNotLeakIntoHeader) {
     auto schema{basic_schema(context)};
     context.storage.declarations.soas.operations[context.storage.declarations.soas.index(schema)] =
         context.storage.declarations.range<StorageOperation>({StorageOperation::reserve});
-    auto const output{render_soa(context, std::move(schema))};
+    auto const output{render_soa(context, schema)};
     EXPECT_EQ(output.header.find("SandboxCore/container_ops.h"), std::string::npos);
     EXPECT_EQ(occurrences(output.source, "#include \"SandboxCore/container_ops.h\""), 1);
     EXPECT_NE(output.source.find("ioj::soa_ops::reserve(*this, count);"), std::string::npos);
@@ -1900,7 +1898,7 @@ TEST(Lowering, CustomSetAndAddStillSuppressGeneratedBodies) {
                      .is_inline[context.storage.declarations.functions.index(new_functions)] = true;
                  return new_functions;
              }()});
-    auto const output{render_soa(context, std::move(schema))};
+    auto const output{render_soa(context, schema)};
     EXPECT_EQ(occurrences(output.header, "custom_set();"), 1);
     EXPECT_EQ(occurrences(output.header, "custom_add();"), 1);
     EXPECT_EQ(output.header.find("ids[index] = new_ids;"), std::string::npos);
@@ -1982,7 +1980,7 @@ TEST(Lowering, EmitsLogicalElementSettersAndAddForArraysAndSupportedNestedMember
         return new_soas;
     }()};
 
-    auto const output{render_soa(context, std::move(schema), {{"vectors", std::move(vectors)}})};
+    auto const output{render_soa(context, schema, {{"vectors", vectors}})};
 
     EXPECT_EQ(occurrences(output.header,
                           "void set(int32 const index, FVectors3f::equivalent_type const "
@@ -2051,8 +2049,8 @@ TEST(Lowering, OmitsLogicalElementSetterAndAddForUnsupportedNestedMembers) {
         return new_soas;
     }()};
 
-    auto const output{render_soa(
-        context, std::move(schema), {{"nested", context.storage.cpp_types.add("FNested")}})};
+    auto const output{
+        render_soa(context, schema, {{"nested", context.storage.cpp_types.add("FNested")}})};
 
     EXPECT_EQ(output.header.find("void set("), std::string::npos);
     EXPECT_EQ(output.header.find("auto add("), std::string::npos);
@@ -2066,7 +2064,7 @@ TEST(Lowering, SupportsMemberwiseCopying) {
     context.storage.declarations.soas
         .copy_element_memberwise[context.storage.declarations.soas.index(schema)] = true;
 
-    auto const output{render_soa(context, std::move(schema))};
+    auto const output{render_soa(context, schema)};
 
     EXPECT_NE(output.header.find("ids[dst_i] = other.ids[src_i];"), std::string::npos);
     EXPECT_NE(output.header.find("weights[dst_i] = other.weights[src_i];"), std::string::npos);
@@ -2145,7 +2143,7 @@ TEST(Lowering, LowersCustomFunctionsToTheirRequestedFile) {
 
     auto const output{render_soa(
         context,
-        std::move(schema),
+        schema,
         {{"helper",
           context.storage.cpp_types.add(
               "helper", {context.storage.cpp_types.dependency("helper", "Project/Helper.h")})}})};
@@ -2189,7 +2187,7 @@ TEST(Lowering, FixedContainersOwnOneSizeAndImplementValueSemantics) {
         return new_fixed_soas;
     }();
 
-    auto const output{render_soa(context, std::move(schema))};
+    auto const output{render_soa(context, schema)};
 
     EXPECT_NE(output.header.find("struct TDataStorage"), std::string::npos);
     EXPECT_NE(output.header.find("struct TFixedData"), std::string::npos);

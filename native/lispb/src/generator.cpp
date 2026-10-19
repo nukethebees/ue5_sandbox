@@ -130,12 +130,12 @@ auto generated_forward_declarations(CppIR& ir, ModuleHandle module, schema::Type
                                 .substr(namespace_name.empty() ? 0 : namespace_name.size() + 2)}),
             *forward_declaration_kind(node, graph))};
         if (graph.module(node) == module) {
-            declarations.add(std::move(declaration));
+            declarations.add(declaration);
         } else if (namespace_name.empty()) {
-            prefix.add(std::move(declaration));
+            prefix.add(declaration);
         } else {
             NodeListBuilder children{ir};
-            children.add(std::move(declaration));
+            children.add(declaration);
             prefix.add(ir.namespace_node(ir.strings.intern(namespace_name), children.build()));
         }
     }
@@ -439,30 +439,13 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                                         store.normal_modules
                                             .soa_backend[store.normal_modules.index(module)]);
                                 }
-                                case lispb::codegen::DeclarationKind::fixed_point: {
-
+                                case lispb::codegen::DeclarationKind::fixed_point:
+                                case lispb::codegen::DeclarationKind::integer_varint:
+                                case lispb::codegen::DeclarationKind::linear_quantized:
+                                case lispb::codegen::DeclarationKind::mini_float:
+                                case lispb::codegen::DeclarationKind::optional_presence_bit:
+                                case lispb::codegen::DeclarationKind::optional_sentinel:
                                     return {};
-                                }
-                                case lispb::codegen::DeclarationKind::integer_varint: {
-
-                                    return {};
-                                }
-                                case lispb::codegen::DeclarationKind::linear_quantized: {
-
-                                    return {};
-                                }
-                                case lispb::codegen::DeclarationKind::mini_float: {
-
-                                    return {};
-                                }
-                                case lispb::codegen::DeclarationKind::optional_presence_bit: {
-
-                                    return {};
-                                }
-                                case lispb::codegen::DeclarationKind::optional_sentinel: {
-
-                                    return {};
-                                }
                                 default:
                                     std::unreachable();
                             }
