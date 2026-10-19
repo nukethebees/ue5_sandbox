@@ -21,6 +21,8 @@ TIDY_SCOPES = {
     "layout": ("layout",),
     "lispb": ("lispb",),
     "memory": ("memory",),
+    "ismc": ("ismc",),
+    "gfx": ("gfx",),
     "level-authoring": ("level_authoring", "levels"),
     "s7": ("s7",),
     "image": ("image",),

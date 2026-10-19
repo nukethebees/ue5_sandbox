@@ -46,10 +46,13 @@ and do not automatically discover dependents or inspect Git changes.
 | `layout` | `layout` |
 | `lispb` | `lispb` |
 | `memory` | `memory` |
-| `level-authoring` | `level_authoring`, `levels`, `common` |
+| `ismc` | `ismc` |
+| `gfx` | `gfx` |
+| `level-authoring` | `level_authoring`, `levels` |
 | `s7` | `s7` |
 | `image` | `image` |
 | `mesh-gen` | `mesh_gen` |
+| `ui` | `ui` |
 
 Shaders has no eligible C++ translation units and therefore no tidy scope.
 
