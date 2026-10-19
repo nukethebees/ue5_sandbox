@@ -43,7 +43,6 @@ if(IOJ_WITH_UNREAL)
       src/Parameters.cpp
       src/NamedNodes.cpp
       src/ValueType.cpp
-      ../../src/strings.cpp
       src/SourceHash.cpp
   )
   target_include_directories(sandbox-material-gen
@@ -55,6 +54,7 @@ if(IOJ_WITH_UNREAL)
     PUBLIC
       sandbox::native_defaults
     PRIVATE
+      lispb-strings
       ioj::unreal_avx2
       ioj::codegen_pch
   )
