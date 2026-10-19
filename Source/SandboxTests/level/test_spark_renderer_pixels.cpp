@@ -8,6 +8,7 @@
 #include <Engine/TextureRenderTarget2D.h>
 #include <Engine/World.h>
 #include <GameFramework/Actor.h>
+#include <Materials/MaterialInterface.h>
 #include <RenderingThread.h>
 #include <ShaderCompiler.h>
 #include <TextureResource.h>
@@ -49,6 +50,11 @@ TEST_CLASS(SparkRendererPixels, "Sandbox.SparkRenderTests")
         settings.maximum_thickness_pixels = 32.0f;
         settings.maximum_length_pixels = 128.0f;
         renderer_->initialise(settings);
+        TArray<UMaterialInterface*> materials;
+        renderer_->GetUsedMaterials(materials);
+        for (auto* const material : materials) {
+            material->EnsureIsComplete();
+        }
         FAssetCompilingManager::Get().FinishAllCompilation();
         if (GShaderCompilingManager != nullptr) {
             GShaderCompilingManager->FinishAllCompilation();
@@ -118,14 +124,20 @@ TEST_CLASS(SparkRendererPixels, "Sandbox.SparkRenderTests")
         }
 
         auto total_brightness{0.0f};
+        auto peak_brightness{0.0f};
         auto weighted_row{0.0f};
         for (int32 row{0}; row < image_size; ++row) {
             for (int32 column{0}; column < image_size; ++column) {
                 auto const brightness{FMath::Max(pixels[row * image_size + column].R, 0.0f)};
                 total_brightness += brightness;
+                peak_brightness = FMath::Max(peak_brightness, brightness);
                 weighted_row += brightness * static_cast<float>(row);
             }
         }
+        TestRunner->AddInfo(FString::Printf(TEXT("Spark pixels total=%g peak=%g weighted_row=%g"),
+                                            total_brightness,
+                                            peak_brightness,
+                                            weighted_row));
         return {total_brightness,
                 total_brightness > UE_SMALL_NUMBER ? weighted_row / total_brightness : 0.0f};
     }
@@ -141,7 +153,10 @@ TEST_CLASS(SparkRendererPixels, "Sandbox.SparkRenderTests")
             .Until(next_frame, FTimespan::FromSeconds(10))
             .Do([this] {
                 auto const [brightness, centroid]{capture_brightness_centroid()};
-                TestRunner->TestTrue(TEXT("Initial spark has HDR energy"), brightness > 1.0f);
+                TestRunner->TestTrue(
+                    *FString::Printf(TEXT("Initial spark has HDR energy (brightness %g)"),
+                                     brightness),
+                    brightness > 1.0f);
                 initial_centroid_ = centroid;
                 renderer_->MarkRenderStateDirty();
                 spawner->GetWorld().SendAllEndOfFrameUpdates();
@@ -149,8 +164,11 @@ TEST_CLASS(SparkRendererPixels, "Sandbox.SparkRenderTests")
                 TestRunner->TestNotNull(TEXT("The recreated spark scene proxy exists"),
                                         renderer_->GetSceneProxy());
                 auto const [restored_brightness, restored_centroid]{capture_brightness_centroid()};
-                TestRunner->TestTrue(TEXT("Proxy recreation restores live particle records"),
-                                     restored_brightness > 1.0f);
+                TestRunner->TestTrue(
+                    *FString::Printf(
+                        TEXT("Proxy recreation restores live particle records (brightness %g)"),
+                        restored_brightness),
+                    restored_brightness > 1.0f);
                 TestRunner->TestTrue(TEXT("Restored particle remains in the same position"),
                                      FMath::Abs(restored_centroid - initial_centroid_) < 1.0f);
                 set_time(0.1f, false);
