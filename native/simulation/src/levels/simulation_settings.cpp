@@ -4,6 +4,7 @@
 #include <ioj/sim/levels/level_sim_init_data.h>
 
 #include <format>
+#include <limits>
 #include <utility>
 
 namespace ioj::sim {
@@ -23,6 +24,30 @@ auto validate_settings(SimulationSettings const& settings)
     auto nonnegative = [&](double const value, std::string_view const path) {
         check(std::isfinite(value) && value >= 0, path, "Expected a finite nonnegative value");
     };
+    auto tick_period = [&](double const ticks,
+                           double const maximum,
+                           std::string_view const path,
+                           double const minimum = 0) {
+        auto const period{std::ceil(ticks)};
+        check(std::isfinite(period) && period >= minimum && period <= maximum,
+              path,
+              "Tick period is outside the countdown range");
+    };
+    auto frequency = [&](double const value,
+                         std::string_view const path,
+                         double const maximum = std::numeric_limits<std::int16_t>::max()) {
+        positive(value, path);
+        if (std::isfinite(value) && value > 0) {
+            tick_period(settings.clock.tick_rate / value, maximum, path, 1);
+        }
+    };
+    auto cooldown = [&](double const value, std::string_view const path) {
+        nonnegative(value, path);
+        if (std::isfinite(value) && value >= 0) {
+            tick_period(
+                value * settings.clock.tick_rate, std::numeric_limits<std::int16_t>::max(), path);
+        }
+    };
 
     positive(settings.clock.tick_rate, "tick.tick-rate");
     positive(settings.clock.time_scale, "tick.time-scale");
@@ -40,13 +65,18 @@ auto validate_settings(SimulationSettings const& settings)
               fighters.fire_dot_product_threshold >= -1 && fighters.fire_dot_product_threshold <= 1,
           "fighters.fire-dot-product-threshold",
           "Expected a value in [-1, 1]");
-    positive(fighters.avoidance_clear_update_frequency,
-             "fighters.avoidance-clear-update-frequency");
-    positive(fighters.avoidance_update_frequency, "fighters.avoidance-update-frequency");
-    positive(fighters.avoidance_active_update_frequency,
-             "fighters.avoidance-active-update-frequency");
-    positive(fighters.avoidance_immediate_update_frequency,
-             "fighters.avoidance-immediate-update-frequency");
+    frequency(fighters.awareness_scan_frequency,
+              "fighters.awareness-scan-frequency",
+              std::numeric_limits<std::int8_t>::max());
+    frequency(fighters.attack_reposition_frequency, "fighters.attack-reposition-frequency");
+    frequency(settings.turrets.target_refresh_frequency, "turrets.target-refresh-frequency");
+    frequency(fighters.avoidance_clear_update_frequency,
+              "fighters.avoidance-clear-update-frequency");
+    frequency(fighters.avoidance_update_frequency, "fighters.avoidance-update-frequency");
+    frequency(fighters.avoidance_active_update_frequency,
+              "fighters.avoidance-active-update-frequency");
+    frequency(fighters.avoidance_immediate_update_frequency,
+              "fighters.avoidance-immediate-update-frequency");
     check(fighters.avoidance_clear_update_frequency <= fighters.avoidance_update_frequency &&
               fighters.avoidance_update_frequency <= fighters.avoidance_active_update_frequency &&
               fighters.avoidance_active_update_frequency <=
@@ -64,13 +94,21 @@ auto validate_settings(SimulationSettings const& settings)
     check(fighters.attack_distance_band.values_are_valid(),
           "fighters.attack-distance-band",
           "Invalid attack distance band");
+    cooldown(fighters.attack_retry_cooldown, "fighters.attack-retry-cooldown");
 
-    auto laser = [&](std::string_view const section, LaserWeaponSimConfig const& config) {
+    auto laser = [&](std::string_view const section,
+                     LaserWeaponSimConfig const& config,
+                     bool const tick_countdown = true) {
         positive(config.projectile_speed, std::format("{}.laser.projectile-speed", section));
         positive(config.max_distance, std::format("{}.laser.max-distance", section));
-        nonnegative(config.fire_cooldown, std::format("{}.laser.fire-cooldown", section));
+        auto const path{std::format("{}.laser.fire-cooldown", section)};
+        if (tick_countdown) {
+            cooldown(config.fire_cooldown, path);
+        } else {
+            nonnegative(config.fire_cooldown, path);
+        }
     };
-    laser("player-ship", settings.player.laser);
+    laser("player-ship", settings.player.laser, false);
     laser("fighters", settings.fighters.laser);
     laser("turrets", settings.turrets.laser);
     laser("tube-spinners", settings.spinners.laser);
