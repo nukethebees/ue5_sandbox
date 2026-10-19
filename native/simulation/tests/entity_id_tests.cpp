@@ -111,12 +111,14 @@ TEST(EntityId, InvalidRepresentationAndDomainArePreserved) {
     EXPECT_FALSE(EntityId::from_raw(std::uint32_t{0xffffffff}).is_valid());
 }
 
+#ifndef NDEBUG
 TEST(EntityId, AssertsWhenConstructionViolatesThePackedDomain) {
     EXPECT_DEATH(
         static_cast<void>(EntityId(EntityId::index_field::value_mask + 1, EntityType::Turret)), "");
     EXPECT_DEATH(static_cast<void>(EntityId(0, static_cast<EntityType>(enum_count<EntityType>()))),
                  "");
 }
+#endif
 
 TEST(EntityId, AllocationRangeDetectsExhaustionWithoutWrapping) {
     constexpr auto minimum{EntityId::index_minimum};
