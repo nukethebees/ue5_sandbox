@@ -14,8 +14,7 @@
 #include <string_view>
 #include <vector>
 
-namespace ioj::layout {
-namespace graph_view_tests {
+namespace ioj::layout::graph_view_tests {
 
 TEST(GraphView, RealProjectModuleProjectionReducesScopeAndKeepsBoundaries) {
     EditorSession editor;
@@ -109,5 +108,4 @@ TEST(GraphView, BoundedLabelsRetainFullTokensAndDistantEdgesRemainHittable) {
     EXPECT_TRUE(graph_segment_hit({5.0F, 2.0F}, {0.0F, 0.0F}, {10.0F, 0.0F}, 3.0F));
     EXPECT_FALSE(graph_segment_hit({15.0F, 0.0F}, {0.0F, 0.0F}, {10.0F, 0.0F}, 3.0F));
 }
-} // namespace
-} // namespace ioj::layout
+} // namespace ioj::layout::graph_view_tests

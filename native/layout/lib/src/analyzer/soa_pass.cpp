@@ -47,8 +47,11 @@ void analyze_soa_layout(AnalysisContext& context,
                             : request.allocation_strategy == SoaAllocationStrategy::separate_columns
                                 ? members.size()
                                 : 1;
-    std::optional<std::uint64_t> row_bytes{0}, total_bytes{0}, allocation_offset{0},
-        allocation_padding{0}, allocation_alignment{1};
+    std::optional<std::uint64_t> row_bytes{0};
+    std::optional<std::uint64_t> total_bytes{0};
+    std::optional<std::uint64_t> allocation_offset{0};
+    std::optional<std::uint64_t> allocation_padding{0};
+    std::optional<std::uint64_t> allocation_alignment{1};
     auto const cache{abi.memory_facts().cache_line_bytes};
     auto const page{abi.memory_facts().page_bytes};
     for (auto const column : members) {
@@ -165,6 +168,6 @@ void analyze_soa_layout(AnalysisContext& context,
         result.total_alignment_padding_bytes = allocation_padding;
         result.allocation_alignment_bytes = allocation_alignment;
     }
-    context.storage.types.soa[id.value] = std::move(result);
+    context.storage.types.soa[id.value] = result;
 }
 }

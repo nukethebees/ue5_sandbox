@@ -32,8 +32,7 @@ auto TransformPacker::pack_transforms(TransformInput input,
     -> TransformBounds {
     if (backend_ == PackingBackend::Production && packing_dispatch::supports_highway_avx2()) {
         return highway_avx2::pack_transforms(input, parameters_, output, bounds_mode_);
-    } else {
-        return scalar::pack_transforms(input, parameters_, output, bounds_mode_);
     }
+    return scalar::pack_transforms(input, parameters_, output, bounds_mode_);
 }
 }

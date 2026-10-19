@@ -24,17 +24,22 @@ auto near_vector(Vector3d const& lhs, Vector3d const& rhs) -> bool {
 }
 auto quaternion(Rotator3d const r) -> std::array<double, 4> {
     auto const half_radians{std::numbers::pi / 360.0};
-    auto const cp{std::cos(r.pitch * half_radians)}, sp{std::sin(r.pitch * half_radians)};
-    auto const cy{std::cos(r.yaw * half_radians)}, sy{std::sin(r.yaw * half_radians)};
-    auto const cr{std::cos(r.roll * half_radians)}, sr{std::sin(r.roll * half_radians)};
+    auto const cp{std::cos(r.pitch * half_radians)};
+    auto const sp{std::sin(r.pitch * half_radians)};
+    auto const cy{std::cos(r.yaw * half_radians)};
+    auto const sy{std::sin(r.yaw * half_radians)};
+    auto const cr{std::cos(r.roll * half_radians)};
+    auto const sr{std::sin(r.roll * half_radians)};
     return {cr * sp * sy - sr * cp * cy,
             -cr * sp * cy - sr * cp * sy,
             cr * cp * sy - sr * sp * cy,
             cr * cp * cy + sr * sp * sy};
 }
 auto same_rotation(Rotator3d const lhs, Rotator3d const rhs) -> bool {
-    auto const a{quaternion(lhs)}, b{quaternion(rhs)};
-    bool equal{true}, negated{true};
+    auto const a{quaternion(lhs)};
+    auto const b{quaternion(rhs)};
+    bool equal{true};
+    bool negated{true};
     for (std::size_t i{}; i < a.size(); ++i) {
         equal = equal && near(a[i], b[i]);
         negated = negated && near(a[i], -b[i]);

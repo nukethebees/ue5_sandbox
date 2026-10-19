@@ -235,7 +235,10 @@ void aggregate_layout(AnalysisContext& context,
     result.members.count = components.parent.size() - result.members.begin;
 
     std::optional<std::uint64_t> offset{0};
-    std::uint64_t payload{}, padding{}, alignment{1}, largest{};
+    std::uint64_t payload{};
+    std::uint64_t padding{};
+    std::uint64_t alignment{1};
+    std::uint64_t largest{};
     bool complete{true};
     auto const end{result.members.begin + result.members.count};
     for (auto row = result.members.begin; row < end; ++row) {

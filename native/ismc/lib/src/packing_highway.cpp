@@ -294,10 +294,9 @@ auto pack_transforms(TransformInput input,
     if (mode == BoundsMode::Calculate) {
         return highway_detail::pack<PackingFields::Transforms, BoundsMode::Calculate>(
             input, parameters, output);
-    } else {
-        return highway_detail::pack<PackingFields::Transforms, BoundsMode::Skip>(
-            input, parameters, output);
     }
+    return highway_detail::pack<PackingFields::Transforms, BoundsMode::Skip>(
+        input, parameters, output);
 }
 }
 

@@ -143,12 +143,13 @@ auto SourceSession::save_as(std::filesystem::path const& path,
     -> std::expected<void, std::string> {
     return write(state_.buffer_text, path, overwrite, false);
 }
-auto SourceSession::save_replacement(std::string source, std::string_view const synchronized_source)
+auto SourceSession::save_replacement(std::string const& source,
+                                     std::string_view const synchronized_source)
     -> std::expected<void, std::string> {
     return save_replacement_as(
-        std::move(source), path_, synchronized_source, SourceOverwritePolicy::ReplaceExisting);
+        source, path_, synchronized_source, SourceOverwritePolicy::ReplaceExisting);
 }
-auto SourceSession::save_replacement_as(std::string source,
+auto SourceSession::save_replacement_as(std::string const& source,
                                         std::filesystem::path const& path,
                                         std::string_view const synchronized_source,
                                         SourceOverwritePolicy const overwrite)

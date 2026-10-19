@@ -18,8 +18,7 @@
 #include <string>
 #include <string_view>
 
-namespace ioj::layout {
-namespace planner_type_tests {
+namespace ioj::layout::planner_type_tests {
 
 struct CapabilityCase {
     char const* name;
@@ -154,5 +153,4 @@ TEST(AnalysisBatch, VariantOverflowDoesNotAlterAuthoredSchema) {
     EXPECT_GT(editor.diagnostics().size(), 0);
     EXPECT_EQ(document.query().module("test").packed_value("Value").field("value").bits(), 8);
 }
-}
-}
+} // namespace ioj::layout::planner_type_tests

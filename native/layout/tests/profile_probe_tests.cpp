@@ -19,8 +19,7 @@
 #include <string>
 #include <vector>
 
-namespace ioj::layout {
-namespace profile_probe_tests {
+namespace ioj::layout::profile_probe_tests {
 
 TEST(ProfileProbe, CollectsExactExternalUsesAndUnsupportedDiagnostics) {
     EditorSession editor;
@@ -184,5 +183,4 @@ type "void*" 8 8 non-integer unknown "generic target representation" compiler-pr
     EXPECT_FALSE(storage.components.element_facts[0]);
 }
 
-}
-}
+} // namespace ioj::layout::profile_probe_tests

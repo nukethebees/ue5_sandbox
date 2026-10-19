@@ -66,11 +66,14 @@ auto CollisionGridStaticStorage::rebuild(GridGeometry const geometry)
         }
 
         auto plane_index{min_cell.x() + min_cell.y() * row_stride + min_cell.z() * plane_stride};
-        for (auto z{min_cell.z()}; z <= max_cell.z(); ++z) {
+        auto const max_x{max_cell.x()};
+        auto const max_y{max_cell.y()};
+        auto const max_z{max_cell.z()};
+        for (auto z{min_cell.z()}; z <= max_z; ++z) {
             auto row_index{plane_index};
-            for (auto y{min_cell.y()}; y <= max_cell.y(); ++y) {
+            for (auto y{min_cell.y()}; y <= max_y; ++y) {
                 auto cell_index{row_index};
-                for (auto x{min_cell.x()}; x <= max_cell.x(); ++x, ++cell_index) {
+                for (auto x{min_cell.x()}; x <= max_x; ++x, ++cell_index) {
                     ++cell_counts[static_cast<std::size_t>(cell_index)];
                 }
                 row_index += row_stride;
@@ -115,12 +118,15 @@ auto CollisionGridStaticStorage::rebuild(GridGeometry const geometry)
         auto const max_point{Vector3f{max_xs[aabb_index], max_ys[aabb_index], max_zs[aabb_index]}};
         auto const [min_cell, max_cell]{to_cell_coord_bounds(geometry, min_point, max_point)};
         auto plane_index{min_cell.x() + min_cell.y() * row_stride + min_cell.z() * plane_stride};
+        auto const max_x{max_cell.x()};
+        auto const max_y{max_cell.y()};
+        auto const max_z{max_cell.z()};
 
-        for (auto z{min_cell.z()}; z <= max_cell.z(); ++z) {
+        for (auto z{min_cell.z()}; z <= max_z; ++z) {
             auto row_index{plane_index};
-            for (auto y{min_cell.y()}; y <= max_cell.y(); ++y) {
+            for (auto y{min_cell.y()}; y <= max_y; ++y) {
                 auto cell_index{row_index};
-                for (auto x{min_cell.x()}; x <= max_cell.x(); ++x, ++cell_index) {
+                for (auto x{min_cell.x()}; x <= max_x; ++x, ++cell_index) {
                     auto const range_index{
                         cell_range_indices_[static_cast<std::size_t>(cell_index)]};
                     auto& write_index{write_indices[static_cast<std::size_t>(range_index)]};

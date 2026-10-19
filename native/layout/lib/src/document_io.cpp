@@ -60,7 +60,8 @@ void freeze_registry(DocumentState& state, SourceFileId root) {
     auto& storage{state.storage()};
     auto& strings{state.session->command_strings()};
     auto& frozen{state.io.registry};
-    std::vector<SourceFileId> parents, targets;
+    std::vector<SourceFileId> parents;
+    std::vector<SourceFileId> targets;
     std::vector<std::string> includes;
     auto const parsed{lispb::codegen::parse_type_registry(
         storage, root, [&](SourceFileId parent, std::string_view include) {
@@ -144,7 +145,8 @@ void initialize_inputs(DocumentState& state,
                        std::span<DocumentSource const> sources,
                        std::string_view registry) {
     // Inputs may borrow the session pool that these insertions grow.
-    std::vector<std::string> paths, texts;
+    std::vector<std::string> paths;
+    std::vector<std::string> texts;
     std::string const registry_text{registry};
     std::set<std::string> unique;
     for (auto const& source : sources) {

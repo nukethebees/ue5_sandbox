@@ -17,7 +17,9 @@ void DocumentFileUpdates::publish() {
     auto const count{paths_.size()};
     std::vector<std::filesystem::path> staged(count);
     std::vector<std::filesystem::path> backups(count);
-    std::vector<bool> written(count), backed_up(count), published(count);
+    std::vector<bool> written(count);
+    std::vector<bool> backed_up(count);
+    std::vector<bool> published(count);
     try {
         for (std::size_t index{}; index < count; ++index) {
             auto const& path{paths_[index]};

@@ -20,7 +20,7 @@ class Variants {
     auto name(VariantId id) const -> std::string const&;
     auto settings(VariantId id) const -> VariantSettings const&;
     void create(VariantId id, std::string name);
-    void duplicate(VariantId source, VariantId destination, std::string name);
+    void duplicate(VariantId source, VariantId id, std::string name);
     void rename(VariantId id, std::string name);
     void reset(VariantId id);
     void erase(VariantId id);

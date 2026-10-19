@@ -3,8 +3,7 @@
 #include <ioj/layout/editor_session.hpp>
 #include <ioj/layout/resolved_variant.hpp>
 
-namespace ioj::layout {
-namespace analyzer_soa_tests {
+namespace ioj::layout::analyzer_soa_tests {
 
 class SoaAnalysisTest : public AnalysisTest {};
 
@@ -217,5 +216,4 @@ INSTANTIATE_TEST_SUITE_P(
     SoaCapacityTest,
     testing::Values(std::uint64_t{0}, std::uint64_t{1}, std::uint64_t{4096}, std::uint64_t{65536}));
 
-}
-}
+} // namespace ioj::layout::analyzer_soa_tests

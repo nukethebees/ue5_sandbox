@@ -5,6 +5,6 @@
 
 namespace ioj::levels::authoring {
 // Compare a checked incoming level against a potentially invalid scene.
-[[nodiscard]] auto reconcile_scene(SceneSnapshot const& scene, LevelDefinition const& incoming)
+[[nodiscard]] auto reconcile_scene(SceneSnapshot const& scene, LevelDefinition const& level)
     -> SyncPlan;
 }

@@ -10,8 +10,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace ioj::layout {
-namespace analyzer_common_tests {
+namespace ioj::layout::analyzer_common_tests {
 
 TEST(Analyzer, ReportsFactualNumericDeltas) {
     EXPECT_EQ(numeric_delta(100, 150), (NumericDelta{NumericDeltaDirection::increased, 50, 50.0}));
@@ -224,5 +223,4 @@ TEST(AbiProfile, RejectsMalformedOrContradictoryGeneratedFactsWithoutPublishing)
     }
 }
 
-}
-}
+} // namespace ioj::layout::analyzer_common_tests

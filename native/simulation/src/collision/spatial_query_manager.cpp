@@ -185,10 +185,13 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
         handles[std::to_underlying(type)] = agents.lookups.for_type(type).entries();
     }
     std::uint32_t count{};
+    auto const max_x{max_coord.x()};
+    auto const max_y{max_coord.y()};
+    auto const max_z{max_coord.z()};
 
-    for (auto x{min_coord.x()}; x <= max_coord.x(); ++x) {
-        for (auto y{min_coord.y()}; y <= max_coord.y(); ++y) {
-            for (auto z{min_coord.z()}; z <= max_coord.z(); ++z) {
+    for (auto x{min_coord.x()}; x <= max_x; ++x) {
+        for (auto y{min_coord.y()}; y <= max_y; ++y) {
+            for (auto z{min_coord.z()}; z <= max_z; ++z) {
                 // Each grid coordinate selects a different cell.
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                 for (auto const id : grid.get_cell_entities({x, y, z})) {

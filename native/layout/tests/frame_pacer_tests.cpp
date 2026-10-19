@@ -2,8 +2,7 @@
 
 #include <gtest/gtest.h>
 
-namespace ioj::layout {
-namespace frame_pacer_tests {
+namespace ioj::layout::frame_pacer_tests {
 
 TEST(FramePacer, SelectsActivityDrivenModes) {
     auto const now{std::chrono::steady_clock::time_point{std::chrono::seconds{10}}};
@@ -28,5 +27,4 @@ TEST(FramePacer, UsesExpectedWaitIntervals) {
     EXPECT_LT(FramePacer::wait_timeout(FramePacingMode::suspended).count(), 0);
 }
 
-} // namespace
-} // namespace ioj::layout
+} // namespace ioj::layout::frame_pacer_tests

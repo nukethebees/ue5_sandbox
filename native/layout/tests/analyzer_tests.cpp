@@ -5,8 +5,7 @@
 
 #include <cmath>
 
-namespace ioj::layout {
-namespace analyzer_tests {
+namespace ioj::layout::analyzer_tests {
 
 class RepresentationTest : public AnalysisTest {};
 
@@ -314,5 +313,4 @@ INSTANTIATE_TEST_SUITE_P(Source,
                              return std::string{test.param.name};
                          });
 
-}
-}
+} // namespace ioj::layout::analyzer_tests

@@ -12,8 +12,7 @@
 #include <string_view>
 #include <utility>
 
-namespace ioj::layout {
-namespace document_tests {
+namespace ioj::layout::document_tests {
 constexpr std::string_view source{R"(
     (module game :header "Game.h" :backend standard-library
         (packed-value ShipState :storage std::uint16_t
@@ -440,7 +439,7 @@ TEST(DocumentEdit, EnumAndRecordChildrenUseNamedOperations) {
     auto const enumeration{doc.declaration_source("game", "State").value()};
     EXPECT_LT(enumeration.find("Done"), enumeration.find("Active"));
     EXPECT_EQ(enumeration.find("Idle"), std::string::npos);
-    EXPECT_NE(enumeration.find("4"), std::string::npos);
+    EXPECT_NE(enumeration.find('4'), std::string::npos);
     auto const record{doc.declaration_source("game", "Position").value()};
     EXPECT_LT(record.find("height"), record.find("member x"));
     EXPECT_NE(record.find(":count 3"), std::string::npos);
@@ -645,5 +644,4 @@ TEST(DocumentEdit, RenderedSourcesOwnTheirTextAcrossSessionGrowthAndReplay) {
     EXPECT_TRUE(edited.front().text.contains(":bits 4"));
     EXPECT_EQ(health_bits(doc), 8);
 }
-}
-}
+} // namespace ioj::layout::document_tests

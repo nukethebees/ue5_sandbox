@@ -89,11 +89,14 @@ void collect_request_matches(collision::CollisionUniformGrid const& grid,
         worker.query_stamp = 1;
     }
     auto const stamp{worker.query_stamp};
+    auto const max_x{max_coord.x()};
+    auto const max_y{max_coord.y()};
+    auto const max_z{max_coord.z()};
 
     // Rely on the Thinking phase invariants for live membership and valid entity indices.
-    for (auto x{min_coord.x()}; x <= max_coord.x(); ++x) {
-        for (auto y{min_coord.y()}; y <= max_coord.y(); ++y) {
-            for (auto z{min_coord.z()}; z <= max_coord.z(); ++z) {
+    for (auto x{min_coord.x()}; x <= max_x; ++x) {
+        for (auto y{min_coord.y()}; y <= max_y; ++y) {
+            for (auto z{min_coord.z()}; z <= max_z; ++z) {
                 // Select the members for this cell.
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                 for (auto const id : grid.get_cell_entities({x, y, z})) {

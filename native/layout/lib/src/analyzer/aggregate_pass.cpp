@@ -146,7 +146,7 @@ void relationship_check(AnalysisContext& context,
     auto label{std::string{
         types.strings().view(types.name(context.storage.types.schema_type[owner.value]))}};
     if (field) {
-        label += ".";
+        label += '.';
         label += context.storage.fields.name[*field];
     }
     relationships.metrics[row] = analyze_unsigned_relationship_extent(

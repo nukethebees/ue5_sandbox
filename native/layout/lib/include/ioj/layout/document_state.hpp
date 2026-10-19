@@ -21,7 +21,7 @@ namespace ioj::layout {
 class EditorSession;
 class DocumentState {
   public:
-    DocumentState(EditorSession& session, DocumentId id);
+    DocumentState(EditorSession& owner, DocumentId identity);
     auto storage() const -> lispb::CompilerStorage&;
     auto manifest() const -> lispb::codegen::Manifest;
     void reset_workspace();

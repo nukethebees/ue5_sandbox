@@ -11,8 +11,7 @@
 #include <string_view>
 #include <vector>
 
-namespace ioj::layout {
-namespace workspace_tests {
+namespace ioj::layout::workspace_tests {
 constexpr std::string_view source{R"((module game :header "Game.h" :backend standard-library
     (packed-value State :storage std::uint16_t (field health std::uint16_t :bits 8))
     (struct Ships (member values array std::uint32_t))))"};
@@ -154,5 +153,4 @@ TEST(DocumentSettings, DistributionOwnersSurviveRenameAndRestoreAfterDeletion) {
     EXPECT_TRUE(doc.analysis_settings().union_distributions.empty());
     EXPECT_TRUE(doc.find_type("game", "Payload"));
 }
-} // namespace
-} // namespace ioj::layout
+} // namespace ioj::layout::workspace_tests

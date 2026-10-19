@@ -2,8 +2,7 @@
 #include <ioj/layout/abi_profile.hpp>
 #include <ioj/layout/editor_session.hpp>
 
-namespace ioj::layout {
-namespace analyzer_aggregate_tests {
+namespace ioj::layout::analyzer_aggregate_tests {
 
 class AggregateAnalysisTest : public AnalysisTest {};
 
@@ -180,5 +179,4 @@ INSTANTIATE_TEST_SUITE_P(Source,
                              return std::string{test.param.name};
                          });
 
-}
-}
+} // namespace ioj::layout::analyzer_aggregate_tests

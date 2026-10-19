@@ -358,9 +358,9 @@ void
 }
 void Transaction::set_member_type(std::string_view m,
                                   std::string_view d,
-                                  std::string_view n,
+                                  std::string_view member,
                                   std::string_view type) {
-    append(TransactionKind::member_type, m, d, n, type);
+    append(TransactionKind::member_type, m, d, member, type);
 }
 void Transaction::create_declaration(std::string_view m, std::string_view source) {
     append(TransactionKind::create, m, {}, {}, source);
@@ -511,7 +511,7 @@ void Transaction::reset_variant(VariantId id) {
 void Transaction::set_variant_packed_storage(VariantId id,
                                              std::string_view m,
                                              std::string_view d,
-                                             std::optional<std::string> type) {
+                                             std::optional<std::string> const& type) {
     append(TransactionKind::variant_packed_storage, m, d, {}, type.value_or(""));
     variant_ids_.back() = id;
 }
@@ -527,7 +527,7 @@ void Transaction::set_variant_member_type(VariantId id,
                                           std::string_view m,
                                           std::string_view d,
                                           std::string_view member,
-                                          std::optional<std::string> type) {
+                                          std::optional<std::string> const& type) {
     append(TransactionKind::variant_member_type, m, d, member, type.value_or(""));
     variant_ids_.back() = id;
 }

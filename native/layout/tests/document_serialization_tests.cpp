@@ -9,8 +9,7 @@
 #include <string>
 #include <string_view>
 
-namespace ioj::layout {
-namespace document_serialization_tests {
+namespace ioj::layout::document_serialization_tests {
 
 auto rendered(Document const& document) -> std::string {
     auto const sources{document.sources()};
@@ -231,5 +230,4 @@ TEST(DocumentSerialization, RemovedPropertyRetainsCommentOnItsParent) {
     EXPECT_EQ(rendered(reloaded), output);
 }
 
-}
-}
+} // namespace ioj::layout::document_serialization_tests

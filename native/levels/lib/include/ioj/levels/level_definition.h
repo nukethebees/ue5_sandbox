@@ -11,7 +11,7 @@ namespace ioj::levels {
 // Own a validated definition. Construction verifies values and cross-component references.
 class LevelDefinition {
   public:
-    [[nodiscard]] static auto make(LevelDefinitionComponents components)
+    [[nodiscard]] static auto make(LevelDefinitionComponents definition)
         -> std::expected<LevelDefinition, Diagnostics>;
 
     [[nodiscard]] auto metadata() const -> LevelMetadata const& { return metadata_; }

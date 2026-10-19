@@ -54,9 +54,10 @@ class SourceSession {
     [[nodiscard]] auto save() -> std::expected<void, std::string>;
     [[nodiscard]] auto save_as(std::filesystem::path const& path, SourceOverwritePolicy overwrite)
         -> std::expected<void, std::string>;
-    [[nodiscard]] auto save_replacement(std::string source, std::string_view synchronized_source)
+    [[nodiscard]] auto save_replacement(std::string const& source,
+                                        std::string_view synchronized_source)
         -> std::expected<void, std::string>;
-    [[nodiscard]] auto save_replacement_as(std::string source,
+    [[nodiscard]] auto save_replacement_as(std::string const& source,
                                            std::filesystem::path const& path,
                                            std::string_view synchronized_source,
                                            SourceOverwritePolicy overwrite)

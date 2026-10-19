@@ -3,8 +3,7 @@
 #include <ioj/layout/editor_session.hpp>
 #include <ioj/layout/resolved_variant.hpp>
 
-namespace ioj::layout {
-namespace analyzer_packed_tests {
+namespace ioj::layout::analyzer_packed_tests {
 
 class PackedAnalysisTest : public AnalysisTest {};
 
@@ -191,5 +190,4 @@ INSTANTIATE_TEST_SUITE_P(Extents,
                              return std::string{test.param.name};
                          });
 
-}
-}
+} // namespace ioj::layout::analyzer_packed_tests

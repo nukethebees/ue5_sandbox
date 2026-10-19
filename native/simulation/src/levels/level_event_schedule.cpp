@@ -15,6 +15,8 @@ void LevelEventSchedule::add_initial_spawn_group(EntityType const type,
     assert(spawn_groups.num() >= initial_spawn_group_count);
 
     // Split initial batches to fit the group's payload count without limiting the whole batch.
+    // Rebind columns each iteration because appending a group can reallocate their storage.
+    // NOLINTBEGIN(ioj-loop-view-accessor-call)
     while (count > 0) {
         if (initial_spawn_group_count > 0) {
             auto const groups{spawn_groups.get_view()};
@@ -54,6 +56,7 @@ void LevelEventSchedule::add_initial_spawn_group(EntityType const type,
         offset += added;
         count -= added;
     }
+    // NOLINTEND(ioj-loop-view-accessor-call)
 }
 
 auto LevelEventSchedule::add_spawn_group(EntityType const type,

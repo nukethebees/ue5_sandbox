@@ -112,7 +112,7 @@ class Transaction {
     void add_source(std::string_view path, std::string_view source);
     void replace_source(std::string_view path, std::string_view source);
     void remove_source(std::string_view path);
-    void rename_source(std::string_view path, std::string_view new_path);
+    void rename_source(std::string_view path, std::string_view destination);
     void create_variant(std::string_view name);
     void duplicate_variant(VariantId id, std::string_view name);
     void rename_variant(VariantId id, std::string_view name);
@@ -121,7 +121,7 @@ class Transaction {
     void set_variant_packed_storage(VariantId id,
                                     std::string_view module,
                                     std::string_view declaration,
-                                    std::optional<std::string> type);
+                                    std::optional<std::string> const& type);
     void set_variant_field_bits(VariantId id,
                                 std::string_view module,
                                 std::string_view declaration,
@@ -131,7 +131,7 @@ class Transaction {
                                  std::string_view module,
                                  std::string_view declaration,
                                  std::string_view member,
-                                 std::optional<std::string> type);
+                                 std::optional<std::string> const& type);
     void set_variant_capacity(VariantId id,
                               std::string_view module,
                               std::string_view declaration,

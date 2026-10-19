@@ -101,9 +101,8 @@ auto pack_transforms(TransformInput input,
     if (mode == BoundsMode::Calculate) {
         return scalar_detail::pack<PackingFields::Transforms, BoundsMode::Calculate>(
             input, parameters, output);
-    } else {
-        return scalar_detail::pack<PackingFields::Transforms, BoundsMode::Skip>(
-            input, parameters, output);
     }
+    return scalar_detail::pack<PackingFields::Transforms, BoundsMode::Skip>(
+        input, parameters, output);
 }
 }

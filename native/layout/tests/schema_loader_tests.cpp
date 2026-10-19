@@ -13,8 +13,7 @@
 #include <string>
 #include <string_view>
 
-namespace ioj::layout {
-namespace schema_loader_tests {
+namespace ioj::layout::schema_loader_tests {
 class DocumentFiles {
   public:
     DocumentFiles()
@@ -276,5 +275,4 @@ TEST(DocumentFiles, HistoryUsesCapturedInputsAfterProjectAndRegistryFilesChange)
     EXPECT_FALSE(document.save());
     EXPECT_EQ(files.read("game.lispb"), "(invalid external replacement");
 }
-} // namespace
-} // namespace ioj::layout
+} // namespace ioj::layout::schema_loader_tests
