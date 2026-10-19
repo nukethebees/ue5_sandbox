@@ -112,6 +112,22 @@ auto enum_count_specialization(CppIR& ir, CppTypeId enum_type, std::size_t const
     return ir.header_function(function);
 }
 
+auto lookup_function(LoweringContext& context,
+                     DeclarationHandle schema,
+                     std::string const& enum_name,
+                     std::string_view suffix,
+                     Nodes body) -> FunctionId {
+    auto& ir{context.ir};
+    auto const function{ir.function(internal_name(context, schema, suffix), "auto")};
+    ir.set_function_parameters(function, {ir.parameter(enum_name + " const", "value")});
+    ir.set_function_body(function, body);
+    ir.set_function_return_type(
+        function,
+        ir.types.intern("TCHAR const*", {ir.types.dependency("TCHAR const*", "CoreMinimal.h")}),
+        ReturnSyntax::trailing);
+    return function;
+}
+
 auto exact_lookup(LoweringContext& context, ModuleSettingsId settings, DeclarationHandle schema)
     -> FunctionId {
     auto& ir{context.ir};
@@ -144,14 +160,7 @@ auto exact_lookup(LoweringContext& context, ModuleSettingsId settings, Declarati
                 context.text(
                     context.declarations.enums.name[context.declarations.enums.index(schema)]) +
                 ">")));
-    auto const created_function{ir.function(internal_name(context, schema, "name"), "auto")};
-    ir.set_function_parameters(created_function, {ir.parameter(enum_name + " const", "value")});
-    ir.set_function_body(created_function, body.build());
-    ir.set_function_return_type(
-        created_function,
-        ir.types.intern("TCHAR const*", {ir.types.dependency("TCHAR const*", "CoreMinimal.h")}),
-        ReturnSyntax::trailing);
-    return created_function;
+    return lookup_function(context, schema, enum_name, "name", body.build());
 }
 
 auto display_lookup(LoweringContext& context, ModuleSettingsId settings, DeclarationHandle schema)
@@ -184,15 +193,7 @@ auto display_lookup(LoweringContext& context, ModuleSettingsId settings, Declara
     }
     body.add(ir.return_stmt(
         ir.call(ir.named(internal_name(context, schema, "name")), {ir.named("value")})));
-    auto const created_function{
-        ir.function(internal_name(context, schema, "display_name"), "auto")};
-    ir.set_function_parameters(created_function, {ir.parameter(enum_name + " const", "value")});
-    ir.set_function_body(created_function, body.build());
-    ir.set_function_return_type(
-        created_function,
-        ir.types.intern("TCHAR const*", {ir.types.dependency("TCHAR const*", "CoreMinimal.h")}),
-        ReturnSyntax::trailing);
-    return created_function;
+    return lookup_function(context, schema, enum_name, "display_name", body.build());
 }
 
 auto serialized_lookup(LoweringContext& context,
@@ -234,15 +235,7 @@ auto serialized_lookup(LoweringContext& context,
                 context.text(
                     context.declarations.enums.name[context.declarations.enums.index(schema)]) +
                 ">")));
-    auto const created_function{
-        ir.function(internal_name(context, schema, "serialized_name"), "auto")};
-    ir.set_function_parameters(created_function, {ir.parameter(enum_name + " const", "value")});
-    ir.set_function_body(created_function, body.build());
-    ir.set_function_return_type(
-        created_function,
-        ir.types.intern("TCHAR const*", {ir.types.dependency("TCHAR const*", "CoreMinimal.h")}),
-        ReturnSyntax::trailing);
-    return created_function;
+    return lookup_function(context, schema, enum_name, "serialized_name", body.build());
 }
 
 auto serialized_parser(LoweringContext& context,

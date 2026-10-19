@@ -404,132 +404,87 @@ auto fixed_container_access_nodes(LoweringContext& context, DeclarationHandle sc
     auto const func{ir.parameter("TFunc&&", "func")};
     std::vector<FunctionParameterId> const range_parameters{offset, count};
     NodeListBuilder result{ir};
-    auto add{compact_function_writer(context, result)};
-    result.add(ir.header_function([&] {
-        auto const created_function{ir.function("capacity", "size_type")};
-        ir.set_function_body(created_function, {ir.raw("return capacity_value;")});
-        ir.set_function_return_type(
-            created_function, ir.types.intern("size_type"), ReturnSyntax::trailing);
-        ir.set_function_noexcept(created_function);
-        ir.set_function_receiver(created_function, FunctionReceiver::static_);
-        ir.function_flags(created_function).set_is_constexpr(true);
-        ir.function_flags(created_function).set_is_inline(true);
-        ir.function_flags(created_function).set_define_in_header(true);
-        ir.function_formatting(created_function) = compact_function_formatting();
-        return created_function;
-    }()),
-               1);
-    ir.set_function_noexcept(add("num",
-                                 ir.types.intern("size_type"),
-                                 {},
-                                 "return size_;",
-                                 FunctionReceiver::const_,
-                                 ReturnSyntax::trailing));
-    ir.set_function_noexcept(add("is_empty",
-                                 ir.types.intern("bool"),
-                                 {},
-                                 "return size_ == 0;",
-                                 FunctionReceiver::const_,
-                                 ReturnSyntax::trailing));
-    ir.set_function_noexcept(add("is_full",
-                                 ir.types.intern("bool"),
-                                 {},
-                                 "return size_ == capacity();",
-                                 FunctionReceiver::const_,
-                                 ReturnSyntax::trailing,
-                                 {},
-                                 {},
-                                 2));
-    add("get_view",
-        ir.types.intern("View"),
-        {},
-        "return storage_.get_view(0, size_);",
-        FunctionReceiver::unqualified,
-        ReturnSyntax::trailing);
-    add("get_view",
-        ir.types.intern("View"),
-        range_parameters,
-        "check_view_range(offset, count); return storage_.get_view(offset, count);",
-        FunctionReceiver::unqualified,
-        ReturnSyntax::trailing);
-    add("get_view",
-        ir.types.intern("ConstView"),
-        {},
-        "return get_const_view();",
-        FunctionReceiver::const_,
-        ReturnSyntax::trailing);
-    add("get_view",
-        ir.types.intern("ConstView"),
-        range_parameters,
-        "return get_const_view(offset, count);",
-        FunctionReceiver::const_,
-        ReturnSyntax::trailing);
-    add("get_const_view",
-        ir.types.intern("ConstView"),
-        {},
-        "return storage_.get_const_view(0, size_);",
-        FunctionReceiver::const_,
-        ReturnSyntax::trailing);
-    add("get_const_view",
-        ir.types.intern("ConstView"),
-        range_parameters,
-        "check_view_range(offset, count); return storage_.get_const_view(offset, count);",
-        FunctionReceiver::const_,
-        ReturnSyntax::trailing);
-    add("slice",
-        ir.types.intern("View"),
-        range_parameters,
-        "return get_view(offset, count);",
-        FunctionReceiver::unqualified,
-        ReturnSyntax::trailing);
-    add("left",
-        ir.types.intern("View"),
-        {count},
-        "return slice(0, count);",
-        FunctionReceiver::unqualified,
-        ReturnSyntax::trailing);
-    add("right",
-        ir.types.intern("View"),
-        {count},
-        "return slice(size_ - count, count);",
-        FunctionReceiver::unqualified,
-        ReturnSyntax::trailing);
-    add("slice",
-        ir.types.intern("ConstView"),
-        range_parameters,
-        "return get_const_view(offset, count);",
-        FunctionReceiver::const_,
-        ReturnSyntax::trailing);
-    add("left",
-        ir.types.intern("ConstView"),
-        {count},
-        "return slice(0, count);",
-        FunctionReceiver::const_,
-        ReturnSyntax::trailing);
-    add("right",
-        ir.types.intern("ConstView"),
-        {count},
-        "return slice(size_ - count, count);",
-        FunctionReceiver::const_,
-        ReturnSyntax::trailing,
-        {},
-        {},
-        2);
+    auto write{compact_function_writer(context, result)};
+    auto add = [&](std::string_view name,
+                   std::string_view type,
+                   std::vector<FunctionParameterId> parameters,
+                   std::string body,
+                   FunctionReceiver receiver = FunctionReceiver::unqualified,
+                   TemplateId function_template = {},
+                   int new_lines = 1) {
+        return write(name,
+                     ir.types.intern(type),
+                     std::move(parameters),
+                     std::move(body),
+                     receiver,
+                     ReturnSyntax::trailing,
+                     function_template,
+                     {},
+                     new_lines);
+    };
+    auto const capacity{
+        add("capacity", "size_type", {}, "return capacity_value;", FunctionReceiver::static_)};
+    ir.set_function_noexcept(capacity);
+    ir.function_flags(capacity).set_is_constexpr(true);
+    auto query =
+        [&](std::string_view name, std::string_view type, std::string body, int new_lines = 1) {
+            ir.set_function_noexcept(
+                add(name, type, {}, std::move(body), FunctionReceiver::const_, {}, new_lines));
+        };
+    query("num", "size_type", "return size_;");
+    query("is_empty", "bool", "return size_ == 0;");
+    query("is_full", "bool", "return size_ == capacity();", 2);
+    auto getters = [&](std::string_view name,
+                       std::string_view type,
+                       FunctionReceiver receiver,
+                       std::string body,
+                       std::string range_body) {
+        add(name, type, {}, std::move(body), receiver);
+        add(name, type, range_parameters, std::move(range_body), receiver);
+    };
+    getters("get_view",
+            "View",
+            FunctionReceiver::unqualified,
+            "return storage_.get_view(0, size_);",
+            "check_view_range(offset, count); return storage_.get_view(offset, count);");
+    getters("get_view",
+            "ConstView",
+            FunctionReceiver::const_,
+            "return get_const_view();",
+            "return get_const_view(offset, count);");
+    getters("get_const_view",
+            "ConstView",
+            FunctionReceiver::const_,
+            "return storage_.get_const_view(0, size_);",
+            "check_view_range(offset, count); return storage_.get_const_view(offset, count);");
+    auto slices = [&](std::string_view type,
+                      FunctionReceiver receiver,
+                      std::string body,
+                      int trailing_new_lines = 1) {
+        add("slice", type, range_parameters, std::move(body), receiver);
+        add("left", type, {count}, "return slice(0, count);", receiver);
+        add("right",
+            type,
+            {count},
+            "return slice(size_ - count, count);",
+            receiver,
+            {},
+            trailing_new_lines);
+    };
+    slices("View", FunctionReceiver::unqualified, "return get_view(offset, count);");
+    slices("ConstView", FunctionReceiver::const_, "return get_const_view(offset, count);", 2);
     add("apply_arrays",
-        ir.types.intern("decltype(auto)"),
+        "decltype(auto)",
         {func},
         "auto view{get_view()}; return view.apply_arrays(std::forward<TFunc>(func));",
         FunctionReceiver::unqualified,
-        ReturnSyntax::trailing,
         ir.template_declaration({ir.type_template_parameter(ir.strings.intern("TFunc"))}));
     add("apply_arrays",
-        ir.types.intern("decltype(auto)"),
+        "decltype(auto)",
         {func},
         "auto view{get_const_view()}; return view.apply_arrays(std::forward<TFunc>(func));",
         FunctionReceiver::const_,
-        ReturnSyntax::trailing,
         ir.template_declaration({ir.type_template_parameter(ir.strings.intern("TFunc"))}),
-        {},
         2);
     if (context.declarations.soas.equivalent_type[context.declarations.soas.index(schema)]
             .has_value()) {

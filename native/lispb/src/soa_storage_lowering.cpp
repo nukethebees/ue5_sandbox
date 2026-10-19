@@ -17,6 +17,7 @@
 #include <codegen/ast/nodes.h>
 #include <codegen/ast/parameter_passing.h>
 #include <codegen/ast/return_syntax.h>
+#include <codegen/ast/template_id.h>
 #include <codegen/ast/type_operation.h>
 #include <codegen/ast/unary_operator.h>
 #include <codegen/lowering/indices.h>
@@ -33,6 +34,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <initializer_list>
 #include <map>
 #include <optional>
 #include <span>
@@ -275,64 +277,55 @@ auto soa_storage_functions(LoweringContext& context,
             context.declarations.soas.operations[context.declarations.soas.index(schema)])};
         return std::ranges::find(operations, operation) != operations.end();
     };
+    auto add = [&](std::string_view name,
+                   std::initializer_list<FunctionParameterId> parameters,
+                   Nodes body) {
+        auto const function{ir.function(name, "void")};
+        ir.set_function_parameters(function, parameters);
+        ir.set_function_body(function, body);
+        result.push_back(function);
+        return function;
+    };
+    auto add_template = [&](std::string_view name,
+                            std::initializer_list<FunctionParameterId> parameters,
+                            Nodes body) {
+        auto const function{add(name, parameters, body)};
+        ir.function_flags(function).set_is_inline(true);
+        ir.function_flags(function).set_define_in_header(true);
+        ir.set_function_template(
+            function,
+            ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Other"))}));
+        return function;
+    };
     if (contains(StorageOperation::reset)) {
-        result.push_back([&] {
-            auto const created_function{ir.function("reset", "void")};
-            ir.set_function_body(created_function, storage_operation_body(context, "reset"));
-            return created_function;
-        }());
+        add("reset", {}, storage_operation_body(context, "reset"));
     }
     if (contains(StorageOperation::reserve)) {
-        result.push_back([&] {
-            auto const created_function{ir.function("reserve", "void")};
-            ir.set_function_parameters(created_function, {count});
-            ir.set_function_body(created_function,
-                                 storage_operation_body(context, "reserve", {"count"}));
-            return created_function;
-        }());
+        add("reserve", {count}, storage_operation_body(context, "reserve", {"count"}));
     }
     if (contains(StorageOperation::add_uninitialised)) {
-        result.push_back([&] {
-            auto const created_function{ir.function("add_uninitialised", "void")};
-            ir.set_function_parameters(created_function, {count});
-            ir.set_function_body(created_function,
-                                 storage_operation_body(context, "add_uninitialised", {"count"}));
-            return created_function;
-        }());
+        add("add_uninitialised",
+            {count},
+            storage_operation_body(context, "add_uninitialised", {"count"}));
     }
     if (contains(StorageOperation::add_defaulted)) {
-        result.push_back([&] {
-            auto const created_function{ir.function("add_defaulted", "void")};
-            ir.set_function_parameters(created_function, {count});
-            ir.set_function_body(created_function,
-                                 storage_operation_body(context, "add_defaulted", {"count"}));
-            return created_function;
-        }());
+        add("add_defaulted", {count}, storage_operation_body(context, "add_defaulted", {"count"}));
     }
     if (contains(StorageOperation::remove_at_swap)) {
         auto body{has_custom_remove_at_swap(context, members)
                       ? explicit_remove_at_swap_body(context, members)
                       : storage_operation_body(
                             context, "remove_at_swap", {"index", "count", "allow_shrinking"})};
-        result.push_back([&] {
-            auto const created_function{ir.function("remove_at_swap", "void")};
-            ir.set_function_parameters(
-                created_function, {ir.parameter("int32 const", "index"), count, allow_shrinking});
-            ir.set_function_body(created_function, std::move(body));
-            ir.function_flags(created_function).set_is_inline(true);
-            ir.function_flags(created_function).set_define_in_header(true);
-            return created_function;
-        }());
+        auto const function{add("remove_at_swap",
+                                {ir.parameter("int32 const", "index"), count, allow_shrinking},
+                                std::move(body))};
+        ir.function_flags(function).set_is_inline(true);
+        ir.function_flags(function).set_define_in_header(true);
     }
     if (contains(StorageOperation::set_num)) {
-        result.push_back([&] {
-            auto const created_function{ir.function("set_num", "void")};
-            ir.set_function_parameters(created_function, {count, allow_shrinking});
-            ir.set_function_body(
-                created_function,
-                storage_operation_body(context, "set_num", {"count", "allow_shrinking"}));
-            return created_function;
-        }());
+        add("set_num",
+            {count, allow_shrinking},
+            storage_operation_body(context, "set_num", {"count", "allow_shrinking"}));
     }
     if (contains(StorageOperation::copy_element)) {
         NodeListBuilder copy_one{ir};
@@ -356,57 +349,28 @@ auto soa_storage_functions(LoweringContext& context,
                 container_function(context, "ioj::copy_elements"),
                 {destination, ir.named("dst_i"), source, ir.named("src_i"), ir.named("count")})));
         }
-        result.push_back([&] {
-            auto const created_function{ir.function("copy_element", "void")};
-            ir.set_function_parameters(created_function, {destination_index, other, source_index});
-            ir.set_function_body(created_function, copy_one.build());
-            ir.function_flags(created_function).set_is_inline(true);
-            ir.function_flags(created_function).set_define_in_header(true);
-            ir.set_function_template(
-                created_function,
-                ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Other"))}));
-            return created_function;
-        }());
-        result.push_back([&] {
-            auto const created_function{ir.function("copy_elements", "void")};
-            ir.set_function_parameters(created_function,
-                                       {destination_index, other, source_index, count});
-            ir.set_function_body(created_function, copy_range.build());
-            ir.function_flags(created_function).set_is_inline(true);
-            ir.function_flags(created_function).set_define_in_header(true);
-            ir.set_function_template(
-                created_function,
-                ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Other"))}));
-            return created_function;
-        }());
-        result.push_back([&] {
-            auto const created_function{ir.function("copy_to_tail", "void")};
-            ir.set_function_parameters(created_function, {other});
-            ir.set_function_body(
-                created_function,
-                {
-                    ir.variable(
-                        "auto const", "count", ir.call(ir.member_access(ir.named("other"), "num"))),
-                    ir.expr_stmt(
-                        ir.call(ir.named("check", {ir.types.dependency("check", "CoreMinimal.h")}),
-                                {ir.binary(BinaryOperator::greater_equal,
-                                           ir.call(ir.named("num")),
-                                           ir.named("count"))})),
-                    ir.expr_stmt(ir.call(ir.named("copy_elements"),
-                                         {ir.binary(BinaryOperator::subtract,
-                                                    ir.call(ir.named("num")),
-                                                    ir.named("count")),
-                                          ir.named("other"),
-                                          ir.literal("0"),
-                                          ir.named("count")})),
-                });
-            ir.function_flags(created_function).set_is_inline(true);
-            ir.function_flags(created_function).set_define_in_header(true);
-            ir.set_function_template(
-                created_function,
-                ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Other"))}));
-            return created_function;
-        }());
+        add_template("copy_element", {destination_index, other, source_index}, copy_one.build());
+        add_template(
+            "copy_elements", {destination_index, other, source_index, count}, copy_range.build());
+        add_template(
+            "copy_to_tail",
+            {other},
+            {
+                ir.variable(
+                    "auto const", "count", ir.call(ir.member_access(ir.named("other"), "num"))),
+                ir.expr_stmt(
+                    ir.call(ir.named("check", {ir.types.dependency("check", "CoreMinimal.h")}),
+                            {ir.binary(BinaryOperator::greater_equal,
+                                       ir.call(ir.named("num")),
+                                       ir.named("count"))})),
+                ir.expr_stmt(ir.call(ir.named("copy_elements"),
+                                     {ir.binary(BinaryOperator::subtract,
+                                                ir.call(ir.named("num")),
+                                                ir.named("count")),
+                                      ir.named("other"),
+                                      ir.literal("0"),
+                                      ir.named("count")})),
+            });
     }
     if (contains(StorageOperation::append_from)) {
         NodeListBuilder calls{ir};
@@ -429,26 +393,16 @@ auto soa_storage_functions(LoweringContext& context,
                               {destination, source})};
             calls.add(ir.expr_stmt(invocation));
         }
-        result.push_back([&] {
-            auto const created_function{ir.function("append_from", "void")};
-            ir.set_function_parameters(created_function, {other});
-            ir.set_function_body(created_function, calls.build());
-            ir.function_flags(created_function).set_is_inline(true);
-            ir.function_flags(created_function).set_define_in_header(true);
-            ir.set_function_template(
-                created_function,
-                ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Other"))}));
-            ir.set_function_requires_clause(
-                created_function,
-                ir.template_id(
-                    ir.named("ioj::SupportsApplyArrayPairsWith",
-                             {ir.types.dependency("ioj::SupportsApplyArrayPairsWith",
-                                                  "ioj/soa_concepts.h")}),
-                    {ir.type_reference(ir.types.intern(context.text(
-                         context.declarations.soas.name[context.declarations.soas.index(schema)]))),
-                     ir.type_reference(ir.types.intern("Other"))}));
-            return created_function;
-        }());
+        auto const function{add_template("append_from", {other}, calls.build())};
+        ir.set_function_requires_clause(
+            function,
+            ir.template_id(
+                ir.named("ioj::SupportsApplyArrayPairsWith",
+                         {ir.types.dependency("ioj::SupportsApplyArrayPairsWith",
+                                              "ioj/soa_concepts.h")}),
+                {ir.type_reference(ir.types.intern(context.text(
+                     context.declarations.soas.name[context.declarations.soas.index(schema)]))),
+                 ir.type_reference(ir.types.intern("Other"))}));
     }
     return result;
 }
@@ -461,61 +415,51 @@ auto soa_permutation_functions(LoweringContext& context, std::span<ResolvedMembe
                                      {ir.types.dependency("TArrayView", "Containers/ArrayView.h")}),
                      "scratch_indices")};
     auto const apply_body{storage_operation_body(context, "apply_permutation", {"indices"})};
+    auto function = [&](std::string_view name,
+                        std::initializer_list<FunctionParameterId> parameters,
+                        Nodes body,
+                        TemplateId function_template = {}) {
+        auto const created{ir.function(name, "void")};
+        ir.set_function_parameters(created, parameters);
+        ir.set_function_body(created, body);
+        if (function_template) {
+            ir.function_flags(created).set_is_inline(true);
+            ir.function_flags(created).set_define_in_header(true);
+            ir.set_function_template(created, function_template);
+        }
+        return created;
+    };
     return {
-        [&] {
-            auto const created_function{ir.function("apply_permutation", "void")};
-            ir.set_function_parameters(
-                created_function,
-                {ir.parameter(
-                    ir.types.intern("TArrayView<int32>",
-                                    {ir.types.dependency("TArrayView", "Containers/ArrayView.h")}),
-                    "indices")});
-            ir.set_function_body(created_function, apply_body);
-            return created_function;
-        }(),
-        [&] {
-            auto const created_function{ir.function("sort", "void")};
-            ir.set_function_parameters(created_function,
-                                       {ir.parameter("Compare&&", "compare"), scratch_indices});
-            ir.set_function_body(
-                created_function,
-                {ir.expr_stmt(ir.call(
-                    ir.named(
-                        "ioj::soa_ops::sort",
-                        {ir.types.dependency("ioj::soa_ops", "SandboxCore/soa_storage_ops.h")}),
-                    {ir.unary(UnaryOperator::dereference, ir.named("this")),
-                     ir.call(
-                         ir.template_id(ir.named("std::forward",
+        function("apply_permutation",
+                 {ir.parameter(
+                     ir.types.intern("TArrayView<int32>",
+                                     {ir.types.dependency("TArrayView", "Containers/ArrayView.h")}),
+                     "indices")},
+                 apply_body),
+        function(
+            "sort",
+            {ir.parameter("Compare&&", "compare"), scratch_indices},
+            {ir.expr_stmt(ir.call(
+                ir.named("ioj::soa_ops::sort",
+                         {ir.types.dependency("ioj::soa_ops", "SandboxCore/soa_storage_ops.h")}),
+                {ir.unary(UnaryOperator::dereference, ir.named("this")),
+                 ir.call(ir.template_id(ir.named("std::forward",
                                                  {ir.types.dependency("std::forward", "utility")}),
                                         {ir.type_reference(ir.types.intern("Compare"))}),
                          {ir.named("compare")}),
-                     ir.named("scratch_indices")}))});
-            ir.function_flags(created_function).set_is_inline(true);
-            ir.function_flags(created_function).set_define_in_header(true);
-            ir.set_function_template(created_function,
-                                     ir.template_declaration({ir.type_template_parameter(
-                                         ir.strings.intern("Compare"))}));
-            return created_function;
-        }(),
-        [&] {
-            auto const created_function{ir.function("sort", "void")};
-            ir.set_function_parameters(created_function, {scratch_indices});
-            ir.set_function_body(
-                created_function,
-                {ir.expr_stmt(ir.call(
-                    ir.template_id(ir.named("ioj::soa_ops::sort",
-                                            {ir.types.dependency("ioj::soa_ops",
-                                                                 "SandboxCore/soa_storage_ops.h")}),
-                                   {ir.named("Compare")}),
-                    {ir.unary(UnaryOperator::dereference, ir.named("this")),
-                     ir.named("scratch_indices")}))});
-            ir.function_flags(created_function).set_is_inline(true);
-            ir.function_flags(created_function).set_define_in_header(true);
-            ir.set_function_template(created_function,
-                                     ir.template_declaration({ir.value_template_parameter(
-                                         ir.types.intern("auto"), ir.strings.intern("Compare"))}));
-            return created_function;
-        }(),
+                 ir.named("scratch_indices")}))},
+            ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Compare"))})),
+        function("sort",
+                 {scratch_indices},
+                 {ir.expr_stmt(ir.call(
+                     ir.template_id(ir.named("ioj::soa_ops::sort",
+                                             {ir.types.dependency(
+                                                 "ioj::soa_ops", "SandboxCore/soa_storage_ops.h")}),
+                                    {ir.named("Compare")}),
+                     {ir.unary(UnaryOperator::dereference, ir.named("this")),
+                      ir.named("scratch_indices")}))},
+                 ir.template_declaration({ir.value_template_parameter(
+                     ir.types.intern("auto"), ir.strings.intern("Compare"))})),
     };
 }
 

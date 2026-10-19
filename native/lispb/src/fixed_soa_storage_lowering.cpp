@@ -141,9 +141,12 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
     auto& resolved_store{context.ir.lowering.resolved_members};
     auto& ir{context.ir};
     auto const& schema{layout_store.schema[layout_store_index]};
+    auto const& schemas{context.declarations.soas};
+    auto const schema_row{schemas.index(schema)};
+    auto const schema_name{context.text(schemas.name[schema_row])};
     auto const& storage_name{context.text(
-        context.declarations.fixed_soas.storage_name[context.declarations.fixed_soas.index(
-            *context.declarations.soas.fixed[context.declarations.soas.index(schema)])])};
+        context.declarations.fixed_soas
+            .storage_name[context.declarations.fixed_soas.index(*schemas.fixed[schema_row])])};
     std::vector<TemplateParameterId> template_parameters;
     std::vector<FunctionParameterId> function_parameters;
     std::vector<Expr> forwarded;
@@ -202,148 +205,110 @@ auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeI
         destroy.push_back(
             ir.expr_stmt(ir.call(ir.member_access(column, "destroy_at"), {ir.named("index")})));
     }
-    auto function = [&ir](std::string_view name,
-                          CppTypeId return_type,
-                          std::vector<FunctionParameterId> parameters,
-                          Nodes body,
-                          FunctionReceiver receiver = FunctionReceiver::unqualified,
-                          ReturnSyntax return_syntax = ReturnSyntax::direct,
-                          std::vector<TypeDependencyId> dependencies = {},
-                          TemplateId function_template = {}) -> FunctionId {
-        auto const created_function{ir.function(name, return_type)};
-        ir.set_function_return_type(created_function, return_type, return_syntax);
-        ir.set_function_receiver(created_function, receiver);
-        ir.set_function_parameters(created_function, parameters);
-        ir.set_function_body(created_function, body);
-        ir.set_function_dependencies(created_function, dependencies);
-        ir.function_flags(created_function).set_is_inline(true);
-        ir.function_flags(created_function).set_define_in_header(true);
-        ir.set_function_template(created_function, function_template);
-        return created_function;
-    };
-
     NodeListBuilder children{ir};
+    auto add = [&ir, &children](FunctionId function,
+                                std::vector<FunctionParameterId> parameters,
+                                Nodes body,
+                                int trailing_new_lines = 2) {
+        ir.set_function_parameters(function, parameters);
+        ir.set_function_body(function, body);
+        ir.function_flags(function).set_is_inline(true);
+        ir.function_flags(function).set_define_in_header(true);
+        children.add(ir.header_function(function), trailing_new_lines);
+        return function;
+    };
+    auto operation = [&](std::string_view name,
+                         std::vector<FunctionParameterId> parameters,
+                         Nodes body,
+                         std::vector<TypeDependencyId> dependencies = {},
+                         TemplateId function_template = {}) {
+        auto const function{ir.function(name, "void")};
+        ir.set_function_dependencies(function, dependencies);
+        ir.set_function_template(function, function_template);
+        return add(function, std::move(parameters), std::move(body));
+    };
+    auto const index_parameter{ir.parameter("int32 const", "index")};
+    auto const other_index{ir.parameter("int32 const", "other_index")};
+    auto const source{ir.parameter("SourceView const&", "source")};
+    auto const source_index{ir.parameter("int32 const", "source_index")};
+    auto const destination_index{ir.parameter("int32 const", "dst_index")};
+    auto const other{ir.parameter(storage_name + "&", "other")};
+    auto const source_template{
+        ir.template_declaration({ir.type_template_parameter(ir.strings.intern("SourceView"))})};
+    function_parameters.insert(function_parameters.begin(), index_parameter);
+
     children
-        .add(ir.using_declaration(ir.strings.intern("View"), ir.types.intern(context.optional_text(context.declarations.soas.view_name[context.declarations.soas.index(schema)])
-                                     .value_or(context.text(context.declarations.soas.name[context.declarations.soas.index(schema)]) + "View"))),
+        .add(ir.using_declaration(
+                 ir.strings.intern("View"),
+                 ir.types.intern(context.optional_text(schemas.view_name[schema_row])
+                                     .value_or(schema_name + "View"))),
              1)
-        .add(ir.using_declaration(ir.strings.intern("ConstView"), ir.types.intern(context.optional_text(context.declarations.soas.const_view_name[context.declarations.soas.index(schema)])
-                                     .value_or(context.text(context.declarations.soas.name[context.declarations.soas.index(schema)]) + "ConstView"))),
-             2)
-        .add(ir.header_function(function("get_view",
-            ir.types.intern("View"),
-            {ir.parameter("int32 const","offset"),
-                       ir.parameter("int32 const","count")},
-            Nodes{ir.return_stmt(ir.init_list(mutable_views, ir.types.intern("View")))},
-            FunctionReceiver::unqualified,
-            ReturnSyntax::trailing,
-            {ir.types.dependency("TArrayView", "Containers/ArrayView.h")})),
-             1)
-        .add(ir.header_function(function("get_const_view",
-            ir.types.intern("ConstView"),
-            {ir.parameter("int32 const","offset"),
-                       ir.parameter("int32 const","count")},
-            Nodes{ir.return_stmt(ir.init_list(const_views, ir.types.intern("ConstView")))},
-            FunctionReceiver::const_,
-            ReturnSyntax::trailing,
-            {ir.types.dependency("TArrayView", "Containers/ArrayView.h")})),
-             2)
-        .add(ir.header_function(function("construct_at",
-            ir.types.intern("void"),
-            [&] {
-                     auto parameters{function_parameters};
-                     parameters.insert(parameters.begin(),
-                                       ir.parameter("int32 const","index"));
-                     return parameters;
-                 }(),
-            fixed_construct_nodes(context, layout, "arguments", forwarded),
-            FunctionReceiver::unqualified,
-            ReturnSyntax::direct,
-            {ir.types.dependency("std::forward", "utility")},
-            ir.template_declaration(template_parameters))),
-             2)
-        .add(ir.header_function(function("default_construct_at",
-            ir.types.intern("void"),
-            {ir.parameter("int32 const","index")},
-            fixed_construct_nodes(context, layout, "default"))),
-             2)
-        .add(ir.header_function(function("copy_construct_at",
-            ir.types.intern("void"),
-            {ir.parameter("int32 const","index"),
-                       ir.parameter(storage_name + " const&","other"),
-                       ir.parameter("int32 const","other_index")},
-            fixed_construct_nodes(context, layout, "copy"))),
-             2)
-        .add(ir.header_function(function("move_construct_at",
-            ir.types.intern("void"),
-            {ir.parameter("int32 const","index"),
-                       ir.parameter(storage_name + "&","other"),
-                       ir.parameter("int32 const","other_index")},
-            fixed_construct_nodes(context, layout, "move"),
-            FunctionReceiver::unqualified,
-            ReturnSyntax::direct,
-            {ir.types.dependency("MoveTemp", "Templates/UnrealTemplate.h")})),
-             2)
-        .add(ir.header_function(function("construct_from_view_at",
-            ir.types.intern("void"),
-            {ir.parameter("int32 const","index"),
-                       ir.parameter("SourceView const&","source"),
-                       ir.parameter("int32 const","source_index")},
-            fixed_construct_nodes(context, layout, "view"),
-            FunctionReceiver::unqualified,
-            ReturnSyntax::direct,
-            {},
-            ir.template_declaration({ir.type_template_parameter(ir.strings.intern("SourceView"))}))),
-             2)
-        .add(ir.header_function(function("copy_assign_from_view_at",
-            ir.types.intern("void"),
-            {ir.parameter("int32 const","dst_index"),
-                       ir.parameter("SourceView const&","source"),
-                       ir.parameter("int32 const","source_index")},
-            copy_assign,
-            FunctionReceiver::unqualified,
-            ReturnSyntax::direct,
-            {},
-            ir.template_declaration({ir.type_template_parameter(ir.strings.intern("SourceView"))}))),
-             2)
-        .add(ir.header_function(function("move_assign_at",
-            ir.types.intern("void"),
-            {ir.parameter("int32 const","dst_index"),
-                       ir.parameter(storage_name + "&","other"),
-                       ir.parameter("int32 const","source_index")},
-            move_assign,
-            FunctionReceiver::unqualified,
-            ReturnSyntax::direct,
-            {ir.types.dependency("MoveTemp", "Templates/UnrealTemplate.h")})),
-             2)
-        .add(ir.header_function([&] { auto const created{function("destroy_at",
-            ir.types.intern("void"),
-            {ir.parameter("int32 const","index")},
-            destroy)}; ir.set_function_noexcept(created); return created; }()),
+        .add(ir.using_declaration(
+                 ir.strings.intern("ConstView"),
+                 ir.types.intern(context.optional_text(schemas.const_view_name[schema_row])
+                                     .value_or(schema_name + "ConstView"))),
              2);
-    for (std::size_t index{0};
-         index < context.ir.lowering.items(layout_store.members[layout_store_index]).size();
-         ++index) {
-        auto const member{
-            context.ir.lowering.items(layout_store.members[layout_store_index])[index]};
+    auto view = [&](std::string_view function_name,
+                    std::string_view type,
+                    std::span<Expr const> values,
+                    FunctionReceiver receiver,
+                    int new_lines) {
+        auto const return_type{ir.types.intern(type)};
+        auto const function{ir.function(function_name, return_type)};
+        ir.set_function_return_type(function, return_type, ReturnSyntax::trailing);
+        ir.set_function_receiver(function, receiver);
+        ir.set_function_dependencies(function,
+                                     {ir.types.dependency("TArrayView", "Containers/ArrayView.h")});
+        add(function,
+            {ir.parameter("int32 const", "offset"), ir.parameter("int32 const", "count")},
+            {ir.return_stmt(ir.init_list(values, return_type))},
+            new_lines);
+    };
+    view("get_view", "View", mutable_views, FunctionReceiver::unqualified, 1);
+    view("get_const_view", "ConstView", const_views, FunctionReceiver::const_, 2);
+    operation("construct_at",
+              function_parameters,
+              fixed_construct_nodes(context, layout, "arguments", forwarded),
+              {ir.types.dependency("std::forward", "utility")},
+              ir.template_declaration(template_parameters));
+    operation("default_construct_at",
+              {index_parameter},
+              fixed_construct_nodes(context, layout, "default"));
+    operation("copy_construct_at",
+              {index_parameter, ir.parameter(storage_name + " const&", "other"), other_index},
+              fixed_construct_nodes(context, layout, "copy"));
+    operation("move_construct_at",
+              {index_parameter, other, other_index},
+              fixed_construct_nodes(context, layout, "move"),
+              {ir.types.dependency("MoveTemp", "Templates/UnrealTemplate.h")});
+    operation("construct_from_view_at",
+              {index_parameter, source, source_index},
+              fixed_construct_nodes(context, layout, "view"),
+              {},
+              source_template);
+    operation("copy_assign_from_view_at",
+              {destination_index, source, source_index},
+              copy_assign,
+              {},
+              source_template);
+    operation("move_assign_at",
+              {destination_index, other, source_index},
+              move_assign,
+              {ir.types.dependency("MoveTemp", "Templates/UnrealTemplate.h")});
+    ir.set_function_noexcept(operation("destroy_at", {index_parameter}, destroy));
+    auto const member_count{members.size()};
+    for (std::size_t index{}; index < member_count; ++index) {
+        auto const member{members[index]};
+        auto const row{
+            resolved_store.index(fixed_member_store.member[fixed_member_store.index(member)])};
         auto dependencies{std::vector<TypeDependencyId>{
             ir.types.dependency("ioj::TFixedStorage", "ioj/fixed_storage.h")}};
-        dependencies.insert(dependencies.end(),
-                            ir.types
-                                .dependencies(resolved_store.element_type[resolved_store.index(
-                                    fixed_member_store.member[fixed_member_store.index(member)])])
-                                .begin(),
-                            ir.types
-                                .dependencies(resolved_store.element_type[resolved_store.index(
-                                    fixed_member_store.member[fixed_member_store.index(member)])])
-                                .end());
+        auto const type_dependencies{ir.types.dependencies(resolved_store.element_type[row])};
+        dependencies.insert(dependencies.end(), type_dependencies.begin(), type_dependencies.end());
         children.add(ir.instance_member(
             ir.types.intern(fixed_storage_type(context, member), std::move(dependencies)),
-            ir.strings.intern(context.text(resolved_store.name[resolved_store.index(
-                                  fixed_member_store.member[fixed_member_store.index(member)])]) +
-                              "_")));
-        if (index + 1 <
-            context.ir.lowering.items(layout_store.members[layout_store_index]).size()) {
+            ir.strings.intern(context.text(resolved_store.name[row]) + "_")));
+        if (index + 1 < member_count) {
             children.new_lines();
         }
     }

@@ -148,44 +148,35 @@ auto soa_equivalent_nodes(LoweringContext& context,
     for (auto const member : members) {
         values.push_back(equivalent_expression(context, member, ir.named("index")));
     }
+    auto function = [&](std::string_view name, Nodes body) {
+        auto const created{ir.function(name, "auto")};
+        ir.set_function_parameters(created, {index});
+        ir.set_function_body(created, body);
+        ir.set_function_return_type(created, equivalent, ReturnSyntax::trailing);
+        ir.set_function_receiver(created, FunctionReceiver::const_);
+        ir.function_flags(created).set_is_inline(true);
+        ir.function_flags(created).set_define_in_header(true);
+        return ir.header_function(created);
+    };
     NodeListBuilder result{ir};
     result.add(ir.using_declaration(ir.strings.intern("equivalent_type"), equivalent), 2)
-        .add(ir.header_function([&] {
-            auto const created_function{ir.function("operator[]", "auto")};
-            ir.set_function_parameters(created_function, {index});
-            ir.set_function_body(created_function, {ir.return_stmt(ir.init_list(values))});
-            ir.set_function_return_type(created_function, equivalent, ReturnSyntax::trailing);
-            ir.set_function_receiver(created_function, FunctionReceiver::const_);
-            ir.function_flags(created_function).set_is_inline(true);
-            ir.function_flags(created_function).set_define_in_header(true);
-            return created_function;
-        }()),
-             1)
-        .add(ir.header_function([&] {
-            auto const created_function{ir.function("at", "auto")};
-            ir.set_function_parameters(created_function, {index});
-            ir.set_function_body(
-                created_function,
-                {
-                    ir.expr_stmt(ir.call(ir.named("validate_array_sizes"))),
-                    ir.expr_stmt(ir.call(
-                        ir.named("check", {ir.types.dependency("check", "CoreMinimal.h")}),
-                        {ir.binary(
-                            BinaryOperator::greater_equal, ir.named("index"), ir.literal("0"))})),
-                    ir.expr_stmt(ir.call(ir.named("check"),
-                                         {ir.binary(BinaryOperator::less,
-                                                    ir.named("index"),
-                                                    ir.call(ir.named("num")))})),
-                    ir.return_stmt(ir.subscript(
-                        ir.parenthesized(ir.unary(UnaryOperator::dereference, ir.named("this"))),
-                        ir.named("index"))),
-                });
-            ir.set_function_return_type(created_function, equivalent, ReturnSyntax::trailing);
-            ir.set_function_receiver(created_function, FunctionReceiver::const_);
-            ir.function_flags(created_function).set_is_inline(true);
-            ir.function_flags(created_function).set_define_in_header(true);
-            return created_function;
-        }()));
+        .add(function("operator[]", {ir.return_stmt(ir.init_list(values))}), 1)
+        .add(function(
+            "at",
+            {
+                ir.expr_stmt(ir.call(ir.named("validate_array_sizes"))),
+                ir.expr_stmt(ir.call(
+                    ir.named("check", {ir.types.dependency("check", "CoreMinimal.h")}),
+                    {ir.binary(
+                        BinaryOperator::greater_equal, ir.named("index"), ir.literal("0"))})),
+                ir.expr_stmt(ir.call(ir.named("check"),
+                                     {ir.binary(BinaryOperator::less,
+                                                ir.named("index"),
+                                                ir.call(ir.named("num")))})),
+                ir.return_stmt(ir.subscript(
+                    ir.parenthesized(ir.unary(UnaryOperator::dereference, ir.named("this"))),
+                    ir.named("index"))),
+            }));
     return result.build();
 }
 
@@ -199,9 +190,9 @@ auto soa_view_functions(LoweringContext& context,
                    CppTypeId return_type,
                    std::vector<FunctionParameterId> parameters,
                    Nodes body,
-                   ReturnSyntax syntax,
                    bool const is_const = false,
-                   bool const is_noexcept = false) {
+                   bool const is_noexcept = false,
+                   ReturnSyntax syntax = ReturnSyntax::trailing) {
         auto const created_function{ir.function(name, return_type)};
         ir.set_function_parameters(created_function, parameters);
         ir.set_function_body(created_function, body);
@@ -222,65 +213,37 @@ auto soa_view_functions(LoweringContext& context,
     auto const offset_parameter{ir.parameter("int32 const", "offset")};
     auto const count_parameter{ir.parameter("int32 const", "count")};
     auto const num{ir.call(ir.named("num"))};
-    if (!const_only) {
-        add("get_view",
-            ir.types.intern("View"),
-            {},
-            return_call("get_view", {ir.literal("0"), num}),
-            ReturnSyntax::trailing);
+    auto add_getters = [&](std::string_view name, std::string_view type, bool is_const) {
+        auto const return_type{ir.types.intern(type)};
+        add(name, return_type, {}, return_call(name, {ir.literal("0"), num}), is_const);
         std::vector<Expr> values;
         for (auto const member : members) {
-            values.push_back(view_expression(context, member, false));
+            values.push_back(view_expression(context, member, is_const));
         }
-        add("get_view",
-            ir.types.intern("View"),
+        add(name,
+            return_type,
             {offset_parameter, count_parameter},
-            {ir.return_stmt(ir.init_list(values, ir.types.intern("View")))},
-            ReturnSyntax::trailing);
+            {ir.return_stmt(ir.init_list(values, return_type))},
+            is_const);
+    };
+    if (!const_only) {
+        add_getters("get_view", "View", false);
     }
 
-    add("get_view",
-        ir.types.intern("ConstView"),
-        {},
-        return_call("get_view", {ir.literal("0"), num}),
-        ReturnSyntax::trailing,
-        true);
-    std::vector<Expr> const_values;
-    for (auto const member : members) {
-        const_values.push_back(view_expression(context, member, true));
-    }
-    add("get_view",
-        ir.types.intern("ConstView"),
-        {offset_parameter, count_parameter},
-        {ir.return_stmt(ir.init_list(const_values, ir.types.intern("ConstView")))},
-        ReturnSyntax::trailing,
-        true);
-    add("get_const_view",
-        ir.types.intern("ConstView"),
-        {},
-        return_call("get_const_view", {ir.literal("0"), num}),
-        ReturnSyntax::trailing,
-        true);
-    add("get_const_view",
-        ir.types.intern("ConstView"),
-        {offset_parameter, count_parameter},
-        {ir.return_stmt(ir.init_list(const_values, ir.types.intern("ConstView")))},
-        ReturnSyntax::trailing,
-        true);
+    add_getters("get_view", "ConstView", true);
+    add_getters("get_const_view", "ConstView", true);
     add("num",
         ir.types.intern("int32"),
         {},
         {ir.return_stmt(ir.call(
             ir.named("ioj::num", {ir.types.dependency("ioj::num", "SandboxCore/container_ops.h")}),
             {ir.named(resolved_store.name[resolved_store.index(members.front())])}))},
-        ReturnSyntax::trailing,
         true,
         true);
     add("is_empty",
         ir.types.intern("bool"),
         {},
         {ir.return_stmt(ir.binary(BinaryOperator::equal, num, ir.literal("0")))},
-        ReturnSyntax::trailing,
         true,
         true);
     add("validate_array_sizes",
@@ -290,43 +253,31 @@ auto soa_view_functions(LoweringContext& context,
             ir.named("ioj::soa_ops::validate_array_sizes",
                      {ir.types.dependency("ioj::soa_ops", "SandboxCore/soa_storage_ops.h")}),
             {ir.unary(UnaryOperator::dereference, ir.named("this"))}))},
-        ReturnSyntax::direct,
-        true);
-    if (!const_only) {
+        true,
+        false,
+        ReturnSyntax::direct);
+    auto add_slices = [&](std::string_view type, bool is_const) {
+        auto const return_type{ir.types.intern(type)};
         add("slice",
-            ir.types.intern("View"),
+            return_type,
             {offset_parameter, count_parameter},
             return_call("get_view", {offset, count}),
-            ReturnSyntax::trailing);
+            is_const);
         add("left",
-            ir.types.intern("View"),
+            return_type,
             {count_parameter},
             return_call("slice", {ir.literal("0"), count}),
-            ReturnSyntax::trailing);
+            is_const);
         add("right",
-            ir.types.intern("View"),
+            return_type,
             {count_parameter},
             return_call("slice", {ir.binary(BinaryOperator::subtract, num, count), count}),
-            ReturnSyntax::trailing);
+            is_const);
+    };
+    if (!const_only) {
+        add_slices("View", false);
     }
-    add("slice",
-        ir.types.intern("ConstView"),
-        {offset_parameter, count_parameter},
-        return_call("get_view", {offset, count}),
-        ReturnSyntax::trailing,
-        true);
-    add("left",
-        ir.types.intern("ConstView"),
-        {count_parameter},
-        return_call("slice", {ir.literal("0"), count}),
-        ReturnSyntax::trailing,
-        true);
-    add("right",
-        ir.types.intern("ConstView"),
-        {count_parameter},
-        return_call("slice", {ir.binary(BinaryOperator::subtract, num, count), count}),
-        ReturnSyntax::trailing,
-        true);
+    add_slices("ConstView", true);
     return result;
 }
 

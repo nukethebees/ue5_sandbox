@@ -366,59 +366,42 @@ auto homogeneous_storage_copy_nodes(LoweringContext& context, DeclarationHandle 
     auto const src{ir.parameter("Other const&", "src")};
     auto const src_i{ir.parameter("size_type const", "src_i")};
     NodeListBuilder result{ir};
-    result.add(
-        homogeneous_function(
-            context,
-            "copy_element",
-            ir.types.intern("void"),
-            {dst_i, src, src_i},
-            component_assignments(context, layout, "{}[dst_i]", "src.{}[src_i]"),
-            FunctionReceiver::unqualified,
-            ReturnSyntax::trailing,
-            ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Other"))}),
-            same_line_template_formatting()),
-        1);
-    result.add(
-        homogeneous_function(
-            context,
-            "copy_elements",
-            ir.types.intern("void"),
-            {dst_i, src, src_i, ir.parameter("size_type const", "count")},
-            "for (auto i{0}; i < count; ++i) {\n" +
-                component_lines(context, layout, "    {}[dst_i + i] = src.{}[src_i + i];") + "\n}",
-            FunctionReceiver::unqualified,
-            ReturnSyntax::trailing,
-            ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Other"))}),
-            same_line_template_formatting()),
-        1);
-    result.add(
-        homogeneous_function(
-            context,
-            "copy_to_tail",
-            ir.types.intern("void"),
-            {src},
-            Nodes{
-                ir.variable("auto const", "count", ir.raw_expr("src.num()")),
-                ir.expr_stmt(ir.raw_expr("check(num() >= count)"),
-                             {ir.types.dependency("check", "CoreMinimal.h")}),
-                ir.expr_stmt(ir.raw_expr("copy_elements(num() - count, src, 0, count)")),
-            },
-            FunctionReceiver::unqualified,
-            ReturnSyntax::trailing,
-            ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Other"))}),
-            same_line_template_formatting()),
-        1);
-    result.add(homogeneous_function(context,
-                                    "append_from",
-                                    ir.types.intern("void"),
-                                    {ir.parameter("Other const&", "other")},
-                                    component_statements(context, layout, "{}.Append(other.{})"),
-                                    FunctionReceiver::unqualified,
-                                    ReturnSyntax::direct,
-                                    ir.template_declaration(
-                                        {ir.type_template_parameter(ir.strings.intern("Other"))}),
-                                    same_line_template_formatting()),
-               1);
+    auto const function_template{
+        ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Other"))})};
+    auto add = [&](std::string_view name,
+                   std::vector<FunctionParameterId> parameters,
+                   auto body,
+                   ReturnSyntax syntax = ReturnSyntax::trailing) {
+        result.add(homogeneous_function(context,
+                                        name,
+                                        ir.types.intern("void"),
+                                        std::move(parameters),
+                                        std::move(body),
+                                        FunctionReceiver::unqualified,
+                                        syntax,
+                                        function_template,
+                                        same_line_template_formatting()),
+                   1);
+    };
+    add("copy_element",
+        {dst_i, src, src_i},
+        component_assignments(context, layout, "{}[dst_i]", "src.{}[src_i]"));
+    add("copy_elements",
+        {dst_i, src, src_i, ir.parameter("size_type const", "count")},
+        "for (auto i{0}; i < count; ++i) {\n" +
+            component_lines(context, layout, "    {}[dst_i + i] = src.{}[src_i + i];") + "\n}");
+    add("copy_to_tail",
+        {src},
+        Nodes{
+            ir.variable("auto const", "count", ir.raw_expr("src.num()")),
+            ir.expr_stmt(ir.raw_expr("check(num() >= count)"),
+                         {ir.types.dependency("check", "CoreMinimal.h")}),
+            ir.expr_stmt(ir.raw_expr("copy_elements(num() - count, src, 0, count)")),
+        });
+    add("append_from",
+        {ir.parameter("Other const&", "other")},
+        component_statements(context, layout, "{}.Append(other.{})"),
+        ReturnSyntax::direct);
     return result.build();
 }
 
