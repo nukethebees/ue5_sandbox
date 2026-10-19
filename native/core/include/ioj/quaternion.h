@@ -42,8 +42,9 @@ template <std::floating_point T>
     // Preserve the float packing path's pairwise sum.
     if constexpr (std::same_as<T, float>) {
         return (a.x() * b.x() + a.y() * b.y()) + (a.z() * b.z() + a.w() * b.w());
+    } else {
+        return a.x() * b.x() + a.y() * b.y() + a.z() * b.z() + a.w() * b.w();
     }
-    return a.x() * b.x() + a.y() * b.y() + a.z() * b.z() + a.w() * b.w();
 }
 template <std::floating_point T>
 [[nodiscard]] auto normalized(Quaternion<T> const value) noexcept -> Quaternion<T> {

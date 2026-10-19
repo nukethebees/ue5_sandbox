@@ -144,7 +144,8 @@ auto reconcile_scene(SceneSnapshot const& scene, LevelDefinition const& level) -
     std::unordered_map<EntityId, std::size_t> existing;
     auto const count{scene.definition.entities.size()};
     for (std::size_t i{}; i < count; ++i) {
-        auto const inserted{existing.emplace(scene.definition.entities[i].id, i).second};
+        [[maybe_unused]] auto const inserted{
+            existing.emplace(scene.definition.entities[i].id, i).second};
         assert(inserted);
     }
     auto const incoming_count{incoming.entities().size()};
