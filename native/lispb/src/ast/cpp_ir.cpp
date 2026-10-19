@@ -9,6 +9,7 @@
 #include <codegen/ast/function_implementation_kind.h>
 #include <codegen/ast/function_kind.h>
 #include <codegen/ast/include_style.h>
+#include <codegen/ast/ir/range_storage.h>
 #include <codegen/ast/node_kind.h>
 #include <lispb/strings.h>
 
@@ -37,40 +38,28 @@ auto node(NodeKind kind, std::size_t index) -> NodeId {
 }
 
 auto CppIR::save_nodes(std::span<NodeId const> values) -> ir::Range {
-    ir::Range const range{static_cast<std::uint32_t>(children_.size()),
-                          static_cast<std::uint32_t>(values.size())};
-    children_.insert(children_.end(), values.begin(), values.end());
-    return range;
+    return ir::save_range(children_, values);
 }
 auto CppIR::nodes(ir::Range range) const -> std::span<NodeId const> {
-    return std::span{children_}.subspan(range.begin, range.count);
+    return ir::range_values(children_, range);
 }
 auto CppIR::save_exprs(std::span<Expr const> values) -> ir::Range {
-    ir::Range const range{static_cast<std::uint32_t>(arguments_.size()),
-                          static_cast<std::uint32_t>(values.size())};
-    arguments_.insert(arguments_.end(), values.begin(), values.end());
-    return range;
+    return ir::save_range(arguments_, values);
 }
 auto CppIR::exprs(ir::Range range) const -> std::span<Expr const> {
-    return std::span{arguments_}.subspan(range.begin, range.count);
+    return ir::range_values(arguments_, range);
 }
 auto CppIR::save_types(std::span<CppTypeId const> values) -> ir::Range {
-    ir::Range const range{static_cast<std::uint32_t>(type_references_.size()),
-                          static_cast<std::uint32_t>(values.size())};
-    type_references_.insert(type_references_.end(), values.begin(), values.end());
-    return range;
+    return ir::save_range(type_references_, values);
 }
 auto CppIR::type_list(ir::Range range) const -> std::span<CppTypeId const> {
-    return std::span{type_references_}.subspan(range.begin, range.count);
+    return ir::range_values(type_references_, range);
 }
 auto CppIR::save_dependencies(std::span<TypeDependencyId const> values) -> ir::Range {
-    ir::Range const range{static_cast<std::uint32_t>(dependencies_.size()),
-                          static_cast<std::uint32_t>(values.size())};
-    dependencies_.insert(dependencies_.end(), values.begin(), values.end());
-    return range;
+    return ir::save_range(dependencies_, values);
 }
 auto CppIR::dependency_list(ir::Range range) const -> std::span<TypeDependencyId const> {
-    return std::span{dependencies_}.subspan(range.begin, range.count);
+    return ir::range_values(dependencies_, range);
 }
 auto CppIR::line_comment(StringId value) -> NodeId {
     auto const index{line_comment_nodes_.text.size()};
@@ -137,10 +126,7 @@ auto CppIR::for_stmt(NodeId initializer, Expr condition, Expr increment, BlockId
 auto CppIR::switch_stmt(Expr condition, std::span<SwitchCaseId const> cases) -> NodeId {
     auto const index{switch_stmt_nodes_.condition.size()};
     switch_stmt_nodes_.condition.push_back(condition);
-    switch_stmt_nodes_.cases.push_back(
-        ir::Range{static_cast<std::uint32_t>(case_references_.size()),
-                  static_cast<std::uint32_t>(cases.size())});
-    case_references_.insert(case_references_.end(), cases.begin(), cases.end());
+    switch_stmt_nodes_.cases.push_back(ir::save_range(case_references_, cases));
     return ir_detail::node(NodeKind::switch_stmt, index);
 }
 
@@ -307,12 +293,9 @@ auto CppIR::enumeration(IdentifierId name,
     auto const index{enum_nodes_.name.size()};
     enum_nodes_.name.push_back(string_id(name));
     enum_nodes_.underlying_type.push_back(underlying_type);
-    enum_nodes_.values.push_back(
-        ir::Range{static_cast<std::uint32_t>(enumerator_references_.size()),
-                  static_cast<std::uint32_t>(values.size())});
+    enum_nodes_.values.push_back(ir::save_range(enumerator_references_, values));
     enum_nodes_.export_specifier.push_back(export_specifier);
     enum_nodes_.scoped.push_back(scoped);
-    enumerator_references_.insert(enumerator_references_.end(), values.begin(), values.end());
     return ir_detail::node(NodeKind::enum_, index);
 }
 
@@ -438,10 +421,7 @@ auto CppIR::member_initializer(IdentifierId member, StringId value) -> MemberIni
 
 void CppIR::set_function_parameters(FunctionId function,
                                     std::span<FunctionParameterId const> values) {
-    functions_.parameters[function.value] = {
-        static_cast<std::uint32_t>(parameter_references_.size()),
-        static_cast<std::uint32_t>(values.size())};
-    parameter_references_.insert(parameter_references_.end(), values.begin(), values.end());
+    functions_.parameters[function.value] = ir::save_range(parameter_references_, values);
 }
 
 void CppIR::set_function_body(FunctionId function,
@@ -449,11 +429,7 @@ void CppIR::set_function_body(FunctionId function,
                               std::span<MemberInitializerId const> initializers) {
     auto const index{static_cast<std::uint32_t>(function_bodies_.block.size())};
     function_bodies_.block.push_back(block(body));
-    function_bodies_.initializers.push_back(
-        {static_cast<std::uint32_t>(initializer_references_.size()),
-         static_cast<std::uint32_t>(initializers.size())});
-    initializer_references_.insert(
-        initializer_references_.end(), initializers.begin(), initializers.end());
+    function_bodies_.initializers.push_back(ir::save_range(initializer_references_, initializers));
     functions_.implementation[function.value] = FunctionImplementationId{
         (static_cast<std::uint32_t>(FunctionImplementationKind::body) << 24) | index};
 }
@@ -533,8 +509,7 @@ auto CppIR::function_return_type(FunctionId function) const -> CppTypeId {
     return functions_.return_type[function.value];
 }
 auto CppIR::function_parameters(FunctionId function) const -> std::span<FunctionParameterId const> {
-    auto const range{functions_.parameters[function.value]};
-    return std::span{parameter_references_}.subspan(range.begin, range.count);
+    return ir::range_values(parameter_references_, functions_.parameters[function.value]);
 }
 
 auto CppIR::function_return_syntax(FunctionId function) const -> ReturnSyntax {
@@ -601,162 +576,127 @@ auto CppIR::definition(FunctionId function,
     return function_node(function, owner, false, header, syntax);
 }
 void CppIR::clear() {
-    line_directive_nodes_.line.clear();
-    line_directive_nodes_.path.clear();
-    for_stmt_nodes_.initializer.clear();
-    for_stmt_nodes_.condition.clear();
-    for_stmt_nodes_.increment.clear();
-    for_stmt_nodes_.children.clear();
-    files.clear();
-    modules.clear();
-    lowering.clear();
-    template_parameter_references_.clear();
-    type_template_parameters_.name.clear();
-    type_template_parameters_.default_type.clear();
-    type_template_parameters_.pack.clear();
-    value_template_parameters_.type.clear();
-    value_template_parameters_.name.clear();
-    value_template_parameters_.default_value.clear();
-    value_template_parameters_.pack.clear();
-    templates_.parameters.clear();
-    templates_.authored_text.clear();
-    template_id_exprs_.callee.clear();
-    template_id_exprs_.arguments.clear();
-    type_reference_exprs_.type.clear();
-    parenthesized_exprs_.operand.clear();
-
-    parameter_references_.clear();
-    initializer_references_.clear();
-    case_references_.clear();
-    enumerator_references_.clear();
-    children_.clear();
-    arguments_.clear();
-    type_references_.clear();
-    dependencies_.clear();
-    raw_nodes_.text.clear();
-    raw_nodes_.dependencies.clear();
-    raw_lines_nodes_.lines.clear();
-    raw_lines_nodes_.dependencies.clear();
-    raw_lines_.clear();
-    line_comment_nodes_.text.clear();
-    block_comment_nodes_.text.clear();
-    block_nodes_.children.clear();
-    if_stmt_nodes_.condition.clear();
-    if_stmt_nodes_.then_children.clear();
-    if_stmt_nodes_.else_children.clear();
-    switch_stmt_nodes_.condition.clear();
-    switch_stmt_nodes_.cases.clear();
-    expr_stmt_nodes_.expr.clear();
-    expr_stmt_nodes_.dependencies.clear();
-    return_stmt_nodes_.expr.clear();
-    return_stmt_nodes_.dependencies.clear();
-    assignment_stmt_nodes_.target.clear();
-    assignment_stmt_nodes_.value.clear();
-    assignment_stmt_nodes_.dependencies.clear();
-    variable_declaration_stmt_nodes_.type.clear();
-    variable_declaration_stmt_nodes_.name.clear();
-    variable_declaration_stmt_nodes_.initializer.clear();
-    static_assert_nodes_.condition.clear();
-    static_assert_nodes_.message.clear();
-    new_lines_nodes_.count.clear();
-    access_specifier_nodes_.access.clear();
-    access_specifier_nodes_.indentation.clear();
-    include_nodes_.path.clear();
-    include_nodes_.style.clear();
-    forward_declaration_nodes_.name.clear();
-    forward_declaration_nodes_.kind.clear();
-    forward_declaration_nodes_.template_declaration.clear();
-    friend_declaration_nodes_.name.clear();
-    friend_declaration_nodes_.kind.clear();
-    friend_declaration_nodes_.type.clear();
-    friend_declaration_nodes_.template_declaration.clear();
-    using_declaration_nodes_.name.clear();
-    using_declaration_nodes_.type.clear();
-    using_declaration_nodes_.template_declaration.clear();
-    instance_members_.type.clear();
-    instance_members_.name.clear();
-    instance_members_.initializer.clear();
-    static_members_.type.clear();
-    static_members_.name.clear();
-    static_members_.initializer.clear();
-    static_members_.template_declaration.clear();
-    static_members_.is_inline.clear();
-    constexpr_members_.type.clear();
-    constexpr_members_.name.clear();
-    constexpr_members_.initializer.clear();
-    constexpr_members_.template_declaration.clear();
-    constexpr_members_.is_inline.clear();
-    function_nodes_.function.clear();
-    function_nodes_.owner.clear();
-    function_nodes_.declaration.clear();
-    function_nodes_.is_header.clear();
-    function_nodes_.return_syntax.clear();
-    enum_nodes_.name.clear();
-    enum_nodes_.underlying_type.clear();
-    enum_nodes_.values.clear();
-    enum_nodes_.export_specifier.clear();
-    enum_nodes_.scoped.clear();
-    struct_nodes_.name.clear();
-    struct_nodes_.children.clear();
-    struct_nodes_.bases.clear();
-    struct_nodes_.template_declaration.clear();
-    struct_nodes_.requires_clause.clear();
-    struct_nodes_.export_specifier.clear();
-    struct_nodes_.record_kind.clear();
-    struct_nodes_.dependencies.clear();
-    namespace_nodes_.name.clear();
-    namespace_nodes_.children.clear();
-    named_exprs_.spelling.clear();
-    named_exprs_.dependencies.clear();
-    literal_exprs_.spelling.clear();
-    string_literal_exprs_.clear();
-    call_exprs_.callee.clear();
-    call_exprs_.arguments.clear();
-    member_exprs_.object.clear();
-    member_exprs_.member.clear();
-    member_exprs_.through_pointer.clear();
-    subscript_exprs_.object.clear();
-    subscript_exprs_.index.clear();
-    binary_exprs_.operation.clear();
-    binary_exprs_.left.clear();
-    binary_exprs_.right.clear();
-    binary_exprs_.line_break_after.clear();
-    unary_exprs_.operation.clear();
-    unary_exprs_.operand.clear();
-    cast_exprs_.type.clear();
-    cast_exprs_.operand.clear();
-    sizeof_exprs_.type.clear();
-    initializer_exprs_.type.clear();
-    initializer_exprs_.elements.clear();
-    raw_exprs_.text.clear();
-    raw_exprs_.dependencies.clear();
-    parameters_.type.clear();
-    parameters_.name.clear();
-    parameters_.default_value.clear();
-    initializers_.member.clear();
-    initializers_.value.clear();
-    enumerators_.name.clear();
-    enumerators_.initializer.clear();
-    enumerators_.annotation.clear();
-    cases_.label.clear();
-    cases_.body.clear();
-    functions_.name.clear();
-    functions_.return_type.clear();
-    functions_.parameters.clear();
-    functions_.return_syntax.clear();
-    functions_.kind.clear();
-    functions_.implementation.clear();
-    functions_.exception_specification.clear();
-    functions_.receiver.clear();
-    function_bodies_.block.clear();
-    function_bodies_.initializers.clear();
-    conditional_noexcept_.clear();
-    functions_.flags.clear();
-    functions_.export_specifier.clear();
-    functions_.template_declaration.clear();
-    functions_.requires_clause.clear();
-    functions_.formatting.clear();
-    functions_.dependencies.clear();
+    auto clear = [](auto&... columns) { (columns.clear(), ...); };
+    clear(line_directive_nodes_.line, line_directive_nodes_.path);
+    clear(for_stmt_nodes_.initializer,
+          for_stmt_nodes_.condition,
+          for_stmt_nodes_.increment,
+          for_stmt_nodes_.children);
+    clear(files, modules, lowering, template_parameter_references_);
+    clear(type_template_parameters_.name,
+          type_template_parameters_.default_type,
+          type_template_parameters_.pack);
+    clear(value_template_parameters_.type,
+          value_template_parameters_.name,
+          value_template_parameters_.default_value,
+          value_template_parameters_.pack);
+    clear(templates_.parameters, templates_.authored_text);
+    clear(template_id_exprs_.callee, template_id_exprs_.arguments);
+    clear(type_reference_exprs_.type);
+    clear(parenthesized_exprs_.operand);
+    clear(parameter_references_,
+          initializer_references_,
+          case_references_,
+          enumerator_references_,
+          children_,
+          arguments_,
+          type_references_,
+          dependencies_);
+    clear(raw_nodes_.text, raw_nodes_.dependencies);
+    clear(raw_lines_nodes_.lines, raw_lines_nodes_.dependencies);
+    clear(raw_lines_);
+    clear(line_comment_nodes_.text);
+    clear(block_comment_nodes_.text);
+    clear(block_nodes_.children);
+    clear(if_stmt_nodes_.condition, if_stmt_nodes_.then_children, if_stmt_nodes_.else_children);
+    clear(switch_stmt_nodes_.condition, switch_stmt_nodes_.cases);
+    clear(expr_stmt_nodes_.expr, expr_stmt_nodes_.dependencies);
+    clear(return_stmt_nodes_.expr, return_stmt_nodes_.dependencies);
+    clear(assignment_stmt_nodes_.target,
+          assignment_stmt_nodes_.value,
+          assignment_stmt_nodes_.dependencies);
+    clear(variable_declaration_stmt_nodes_.type,
+          variable_declaration_stmt_nodes_.name,
+          variable_declaration_stmt_nodes_.initializer);
+    clear(static_assert_nodes_.condition, static_assert_nodes_.message);
+    clear(new_lines_nodes_.count);
+    clear(access_specifier_nodes_.access, access_specifier_nodes_.indentation);
+    clear(include_nodes_.path, include_nodes_.style);
+    clear(forward_declaration_nodes_.name,
+          forward_declaration_nodes_.kind,
+          forward_declaration_nodes_.template_declaration);
+    clear(friend_declaration_nodes_.name,
+          friend_declaration_nodes_.kind,
+          friend_declaration_nodes_.type,
+          friend_declaration_nodes_.template_declaration);
+    clear(using_declaration_nodes_.name,
+          using_declaration_nodes_.type,
+          using_declaration_nodes_.template_declaration);
+    clear(instance_members_.type, instance_members_.name, instance_members_.initializer);
+    clear(static_members_.type,
+          static_members_.name,
+          static_members_.initializer,
+          static_members_.template_declaration,
+          static_members_.is_inline);
+    clear(constexpr_members_.type,
+          constexpr_members_.name,
+          constexpr_members_.initializer,
+          constexpr_members_.template_declaration,
+          constexpr_members_.is_inline);
+    clear(function_nodes_.function,
+          function_nodes_.owner,
+          function_nodes_.declaration,
+          function_nodes_.is_header,
+          function_nodes_.return_syntax);
+    clear(enum_nodes_.name,
+          enum_nodes_.underlying_type,
+          enum_nodes_.values,
+          enum_nodes_.export_specifier,
+          enum_nodes_.scoped);
+    clear(struct_nodes_.name,
+          struct_nodes_.children,
+          struct_nodes_.bases,
+          struct_nodes_.template_declaration,
+          struct_nodes_.requires_clause,
+          struct_nodes_.export_specifier,
+          struct_nodes_.record_kind,
+          struct_nodes_.dependencies);
+    clear(namespace_nodes_.name, namespace_nodes_.children);
+    clear(named_exprs_.spelling, named_exprs_.dependencies);
+    clear(literal_exprs_.spelling);
+    clear(string_literal_exprs_);
+    clear(call_exprs_.callee, call_exprs_.arguments);
+    clear(member_exprs_.object, member_exprs_.member, member_exprs_.through_pointer);
+    clear(subscript_exprs_.object, subscript_exprs_.index);
+    clear(binary_exprs_.operation,
+          binary_exprs_.left,
+          binary_exprs_.right,
+          binary_exprs_.line_break_after);
+    clear(unary_exprs_.operation, unary_exprs_.operand);
+    clear(cast_exprs_.type, cast_exprs_.operand);
+    clear(sizeof_exprs_.type);
+    clear(initializer_exprs_.type, initializer_exprs_.elements);
+    clear(raw_exprs_.text, raw_exprs_.dependencies);
+    clear(parameters_.type, parameters_.name, parameters_.default_value);
+    clear(initializers_.member, initializers_.value);
+    clear(enumerators_.name, enumerators_.initializer, enumerators_.annotation);
+    clear(cases_.label, cases_.body);
+    clear(functions_.name,
+          functions_.return_type,
+          functions_.parameters,
+          functions_.return_syntax,
+          functions_.kind,
+          functions_.implementation,
+          functions_.exception_specification,
+          functions_.receiver);
+    clear(function_bodies_.block, function_bodies_.initializers);
+    clear(conditional_noexcept_);
+    clear(functions_.flags,
+          functions_.export_specifier,
+          functions_.template_declaration,
+          functions_.requires_clause,
+          functions_.formatting,
+          functions_.dependencies);
 }
 
 auto CppIR::raw(std::string_view value, std::span<TypeDependencyId const> dependencies) -> NodeId {
@@ -771,10 +711,8 @@ auto CppIR::raw(StringId value, std::span<TypeDependencyId const> dependencies) 
 auto CppIR::raw_lines(std::span<StringId const> lines,
                       std::span<TypeDependencyId const> dependencies) -> NodeId {
     auto const index{raw_lines_nodes_.lines.size()};
-    raw_lines_nodes_.lines.push_back(
-        {static_cast<std::uint32_t>(raw_lines_.size()), static_cast<std::uint32_t>(lines.size())});
+    raw_lines_nodes_.lines.push_back(ir::save_range(raw_lines_, lines));
     raw_lines_nodes_.dependencies.push_back(save_dependencies(dependencies));
-    raw_lines_.insert(raw_lines_.end(), lines.begin(), lines.end());
     return ir_detail::node(NodeKind::raw_lines, index);
 }
 

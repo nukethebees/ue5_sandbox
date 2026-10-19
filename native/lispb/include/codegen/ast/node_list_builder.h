@@ -4,6 +4,7 @@
 #include <codegen/ast/nodes.h>
 
 #include <initializer_list>
+#include <span>
 
 namespace lispb::codegen {
 
@@ -14,8 +15,9 @@ class NodeListBuilder {
     explicit NodeListBuilder(CppIR& ir);
     auto add(NodeId value) -> NodeListBuilder&;
     auto add(NodeId value, int trailing_newlines) -> NodeListBuilder&;
-    auto append(Nodes const& values) -> NodeListBuilder&;
-    auto append(std::initializer_list<Nodes> groups) -> NodeListBuilder&;
+    // Consume ranges immediately. Braced groups preserve construction order and borrow their nodes.
+    auto append(std::span<NodeId const> values) -> NodeListBuilder&;
+    auto append(std::initializer_list<std::span<NodeId const>> groups) -> NodeListBuilder&;
     auto new_lines(int count = 1) -> NodeListBuilder&;
     auto build() -> Nodes;
   private:

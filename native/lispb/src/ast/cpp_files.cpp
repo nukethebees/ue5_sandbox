@@ -1,5 +1,7 @@
 #include <codegen/ast/cpp_files.h>
 
+#include <codegen/ast/ir/range_storage.h>
+
 #include <cassert>
 #include <cstdint>
 
@@ -22,8 +24,7 @@ auto CppFiles::index(CppFileId file) const -> std::size_t {
     return file.value - 1;
 }
 auto CppFiles::nodes(CppFileId file) const -> std::span<NodeId const> {
-    auto const range{nodes_[index(file)]};
-    return std::span<NodeId const>{node_references_}.subspan(range.begin, range.count);
+    return ir::range_values(node_references_, nodes_[index(file)]);
 }
 auto CppFiles::prologue(CppFileId file) const -> std::span<StringId const> {
     return text(prologue_[index(file)]);
@@ -47,19 +48,13 @@ void CppFiles::set_include_order(CppFileId file, std::span<StringId const> value
     include_order_[index(file)] = save_text(values);
 }
 auto CppFiles::save_nodes(std::span<NodeId const> values) -> ir::Range {
-    ir::Range const range{static_cast<std::uint32_t>(node_references_.size()),
-                          static_cast<std::uint32_t>(values.size())};
-    node_references_.insert(node_references_.end(), values.begin(), values.end());
-    return range;
+    return ir::save_range(node_references_, values);
 }
 auto CppFiles::save_text(std::span<StringId const> values) -> ir::Range {
-    ir::Range const range{static_cast<std::uint32_t>(text_references_.size()),
-                          static_cast<std::uint32_t>(values.size())};
-    text_references_.insert(text_references_.end(), values.begin(), values.end());
-    return range;
+    return ir::save_range(text_references_, values);
 }
 auto CppFiles::text(ir::Range range) const -> std::span<StringId const> {
-    return std::span<StringId const>{text_references_}.subspan(range.begin, range.count);
+    return ir::range_values(text_references_, range);
 }
 void CppFiles::clear() {
     path.clear();

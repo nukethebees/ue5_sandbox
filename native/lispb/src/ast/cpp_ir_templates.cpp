@@ -1,5 +1,6 @@
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>
+#include <codegen/ast/ir/range_storage.h>
 #include <codegen/ast/template_kind.h>
 #include <codegen/ast/template_parameter_kind.h>
 #include <lispb/strings.h>
@@ -36,11 +37,7 @@ auto CppIR::value_template_parameter(CppTypeId type,
 auto CppIR::template_declaration(std::span<TemplateParameterId const> parameters) -> TemplateId {
     assert(!parameters.empty());
     auto const index{static_cast<std::uint32_t>(templates_.parameters.size())};
-    templates_.parameters.push_back(
-        {static_cast<std::uint32_t>(template_parameter_references_.size()),
-         static_cast<std::uint32_t>(parameters.size())});
-    template_parameter_references_.insert(
-        template_parameter_references_.end(), parameters.begin(), parameters.end());
+    templates_.parameters.push_back(ir::save_range(template_parameter_references_, parameters));
     return TemplateId{(static_cast<std::uint32_t>(TemplateKind::parameters) << 24) | index};
 }
 auto CppIR::template_specialization() -> TemplateId {

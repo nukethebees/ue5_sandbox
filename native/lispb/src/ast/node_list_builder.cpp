@@ -17,12 +17,13 @@ auto NodeListBuilder::add(NodeId value) -> NodeListBuilder& {
 auto NodeListBuilder::add(NodeId value, int trailing_newlines) -> NodeListBuilder& {
     return add(value).new_lines(trailing_newlines);
 }
-auto NodeListBuilder::append(Nodes const& values) -> NodeListBuilder& {
+auto NodeListBuilder::append(std::span<NodeId const> values) -> NodeListBuilder& {
     nodes_.insert(nodes_.end(), values.begin(), values.end());
     return *this;
 }
-auto NodeListBuilder::append(std::initializer_list<Nodes> groups) -> NodeListBuilder& {
-    for (auto const& values : groups) {
+auto NodeListBuilder::append(std::initializer_list<std::span<NodeId const>> groups)
+    -> NodeListBuilder& {
+    for (auto const values : groups) {
         append(values);
     }
     return *this;
