@@ -19,11 +19,19 @@ auto assign(settings::Setting const& setting, T& target) -> bool {
             return false;
         }
 
-        target.X = static_cast<decltype(target.X)>((*values)[0]);
-        target.Y = static_cast<decltype(target.Y)>((*values)[1]);
-        if constexpr (dimensions == 3) {
-            target.Z = static_cast<decltype(target.Z)>((*values)[2]);
+        T converted{};
+        auto component = [&](std::size_t const index, auto& destination) {
+            return settings::setting_assignment::convert_number((*values)[index], destination);
+        };
+        if (!component(0, converted.X) || !component(1, converted.Y)) {
+            return false;
         }
+        if constexpr (dimensions == 3) {
+            if (!component(2, converted.Z)) {
+                return false;
+            }
+        }
+        target = converted;
         return true;
     } else {
         return setting.assign(target);

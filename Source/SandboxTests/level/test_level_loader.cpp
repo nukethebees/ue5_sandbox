@@ -47,6 +47,15 @@ FLevelLoaderCameraScenario::FLevelLoaderCameraScenario(FSimulationTestContext& c
 
 void FLevelLoaderCameraScenario::load_fixture() {
     initialise_test_driver();
+    auto& orchestrator{context_.orchestrator};
+    original_config_.Reset(const_cast<USpaceGameLevelConfig*>(orchestrator.get_level_config()));
+    auto* const resources{duplicate_level_config(*original_config_, orchestrator)};
+    checks.is_true(orchestrator.set_level_config(*resources),
+                   TEXT("Loader resources are assigned"));
+    resources->entity_overlay.enabled = true;
+    resources->entity_overlay.soft_target.mesh = nullptr;
+    resources->entity_overlay.soft_target.material = nullptr;
+    checks.is_true(!resources->is_valid(), TEXT("Unresolved overlay requires missing resources"));
 
     levels::authoring::FDefinitionReader reader;
     auto const script_path{
@@ -64,10 +73,20 @@ void FLevelLoaderCameraScenario::load_fixture() {
     definition.entities.positions.xs[red_capital_index] = 90000.0;
 
     FLevelLoader loader{context_.orchestrator};
-    auto const load_result{loader.load(levels::authoring::to_native(definition).value())};
+    auto const native{levels::authoring::to_native(definition).value()};
+    auto const resolved{levels::LevelDefinition::make(
+        {.metadata = native.metadata(),
+         .camera = native.camera(),
+         .entities = native.entities(),
+         .settings = {{"presentation.entity-overlay.enabled", false}}})};
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+    check(resolved);
+    auto const load_result{loader.load(*resolved)};
     if (!checks.is_true(static_cast<bool>(load_result), TEXT("Playerless definition loads"))) {
         return;
     }
+    checks.is_true(!orchestrator.get_level_config()->entity_overlay.enabled,
+                   TEXT("Level override disables overlay before resource validation"));
 
     checks.are_equal(
         0, count_actors<ATestSpaceShip>(context_.world), TEXT("Loader spawns no player"));
@@ -250,7 +269,6 @@ void FLevelLoaderCameraScenario::sample_modal_transitions() {
 void FLevelLoaderCameraScenario::load_headless_fixture() {
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     auto& orchestrator{context_.orchestrator};
-    original_config_.Reset(const_cast<USpaceGameLevelConfig*>(orchestrator.get_level_config()));
     orchestrator.reset_for_new_level();
     orchestrator.set_presentation_enabled(false);
     initialise_test_driver();

@@ -180,8 +180,7 @@ auto FLevelLoader::load(levels::LevelDefinition const& definition,
                   TEXT("Presentation-disabled simulation requires a playerless level"));
         return result;
     }
-    if (!IsValid(config) || !config->is_valid(presentation_enabled) ||
-        (has_player && !IsValid(config->classes.player_ship_class))) {
+    if (!IsValid(config) || (has_player && !IsValid(config->classes.player_ship_class))) {
         add_error(result,
                   ELevelLoadErrorCode::InvalidLevelConfig,
                   TEXT("Level configuration or required actor classes are invalid"));

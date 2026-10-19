@@ -18,7 +18,7 @@ struct FLoadedGameSettings {
     FString source;
 };
 
-// Require valid resources and an outer that owns the resolved runtime configuration.
+// Require an outer that owns the resolved runtime configuration.
 [[nodiscard]] SPACEGAME_API auto read_game_settings(FStringView path,
                                                     ioj::levels::LevelDefinition const* level,
                                                     USpaceGameLevelConfig const& resources,

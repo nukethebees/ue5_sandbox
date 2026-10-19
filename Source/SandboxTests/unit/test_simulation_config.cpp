@@ -1,5 +1,6 @@
 #include <ioj/sim/collision/entity_world_bounds.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
+#include <SpaceGame/s7/GameSettingsReader.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGameS7/definition_reader.h>
@@ -10,6 +11,8 @@
 #include <GameFramework/Actor.h>
 #include <Misc/Paths.h>
 #include <UObject/Package.h>
+
+#include <limits>
 
 TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
 {
@@ -83,6 +86,51 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         TestRunner->TestTrue(
             TEXT("Invalid collision-grid size has a validation diagnostic"),
             errors.Contains(TEXT("collision_grid.grid_size components must be positive")));
+    }
+
+    TEST_METHOD(PresentationVectorsRejectNonfiniteAndUnrepresentableComponents)
+    {
+        auto const* const resources{ioj::load_default_level_config()};
+        if (!TestRunner->TestNotNull(TEXT("Default level config loads"), resources)) {
+            return;
+        }
+        auto load = [&](std::string_view const path, std::vector<double> values) {
+            auto const definition{ioj::levels::LevelDefinition::make(
+                {.metadata = {.id = ioj::levels::LevelId{"vector-settings"},
+                              .title = "Vector settings"},
+                 .player_entity_id = ioj::levels::EntityId{"player"},
+                 .entities = {{.id = ioj::levels::EntityId{"player"}}},
+                 .settings = {{std::string{path}, std::move(values)}}})};
+            check(definition);
+            return read_game_settings(TEXT("LevelScripts/Settings/base.scm"),
+                                      &*definition,
+                                      *resources,
+                                      GetTransientPackage());
+        };
+        for (auto const path : {"presentation.entity-overlay.bar-size-pixels",
+                                "presentation.capital-ships.min-small-explosion-range"}) {
+            auto const count{
+                std::string_view{path}.find("entity-overlay") != std::string_view::npos ? 2u : 3u};
+            auto const valid{load(path, std::vector<double>(count, 2.5))};
+            TestRunner->TestTrue(TEXT("Finite vector components are accepted"), valid.has_value());
+            for (auto const invalid : {std::numeric_limits<double>::infinity(),
+                                       std::numeric_limits<double>::quiet_NaN()}) {
+                for (std::size_t index{}; index < count; ++index) {
+                    std::vector<double> values(count, 2.5);
+                    values[index] = invalid;
+                    TestRunner->TestFalse(TEXT("Nonfinite vector component is rejected"),
+                                          load(path, std::move(values)).has_value());
+                }
+            }
+        }
+        TestRunner->TestFalse(TEXT("Unrepresentable FVector3f component is rejected"),
+                              load("presentation.capital-ships.min-small-explosion-range",
+                                   {1., 2., std::numeric_limits<double>::max()})
+                                  .has_value());
+        TestRunner->TestTrue(TEXT("FVector2D retains double precision range"),
+                             load("presentation.entity-overlay.bar-size-pixels",
+                                  {1., std::numeric_limits<double>::max()})
+                                 .has_value());
     }
 
     TEST_METHOD(CollisionGridDimensionOverridesKeepUnspecifiedAssetValues)
