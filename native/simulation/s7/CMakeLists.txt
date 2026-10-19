@@ -10,14 +10,9 @@ target_include_directories(native-simulation-s7
     lib/include
 )
 
-set(simulation_runtime_target native-simulation)
-if(IOJ_WITH_UNREAL)
-  set(simulation_runtime_target native-simulation-unreal)
-endif()
-
 target_link_libraries(native-simulation-s7
   PUBLIC
-    ${simulation_runtime_target}
+    native-simulation
   PRIVATE
     native-level-authoring-s7
 )
