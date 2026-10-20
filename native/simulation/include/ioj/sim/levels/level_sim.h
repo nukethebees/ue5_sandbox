@@ -156,11 +156,8 @@ struct LevelSim {
     std::optional<player::CommandInterface> player_ship_commands_;
 
     fighters::Sim fighters_simulation_;
-
     capital_ships::Sim capital_ships_simulation_;
-
     turrets::Sim turrets_simulation_;
-
     spinners::Sim spinners_simulation_;
 
     MissionManager mission_manager_;
