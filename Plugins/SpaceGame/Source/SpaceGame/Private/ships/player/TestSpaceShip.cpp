@@ -93,9 +93,9 @@ auto ATestSpaceShip::make_spawn_data() const -> ::ioj::sim::player::PlayerSpawnD
     return result;
 }
 
-void ATestSpaceShip::bind_simulation(::ioj::sim::player::CommandInterface& new_commands,
+void ATestSpaceShip::bind_simulation(::ioj::sim::player::CommandInterface new_commands,
                                      ::ioj::sim::player::Sim const& new_simulation) {
-    bound_commands_ = &new_commands;
+    bound_commands_.emplace(new_commands);
     bound_simulation = &new_simulation;
 #if WITH_EDITOR
     new_commands.set_speed_sampling_enabled(true);
@@ -103,12 +103,12 @@ void ATestSpaceShip::bind_simulation(::ioj::sim::player::CommandInterface& new_c
 }
 
 void ATestSpaceShip::unbind_simulation() {
-    bound_commands_ = nullptr;
+    bound_commands_.reset();
     bound_simulation = nullptr;
 }
 
 auto ATestSpaceShip::commands() -> ::ioj::sim::player::CommandInterface& {
-    checkf(bound_commands_, TEXT("Player input requires bound simulation commands"));
+    checkf(bound_commands_.has_value(), TEXT("Player input requires bound simulation commands"));
     return *bound_commands_;
 }
 

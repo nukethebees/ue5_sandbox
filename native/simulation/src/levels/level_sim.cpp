@@ -183,7 +183,6 @@ void LevelSim::configure_player(player::PlayerSpawnData const& spawn) {
                                                  entity_tables_,
                                                  query_manager_,
                                                  lasers_simulation_)};
-    player_ship_commands_.emplace(player);
 
     player.configure(spawn);
 }

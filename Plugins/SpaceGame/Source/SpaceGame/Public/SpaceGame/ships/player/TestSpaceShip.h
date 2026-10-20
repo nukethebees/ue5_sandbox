@@ -18,6 +18,8 @@
 #include <CoreMinimal.h>
 #include <GameFramework/Pawn.h>
 
+#include <optional>
+
 #include "TestSpaceShip.generated.h"
 
 class ATestBatchOrchestrator;
@@ -47,7 +49,7 @@ class SPACEGAME_API ATestSpaceShip
     /* **************************************** */
     ATestSpaceShip();
     auto make_spawn_data() const -> ::ioj::sim::player::PlayerSpawnData;
-    void bind_simulation(::ioj::sim::player::CommandInterface& new_commands,
+    void bind_simulation(::ioj::sim::player::CommandInterface new_commands,
                          ::ioj::sim::player::Sim const& new_simulation);
     void unbind_simulation();
     auto has_simulation() const noexcept -> bool { return bound_simulation != nullptr; }
@@ -179,6 +181,6 @@ class SPACEGAME_API ATestSpaceShip
     bool debug_forward_direction{false};
 #endif
 
-    ::ioj::sim::player::CommandInterface* bound_commands_{nullptr};
+    std::optional<::ioj::sim::player::CommandInterface> bound_commands_;
     ::ioj::sim::player::Sim const* bound_simulation{nullptr};
 };

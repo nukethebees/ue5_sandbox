@@ -866,7 +866,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         level_presentation_->tick(dt, level_simulation_->get_read_access());
     }
 
-    if (auto* player{level_simulation_->get_player_ship_commands()};
+    if (auto player{level_simulation_->get_player_ship_commands()};
         player && player->consume_death_notification()) {
         if (IsValid(player_ship)) {
             player_ship->handle_simulation_death();

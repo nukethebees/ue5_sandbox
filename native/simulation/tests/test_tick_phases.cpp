@@ -64,7 +64,7 @@ TEST(TickPhases, CompletedBurstsStopUntilTheNextFirePress) {
         LevelSim simulation{simulation_memory, std::move(data)};
         simulation.finish_initialisation();
         simulation.start();
-        auto* const commands{simulation.get_player_ship_commands()};
+        auto commands{simulation.get_player_ship_commands()};
         commands->start_fire_laser();
         simulation.advance(1.0);
 
@@ -91,7 +91,7 @@ TEST(TickPhases, AutomaticFireContinuesUntilReleased) {
     LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
-    auto* const commands{simulation.get_player_ship_commands()};
+    auto commands{simulation.get_player_ship_commands()};
     commands->start_fire_laser();
     simulation.advance(1.0);
     EXPECT_GT(simulation.get_lasers().get_number_spawned(), 3u);
@@ -191,7 +191,7 @@ TEST(TickPhases, ThinkingFireIsDeferredWithActionMovementSnapshot) {
     LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
 
-    auto* commands{simulation.get_player_ship_commands()};
+    auto commands{simulation.get_player_ship_commands()};
     commands->set_right_input(1.f);
     commands->start_fire_laser();
 

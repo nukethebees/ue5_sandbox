@@ -73,9 +73,13 @@ struct LevelSim {
     void set_static_collision(collision::WorldAABBs bounds);
     auto add_static_collision_aabb(Vector3f min_point, Vector3f max_point)
         -> collision::StaticGeometryIndex;
-    // Borrowed until this LevelSim is destroyed; null when the level has no player.
-    auto get_player_ship_commands() noexcept -> player::CommandInterface* {
-        return player_ship_commands_.has_value() ? &player_ship_commands_.value() : nullptr;
+    // References this LevelSim's player until destruction; empty when the level has no player.
+    auto get_player_ship_commands() noexcept -> std::optional<player::CommandInterface> {
+        if (!player_ship_simulation_) {
+            return std::nullopt;
+        }
+
+        return std::optional<player::CommandInterface>{std::in_place, *player_ship_simulation_};
     }
 
     /* **************************************** */
@@ -153,7 +157,6 @@ struct LevelSim {
     lasers::Sim lasers_simulation_;
 
     std::optional<player::Sim> player_ship_simulation_;
-    std::optional<player::CommandInterface> player_ship_commands_;
 
     fighters::Sim fighters_simulation_;
     capital_ships::Sim capital_ships_simulation_;

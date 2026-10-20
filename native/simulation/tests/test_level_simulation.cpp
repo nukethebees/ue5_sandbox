@@ -32,7 +32,7 @@ static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_level_teleme
 static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_player_ship_simulation()),
                              player::Sim const*>);
 static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_player_ship_commands()),
-                             player::CommandInterface*>);
+                             std::optional<player::CommandInterface>>);
 
 static_assert(
     std::is_const_v<std::remove_reference_t<
