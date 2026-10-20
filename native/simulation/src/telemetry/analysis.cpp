@@ -104,8 +104,8 @@ auto analyze(AnalysisInput const input) -> Analysis {
     auto const use_battle_metrics{input.loaded_schema_version >= 2 &&
                                   input.battle_samples.size() >= 2};
 
-    if (!use_battle_metrics && input.metadata.tick_period_seconds > 0.0 &&
-        std::isfinite(input.metadata.tick_period_seconds)) {
+    auto const tick_rate_hz{input.tick_rate_hz.get_hz()};
+    if (!use_battle_metrics) {
         std::vector<std::uint64_t> ticks;
         auto const collect_ticks{[&ticks](auto const& series) {
             auto const count{series.num()};
@@ -137,9 +137,8 @@ auto analyze(AnalysisInput const input) -> Analysis {
             if (end_tick == begin_tick) {
                 continue;
             }
-            auto const duration{static_cast<double>(end_tick - begin_tick) *
-                                input.metadata.tick_period_seconds};
-            auto const time{static_cast<double>(end_tick) * input.metadata.tick_period_seconds};
+            auto const duration{static_cast<double>(end_tick - begin_tick) / tick_rate_hz};
+            auto const time{static_cast<double>(end_tick) / tick_rate_hz};
             add_gauge(builder(Metric::ActiveEntities),
                       input.tick_series.active_entities,
                       end_tick,
@@ -192,7 +191,7 @@ auto analyze(AnalysisInput const input) -> Analysis {
     result.battle_kills.reserve(input.battle_samples.size());
     for (auto const& sample : input.battle_samples) {
         result.battle_simulated_seconds.push_back(
-            static_cast<float>(sample.simulated_elapsed_seconds));
+            static_cast<float>(static_cast<double>(sample.completed_tick) / tick_rate_hz));
         result.battle_alive_entities.push_back(sum_counts(sample.alive));
         result.battle_shots.push_back(sum_counts(sample.combat.shots));
         result.battle_hits.push_back(sum_counts(sample.combat.hits));
@@ -217,11 +216,13 @@ auto analyze(AnalysisInput const input) -> Analysis {
         for (std::size_t index{1}; index < sample_count; ++index) {
             auto const& begin{input.battle_samples[index - 1]};
             auto const& end{input.battle_samples[index]};
-            auto const duration{end.simulated_elapsed_seconds - begin.simulated_elapsed_seconds};
+            auto const duration{(static_cast<double>(end.completed_tick) -
+                                 static_cast<double>(begin.completed_tick)) /
+                                tick_rate_hz};
             if (!std::isfinite(duration) || duration <= 0.0) {
                 continue;
             }
-            auto const time{end.simulated_elapsed_seconds};
+            auto const time{static_cast<double>(end.completed_tick) / tick_rate_hz};
             builder(Metric::ActiveEntities).add(time, sum_counts(end.alive), duration);
             for (std::int32_t type{}; type < LevelTelemetryTickSeries::entity_type_count; ++type) {
                 builder(type_metrics[static_cast<std::size_t>(type)])

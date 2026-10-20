@@ -50,8 +50,8 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
 
         ioj::FPauseMenuData data;
         auto& snapshot{data.telemetry};
-        snapshot.elapsed_seconds = 3723.0;
-        snapshot.tick_period = 0.5;
+        snapshot.elapsed_seconds.set_seconds(3723.0);
+        snapshot.tick_rate_hz.set_hz(2.0);
         snapshot.spawned_entities = 25;
         snapshot.active_entities = 17;
         snapshot.destroyed_entities = 8;
@@ -240,7 +240,7 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
 
         auto const check_elapsed_time{[&](double const seconds, TCHAR const* const expected) {
             ioj::FPauseMenuData time_data;
-            time_data.telemetry.elapsed_seconds = seconds;
+            time_data.telemetry.elapsed_seconds.set_seconds(seconds);
             widget->prepare_for_open(*pause_action, MoveTemp(time_data));
             TestRunner->TestEqual(TEXT("Elapsed-time boundary is formatted correctly"),
                                   elapsed_time_value->GetText().ToString(),

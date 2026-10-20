@@ -45,7 +45,7 @@ struct LevelSimInitData {
 
     float fighter_fire_point_distance{};
 
-    std::optional<LevelTelemetryRunMetadata> telemetry_metadata{};
+    LevelTelemetryRunMetadata telemetry_metadata{};
     LevelTelemetryHistoryConfig telemetry_history{};
     bool fighter_diagnostics_enabled{};
 };

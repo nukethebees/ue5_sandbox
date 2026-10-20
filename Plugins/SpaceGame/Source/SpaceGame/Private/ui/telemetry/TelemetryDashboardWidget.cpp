@@ -139,16 +139,15 @@ void UTelemetryDashboardWidget::rebuild_state() {
                          .level_label()};
     auto const completion_reason{to_fstring(sim::to_serialized_string(record->completion.reason))};
     state_.header = FText::FromString(FString::Printf(
-        TEXT("%s\nLAUNCHED // %s    END // %s\nREQUESTED // "
-             "%.3gx    MODE // %s    DURATION // %s\nBUILD // %s    "
+        TEXT("%s\nLAUNCHED // %s    END // %s\nMODE // %s    DURATION // %s\nBUILD // %s    "
              "PLATFORM // %s\nRUN // %s"),
         *level,
         UTF8_TO_TCHAR(record->metadata.launched_utc.c_str()),
         *completion_reason,
-        record->metadata.initial_requested_time_scale,
         *record->metadata.presentation_mode,
         record->metadata.requested_duration_seconds.has_value()
-            ? *FString::Printf(TEXT("%.3fs"), record->metadata.requested_duration_seconds.value())
+            ? *FString::Printf(TEXT("%.3fs"),
+                               record->metadata.requested_duration_seconds->get_seconds())
             : TEXT("unlimited"),
         *record->metadata.environment.build_configuration,
         *record->metadata.environment.platform,
@@ -168,10 +167,6 @@ void UTelemetryDashboardWidget::rebuild_state() {
         if (baseline->metadata.settings_source != record->metadata.settings_source) {
             warnings.Add(TEXT("different settings source"));
         }
-        if (baseline->metadata.initial_requested_time_scale !=
-            record->metadata.initial_requested_time_scale) {
-            warnings.Add(TEXT("different requested speeds"));
-        }
         if (baseline->metadata.presentation_mode != record->metadata.presentation_mode) {
             warnings.Add(TEXT("different presentation modes"));
         }
@@ -188,7 +183,7 @@ void UTelemetryDashboardWidget::rebuild_state() {
             "COMPLETED TICKS  //  %llu\nSIMULATED TIME  //  %.3fs\nFINAL FORCES  //  "
             "ENTITIES %d  LASERS %d\nFINAL COUNTERS  //  SPAWN %d  DESTROY %d  KILLS %d  FIRED %d"),
         record->completion.completed_ticks,
-        record->completion.simulated_elapsed_seconds,
+        static_cast<double>(record->completion.completed_ticks) / record->tick_rate_hz.get_hz(),
         last_int(record->tick_series.active_entities),
         last_int(record->tick_series.active_lasers),
         last_int(record->tick_series.spawned_entities),

@@ -201,8 +201,8 @@ auto legacy_analyze_level_telemetry_run(FLevelTelemetryReport const& record)
     auto const use_battle_metrics{record.loaded_schema_version >= 2 &&
                                   record.battle_samples.Num() >= 2};
 
-    if (!use_battle_metrics && record.metadata.tick_period_seconds > 0.0 &&
-        FMath::IsFinite(record.metadata.tick_period_seconds)) {
+    auto const tick_rate_hz{record.tick_rate_hz.get_hz()};
+    if (!use_battle_metrics) {
         TArray<uint64> ticks;
         auto collect_ticks = [&ticks](auto const& series) {
             auto const count{series.num()};
@@ -235,9 +235,8 @@ auto legacy_analyze_level_telemetry_run(FLevelTelemetryReport const& record)
             if (end_tick == begin_tick) {
                 continue;
             }
-            auto const duration{static_cast<double>(end_tick - begin_tick) *
-                                record.metadata.tick_period_seconds};
-            auto const time{static_cast<double>(end_tick) * record.metadata.tick_period_seconds};
+            auto const duration{static_cast<double>(end_tick - begin_tick) / tick_rate_hz};
+            auto const time{static_cast<double>(end_tick) / tick_rate_hz};
             add_gauge(builder(ETelemetryDashboardMetric::ActiveEntities),
                       record.tick_series.active_entities,
                       end_tick,
@@ -301,7 +300,8 @@ auto legacy_analyze_level_telemetry_run(FLevelTelemetryReport const& record)
                  result.battle_damage_dealt,
                  result.battle_kills);
     for (auto const& sample : record.battle_samples) {
-        result.battle_simulated_seconds.Add(static_cast<float>(sample.simulated_elapsed_seconds));
+        result.battle_simulated_seconds.Add(
+            static_cast<float>(static_cast<double>(sample.completed_tick) / tick_rate_hz));
         result.battle_alive_entities.Add(sum_counts(sample.alive));
         result.battle_shots.Add(sum_counts(sample.combat.shots));
         result.battle_hits.Add(sum_counts(sample.combat.hits));
@@ -340,12 +340,14 @@ auto legacy_analyze_level_telemetry_run(FLevelTelemetryReport const& record)
         for (int32 index{1}; index < sample_count; ++index) {
             auto const& begin{record.battle_samples[index - 1]};
             auto const& end{record.battle_samples[index]};
-            auto const duration{end.simulated_elapsed_seconds - begin.simulated_elapsed_seconds};
+            auto const duration{(static_cast<double>(end.completed_tick) -
+                                 static_cast<double>(begin.completed_tick)) /
+                                tick_rate_hz};
             if (!FMath::IsFinite(duration) || duration <= 0.0) {
                 continue;
             }
 
-            auto const time{end.simulated_elapsed_seconds};
+            auto const time{static_cast<double>(end.completed_tick) / tick_rate_hz};
             builder(ETelemetryDashboardMetric::ActiveEntities)
                 .add(time, sum_counts(end.alive), duration);
             for (int32 type{}; type < ::ioj::sim::LevelTelemetryTickSeries::entity_type_count;
@@ -388,7 +390,7 @@ auto legacy_analyze_level_telemetry_run(FLevelTelemetryReport const& record)
 auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTelemetryRunAnalysis {
     auto const native{::ioj::sim::telemetry::analyze({
         .loaded_schema_version = record.loaded_schema_version,
-        .metadata = record.metadata,
+        .tick_rate_hz = record.tick_rate_hz,
         .completion = record.completion,
         .tick_series = record.tick_series,
         .battle_samples = {record.battle_samples.GetData(),

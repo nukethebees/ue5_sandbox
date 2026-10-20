@@ -2,6 +2,7 @@
 
 FLevelTelemetryReport::FLevelTelemetryReport(::ioj::sim::LevelTelemetryRunRecord record)
     : loaded_schema_version{record.loaded_schema_version}
+    , tick_rate_hz{record.tick_rate_hz}
     , completion{MoveTemp(record.completion)}
     , tick_series{MoveTemp(record.tick_series)} {
     battle_samples.Append(record.battle_samples.data(),

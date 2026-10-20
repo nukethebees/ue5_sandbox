@@ -65,23 +65,6 @@ inline TAutoConsoleVariable<int32> enabled{
 }
 
 namespace {
-auto end_play_reason_name(EEndPlayReason::Type const reason) -> FString {
-    switch (reason) {
-        case EEndPlayReason::Destroyed:
-            return TEXT("destroyed");
-        case EEndPlayReason::LevelTransition:
-            return TEXT("level_transition");
-        case EEndPlayReason::EndPlayInEditor:
-            return TEXT("end_play_in_editor");
-        case EEndPlayReason::RemovedFromWorld:
-            return TEXT("removed_from_world");
-        case EEndPlayReason::Quit:
-            return TEXT("quit");
-    }
-
-    return TEXT("unknown");
-}
-
 template <typename TActor, typename TConfig>
 void apply_actor_config(TActor& actor, TConfig* const config) {
 #if WITH_EDITOR
@@ -168,9 +151,7 @@ void ATestBatchOrchestrator::BeginPlay() {
 }
 void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason) {
     if (level_simulation_.IsSet()) {
-        level_simulation_->finalize_telemetry_run(
-            ioj::sim::LevelTelemetryRunEndReason::WorldEnd,
-            TCHAR_TO_UTF8(*end_play_reason_name(end_play_reason)));
+        level_simulation_->finalize_telemetry_run(ioj::sim::LevelTelemetryRunEndReason::WorldEnd);
     }
     hud_manager.deactivate();
     if (IsValid(player_ship)) {
@@ -209,7 +190,7 @@ void ATestBatchOrchestrator::reset_for_new_level() {
 
     if (level_simulation_.IsSet()) {
         level_simulation_->finalize_telemetry_run(
-            ioj::sim::LevelTelemetryRunEndReason::OrchestratorReset, "reset");
+            ioj::sim::LevelTelemetryRunEndReason::OrchestratorReset);
         simulation_tick_loop.time_scale = level_simulation_->get_clock().get_time_scale();
     }
 
@@ -477,15 +458,15 @@ auto ATestBatchOrchestrator::initialise_simulation(USpaceGameLevelConfig const& 
         }
 
         result->telemetry_metadata = make_level_telemetry_run_metadata(world, mission_definition);
-        result->telemetry_metadata->level_id = level_definition_->metadata().id.value;
-        result->telemetry_metadata->level_display_name = level_definition_->metadata().title;
-        result->telemetry_metadata->level_source = TCHAR_TO_UTF8(*level_source_);
-        result->telemetry_metadata->settings_source = TCHAR_TO_UTF8(*settings_source_);
+        result->telemetry_metadata.level_id = level_definition_->metadata().id.value;
+        result->telemetry_metadata.level_display_name = level_definition_->metadata().title;
+        result->telemetry_metadata.level_source = TCHAR_TO_UTF8(*level_source_);
+        result->telemetry_metadata.settings_source = TCHAR_TO_UTF8(*settings_source_);
         if (launch_options_.simulated_duration_seconds.IsSet()) {
-            result->telemetry_metadata->requested_duration_seconds =
-                launch_options_.simulated_duration_seconds.GetValue();
+            result->telemetry_metadata.requested_duration_seconds.emplace(
+                launch_options_.simulated_duration_seconds.GetValue());
         }
-        result->telemetry_metadata->stop_when_battle_resolved =
+        result->telemetry_metadata.stop_when_battle_resolved =
             launch_options_.stop_when_battle_resolved;
         auto* const game_subsystem{ioj::UGameSubsystem::get(GetGameInstance())};
         if (!IsValid(game_subsystem)) {
@@ -541,8 +522,8 @@ auto ATestBatchOrchestrator::initialise_simulation(USpaceGameLevelConfig const& 
     }
 
     data.telemetry_metadata = make_level_telemetry_run_metadata(world, mission_definition);
-    data.telemetry_metadata->level_source = TCHAR_TO_UTF8(*level_source_);
-    data.telemetry_metadata->settings_source = TCHAR_TO_UTF8(*settings_source_);
+    data.telemetry_metadata.level_source = TCHAR_TO_UTF8(*level_source_);
+    data.telemetry_metadata.settings_source = TCHAR_TO_UTF8(*settings_source_);
     auto* const game_subsystem{ioj::UGameSubsystem::get(GetGameInstance())};
     if (!IsValid(game_subsystem)) {
         errors.add(TEXT("Cannot create level simulation without game memory"));
@@ -1045,7 +1026,8 @@ void ATestBatchOrchestrator::process_mission_result() {
 }
 void ATestBatchOrchestrator::process_battle_run_end() {
     if (!level_simulation_.IsSet() ||
-        !level_simulation_->get_level_telemetry_manager().is_run_recording()) {
+        level_simulation_->get_level_telemetry_manager().get_state() !=
+            ioj::sim::LevelTelemetryManager::State::Recording) {
         return;
     }
 

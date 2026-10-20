@@ -104,7 +104,7 @@ LevelSim::LevelSim(GameMemory& game_memory, LevelSimInitData data)
           clock_, entity_ledger_, lasers_simulation_, game_memory, data.telemetry_history} {
     // Initialise timing and metadata
     clock_.initialise(data.clock_settings);
-    telemetry_metadata_ = std::move(data.telemetry_metadata);
+    set_telemetry_metadata(std::move(data.telemetry_metadata));
     level_simulation::finalise_participating_teams(data);
 
     // Configure queries and subsystems
@@ -132,7 +132,7 @@ void LevelSim::finish_initialisation() {
     clock_.transition_to(SimulationPhase::StableSetup);
 
     // Start telemetry and mission
-    initialise_telemetry();
+    level_telemetry_manager_.initialise();
     event_manager_.configure_mission();
     {
         FrameScratchScope scratch_scope{frame_memory_};
@@ -220,6 +220,9 @@ void LevelSim::set_fighter_diagnostics_enabled(bool const enabled) noexcept {
     capital_ships_simulation_.set_diagnostics_enabled(enabled);
     fighters_simulation_.set_diagnostics_enabled(enabled);
 }
+void LevelSim::set_telemetry_metadata(LevelTelemetryRunMetadata metadata) {
+    level_telemetry_manager_.set_run_metadata(std::move(metadata));
+}
 void LevelSim::set_static_collision(collision::WorldAABBs bounds) {
     assert(state_ == OrchestratorState::Uninitialised);
     query_manager_.set_static_collision(std::move(bounds));
@@ -232,20 +235,12 @@ auto LevelSim::add_static_collision_aabb(Vector3f const min_point, Vector3f cons
 /* **************************************** */
 // Telemetry and mission results
 /* **************************************** */
-void LevelSim::initialise_telemetry() {
-    level_telemetry_manager_.initialise();
-
-    if (telemetry_metadata_.has_value()) {
-        level_telemetry_manager_.begin_run(std::move(telemetry_metadata_.value()));
-        telemetry_metadata_.reset();
-    }
-}
-void LevelSim::finalize_telemetry_run(LevelTelemetryRunEndReason const reason, std::string detail) {
-    level_telemetry_manager_.finalize_interrupted(reason, std::move(detail));
+void LevelSim::finalize_telemetry_run(LevelTelemetryRunEndReason const reason) {
+    level_telemetry_manager_.finalize(reason);
 }
 void LevelSim::complete_telemetry_run(LevelTelemetryRunEndReason const reason,
                                       std::optional<Team> winning_team) {
-    level_telemetry_manager_.finalize_completed(reason, winning_team);
+    level_telemetry_manager_.finalize(reason, winning_team);
     state_ = OrchestratorState::Paused;
 }
 auto LevelSim::take_mission_result() -> std::optional<LevelMissionResult> {
@@ -258,7 +253,7 @@ auto LevelSim::take_mission_result() -> std::optional<LevelMissionResult> {
     return result;
 }
 auto LevelSim::take_finalized_telemetry_run() -> std::optional<LevelTelemetryRunRecord> {
-    return level_telemetry_manager_.take_finalized_run();
+    return level_telemetry_manager_.take_finalized_run(Frequency{clock_.get_tick_rate()});
 }
 
 /* **************************************** */

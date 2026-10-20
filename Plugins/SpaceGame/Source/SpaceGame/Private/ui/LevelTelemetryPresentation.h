@@ -6,7 +6,7 @@
 class SGraphPlot;
 
 namespace ioj::level_telemetry_presentation {
-auto format_elapsed_time(double elapsed_seconds) -> FText;
+auto format_elapsed_time(Duration elapsed) -> FText;
 
 void apply_activity_graph_style(SGraphPlot& graph,
                                 FGameUiStyle const& style,

@@ -12,7 +12,6 @@
 #include <cstdint>
 #include <optional>
 #include <span>
-#include <string>
 #include <vector>
 
 namespace ioj::sim {
@@ -27,6 +26,13 @@ struct Sim;
 
 class LevelTelemetryManager {
   public:
+    enum class State : std::uint8_t {
+        Uninitialised,
+        Recording,
+        Finalized,
+        RecordTaken,
+    };
+
     using tick_type = SimTick;
     using ActiveEntityCountData = LevelTelemetrySnapshot::ActiveEntityCountData;
     using CumulativeKillCountData = LevelTelemetrySnapshot::CumulativeKillCountData;
@@ -44,6 +50,7 @@ class LevelTelemetryManager {
     auto operator=(LevelTelemetryManager const&) -> LevelTelemetryManager& = delete;
     auto operator=(LevelTelemetryManager&&) -> LevelTelemetryManager& = delete;
 
+    // Requires Uninitialised.
     void initialise();
     void reset();
     void tick();
@@ -51,17 +58,17 @@ class LevelTelemetryManager {
     /* **************************************** */
     // Run capture and completion
     /* **************************************** */
-    void begin_run(LevelTelemetryRunMetadata metadata);
+    // Requires Uninitialised or Recording.
+    void set_run_metadata(LevelTelemetryRunMetadata metadata);
     void mark_mission_terminal(LevelMissionResult const& result);
-    void finalize_interrupted(LevelTelemetryRunEndReason reason, std::string world_end_reason);
-    void finalize_completed(LevelTelemetryRunEndReason reason,
-                            std::optional<Team> winning_team = {});
-    auto is_run_recording() const noexcept -> bool { return run_recording_; }
-    auto take_finalized_run() -> std::optional<LevelTelemetryRunRecord>;
+    void finalize(LevelTelemetryRunEndReason reason, std::optional<Team> winning_team = {});
+    // Returns empty unless the record awaits extraction.
+    auto take_finalized_run(Frequency tick_rate_hz) -> std::optional<LevelTelemetryRunRecord>;
 
     /* **************************************** */
     // Snapshots and queries
     /* **************************************** */
+    auto get_state() const noexcept -> State { return state_; }
     auto make_snapshot() const -> LevelTelemetrySnapshot;
 
     auto get_active_entity_count_data() const noexcept -> ActiveEntityCountData const& {
@@ -91,9 +98,8 @@ class LevelTelemetryManager {
     // Finalization
     /* **************************************** */
     void finalize_run(LevelTelemetryRunEndReason reason,
-                      bool interrupted,
-                      std::string world_end_reason,
-                      LevelMissionResult const* mission_result);
+                      LevelMissionResult const* mission_result,
+                      std::optional<Team> winning_team = {});
 
     /* **************************************** */
     // State
@@ -111,11 +117,7 @@ class LevelTelemetryManager {
     ActiveEntityCountData active_entity_count_data_{};
     CumulativeKillCountData cumulative_kill_count_data_{};
 
-    bool run_recording_{};
-    bool run_finalized_{};
-    bool run_record_taken_{};
-    bool initialized_{};
-    bool has_sampled_state_{};
+    State state_{State::Uninitialised};
 
     double next_battle_sample_seconds_{};
 };

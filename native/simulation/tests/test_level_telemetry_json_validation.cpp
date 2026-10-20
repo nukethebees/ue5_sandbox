@@ -26,9 +26,6 @@ TEST(LevelTelemetryJsonValidation, ParsesOnlyExactInRangeIntegers) {
 
 TEST(LevelTelemetryJsonValidation, RejectsInvalidRecordInvariants) {
     LevelTelemetryRunRecord record;
-    record.metadata.tick_rate_hz = 60.0;
-    record.metadata.tick_period_seconds = 1.0 / 60.0;
-    record.metadata.initial_requested_time_scale = 1.0;
 
     EXPECT_TRUE(validate_level_telemetry_json_record(record).has_value());
 

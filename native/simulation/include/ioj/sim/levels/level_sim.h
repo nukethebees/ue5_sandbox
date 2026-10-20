@@ -29,7 +29,6 @@
 #include <memory>
 #include <optional>
 #include <span>
-#include <string>
 #include <vector>
 
 namespace ioj::sim {
@@ -69,6 +68,8 @@ struct LevelSim {
     // Configuration and commands
     /* **************************************** */
     void set_fighter_diagnostics_enabled(bool enabled) noexcept;
+    // Requires telemetry to be Uninitialised or Recording.
+    void set_telemetry_metadata(LevelTelemetryRunMetadata metadata);
     // Replaces static collision during initialization, before finish_initialisation().
     void set_static_collision(collision::WorldAABBs bounds);
     auto add_static_collision_aabb(Vector3f min_point, Vector3f max_point)
@@ -85,8 +86,8 @@ struct LevelSim {
     /* **************************************** */
     // Telemetry and mission results
     /* **************************************** */
-    // Records interruption without changing simulation state.
-    void finalize_telemetry_run(LevelTelemetryRunEndReason reason, std::string detail = {});
+    // Finalizes telemetry without changing simulation state.
+    void finalize_telemetry_run(LevelTelemetryRunEndReason reason);
     // Pauses without resetting either tick accumulator.
     void complete_telemetry_run(LevelTelemetryRunEndReason reason,
                                 std::optional<Team> winning_team = {});
@@ -137,11 +138,6 @@ struct LevelSim {
     void begin_subsystems();
     void initialise_events(CompiledLevelEvents events);
 
-    /* **************************************** */
-    // Telemetry
-    /* **************************************** */
-    void initialise_telemetry();
-
     SimClock clock_;
     OrchestratorState state_{OrchestratorState::Uninitialised};
 
@@ -167,6 +163,5 @@ struct LevelSim {
     LevelEventManager event_manager_;
 
     LevelTelemetryManager level_telemetry_manager_;
-    std::optional<LevelTelemetryRunMetadata> telemetry_metadata_{};
 };
 } // namespace ioj::sim

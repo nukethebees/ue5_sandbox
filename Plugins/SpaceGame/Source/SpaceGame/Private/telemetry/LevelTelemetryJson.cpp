@@ -48,11 +48,11 @@ auto serialized_name(::ioj::sim::LevelTelemetryRunEndReason const value) -> FStr
     return ioj::to_fstring(::ioj::sim::to_serialized_string(value));
 }
 
-void set_optional_number(FJsonObject& object,
-                         FString const& name,
-                         std::optional<double> const value) {
+void set_optional_duration(FJsonObject& object,
+                           FString const& name,
+                           std::optional<ioj::Duration> const value) {
     if (value.has_value()) {
-        object.SetNumberField(name, value.value());
+        object.SetNumberField(name, value->get_seconds());
     } else {
         object.SetField(name, MakeShared<FJsonValueNull>());
     }
@@ -146,7 +146,6 @@ auto make_battle_samples(TArray<::ioj::sim::LevelTelemetryBattleSample> const& s
     for (auto const& sample : source) {
         auto object{MakeShared<FJsonObject>()};
         object->SetNumberField(TEXT("completed_tick"), static_cast<double>(sample.completed_tick));
-        object->SetNumberField(TEXT("simulated_elapsed_seconds"), sample.simulated_elapsed_seconds);
         object->SetArrayField(TEXT("alive"), make_flat_counts(sample.alive));
         object->SetObjectField(TEXT("combat"), make_combat(sample.combat));
         object->SetNumberField(TEXT("active_lasers"), sample.active_lasers);
@@ -519,6 +518,7 @@ auto validate_serialized_report(FLevelTelemetryReport const& record)
     -> std::expected<void, FString> {
     ::ioj::sim::LevelTelemetryRunRecord native_record;
     native_record.metadata = record.metadata;
+    native_record.tick_rate_hz = record.tick_rate_hz;
     native_record.completion = record.completion;
     native_record.tick_series = record.tick_series;
     native_record.battle_samples.assign(record.battle_samples.begin(), record.battle_samples.end());
@@ -541,38 +541,6 @@ auto validate_serialized_report(FLevelTelemetryReport const& record)
                                                 : memory.error()};
     }
 
-    auto const tick_rate{validate_serialized_number(
-        record.metadata.tick_rate_hz, TEXT("simulation.tick_rate_hz"), false)};
-    auto const tick_period{validate_serialized_number(
-        record.metadata.tick_period_seconds, TEXT("simulation.tick_period_seconds"), false)};
-    auto const time_scale{
-        validate_serialized_number(record.metadata.initial_requested_time_scale,
-                                   TEXT("simulation.initial_requested_time_scale"),
-                                   true)};
-    auto const sample_interval{
-        validate_serialized_number(record.metadata.battle_sample_interval_seconds,
-                                   TEXT("simulation.battle_sample_interval_seconds"),
-                                   false)};
-    if (!tick_rate || !tick_period || !time_scale || !sample_interval) {
-        return std::unexpected{!tick_rate     ? tick_rate.error()
-                               : !tick_period ? tick_period.error()
-                               : !time_scale  ? time_scale.error()
-                                              : sample_interval.error()};
-    }
-    if (record.metadata.tick_rate_hz <= 0.0 || record.metadata.tick_period_seconds <= 0.0) {
-        return std::unexpected{
-            FString{TEXT("simulation rates and period are outside their valid ranges")}};
-    }
-    if (record.metadata.requested_duration_seconds.has_value()) {
-        auto const duration{
-            validate_serialized_number(*record.metadata.requested_duration_seconds,
-                                       TEXT("simulation.requested_duration_seconds"),
-                                       true)};
-        if (!duration) {
-            return duration;
-        }
-    }
-
     auto const mission_values{record.completion.mission_mode.has_value()};
     if (mission_values != record.completion.mission_state.has_value() ||
         mission_values != record.completion.mission_fail_reason.has_value()) {
@@ -581,24 +549,9 @@ auto validate_serialized_report(FLevelTelemetryReport const& record)
     }
     auto const completed_ticks{validate_serialized_integer(
         record.completion.completed_ticks, TEXT("completion.completed_ticks"), true)};
-    auto const completion_elapsed{
-        validate_serialized_number(record.completion.simulated_elapsed_seconds,
-                                   TEXT("completion.simulated_elapsed_seconds"),
-                                   true)};
-    if (!completed_ticks || !completion_elapsed) {
-        return std::unexpected{!completed_ticks ? completed_ticks.error()
-                                                : completion_elapsed.error()};
+    if (!completed_ticks) {
+        return completed_ticks;
     }
-    if (record.completion.mission_elapsed_seconds.has_value()) {
-        auto const mission_elapsed{
-            validate_serialized_number(*record.completion.mission_elapsed_seconds,
-                                       TEXT("completion.mission_elapsed_seconds"),
-                                       true)};
-        if (!mission_elapsed) {
-            return mission_elapsed;
-        }
-    }
-
 #define VALIDATE_SERIES(field)                                                                  \
     do {                                                                                        \
         auto const valid{                                                                       \
@@ -642,8 +595,6 @@ auto validate_serialized_report(FLevelTelemetryReport const& record)
         auto const path{FString::Printf(TEXT("battle_samples[%d]"), index)};
         auto const tick{validate_serialized_integer(
             sample.completed_tick, path + TEXT(".completed_tick"), true)};
-        auto const elapsed{validate_serialized_number(
-            sample.simulated_elapsed_seconds, path + TEXT(".simulated_elapsed_seconds"), true)};
         auto const alive{validate_serialized_counts(sample.alive, path + TEXT(".alive"))};
         auto const combat{
             validate_serialized_counts(sample.combat.spawned, path + TEXT(".combat.spawned"))};
@@ -651,9 +602,8 @@ auto validate_serialized_report(FLevelTelemetryReport const& record)
             validate_serialized_integer(sample.active_lasers, path + TEXT(".active_lasers"), true)};
         auto const lasers_fired{
             validate_serialized_integer(sample.lasers_fired, path + TEXT(".lasers_fired"), true)};
-        if (!tick || !elapsed || !alive || !combat || !active_lasers || !lasers_fired) {
+        if (!tick || !alive || !combat || !active_lasers || !lasers_fired) {
             return std::unexpected{!tick            ? tick.error()
-                                   : !elapsed       ? elapsed.error()
                                    : !alive         ? alive.error()
                                    : !combat        ? combat.error()
                                    : !active_lasers ? active_lasers.error()
@@ -805,17 +755,15 @@ auto deserialize_level_telemetry_run(FString const& json)
         return std::unexpected{FString{TEXT("environment core counts must be nonnegative")}};
     }
 
+    double tick_rate_hz{};
     READ_REQUIRED(
-        result.metadata.tick_rate_hz,
+        tick_rate_hz,
         required_number(**simulation, TEXT("tick_rate_hz"), TEXT("simulation.tick_rate_hz")));
-    READ_REQUIRED(result.metadata.tick_period_seconds,
-                  required_number(**simulation,
-                                  TEXT("tick_period_seconds"),
-                                  TEXT("simulation.tick_period_seconds")));
-    READ_REQUIRED(result.metadata.initial_requested_time_scale,
-                  required_number(**simulation,
-                                  TEXT("initial_requested_time_scale"),
-                                  TEXT("simulation.initial_requested_time_scale")));
+    if (!ioj::Frequency::is_valid_hz(tick_rate_hz)) {
+        return std::unexpected{
+            FString{TEXT("simulation.tick_rate_hz must be positive with a finite period")}};
+    }
+    result.tick_rate_hz.set_hz(tick_rate_hz);
     READ_REQUIRED(result.metadata.presentation_enabled,
                   required_bool(**simulation,
                                 TEXT("presentation_enabled"),
@@ -843,10 +791,6 @@ auto deserialize_level_telemetry_run(FString const& json)
                       required_string(**simulation,
                                       TEXT("results_navigation"),
                                       TEXT("simulation.results_navigation")));
-        READ_REQUIRED(result.metadata.battle_sample_interval_seconds,
-                      required_number(**simulation,
-                                      TEXT("battle_sample_interval_seconds"),
-                                      TEXT("simulation.battle_sample_interval_seconds")));
         auto const* duration{(*simulation)->Values.Find(TEXT("requested_duration_seconds"))};
         if (duration && (*duration)->Type != EJson::Null) {
             double value{};
@@ -858,13 +802,8 @@ auto deserialize_level_telemetry_run(FString const& json)
                 return std::unexpected{
                     FString{TEXT("simulation.requested_duration_seconds must be nonnegative")}};
             }
-            result.metadata.requested_duration_seconds = value;
+            result.metadata.requested_duration_seconds.emplace(value);
         }
-    }
-    if (result.metadata.tick_rate_hz <= 0.0 || result.metadata.tick_period_seconds <= 0.0 ||
-        result.metadata.initial_requested_time_scale < 0.0) {
-        return std::unexpected{
-            FString{TEXT("simulation rates and period are outside their valid ranges")}};
     }
 
     FString reason_name;
@@ -875,21 +814,9 @@ auto deserialize_level_telemetry_run(FString const& json)
                   parse_serialized_enum<::ioj::sim::LevelTelemetryRunEndReason>(
                       reason_name, TEXT("completion.reason")));
     result.completion.reason = parsed_reason;
-    READ_REQUIRED(result.completion.interrupted,
-                  required_bool(**completion, TEXT("interrupted"), TEXT("completion.interrupted")));
-    READ_REQUIRED(result.completion.world_end_reason,
-                  required_native_string(
-                      **completion, TEXT("world_end_reason"), TEXT("completion.world_end_reason")));
     READ_REQUIRED(result.completion.completed_ticks,
                   required_integer<uint64>(
                       **completion, TEXT("completed_ticks"), TEXT("completion.completed_ticks")));
-    READ_REQUIRED(result.completion.simulated_elapsed_seconds,
-                  required_number(**completion,
-                                  TEXT("simulated_elapsed_seconds"),
-                                  TEXT("completion.simulated_elapsed_seconds")));
-    if (result.completion.simulated_elapsed_seconds < 0.0) {
-        return std::unexpected{FString{TEXT("completion durations must be nonnegative")}};
-    }
     if (*schema >= 2) {
         auto const* winner{(*completion)->Values.Find(TEXT("winning_team"))};
         if (winner && (*winner)->Type != EJson::Null) {
@@ -957,7 +884,7 @@ auto deserialize_level_telemetry_run(FString const& json)
             return std::unexpected{
                 FString{TEXT("completion.mission_elapsed_seconds must be nonnegative")}};
         }
-        result.completion.mission_elapsed_seconds = elapsed;
+        result.completion.mission_elapsed_seconds.emplace(elapsed);
     }
 
 #define PARSE_SERIES(field)                                                                       \
@@ -1064,14 +991,6 @@ auto deserialize_level_telemetry_run(FString const& json)
             READ_REQUIRED(sample.completed_tick,
                           required_integer<uint64>(
                               *object, TEXT("completed_tick"), path + TEXT(".completed_tick")));
-            READ_REQUIRED(sample.simulated_elapsed_seconds,
-                          required_number(*object,
-                                          TEXT("simulated_elapsed_seconds"),
-                                          path + TEXT(".simulated_elapsed_seconds")));
-            if (sample.simulated_elapsed_seconds < 0.0) {
-                return std::unexpected{error_at(path + TEXT(".simulated_elapsed_seconds"),
-                                                TEXT("value must be nonnegative"))};
-            }
             auto alive{
                 parse_flat_counts(*object, TEXT("alive"), path + TEXT(".alive"), sample.alive)};
             auto combat{required_object(*object, TEXT("combat"), path + TEXT(".combat"))};
@@ -1159,10 +1078,7 @@ auto serialize_level_telemetry_run(FLevelTelemetryReport const& record) -> FStri
     root->SetObjectField(TEXT("environment"), environment);
 
     auto simulation{MakeShared<FJsonObject>()};
-    simulation->SetNumberField(TEXT("tick_rate_hz"), record.metadata.tick_rate_hz);
-    simulation->SetNumberField(TEXT("tick_period_seconds"), record.metadata.tick_period_seconds);
-    simulation->SetNumberField(TEXT("initial_requested_time_scale"),
-                               record.metadata.initial_requested_time_scale);
+    simulation->SetNumberField(TEXT("tick_rate_hz"), record.tick_rate_hz.get_hz());
     simulation->SetBoolField(TEXT("presentation_enabled"), record.metadata.presentation_enabled);
     simulation->SetStringField(TEXT("level_source"),
                                UTF8_TO_TCHAR(record.metadata.level_source.c_str()));
@@ -1173,18 +1089,13 @@ auto serialize_level_telemetry_run(FLevelTelemetryReport const& record) -> FStri
     simulation->SetBoolField(TEXT("stop_when_battle_resolved"),
                              record.metadata.stop_when_battle_resolved);
     simulation->SetStringField(TEXT("results_navigation"), record.metadata.results_navigation);
-    set_optional_number(*simulation,
-                        TEXT("requested_duration_seconds"),
-                        record.metadata.requested_duration_seconds);
-    simulation->SetNumberField(TEXT("battle_sample_interval_seconds"),
-                               record.metadata.battle_sample_interval_seconds);
+    set_optional_duration(*simulation,
+                          TEXT("requested_duration_seconds"),
+                          record.metadata.requested_duration_seconds);
     root->SetObjectField(TEXT("simulation"), simulation);
 
     auto completion{MakeShared<FJsonObject>()};
     completion->SetStringField(TEXT("reason"), serialized_name(record.completion.reason));
-    completion->SetBoolField(TEXT("interrupted"), record.completion.interrupted);
-    completion->SetStringField(TEXT("world_end_reason"),
-                               UTF8_TO_TCHAR(record.completion.world_end_reason.c_str()));
     if (record.completion.mission_mode.has_value()) {
         completion->SetStringField(TEXT("mission_mode"),
                                    serialized_name(record.completion.mission_mode.value()));
@@ -1197,12 +1108,10 @@ auto serialize_level_telemetry_run(FLevelTelemetryReport const& record) -> FStri
         completion->SetField(TEXT("mission_state"), MakeShared<FJsonValueNull>());
         completion->SetField(TEXT("mission_fail_reason"), MakeShared<FJsonValueNull>());
     }
-    set_optional_number(
+    set_optional_duration(
         *completion, TEXT("mission_elapsed_seconds"), record.completion.mission_elapsed_seconds);
     completion->SetNumberField(TEXT("completed_ticks"),
                                static_cast<double>(record.completion.completed_ticks));
-    completion->SetNumberField(TEXT("simulated_elapsed_seconds"),
-                               record.completion.simulated_elapsed_seconds);
     if (record.completion.winning_team.has_value()) {
         completion->SetStringField(TEXT("winning_team"),
                                    serialized_name(record.completion.winning_team.value()));

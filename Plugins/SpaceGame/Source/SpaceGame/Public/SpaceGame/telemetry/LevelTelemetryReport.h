@@ -41,6 +41,7 @@ struct SPACEGAME_API FLevelTelemetryReport {
 
     int32 loaded_schema_version{schema_version};
     FLevelTelemetryReportMetadata metadata;
+    ioj::Frequency tick_rate_hz{60.0};
     ::ioj::sim::LevelTelemetryRunCompletion completion;
     ::ioj::sim::LevelTelemetryTickSeries tick_series;
     TArray<::ioj::sim::LevelTelemetryBattleSample> battle_samples;

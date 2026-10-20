@@ -780,7 +780,7 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     simulation.advance(1.0);
     simulation.set_time_scale(4.0);
     simulation.advance(simulation.get_clock().get_tick_period());
-    simulation.finalize_telemetry_run(::ioj::sim::LevelTelemetryRunEndReason::WorldEnd, "test");
+    simulation.finalize_telemetry_run(::ioj::sim::LevelTelemetryRunEndReason::WorldEnd);
     auto record{simulation.take_finalized_telemetry_run()};
     if (!TestTrue(TEXT("Telemetry JSON fixture produces a run record"), record.has_value())) {
         return false;

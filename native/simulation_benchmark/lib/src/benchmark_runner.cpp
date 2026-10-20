@@ -278,10 +278,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         data.telemetry_metadata = sim::LevelTelemetryRunMetadata{
             .level_id = level_components.metadata().id.value,
             .level_display_name = level_components.metadata().title,
-            .tick_rate_hz = tick_rate_hz,
-            .tick_period_seconds = 1.0 / tick_rate_hz,
-            .initial_requested_time_scale = static_cast<double>(options.game_speed),
-            .requested_duration_seconds = options.simulated_seconds,
+            .requested_duration_seconds = Duration{options.simulated_seconds},
         };
     }
 

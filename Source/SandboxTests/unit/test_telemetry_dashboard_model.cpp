@@ -16,8 +16,6 @@ auto make_catalog_record(FString run_id, FString level, FString launch) -> FLeve
     record.metadata.level_id = TCHAR_TO_UTF8(*level);
     record.metadata.level_display_name = TCHAR_TO_UTF8(*level);
     record.metadata.launched_utc = TCHAR_TO_UTF8(*launch);
-    record.metadata.tick_rate_hz = 60.0;
-    record.metadata.tick_period_seconds = 1.0 / 60.0;
     record.completion.completed_utc = record.metadata.launched_utc;
     return record;
 }
@@ -44,7 +42,6 @@ TEST_CLASS(TelemetryDashboardAnalysis, "Sandbox.UnitTests")
     {
         FLevelTelemetryReport record;
         record.loaded_schema_version = 1;
-        record.metadata.tick_period_seconds = 1.0 / 60.0;
         record.completion.completed_ticks = 270;
         record.tick_series.spawned_entities.add(0, 0);
         record.tick_series.spawned_entities.add(90, 10);
@@ -78,7 +75,6 @@ TEST_CLASS(TelemetryDashboardAnalysis, "Sandbox.UnitTests")
         begin.lasers_fired = 10;
         ::ioj::sim::LevelTelemetryBattleSample end{begin};
         end.completed_tick = 60;
-        end.simulated_elapsed_seconds = 1.0;
         end.alive[0][0] = 3;
         end.combat.spawned[0][0] = 5;
         end.combat.shots[0][0] = 5;
@@ -119,7 +115,6 @@ TEST_CLASS(TelemetryDashboardAnalysis, "Sandbox.UnitTests")
     {
         FLevelTelemetryReport record;
         record.loaded_schema_version = 1;
-        record.metadata.tick_period_seconds = 1.0 / 60.0;
         record.completion.completed_ticks = 150;
         record.tick_series.active_entities.add(30, 7);
         record.tick_series.spawned_entities.add(30, 10);

@@ -29,8 +29,8 @@ TEST_CLASS(LevelCompletionWidget, "Sandbox.UnitTests")
                 auto const slate_widget{widget->TakeWidget()};
                 (void)slate_widget;
                 ioj::sim::LevelTelemetrySnapshot snapshot;
-                snapshot.elapsed_seconds = 3723.0;
-                snapshot.tick_period = 0.5;
+                snapshot.elapsed_seconds.set_seconds(3723.0);
+                snapshot.tick_rate_hz.set_hz(2.0);
                 snapshot.spawned_entities = 25;
                 snapshot.active_entities = 17;
                 snapshot.destroyed_entities = 8;
@@ -62,8 +62,9 @@ TEST_CLASS(LevelCompletionWidget, "Sandbox.UnitTests")
                               widget->get_level_display_name(),
                               FString{TEXT("Border Skirmish")});
         auto const& snapshot{widget->get_stats_snapshot()};
-        TestRunner->TestEqual(
-            TEXT("Completion report retains elapsed time"), snapshot.elapsed_seconds, 3723.0);
+        TestRunner->TestEqual(TEXT("Completion report retains elapsed time"),
+                              snapshot.elapsed_seconds.get_seconds(),
+                              3723.0);
         TestRunner->TestEqual(TEXT("Completion report retains kills"), snapshot.kills, 6);
         TestRunner->TestEqual(
             TEXT("Completion report retains destroyed entities"), snapshot.destroyed_entities, 8);

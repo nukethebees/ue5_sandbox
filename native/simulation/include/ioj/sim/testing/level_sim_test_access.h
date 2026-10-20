@@ -147,9 +147,6 @@ struct LevelSimTestAccess {
         std::ranges::copy(requests.instigator_ids(), destination.instigator_ids().begin());
         std::ranges::copy(requests.sources(), destination.sources().begin());
     }
-    static void begin_telemetry_run(LevelSim& simulation, LevelTelemetryRunMetadata metadata) {
-        simulation.level_telemetry_manager_.begin_run(std::move(metadata));
-    }
     static auto complete_mission(LevelSim& simulation) -> bool {
         return simulation.mission_manager_.complete_mission();
     }

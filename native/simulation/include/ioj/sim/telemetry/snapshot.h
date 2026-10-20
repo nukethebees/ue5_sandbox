@@ -1,7 +1,8 @@
 #pragma once
-
 #include "ioj/sim/sim_tick.h"
 #include "ioj/time_series_data.h"
+#include <ioj/duration.h>
+#include <ioj/frequency.h>
 
 #include <cstdint>
 
@@ -10,8 +11,8 @@ struct LevelTelemetrySnapshot {
     using ActiveEntityCountData = XYSeriesData<SimTick, std::int32_t>;
     using CumulativeKillCountData = XYSeriesData<SimTick, std::int32_t>;
 
-    double elapsed_seconds{0.0};
-    double tick_period{0.0};
+    Duration elapsed_seconds{};
+    Frequency tick_rate_hz{60.0};
     std::int32_t active_entities{0};
     std::int32_t spawned_entities{0};
     std::int32_t destroyed_entities{0};

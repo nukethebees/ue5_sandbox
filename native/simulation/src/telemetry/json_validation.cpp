@@ -123,34 +123,6 @@ auto parse_json_uint64(double const value, std::string_view const path)
 
 auto validate_level_telemetry_json_record(LevelTelemetryRunRecord const& record)
     -> std::expected<void, std::string> {
-    auto const tick_rate{
-        validate_json_number(record.metadata.tick_rate_hz, "simulation.tick_rate_hz", false)};
-    auto const tick_period{validate_json_number(
-        record.metadata.tick_period_seconds, "simulation.tick_period_seconds", false)};
-    auto const time_scale{validate_json_number(record.metadata.initial_requested_time_scale,
-                                               "simulation.initial_requested_time_scale",
-                                               true)};
-    auto const sample_interval{validate_json_number(record.metadata.battle_sample_interval_seconds,
-                                                    "simulation.battle_sample_interval_seconds",
-                                                    false)};
-    if (!tick_rate || !tick_period || !time_scale || !sample_interval) {
-        return std::unexpected{!tick_rate     ? tick_rate.error()
-                               : !tick_period ? tick_period.error()
-                               : !time_scale  ? time_scale.error()
-                                              : sample_interval.error()};
-    }
-    if (record.metadata.tick_rate_hz <= 0.0 || record.metadata.tick_period_seconds <= 0.0) {
-        return std::unexpected{"simulation rates and period are outside their valid ranges"};
-    }
-    if (record.metadata.requested_duration_seconds.has_value()) {
-        auto const duration{validate_json_number(*record.metadata.requested_duration_seconds,
-                                                 "simulation.requested_duration_seconds",
-                                                 true)};
-        if (!duration) {
-            return duration;
-        }
-    }
-
     auto const mission_values{record.completion.mission_mode.has_value()};
     if (mission_values != record.completion.mission_state.has_value() ||
         mission_values != record.completion.mission_fail_reason.has_value()) {
@@ -159,21 +131,9 @@ auto validate_level_telemetry_json_record(LevelTelemetryRunRecord const& record)
     }
     auto const completed_ticks{validate_json_integer(
         record.completion.completed_ticks, "completion.completed_ticks", true)};
-    auto const completion_elapsed{validate_json_number(
-        record.completion.simulated_elapsed_seconds, "completion.simulated_elapsed_seconds", true)};
-    if (!completed_ticks || !completion_elapsed) {
-        return std::unexpected{!completed_ticks ? completed_ticks.error()
-                                                : completion_elapsed.error()};
+    if (!completed_ticks) {
+        return completed_ticks;
     }
-    if (record.completion.mission_elapsed_seconds.has_value()) {
-        auto const mission_elapsed{validate_json_number(*record.completion.mission_elapsed_seconds,
-                                                        "completion.mission_elapsed_seconds",
-                                                        true)};
-        if (!mission_elapsed) {
-            return mission_elapsed;
-        }
-    }
-
 #define VALIDATE_SERIES(field)                                                              \
     do {                                                                                    \
         auto const valid{validate_series(record.tick_series.field, "tick_series." #field)}; \
@@ -213,8 +173,6 @@ auto validate_level_telemetry_json_record(LevelTelemetryRunRecord const& record)
         auto const path{"battle_samples[" + std::to_string(index) + "]"};
         auto const tick{
             validate_json_integer(sample.completed_tick, path + ".completed_tick", true)};
-        auto const elapsed{validate_json_number(
-            sample.simulated_elapsed_seconds, path + ".simulated_elapsed_seconds", true)};
         auto const alive{validate_counts(sample.alive, path + ".alive")};
         auto const spawned{validate_counts(sample.combat.spawned, path + ".combat.spawned")};
         auto const destroyed{validate_counts(sample.combat.destroyed, path + ".combat.destroyed")};
@@ -232,11 +190,10 @@ auto validate_level_telemetry_json_record(LevelTelemetryRunRecord const& record)
             validate_json_integer(sample.active_lasers, path + ".active_lasers", true)};
         auto const lasers_fired{
             validate_json_integer(sample.lasers_fired, path + ".lasers_fired", true)};
-        if (!tick || !elapsed || !alive || !spawned || !destroyed || !shots || !hits ||
-            !damage_dealt || !damage_received || !kills || !losses || !kill_matrix ||
-            !active_lasers || !lasers_fired) {
+        if (!tick || !alive || !spawned || !destroyed || !shots || !hits || !damage_dealt ||
+            !damage_received || !kills || !losses || !kill_matrix || !active_lasers ||
+            !lasers_fired) {
             return std::unexpected{!tick              ? tick.error()
-                                   : !elapsed         ? elapsed.error()
                                    : !alive           ? alive.error()
                                    : !spawned         ? spawned.error()
                                    : !destroyed       ? destroyed.error()

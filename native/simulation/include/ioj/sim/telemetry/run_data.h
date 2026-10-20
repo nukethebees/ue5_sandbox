@@ -10,7 +10,6 @@
 namespace ioj::sim {
 struct LevelTelemetryBattleSample {
     SimTick completed_tick{};
-    double simulated_elapsed_seconds{};
     telemetry::CombatTelemetryCounters combat{};
     telemetry::EntityCounts alive{};
     std::int32_t active_lasers{};

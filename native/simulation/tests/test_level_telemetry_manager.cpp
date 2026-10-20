@@ -99,7 +99,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     clock.completed_ticks = 5;
     clock.tick_loop.tick_rate = 4.0;
     auto const laser_snapshot{telemetry_manager.make_snapshot()};
-    EXPECT_DOUBLE_EQ(laser_snapshot.elapsed_seconds, 1.25);
+    EXPECT_DOUBLE_EQ(laser_snapshot.elapsed_seconds.get_seconds(), 1.25);
     EXPECT_EQ(laser_snapshot.active_lasers, 0);
     EXPECT_EQ(laser_snapshot.lasers_fired, 0);
     EXPECT_EQ(laser_snapshot.active_entity_count_data.last_time(), 5);
@@ -157,7 +157,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
 
     clock.tick_loop.tick_rate = 2.0;
     auto const entity_snapshot{telemetry_manager.make_snapshot()};
-    EXPECT_DOUBLE_EQ(entity_snapshot.elapsed_seconds, 1.5);
+    EXPECT_DOUBLE_EQ(entity_snapshot.elapsed_seconds.get_seconds(), 1.5);
     EXPECT_EQ(entity_snapshot.spawned_entities, 3);
     EXPECT_EQ(entity_snapshot.active_entities, 3);
     EXPECT_EQ(entity_snapshot.destroyed_entities, 0);

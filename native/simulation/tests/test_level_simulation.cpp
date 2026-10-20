@@ -141,8 +141,6 @@ TEST(NativeSimulation, LevelSimFrameMemoryUsesAndReturnsGameMemoryBlock) {
 
 TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
     auto data{make_battle()};
-    data.telemetry_metadata.emplace();
-    data.telemetry_metadata->run_id = "completion-test";
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
@@ -157,7 +155,6 @@ TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
     ASSERT_TRUE(record.has_value()) << "Completion yields a telemetry record";
     EXPECT_EQ(record->completion.reason, LevelTelemetryRunEndReason::DurationReached)
         << "Completion reason is retained";
-    EXPECT_FALSE(record->completion.interrupted) << "Explicit completion is not interruption";
     EXPECT_TRUE(record->completion.winning_team == std::optional{Team::Green})
         << "Winning team is retained";
     EXPECT_EQ(record->completion.completed_ticks, std::uint64_t{1})
@@ -202,7 +199,6 @@ TEST(NativeSimulation, LevelTelemetryMissionCompletionTest) {
     ASSERT_TRUE(record.has_value()) << "Taking the mission result finalizes telemetry";
     EXPECT_EQ(record->completion.reason, LevelTelemetryRunEndReason::MissionSucceeded)
         << "Mission success selects the telemetry completion reason";
-    EXPECT_FALSE(record->completion.interrupted) << "Mission completion is not interrupted";
     ASSERT_TRUE(record->completion.mission_state.has_value()) << "Mission state is present";
     EXPECT_EQ(record->completion.mission_state.value(), MissionState::Succeeded)
         << "Mission state is retained";
@@ -555,8 +551,9 @@ TEST(NativeSimulation, WorldlessLevelSimulationTest) {
     second.finish_initialisation();
     EXPECT_EQ(first.get_state(), OrchestratorState::Paused)
         << "Finishing initialization pauses the simulation";
-    EXPECT_FALSE(first.get_level_telemetry_manager().is_run_recording())
-        << "No run is started without metadata";
+    EXPECT_EQ(first.get_level_telemetry_manager().get_state(),
+              LevelTelemetryManager::State::Recording)
+        << "Default metadata permits telemetry recording";
     first.pause();
     first.pause();
     EXPECT_TRUE(first.get_player_ship_simulation() == nullptr) << "No player is needed";
@@ -596,31 +593,34 @@ TEST(NativeSimulation, WorldlessLevelSimulationTest) {
 TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
 
     auto data{make_battle()};
-    data.telemetry_metadata = LevelTelemetryRunMetadata{
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
+    simulation.set_telemetry_metadata(LevelTelemetryRunMetadata{
         .run_id = "12345678-1234-1234-1234-123456789abc",
         .map_name = "TelemetryTest",
         .level_id = "telemetry-test",
         .level_display_name = "Telemetry Test",
         .launched_utc = "2026-09-06T12:00:00Z",
-    };
-    GameMemory simulation_memory;
-    LevelSim simulation{simulation_memory, std::move(data)};
-    EXPECT_FALSE(simulation.get_level_telemetry_manager().is_run_recording())
-        << "Construction does not start telemetry recording";
+    });
+    EXPECT_EQ(simulation.get_level_telemetry_manager().get_state(),
+              LevelTelemetryManager::State::Uninitialised)
+        << "Metadata configuration waits for initialisation";
     simulation.finish_initialisation();
-    EXPECT_TRUE(simulation.get_level_telemetry_manager().is_run_recording() &&
-                simulation.get_state() == OrchestratorState::Paused)
-        << "Finishing starts telemetry while still paused";
+    EXPECT_EQ(simulation.get_level_telemetry_manager().get_state(),
+              LevelTelemetryManager::State::Recording)
+        << "Finishing starts telemetry";
+    EXPECT_EQ(simulation.get_state(), OrchestratorState::Paused)
+        << "Finishing leaves the simulation paused";
     simulation.start();
 
     auto const& telemetry{simulation.get_level_telemetry_manager()};
-    EXPECT_TRUE(telemetry.is_run_recording())
+    EXPECT_EQ(telemetry.get_state(), LevelTelemetryManager::State::Recording)
         << "Simulation initialization starts telemetry recording";
 
     simulation.advance(1.0);
     simulation.set_time_scale(4.0);
     simulation.advance(simulation.get_clock().get_tick_period());
-    simulation.finalize_telemetry_run(LevelTelemetryRunEndReason::WorldEnd, "test");
+    simulation.finalize_telemetry_run(LevelTelemetryRunEndReason::WorldEnd);
     EXPECT_EQ(simulation.get_state(), OrchestratorState::Running)
         << "Interrupted telemetry finalization does not pause simulation";
 
@@ -636,9 +636,10 @@ TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
     ASSERT_GE(battle.size(), 3);
     EXPECT_EQ(battle.front().completed_tick, SimTick{0});
     EXPECT_EQ(battle.back().completed_tick, simulation.get_clock().get_completed_ticks());
-    EXPECT_DOUBLE_EQ(battle.back().simulated_elapsed_seconds,
+    EXPECT_DOUBLE_EQ(static_cast<double>(battle.back().completed_tick) /
+                         record->tick_rate_hz.get_hz(),
                      simulation.get_clock().get_simulation_time());
-    EXPECT_DOUBLE_EQ(record->metadata.initial_requested_time_scale, 1.0);
+    EXPECT_DOUBLE_EQ(record->tick_rate_hz.get_hz(), simulation.get_clock().get_tick_rate());
 
     auto const& series{record->tick_series};
     EXPECT_EQ(series.active_entities.num(), 1) << "An unchanged entity count is only stored once";
