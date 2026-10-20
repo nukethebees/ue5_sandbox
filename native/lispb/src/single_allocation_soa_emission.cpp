@@ -29,6 +29,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <initializer_list>
 #include <map>
 #include <optional>
 #include <span>
@@ -71,6 +72,42 @@ auto inline_function(LoweringContext& context, FunctionId spec) -> NodeId {
 auto compact_function(LoweringContext& context, FunctionId spec) -> NodeId {
     context.ir.function_formatting(spec).body_layout = FunctionBodyLayout::compact;
     return inline_function(context, spec);
+}
+
+// Accept braced bodies and existing node ranges without copying them.
+template <typename Body = std::initializer_list<NodeId>>
+auto make_function(CppIR& ir,
+                   std::string_view name,
+                   std::string_view return_type,
+                   std::initializer_list<FunctionParameterId> parameters,
+                   Body const& body,
+                   FunctionReceiver receiver = FunctionReceiver::unqualified,
+                   ReturnSyntax syntax = ReturnSyntax::direct) -> FunctionId {
+    auto const function{ir.function(name, return_type)};
+    ir.set_function_parameters(function, parameters);
+    ir.set_function_body(function, body);
+    ir.set_function_receiver(function, receiver);
+    if (syntax == ReturnSyntax::trailing) {
+        ir.set_function_return_type(function, ir.function_return_type(function), syntax);
+    }
+    return function;
+}
+
+void set_source_template(LoweringContext& context,
+                         SingleAllocationModelId model,
+                         FunctionId function) {
+    auto& ir{context.ir};
+    auto const& models{ir.lowering.single_allocation_models};
+    ir.set_function_template(
+        function,
+        ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Columns"))}));
+    ir.set_function_requires_clause(
+        function,
+        ir.template_id(ir.named("ioj::soa_storage_detail::SoaSourceFor"),
+                       {ir.type_reference(ir.types.intern("Columns")),
+                        ir.type_reference(
+                            ir.types.intern(context.text(models.owner_name[models.index(model)]))),
+                        ir.type_reference(ir.types.intern("size_type"))}));
 }
 
 auto column_access(LoweringContext& context,
@@ -205,26 +242,23 @@ auto data_pointers_node(LoweringContext& context, SingleAllocationModelId model)
             ir.named(context.text(column_store.flattened_identifier[column_store.index(column)])),
             ir.named("offset")));
     }
-    children.new_lines(1).add(inline_function(context, [&] {
-        auto const created_function{ir.function("operator+", "auto")};
-        ir.set_function_parameters(created_function, {ir.parameter("size_type const", "offset")});
-        ir.set_function_body(
-            created_function,
-            {ir.if_stmt(
-                 ir.binary(
-                     BinaryOperator::equal,
-                     ir.named(context.text(column_store.flattened_identifier[column_store.index(
-                         context.ir.lowering.items(model_store.columns[model_store_index])
-                             .front())])),
-                     ir.literal("nullptr")),
-                 ir.block({ir.return_stmt(ir.init_list({}))})),
-             ir.return_stmt(ir.init_list(std::move(shifted_columns)))});
-        ir.set_function_return_type(
-            created_function, ir.types.intern("DataPointers"), ReturnSyntax::trailing);
-        ir.set_function_receiver(created_function, FunctionReceiver::const_);
-        ir.set_function_noexcept(created_function);
-        return created_function;
-    }()));
+    auto const offset_operator{make_function(
+        ir,
+        "operator+",
+        "DataPointers",
+        {ir.parameter("size_type const", "offset")},
+        {ir.if_stmt(
+             ir.binary(
+                 BinaryOperator::equal,
+                 ir.named(context.text(column_store.flattened_identifier[column_store.index(
+                     context.ir.lowering.items(model_store.columns[model_store_index]).front())])),
+                 ir.literal("nullptr")),
+             ir.block({ir.return_stmt(ir.init_list({}))})),
+         ir.return_stmt(ir.init_list(std::move(shifted_columns)))},
+        FunctionReceiver::const_,
+        ReturnSyntax::trailing)};
+    ir.set_function_noexcept(offset_operator);
+    children.new_lines(1).add(inline_function(context, offset_operator));
     auto const created_record{
         ir.record(ir.strings.intern("DataPointers"), children.build(), RecordKind::struct_)};
     ir.set_record_template(
@@ -351,14 +385,13 @@ auto default_construction_node(LoweringContext& context, SingleAllocationModelId
                  context.text(column_store.flattened_identifier[column_store.index(column)])),
              ir.named("count")})));
     }
-    return inline_function(context, [&] {
-        auto const created_function{ir.function("default_construct_columns", "void")};
-        ir.set_function_parameters(
-            created_function,
-            {ir.parameter("size_type const", "first"), ir.parameter("size_type const", "count")});
-        ir.set_function_body(created_function, body.build());
-        return created_function;
-    }());
+    return inline_function(context,
+                           make_function(ir,
+                                         "default_construct_columns",
+                                         "void",
+                                         {ir.parameter("size_type const", "first"),
+                                          ir.parameter("size_type const", "count")},
+                                         body.build()));
 }
 
 auto column_copying_nodes(LoweringContext& context, SingleAllocationModelId model) -> Nodes {
@@ -366,20 +399,17 @@ auto column_copying_nodes(LoweringContext& context, SingleAllocationModelId mode
     auto const model_store_index{model_store.index(model)};
     auto& column_store{context.ir.lowering.single_allocation_columns};
     auto& ir{context.ir};
-    auto swap_remove{compact_function(context, [&] {
-        auto const created_function{ir.function("swap_remove_columns", "void")};
-        ir.set_function_parameters(created_function,
-                                   {ir.parameter("size_type const", "index"),
-                                    ir.parameter("size_type const", "source"),
-                                    ir.parameter("size_type const", "move_count")});
-        ir.set_function_body(created_function,
-                             {ir.expr_stmt(ir.call(ir.named("copy_columns"),
-                                                   {ir.call(ir.named("get_data")),
-                                                    ir.named("index"),
-                                                    ir.named("source"),
-                                                    ir.named("move_count")}))});
-        return created_function;
-    }())};
+    auto const swap_remove{make_function(ir,
+                                         "swap_remove_columns",
+                                         "void",
+                                         {ir.parameter("size_type const", "index"),
+                                          ir.parameter("size_type const", "source"),
+                                          ir.parameter("size_type const", "move_count")},
+                                         {ir.expr_stmt(ir.call(ir.named("copy_columns"),
+                                                               {ir.call(ir.named("get_data")),
+                                                                ir.named("index"),
+                                                                ir.named("source"),
+                                                                ir.named("move_count")}))})};
 
     NodeListBuilder copy_body{ir};
     copy_body.add(ir.raw("auto transfer = [count](auto* dst, auto const* src) {\n    " +
@@ -395,48 +425,45 @@ auto column_copying_nodes(LoweringContext& context, SingleAllocationModelId mode
                  ir.named("source"),
                  context.text(column_store.flattened_identifier[column_store.index(column)]))})));
     }
-    auto transfer{inline_function(context, [&] {
-        auto const created_function{ir.function("transfer_columns", "void")};
-        ir.set_function_parameters(created_function,
-                                   {ir.parameter("DataPointers<std::byte> const&", "destination"),
-                                    ir.parameter("DataPointers<Byte> const&", "source"),
-                                    ir.parameter("size_type", "count")});
-        ir.set_function_body(created_function, copy_body.build());
-        ir.set_function_receiver(created_function, FunctionReceiver::static_);
-        ir.set_function_template(
-            created_function,
-            ir.template_declaration({ir.value_template_parameter(ir.types.intern("bool"),
-                                                                 ir.strings.intern("Overlapping")),
-                                     ir.type_template_parameter(ir.strings.intern("Byte"))}));
-        return created_function;
-    }())};
-    auto copy{compact_function(context, [&] {
-        auto const created_function{ir.function("copy_columns", "void")};
-        ir.set_function_parameters(created_function,
-                                   {ir.parameter("DataPointers<std::byte> const&", "columns"),
-                                    ir.parameter("size_type", "index"),
-                                    ir.parameter("size_type", "source"),
-                                    ir.parameter("size_type", "move_count")});
-        ir.set_function_body(
-            created_function,
-            {ir.raw("transfer_columns<false>(columns + index, columns + source, move_count);")});
-        ir.set_function_receiver(created_function, FunctionReceiver::static_);
-        return created_function;
-    }())};
+    auto const transfer{
+        make_function(ir,
+                      "transfer_columns",
+                      "void",
+                      {ir.parameter("DataPointers<std::byte> const&", "destination"),
+                       ir.parameter("DataPointers<Byte> const&", "source"),
+                       ir.parameter("size_type", "count")},
+                      copy_body.build(),
+                      FunctionReceiver::static_)};
+    ir.set_function_template(
+        transfer,
+        ir.template_declaration(
+            {ir.value_template_parameter(ir.types.intern("bool"), ir.strings.intern("Overlapping")),
+             ir.type_template_parameter(ir.strings.intern("Byte"))}));
+    auto const copy{make_function(
+        ir,
+        "copy_columns",
+        "void",
+        {ir.parameter("DataPointers<std::byte> const&", "columns"),
+         ir.parameter("size_type", "index"),
+         ir.parameter("size_type", "source"),
+         ir.parameter("size_type", "move_count")},
+        {ir.raw("transfer_columns<false>(columns + index, columns + source, move_count);")},
+        FunctionReceiver::static_)};
 
-    auto remove_indices{inline_function(context, [&] {
-        auto const created_function{ir.function("swap_remove_indices", "void")};
-        ir.set_function_parameters(created_function,
-                                   {ir.parameter("std::span<size_type const>", "indices")});
-        ir.set_function_body(created_function,
-                             {ir.variable("auto const", "columns", ir.call(ir.named("get_data"))),
-                              ir.expr_stmt(ir.raw_expr(
-                                  "ioj::soa_storage_detail::for_each_removal_run(num_, indices, "
+    auto const remove_indices{make_function(
+        ir,
+        "swap_remove_indices",
+        "void",
+        {ir.parameter("std::span<size_type const>", "indices")},
+        {ir.variable("auto const", "columns", ir.call(ir.named("get_data"))),
+         ir.expr_stmt(ir.raw_expr("ioj::soa_storage_detail::for_each_removal_run(num_, indices, "
                                   "[&](size_type index, size_type source, size_type count) { "
-                                  "copy_columns(columns, index, source, count); })"))});
-        return created_function;
-    }())};
-    return adjacent(context, {transfer, swap_remove, copy, remove_indices});
+                                  "copy_columns(columns, index, source, count); })"))})};
+    return adjacent(context,
+                    {inline_function(context, transfer),
+                     compact_function(context, swap_remove),
+                     compact_function(context, copy),
+                     inline_function(context, remove_indices)});
 }
 
 auto source_pointers_node(LoweringContext& context, SingleAllocationModelId model) -> NodeId {
@@ -459,57 +486,33 @@ auto source_pointers_node(LoweringContext& context, SingleAllocationModelId mode
                                    body)}));
     }
     body.add(ir.return_stmt(ir.init_list(std::move(pointers))));
-    return inline_function(context, [&] {
-        auto const created_function{ir.function("source_pointers", "auto")};
-        ir.set_function_parameters(created_function, {ir.parameter("Columns const&", "source")});
-        ir.set_function_body(created_function, body.build());
-        ir.set_function_return_type(created_function,
-                                    ir.types.intern("DataPointers<std::byte const>"),
-                                    ReturnSyntax::trailing);
-        ir.set_function_receiver(created_function, FunctionReceiver::static_);
-        ir.set_function_template(
-            created_function,
-            ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Columns"))}));
-        ir.set_function_requires_clause(
-            created_function,
-            ir.template_id(ir.named("ioj::soa_storage_detail::SoaSourceFor"),
-                           {ir.type_reference(ir.types.intern("Columns")),
-                            ir.type_reference(ir.types.intern(
-                                context.text(model_store.owner_name[model_store_index]))),
-                            ir.type_reference(ir.types.intern("size_type"))}));
-        return created_function;
-    }());
+    auto const function{make_function(ir,
+                                      "source_pointers",
+                                      "DataPointers<std::byte const>",
+                                      {ir.parameter("Columns const&", "source")},
+                                      body.build(),
+                                      FunctionReceiver::static_,
+                                      ReturnSyntax::trailing)};
+    set_source_template(context, model, function);
+    return inline_function(context, function);
 }
 
 auto source_copy_node(LoweringContext& context,
                       SingleAllocationModelId model,
                       bool const overlapping) -> NodeId {
-    auto& model_store{context.ir.lowering.single_allocation_models};
     auto& ir{context.ir};
-    return inline_function(context, [&] {
-        auto const created_function{
-            ir.function(overlapping ? "copy_columns_from" : "append_columns", "void")};
-        ir.set_function_parameters(created_function,
-                                   {ir.parameter("Columns const&", "source"),
-                                    ir.parameter("size_type", "source_first"),
-                                    ir.parameter("size_type", "first"),
-                                    ir.parameter("size_type", "count")});
-        ir.set_function_body(
-            created_function,
-            {ir.raw(std::string{"transfer_columns<"} + (overlapping ? "true" : "false") +
-                    ">(get_data(first), source_pointers(source) + source_first, count);")});
-        ir.set_function_template(
-            created_function,
-            ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Columns"))}));
-        ir.set_function_requires_clause(
-            created_function,
-            ir.template_id(ir.named("ioj::soa_storage_detail::SoaSourceFor"),
-                           {ir.type_reference(ir.types.intern("Columns")),
-                            ir.type_reference(ir.types.intern(
-                                context.text(model_store.owner_name[model_store.index(model)]))),
-                            ir.type_reference(ir.types.intern("size_type"))}));
-        return created_function;
-    }());
+    auto const function{make_function(
+        ir,
+        overlapping ? "copy_columns_from" : "append_columns",
+        "void",
+        {ir.parameter("Columns const&", "source"),
+         ir.parameter("size_type", "source_first"),
+         ir.parameter("size_type", "first"),
+         ir.parameter("size_type", "count")},
+        {ir.raw(std::string{"transfer_columns<"} + (overlapping ? "true" : "false") +
+                ">(get_data(first), source_pointers(source) + source_first, count);")})};
+    set_source_template(context, model, function);
+    return inline_function(context, function);
 }
 
 auto live_column_copy_node(LoweringContext& context) -> NodeId {
@@ -534,15 +537,14 @@ auto live_column_copy_node(LoweringContext& context) -> NodeId {
         ir.call(ir.named("make_data_unchecked"), {ir.named("new_data"), ir.named("new_blocks")})));
     copy_live.add(ir.raw("transfer_columns<false>(destination, source, num_);"));
 
-    return inline_function(context, [&] {
-        auto const created_function{ir.function("copy_live_columns", "void")};
-        ir.set_function_parameters(created_function,
-                                   {ir.parameter("std::byte* const", "new_data"),
-                                    ir.parameter("size_type const", "new_capacity")});
-        ir.set_function_body(created_function, copy_live.build());
-        ir.set_function_noexcept(created_function);
-        return created_function;
-    }());
+    auto const function{make_function(ir,
+                                      "copy_live_columns",
+                                      "void",
+                                      {ir.parameter("std::byte* const", "new_data"),
+                                       ir.parameter("size_type const", "new_capacity")},
+                                      copy_live.build())};
+    ir.set_function_noexcept(function);
+    return inline_function(context, function);
 }
 
 auto nested_view(LoweringContext& context,
@@ -587,6 +589,32 @@ auto compact_view_node(LoweringContext& context,
     auto& ir{context.ir};
     auto const model{view_store.model[view_store_index]};
     auto const name{context.text(view_store.view_name[view_store_index]) + "Impl"};
+    auto const default_constructor{ir.constructor(ir.strings.intern(name))};
+    ir.set_function_defaulted(default_constructor);
+    auto constructor = [&](std::initializer_list<FunctionParameterId> parameters,
+                           std::initializer_list<MemberInitializerId> initializers) {
+        auto const function{ir.constructor(ir.strings.intern(name))};
+        ir.set_function_parameters(function, parameters);
+        ir.set_function_body(function, {}, initializers);
+        return function;
+    };
+    auto const state_constructor{
+        constructor({ir.parameter("State*", "state"),
+                     ir.parameter("size_type", "offset"),
+                     ir.parameter("size_type", "count")},
+                    {ir.member_initializer(ir.strings.intern("state_"), ir.store_text("state")),
+                     ir.member_initializer(ir.strings.intern("offset_"), ir.store_text("offset")),
+                     ir.member_initializer(ir.strings.intern("count_"), ir.store_text("count"))})};
+    auto const conversion_constructor{constructor(
+        {ir.parameter(name + "<false> const&", "other")},
+        {ir.member_initializer(ir.strings.intern("state_"), ir.store_text("other.state_")),
+         ir.member_initializer(ir.strings.intern("offset_"), ir.store_text("other.offset_")),
+         ir.member_initializer(ir.strings.intern("count_"), ir.store_text("other.count_"))})};
+    ir.set_function_template(
+        conversion_constructor,
+        ir.template_declaration({ir.value_template_parameter(
+            ir.types.intern("bool"), ir.strings.intern("Enabled"), ir.named("Const"))}));
+    ir.set_function_requires_clause(conversion_constructor, ir.named("Enabled"));
     NodeListBuilder children{ir};
     children.append(adjacent(
         context,
@@ -617,52 +645,25 @@ auto compact_view_node(LoweringContext& context,
          ir.using_declaration(
              ir.strings.intern("ConstView"),
              ir.types.intern(context.text(view_store.const_view_name[view_store_index]))),
-         ir.declaration([&] {
-             auto const created_function{ir.constructor(ir.strings.intern(name))};
-             ir.set_function_defaulted(created_function);
-             return created_function;
-         }()),
-         inline_function(context,
-                         [&] {
-                             auto const created_function{ir.constructor(ir.strings.intern(name))};
-                             ir.set_function_parameters(created_function,
-                                                        {ir.parameter("State*", "state"),
-                                                         ir.parameter("size_type", "offset"),
-                                                         ir.parameter("size_type", "count")});
-                             ir.set_function_body(
-                                 created_function,
-                                 {},
-                                 {ir.member_initializer(ir.strings.intern("state_"),
-                                                        ir.store_text("state")),
-                                  ir.member_initializer(ir.strings.intern("offset_"),
-                                                        ir.store_text("offset")),
-                                  ir.member_initializer(ir.strings.intern("count_"),
-                                                        ir.store_text("count"))});
-                             return created_function;
-                         }()),
-         inline_function(context, [&] {
-             auto const created_function{ir.constructor(ir.strings.intern(name))};
-             ir.set_function_parameters(created_function,
-                                        {ir.parameter(name + "<false> const&", "other")});
-             ir.set_function_template(
-                 created_function,
-                 ir.template_declaration({ir.value_template_parameter(
-                     ir.types.intern("bool"), ir.strings.intern("Enabled"), ir.named("Const"))}));
-             ir.set_function_requires_clause(created_function, ir.named("Enabled"));
-             ir.set_function_body(
-                 created_function,
-                 {},
-                 {ir.member_initializer(ir.strings.intern("state_"), ir.store_text("other.state_")),
-                  ir.member_initializer(ir.strings.intern("offset_"),
-                                        ir.store_text("other.offset_")),
-                  ir.member_initializer(ir.strings.intern("count_"),
-                                        ir.store_text("other.count_"))});
-             return created_function;
-         }())}));
+         ir.declaration(default_constructor),
+         inline_function(context, state_constructor),
+         inline_function(context, conversion_constructor)}));
+    auto accessor = [&](std::string_view function_name,
+                        std::initializer_list<NodeId> body,
+                        CppTypeId return_type = {}) {
+        auto const function{
+            make_function(ir, function_name, "auto", {}, body, FunctionReceiver::const_)};
+        if (return_type.value != 0) {
+            ir.set_function_return_type(function, return_type, ReturnSyntax::trailing);
+        }
+        children.new_lines(1).add(compact_function(context, function));
+    };
     for (auto const member_id : context.declarations.items(
              context.declarations.soas
                  .members[context.declarations.soas.index(view_store.schema[view_store_index])])) {
         auto const member{member_id};
+        auto const member_name{context.text(
+            context.declarations.soa_members.name[context.declarations.soa_members.index(member)])};
         auto const path{ir.lowering.paths.append(
             view_store.member_prefix[view_store_index],
             context.declarations.soa_members.name[context.declarations.soa_members.index(member)])};
@@ -671,27 +672,14 @@ auto compact_view_node(LoweringContext& context,
             auto const vector{compact_vector_for(context, model, path)};
             if (vector.value == 0) {
                 auto const nested{nested_view(context, view, member, schemas)};
-                children.new_lines(1).add(compact_function(context, [&] {
-                    auto const created_function{ir.function(
-                        "view_" +
-                            context.text(context.declarations.soa_members
-                                             .name[context.declarations.soa_members.index(member)]),
-                        "auto")};
-                    ir.set_function_body(
-                        created_function,
-                        {ir.return_stmt(ir.init_list(
-                            {ir.named("state_"), ir.named("offset_"), ir.named("count_")}))});
-                    ir.set_function_return_type(
-                        created_function,
-                        ir.types.intern(
-                            "std::conditional_t<Const, " +
-                            context.text(view_store.const_view_name[view_store.index(nested)]) +
-                            ", " + context.text(view_store.view_name[view_store.index(nested)]) +
-                            ">"),
-                        ReturnSyntax::trailing);
-                    ir.set_function_receiver(created_function, FunctionReceiver::const_);
-                    return created_function;
-                }()));
+                accessor("view_" + member_name,
+                         {ir.return_stmt(ir.init_list(
+                             {ir.named("state_"), ir.named("offset_"), ir.named("count_")}))},
+                         ir.types.intern(
+                             "std::conditional_t<Const, " +
+                             context.text(view_store.const_view_name[view_store.index(nested)]) +
+                             ", " + context.text(view_store.view_name[view_store.index(nested)]) +
+                             ">"));
                 continue;
             }
 
@@ -737,45 +725,25 @@ auto compact_view_node(LoweringContext& context,
                              context.text(column_store.layout_identifier[column_store.index(
                                  column_for(context, model, component_path))])));
             }
-            children.new_lines(1).add(compact_function(context, [&] {
-                auto const created_function{ir.function(
-                    "view_" +
-                        context.text(context.declarations.soa_members
-                                         .name[context.declarations.soa_members.index(member)]),
-                    "auto")};
-                ir.set_function_body(
-                    created_function,
-                    {ir.raw(std::string{"using ioj::soa_storage_detail::"} +
-                            (pointer_view ? "three_column_view;" : "strided_vector_view;")),
-                     ir.return_stmt(
-                         ir.call(ir.named(std::string{pointer_view ? "three_column_view<"
-                                                                   : "strided_vector_view<"} +
-                                              std::string{ir.types.spelling(view_type)} + ">",
-                                          ir.types.dependencies(view_type)),
-                                 std::move(arguments)))});
-                ir.set_function_receiver(created_function, FunctionReceiver::const_);
-                return created_function;
-            }()));
+            accessor("view_" + member_name,
+                     {ir.raw(std::string{"using ioj::soa_storage_detail::"} +
+                             (pointer_view ? "three_column_view;" : "strided_vector_view;")),
+                      ir.return_stmt(
+                          ir.call(ir.named(std::string{pointer_view ? "three_column_view<"
+                                                                    : "strided_vector_view<"} +
+                                               std::string{ir.types.spelling(view_type)} + ">",
+                                           ir.types.dependencies(view_type)),
+                                  std::move(arguments)))});
         } else {
             auto const column{column_for(context, model, path)};
-            children.new_lines(1).add(compact_function(context, [&] {
-                auto const created_function{
-                    ir.function(context.declarations.soa_members
-                                    .name[context.declarations.soa_members.index(member)],
-                                ir.types.intern("auto"))};
-                ir.set_function_body(
-                    created_function,
-                    {ir.return_stmt(ir.call(
-                        ir.named(
-                            "make_column_view",
-                            ir.types.dependencies(column_store.type[column_store.index(column)])),
-                        {ir.named(
-                            "Layout::columns." +
-                            context.text(
-                                column_store.layout_identifier[column_store.index(column)]))}))});
-                ir.set_function_receiver(created_function, FunctionReceiver::const_);
-                return created_function;
-            }()));
+            accessor(
+                member_name,
+                {ir.return_stmt(ir.call(
+                    ir.named("make_column_view",
+                             ir.types.dependencies(column_store.type[column_store.index(column)])),
+                    {ir.named("Layout::columns." +
+                              context.text(
+                                  column_store.layout_identifier[column_store.index(column)]))}))});
         }
     }
     NodeListBuilder body{ir};
@@ -809,53 +777,41 @@ auto compact_view_node(LoweringContext& context,
             ir.named("std::forward<Func>(func)", {ir.types.dependency("std::forward", "utility")}),
             std::move(arguments))));
     }
-    children.new_lines(1).add(compact_function(context, [&] {
-        auto const created_function{ir.function(
-            model_store.column_iteration_function[model_store.index(model)],
-            ir.types.intern(model_store.column_iteration_returns_result[model_store.index(model)]
-                                ? "auto"
-                                : "void"))};
-        ir.set_function_parameters(created_function, {ir.parameter("Func&&", "func")});
-        ir.set_function_body(created_function, body.build());
-        if (model_store.column_iteration_returns_result[model_store.index(model)]) {
-            ir.set_function_return_type(
-                created_function, ir.types.intern("decltype(auto)"), ReturnSyntax::trailing);
-        }
-        ir.set_function_receiver(created_function, FunctionReceiver::const_);
-        ir.set_function_template(
-            created_function,
-            ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Func"))}));
-        return created_function;
-    }()));
+    auto const iteration{make_function(
+        ir,
+        context.text(model_store.column_iteration_function[model_store.index(model)]),
+        model_store.column_iteration_returns_result[model_store.index(model)] ? "auto" : "void",
+        {ir.parameter("Func&&", "func")},
+        body.build(),
+        FunctionReceiver::const_)};
+    if (model_store.column_iteration_returns_result[model_store.index(model)]) {
+        ir.set_function_return_type(
+            iteration, ir.types.intern("decltype(auto)"), ReturnSyntax::trailing);
+    }
+    ir.set_function_template(
+        iteration,
+        ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Func"))}));
+    children.new_lines(1).add(compact_function(context, iteration));
+    auto const make_column_view{make_function(
+        ir,
+        "make_column_view",
+        "auto",
+        {ir.parameter(context.text(model_store.runtime_namespace[model_store.index(model)]) +
+                          "ColumnLayout<T> const&",
+                      "layout")},
+        {ir.return_stmt(ir.call(
+            ir.named("ioj::soa_storage_detail::column_view<" +
+                     context.text(model_store.span_template[model_store.index(model)]) +
+                     "<Element<T>>>"),
+            {ir.named("state_"), ir.named("offset_"), ir.named("count_"), ir.named("layout")}))},
+        FunctionReceiver::const_)};
+    ir.set_function_template(
+        make_column_view,
+        ir.template_declaration({ir.type_template_parameter(ir.strings.intern("T"))}));
     children.new_lines(1)
         .add(ir.access(Access::private_))
         .new_lines(1)
-        .add(compact_function(
-            context,
-            [&] {
-                auto const created_function{ir.function("make_column_view", "auto")};
-                ir.set_function_parameters(
-                    created_function,
-                    {ir.parameter(
-                        context.text(model_store.runtime_namespace[model_store.index(model)]) +
-                            "ColumnLayout<T> const&",
-                        "layout")});
-                ir.set_function_body(
-                    created_function,
-                    {ir.return_stmt(ir.call(
-                        ir.named("ioj::soa_storage_detail::column_view<" +
-                                 context.text(model_store.span_template[model_store.index(model)]) +
-                                 "<Element<T>>>"),
-                        {ir.named("state_"),
-                         ir.named("offset_"),
-                         ir.named("count_"),
-                         ir.named("layout")}))});
-                ir.set_function_receiver(created_function, FunctionReceiver::const_);
-                ir.set_function_template(
-                    created_function,
-                    ir.template_declaration({ir.type_template_parameter(ir.strings.intern("T"))}));
-                return created_function;
-            }()))
+        .add(compact_function(context, make_column_view))
         .new_lines(1)
         .add(ir.friend_type(ir.types.intern("ioj::soa_storage_detail::CompactViewOperations")))
         .new_lines(1)
@@ -940,6 +896,16 @@ auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationMod
         "columns." +
         context.text(column_store.layout_identifier[column_store.index(
             context.ir.lowering.items(model_store.columns[model_store_index]).back())])};
+    auto const layout_bytes{make_function(
+        ir,
+        "layout_bytes",
+        "byte_size_type",
+        {ir.parameter("byte_size_type", "blocks")},
+        {ir.return_stmt(ir.raw_expr("blocks == 0 ? 0 : " + last_column + ".data_end(blocks)"))},
+        FunctionReceiver::static_,
+        ReturnSyntax::trailing)};
+    ir.set_function_noexcept(layout_bytes);
+    ir.function_flags(layout_bytes).set_is_constexpr(true);
     NodeListBuilder children{ir};
     children
         .append(adjacent(context,
@@ -992,24 +958,7 @@ auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationMod
                         ir.named(context.text(model_store.runtime_namespace[model_store_index]) +
                                  "maximum_capacity"),
                         {ir.named("capacity_block_bound")})),
-                inline_function(
-                    context,
-                    [&] {
-                        auto const created_function{ir.function("layout_bytes", "auto")};
-                        ir.set_function_parameters(created_function,
-                                                   {ir.parameter("byte_size_type", "blocks")});
-                        ir.set_function_body(
-                            created_function,
-                            {ir.return_stmt(ir.raw_expr("blocks == 0 ? 0 : " + last_column +
-                                                        ".data_end(blocks)"))});
-                        ir.set_function_return_type(created_function,
-                                                    ir.types.intern("byte_size_type"),
-                                                    ReturnSyntax::trailing);
-                        ir.set_function_noexcept(created_function);
-                        ir.set_function_receiver(created_function, FunctionReceiver::static_);
-                        ir.function_flags(created_function).set_is_constexpr(true);
-                        return created_function;
-                    }()),
+                inline_function(context, layout_bytes),
             }))
         .new_lines(1)
         .add(ir.static_assertion(ir.store_text("max_capacity >= capacity_granularity"), {}));
