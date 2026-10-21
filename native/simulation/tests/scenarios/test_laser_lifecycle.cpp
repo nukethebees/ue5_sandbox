@@ -43,9 +43,9 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
                                  ? low_target_health
                                  : normal_target_health);
     if (scenario == LaserLifecycleScenario::WorldBlocker) {
-        data.static_bounds.add_defaulted(1);
+        data.collision.static_bounds.add_defaulted(1);
         collision::set(
-            data.static_bounds, 0, {{-1100.f, -100.f, -100.f}}, {{-900.f, 100.f, 100.f}});
+            data.collision.static_bounds, 0, {{-1100.f, -100.f, -100.f}}, {{-900.f, 100.f, 100.f}});
     }
 
     tests::WorldlessSimulationTest harness{std::move(data)};

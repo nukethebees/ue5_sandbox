@@ -22,7 +22,7 @@ struct FighterTransformSnapshot {
 auto make_long_running_battle() -> LevelSimInitData {
     LevelSimInitData data;
     data.clock_settings.tick_rate = 60.0;
-    data.grid_geometry = {{96, 96, 32}, {{2000.f, 2000.f, 5000.f}}};
+    data.collision.grid_geometry = {{96, 96, 32}, {{2000.f, 2000.f, 5000.f}}};
     data.lasers.n_preallocated_instances = 256;
     data.fighters.speed = 3000.f;
     data.fighters.laser.damage = 0;
@@ -50,7 +50,7 @@ auto make_long_running_battle() -> LevelSimInitData {
     data.level_events.schedule.capital_spawns.get_view().target_entity_indices()[0] = second;
 
     for (auto const type : EnumTraits<EntityType>::values) {
-        data.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
+        data.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
     return data;
 }

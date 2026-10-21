@@ -118,13 +118,14 @@ void run_worldless_collision_damage(tests::SimulationFixture const& config) {
     };
 
     auto data{tests::make_simulation_data(config)};
-    data.overlap_response.damage_per_overlap_detection = collision_damage_test::overlap_damage;
+    data.collision.overlap_response.damage_per_overlap_detection =
+        collision_damage_test::overlap_damage;
     data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     tests::add_player_spawn(data, tests::make_player_spawn(config));
     data.player->health = {collision_damage_test::player_health,
                            collision_damage_test::player_health};
-    data.entity_bounds.set_half_extents(EntityType::PlayerShip, {{1.f, 1.f, 1.f}});
+    data.collision.entity_bounds.set_half_extents(EntityType::PlayerShip, {{1.f, 1.f, 1.f}});
     tests::add_capital_spawn(data,
                              Vector3f{},
                              Team::White,

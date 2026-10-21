@@ -7,13 +7,13 @@ namespace ioj::sim::tests::fighter_membership_refresh {
 
 auto make_world() -> LevelSimInitData {
     LevelSimInitData data;
-    data.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
+    data.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
     data.lasers.n_preallocated_instances = 8;
     data.capital_ships.fighter_spawn_slots = 0;
     data.fighters.health = 100;
     data.fighters.speed = 0.f;
     data.fighters.laser.damage = 0;
-    data.overlap_response.damage_per_overlap_detection = 1;
+    data.collision.overlap_response.damage_per_overlap_detection = 1;
     data.participating_teams.add(Team::Green);
     data.participating_teams.add(Team::Red);
     add_capital_spawn(
@@ -23,7 +23,7 @@ auto make_world() -> LevelSimInitData {
     add_capital_spawn(
         data, {{2000.f, 0.f, 0.f}}, Team::Red, invalid_level_entity_index, 60.f, 60.f, 100);
     for (auto const type : EnumTraits<EntityType>::values) {
-        data.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
+        data.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
     return data;
 }

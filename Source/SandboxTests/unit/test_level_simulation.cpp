@@ -60,7 +60,7 @@ static_assert(
 namespace {
 auto make_battle() -> ::ioj::sim::LevelSimInitData {
     ::ioj::sim::LevelSimInitData data;
-    data.grid_geometry = {{16, 16, 4}, {1000.f, 1000.f, 1000.f}};
+    data.collision.grid_geometry = {{16, 16, 4}, {1000.f, 1000.f, 1000.f}};
     data.lasers.n_preallocated_instances = 16;
     data.capital_ships.fighter_spawn_slots = 0;
     auto& spawn_storage{data.level_events.schedule.capital_spawns};
@@ -83,7 +83,7 @@ auto make_battle() -> ::ioj::sim::LevelSimInitData {
     spawns.view_locations().xs()[1] = 1000.f;
     data.level_events.initialisation.entity_count = 2;
     for (auto const type : ioj::EnumTraits<::ioj::sim::EntityType>::values) {
-        data.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
+        data.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
     return data;
 }
@@ -424,7 +424,7 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     scheduled_spawns.view_locations().xs()[0] = -1000.f;
     scheduled_spawns.healths()[0] = 100;
     scheduled_battle.level_events.schedule.capital_spawns.get_view().healths()[0] = 10000;
-    scheduled_battle.overlap_response.damage_per_overlap_detection = 100;
+    scheduled_battle.collision.overlap_response.damage_per_overlap_detection = 100;
     ::ioj::sim::GameMemory simulation_memory;
     ::ioj::sim::LevelSim simulation{simulation_memory, MoveTemp(scheduled_battle)};
     simulation.finish_initialisation();

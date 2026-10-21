@@ -27,13 +27,13 @@ auto slot_for(player::FlightModelPreset const preset) -> player::FlightModelSlot
 
 auto make_data(player::FlightModelPreset const preset) -> LevelSimInitData {
     LevelSimInitData data;
-    data.grid_geometry = {{16, 16, 4}, {{100000.f, 100000.f, 100000.f}}};
+    data.collision.grid_geometry = {{16, 16, 4}, {{100000.f, 100000.f, 100000.f}}};
     data.lasers.n_preallocated_instances = 16;
     data.frame_memory_capacity_bytes = 1024 * 1024;
     data.capital_ships.fighter_spawn_slots = 0;
     data.clock_settings.tick_rate = 60.0;
     for (auto const type : EnumTraits<EntityType>::values) {
-        data.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
+        data.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
 
     player::PlayerSpawnData spawn{};

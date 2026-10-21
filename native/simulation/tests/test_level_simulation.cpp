@@ -49,7 +49,7 @@ static_assert(
 namespace {
 auto make_battle() -> LevelSimInitData {
     LevelSimInitData data;
-    data.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
+    data.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
     data.lasers.n_preallocated_instances = 16;
     data.capital_ships.fighter_spawn_slots = 0;
     add_capital_spawn(
@@ -57,19 +57,19 @@ auto make_battle() -> LevelSimInitData {
     add_capital_spawn(
         data, {{1000.f, 0.f, 0.f}}, Team::White, invalid_level_entity_index, 60.f, 60.f, 100);
     for (auto const type : EnumTraits<EntityType>::values) {
-        data.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
+        data.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
     return data;
 }
 
 auto make_overlap_response_battle() -> LevelSimInitData {
     auto data{make_battle()};
-    data.overlap_response.damage_per_overlap_detection = 50;
+    data.collision.overlap_response.damage_per_overlap_detection = 50;
     std::ranges::fill(data.level_events.schedule.capital_spawns.get_view().healths(), 5000);
     add_player_spawn(data, {});
     data.player->transform.location = {-1000.0, 0.0, 0.0};
     data.player->health = {150, 150};
-    data.entity_bounds.set_half_extents(EntityType::CapitalShip, {{100.f, 100.f, 100.f}});
+    data.collision.entity_bounds.set_half_extents(EntityType::CapitalShip, {{100.f, 100.f, 100.f}});
     return data;
 }
 

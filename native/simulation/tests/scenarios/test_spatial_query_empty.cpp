@@ -17,7 +17,7 @@ void run_worldless_spatial_query_empty(tests::SimulationFixture const& config) {
     auto data{tests::make_simulation_data(config)};
     tests::CollisionAgentStorage owners;
     SpatialQueryManager queries{owners.entity_tables};
-    queries.initialise(data.grid_geometry, data.entity_bounds);
+    queries.initialise(data.collision.grid_geometry, data.collision.entity_bounds);
     owners.publish();
     owners.refresh(queries);
     std::vector<EntityId> ids{};
@@ -50,7 +50,7 @@ void run_worldless_spatial_query_range(tests::SimulationFixture const& config) {
         owners.spawn(EntityType::CapitalShip, {{1000.f, 0.f, 0.f}}, {}, 100, Team::Red)};
     owners.spawn(EntityType::CapitalShip, {{1000.1f, 0.f, 0.f}}, {}, 100, Team::Red);
     SpatialQueryManager queries{owners.entity_tables};
-    queries.initialise(data.grid_geometry, data.entity_bounds);
+    queries.initialise(data.collision.grid_geometry, data.collision.entity_bounds);
     owners.publish();
     owners.refresh(queries);
     std::array<EntityId, 4> results;

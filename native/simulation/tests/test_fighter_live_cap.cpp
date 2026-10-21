@@ -38,9 +38,9 @@ auto make_cap_battle(std::span<Team const> const capital_teams,
                      std::int32_t const spawn_slots,
                      float const spawn_cooldown = 60.f) -> LevelSimInitData {
     LevelSimInitData data;
-    data.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
+    data.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
     data.lasers.n_preallocated_instances = 32;
-    data.overlap_response.damage_per_overlap_detection = 1;
+    data.collision.overlap_response.damage_per_overlap_detection = 1;
     data.fighters.health = 1000;
     data.fighters.max_live_fighters = max_live_fighters;
     for (auto const team : participating_teams) {
@@ -69,7 +69,7 @@ auto make_cap_battle(std::span<Team const> const capital_teams,
     }
 
     for (auto const type : EnumTraits<EntityType>::values) {
-        data.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
+        data.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
     return data;
 }

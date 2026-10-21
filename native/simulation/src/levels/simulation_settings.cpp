@@ -131,7 +131,7 @@ auto validate_settings(SimulationSettings const& settings)
 void apply_settings(SimulationSettings const& settings, LevelSimInitData& target) {
     target.clock_settings = settings.clock;
     target.lasers = settings.lasers;
-    target.overlap_response = settings.overlap_response;
+    target.collision.overlap_response = settings.overlap_response;
     target.fighters = settings.fighters;
 
     auto spawn_transforms{std::move(target.capital_ships.fighter_spawn_slots_relative_transforms)};
@@ -148,9 +148,10 @@ void apply_settings(SimulationSettings const& settings, LevelSimInitData& target
     target.spinners = settings.spinners;
     target.spinners.fire_point_offsets = std::move(spinner_fire_points);
 
-    target.grid_geometry = {collision::calculate_grid_dimensions(settings.collision_grid_size,
-                                                                 settings.collision_cell_size),
-                            settings.collision_cell_size};
+    target.collision.grid_geometry = {
+        collision::calculate_grid_dimensions(settings.collision_grid_size,
+                                             settings.collision_cell_size),
+        settings.collision_cell_size};
     if (target.player) {
         apply_settings(settings, *target.player);
     }

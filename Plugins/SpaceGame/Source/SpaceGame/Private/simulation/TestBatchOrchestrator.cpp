@@ -494,7 +494,7 @@ auto ATestBatchOrchestrator::initialise_simulation(USpaceGameLevelConfig const& 
         }
         result->fighter_diagnostics_enabled =
             ioj::fighter_diagnostics::enabled.GetValueOnGameThread() != 0;
-        grid_geometry = result->grid_geometry;
+        grid_geometry = result->collision.grid_geometry;
         level_simulation_.Emplace(game_subsystem->get_game_memory(), MoveTemp(result.value()));
         return true;
     }
@@ -531,7 +531,7 @@ auto ATestBatchOrchestrator::initialise_simulation(USpaceGameLevelConfig const& 
     }
     data.fighter_diagnostics_enabled =
         ioj::fighter_diagnostics::enabled.GetValueOnGameThread() != 0;
-    grid_geometry = data.grid_geometry;
+    grid_geometry = data.collision.grid_geometry;
     level_simulation_.Emplace(game_subsystem->get_game_memory(), MoveTemp(data));
     return true;
 }

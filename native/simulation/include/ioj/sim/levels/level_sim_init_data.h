@@ -3,10 +3,7 @@
 #include <ioj/sim/capital_ships/capital_ship_sim_config.h>
 #include <ioj/sim/collision/cell_coord.h>
 #include <ioj/sim/collision/cell_coord_bounds.h>
-#include <ioj/sim/collision/entity_aabbs.h>
-#include <ioj/sim/collision/grid_geometry.h>
-#include <ioj/sim/collision/overlap_response_config.h>
-#include <ioj/sim/collision/world_aabbs.h>
+#include <ioj/sim/collision/collision_init_data.h>
 #include <ioj/sim/entities/team_list.h>
 #include <ioj/sim/fighters/fighter_sim_config.h>
 #include <ioj/sim/fixed_tick_loop.h>
@@ -26,7 +23,6 @@ struct LevelSimInitData {
     FixedTickLoop clock_settings{};
 
     LaserSimConfig lasers;
-    OverlapResponseConfig overlap_response;
     CapitalShipSimConfig capital_ships;
     FighterSimConfig fighters;
     TurretSimConfig turrets;
@@ -37,9 +33,7 @@ struct LevelSimInitData {
     std::optional<player::PlayerSpawnData> player;
     CompiledLevelEvents level_events;
 
-    collision::EntityAABBs entity_bounds{};
-    collision::WorldAABBs static_bounds{};
-    collision::GridGeometry grid_geometry{{400, 400, 5}, Vector3f{5000.f, 5000.f, 20000.f}};
+    CollisionInitData collision;
 
     std::size_t frame_memory_capacity_bytes{256 * 1024 * 1024};
 

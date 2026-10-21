@@ -118,18 +118,18 @@ auto proxy_fits_collision_grid(AActor const& actor,
                                FLevelStartErrors& errors) -> bool {
     auto const transform{actor.GetActorTransform()};
     auto const bounds{sim::collision::make_entity_world_bounds(
-        data.entity_bounds,
+        data.collision.entity_bounds,
         type,
         to_native(FVector3f{transform.GetLocation()}),
         to_quaternion(to_native(FRotator3f{transform.Rotator()})))};
     auto const coordinates{
-        sim::collision::to_cell_coord_bounds(data.grid_geometry, bounds.min, bounds.max)};
-    if (sim::collision::is_cell_coord_in_bounds(data.grid_geometry, coordinates.min) &&
-        sim::collision::is_cell_coord_in_bounds(data.grid_geometry, coordinates.max)) {
+        sim::collision::to_cell_coord_bounds(data.collision.grid_geometry, bounds.min, bounds.max)};
+    if (sim::collision::is_cell_coord_in_bounds(data.collision.grid_geometry, coordinates.min) &&
+        sim::collision::is_cell_coord_in_bounds(data.collision.grid_geometry, coordinates.max)) {
         return true;
     }
 
-    auto const& grid{data.grid_geometry};
+    auto const& grid{data.collision.grid_geometry};
     auto const half_size{FVector3f{grid.dimensions.x() * grid.cell_dimensions.x() * 0.5f,
                                    grid.dimensions.y() * grid.cell_dimensions.y() * 0.5f,
                                    grid.dimensions.z() * grid.cell_dimensions.z() * 0.5f}};
@@ -247,7 +247,7 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     FLevelSimBuildResult result{std::in_place};
     auto& data{result.value()};
     data.clock_settings = clock_settings;
-    data.overlap_response = config.overlap_response;
+    data.collision.overlap_response = config.overlap_response;
     data.lasers = config.laser_projectiles.simulation;
     data.capital_ships = config.capital_ships.simulation;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
@@ -273,8 +273,8 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     data.fighter_fire_point_distance =
         IsValid(socket) ? static_cast<float>(socket->RelativeLocation.Size()) : 0.f;
     auto const dimensions{config.collision_grid.calculate_grid_dimensions()};
-    data.grid_geometry = {{dimensions.X, dimensions.Y, dimensions.Z},
-                          to_native(config.collision_grid.cell_size)};
+    data.collision.grid_geometry = {{dimensions.X, dimensions.Y, dimensions.Z},
+                                    to_native(config.collision_grid.cell_size)};
 
     FLevelCollisionHost::EntityMeshes meshes{};
     meshes[sim::EntityType::PlayerShip] = player_collision_mesh;
@@ -286,11 +286,11 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     if (!bounds) {
         return FLevelSimBuildResult{std::unexpect, MoveTemp(bounds.error())};
     }
-    data.entity_bounds = MoveTemp(bounds.value());
+    data.collision.entity_bounds = MoveTemp(bounds.value());
     // A capital's rigid world transform preserves slot clearance. Comparing expanded world AABBs
     // would report false overlaps when the capital is rotated.
     level_simulation_builder::validate_fighter_spawn_slots(
-        data.capital_ships, data.fighters, data.entity_bounds, errors);
+        data.capital_ships, data.fighters, data.collision.entity_bounds, errors);
     if (errors.has_errors()) {
         return FLevelSimBuildResult{std::unexpect, MoveTemp(errors)};
     }
@@ -310,7 +310,7 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
         return result;
     }
     auto& data{result.value()};
-    data.static_bounds = MoveTemp(static_bounds);
+    data.collision.static_bounds = MoveTemp(static_bounds);
     sim::SimClock clock;
     clock.initialise(clock_settings);
     auto compiled{levels::compile_level(definition, clock, data.capital_ships, data.turrets)};

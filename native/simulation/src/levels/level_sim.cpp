@@ -74,7 +74,7 @@ LevelSim::LevelSim(GameMemory& game_memory, LevelSimInitData data)
     , frame_memory_{std::span<std::byte>{frame_memory_block_.data(),
                                          frame_memory_block_.size_bytes()}}
     , query_manager_{entity_tables_, &game_memory.memory_resource()}
-    , overlap_handler_{data.overlap_response}
+    , overlap_handler_{data.collision.overlap_response}
     , lasers_simulation_{clock_, combat_events_}
     , fighters_simulation_{clock_, entity_ledger_, entity_tables_}
     , capital_ships_simulation_{entity_ledger_, entity_tables_, fighters_simulation_}
@@ -168,10 +168,10 @@ void LevelSim::configure_player(player::PlayerSpawnData const& spawn) {
 }
 void LevelSim::initialise_spatial_queries(LevelSimInitData& data) {
     // Configure collision queries and buffers
-    query_manager_.initialise(data.grid_geometry, data.entity_bounds);
+    query_manager_.initialise(data.collision.grid_geometry, data.collision.entity_bounds);
 
     // Install static bounds
-    query_manager_.set_static_collision(std::move(data.static_bounds));
+    query_manager_.set_static_collision(std::move(data.collision.static_bounds));
 }
 void LevelSim::begin_subsystems() {
     // Start player subsystem

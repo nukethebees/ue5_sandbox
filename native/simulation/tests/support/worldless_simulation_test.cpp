@@ -64,13 +64,13 @@ auto make_simulation_data(SimulationFixture const& fixture) -> LevelSimInitData 
     LevelSimInitData data;
     data.clock_settings = fixture.data.clock_settings;
     data.lasers = fixture.data.lasers;
-    data.overlap_response = fixture.data.overlap_response;
+    data.collision.overlap_response = fixture.data.collision.overlap_response;
     data.capital_ships = fixture.data.capital_ships;
     data.fighters = fixture.data.fighters;
     data.turrets = fixture.data.turrets;
     data.spinners = fixture.data.spinners;
-    data.entity_bounds = fixture.data.entity_bounds;
-    data.grid_geometry = fixture.data.grid_geometry;
+    data.collision.entity_bounds = fixture.data.collision.entity_bounds;
+    data.collision.grid_geometry = fixture.data.collision.grid_geometry;
     data.frame_memory_capacity_bytes = fixture.data.frame_memory_capacity_bytes;
     data.fighter_fire_point_distance = fixture.data.fighter_fire_point_distance;
     return data;

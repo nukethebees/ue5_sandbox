@@ -10,13 +10,13 @@ namespace ioj::sim::tests::tick_phases {
 auto make_world() -> LevelSimInitData {
     LevelSimInitData data{};
     data.clock_settings.tick_rate = 10.0;
-    data.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
+    data.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
     data.capital_ships.fighter_spawn_slots = 0;
     data.lasers.n_preallocated_instances = 8;
-    data.overlap_response.damage_per_overlap_detection = 25;
+    data.collision.overlap_response.damage_per_overlap_detection = 25;
 
     for (auto const type : EnumTraits<EntityType>::values) {
-        data.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
+        data.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
 
     return data;
@@ -277,7 +277,7 @@ TEST(TickPhases, AuthoredSpawnCanBeHitOnItsScheduledTick) {
 
 TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverlaps) {
     auto data{make_world()};
-    data.overlap_response.damage_per_overlap_detection = 100;
+    data.collision.overlap_response.damage_per_overlap_detection = 100;
     auto const capital_index{
         add_capital_spawn(data, {}, Team::White, invalid_level_entity_index, 60.f, 60.f, 1000)};
     schedule_turret(data, {});
