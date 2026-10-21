@@ -30,6 +30,7 @@ target_sources(native-core
     include/ioj/monotonic_clock.h
     include/ioj/speed_response.h
     include/ioj/diagnostics.h
+    include/ioj/require.h
     include/ioj/enum_traits.h
     include/ioj/packed_value.h
     include/ioj/parallel_for.h
@@ -46,6 +47,7 @@ target_sources(native-core
     src/generated/array_math_kernels.cpp
     src/generated/vector_lerp_kernels.cpp
     src/files.cpp
+    src/require.cpp
     src/rotator3d.cpp
     src/array_math.cpp
     src/array_utils.cpp
@@ -61,8 +63,13 @@ target_include_directories(native-core
     include
 )
 
-# Keep file-only static-library consumers independent of the runtime allocation/profiling code.
-set_source_files_properties(src/files.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
+# Keep file and diagnostic consumers independent of the runtime allocation/profiling code.
+set_source_files_properties(
+  src/files.cpp
+  src/require.cpp
+  PROPERTIES
+    SKIP_UNITY_BUILD_INCLUSION ON
+)
 
 target_link_libraries(native-core
   PUBLIC
