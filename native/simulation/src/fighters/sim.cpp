@@ -118,7 +118,6 @@ void Sim::set_config(FighterSimConfig const& new_config,
                      FighterLevelData const level_data) noexcept {
     config = new_config;
     collision_radius_ = level_data.collision_radius;
-    fire_point_distance_ = level_data.fire_point_distance;
 
     for (auto& is_participant : participant_mask) {
         is_participant = 0;
@@ -161,7 +160,7 @@ void Sim::begin_play() {
     reposition_cleaner_ = 0;
     attack_cleaner_ = 0;
     assert(collision_radius_ > 0.f);
-    assert(fire_point_distance_ >= 0.f);
+    assert(config.fire_point_distance >= 0.f);
 
     auto const awareness_scan_tick_period{
         simulation_clock.frequency_to_tick_period(config.awareness_scan_frequency)};
@@ -512,8 +511,9 @@ void Sim::apply_movement(ActionInputs const inputs) {
     for (std::uint32_t row{}; row < fire_count; ++row) {
         auto const index{pending_fire_indices_[row]};
         auto const direction{vector_at(aim_directions, index)};
-        set_vector(
-            laser_locations, row, vector_at(locations, index) + direction * fire_point_distance_);
+        set_vector(laser_locations,
+                   row,
+                   vector_at(locations, index) + direction * config.fire_point_distance);
         set_rotation(laser_rotations, row, direction_to_rotation(direction));
         set_vector(laser_velocities, row, vector_at(velocities, index));
         laser_ids[row] = entity_ids[index];
@@ -1587,7 +1587,7 @@ void Sim::handle_firing(TaskView data, ThinkingInputs const inputs) {
         auto const end_offset{los_check_buffer + target_radii[element]};
         firing_ignored_entities[index] = entity_ids[element];
         line_of_sight_starts.set(
-            index, predicted_location(fighter_index) + direction * fire_point_distance_);
+            index, predicted_location(fighter_index) + direction * config.fire_point_distance);
         line_of_sight_ends.set(index,
                                vector_at(target_locations, fighter_index) - direction * end_offset);
     }
@@ -1646,7 +1646,7 @@ void Sim::handle_firing(TaskView data, ThinkingInputs const inputs) {
             auto const candidate{firing_detail::make_fire_point_candidate(
                 vector_at(target_locations, ship_index),
                 vector_at(desired_move_locations, ship_index),
-                fire_point_distance_,
+                config.fire_point_distance,
                 los_check_buffer + target_radii[ship_index],
                 desired_attack_distance,
                 integral_biases[ship_index],

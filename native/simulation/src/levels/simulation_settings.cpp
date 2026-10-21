@@ -132,7 +132,10 @@ void apply_settings(SimulationSettings const& settings, LevelSimInitData& target
     target.clock_settings = settings.clock;
     target.lasers = settings.lasers;
     target.collision.overlap_response = settings.overlap_response;
+
+    auto const fighter_fire_point{target.fighters.fire_point_distance};
     target.fighters = settings.fighters;
+    target.fighters.fire_point_distance = fighter_fire_point;
 
     auto spawn_transforms{std::move(target.capital_ships.fighter_spawn_slots_relative_transforms)};
     auto const spawn_slots{target.capital_ships.fighter_spawn_slots};

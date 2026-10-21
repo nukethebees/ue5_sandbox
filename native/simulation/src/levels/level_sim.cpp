@@ -147,8 +147,7 @@ void LevelSim::configure_subsystems(LevelSimInitData const& data) {
     fighters_simulation_.set_config(
         data.fighters,
         {.participating_teams = teams,
-         .collision_radius = query_manager_.get_entity_type_radius(EntityType::Fighter),
-         .fire_point_distance = data.fighter_fire_point_distance});
+         .collision_radius = query_manager_.get_entity_type_radius(EntityType::Fighter)});
     turrets_simulation_.set_config(data.turrets);
     spinners_simulation_.set_config(data.spinners);
 }

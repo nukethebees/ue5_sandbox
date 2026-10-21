@@ -388,10 +388,17 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
 TEST(FighterLiveCap, UnknownTeamRejected) {
 
     std::vector<Team> const capitals{Team::Green};
-    auto data{make_cap_battle(capitals, 10, 1)};
+    auto data{make_cap_battle(capitals, 10, 0)};
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};
     start_and_tick(simulation);
+
+    FighterSpawnQueue spawns;
+    spawns.add_defaulted(1);
+    spawns.get_view().teams()[0] = Team::White;
+    LevelSimTestAccess::queue_fighter_spawns(simulation, spawns.get_const_view());
+    simulation.advance(simulation.get_clock().get_tick_period());
+
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 0)
         << "Unknown team creates no fighter";
 }

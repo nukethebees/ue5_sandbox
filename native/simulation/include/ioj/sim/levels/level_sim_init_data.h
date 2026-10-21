@@ -35,8 +35,6 @@ struct LevelSimInitData {
 
     std::size_t frame_memory_capacity_bytes{256 * 1024 * 1024};
 
-    float fighter_fire_point_distance{};
-
     LevelTelemetryRunMetadata telemetry_metadata{};
     LevelTelemetryHistoryConfig telemetry_history{};
     bool fighter_diagnostics_enabled{};

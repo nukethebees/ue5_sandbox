@@ -186,6 +186,7 @@
   :namespace ioj::sim
   (record FighterSimConfig
     (member max_live_fighters std::int32_t :initializer "2000")
+    (member fire_point_distance float :initializer "")
     (member fire_dot_product_threshold float :initializer "0.95f")
     (member speed float :initializer "2000.f")
     (member turn_speed_unitless float :initializer "1.f")

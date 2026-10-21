@@ -37,7 +37,6 @@ class PhaseInterface;
 struct FighterLevelData {
     std::span<Team const> participating_teams;
     float collision_radius{};
-    float fire_point_distance{};
 };
 
 struct Sim {
@@ -235,7 +234,6 @@ struct Sim {
     float movement_tick_period_{};
     FighterSimConfig config{};
     float collision_radius_{};
-    float fire_point_distance_{};
     bool diagnostics_enabled_{};
     std::array<std::uint8_t, enum_count<Team>()> participant_mask{};
     std::array<std::int32_t, enum_count<Team>()> remaining_team_capacity{};

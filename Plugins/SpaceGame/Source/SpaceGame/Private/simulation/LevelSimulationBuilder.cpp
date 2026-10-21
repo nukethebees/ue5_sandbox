@@ -270,7 +270,7 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
         data.player.emplace(MoveTemp(player.GetValue()));
     }
     auto const* socket{config.fighters.mesh->FindSocket(TEXT("Gun"))};
-    data.fighter_fire_point_distance =
+    data.fighters.fire_point_distance =
         IsValid(socket) ? static_cast<float>(socket->RelativeLocation.Size()) : 0.f;
     auto const dimensions{config.collision_grid.calculate_grid_dimensions()};
     data.collision.grid_geometry = {{dimensions.X, dimensions.Y, dimensions.Z},

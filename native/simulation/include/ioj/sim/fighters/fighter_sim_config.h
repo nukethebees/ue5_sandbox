@@ -13,6 +13,8 @@ namespace ioj::sim {
 struct FighterSimConfig {
     std::int32_t max_live_fighters{2000};
 
+    float fire_point_distance{};
+
     float fire_dot_product_threshold{0.95f};
 
     float speed{2000.f};
