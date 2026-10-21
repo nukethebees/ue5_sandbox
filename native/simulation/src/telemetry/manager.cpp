@@ -116,7 +116,7 @@ void LevelTelemetryManager::tick() {
 auto LevelTelemetryManager::make_snapshot() const -> LevelTelemetrySnapshot {
     assert(state_ != State::Uninitialised);
     auto const completed_tick{clock_.get_completed_ticks()};
-    auto const tick_rate_hz{Frequency{clock_.get_tick_rate()}};
+    auto const tick_rate_hz{Frequency::make(clock_.get_tick_rate())};
     auto const& active_entity_count_data{active_entity_count_data_};
     auto const& cumulative_kill_count_data{cumulative_kill_count_data_};
     assert((!active_entity_count_data.is_empty() && !cumulative_kill_count_data.is_empty()) &&
@@ -131,8 +131,8 @@ auto LevelTelemetryManager::make_snapshot() const -> LevelTelemetrySnapshot {
            "Level telemetry snapshots cannot contain negative counts.");
 
     LevelTelemetrySnapshot snapshot;
-    snapshot.elapsed_seconds.set_seconds(static_cast<double>(completed_tick) *
-                                         tick_rate_hz.period().get_seconds());
+    snapshot.elapsed_seconds =
+        Duration::make(static_cast<double>(completed_tick) * tick_rate_hz.period().get_seconds());
     snapshot.tick_rate_hz = tick_rate_hz;
     snapshot.active_entities = current_state_.active_entities;
     snapshot.spawned_entities = current_state_.spawned_entities;
@@ -506,7 +506,7 @@ void LevelTelemetryManager::finalize_run(LevelTelemetryRunEndReason const reason
         completion_.mission_mode = mission_result->mode;
         completion_.mission_state = mission_result->state;
         completion_.mission_fail_reason = mission_result->fail_reason;
-        completion_.mission_elapsed_seconds.emplace(mission_result->elapsed_seconds);
+        completion_.mission_elapsed_seconds = Duration::make(mission_result->elapsed_seconds);
     }
 
     state_ = State::Finalized;

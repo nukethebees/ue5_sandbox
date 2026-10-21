@@ -275,7 +275,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         data.telemetry_metadata = sim::LevelTelemetryRunMetadata{
             .level_id = level_components.metadata().id.value,
             .level_display_name = level_components.metadata().title,
-            .requested_duration_seconds = Duration{options.simulated_seconds},
+            .requested_duration_seconds = Duration::make(options.simulated_seconds),
         };
     }
 

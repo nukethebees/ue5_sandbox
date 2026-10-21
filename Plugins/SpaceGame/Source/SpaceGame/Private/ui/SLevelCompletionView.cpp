@@ -90,7 +90,7 @@ void SLevelCompletionView::update_report(FString const& level_display_name,
             ? FText::Format(NSLOCTEXT("LevelCompletion", "ElapsedTimeWithPar", "{0} (Par: {1})"),
                             elapsed_time,
                             level_telemetry_presentation::format_elapsed_time(
-                                Duration{par_time_seconds.GetValue()}))
+                                Duration::make(par_time_seconds.GetValue())))
             : elapsed_time);
     new_best_time_->SetVisibility(succeeded && new_best_time ? EVisibility::HitTestInvisible
                                                              : EVisibility::Collapsed);

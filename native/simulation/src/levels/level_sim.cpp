@@ -223,7 +223,7 @@ auto LevelSim::take_mission_result() -> std::optional<LevelMissionResult> {
     return result;
 }
 auto LevelSim::take_finalized_telemetry_run() -> std::optional<LevelTelemetryRunRecord> {
-    return level_telemetry_manager_.take_finalized_run(Frequency{clock_.get_tick_rate()});
+    return level_telemetry_manager_.take_finalized_run(Frequency::make(clock_.get_tick_rate()));
 }
 
 /* **************************************** */

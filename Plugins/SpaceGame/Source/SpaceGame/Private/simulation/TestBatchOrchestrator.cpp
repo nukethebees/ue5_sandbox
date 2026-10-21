@@ -463,8 +463,8 @@ auto ATestBatchOrchestrator::initialise_simulation(USpaceGameLevelConfig const& 
         result->telemetry_metadata.level_source = TCHAR_TO_UTF8(*level_source_);
         result->telemetry_metadata.settings_source = TCHAR_TO_UTF8(*settings_source_);
         if (launch_options_.simulated_duration_seconds.IsSet()) {
-            result->telemetry_metadata.requested_duration_seconds.emplace(
-                launch_options_.simulated_duration_seconds.GetValue());
+            result->telemetry_metadata.requested_duration_seconds =
+                ioj::Duration::make(launch_options_.simulated_duration_seconds.GetValue());
         }
         result->telemetry_metadata.stop_when_battle_resolved =
             launch_options_.stop_when_battle_resolved;

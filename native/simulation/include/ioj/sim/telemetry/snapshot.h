@@ -12,7 +12,7 @@ struct LevelTelemetrySnapshot {
     using CumulativeKillCountData = XYSeriesData<SimTick, std::int32_t>;
 
     Duration elapsed_seconds{};
-    Frequency tick_rate_hz{60.0};
+    Frequency tick_rate_hz{Frequency::make(60.0)};
     std::int32_t active_entities{0};
     std::int32_t spawned_entities{0};
     std::int32_t destroyed_entities{0};

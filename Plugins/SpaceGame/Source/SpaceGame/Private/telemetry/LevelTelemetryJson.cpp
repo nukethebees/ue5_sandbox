@@ -759,11 +759,12 @@ auto deserialize_level_telemetry_run(FString const& json)
     READ_REQUIRED(
         tick_rate_hz,
         required_number(**simulation, TEXT("tick_rate_hz"), TEXT("simulation.tick_rate_hz")));
-    if (!ioj::Frequency::is_valid_hz(tick_rate_hz)) {
+    auto const frequency{ioj::Frequency::try_make(tick_rate_hz)};
+    if (!frequency) {
         return std::unexpected{
-            FString{TEXT("simulation.tick_rate_hz must be positive with a finite period")}};
+            FString{TEXT("simulation.tick_rate_hz must be finite and at least 1e-300 Hz")}};
     }
-    result.tick_rate_hz.set_hz(tick_rate_hz);
+    result.tick_rate_hz = *frequency;
     READ_REQUIRED(result.metadata.presentation_enabled,
                   required_bool(**simulation,
                                 TEXT("presentation_enabled"),
@@ -798,11 +799,12 @@ auto deserialize_level_telemetry_run(FString const& json)
                           required_number(**simulation,
                                           TEXT("requested_duration_seconds"),
                                           TEXT("simulation.requested_duration_seconds")));
-            if (value < 0.0) {
-                return std::unexpected{
-                    FString{TEXT("simulation.requested_duration_seconds must be nonnegative")}};
+            auto const parsed_duration{ioj::Duration::try_make(value)};
+            if (!parsed_duration) {
+                return std::unexpected{FString{
+                    TEXT("simulation.requested_duration_seconds must be finite and nonnegative")}};
             }
-            result.metadata.requested_duration_seconds.emplace(value);
+            result.metadata.requested_duration_seconds = parsed_duration;
         }
     }
 
@@ -880,11 +882,12 @@ auto deserialize_level_telemetry_run(FString const& json)
                       required_number(**completion,
                                       TEXT("mission_elapsed_seconds"),
                                       TEXT("completion.mission_elapsed_seconds")));
-        if (elapsed < 0.0) {
+        auto const parsed_elapsed{ioj::Duration::try_make(elapsed)};
+        if (!parsed_elapsed) {
             return std::unexpected{
-                FString{TEXT("completion.mission_elapsed_seconds must be nonnegative")}};
+                FString{TEXT("completion.mission_elapsed_seconds must be finite and nonnegative")}};
         }
-        result.completion.mission_elapsed_seconds.emplace(elapsed);
+        result.completion.mission_elapsed_seconds = parsed_elapsed;
     }
 
 #define PARSE_SERIES(field)                                                                       \

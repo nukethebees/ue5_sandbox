@@ -14,7 +14,7 @@ struct LevelTelemetryRunRecord {
 
     std::int32_t loaded_schema_version{schema_version};
     LevelTelemetryRunMetadata metadata{};
-    Frequency tick_rate_hz{60.0};
+    Frequency tick_rate_hz{Frequency::make(60.0)};
     LevelTelemetryRunCompletion completion{};
     LevelTelemetryTickSeries tick_series{};
     std::vector<LevelTelemetryBattleSample> battle_samples{};
