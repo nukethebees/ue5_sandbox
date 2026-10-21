@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/sim/player/phase_inputs.h"
 #include "ioj/sim/player/sim.h"
 
 namespace ioj::sim::player {
@@ -17,12 +18,12 @@ class PhaseInterface {
 
     void think(float const dt) { simulation.think(dt); }
 
-    void apply_movement() { simulation.apply_movement(); }
+    void apply_movement(ActionInputs const inputs) { simulation.apply_movement(inputs); }
 
     void generate_fire_commands() { simulation.generate_fire_commands(); }
 
-    void resolve_damage_events(ioj::FrameMemoryResource* const scratch_resource) {
-        simulation.resolve_damage_events(scratch_resource);
+    void resolve_damage_events(ResolutionInputs const inputs) {
+        simulation.resolve_damage_events(inputs);
     }
 
     friend struct sim::LevelSim;

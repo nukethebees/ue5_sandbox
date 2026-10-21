@@ -42,7 +42,6 @@ struct LevelSim {
     /* **************************************** */
     // Construction and lifecycle
     /* **************************************** */
-    // Keep game_memory alive until after the simulation is destroyed.
     LevelSim(GameMemory& game_memory, LevelSimInitData data);
     LevelSim(LevelSim const&) = delete;
     LevelSim(LevelSim&&) = delete;
@@ -50,11 +49,8 @@ struct LevelSim {
     auto operator=(LevelSim&&) -> LevelSim& = delete;
 
     // Call after static collision is installed.
-    // Synchronizes the initial world and telemetry before transitioning to Paused.
     void finish_initialisation();
-    // Requires Paused. Preserves accumulated simulation time.
     void start();
-    // Repeated pauses are valid after finish_initialisation().
     void pause();
     void set_time_scale(time_type scale);
 
@@ -68,13 +64,10 @@ struct LevelSim {
     // Configuration and commands
     /* **************************************** */
     void set_fighter_diagnostics_enabled(bool enabled) noexcept;
-    // Requires telemetry to be Uninitialised or Recording.
     void set_telemetry_metadata(LevelTelemetryRunMetadata metadata);
-    // Replaces static collision during initialization, before finish_initialisation().
     void set_static_collision(collision::WorldAABBs bounds);
     auto add_static_collision_aabb(Vector3f min_point, Vector3f max_point)
         -> collision::StaticGeometryIndex;
-    // References this LevelSim's player until destruction; empty when the level has no player.
     auto get_player_ship_commands() noexcept -> std::optional<player::CommandInterface> {
         if (!player_ship_simulation_) {
             return std::nullopt;
@@ -151,9 +144,7 @@ struct LevelSim {
     std::vector<EntityId> overlap_candidates_;
 
     lasers::Sim lasers_simulation_;
-
     std::optional<player::Sim> player_ship_simulation_;
-
     fighters::Sim fighters_simulation_;
     capital_ships::Sim capital_ships_simulation_;
     turrets::Sim turrets_simulation_;
@@ -161,7 +152,6 @@ struct LevelSim {
 
     MissionManager mission_manager_;
     LevelEventManager event_manager_;
-
     LevelTelemetryManager level_telemetry_manager_;
 };
 } // namespace ioj::sim

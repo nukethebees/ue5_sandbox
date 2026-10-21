@@ -1,8 +1,5 @@
-#include <ioj/sim/collision/spatial_query_manager.h>
-#include <ioj/sim/combat_events.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_tables.h>
-#include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/sim_clock.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/test_setup.h>
@@ -47,12 +44,8 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
     FPlayerControlContexts contexts_;
     ::ioj::sim::SimClock clock_;
     ::ioj::sim::EntityLedger ledger_;
-    ::ioj::sim::CombatEvents combat_events_{ledger_};
     ::ioj::sim::EntityTables tables_{clock_};
-    ::ioj::sim::SpatialQueryManager queries_{tables_};
-    ::ioj::sim::lasers::Sim lasers_{clock_, combat_events_, queries_};
-    ::ioj::sim::player::Sim ship_simulation_{
-        clock_, ledger_, combat_events_, tables_, queries_, lasers_};
+    ::ioj::sim::player::Sim ship_simulation_{clock_, ledger_, tables_};
     ::ioj::sim::player::CommandInterface ship_commands_{ship_simulation_};
 
     BEFORE_EACH()

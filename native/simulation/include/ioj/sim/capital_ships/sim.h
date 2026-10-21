@@ -3,6 +3,7 @@
 #include <ioj/levels/team.h>
 #include <ioj/sim/capital_ships/capital_entity_data.h>
 #include <ioj/sim/capital_ships/capital_ship_sim_config.h>
+#include <ioj/sim/capital_ships/phase_inputs.h>
 #include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_frame_change.h>
 #include <ioj/sim/entities/entity_id.h>
@@ -16,7 +17,6 @@
 #include <ioj/sim/levels/level_spawn_groups.h>
 #include <ioj/sim/levels/level_spinner_spawn_events.h>
 #include <ioj/sim/levels/level_turret_spawn_events.h>
-#include <ioj/sim/sim_clock.h>
 
 #include <cstdint>
 #include <optional>
@@ -27,9 +27,7 @@ namespace ioj::sim {
 struct LevelSim;
 struct LevelSimTestAccess;
 class EntityLedger;
-class CombatEvents;
 class LevelSpawnManager;
-struct SpatialQueryManager;
 }
 
 namespace ioj::sim::fighters {
@@ -42,12 +40,7 @@ class PhaseInterface;
 struct Sim {
     using EntityStorage = CapitalEntityData;
 
-    Sim(SimClock const& clock,
-        EntityLedger& ledger,
-        CombatEvents const& combat_events,
-        EntityTables& entity_tables,
-        SpatialQueryManager const& spatial_query_manager,
-        fighters::Sim& fighters);
+    Sim(EntityLedger& ledger, EntityTables& entity_tables, fighters::Sim& fighters);
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
     auto operator=(Sim const&) -> Sim& = delete;
@@ -111,10 +104,10 @@ struct Sim {
     void begin_play();
     void update_entity_lookup_table();
     void prepare_tick(float dt);
-    void think(float dt, FrameMemoryResource* const scratch_resource);
-    void resolve_damage_events(FrameMemoryResource* scratch_resource);
+    void think(ThinkingInputs const inputs);
+    void resolve_damage_events(ResolutionInputs const inputs);
     void resolve_fighters_of_dying_capitals();
-    void publish_deaths();
+    void publish_deaths(ResolutionInputs const inputs);
     void remove_components();
     void remove_entities();
     void finish_action();
@@ -163,11 +156,8 @@ struct Sim {
 
     CapitalShipSimConfig config{};
     bool diagnostics_enabled_{};
-    SimClock const& clock_;
     EntityLedger& ledger_;
-    CombatEvents const& combat_events_;
     EntityTables& entity_tables_;
-    SpatialQueryManager const& spatial_query_manager;
 
     EntityStorage entities{};
     std::vector<std::uint32_t> local_indices_to_remove;

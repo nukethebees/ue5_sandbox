@@ -299,3 +299,47 @@
   (integer :signed false :bit-width 32))
 
 (type native_cell_coord :spelling "ioj::sim::collision::CellCoord" :header "ioj/sim/collision/cell_coord.h")
+
+(type turrets_thinking_inputs
+  :spelling "ThinkingInputs"
+  :header "ioj/sim/turrets/phase_inputs.h")
+
+(type turrets_resolution_inputs
+  :spelling "ResolutionInputs"
+  :header "ioj/sim/turrets/phase_inputs.h")
+
+(type fighters_thinking_inputs
+  :spelling "ThinkingInputs"
+  :header "ioj/sim/fighters/phase_inputs.h")
+
+(type fighters_action_inputs
+  :spelling "ActionInputs"
+  :header "ioj/sim/fighters/phase_inputs.h")
+
+(type fighters_resolution_inputs
+  :spelling "ResolutionInputs"
+  :header "ioj/sim/fighters/phase_inputs.h")
+
+(type capital_ships_thinking_inputs
+  :spelling "ThinkingInputs"
+  :header "ioj/sim/capital_ships/phase_inputs.h")
+
+(type capital_ships_resolution_inputs
+  :spelling "ResolutionInputs"
+  :header "ioj/sim/capital_ships/phase_inputs.h")
+
+(type spinners_action_inputs
+  :spelling "ActionInputs"
+  :header "ioj/sim/spinners/phase_inputs.h")
+
+(type lasers_action_inputs
+  :spelling "ActionInputs"
+  :header "ioj/sim/lasers/phase_inputs.h")
+
+(type player_action_inputs
+  :spelling "ActionInputs"
+  :header "ioj/sim/player/phase_inputs.h")
+
+(type player_resolution_inputs
+  :spelling "ResolutionInputs"
+  :header "ioj/sim/player/phase_inputs.h")

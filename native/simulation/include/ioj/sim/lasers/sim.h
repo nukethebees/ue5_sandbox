@@ -4,6 +4,7 @@
 #include <ioj/sim/lasers/laser_frame_output.h>
 #include <ioj/sim/lasers/laser_sim_config.h>
 #include <ioj/sim/lasers/laser_spawn_requests.h>
+#include <ioj/sim/lasers/phase_inputs.h>
 #include <ioj/sim/sim_clock.h>
 
 #include <cstdint>
@@ -13,7 +14,6 @@
 namespace ioj::sim {
 class CombatEvents;
 struct LevelSim;
-struct SpatialQueryManager;
 }
 
 namespace ioj::sim::lasers {
@@ -30,9 +30,7 @@ struct Sim {
     /* **************************************** */
     // Construction and access
     /* **************************************** */
-    Sim(SimClock const& clock,
-        CombatEvents& combat_events,
-        SpatialQueryManager& query_manager) noexcept;
+    Sim(SimClock const& clock, CombatEvents& in_combat_events) noexcept;
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
     auto operator=(Sim const&) -> Sim& = delete;
@@ -64,7 +62,7 @@ struct Sim {
     void begin_play();
     void commit_spawns();
     void cleanup_entities();
-    void simulate(float dt, FrameMemoryResource* const scratch_resource);
+    void simulate(ActionInputs const inputs);
     void finish_action();
 
     /* **************************************** */
@@ -78,7 +76,7 @@ struct Sim {
     /* **************************************** */
     void expire_instances(float dt, FrameMemoryResource* const scratch_resource);
     void update_locations(float dt);
-    void handle_collisions(float dt, FrameMemoryResource* const scratch_resource);
+    void handle_collisions(ActionInputs const inputs);
     void remove_instances(std::span<LaserIndex const> indices);
 
     /* **************************************** */
@@ -90,7 +88,6 @@ struct Sim {
     friend class PhaseInterface;
 
     CombatEvents& combat_events;
-    SpatialQueryManager& query_manager;
     SimClock const& simulation_clock;
     LaserSimConfig config{};
 

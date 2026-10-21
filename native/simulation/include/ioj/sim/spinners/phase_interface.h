@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/sim/spinners/phase_inputs.h"
 #include "ioj/sim/spinners/sim.h"
 
 namespace ioj::sim::spinners {
@@ -17,9 +18,7 @@ class PhaseInterface {
 
     void think(float const dt) { simulation.think(dt); }
 
-    void apply_movement(ioj::FrameMemoryResource* const scratch_resource) {
-        simulation.apply_movement(scratch_resource);
-    }
+    void apply_movement(ActionInputs const inputs) { simulation.apply_movement(inputs); }
 
     void generate_fire_commands() { simulation.generate_fire_commands(); }
 

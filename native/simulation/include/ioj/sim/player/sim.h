@@ -8,6 +8,7 @@
 #include <ioj/sim/player/fire_rate.h>
 #include <ioj/sim/player/flight_model_controller_state.h>
 #include <ioj/sim/player/laser_firing_state.h>
+#include <ioj/sim/player/phase_inputs.h>
 #include <ioj/sim/player/physical_movement_state.h>
 #include <ioj/sim/player/player_flight_intent.h>
 #include <ioj/sim/player/player_presentation_state.h>
@@ -27,13 +28,7 @@
 namespace ioj::sim {
 struct LevelSim;
 class EntityLedger;
-class CombatEvents;
-struct SpatialQueryManager;
 struct PlayerSimTestAccess;
-}
-
-namespace ioj::sim::lasers {
-struct Sim;
 }
 
 namespace ioj::sim::player {
@@ -61,12 +56,7 @@ struct Sim {
     /* **************************************** */
     // Construction and configuration
     /* **************************************** */
-    Sim(SimClock const& clock,
-        EntityLedger& ledger,
-        CombatEvents const& combat_events,
-        EntityTables& entity_tables,
-        SpatialQueryManager const& spatial_query_manager,
-        lasers::Sim& lasers);
+    Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_tables);
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
     auto operator=(Sim const&) -> Sim& = delete;
@@ -191,9 +181,9 @@ struct Sim {
     void update_entity_lookup_table();
     void prepare_tick(float dt);
     void think(float dt);
-    void apply_movement();
+    void apply_movement(ActionInputs const inputs);
     void generate_fire_commands();
-    void resolve_damage_events(FrameMemoryResource* scratch_resource);
+    void resolve_damage_events(ResolutionInputs const inputs);
 
     /* **************************************** */
     // Identity and accounting
@@ -212,9 +202,9 @@ struct Sim {
     void set_laser_mode(LaserFiringState mode) noexcept;
     void update_laser_firing();
     void fire_laser();
-    void materialize_fire_command();
+    void materialize_fire_command(ActionInputs const inputs);
     bool fire_requested_{};
-    void fire_lasers_from(std::span<Transform3d const> fire_points);
+    void fire_lasers_from(ActionInputs const inputs, std::span<Transform3d const> fire_points);
 
     /* **************************************** */
     // Health
@@ -237,11 +227,8 @@ struct Sim {
 
     PlayerSimConfig config{};
     EntityLedger& ledger_;
-    CombatEvents const& combat_events_;
     EntityTables& entity_tables_;
     HealthTable& health_table_;
-    SpatialQueryManager const& spatial_query_manager;
-    lasers::Sim& lasers;
     SimClock const& simulation_clock;
     Health max_health_{1000};
     bool death_notification_pending{false};

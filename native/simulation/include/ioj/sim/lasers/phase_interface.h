@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/sim/lasers/phase_inputs.h"
 #include "ioj/sim/lasers/sim.h"
 
 namespace ioj::sim::lasers {
@@ -13,9 +14,7 @@ class PhaseInterface {
 
     void begin_play() { simulation.begin_play(); }
 
-    void simulate(float const dt, ioj::FrameMemoryResource* const scratch_resource) {
-        simulation.simulate(dt, scratch_resource);
-    }
+    void simulate(ActionInputs const inputs) { simulation.simulate(inputs); }
 
     void commit_spawns() { simulation.commit_spawns(); }
 

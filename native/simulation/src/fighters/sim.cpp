@@ -20,6 +20,7 @@
 #include <ioj/sim/fighters/fighter_diagnostics.h>
 #include <ioj/sim/fighters/fighter_frame_spawn_queue.h>
 #include <ioj/sim/lasers/laser_source.h>
+#include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/tick_countdown.h>
 #include <ioj/vector_math.h>
@@ -134,18 +135,10 @@ void Sim::set_config(FighterSimConfig const& new_config,
     per_team_limit =
         participant_count == 0 ? 0 : std::max(0, config.max_live_fighters) / participant_count;
 }
-Sim::Sim(SimClock const& clock,
-         EntityLedger& ledger,
-         CombatEvents const& combat_events,
-         EntityTables& entity_tables,
-         SpatialQueryManager const& in_spatial_query_manager,
-         lasers::Sim& in_laser_simulation) noexcept
+Sim::Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_tables) noexcept
     : simulation_clock{clock}
     , ledger_{ledger}
-    , combat_events_{combat_events}
-    , entity_tables_{entity_tables}
-    , spatial_query_manager{in_spatial_query_manager}
-    , laser_simulation{in_laser_simulation} {}
+    , entity_tables_{entity_tables} {}
 
 /* **************************************** */
 // Sim phases
@@ -246,8 +239,10 @@ void Sim::prepare_tick(float const dt) {
     tick_countdowns<std::int16_t>(data.attack_cooldowns(), attack_cleaner_, 16384);
     update_entity_lookup_table();
 }
-void Sim::think(float const dt, FrameMemoryResource* const scratch_resource) {
-    refresh_target_data(scratch_resource);
+void Sim::think(ThinkingInputs const inputs) {
+    auto* const scratch_resource{&inputs.scratch_resource};
+
+    refresh_target_data(inputs);
     SANDBOX_PROFILE_SCOPE("fighters::Sim::think");
 
     auto const data{entity_buffers.current().get_view()};
@@ -303,11 +298,12 @@ void Sim::think(float const dt, FrameMemoryResource* const scratch_resource) {
                 scan_teams.add(teams, indices);
             }
 
-            spatial_query_manager.collect_non_team_entities_in_range(scan_origins.get_const_view(),
-                                                                     scan_teams.view(),
-                                                                     awareness_radius,
-                                                                     nearby,
-                                                                     scratch_resource);
+            inputs.spatial_query_manager.collect_non_team_entities_in_range(
+                scan_origins.get_const_view(),
+                scan_teams.view(),
+                awareness_radius,
+                nearby,
+                scratch_resource);
 
             auto const directions{nearby.directions.get_const_view()};
             for (std::uint32_t scan_index{}; scan_index < scan_count; ++scan_index) {
@@ -329,11 +325,13 @@ void Sim::think(float const dt, FrameMemoryResource* const scratch_resource) {
         }
     }
     if (targets_changed) {
-        refresh_target_data(scratch_resource);
+        refresh_target_data(inputs);
     }
-    plan_movement(dt, scratch_resource);
+    plan_movement(inputs);
 }
-void Sim::plan_movement(float const dt, FrameMemoryResource* const scratch_resource) {
+void Sim::plan_movement(ThinkingInputs const inputs) {
+    auto const dt{inputs.dt};
+
     SANDBOX_PROFILE_SCOPE("fighters::Sim::plan_movement");
 
     auto const d_turn{std::min(1.f, config.turn_speed_unitless * dt)};
@@ -414,7 +412,7 @@ void Sim::plan_movement(float const dt, FrameMemoryResource* const scratch_resou
                                         destinations.ys().data(),
                                         destinations.zs().data(),
                                         data.num());
-    update_navigation_steering(scratch_resource);
+    update_navigation_steering(inputs);
     if (do_move) {
         auto const movement_directions{move_view.view_movement_directions()};
         lerp_in_place(move_view.view_planned_aim_directions(), movement_directions, d_turn);
@@ -464,7 +462,9 @@ void Sim::plan_movement(float const dt, FrameMemoryResource* const scratch_resou
         attack_target_distances[index] = std::sqrt(distance_sq);
     }
 }
-void Sim::apply_movement(FrameMemoryResource* const scratch_resource) {
+void Sim::apply_movement(ActionInputs const inputs) {
+    auto* const scratch_resource{&inputs.scratch_resource};
+
     SANDBOX_PROFILE_SCOPE("fighters::Sim::apply_movement");
     auto const data{entity_buffers.current().get_view()};
     overlap_candidates_.clear();
@@ -495,7 +495,7 @@ void Sim::apply_movement(FrameMemoryResource* const scratch_resource) {
     overlap_candidates_.erase(duplicates.begin(), duplicates.end());
 
     auto const fire_count{static_cast<std::uint32_t>(pending_fire_indices_.size())};
-    auto const requests{laser_simulation.append_spawn_requests(fire_count)};
+    auto const requests{inputs.laser_simulation.append_spawn_requests(fire_count)};
     auto const laser_locations{requests.view_locations()};
     auto const laser_rotations{requests.view_rotations()};
     auto const laser_velocities{requests.view_base_velocities()};
@@ -521,16 +521,18 @@ void Sim::apply_movement(FrameMemoryResource* const scratch_resource) {
     }
     pending_fire_indices_.clear();
 }
-void Sim::generate_fire_commands(FrameMemoryResource* const scratch_resource) {
+void Sim::generate_fire_commands(ThinkingInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::generate_fire_commands");
-    handle_firing(get_task_view(Task::Attack), scratch_resource);
+    handle_firing(get_task_view(Task::Attack), inputs);
 }
-void Sim::resolve_damage_events(FrameMemoryResource* const scratch_resource) {
+void Sim::resolve_damage_events(ResolutionInputs const inputs) {
+    auto* const scratch_resource{&inputs.scratch_resource};
+
     SANDBOX_PROFILE_SCOPE("fighters::Sim::resolve_damage_events");
 
     auto const data{entity_buffers.current().get_view()};
     auto const healths{entity_tables_.health.get_view<EntityType::Fighter>(data.num())};
-    auto const damage_events{combat_events_.events_for(EntityType::Fighter)};
+    auto const damage_events{inputs.combat_events.events_for(EntityType::Fighter)};
     auto const previous_death_count{entity_death_info.num()};
     sim::resolve_damage_events(damage_events,
                                entity_tables_.lookups.for_type(EntityType::Fighter),
@@ -674,7 +676,9 @@ void Sim::move(float const dt, TaskView fighters, FrameMemoryResource* const scr
         }
     }
 }
-void Sim::update_navigation_steering(FrameMemoryResource* const scratch_resource) {
+void Sim::update_navigation_steering(ThinkingInputs const inputs) {
+    auto* const scratch_resource{&inputs.scratch_resource};
+
     SANDBOX_PROFILE_SCOPE("fighters::Sim::update_navigation_steering");
 
     auto const clearance{collision_radius_ + config.avoidance_clearance_buffer};
@@ -690,14 +694,14 @@ void Sim::update_navigation_steering(FrameMemoryResource* const scratch_resource
 
     // Only expired countdowns observe the world. Held steering is applied to every mover.
     collect_navigation_updates(scratch);
-    update_separation_observations(scratch, scratch_resource);
+    update_separation_observations(scratch, inputs);
     apply_separation_steering();
 
     // Hard sweeps have final authority over the traffic-biased preferred direction.
     scan_preferred_navigation(
-        scratch, clearance, avoidance_lookahead_time, minimum_lookahead_distance);
+        scratch, clearance, avoidance_lookahead_time, minimum_lookahead_distance, inputs);
     scan_alternative_navigation(
-        scratch, clearance, avoidance_lookahead_time, minimum_lookahead_distance);
+        scratch, clearance, avoidance_lookahead_time, minimum_lookahead_distance, inputs);
     select_navigation_alternatives(scratch, safe_progress_time);
     apply_navigation_choices(scratch);
     publish_navigation_telemetry();
@@ -729,8 +733,9 @@ void Sim::collect_navigation_updates(NavigationScratch& scratch) {
         }
     }
 }
-void Sim::update_separation_observations(NavigationScratch& scratch,
-                                         FrameMemoryResource* const scratch_resource) {
+void Sim::update_separation_observations(NavigationScratch& scratch, ThinkingInputs const inputs) {
+    auto* const scratch_resource{&inputs.scratch_resource};
+
     SANDBOX_PROFILE_SCOPE("fighters::Sim::update_separation_observations");
 
     auto const data{entity_buffers.current().get_view()};
@@ -771,12 +776,12 @@ void Sim::update_separation_observations(NavigationScratch& scratch,
         auto const fighter_location{vector_at(locations, fighter_index)};
         auto const fighter_id{entity_ids[fighter_index]};
         auto const n_nearby{
-            spatial_query_manager.collect_entities_of_type_in_range(fighter_location,
-                                                                    EntityType::Fighter,
-                                                                    separation_radius,
-                                                                    fighter_id,
-                                                                    nearby_fighters,
-                                                                    scratch_resource)};
+            inputs.spatial_query_manager.collect_entities_of_type_in_range(fighter_location,
+                                                                           EntityType::Fighter,
+                                                                           separation_radius,
+                                                                           fighter_id,
+                                                                           nearby_fighters,
+                                                                           scratch_resource)};
         ++navigation_telemetry.separation_query_count;
         navigation_telemetry.separation_candidate_count += n_nearby;
 
@@ -850,7 +855,8 @@ void Sim::apply_separation_steering() {
 void Sim::scan_preferred_navigation(NavigationScratch& scratch,
                                     float const clearance,
                                     float const avoidance_lookahead_time,
-                                    float const minimum_lookahead_distance) {
+                                    float const minimum_lookahead_distance,
+                                    ThinkingInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::scan_preferred_navigation");
 
     auto const data{entity_buffers.current().get_view()};
@@ -888,7 +894,7 @@ void Sim::scan_preferred_navigation(NavigationScratch& scratch,
 
     auto const n_direct_traces{scratch.trace_fighter_indices.num()};
     if (n_direct_traces > 0) {
-        execute_navigation_sweeps(scratch, clearance);
+        execute_navigation_sweeps(scratch, clearance, inputs);
         auto const hit_flags{scratch.trace_hits.get_const_view().hits()};
 
         for (std::uint32_t index{}; index < n_direct_traces; ++index) {
@@ -916,7 +922,8 @@ void Sim::scan_preferred_navigation(NavigationScratch& scratch,
 void Sim::scan_alternative_navigation(NavigationScratch& scratch,
                                       float const clearance,
                                       float const avoidance_lookahead_time,
-                                      float const minimum_lookahead_distance) {
+                                      float const minimum_lookahead_distance,
+                                      ThinkingInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::scan_alternative_navigation");
 
     auto const data{entity_buffers.current().get_const_view()};
@@ -960,9 +967,11 @@ void Sim::scan_alternative_navigation(NavigationScratch& scratch,
         }
     }
     assert(scratch.line_of_sight_ends.num() == count);
-    execute_navigation_sweeps(scratch, clearance);
+    execute_navigation_sweeps(scratch, clearance, inputs);
 }
-void Sim::execute_navigation_sweeps(NavigationScratch& scratch, float const clearance) {
+void Sim::execute_navigation_sweeps(NavigationScratch& scratch,
+                                    float const clearance,
+                                    ThinkingInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::execute_navigation_sweeps");
 
     auto const trace_count{scratch.line_of_sight_ends.num()};
@@ -971,19 +980,19 @@ void Sim::execute_navigation_sweeps(NavigationScratch& scratch, float const clea
     }
     auto const moving_half_extent{Vector3f{clearance, clearance, clearance}};
     scratch.line_of_sight_results.set_num(trace_count);
-    spatial_query_manager.are_spheres_in_bounds(
+    inputs.spatial_query_manager.are_spheres_in_bounds(
         scratch.line_of_sight_ends.get_const_view(),
         clearance,
         {scratch.line_of_sight_results.data(),
          static_cast<std::size_t>(scratch.line_of_sight_results.num())});
     scratch.trace_hits.set_num(trace_count);
     // Fighters contribute soft steering; solid entities (including the parent capital) block.
-    spatial_query_manager.sweep_closest_aabbs(scratch.line_of_sight_starts.get_const_view(),
-                                              scratch.line_of_sight_ends.get_const_view(),
-                                              moving_half_extent,
-                                              scratch.trace_hits.get_view(),
-                                              {},
-                                              collision::TraceEntityFilter::ExcludeFighters);
+    inputs.spatial_query_manager.sweep_closest_aabbs(scratch.line_of_sight_starts.get_const_view(),
+                                                     scratch.line_of_sight_ends.get_const_view(),
+                                                     moving_half_extent,
+                                                     scratch.trace_hits.get_view(),
+                                                     {},
+                                                     collision::TraceEntityFilter::ExcludeFighters);
     navigation_telemetry.hard_trace_count += trace_count;
 }
 void Sim::select_navigation_alternatives(NavigationScratch& scratch,
@@ -1246,25 +1255,28 @@ void Sim::set_target_id_unchecked(std::uint32_t const fighter_index,
 void Sim::set_target_id(EntityId const fighter, EntityId const new_target) noexcept {
     set_target_id_unchecked(find_index(fighter), new_target);
 }
-void Sim::refresh_target_data(FrameMemoryResource* const scratch_resource) {
+void Sim::refresh_target_data(ThinkingInputs const inputs) {
+    auto* const scratch_resource{&inputs.scratch_resource};
+
     auto const data{entity_buffers.current().get_view()};
     auto const count{data.num()};
     auto const target_ids{data.target_ids()};
     auto const target_radii{data.target_radii()};
     FrameArray<EntityInstanceHandle> targets{scratch_resource};
     targets.set_num(count);
-    spatial_query_manager.copy_entity_motion(target_ids,
-                                             data.view_target_locations(),
-                                             data.view_target_velocities(),
-                                             targets,
-                                             scratch_resource);
+    inputs.spatial_query_manager.copy_entity_motion(target_ids,
+                                                    data.view_target_locations(),
+                                                    data.view_target_velocities(),
+                                                    targets,
+                                                    scratch_resource);
     for (std::uint32_t index{}; index < count; ++index) {
         if (!targets[index].is_valid()) {
             target_ids[index] = {};
         }
         auto const id{target_ids[index]};
         target_radii[index] =
-            id.is_valid() ? spatial_query_manager.get_entity_type_radius(id.entity_type()) : 0.f;
+            id.is_valid() ? inputs.spatial_query_manager.get_entity_type_radius(id.entity_type())
+                          : 0.f;
     }
     distance_and_squared(data.target_distances(),
                          data.target_distance_sq(),
@@ -1491,7 +1503,9 @@ void Sim::remove_dead_entities() {
 /* **************************************** */
 // Combat
 /* **************************************** */
-void Sim::handle_firing(TaskView data, FrameMemoryResource* const scratch_resource) {
+void Sim::handle_firing(TaskView data, ThinkingInputs const inputs) {
+    auto* const scratch_resource{&inputs.scratch_resource};
+
     SANDBOX_PROFILE_SCOPE("fighters::Sim::handle_firing");
 
     auto const locations{data.view_locations()};
@@ -1585,7 +1599,7 @@ void Sim::handle_firing(TaskView data, FrameMemoryResource* const scratch_resour
     auto const n_can_fire_before_los{can_fire.num()};
     line_of_sight_results.set_num(n_can_fire_before_los);
 
-    spatial_query_manager.have_clear_lines(
+    inputs.spatial_query_manager.have_clear_lines(
         line_of_sight_starts.get_const_view(),
         line_of_sight_ends.get_const_view(),
         {line_of_sight_results.data(), static_cast<std::size_t>(line_of_sight_results.num())},
@@ -1645,7 +1659,7 @@ void Sim::handle_firing(TaskView data, FrameMemoryResource* const scratch_resour
 
         // Candidate buffers resize as the remaining fighter set shrinks.
         // NOLINTBEGIN(ioj-loop-view-construction,ioj-loop-view-accessor-call)
-        spatial_query_manager.have_clear_lines(
+        inputs.spatial_query_manager.have_clear_lines(
             line_of_sight_starts.get_const_view(),
             line_of_sight_ends.get_const_view(),
             {line_of_sight_results.data(), static_cast<std::size_t>(line_of_sight_results.num())},

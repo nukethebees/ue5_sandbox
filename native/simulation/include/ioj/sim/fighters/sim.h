@@ -11,8 +11,8 @@
 #include <ioj/sim/fighters/fighter_sim_config.h>
 #include <ioj/sim/fighters/fighter_spawn_queue.h>
 #include <ioj/sim/fighters/fighter_task_format.h>
+#include <ioj/sim/fighters/phase_inputs.h>
 #include <ioj/sim/index_span.h>
-#include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/telemetry/navigation_telemetry.h>
 
@@ -25,10 +25,8 @@
 
 namespace ioj::sim {
 class EntityLedger;
-class CombatEvents;
 struct LevelSim;
 struct LevelSimTestAccess;
-struct SpatialQueryManager;
 }
 
 namespace ioj::sim::fighters {
@@ -52,12 +50,7 @@ struct Sim {
     using TaskView = EntityStorage::View;
     using ConstTaskView = EntityStorage::ConstView;
 
-    Sim(SimClock const& clock,
-        EntityLedger& ledger,
-        CombatEvents const& combat_events,
-        EntityTables& entity_tables,
-        SpatialQueryManager const& spatial_query_manager,
-        lasers::Sim& laser_simulation) noexcept;
+    Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_tables) noexcept;
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
     auto operator=(Sim const&) -> Sim& = delete;
@@ -79,7 +72,6 @@ struct Sim {
     auto get_overlap_candidates() const noexcept -> std::span<EntityId const> {
         return overlap_candidates_;
     }
-    auto get_laser_simulation() const noexcept -> lasers::Sim const& { return laser_simulation; }
     auto get_const_view(std::uint32_t offset, std::uint32_t width) const
         -> EntityStorage::ConstView;
     auto get_membership_revision() const noexcept -> std::uint64_t { return membership_revision_; }
@@ -141,11 +133,11 @@ struct Sim {
     void begin_play();
     void update_entity_lookup_table();
     void prepare_tick(float dt);
-    void think(float dt, FrameMemoryResource* const scratch_resource);
-    void plan_movement(float dt, FrameMemoryResource* const scratch_resource);
-    void apply_movement(FrameMemoryResource* const scratch_resource);
-    void generate_fire_commands(FrameMemoryResource* const scratch_resource);
-    void resolve_damage_events(FrameMemoryResource* const scratch_resource);
+    void think(ThinkingInputs const inputs);
+    void plan_movement(ThinkingInputs const inputs);
+    void apply_movement(ActionInputs const inputs);
+    void generate_fire_commands(ThinkingInputs const inputs);
+    void resolve_damage_events(ResolutionInputs const inputs);
     void publish_deaths();
     void remove_components();
     void remove_entities();
@@ -166,20 +158,23 @@ struct Sim {
     // Movement
     /* **************************************** */
     void move(float dt, TaskView fighters, FrameMemoryResource* const scratch_resource);
-    void update_navigation_steering(FrameMemoryResource* const scratch_resource);
+    void update_navigation_steering(ThinkingInputs const inputs);
     void collect_navigation_updates(NavigationScratch& scratch);
-    void update_separation_observations(NavigationScratch& scratch,
-                                        FrameMemoryResource* scratch_resource);
+    void update_separation_observations(NavigationScratch& scratch, ThinkingInputs const inputs);
     void apply_separation_steering();
     void scan_preferred_navigation(NavigationScratch& scratch,
                                    float clearance,
                                    float avoidance_lookahead_time,
-                                   float minimum_lookahead_distance);
+                                   float minimum_lookahead_distance,
+                                   ThinkingInputs const inputs);
     void scan_alternative_navigation(NavigationScratch& scratch,
                                      float clearance,
                                      float avoidance_lookahead_time,
-                                     float minimum_lookahead_distance);
-    void execute_navigation_sweeps(NavigationScratch& scratch, float clearance);
+                                     float minimum_lookahead_distance,
+                                     ThinkingInputs const inputs);
+    void execute_navigation_sweeps(NavigationScratch& scratch,
+                                   float clearance,
+                                   ThinkingInputs const inputs);
     void select_navigation_alternatives(NavigationScratch& scratch, float safe_progress_time);
     void apply_navigation_choices(NavigationScratch const& scratch);
     void publish_navigation_telemetry() const;
@@ -187,7 +182,7 @@ struct Sim {
     /* **************************************** */
     // Combat
     /* **************************************** */
-    void handle_firing(TaskView data, FrameMemoryResource* const scratch_resource);
+    void handle_firing(TaskView data, ThinkingInputs const inputs);
 
     /* **************************************** */
     // Spawning
@@ -214,7 +209,7 @@ struct Sim {
     /* **************************************** */
     void set_target_id_unchecked(std::uint32_t fighter_index, EntityId new_target) noexcept;
     void set_target_id(EntityId fighter, EntityId new_target) noexcept;
-    void refresh_target_data(FrameMemoryResource* const scratch_resource);
+    void refresh_target_data(ThinkingInputs const inputs);
 
     /* **************************************** */
     // Tasks
@@ -262,10 +257,8 @@ struct Sim {
     // Membership lists preserve fighter storage order, independently of live ownership changes.
     std::uint64_t layout_revision_{};
     EntityLedger& ledger_;
-    CombatEvents const& combat_events_;
     EntityTables& entity_tables_;
     std::vector<std::int32_t> layout_order_;
-    SpatialQueryManager const& spatial_query_manager;
 
     FighterSpawnQueue spawn_queue;
 
@@ -275,7 +268,6 @@ struct Sim {
     TaskSpans task_spans{};
     FighterOrderQueue order_queue{};
 
-    lasers::Sim& laser_simulation;
     std::vector<std::uint32_t> pending_fire_indices_;
     std::vector<EntityId> overlap_candidates_;
 

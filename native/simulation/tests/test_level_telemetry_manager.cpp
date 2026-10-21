@@ -4,7 +4,6 @@
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/entities/entity_ledger.h>
-#include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/telemetry/manager.h>
@@ -42,9 +41,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     clock.initialise({});
     EntityLedger entity_ledger;
     CombatEvents combat_events{entity_ledger};
-    EntityTables tables{clock};
-    SpatialQueryManager spatial_queries{tables};
-    lasers::Sim lasers{clock, combat_events, spatial_queries};
+    lasers::Sim lasers{clock, combat_events};
     GameMemory game_memory{{.root_capacity_bytes = std::size_t{2} * 1024 * 1024}};
     LevelTelemetryManager telemetry_manager{
         clock,

@@ -4,7 +4,6 @@
 #include <ioj/diagnostics.h>
 #include <ioj/frame_array.h>
 #include <ioj/rotator_math.h>
-#include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entities/entity_death_info.h>
@@ -76,18 +75,10 @@ void Sim::set_config(PlayerSimConfig const& new_config) noexcept {
     config = new_config;
 }
 
-Sim::Sim(SimClock const& clock,
-         EntityLedger& ledger,
-         CombatEvents const& combat_events,
-         EntityTables& entity_tables,
-         SpatialQueryManager const& in_spatial_query_manager,
-         lasers::Sim& in_lasers)
+Sim::Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_tables)
     : ledger_{ledger}
-    , combat_events_{combat_events}
     , entity_tables_{entity_tables}
     , health_table_{entity_tables.health}
-    , spatial_query_manager{in_spatial_query_manager}
-    , lasers{in_lasers}
     , simulation_clock{clock} {}
 
 /* **************************************** */
@@ -139,11 +130,11 @@ void Sim::think(float const dt) {
     integrate_flight_model(dt, get_active_flight_model_config(), flight_intent_, state);
 }
 
-void Sim::apply_movement() {
+void Sim::apply_movement(ActionInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::apply_movement");
     state_ = planned_state_;
     if (std::exchange(fire_requested_, false)) {
-        materialize_fire_command();
+        materialize_fire_command(inputs);
     }
 }
 
@@ -152,10 +143,12 @@ void Sim::generate_fire_commands() {
     update_laser_firing();
 }
 
-void Sim::resolve_damage_events(FrameMemoryResource* const scratch_resource) {
+void Sim::resolve_damage_events(ResolutionInputs const inputs) {
+    auto* const scratch_resource{&inputs.scratch_resource};
+
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::resolve_damage_events");
 
-    auto const damage_events{combat_events_.events_for(EntityType::PlayerShip)};
+    auto const damage_events{inputs.combat_events.events_for(EntityType::PlayerShip)};
     auto const original_health{health_table_.get_const_view<EntityType::PlayerShip>(1).health(0)};
     auto health{health_table_.get_const_view<EntityType::PlayerShip>(1).health(0)};
     EntityId killer{};
@@ -477,12 +470,12 @@ void Sim::fire_laser() {
     laser_shot_cooldown = config.laser.fire_cooldown;
 }
 
-void Sim::materialize_fire_command() {
+void Sim::materialize_fire_command(ActionInputs const inputs) {
     switch (laser_mode) {
         case ShipLaserMode::Single: {
             std::array<Transform3d, 1> const fire_points{
                 (middle_socket * state_.presentation.body_transform * state_.physical.transform)};
-            fire_lasers_from(fire_points);
+            fire_lasers_from(inputs, fire_points);
             break;
         }
         case ShipLaserMode::Double:
@@ -490,7 +483,7 @@ void Sim::materialize_fire_command() {
             std::array<Transform3d, 2> const fire_points{
                 left_socket * state_.presentation.body_transform * state_.physical.transform,
                 right_socket * state_.presentation.body_transform * state_.physical.transform};
-            fire_lasers_from(fire_points);
+            fire_lasers_from(inputs, fire_points);
             break;
         }
         default: {
@@ -499,9 +492,10 @@ void Sim::materialize_fire_command() {
     }
 }
 
-void Sim::fire_lasers_from(std::span<Transform3d const> const fire_points) {
+void Sim::fire_lasers_from(ActionInputs const inputs,
+                           std::span<Transform3d const> const fire_points) {
     auto const laser_count{static_cast<std::uint32_t>(fire_points.size())};
-    auto const laser_columns{lasers.append_spawn_requests(laser_count)};
+    auto const laser_columns{inputs.laser_simulation.append_spawn_requests(laser_count)};
     auto const locations{laser_columns.view_locations()};
     auto const rotations{laser_columns.view_rotations()};
     auto const base_velocities{laser_columns.view_base_velocities()};

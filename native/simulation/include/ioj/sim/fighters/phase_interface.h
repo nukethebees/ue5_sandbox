@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/sim/fighters/phase_inputs.h"
 #include "ioj/sim/fighters/sim.h"
 
 namespace ioj::sim::fighters {
@@ -17,22 +18,18 @@ class PhaseInterface {
 
     void prepare_tick(float const dt) { simulation.prepare_tick(dt); }
 
-    void think(float const dt, ioj::FrameMemoryResource* const scratch_resource) {
-        simulation.think(dt, scratch_resource);
-    }
+    void think(ThinkingInputs const inputs) { simulation.think(inputs); }
 
-    void apply_movement(ioj::FrameMemoryResource* const scratch_resource) {
-        simulation.apply_movement(scratch_resource);
-    }
+    void apply_movement(ActionInputs const inputs) { simulation.apply_movement(inputs); }
 
-    void generate_fire_commands(ioj::FrameMemoryResource* const scratch_resource) {
-        simulation.generate_fire_commands(scratch_resource);
+    void generate_fire_commands(ThinkingInputs const inputs) {
+        simulation.generate_fire_commands(inputs);
     }
 
     void commit_spawns() { simulation.commit_spawns(); }
 
-    void resolve_damage_events(ioj::FrameMemoryResource* const scratch_resource) {
-        simulation.resolve_damage_events(scratch_resource);
+    void resolve_damage_events(ResolutionInputs const inputs) {
+        simulation.resolve_damage_events(inputs);
     }
 
     void publish_deaths() { simulation.publish_deaths(); }

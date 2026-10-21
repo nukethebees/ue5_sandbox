@@ -3,9 +3,9 @@
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_tables.h>
-#include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/sim_clock.h>
+#include <ioj/sim/spinners/phase_inputs.h>
 #include <ioj/sim/spinners/spinner_entity_data.h>
 #include <ioj/sim/spinners/spinner_sim_config.h>
 #include <ioj/vectors3f.h>
@@ -27,10 +27,7 @@ class PhaseInterface;
 struct Sim {
     using EntityStorage = SpinnerEntityData;
 
-    Sim(SimClock const& clock,
-        EntityLedger& ledger,
-        EntityTables& entity_tables,
-        lasers::Sim& laser_simulation) noexcept;
+    Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_tables) noexcept;
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
     auto operator=(Sim const&) -> Sim& = delete;
@@ -46,7 +43,6 @@ struct Sim {
     // Accessors
     /* **************************************** */
     auto get_num_instances() const noexcept -> std::uint32_t;
-    auto get_laser_simulation() const -> lasers::Sim const& { return laser_simulation; }
 
     /* **************************************** */
     // Checks
@@ -59,9 +55,9 @@ struct Sim {
     void update_entity_lookup_table();
     void prepare_tick(float dt);
     void think(float dt);
-    void apply_movement(FrameMemoryResource* const scratch_resource);
+    void apply_movement(ActionInputs const inputs);
     void generate_fire_commands();
-    void materialize_fire_commands();
+    void materialize_fire_commands(ActionInputs const inputs);
     std::vector<std::uint32_t> pending_fire_indices_;
     void finish_action();
 
@@ -95,7 +91,6 @@ struct Sim {
     SimClock const& simulation_clock;
     EntityLedger& ledger_;
     EntityTables& entity_tables_;
-    lasers::Sim& laser_simulation;
     EntityStorage entities{};
 };
 } // namespace ioj::sim::spinners

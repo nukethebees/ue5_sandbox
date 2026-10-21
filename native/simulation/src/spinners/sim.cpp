@@ -5,6 +5,7 @@
 #include <ioj/frame_array.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/entities/entity_ledger.h>
+#include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/spinners/spinner_sim_config.h>
 #include <ioj/tick_countdown.h>
@@ -25,14 +26,10 @@ namespace ioj::sim::spinners {
 void Sim::set_config(SpinnerSimConfig const& new_config) noexcept {
     config = new_config;
 }
-Sim::Sim(SimClock const& clock,
-         EntityLedger& ledger,
-         EntityTables& entity_tables,
-         lasers::Sim& in_laser_simulation) noexcept
+Sim::Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_tables) noexcept
     : simulation_clock{clock}
     , ledger_{ledger}
-    , entity_tables_{entity_tables}
-    , laser_simulation{in_laser_simulation} {}
+    , entity_tables_{entity_tables} {}
 
 /* **************************************** */
 // Sim phases
@@ -60,12 +57,12 @@ void Sim::think(float const dt) {
 
     planned_yaw_delta_ = dt * config.yaw_rotation_speed_degrees;
 }
-void Sim::apply_movement(FrameMemoryResource*) {
+void Sim::apply_movement(ActionInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::apply_movement");
     for (auto& yaw : entities.get_view().yaws()) {
         yaw += planned_yaw_delta_;
     }
-    materialize_fire_commands();
+    materialize_fire_commands(inputs);
 }
 void Sim::generate_fire_commands() {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::generate_fire_commands");
@@ -150,11 +147,11 @@ void Sim::fire_lasers() {
         }
     }
 }
-void Sim::materialize_fire_commands() {
+void Sim::materialize_fire_commands(ActionInputs const inputs) {
     auto const entity_columns{entities.get_view()};
     auto const ready_count{static_cast<std::uint32_t>(pending_fire_indices_.size())};
     auto const fire_point_count{static_cast<std::uint32_t>(config.fire_point_offsets.size())};
-    auto const new_lasers{laser_simulation.append_spawn_requests(ready_count)};
+    auto const new_lasers{inputs.laser_simulation.append_spawn_requests(ready_count)};
     auto const next_fire_points{entity_columns.next_fire_point_indices()};
     auto const locations{entity_columns.view_locations()};
     auto const yaws{entity_columns.yaws()};

@@ -15,6 +15,7 @@
 #include <ioj/sim/fighters/fighter_frame_spawn_queue.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/profiling.h>
+#include <ioj/sim/sim_clock.h>
 
 #include <algorithm>
 #include <cassert>
@@ -32,17 +33,9 @@ namespace ioj::sim::capital_ships {
 void Sim::set_config(CapitalShipSimConfig const& new_config) noexcept {
     config = new_config;
 }
-Sim::Sim(SimClock const& clock,
-         EntityLedger& ledger,
-         CombatEvents const& combat_events,
-         EntityTables& entity_tables,
-         SpatialQueryManager const& in_spatial_query_manager,
-         fighters::Sim& fighters)
-    : clock_{clock}
-    , ledger_{ledger}
-    , combat_events_{combat_events}
+Sim::Sim(EntityLedger& ledger, EntityTables& entity_tables, fighters::Sim& fighters)
+    : ledger_{ledger}
     , entity_tables_{entity_tables}
-    , spatial_query_manager{in_spatial_query_manager}
     , fighters_interface{fighters} {}
 
 /* **************************************** */
@@ -66,7 +59,9 @@ void Sim::prepare_tick(float const dt) {
     tick_countdowns(entities.fighter_spawn_timers(), dt);
     update_entity_lookup_table();
 }
-void Sim::think(float const, FrameMemoryResource* const scratch_resource) {
+void Sim::think(ThinkingInputs const inputs) {
+    auto* const scratch_resource{&inputs.scratch_resource};
+
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::think");
 
     auto const entities{this->entities.get_view()};
@@ -94,8 +89,8 @@ void Sim::think(float const, FrameMemoryResource* const scratch_resource) {
         }
     }
     for (auto const index : indices_without_targets) {
-        target_ids[index] =
-            spatial_query_manager.get_any_non_team_entity(teams[index], EntityType::CapitalShip);
+        target_ids[index] = inputs.spatial_query_manager.get_any_non_team_entity(
+            teams[index], EntityType::CapitalShip);
     }
     queue_fighter_spawns(scratch_resource);
     queue_fighter_orders(scratch_resource);
@@ -104,11 +99,13 @@ void Sim::resolve_fighters_of_dying_capitals() {
     sort_and_deduplicate_removal_indices(local_indices_to_remove);
     reassign_fighters_of_dying_capital();
 }
-void Sim::resolve_damage_events(FrameMemoryResource* const scratch_resource) {
+void Sim::resolve_damage_events(ResolutionInputs const inputs) {
+    auto* const scratch_resource{&inputs.scratch_resource};
+
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::resolve_damage_events");
     auto const entities{this->entities.get_view()};
     auto const healths{entity_tables_.health.get_view<EntityType::CapitalShip>(entities.num())};
-    sim::resolve_damage_events(combat_events_.events_for(EntityType::CapitalShip),
+    sim::resolve_damage_events(inputs.combat_events.events_for(EntityType::CapitalShip),
                                entity_tables_.lookups.for_type(EntityType::CapitalShip),
                                entities.entity_ids(),
                                entities.view_locations().get_const_view(),
@@ -118,8 +115,8 @@ void Sim::resolve_damage_events(FrameMemoryResource* const scratch_resource) {
                                ledger_,
                                scratch_resource);
 }
-void Sim::publish_deaths() {
-    ledger_.record_deaths(entity_death_info.get_const_view(), clock_.get_completed_ticks());
+void Sim::publish_deaths(ResolutionInputs const inputs) {
+    ledger_.record_deaths(entity_death_info.get_const_view(), inputs.clock.get_completed_ticks());
 }
 
 void Sim::remove_components() {

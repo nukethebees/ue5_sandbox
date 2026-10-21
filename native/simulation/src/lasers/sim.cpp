@@ -26,11 +26,8 @@ namespace ioj::sim::lasers {
 /* **************************************** */
 // Construction and tick phases
 /* **************************************** */
-Sim::Sim(SimClock const& clock,
-         CombatEvents& in_combat_events,
-         SpatialQueryManager& in_query_manager) noexcept
+Sim::Sim(SimClock const& clock, CombatEvents& in_combat_events) noexcept
     : combat_events{in_combat_events}
-    , query_manager{in_query_manager}
     , simulation_clock{clock} {}
 
 void Sim::set_config(LaserSimConfig const& new_config) noexcept {
@@ -65,10 +62,13 @@ void Sim::cleanup_entities() {
     pending_removals_.clear();
 }
 
-void Sim::simulate(float const dt, FrameMemoryResource* const scratch_resource) {
+void Sim::simulate(ActionInputs const inputs) {
+    auto* const scratch_resource{&inputs.scratch_resource};
+    auto const dt{inputs.dt};
+
     SANDBOX_PROFILE_SCOPE("lasers::Sim::simulate");
 
-    handle_collisions(dt, scratch_resource);
+    handle_collisions(inputs);
     update_locations(dt);
     expire_instances(dt, scratch_resource);
 }
@@ -197,7 +197,10 @@ void Sim::update_locations(float const dt) {
         }
     }
 }
-void Sim::handle_collisions(float const dt, FrameMemoryResource* const scratch_resource) {
+void Sim::handle_collisions(ActionInputs const inputs) {
+    auto* const scratch_resource{&inputs.scratch_resource};
+    auto const dt{inputs.dt};
+
     SANDBOX_PROFILE_SCOPE("lasers::Sim::handle_collisions");
 
     auto const n{entities.num()};
@@ -218,7 +221,7 @@ void Sim::handle_collisions(float const dt, FrameMemoryResource* const scratch_r
     auto const lifetimes{entities.lifetimes_remaining()};
     auto const instigator_ids{entities.instigator_ids()};
 
-    parallel_for(n, [=, this](std::uint32_t const begin, std::uint32_t const end) {
+    parallel_for(n, [=](std::uint32_t const begin, std::uint32_t const end) {
         SANDBOX_PROFILE_SCOPE("trace_job");
 
         auto const trace_count{end - begin};
@@ -236,7 +239,7 @@ void Sim::handle_collisions(float const dt, FrameMemoryResource* const scratch_r
         auto const hits{trace_results.slice(begin, trace_count)};
         auto const ignored_entities{
             std::span<EntityId const>{instigator_ids}.subspan(begin, trace_count)};
-        query_manager.trace_closest_lines(
+        inputs.spatial_query_manager.trace_closest_lines(
             trace_locations, ends.get_const_view(), hits, ignored_entities);
     });
 

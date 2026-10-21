@@ -53,10 +53,15 @@ struct LevelSimTestAccess {
         auto const previous_phase{simulation.clock_.phase()};
         SimClockTestAccess::set_phase(simulation.clock_, SimulationPhase::Resolution);
         simulation.combat_events_.prepare(simulation.entity_tables_.lookups, scratch_resource);
-        simulation.capital_ships_simulation_.resolve_damage_events(scratch_resource);
-        simulation.fighters_simulation_.resolve_damage_events(scratch_resource);
+
+        capital_ships::ResolutionInputs const capital_inputs{
+            simulation.combat_events_, simulation.clock_, *scratch_resource};
+        fighters::ResolutionInputs const fighter_inputs{simulation.combat_events_,
+                                                        *scratch_resource};
+        simulation.capital_ships_simulation_.resolve_damage_events(capital_inputs);
+        simulation.fighters_simulation_.resolve_damage_events(fighter_inputs);
         simulation.capital_ships_simulation_.resolve_fighters_of_dying_capitals();
-        simulation.capital_ships_simulation_.publish_deaths();
+        simulation.capital_ships_simulation_.publish_deaths(capital_inputs);
         simulation.fighters_simulation_.publish_deaths();
         simulation.combat_events_.reset();
         SimClockTestAccess::set_phase(simulation.clock_, previous_phase);
@@ -100,8 +105,11 @@ struct LevelSimTestAccess {
     static void think_fighters(LevelSim& simulation, FrameMemoryResource* const scratch_resource) {
         auto const previous_phase{simulation.clock_.phase()};
         SimClockTestAccess::set_phase(simulation.clock_, SimulationPhase::Thinking);
-        simulation.fighters_simulation_.think(
-            static_cast<float>(simulation.clock_.get_tick_period()), scratch_resource);
+        fighters::ThinkingInputs const inputs{
+            static_cast<float>(simulation.clock_.get_tick_period()),
+            simulation.query_manager_,
+            *scratch_resource};
+        simulation.fighters_simulation_.think(inputs);
         SimClockTestAccess::set_phase(simulation.clock_, previous_phase);
     }
     static void set_fighter_kinematics(LevelSim& simulation,
@@ -119,9 +127,12 @@ struct LevelSimTestAccess {
         auto const previous_phase{simulation.clock_.phase()};
         SimClockTestAccess::set_phase(simulation.clock_, SimulationPhase::Thinking);
         auto& fighters{simulation.fighters_simulation_};
-        fighters.refresh_target_data(scratch_resource);
-        fighters.plan_movement(static_cast<float>(simulation.clock_.get_tick_period()),
-                               scratch_resource);
+        fighters::ThinkingInputs const inputs{
+            static_cast<float>(simulation.clock_.get_tick_period()),
+            simulation.query_manager_,
+            *scratch_resource};
+        fighters.refresh_target_data(inputs);
+        fighters.plan_movement(inputs);
         SimClockTestAccess::set_phase(simulation.clock_, previous_phase);
     }
     static void queue_fighter_orders(LevelSim& simulation, FighterOrderQueue const& orders) {

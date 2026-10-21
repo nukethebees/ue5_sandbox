@@ -3,13 +3,13 @@
 #include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_frame_change.h>
 #include <ioj/sim/entities/entity_tables.h>
-#include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/levels/level_capital_spawn_events.h>
 #include <ioj/sim/levels/level_mission_event_groups.h>
 #include <ioj/sim/levels/level_spawn_groups.h>
 #include <ioj/sim/levels/level_spinner_spawn_events.h>
 #include <ioj/sim/levels/level_turret_spawn_events.h>
 #include <ioj/sim/sim_clock.h>
+#include <ioj/sim/turrets/phase_inputs.h>
 #include <ioj/sim/turrets/turret_entity_data.h>
 #include <ioj/sim/turrets/turret_sim_config.h>
 
@@ -21,9 +21,7 @@
 namespace ioj::sim {
 struct LevelSim;
 class EntityLedger;
-class CombatEvents;
 class LevelSpawnManager;
-struct SpatialQueryManager;
 }
 
 namespace ioj::sim::turrets {
@@ -32,12 +30,7 @@ class PhaseInterface;
 struct Sim {
     using EntityStorage = TurretEntityData;
 
-    Sim(SimClock const& clock,
-        EntityLedger& ledger,
-        CombatEvents const& combat_events,
-        EntityTables& entity_tables,
-        SpatialQueryManager const& spatial_query_manager,
-        lasers::Sim& laser_simulation) noexcept;
+    Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_tables) noexcept;
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
     auto operator=(Sim const&) -> Sim& = delete;
@@ -63,7 +56,6 @@ struct Sim {
     /* **************************************** */
     auto get_num_instances() const noexcept -> std::uint32_t;
     auto get_target_ids() const -> std::span<EntityId const>;
-    auto get_laser_simulation() const -> lasers::Sim const& { return laser_simulation; }
 
     /* **************************************** */
     // Checks
@@ -75,9 +67,9 @@ struct Sim {
     void begin_play();
     void update_entity_lookup_table();
     void prepare_tick(float dt);
-    void think(float dt, FrameMemoryResource* const scratch_resource);
-    void generate_fire_commands(FrameMemoryResource* const scratch_resource);
-    void resolve_damage_events(FrameMemoryResource* scratch_resource);
+    void think(ThinkingInputs const inputs);
+    void generate_fire_commands(ThinkingInputs const inputs);
+    void resolve_damage_events(ResolutionInputs const inputs);
     void publish_deaths();
     void remove_components();
     void remove_entities();
@@ -96,17 +88,17 @@ struct Sim {
     /* **************************************** */
     // Searching
     /* **************************************** */
-    void perform_search(FrameMemoryResource* scratch_resource);
-    void refresh_target_data(FrameMemoryResource* const scratch_resource);
+    void perform_search(ThinkingInputs const inputs);
+    void refresh_target_data(ThinkingInputs const inputs);
     void perform_search_on_slice(std::uint32_t begin,
                                  std::uint32_t end,
                                  float radius,
-                                 FrameMemoryResource* scratch_resource);
+                                 ThinkingInputs const inputs);
 
     /* **************************************** */
     // Attacking
     /* **************************************** */
-    void fire_at_enemies(FrameMemoryResource* const scratch_resource);
+    void fire_at_enemies(ThinkingInputs const inputs);
     auto get_disengage_radius() const -> float;
 
     /* **************************************** */
@@ -127,10 +119,7 @@ struct Sim {
     TurretSimConfig config{};
     SimClock const& simulation_clock;
     EntityLedger& ledger_;
-    CombatEvents const& combat_events_;
     EntityTables& entity_tables_;
-    SpatialQueryManager const& spatial_query_manager;
-    lasers::Sim& laser_simulation;
     EntityStorage entities{};
     EntityDeathInfo entity_death_info;
     std::vector<EntityFrameChange> frame_changes_;

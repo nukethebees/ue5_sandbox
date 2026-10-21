@@ -75,26 +75,11 @@ LevelSim::LevelSim(GameMemory& game_memory, LevelSimInitData data)
                                          frame_memory_block_.size_bytes()}}
     , query_manager_{entity_tables_, &game_memory.memory_resource()}
     , overlap_handler_{data.overlap_response}
-    , lasers_simulation_{clock_, combat_events_, query_manager_}
-    , fighters_simulation_{clock_,
-                           entity_ledger_,
-                           combat_events_,
-                           entity_tables_,
-                           query_manager_,
-                           lasers_simulation_}
-    , capital_ships_simulation_{clock_,
-                                entity_ledger_,
-                                combat_events_,
-                                entity_tables_,
-                                query_manager_,
-                                fighters_simulation_}
-    , turrets_simulation_{clock_,
-                          entity_ledger_,
-                          combat_events_,
-                          entity_tables_,
-                          query_manager_,
-                          lasers_simulation_}
-    , spinners_simulation_{clock_, entity_ledger_, entity_tables_, lasers_simulation_}
+    , lasers_simulation_{clock_, combat_events_}
+    , fighters_simulation_{clock_, entity_ledger_, entity_tables_}
+    , capital_ships_simulation_{entity_ledger_, entity_tables_, fighters_simulation_}
+    , turrets_simulation_{clock_, entity_ledger_, entity_tables_}
+    , spinners_simulation_{clock_, entity_ledger_, entity_tables_}
     , mission_manager_{clock_, entity_ledger_, entity_tables_}
     , event_manager_{capital_ships_simulation_,
                      turrets_simulation_,
@@ -177,12 +162,7 @@ void LevelSim::configure_subsystems(LevelSimInitData const& data) {
     spinners_simulation_.set_config(data.spinners);
 }
 void LevelSim::configure_player(player::PlayerSpawnData const& spawn) {
-    auto& player{player_ship_simulation_.emplace(clock_,
-                                                 entity_ledger_,
-                                                 combat_events_,
-                                                 entity_tables_,
-                                                 query_manager_,
-                                                 lasers_simulation_)};
+    auto& player{player_ship_simulation_.emplace(clock_, entity_ledger_, entity_tables_)};
 
     player.configure(spawn);
 }
@@ -283,13 +263,6 @@ void LevelSim::advance(time_type const dt) {
     query_manager_.reset_frame_collision_events();
     clock_.tick_loop.add_time(dt);
 
-    auto publish_entity_deaths{[&] {
-        SANDBOX_PROFILE_SCOPE("LevelSim::advance::publish_entity_deaths");
-        capital_ships_phase.publish_deaths();
-        fighters_phase.publish_deaths();
-        turrets_phase.publish_deaths();
-    }};
-
     while (clock_.tick_loop.try_tick()) {
         auto const tick_period{static_cast<float>(clock_.tick_loop.get_tick_period())};
         auto const player_active{player_ship_simulation_.has_value() &&
@@ -360,10 +333,16 @@ void LevelSim::advance(time_type const dt) {
             mission_manager_.prepare_objectives(scratch_resource);
             capital_ships_simulation_.refresh_fighter_ids(scratch_resource);
 
+            turrets::ThinkingInputs const turret_inputs{
+                query_manager_, lasers_simulation_, frame_memory_};
+            capital_ships::ThinkingInputs const capital_inputs{query_manager_, frame_memory_};
+            fighters::ThinkingInputs const fighter_inputs{
+                tick_period, query_manager_, frame_memory_};
+
             // Run decision phases
-            turrets_phase.think(tick_period, scratch_resource);
-            capital_ships_phase.think(tick_period, scratch_resource);
-            fighters_phase.think(tick_period, scratch_resource);
+            turrets_phase.think(turret_inputs);
+            capital_ships_phase.think(capital_inputs);
+            fighters_phase.think(fighter_inputs);
             if (player_active) {
                 player_ship_phase->think(tick_period);
             }
@@ -373,8 +352,8 @@ void LevelSim::advance(time_type const dt) {
             if (player_active) {
                 player_ship_phase->generate_fire_commands();
             }
-            fighters_phase.generate_fire_commands(scratch_resource);
-            turrets_phase.generate_fire_commands(scratch_resource);
+            fighters_phase.generate_fire_commands(fighter_inputs);
+            turrets_phase.generate_fire_commands(turret_inputs);
             spinners_phase.generate_fire_commands();
         }
 
@@ -388,13 +367,15 @@ void LevelSim::advance(time_type const dt) {
             // Simulate projectiles
             {
                 FrameScratchScope scratch_scope{frame_memory_};
-                lasers_phase.simulate(tick_period, &frame_memory_);
+                lasers::ActionInputs const inputs{tick_period, query_manager_, frame_memory_};
+                lasers_phase.simulate(inputs);
             }
 
             // Track player movement
             if (player_active) {
                 auto const before{player_ship_simulation_->get_physical_state().transform};
-                player_ship_phase->apply_movement();
+                player::ActionInputs const inputs{lasers_simulation_};
+                player_ship_phase->apply_movement(inputs);
                 auto const after{player_ship_simulation_->get_physical_state().transform};
                 auto const before_location{to_float(before.location)};
                 auto const after_location{to_float(after.location)};
@@ -408,9 +389,10 @@ void LevelSim::advance(time_type const dt) {
             // Move dynamic entities
             {
                 FrameScratchScope scratch_scope{frame_memory_};
-                auto* const scratch_resource{&frame_memory_};
-                fighters_phase.apply_movement(scratch_resource);
-                spinners_phase.apply_movement(scratch_resource);
+                fighters::ActionInputs const fighter_inputs{lasers_simulation_, frame_memory_};
+                spinners::ActionInputs const spinner_inputs{lasers_simulation_};
+                fighters_phase.apply_movement(fighter_inputs);
+                spinners_phase.apply_movement(spinner_inputs);
             }
 
             {
@@ -449,17 +431,28 @@ void LevelSim::advance(time_type const dt) {
                 // Prepare combat events
                 combat_events_.prepare(entity_tables_.lookups, &frame_memory_);
 
+                capital_ships::ResolutionInputs const capital_inputs{
+                    combat_events_, clock_, frame_memory_};
+                fighters::ResolutionInputs const fighter_inputs{combat_events_, frame_memory_};
+                turrets::ResolutionInputs const turret_inputs{combat_events_, frame_memory_};
+
                 // Resolve damage
                 if (player_active) {
-                    player_ship_phase->resolve_damage_events(&frame_memory_);
+                    player::ResolutionInputs const inputs{combat_events_, frame_memory_};
+                    player_ship_phase->resolve_damage_events(inputs);
                 }
-                capital_ships_phase.resolve_damage_events(&frame_memory_);
-                fighters_phase.resolve_damage_events(&frame_memory_);
-                turrets_phase.resolve_damage_events(&frame_memory_);
+                capital_ships_phase.resolve_damage_events(capital_inputs);
+                fighters_phase.resolve_damage_events(fighter_inputs);
+                turrets_phase.resolve_damage_events(turret_inputs);
                 capital_ships_phase.resolve_fighters_of_dying_capitals();
 
                 // Publish deaths
-                publish_entity_deaths();
+                {
+                    SANDBOX_PROFILE_SCOPE("LevelSim::advance::publish_entity_deaths");
+                    capital_ships_phase.publish_deaths(capital_inputs);
+                    fighters_phase.publish_deaths();
+                    turrets_phase.publish_deaths();
+                }
             }
 
             // Evaluate final health and deaths before invalidating row mappings.

@@ -15,6 +15,7 @@
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/deterministic_bias.h>
 #include <ioj/sim/entities/entity_ledger.h>
+#include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/turrets/turret_sim_config.h>
 #include <ioj/tick_countdown.h>
@@ -36,18 +37,10 @@ namespace ioj::sim::turrets {
 void Sim::set_config(TurretSimConfig const& new_config) noexcept {
     config = new_config;
 }
-Sim::Sim(SimClock const& clock,
-         EntityLedger& ledger,
-         CombatEvents const& combat_events,
-         EntityTables& entity_tables,
-         SpatialQueryManager const& in_spatial_query_manager,
-         lasers::Sim& in_laser_simulation) noexcept
+Sim::Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_tables) noexcept
     : simulation_clock{clock}
     , ledger_{ledger}
-    , combat_events_{combat_events}
-    , entity_tables_{entity_tables}
-    , spatial_query_manager{in_spatial_query_manager}
-    , laser_simulation{in_laser_simulation} {}
+    , entity_tables_{entity_tables} {}
 
 /* **************************************** */
 // Spawning
@@ -178,40 +171,44 @@ void Sim::prepare_tick(float const) {
     tick_periodic_countdowns<std::int16_t>(entities.target_refresh_countdowns_remaining_ticks());
     update_entity_lookup_table();
 }
-void Sim::refresh_target_data(FrameMemoryResource* const scratch_resource) {
+void Sim::refresh_target_data(ThinkingInputs const inputs) {
+    auto* const scratch_resource{&inputs.scratch_resource};
+
     auto const entities{this->entities.get_view()};
     auto const count{entities.num()};
     auto const target_ids{entities.target_ids()};
     FrameArray<EntityInstanceHandle> targets{scratch_resource};
     targets.set_num(count);
-    spatial_query_manager.copy_entity_motion(target_ids,
-                                             entities.view_target_locations(),
-                                             entities.view_target_velocities(),
-                                             targets,
-                                             scratch_resource);
+    inputs.spatial_query_manager.copy_entity_motion(target_ids,
+                                                    entities.view_target_locations(),
+                                                    entities.view_target_velocities(),
+                                                    targets,
+                                                    scratch_resource);
     for (std::uint32_t row{}; row < count; ++row) {
         if (!targets[row].is_valid()) {
             target_ids[row] = {};
         }
     }
 }
-void Sim::think(float const, FrameMemoryResource* const scratch_resource) {
+void Sim::think(ThinkingInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::think");
-    refresh_target_data(scratch_resource);
-    perform_search(scratch_resource);
-    refresh_target_data(scratch_resource);
+    refresh_target_data(inputs);
+    perform_search(inputs);
+    refresh_target_data(inputs);
 }
-void Sim::generate_fire_commands(FrameMemoryResource* const scratch_resource) {
+void Sim::generate_fire_commands(ThinkingInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::generate_fire_commands");
 
-    fire_at_enemies(scratch_resource);
+    fire_at_enemies(inputs);
 }
-void Sim::resolve_damage_events(FrameMemoryResource* const scratch_resource) {
+void Sim::resolve_damage_events(ResolutionInputs const inputs) {
+    auto* const scratch_resource{&inputs.scratch_resource};
+
     SANDBOX_PROFILE_SCOPE("turrets::Sim::resolve_damage_events");
 
     auto const entities{this->entities.get_view()};
     auto const healths{entity_tables_.health.get_view<EntityType::Turret>(entities.num())};
-    sim::resolve_damage_events(combat_events_.events_for(EntityType::Turret),
+    sim::resolve_damage_events(inputs.combat_events.events_for(EntityType::Turret),
                                entity_tables_.lookups.for_type(EntityType::Turret),
                                entities.entity_ids(),
                                entities.view_locations().get_const_view(),
@@ -268,7 +265,7 @@ auto Sim::get_target_ids() const -> std::span<EntityId const> {
 /* **************************************** */
 // Searching
 /* **************************************** */
-void Sim::perform_search(FrameMemoryResource* const scratch_resource) {
+void Sim::perform_search(ThinkingInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::perform_search");
 
     auto const n_turrets{get_num_instances()};
@@ -278,16 +275,17 @@ void Sim::perform_search(FrameMemoryResource* const scratch_resource) {
 
     auto const radius{config.detection_radius};
 
-    parallel_for(
-        n_turrets,
-        [this, radius, scratch_resource](std::uint32_t const begin, std::uint32_t const end) {
-            perform_search_on_slice(begin, end, radius, scratch_resource);
-        });
+    parallel_for(n_turrets,
+                 [this, radius, inputs](std::uint32_t const begin, std::uint32_t const end) {
+                     perform_search_on_slice(begin, end, radius, inputs);
+                 });
 }
 void Sim::perform_search_on_slice(std::uint32_t const begin,
                                   std::uint32_t const end,
                                   float const radius,
-                                  FrameMemoryResource* const scratch_resource) {
+                                  ThinkingInputs const inputs) {
+    auto* const scratch_resource{&inputs.scratch_resource};
+
     std::array<float, 128> candidate_xs;
     std::array<float, 128> candidate_ys;
     std::array<float, 128> candidate_zs;
@@ -315,7 +313,7 @@ void Sim::perform_search_on_slice(std::uint32_t const begin,
             auto const this_team{turret_teams[i]};
 
             target_ids.set_num_uninitialised(
-                spatial_query_manager.collect_non_team_entities_in_range(
+                inputs.spatial_query_manager.collect_non_team_entities_in_range(
                     turret_location, this_team, radius, target_capacity, scratch_resource));
 
             current_targets[i] = EntityId{};
@@ -328,10 +326,10 @@ void Sim::perform_search_on_slice(std::uint32_t const begin,
             Vectors3fView const candidate_locations_view{std::span{candidate_xs}.first(count),
                                                          std::span{candidate_ys}.first(count),
                                                          std::span{candidate_zs}.first(count)};
-            spatial_query_manager.copy_entity_locations(
+            inputs.spatial_query_manager.copy_entity_locations(
                 target_ids, candidate_locations_view, scratch_resource);
 
-            spatial_query_manager.has_line_of_sight_to_targets(
+            inputs.spatial_query_manager.has_line_of_sight_to_targets(
                 vector_at(fire_point_locations, i),
                 candidate_locations_view.get_const_view(),
                 target_ids,
@@ -367,7 +365,9 @@ void Sim::perform_search_on_slice(std::uint32_t const begin,
 /* **************************************** */
 // Attacking
 /* **************************************** */
-void Sim::fire_at_enemies(FrameMemoryResource* const scratch_resource) {
+void Sim::fire_at_enemies(ThinkingInputs const inputs) {
+    auto* const scratch_resource{&inputs.scratch_resource};
+
     SANDBOX_PROFILE_SCOPE("turrets::Sim::fire_at_enemies");
 
     auto const count{get_num_instances()};
@@ -416,7 +416,7 @@ void Sim::fire_at_enemies(FrameMemoryResource* const scratch_resource) {
     }
     hit_ids.set_num(candidate_count);
 
-    spatial_query_manager.trace_line_of_sight(
+    inputs.spatial_query_manager.trace_line_of_sight(
         starts.get_const_view(),
         ends.get_const_view(),
         {hit_ids.data(), static_cast<std::size_t>(candidate_count)},
@@ -430,7 +430,7 @@ void Sim::fire_at_enemies(FrameMemoryResource* const scratch_resource) {
         }
     }
 
-    auto const new_lasers{laser_simulation.append_spawn_requests(accepted_count)};
+    auto const new_lasers{inputs.laser_simulation.append_spawn_requests(accepted_count)};
     auto const laser_locations{new_lasers.view_locations()};
     auto const laser_rotations{new_lasers.view_rotations()};
     auto const laser_velocities{new_lasers.view_base_velocities()};

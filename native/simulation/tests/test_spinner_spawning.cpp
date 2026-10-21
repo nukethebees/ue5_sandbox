@@ -1,16 +1,14 @@
 #include "support/simulation_test_support.h"
 #include <ioj/column_math.h>
-#include <ioj/frame_vectors3f.h>
 #include <ioj/rotator_math.h>
-#include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/lasers/sim.h>
-#include <ioj/sim/memory/game_memory.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/spinners/sim.h>
 #include <ioj/tick_countdown.h>
+#include <ioj/vectors3f.h>
 
 namespace ioj::sim::spinners {
 struct SpinnerSpawnTestAccess {
@@ -31,11 +29,10 @@ struct SpinnerSpawnTestAccess {
     static void set_cooldown(Sim& simulation, std::int16_t const ticks) {
         simulation.cooldown_restart_ticks_ = ticks;
     }
-    static void rotate(Sim& simulation,
-                       float const yaw_delta,
-                       FrameMemoryResource* const scratch_resource) {
+    static void rotate(Sim& simulation, float const yaw_delta, lasers::Sim& laser_simulation) {
         simulation.planned_yaw_delta_ = yaw_delta;
-        simulation.apply_movement(scratch_resource);
+        ActionInputs const inputs{laser_simulation};
+        simulation.apply_movement(inputs);
     }
     static auto cooldowns(Sim& simulation) -> TickCountdownView<std::int16_t> {
         return {simulation.entities.get_view().laser_cooldowns(),
@@ -53,14 +50,8 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
     EntityLedger ledger;
     CombatEvents combat_events{ledger};
     EntityTables tables{clock};
-    SpatialQueryManager queries{tables};
-    GameMemory game_memory{{.root_capacity_bytes = 2 * 1024 * 1024}};
-    auto frame_block{
-        game_memory.acquire_block(1024 * 1024, FrameMemoryResource::backing_alignment)};
-    FrameMemoryResource frame_memory{
-        std::span<std::byte>{frame_block.data(), frame_block.size_bytes()}};
-    lasers::Sim lasers{clock, combat_events, queries};
-    spinners::Sim simulation{clock, ledger, tables, lasers};
+    lasers::Sim lasers{clock, combat_events};
+    spinners::Sim simulation{clock, ledger, tables};
     auto& entity_storage{Access::entities(simulation)};
     Access::set_cooldown(simulation, 23);
 
@@ -118,10 +109,7 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
     Access::cooldowns(simulation).restart_counter(5);
     ASSERT_EQ((std::int16_t{23}), (entities.laser_cooldowns()[5]));
 
-    {
-        FrameScratchScope scratch_scope{frame_memory};
-        Access::rotate(simulation, 5.f, &frame_memory);
-    }
+    Access::rotate(simulation, 5.f, lasers);
     auto const rotated_entities{entity_storage.get_const_view()};
     for (std::uint32_t i{}; i < count; ++i) {
         ASSERT_EQ((yaws[i % 3] + 5.f), (rotated_entities.yaws()[i]));
