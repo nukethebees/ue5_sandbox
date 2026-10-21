@@ -28,8 +28,6 @@ struct LevelSimInitData {
     TurretSimConfig turrets;
     SpinnerSimConfig spinners;
 
-    TeamList participating_teams;
-
     std::optional<player::PlayerSpawnData> player;
     CompiledLevelEvents level_events;
 
@@ -43,4 +41,7 @@ struct LevelSimInitData {
     LevelTelemetryHistoryConfig telemetry_history{};
     bool fighter_diagnostics_enabled{};
 };
+
+// Collect teams from the player and all scheduled capital/turret spawns, including future spawns.
+auto get_participating_teams(LevelSimInitData const& data) -> TeamList;
 }

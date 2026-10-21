@@ -14,8 +14,6 @@ auto make_world() -> LevelSimInitData {
     data.fighters.attack_engagement_threshold = 100.f;
     data.fighters.laser.max_distance = 1000.f;
     data.fighters.health = 100;
-    data.participating_teams.add(Team::Green);
-    data.participating_teams.add(Team::Red);
     add_capital_spawn(
         data, {{-1000.f, -1000.f, 0.f}}, Team::Green, invalid_level_entity_index, 60.f, 60.f, 100);
     add_capital_spawn(

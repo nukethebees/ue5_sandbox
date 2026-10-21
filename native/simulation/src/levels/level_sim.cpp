@@ -20,11 +20,10 @@
 
 namespace ioj::sim {
 
-namespace level_simulation {
 /* **************************************** */
 // Participating teams
 /* **************************************** */
-static void finalise_participating_teams(LevelSimInitData& data) {
+auto get_participating_teams(LevelSimInitData const& data) -> TeamList {
     std::array<std::uint8_t, enum_count<Team>()> included{};
     auto const included_count{included.size()};
     auto include = [&included](Team const team) {
@@ -36,33 +35,25 @@ static void finalise_participating_teams(LevelSimInitData& data) {
         }
     };
 
-    for (auto const team : data.participating_teams) {
+    if (data.player.has_value()) {
+        include(data.player->team);
+    }
+    for (auto const team : data.level_events.schedule.capital_spawns.get_const_view().teams()) {
+        include(team);
+    }
+    for (auto const team : data.level_events.schedule.turret_spawns.get_const_view().teams()) {
         include(team);
     }
 
-    if (data.participating_teams.is_empty()) {
-        // Collect teams from the player and all spawn payloads.
-        if (data.player.has_value()) {
-            include(data.player->team);
-        }
-        for (auto const team : data.level_events.schedule.capital_spawns.get_const_view().teams()) {
-            include(team);
-        }
-        for (auto const team : data.level_events.schedule.turret_spawns.get_const_view().teams()) {
-            include(team);
-        }
-    }
-
-    // Rebuild participating teams
-    data.participating_teams.reset();
+    TeamList result;
     for (std::int32_t team_index{}; static_cast<std::size_t>(team_index) < included_count;
          ++team_index) {
         if (included[team_index] != 0) {
-            data.participating_teams.add(static_cast<Team>(team_index));
+            result.add(static_cast<Team>(team_index));
         }
     }
-}
 
+    return result;
 }
 
 /* **************************************** */
@@ -90,7 +81,6 @@ LevelSim::LevelSim(GameMemory& game_memory, LevelSimInitData data)
     // Initialise timing and metadata
     clock_.initialise(data.clock_settings);
     set_telemetry_metadata(std::move(data.telemetry_metadata));
-    level_simulation::finalise_participating_teams(data);
 
     // Configure queries and subsystems
     initialise_spatial_queries(data);
@@ -153,9 +143,10 @@ void LevelSim::configure_subsystems(LevelSimInitData const& data) {
     // Configure subsystems
     lasers_simulation_.set_config(data.lasers);
     capital_ships_simulation_.set_config(data.capital_ships);
+    auto const teams{get_participating_teams(data)};
     fighters_simulation_.set_config(
         data.fighters,
-        {.participating_teams = data.participating_teams,
+        {.participating_teams = teams,
          .collision_radius = query_manager_.get_entity_type_radius(EntityType::Fighter),
          .fire_point_distance = data.fighter_fire_point_distance});
     turrets_simulation_.set_config(data.turrets);

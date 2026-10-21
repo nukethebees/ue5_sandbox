@@ -227,17 +227,6 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         data.capital_ships.max_health = std::numeric_limits<sim::Health>::max() / 2;
     }
 
-    for (auto const team : participating_teams(level)) {
-        data.participating_teams.add(team);
-    }
-    if (options.fighter_stress_cap.has_value()) {
-        auto const team_count{data.participating_teams.num()};
-        if (team_count == 0 || *options.fighter_stress_cap % team_count != 0) {
-            return std::unexpected{
-                "fighter stress cap must divide evenly across participating teams"};
-        }
-    }
-
     if (level_components.player_entity_id().empty()) {
         data.player.reset();
     } else {
@@ -273,6 +262,14 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         return std::unexpected{std::move(output)};
     }
     data.level_events = std::move(*compiled);
+
+    if (options.fighter_stress_cap.has_value()) {
+        auto const team_count{sim::get_participating_teams(data).num()};
+        if (team_count == 0 || *options.fighter_stress_cap % team_count != 0) {
+            return std::unexpected{
+                "fighter stress cap must divide evenly across participating teams"};
+        }
+    }
 
     if (options.telemetry_enabled) {
         data.telemetry_metadata = sim::LevelTelemetryRunMetadata{

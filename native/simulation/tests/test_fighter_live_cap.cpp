@@ -33,7 +33,6 @@ TEST(SimulationSchema, PreservesHealthAndFighterOrderRepresentations) {
 
 namespace {
 auto make_cap_battle(std::span<Team const> const capital_teams,
-                     std::span<Team const> const participating_teams,
                      std::int32_t const max_live_fighters,
                      std::int32_t const spawn_slots,
                      float const spawn_cooldown = 60.f) -> LevelSimInitData {
@@ -43,9 +42,6 @@ auto make_cap_battle(std::span<Team const> const capital_teams,
     data.collision.overlap_response.damage_per_overlap_detection = 1;
     data.fighters.health = 1000;
     data.fighters.max_live_fighters = max_live_fighters;
-    for (auto const team : participating_teams) {
-        data.participating_teams.add(team);
-    }
     data.capital_ships.fighter_spawn_slots = spawn_slots;
     for (std::int32_t slot_index{}; slot_index < spawn_slots; ++slot_index) {
         data.capital_ships.fighter_spawn_slots_relative_transforms.push_back(
@@ -110,7 +106,7 @@ TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
         // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
         auto const participants{team_view.first(team_count)};
         auto const remainder{team_count > 1 ? team_count - 1 : 0};
-        auto data{make_cap_battle(participants, participants, team_count * 3 + remainder, 4)};
+        auto data{make_cap_battle(participants, team_count * 3 + remainder, 4)};
         GameMemory simulation_memory;
         LevelSim simulation{simulation_memory, std::move(data)};
         start_and_tick(simulation);
@@ -123,16 +119,15 @@ TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
     }
 
     std::vector<Team> const one_capital{Team::White};
-    std::vector<Team> const two_participants{Team::White, Team::Red};
-    auto data{make_cap_battle(one_capital, two_participants, 7, 8)};
+    auto data{make_cap_battle(one_capital, 7, 8)};
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};
     start_and_tick(simulation);
-    EXPECT_EQ(simulation.get_fighters().get_num_instances(), 3)
-        << "A team cannot borrow another participant's unused allocation";
+    EXPECT_EQ(simulation.get_fighters().get_num_instances(), 7)
+        << "An absent team does not reserve fighter capacity";
 
     std::vector<Team> const repeated_capital_teams{Team::White, Team::White, Team::Red};
-    auto inferred_data{make_cap_battle(repeated_capital_teams, std::span<Team const>{}, 14, 8)};
+    auto inferred_data{make_cap_battle(repeated_capital_teams, 14, 8)};
     GameMemory inferred_simulation_memory;
     LevelSim inferred_simulation{inferred_simulation_memory, std::move(inferred_data)};
     start_and_tick(inferred_simulation);
@@ -140,9 +135,8 @@ TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
         << "Compiled team inference deduplicates team sources";
 
     GameMemory empty_simulation_memory;
-    LevelSim empty_simulation{
-        empty_simulation_memory,
-        make_cap_battle(std::span<Team const>{}, std::span<Team const>{}, 10, 0)};
+    LevelSim empty_simulation{empty_simulation_memory,
+                              make_cap_battle(std::span<Team const>{}, 10, 0)};
     empty_simulation.finish_initialisation();
     empty_simulation.start();
     empty_simulation.advance(empty_simulation.get_clock().get_tick_period());
@@ -152,13 +146,13 @@ TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
 
 TEST(FighterLiveCap, DerivedParticipantsIncludeFutureSpawns) {
     std::vector<Team> const capitals{Team::White};
-    auto initial_only{make_cap_battle(capitals, {}, 7, 8)};
+    auto initial_only{make_cap_battle(capitals, 7, 8)};
     GameMemory initial_simulation_memory;
     LevelSim initial_simulation{initial_simulation_memory, std::move(initial_only)};
     start_and_tick(initial_simulation);
     EXPECT_EQ(count_team(initial_simulation, Team::White), 7);
 
-    auto with_reinforcements{make_cap_battle(capitals, {}, 7, 8)};
+    auto with_reinforcements{make_cap_battle(capitals, 7, 8)};
     auto& schedule{with_reinforcements.level_events.schedule};
     schedule.execution_ticks = {100};
     schedule.event_group_counts = {{}};
@@ -182,8 +176,7 @@ TEST(FighterLiveCap, DerivedParticipantsIncludeFutureSpawns) {
 TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
 
     std::vector<Team> const capitals{Team::White, Team::White};
-    std::vector<Team> const participants{Team::White};
-    auto data{make_cap_battle(capitals, participants, 6, 4)};
+    auto data{make_cap_battle(capitals, 6, 4)};
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};
     start_and_tick(simulation);
@@ -197,7 +190,7 @@ TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
     EXPECT_EQ(static_cast<std::int32_t>(capital_simulation.get_fighter_ids(1).size()), 2)
         << "Second capital owns only its accepted prefix";
 
-    auto parent_death_data{make_cap_battle(capitals, participants, 2, 1)};
+    auto parent_death_data{make_cap_battle(capitals, 2, 1)};
     GameMemory parent_death_simulation_memory;
     LevelSim parent_death_simulation{parent_death_simulation_memory, std::move(parent_death_data)};
     parent_death_simulation.finish_initialisation();
@@ -226,7 +219,7 @@ TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
 TEST(FighterLiveCap, FinalCapitalDeathOrphansFighters) {
 
     std::vector<Team> const capitals{Team::White, Team::Red};
-    auto data{make_cap_battle(capitals, capitals, 4, 2, 6000.f)};
+    auto data{make_cap_battle(capitals, 4, 2, 6000.f)};
     auto targets{data.level_events.schedule.capital_spawns.get_view().target_entity_indices()};
     targets[0] = 1;
     targets[1] = 0;
@@ -300,7 +293,7 @@ TEST(FighterLiveCap, FinalCapitalDeathOrphansFighters) {
 TEST(FighterLiveCap, PendingLaunchSurvivesFinalCapitalDeathUnowned) {
 
     std::vector<Team> const capitals{Team::White, Team::Red};
-    auto data{make_cap_battle(capitals, capitals, 2, 1, 6000.f)};
+    auto data{make_cap_battle(capitals, 2, 1, 6000.f)};
     auto targets{data.level_events.schedule.capital_spawns.get_view().target_entity_indices()};
     targets[0] = 1;
     targets[1] = 0;
@@ -337,7 +330,7 @@ TEST(FighterLiveCap, PendingLaunchSurvivesFinalCapitalDeathUnowned) {
 TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
 
     std::vector<Team> const capitals{Team::White};
-    auto make_data{[&] { return make_cap_battle(capitals, capitals, 1, 1, 0.f); }};
+    auto make_data{[&] { return make_cap_battle(capitals, 1, 1, 0.f); }};
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, make_data()};
     start_and_tick(simulation);
@@ -395,8 +388,7 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
 TEST(FighterLiveCap, UnknownTeamRejected) {
 
     std::vector<Team> const capitals{Team::Green};
-    std::vector<Team> const participants{Team::White};
-    auto data{make_cap_battle(capitals, participants, 10, 1)};
+    auto data{make_cap_battle(capitals, 10, 1)};
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};
     start_and_tick(simulation);
