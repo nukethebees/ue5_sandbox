@@ -28,7 +28,7 @@ struct EntitiesSingleLayoutColumns {
     ioj::native_soa::ColumnLayoutStart LayoutStart{};
 
     ColLayout<std::uint8_t> ActiveColumn;
-    ColLayout<ioj::sim::LaserSource> SourcesColumn;
+    ColLayout<LaserSource> SourcesColumn;
     ColLayout<float> LocationsXsColumn;
     ColLayout<float> LocationsYsColumn;
     ColLayout<float> LocationsZsColumn;
@@ -264,7 +264,7 @@ struct LaserEntities
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
         Element<std::uint8_t>* active{};
-        Element<ioj::sim::LaserSource>* sources{};
+        Element<LaserSource>* sources{};
         Element<float>* locations_xs{};
         Element<float>* locations_ys{};
         Element<float>* locations_zs{};

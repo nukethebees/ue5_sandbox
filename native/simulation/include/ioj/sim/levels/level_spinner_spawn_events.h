@@ -141,7 +141,7 @@ struct LevelSpinnerSpawnEventsSingleView : LevelSpinnerSpawnEventsSingleViewImpl
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LevelSpinnerSpawnEventsSingleView>());
 // Columns:
-// entity_indices: LevelEntityIndex
+// entity_indices: ioj::sim::LevelEntityIndex
 // locations_xs: float
 // locations_ys: float
 // locations_zs: float

@@ -7,9 +7,9 @@
 
 namespace ioj::sim::player {
 struct PlayerFlightIntent {
-    ioj::Vector3d translation{};
+    Vector3d translation{};
 
-    ioj::Vector3d rotation{};
+    Vector3d rotation{};
 
     float accelerator{};
 

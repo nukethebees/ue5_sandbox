@@ -9,7 +9,7 @@
 
 namespace ioj::sim::player {
 struct PlayerPresentationState {
-    ioj::Transform3d body_transform{};
+    Transform3d body_transform{};
 
     std::uint64_t boost_start_sequence{};
 };

@@ -153,7 +153,7 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<LaserHitDetailsSing
 // emission_directions_xs: float
 // emission_directions_ys: float
 // emission_directions_zs: float
-// sources: LaserSource
+// sources: ioj::sim::LaserSource
 struct LaserHitDetails
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

@@ -13,8 +13,7 @@ struct LineTraceResult {
 
     EntityId entity;
 
-    ioj::sim::collision::StaticGeometryIndex static_geometry_index{
-        collision::invalid_static_geometry_index};
+    collision::StaticGeometryIndex static_geometry_index{collision::invalid_static_geometry_index};
 
     bool hit{false};
 };

@@ -49,8 +49,8 @@ struct SPACEGAMESIMULATION_API FLevelEntityTableConstView {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TConstArrayView<ioj::FLevelEntityId> ids;
-    TConstArrayView<ioj::FEntityArchetypeId> archetypes;
+    TConstArrayView<FLevelEntityId> ids;
+    TConstArrayView<FEntityArchetypeId> archetypes;
     TConstArrayView<::ioj::Team> teams;
     FVectors3d::ConstView positions;
     FRotatorsd::ConstView rotations;
@@ -62,8 +62,8 @@ struct SPACEGAMESIMULATION_API FLevelEntityTableView {
     using ConstView = FLevelEntityTableConstView;
 
     void set(int32 const index,
-             ioj::FLevelEntityId const new_ids,
-             ioj::FEntityArchetypeId const new_archetypes,
+             FLevelEntityId const new_ids,
+             FEntityArchetypeId const new_archetypes,
              ::ioj::Team const new_teams,
              FVectors3d::equivalent_type const& new_positions,
              FRotatorsd::equivalent_type const& new_rotations,
@@ -101,8 +101,8 @@ struct SPACEGAMESIMULATION_API FLevelEntityTableView {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TArrayView<ioj::FLevelEntityId> ids;
-    TArrayView<ioj::FEntityArchetypeId> archetypes;
+    TArrayView<FLevelEntityId> ids;
+    TArrayView<FEntityArchetypeId> archetypes;
     TArrayView<::ioj::Team> teams;
     FVectors3d::View positions;
     FRotatorsd::View rotations;
@@ -113,8 +113,8 @@ struct SPACEGAMESIMULATION_API FLevelEntityTable {
     using View = FLevelEntityTableView;
     using ConstView = FLevelEntityTableConstView;
     void set(int32 const index,
-             ioj::FLevelEntityId const new_ids,
-             ioj::FEntityArchetypeId const new_archetypes,
+             FLevelEntityId const new_ids,
+             FEntityArchetypeId const new_archetypes,
              ::ioj::Team const new_teams,
              FVectors3d::equivalent_type const& new_positions,
              FRotatorsd::equivalent_type const& new_rotations,
@@ -127,8 +127,8 @@ struct SPACEGAMESIMULATION_API FLevelEntityTable {
         spawn_times_seconds[index] = new_spawn_times_seconds;
     }
 
-    auto add(ioj::FLevelEntityId const new_ids,
-             ioj::FEntityArchetypeId const new_archetypes,
+    auto add(FLevelEntityId const new_ids,
+             FEntityArchetypeId const new_archetypes,
              ::ioj::Team const new_teams,
              FVectors3d::equivalent_type const& new_positions,
              FRotatorsd::equivalent_type const& new_rotations,
@@ -253,8 +253,8 @@ struct SPACEGAMESIMULATION_API FLevelEntityTable {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TArray<ioj::FLevelEntityId> ids;
-    TArray<ioj::FEntityArchetypeId> archetypes;
+    TArray<FLevelEntityId> ids;
+    TArray<FEntityArchetypeId> archetypes;
     TArray<::ioj::Team> teams;
     FVectors3d positions;
     FRotatorsd rotations;

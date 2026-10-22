@@ -41,7 +41,7 @@ struct FighterSimConfig {
 
     std::int32_t dense_traffic_neighbour_threshold{4};
 
-    ioj::sim::LaserWeaponSimConfig laser{};
+    LaserWeaponSimConfig laser{};
 
     Health health{50};
 
@@ -51,7 +51,7 @@ struct FighterSimConfig {
 
     float attack_reposition_frequency{10.f};
 
-    ioj::sim::AttackDistanceBand attack_distance_band;
+    AttackDistanceBand attack_distance_band;
 
     float arrival_distance{500.f};
 

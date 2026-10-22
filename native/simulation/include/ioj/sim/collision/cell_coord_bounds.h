@@ -7,8 +7,8 @@
 
 namespace ioj::sim::collision {
 struct CellCoordBounds {
-    ioj::sim::collision::CellCoord min;
+    CellCoord min;
 
-    ioj::sim::collision::CellCoord max;
+    CellCoord max;
 };
 } // namespace ioj::sim::collision

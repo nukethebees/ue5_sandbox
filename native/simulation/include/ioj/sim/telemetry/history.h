@@ -94,8 +94,8 @@ struct HistoryRowsSingleLayoutColumns {
     ColLayout<SimTick> CompletedTicksColumn;
     ColLayout<HistoryFieldMask> ValidityMasksColumn;
     ColLayout<std::int32_t> ActiveEntitiesColumn;
-    ColLayout<EntityTypeCounts> ActiveEntitiesByTypeColumn;
-    ColLayout<EntityCounts> ActiveEntitiesByTeamAndTypeColumn;
+    ColLayout<ioj::sim::telemetry::EntityTypeCounts> ActiveEntitiesByTypeColumn;
+    ColLayout<ioj::sim::telemetry::EntityCounts> ActiveEntitiesByTeamAndTypeColumn;
     ColLayout<std::int32_t> SpawnedEntitiesColumn;
     ColLayout<std::int32_t> DestroyedEntitiesColumn;
     ColLayout<std::int32_t> KillsColumn;
@@ -222,8 +222,8 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<HistoryRowsSingleVi
 // completed_ticks: SimTick
 // validity_masks: HistoryFieldMask
 // active_entities: std::int32_t
-// active_entities_by_type: EntityTypeCounts
-// active_entities_by_team_and_type: EntityCounts
+// active_entities_by_type: ioj::sim::telemetry::EntityTypeCounts
+// active_entities_by_team_and_type: ioj::sim::telemetry::EntityCounts
 // spawned_entities: std::int32_t
 // destroyed_entities: std::int32_t
 // kills: std::int32_t
@@ -278,8 +278,8 @@ struct HistoryRows
         Element<SimTick>* completed_ticks{};
         Element<HistoryFieldMask>* validity_masks{};
         Element<std::int32_t>* active_entities{};
-        Element<EntityTypeCounts>* active_entities_by_type{};
-        Element<EntityCounts>* active_entities_by_team_and_type{};
+        Element<ioj::sim::telemetry::EntityTypeCounts>* active_entities_by_type{};
+        Element<ioj::sim::telemetry::EntityCounts>* active_entities_by_team_and_type{};
         Element<std::int32_t>* spawned_entities{};
         Element<std::int32_t>* destroyed_entities{};
         Element<std::int32_t>* kills{};

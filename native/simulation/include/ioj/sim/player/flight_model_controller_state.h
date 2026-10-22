@@ -9,35 +9,35 @@
 
 namespace ioj::sim::player {
 struct FlightModelControllerState {
-    ioj::sim::player::ScalarResponse forward_manual_response{};
+    ScalarResponse forward_manual_response{};
 
-    ioj::sim::player::ScalarResponse forward_automatic_response{};
+    ScalarResponse forward_automatic_response{};
 
-    ioj::sim::player::ScalarResponse right_manual_response{};
+    ScalarResponse right_manual_response{};
 
-    ioj::sim::player::ScalarResponse right_automatic_response{};
+    ScalarResponse right_automatic_response{};
 
-    ioj::sim::player::ScalarResponse up_manual_response{};
+    ScalarResponse up_manual_response{};
 
-    ioj::sim::player::ScalarResponse up_automatic_response{};
+    ScalarResponse up_automatic_response{};
 
-    ioj::sim::player::ScalarResponse pitch_response{};
+    ScalarResponse pitch_response{};
 
-    ioj::sim::player::ScalarResponse yaw_response{};
+    ScalarResponse yaw_response{};
 
-    ioj::sim::player::ScalarResponse roll_response{};
+    ScalarResponse roll_response{};
 
-    ioj::sim::player::ScalarResponse pitch_stabilization_response{};
+    ScalarResponse pitch_stabilization_response{};
 
-    ioj::sim::player::ScalarResponse yaw_stabilization_response{};
+    ScalarResponse yaw_stabilization_response{};
 
-    ioj::sim::player::ScalarResponse roll_stabilization_response{};
+    ScalarResponse roll_stabilization_response{};
 
-    ioj::sim::player::ScalarResponse facing_alignment_response{};
+    ScalarResponse facing_alignment_response{};
 
-    ioj::sim::player::ScalarResponse brake_engagement_response{};
+    ScalarResponse brake_engagement_response{};
 
-    ioj::Vector3d angular_velocity{};
+    Vector3d angular_velocity{};
 
     float persistent_forward_target_speed{};
 
@@ -45,8 +45,8 @@ struct FlightModelControllerState {
 
     float persistent_up_target_speed{};
 
-    ioj::Vector3d time_since_rotation_input{100.0, 100.0, 100.0};
+    Vector3d time_since_rotation_input{100.0, 100.0, 100.0};
 
-    ioj::sim::player::BoostBrakeState effective_action{};
+    BoostBrakeState effective_action{};
 };
 } // namespace ioj::sim::player

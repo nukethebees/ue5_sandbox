@@ -40,7 +40,7 @@ struct SpawnRequestsSingleLayoutColumns {
     ColLayout<float> SpeedsColumn;
     ColLayout<float> MaxDistancesColumn;
     ColLayout<EntityId> InstigatorIdsColumn;
-    ColLayout<ioj::sim::LaserSource> SourcesColumn;
+    ColLayout<LaserSource> SourcesColumn;
 
     constexpr SpawnRequestsSingleLayoutColumns() noexcept
         : LocationsXsColumn{LayoutStart}
@@ -263,7 +263,7 @@ struct LaserSpawnRequests
         Element<float>* speeds{};
         Element<float>* max_distances{};
         Element<EntityId>* instigator_ids{};
-        Element<ioj::sim::LaserSource>* sources{};
+        Element<LaserSource>* sources{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (locations_xs == nullptr) {
                 return {};

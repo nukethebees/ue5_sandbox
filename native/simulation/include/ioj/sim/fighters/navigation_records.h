@@ -23,7 +23,7 @@ struct AvoidanceFrame {
 };
 
 struct NavigationRiskUpdate {
-    ioj::sim::fighters::NavigationRiskTier tier;
+    NavigationRiskTier tier;
 
     std::uint8_t lower_risk_scan_count;
 };
@@ -49,7 +49,7 @@ struct SeparationObservationParameters {
 struct SeparationObservation {
     Vector3f steering_memory;
 
-    ioj::sim::fighters::NavigationRiskTier risk_tier;
+    NavigationRiskTier risk_tier;
 
     bool dense_direction_selected;
 };

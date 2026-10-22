@@ -14,6 +14,6 @@ struct PackedTransform {
 
     std::uint16_t reserved{};
 
-    ioj::ismc::Quat32 rotation{};
+    Quat32 rotation{};
 };
 } // namespace ioj::ismc

@@ -473,10 +473,10 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<FighterEntityDataSi
 // separation_steering_xs: float
 // separation_steering_ys: float
 // separation_steering_zs: float
-// navigation_risk_tiers: fighters::NavigationRiskCode
-// navigation_lower_risk_scan_counts: fighters::NavigationScanCount
-// avoidance_choice_indices: fighters::AvoidanceChoice
-// avoidance_clear_scan_counts: fighters::NavigationScanCount
+// navigation_risk_tiers: ioj::sim::fighters::NavigationRiskCode
+// navigation_lower_risk_scan_counts: ioj::sim::fighters::NavigationScanCount
+// avoidance_choice_indices: ioj::sim::fighters::AvoidanceChoice
+// avoidance_clear_scan_counts: ioj::sim::fighters::NavigationScanCount
 // attack_reposition_countdowns: std::int16_t
 // attack_cooldowns: std::int16_t
 // target_ids: EntityId

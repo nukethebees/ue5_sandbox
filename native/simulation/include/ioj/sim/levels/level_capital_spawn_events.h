@@ -181,8 +181,8 @@ struct LevelCapitalSpawnEventsSingleView : LevelCapitalSpawnEventsSingleViewImpl
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LevelCapitalSpawnEventsSingleView>());
 // Columns:
-// entity_indices: LevelEntityIndex
-// target_entity_indices: LevelEntityIndex
+// entity_indices: ioj::sim::LevelEntityIndex
+// target_entity_indices: ioj::sim::LevelEntityIndex
 // locations_xs: float
 // locations_ys: float
 // locations_zs: float

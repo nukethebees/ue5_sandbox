@@ -10,12 +10,12 @@
 
 namespace ioj::sim::player {
 struct PlayerSimulationState {
-    ioj::sim::player::PhysicalMovementState physical{};
+    PhysicalMovementState physical{};
 
-    ioj::sim::player::FlightModelControllerState controller{};
+    FlightModelControllerState controller{};
 
-    ioj::sim::player::PlayerResourceState resources{};
+    PlayerResourceState resources{};
 
-    ioj::sim::player::PlayerPresentationState presentation{};
+    PlayerPresentationState presentation{};
 };
 } // namespace ioj::sim::player

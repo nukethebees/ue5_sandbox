@@ -24,25 +24,25 @@ struct SecondOrderResponseConfig {
 };
 
 struct ResponseConfig {
-    ioj::sim::player::ResponseMode mode{ResponseMode::Direct};
+    ResponseMode mode{ResponseMode::Direct};
 
-    ioj::sim::player::RateLimitedResponseConfig rate_limited{};
+    RateLimitedResponseConfig rate_limited{};
 
-    ioj::sim::player::SecondOrderResponseConfig second_order{};
+    SecondOrderResponseConfig second_order{};
 
     bool operator==(ResponseConfig const&) const = default;
 };
 
 struct TranslationChannelConfig {
-    ioj::sim::player::TranslationSemantic semantic{TranslationSemantic::Disabled};
+    TranslationSemantic semantic{TranslationSemantic::Disabled};
 
-    ioj::sim::player::ReferenceFrame reference_frame{ReferenceFrame::Ship};
+    ReferenceFrame reference_frame{ReferenceFrame::Ship};
 
-    ioj::sim::player::TranslationInputSource input_source{TranslationInputSource::Axis};
+    TranslationInputSource input_source{TranslationInputSource::Axis};
 
     float automatic_value{};
 
-    ioj::sim::player::ResponseConfig response{};
+    ResponseConfig response{};
 
     bool operator==(TranslationChannelConfig const&) const = default;
 };
@@ -64,31 +64,31 @@ struct TranslationDriveConfig {
 };
 
 struct TranslationAxisConfig {
-    ioj::sim::player::TranslationChannelConfig manual{};
+    TranslationChannelConfig manual{};
 
-    ioj::sim::player::TranslationChannelConfig automatic{};
+    TranslationChannelConfig automatic{};
 
-    ioj::sim::player::TranslationDriveConfig normal{};
+    TranslationDriveConfig normal{};
 
-    ioj::sim::player::TranslationDriveConfig boosted{};
+    TranslationDriveConfig boosted{};
 
     float passive_drag{};
 
-    ioj::sim::player::ReferenceFrame passive_drag_reference_frame{ReferenceFrame::Ship};
+    ReferenceFrame passive_drag_reference_frame{ReferenceFrame::Ship};
 
     float active_stabilization_rate{};
 
-    ioj::sim::player::ReferenceFrame active_stabilization_reference_frame{ReferenceFrame::Ship};
+    ReferenceFrame active_stabilization_reference_frame{ReferenceFrame::Ship};
 
     bool operator==(TranslationAxisConfig const&) const = default;
 };
 
 struct TranslationAxesConfig {
-    ioj::sim::player::TranslationAxisConfig forward{};
+    TranslationAxisConfig forward{};
 
-    ioj::sim::player::TranslationAxisConfig right{};
+    TranslationAxisConfig right{};
 
-    ioj::sim::player::TranslationAxisConfig up{};
+    TranslationAxisConfig up{};
 
     bool operator==(TranslationAxesConfig const&) const = default;
 };
@@ -100,41 +100,41 @@ struct RotationStabilizationConfig {
 
     float delay{};
 
-    ioj::sim::player::ResponseConfig response{};
+    ResponseConfig response{};
 
     bool operator==(RotationStabilizationConfig const&) const = default;
 };
 
 struct RotationAxisConfig {
-    ioj::sim::player::RotationSemantic manual_semantic{RotationSemantic::Disabled};
+    RotationSemantic manual_semantic{RotationSemantic::Disabled};
 
     float maximum_rate{};
 
     float acceleration{};
 
-    ioj::sim::player::ResponseConfig response{};
+    ResponseConfig response{};
 
-    ioj::sim::player::RotationStabilizationConfig stabilization{};
+    RotationStabilizationConfig stabilization{};
 
     bool operator==(RotationAxisConfig const&) const = default;
 };
 
 struct RotationAxesConfig {
-    ioj::sim::player::RotationAxisConfig pitch{};
+    RotationAxisConfig pitch{};
 
-    ioj::sim::player::RotationAxisConfig yaw{};
+    RotationAxisConfig yaw{};
 
-    ioj::sim::player::RotationAxisConfig roll{};
+    RotationAxisConfig roll{};
 
     bool operator==(RotationAxesConfig const&) const = default;
 };
 
 struct FacingVelocityConfig {
-    ioj::sim::player::FacingVelocityCoupling mode{FacingVelocityCoupling::Independent};
+    FacingVelocityCoupling mode{FacingVelocityCoupling::Independent};
 
     float alignment_rate{};
 
-    ioj::sim::player::ResponseConfig response{};
+    ResponseConfig response{};
 
     bool operator==(FacingVelocityConfig const&) const = default;
 };
@@ -146,7 +146,7 @@ struct BoostConfig {
 
     float energy_drain_per_second{};
 
-    ioj::sim::player::ResponseConfig response{};
+    ResponseConfig response{};
 
     bool operator==(BoostConfig const&) const = default;
 };
@@ -160,23 +160,23 @@ struct BrakeConfig {
 
     float energy_drain_per_second{};
 
-    ioj::sim::player::ResponseConfig response{};
+    ResponseConfig response{};
 
     bool operator==(BrakeConfig const&) const = default;
 };
 
 struct FlightModelConfig {
-    ioj::sim::player::TranslationAxesConfig translation{};
+    TranslationAxesConfig translation{};
 
-    ioj::sim::player::RotationAxesConfig rotation{};
+    RotationAxesConfig rotation{};
 
-    ioj::sim::player::FacingVelocityConfig facing_velocity{};
+    FacingVelocityConfig facing_velocity{};
 
-    ioj::sim::player::BoostConfig boost{};
+    BoostConfig boost{};
 
-    ioj::sim::player::BrakeConfig brake{};
+    BrakeConfig brake{};
 
-    ioj::sim::player::BrakeConfig emergency_brake{};
+    BrakeConfig emergency_brake{};
 
     float energy_recharge_per_second{};
 
@@ -188,25 +188,25 @@ struct FlightModelConfig {
 };
 
 struct FlightModelProfile {
-    ioj::sim::player::FlightModelPreset base_preset{FlightModelPreset::Starfox};
+    FlightModelPreset base_preset{FlightModelPreset::Starfox};
 
     bool customized{};
 
-    ioj::sim::player::FlightModelConfig config{};
+    FlightModelConfig config{};
 
     bool operator==(FlightModelProfile const&) const = default;
 };
 
 struct FlightModelLoadout {
-    ioj::sim::player::FlightModelProfile up{};
+    FlightModelProfile up{};
 
-    ioj::sim::player::FlightModelProfile right{};
+    FlightModelProfile right{};
 
-    ioj::sim::player::FlightModelProfile down{};
+    FlightModelProfile down{};
 
-    ioj::sim::player::FlightModelProfile left{};
+    FlightModelProfile left{};
 
-    ioj::sim::player::FlightModelSlot initial_slot{FlightModelSlot::Up};
+    FlightModelSlot initial_slot{FlightModelSlot::Up};
 
     bool operator==(FlightModelLoadout const&) const = default;
 };

@@ -140,7 +140,7 @@ struct EntityHistoryColumnsSingleView : EntityHistoryColumnsSingleViewImpl<false
 static_assert(ioj::soa_storage_detail::validate_compact_view<EntityHistoryColumnsSingleView>());
 // Columns:
 // entity_ids: EntityId
-// entity_types: EntityType
+// entity_types: ioj::sim::EntityType
 // teams: ::ioj::Team
 // kills: std::uint32_t
 // killed_by: EntityId

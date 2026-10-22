@@ -9,7 +9,7 @@
 
 namespace ioj::sim {
 struct LevelTelemetryCurrentState {
-    ioj::sim::telemetry::EntityCounts active_entities_by_team_and_type{};
+    telemetry::EntityCounts active_entities_by_team_and_type{};
 
     std::int32_t active_entities{};
 

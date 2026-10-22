@@ -142,8 +142,8 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<TraceHitsSingleView
 // locations_ys: float
 // locations_zs: float
 // entities: EntityId
-// static_geometry_indices: collision::StaticGeometryIndex
-// hits: TraceHit
+// static_geometry_indices: ioj::sim::collision::StaticGeometryIndex
+// hits: ioj::sim::TraceHit
 struct TraceHits
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

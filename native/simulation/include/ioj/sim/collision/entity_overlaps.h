@@ -373,7 +373,7 @@ struct EntityStaticOverlapsSingleView : EntityStaticOverlapsSingleViewImpl<false
 static_assert(ioj::soa_storage_detail::validate_compact_view<EntityStaticOverlapsSingleView>());
 // Columns:
 // entities: EntityId
-// static_geometry_indices: StaticGeometryIndex
+// static_geometry_indices: ioj::sim::collision::StaticGeometryIndex
 struct EntityStaticOverlaps
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
