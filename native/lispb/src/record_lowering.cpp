@@ -34,15 +34,11 @@ auto record_member_type(LoweringContext& context, RecordMemberId member) -> CppT
              .has_value()) {
         return element;
     }
-    auto const nested{ir.types.dependencies(element)};
-    std::vector<TypeDependencyId> dependencies{nested.begin(), nested.end()};
-    dependencies.push_back(ir.types.dependency("std::array", "array"));
-    return ir.types.intern(
-        "std::array<" + std::string{ir.types.spelling(element)} + ", " +
-            std::to_string(*context.declarations.record_members
-                                .count[context.declarations.record_members.index(member)]) +
-            ">",
-        dependencies);
+    auto const count{*context.declarations.record_members
+                          .count[context.declarations.record_members.index(member)]};
+    return ir.types.template_type(
+        ir.types.named("std::array", {ir.types.dependency("std::array", "array")}),
+        {element, ir.types.intern(std::to_string(count))});
 }
 
 auto record_node(LoweringContext& context, DeclarationHandle record) -> NodeId {

@@ -706,5 +706,166 @@ TEST(Ast, RendersEnumsAndExportedFreeFunctions) {
               "namespace {\nint value;\n} // namespace");
 }
 
+struct NamespaceCase {
+    std::string_view current;
+    std::string_view target;
+    std::string_view expected;
+    std::vector<std::string_view> hidden;
+};
+
+auto in_namespace(CppIR& ir, std::string_view name, NodeId node, bool nested = false) -> NodeId {
+    if (!nested) {
+        return ir.namespace_node(ir.strings.intern(name), {node});
+    }
+    auto const separator{name.find("::")};
+    return separator == std::string_view::npos
+             ? ir.namespace_node(ir.strings.intern(name), {node})
+             : ir.namespace_node(ir.strings.intern(name.substr(0, separator)),
+                                 {in_namespace(ir, name.substr(separator + 2), node, true)});
+}
+
+class NamespaceRendering : public testing::TestWithParam<NamespaceCase> {};
+
+TEST_P(NamespaceRendering, ShortensOnlyVisibleNamespaceComponents) {
+    auto const& test{GetParam()};
+    for (auto const nested : {false, true}) {
+        CompilerTestContext context;
+        auto& ir{context.ir};
+        auto& types{context.storage.cpp_types};
+        NodeListBuilder members{ir};
+        for (auto const name : test.hidden) {
+            members.add(ir.instance_member(types.intern("int"), ir.strings.intern(name)));
+        }
+        members.add(ir.instance_member(types.named(test.target), ir.strings.intern("value")));
+        auto const record{ir.record(ir.strings.intern("Holder"), members.build())};
+        auto const output{ir.render(in_namespace(ir, test.current, record, nested))};
+        EXPECT_NE(output.find(std::string{test.expected} + " value;"), std::string::npos) << output;
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Namespaces,
+    NamespaceRendering,
+    testing::Values(NamespaceCase{"a::b", "a::b::Token", "Token", {}},
+                    NamespaceCase{"a::b", "a::Token", "Token", {}},
+                    NamespaceCase{"a::b", "a::c::Token", "c::Token", {}},
+                    NamespaceCase{"a::b", "other::Token", "other::Token", {}},
+                    NamespaceCase{"a::bee", "a::b::Token", "b::Token", {}},
+                    NamespaceCase{"a::b", "a::b::Token::Nested", "Token::Nested", {}},
+                    NamespaceCase{"a::b", "a::b::Token", "b::Token", {"Token"}},
+                    NamespaceCase{"a::b", "a::Token", "a::Token", {"Token"}},
+                    NamespaceCase{"a::b", "a::c::Token", "a::c::Token", {"c"}},
+                    NamespaceCase{"a::b", "a::b::Token", "::a::b::Token", {"Token", "b", "a"}},
+                    NamespaceCase{"a::b", "::a::b::Token", "::a::b::Token", {}}));
+
+TEST(Ast, RestoresNamespaceContextAndRetainsAnonymousLookup) {
+    CompilerTestContext context;
+    auto& ir{context.ir};
+    auto const type{ir.types.named("a::b::Token")};
+    auto const member{ir.variable(type, "value")};
+    auto const local{in_namespace(ir, "a::b", ir.namespace_node(ir.strings.intern(""), {member}))};
+    auto const output{ir.render_nodes(std::vector<NodeId>{local, member}, {}, 1)};
+    EXPECT_NE(output.find("namespace {\nToken value{};"), std::string::npos);
+    EXPECT_TRUE(output.ends_with("a::b::Token value{};"));
+    EXPECT_EQ(ir.render(member), "a::b::Token value{};");
+    EXPECT_EQ(ir.render(local), ir.render(local));
+}
+
+TEST(Ast, RetainsTypeStructureAndPoliciesAcrossCompositionAndDependencies) {
+    CompilerTestContext context;
+    auto& ir{context.ir};
+    auto& types{ir.types};
+    auto const dependency{types.dependency("a::Token", "Token.h")};
+    auto const registered{types.add("a::Token", {dependency}, ParameterPassing::value)};
+    types.set_operation(registered, TypeOperation::remove_at_swap, "erase");
+    auto const named{types.reference(registered)};
+    auto const pointer{types.decorate(named, "", " const*")};
+    auto const array{types.template_type(types.named("std::array"), {pointer, types.intern("2")})};
+    auto const copied{types.with_dependencies(pointer, std::vector{dependency})};
+    auto const emit = [&](CppTypeId type) {
+        return ir.render(in_namespace(ir, "a", ir.variable(type, "value")));
+    };
+    EXPECT_NE(emit(array).find("std::array<Token const*, 2> value{};"), std::string::npos);
+    EXPECT_NE(emit(copied).find("Token const* value{};"), std::string::npos);
+    EXPECT_EQ(types.spelling(array), "std::array<a::Token const*, 2>");
+    EXPECT_EQ(types.operation(copied, TypeOperation::remove_at_swap), "erase");
+    EXPECT_EQ(types.parameter_passing(copied), ParameterPassing::value);
+    EXPECT_EQ(collected_dependencies(ir, ir.variable(array, "value")), std::vector{dependency});
+    EXPECT_EQ(types.template_type(types.named("std::array"), {pointer, types.intern("2")}), array);
+    EXPECT_EQ(types.derive(named, types.spelling(named)), named);
+    EXPECT_NE(named, types.intern("a::Token", {dependency}, ParameterPassing::value));
+    EXPECT_NE(emit(types.intern("a::Token")).find("a::Token value{};"), std::string::npos);
+}
+
+TEST(Ast, PreservesQualificationAcrossOpaqueScopesUnlessBindingsAreProvided) {
+    CompilerTestContext context;
+    auto& ir{context.ir};
+    auto const raw{ir.raw("using Hidden = int;")};
+    auto const member{ir.instance_member(ir.types.named("a::Token"), ir.strings.intern("value"))};
+    auto const record{ir.record(ir.strings.intern("Holder"), {raw, member})};
+    auto const wrapped{in_namespace(ir, "a", record)};
+    EXPECT_NE(ir.render(wrapped).find("a::Token value;"), std::string::npos);
+    ir.set_scope_bindings(raw, std::vector{ir.strings.intern("Hidden")});
+    EXPECT_NE(ir.render(wrapped).find("\n    Token value;"), std::string::npos);
+    ir.set_record_bases(record, {ir.types.intern("ExternalBase")});
+    EXPECT_NE(ir.render(wrapped).find("a::Token value;"), std::string::npos);
+}
+
+TEST(Ast, AccountsForReopenedAndAnonymousNamespaceBindings) {
+    CompilerTestContext context;
+    auto& ir{context.ir};
+    auto const token{ir.types.named("a::Token")};
+    auto const declaration{ir.record(ir.strings.intern("Token"))};
+    auto const member{ir.variable(token, "value")};
+    for (auto const anonymous : {false, true}) {
+        auto const binding{anonymous ? ir.namespace_node(ir.strings.intern(""), {declaration})
+                                     : static_cast<NodeId>(declaration)};
+        auto const output{ir.render_nodes(std::vector<NodeId>{in_namespace(ir, "a::b", binding),
+                                                              in_namespace(ir, "a::b", member)},
+                                          {},
+                                          1)};
+        EXPECT_NE(output.find("a::Token value{};"), std::string::npos) << output;
+    }
+}
+
+TEST(Ast, UsesTemplateAndMemberScopesInSignaturesAndExpressions) {
+    CompilerTestContext context;
+    auto& ir{context.ir};
+    auto const token{ir.types.named("a::Token")};
+    auto const make{ir.function("make", token)};
+    ir.set_function_parameters(make, {ir.parameter(token, "argument")});
+    ir.set_function_body(make, {ir.return_stmt(ir.init_list({}, token))});
+    auto const record{
+        ir.record(ir.strings.intern("Holder"),
+                  {ir.using_declaration(ir.strings.intern("Token"), ir.types.intern("int")),
+                   ir.declaration(make)})};
+    auto const definition{ir.definition(make, ir.store_text("Holder"))};
+    auto const output{ir.render_nodes(
+        std::vector<NodeId>{in_namespace(ir, "a", record), in_namespace(ir, "a", definition)},
+        {},
+        1)};
+    EXPECT_NE(output.find("a::Token make(a::Token argument);"), std::string::npos);
+    EXPECT_NE(output.find("Token Holder::make(a::Token argument)"), std::string::npos);
+    EXPECT_NE(output.find("return a::Token{};"), std::string::npos);
+
+    auto const template_function{ir.function("use", token)};
+    ir.set_function_return_type(template_function, token, ReturnSyntax::trailing);
+    ir.set_function_template(
+        template_function,
+        ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Token"))}));
+    ir.set_function_body(template_function,
+                         {ir.variable(token, "value", ir.init_list({}, token)),
+                          ir.expr_stmt(ir.sizeof_type(token)),
+                          ir.return_stmt(ir.static_cast_expr(token, ir.named("value")))});
+    auto const templated{
+        ir.render(in_namespace(ir, "a", ir.definition(template_function, {}, {}, true)))};
+    for (auto const expected : {"-> a::Token",
+                                "a::Token value{a::Token{}};",
+                                "sizeof(a::Token)",
+                                "static_cast<a::Token>"}) {
+        EXPECT_NE(templated.find(expected), std::string::npos) << templated;
+    }
+}
+
 } // namespace
 } // namespace lispb::codegen

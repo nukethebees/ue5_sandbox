@@ -101,6 +101,17 @@ TEST(GeneratedRecords, PreserveAggregateDefaultsComparisonsAndMemberApi) {
     static_assert(!std::is_trivially_default_constructible_v<mixed::ValueDefaults>);
 }
 
+TEST(GeneratedRecords, NamespaceShorteningPreservesTypeLookup) {
+    mixed::NamespaceLookup values{};
+    static_assert(std::is_same_v<decltype(values.local), std::array<mixed::Position, 2>>);
+    static_assert(std::is_same_v<decltype(values.parent), ApiPair>);
+    static_assert(std::is_same_v<decltype(values.sibling), second::B>);
+    mixed::HiddenLookup hidden;
+    static_assert(std::is_same_v<decltype(hidden.token), mixed::Position>);
+    EXPECT_EQ(hidden.Position, 7);
+    EXPECT_EQ(mixed::ParameterLookup::select(0, {.x = 3.f}).x, 3.f);
+}
+
 TEST(GeneratedRecords, MethodSignaturesCompileWithForwardAndCompleteDependencies) {
     mixed::MethodConsumer consumer;
     EXPECT_TRUE((std::is_same_v<decltype(consumer.make().consumer()), mixed::MethodConsumer>));

@@ -49,8 +49,12 @@ auto CppIR::raw_template_declaration(StringId parameters) -> TemplateId {
     return TemplateId{(static_cast<std::uint32_t>(TemplateKind::authored_raw) << 24) | index};
 }
 
-void CppIR::append_template(std::string& output, TemplateId declaration) const {
+void CppIR::append_template(std::string& output,
+                            TemplateId declaration,
+                            RenderContext const& context) const {
     assert(declaration);
+    RenderScopeGuard const guard{*context.state};
+    context.state->scopes.emplace_back();
     auto const row{declaration.index()};
     output += "template <";
     if (declaration.kind() == TemplateKind::authored_raw) {
@@ -78,12 +82,12 @@ void CppIR::append_template(std::string& output, TemplateId declaration) const {
                     auto const default_type{type_template_parameters_.default_type[index]};
                     if (default_type.value != 0) {
                         output += " = ";
-                        output += types.spelling(default_type);
+                        types.append(output, default_type, context);
                     }
                     break;
                 }
                 case TemplateParameterKind::value: {
-                    output += types.spelling(value_template_parameters_.type[index]);
+                    types.append(output, value_template_parameters_.type[index], context);
                     if (value_template_parameters_.pack[index]) {
                         output += "...";
                     }
@@ -94,10 +98,16 @@ void CppIR::append_template(std::string& output, TemplateId declaration) const {
                     }
                     if (auto const value{value_template_parameters_.default_value[index]}) {
                         output += " = ";
-                        append_expr(output, value);
+                        append_expr(output, value, context);
                     }
                     break;
                 }
+            }
+            auto const name{parameter.kind() == TemplateParameterKind::type
+                                ? type_template_parameters_.name[index]
+                                : value_template_parameters_.name[index]};
+            if (name.value != 0) {
+                context.state->scopes.back().names.push_back(strings.view(name));
             }
         }
     }

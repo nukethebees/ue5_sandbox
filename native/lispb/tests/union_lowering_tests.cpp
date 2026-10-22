@@ -76,7 +76,7 @@ TEST(UnionLowering, GeneratesTaggedAggregateWithExplicitPayloadUnion) {
     auto const& output{files.back().content};
     EXPECT_NE(output.find("#include \"Events.h\""), std::string::npos);
     EXPECT_NE(output.find("struct PROJECT_API Event"), std::string::npos);
-    EXPECT_NE(output.find("events::EventKind tag;"), std::string::npos);
+    EXPECT_NE(output.find("EventKind tag;"), std::string::npos);
     EXPECT_NE(output.find("union Payload"), std::string::npos);
     EXPECT_NE(output.find("// tag: Spawn"), std::string::npos);
     EXPECT_NE(output.find("std::uint32_t spawn;"), std::string::npos);

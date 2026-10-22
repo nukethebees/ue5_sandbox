@@ -24,10 +24,13 @@
 #include <codegen/ast/record_kind.h>
 #include <codegen/ast/render_context.h>
 #include <codegen/ast/return_syntax.h>
+#include <codegen/ast/template_kind.h>
+#include <codegen/ast/template_parameter_kind.h>
 #include <codegen/cpp_string.h>
 #include <lispb/indices.h>
 #include <lispb/strings.h>
 
+#include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -43,7 +46,221 @@
 
 namespace lispb::codegen {
 
-auto CppIR::signature(std::uint32_t index, bool record_scope) const -> std::string {
+namespace render_detail {
+auto untemplated(std::string_view name) -> std::string {
+    std::string result;
+    unsigned depth{};
+    for (auto const character : name) {
+        if (character == '<') {
+            ++depth;
+        } else if (character == '>' && depth != 0) {
+            --depth;
+        } else if (depth == 0) {
+            result += character;
+        }
+    }
+    return result;
+}
+auto namespace_key(std::span<std::string_view const> components) -> std::string {
+    std::string result;
+    for (auto const component : components) {
+        if (!result.empty()) {
+            result += "::";
+        }
+        result += component;
+    }
+    return result;
+}
+}
+
+void CppIR::set_scope_bindings(NodeId node, std::span<IdentifierId const> names) {
+    scope_bindings_[node.value] = {names.begin(), names.end()};
+}
+
+auto CppIR::scope(std::span<NodeId const> children, bool complete) const -> RenderScope {
+    RenderScope result;
+    auto add_name = [&](auto name) {
+        auto const text{strings.view(name)};
+        if (!text.empty()) {
+            result.names.push_back(text.substr(0, text.find_first_of("<:")));
+        }
+    };
+    auto add_expr = [&](Expr expression) {
+        while (expression.kind() == ExprKind::template_id) {
+            expression = template_id_exprs_.callee[expression.index()];
+        }
+        if (expression.kind() == ExprKind::named) {
+            add_name(named_exprs_.spelling[expression.index()]);
+        } else {
+            result.opaque = true;
+        }
+    };
+    for (auto const node : children) {
+        auto const i{node.index()};
+        switch (node.kind()) {
+            case NodeKind::namespace_: {
+                if (strings.view(namespace_nodes_.name[i]).empty()) {
+                    auto anonymous{scope(nodes(namespace_nodes_.children[i]))};
+                    result.names.insert(
+                        result.names.end(), anonymous.names.begin(), anonymous.names.end());
+                    result.opaque = result.opaque || anonymous.opaque;
+                } else {
+                    add_name(namespace_nodes_.name[i]);
+                }
+                break;
+            }
+            case NodeKind::struct_:
+                add_expr(struct_nodes_.name[i]);
+                break;
+            case NodeKind::enum_:
+                add_name(enum_nodes_.name[i]);
+                if (!enum_nodes_.scoped[i]) {
+                    auto const range{enum_nodes_.values[i]};
+                    auto const end{range.begin + range.count};
+                    for (auto index{range.begin}; index < end; ++index) {
+                        add_name(enumerators_.name[enumerator_references_[index].value]);
+                    }
+                }
+                break;
+            case NodeKind::forward_declaration:
+                add_name(forward_declaration_nodes_.name[i]);
+                break;
+            case NodeKind::using_declaration:
+                add_name(using_declaration_nodes_.name[i]);
+                break;
+            case NodeKind::instance_member:
+                add_name(instance_members_.name[i]);
+                break;
+            case NodeKind::static_member:
+                add_name(static_members_.name[i]);
+                break;
+            case NodeKind::constexpr_member:
+                add_name(constexpr_members_.name[i]);
+                break;
+            case NodeKind::function:
+                add_expr(functions_.name[function_nodes_.function[i].value]);
+                break;
+            case NodeKind::variable_declaration_stmt:
+                add_name(variable_declaration_stmt_nodes_.name[i]);
+                break;
+            case NodeKind::raw:
+            case NodeKind::raw_lines:
+                if (!complete && !scope_bindings_.contains(node.value)) {
+                    auto const text{node.kind() == NodeKind::raw ? strings.view(raw_nodes_.text[i])
+                                                                 : std::string_view{}};
+                    if (!text.empty() && !text.starts_with("#include ")) {
+                        result.opaque = true;
+                    } else if (node.kind() == NodeKind::raw_lines) {
+                        result.opaque = true;
+                    }
+                }
+                break;
+            default:
+                break;
+        }
+        if (auto const extra{scope_bindings_.find(node.value)}; extra != scope_bindings_.end()) {
+            for (auto const name : extra->second) {
+                add_name(name);
+            }
+        }
+    }
+    return result;
+}
+
+auto CppIR::template_scope(TemplateId declaration) const -> RenderScope {
+    RenderScope result;
+    if (!declaration || declaration.kind() == TemplateKind::explicit_specialization) {
+        return result;
+    }
+    if (declaration.kind() == TemplateKind::authored_raw) {
+        result.opaque = true;
+        return result;
+    }
+    auto const range{templates_.parameters[declaration.index()]};
+    auto const end{range.begin + range.count};
+    for (auto index{range.begin}; index < end; ++index) {
+        auto const parameter{template_parameter_references_[index]};
+        auto const name{parameter.kind() == TemplateParameterKind::type
+                            ? type_template_parameters_.name[parameter.index()]
+                            : value_template_parameters_.name[parameter.index()]};
+        if (name.value != 0) {
+            result.names.push_back(strings.view(name));
+        }
+    }
+    return result;
+}
+
+void CppIR::initialize_namespaces(RenderState& state, std::span<NodeId const> children) const {
+    auto walk =
+        [&](auto&& self, std::span<NodeId const> values, std::string const& prefix) -> void {
+        auto current{scope(values)};
+        auto& saved{state.namespace_scopes[prefix]};
+        saved.names.insert(saved.names.end(), current.names.begin(), current.names.end());
+        saved.opaque = saved.opaque || current.opaque;
+        for (auto const node : values) {
+            auto const i{node.index()};
+            if (node.kind() == NodeKind::namespace_) {
+                auto name{strings.view(namespace_nodes_.name[i])};
+                if (name.empty()) {
+                    continue;
+                }
+                std::string path{prefix};
+                while (!name.empty()) {
+                    auto const end{name.find("::")};
+                    auto const component{name.substr(0, end)};
+                    if (!path.empty()) {
+                        path += "::";
+                    }
+                    path += component;
+                    if (end == std::string_view::npos) {
+                        break;
+                    }
+                    name.remove_prefix(end + 2);
+                    state.namespace_scopes[path].names.push_back(name.substr(0, name.find("::")));
+                }
+                self(self, nodes(namespace_nodes_.children[i]), path);
+            } else if (node.kind() == NodeKind::struct_) {
+                auto const name{render_detail::untemplated(render(struct_nodes_.name[i]))};
+                auto const key{prefix.empty() ? name : prefix + "::" + name};
+                state.records.emplace(key, node);
+            }
+        }
+    };
+    walk(walk, children, "");
+    auto root{state.namespace_scopes[""]};
+    root.namespace_scope = true;
+    state.scopes.push_back(std::move(root));
+}
+
+auto CppIR::record_scope(std::string_view owner, RenderContext const& context) const
+    -> RenderScope {
+    auto const name{render_detail::untemplated(owner)};
+    auto const prefix{render_detail::namespace_key(context.state->namespaces)};
+    auto const key{prefix.empty() ? name : prefix + "::" + name};
+    auto found{context.state->records.find(key)};
+    if (found == context.state->records.end()) {
+        found = context.state->records.find(name);
+    }
+    if (found == context.state->records.end()) {
+        return {.opaque = true};
+    }
+    auto const node{found->second};
+    auto const i{node.index()};
+    auto const complete{scope_bindings_.contains(node.value)};
+    auto result{scope(nodes(struct_nodes_.children[i]), complete)};
+    auto parameters{template_scope(struct_nodes_.template_declaration[i])};
+    result.names.insert(result.names.end(), parameters.names.begin(), parameters.names.end());
+    result.opaque =
+        result.opaque || parameters.opaque || (!complete && struct_nodes_.bases[i].count != 0);
+    if (complete) {
+        for (auto const binding : scope_bindings_.at(node.value)) {
+            result.names.push_back(strings.view(binding));
+        }
+    }
+    return result;
+}
+
+auto CppIR::signature(std::uint32_t index, RenderContext const& context) const -> std::string {
     auto const id{function_nodes_.function[index].value};
     auto const declaration{function_nodes_.declaration[index] != 0};
     auto const header{function_nodes_.is_header[index] != 0};
@@ -61,7 +278,9 @@ auto CppIR::signature(std::uint32_t index, bool record_scope) const -> std::stri
     if (functions_.flags[id].is_nodiscard()) {
         output += "[[nodiscard]] ";
     }
-    if (functions_.flags[id].is_inline() && header && (owner || !record_scope)) {
+    RenderScopeGuard const guard{*context.state};
+    context.state->scopes.push_back(template_scope(functions_.template_declaration[id]));
+    if (functions_.flags[id].is_inline() && header && (owner || !context.record_scope)) {
         output += "inline ";
     }
     if (receiver == FunctionReceiver::static_ && !owner) {
@@ -77,9 +296,11 @@ auto CppIR::signature(std::uint32_t index, bool record_scope) const -> std::stri
         output += ' ';
     }
     if (functions_.kind[id] == FunctionKind::ordinary) {
-        output += return_syntax == ReturnSyntax::trailing
-                    ? std::string_view{"auto"}
-                    : types.spelling(functions_.return_type[id]);
+        if (return_syntax == ReturnSyntax::trailing) {
+            output += "auto";
+        } else {
+            types.append(output, functions_.return_type[id], context);
+        }
         output += ' ';
     } else if (functions_.kind[id] == FunctionKind::explicit_constructor && !owner) {
         output += "explicit ";
@@ -92,19 +313,24 @@ auto CppIR::signature(std::uint32_t index, bool record_scope) const -> std::stri
         output += strings.view(*owner);
         output += "::";
     }
-    append_expr(output, functions_.name[id]);
+    append_expr(output, functions_.name[id], context);
+    if (owner) {
+        context.state->scopes.push_back(record_scope(strings.view(*owner), context));
+    }
     output += '(';
+    context.state->scopes.emplace_back();
     auto const parameters{functions_.parameters[id]};
     auto const parameter_end{parameters.begin + parameters.count};
     for (auto p{parameters.begin}; p < parameter_end; ++p) {
         if (p != parameters.begin) {
             output += ", ";
         }
-        output += types.spelling(parameters_.type[parameter_references_[p].value]);
+        types.append(output, parameters_.type[parameter_references_[p].value], context);
         auto const parameter_name{strings.view(parameters_.name[parameter_references_[p].value])};
         if (!parameter_name.empty()) {
             output += ' ';
             output += parameter_name;
+            context.state->scopes.back().names.push_back(parameter_name);
         }
         if (auto const value{parameters_.default_value[parameter_references_[p].value]};
             value && (declaration || header)) {
@@ -142,7 +368,7 @@ auto CppIR::signature(std::uint32_t index, bool record_scope) const -> std::stri
             break;
         case FunctionExceptionKind::conditional:
             output += " noexcept(";
-            append_expr(output, conditional_noexcept_[exception.index()]);
+            append_expr(output, conditional_noexcept_[exception.index()], context);
             output += ')';
             break;
     }
@@ -150,10 +376,10 @@ auto CppIR::signature(std::uint32_t index, bool record_scope) const -> std::stri
         output += format.trailing_return_placement == FunctionTrailingReturnPlacement::next_line
                     ? "\n    -> "
                     : " -> ";
-        output += types.spelling(functions_.return_type[id]);
+        types.append(output, functions_.return_type[id], context);
     }
     if (auto const clause{functions_.requires_clause[id]}) {
-        auto const value{render(clause)};
+        auto const value{render(clause, context)};
         switch (format.requires_placement) {
             case FunctionRequiresPlacement::trailing_next_line:
                 output += "\n    requires ";
@@ -181,7 +407,7 @@ auto CppIR::signature(std::uint32_t index, bool record_scope) const -> std::stri
     }
     if (auto const declaration{functions_.template_declaration[id]}) {
         std::string prefix;
-        append_template(prefix, declaration);
+        append_template(prefix, declaration, context);
         prefix += format.template_placement == FunctionTemplatePlacement::same_line ? " " : "\n";
         output.insert(0, prefix);
     }
@@ -220,6 +446,7 @@ void CppIR::append_nodes(std::string& output,
     }
 }
 void CppIR::append_node(std::string& output, NodeId node, RenderContext const& context) const {
+    RenderScopeGuard const scope_guard{*context.state};
     auto const i{node.index()};
     auto indent = [&] { ir::append_indent(output, context); };
     auto write = [&](std::string_view text) { ir::append_indented(output, text, context); };
@@ -228,13 +455,19 @@ void CppIR::append_node(std::string& output, NodeId node, RenderContext const& c
         indent();
         output += text;
     };
-    auto type = [&](CppTypeId id) { output += types.spelling(id); };
+    auto type = [&](CppTypeId id) { types.append(output, id, context); };
     auto text = [&](StringId id) { output += strings.view(id); };
-    auto expr = [&](Expr id) { append_expr(output, id); };
+    auto expr = [&](Expr id) { append_expr(output, id, context); };
+    auto scoped_nodes = [&](ir::Range children) {
+        RenderScopeGuard const guard{*context.state};
+        context.state->scopes.push_back(scope(nodes(children)));
+        append_nodes(output, nodes(children), context.indent(), 1);
+    };
     auto template_prefix = [&](TemplateId declaration) {
         if (declaration) {
             indent();
-            append_template(output, declaration);
+            append_template(output, declaration, context);
+            context.state->scopes.push_back(template_scope(declaration));
             output += '\n';
         }
     };
@@ -298,6 +531,7 @@ void CppIR::append_node(std::string& output, NodeId node, RenderContext const& c
         case NodeKind::block:
             write("{");
             output += '\n';
+            context.state->scopes.push_back(scope(nodes(block_nodes_.children[i])));
             append_nodes(output, nodes(block_nodes_.children[i]), context.indent(), 1);
             close("}");
             break;
@@ -306,24 +540,28 @@ void CppIR::append_node(std::string& output, NodeId node, RenderContext const& c
             output += "if (";
             expr(if_stmt_nodes_.condition[i]);
             output += ") {\n";
-            append_nodes(output, nodes(if_stmt_nodes_.then_children[i]), context.indent(), 1);
+            scoped_nodes(if_stmt_nodes_.then_children[i]);
             close("}");
             if (auto const otherwise{if_stmt_nodes_.else_children[i]}) {
                 output += " else {\n";
-                append_nodes(output, nodes(*otherwise), context.indent(), 1);
+                scoped_nodes(*otherwise);
                 close("}");
             }
             break;
         case NodeKind::for_stmt: {
+            auto const initializer{for_stmt_nodes_.initializer[i]};
+            context.state->scopes.push_back(scope(std::span{&initializer, 1}));
             indent();
             output += "for (";
-            append_node(output, for_stmt_nodes_.initializer[i], {});
+            auto initializer_context{context};
+            initializer_context.indent_level = 0;
+            append_node(output, initializer, initializer_context);
             output += ' ';
             expr(for_stmt_nodes_.condition[i]);
             output += "; ";
             expr(for_stmt_nodes_.increment[i]);
             output += ") {\n";
-            append_nodes(output, nodes(for_stmt_nodes_.children[i]), context.indent(), 1);
+            scoped_nodes(for_stmt_nodes_.children[i]);
             close("}");
             break;
         }
@@ -344,8 +582,7 @@ void CppIR::append_node(std::string& output, NodeId node, RenderContext const& c
                     output += "default";
                 }
                 output += ": {\n";
-                append_nodes(
-                    output, nodes(cases_.body[case_references_[c].value]), context.indent(), 1);
+                scoped_nodes(cases_.body[case_references_[c].value]);
                 close("}");
             }
             close("}");
@@ -492,7 +729,7 @@ void CppIR::append_node(std::string& output, NodeId node, RenderContext const& c
         }
         case NodeKind::function: {
             auto const id{function_nodes_.function[i].value};
-            write(signature(i, context.record_scope));
+            write(signature(i, context));
             auto const implementation{functions_.implementation[id]};
             if (function_nodes_.declaration[i] ||
                 implementation.kind() != FunctionImplementationKind::body) {
@@ -501,6 +738,18 @@ void CppIR::append_node(std::string& output, NodeId node, RenderContext const& c
             }
             auto const body{
                 block_nodes_.children[function_bodies_.block[implementation.index()].index()]};
+            if (auto const owner{function_nodes_.owner[i]}) {
+                context.state->scopes.push_back(record_scope(strings.view(*owner), context));
+            }
+            auto body_scope{scope(nodes(body))};
+            auto parameters{template_scope(functions_.template_declaration[id])};
+            body_scope.names.insert(
+                body_scope.names.end(), parameters.names.begin(), parameters.names.end());
+            body_scope.opaque = body_scope.opaque || parameters.opaque;
+            for (auto const parameter : function_parameters(function_nodes_.function[i])) {
+                body_scope.names.push_back(strings.view(parameter_name(parameter)));
+            }
+            context.state->scopes.push_back(std::move(body_scope));
             auto const format{functions_.formatting[id]};
             if (format.body_layout == FunctionBodyLayout::compact) {
                 auto body_context{context};
@@ -590,6 +839,15 @@ void CppIR::append_node(std::string& output, NodeId node, RenderContext const& c
             }
             auto member_context{context.indent()};
             member_context.record_scope = true;
+            auto const complete{scope_bindings_.contains(node.value)};
+            auto members{scope(nodes(struct_nodes_.children[i]), complete)};
+            members.opaque = members.opaque || (!complete && struct_nodes_.bases[i].count != 0);
+            if (complete) {
+                for (auto const name : scope_bindings_.at(node.value)) {
+                    members.names.push_back(strings.view(name));
+                }
+            }
+            context.state->scopes.push_back(std::move(members));
             output += " {\n";
             append_nodes(output, nodes(struct_nodes_.children[i]), member_context, 2);
             close("};");
@@ -601,6 +859,24 @@ void CppIR::append_node(std::string& output, NodeId node, RenderContext const& c
             output += "namespace ";
             output += name;
             output += name.empty() ? "{\n" : " {\n";
+            if (name.empty()) {
+                context.state->scopes.push_back(scope(nodes(namespace_nodes_.children[i])));
+            } else {
+                auto remaining{name};
+                while (!remaining.empty()) {
+                    auto const end{remaining.find("::")};
+                    context.state->namespaces.push_back(remaining.substr(0, end));
+                    auto const key{render_detail::namespace_key(context.state->namespaces)};
+                    auto frame{context.state->namespace_scopes[key]};
+                    frame.namespace_scope = true;
+                    frame.namespace_depth = context.state->namespaces.size();
+                    context.state->scopes.push_back(std::move(frame));
+                    if (end == std::string_view::npos) {
+                        break;
+                    }
+                    remaining.remove_prefix(end + 2);
+                }
+            }
             append_nodes(output, nodes(namespace_nodes_.children[i]), context, 2);
             close("} // namespace");
             if (!name.empty()) {
@@ -614,15 +890,27 @@ void CppIR::append_node(std::string& output, NodeId node, RenderContext const& c
     }
 }
 auto CppIR::render(NodeId node, RenderContext const& context) const -> std::string {
+    RenderState state;
+    auto active{context};
+    if (active.state == nullptr) {
+        initialize_namespaces(state, std::span{&node, 1});
+        active.state = &state;
+    }
     std::string output;
-    append_node(output, node, context);
+    append_node(output, node, active);
     return output;
 }
 auto CppIR::render_nodes(std::span<NodeId const> values,
                          RenderContext const& context,
                          int newlines) const -> std::string {
+    RenderState state;
+    auto active{context};
+    if (active.state == nullptr) {
+        initialize_namespaces(state, values);
+        active.state = &state;
+    }
     std::string output;
-    append_nodes(output, values, context, newlines);
+    append_nodes(output, values, active, newlines);
     return output;
 }
 
@@ -841,7 +1129,9 @@ auto CppIR::render(CppFileId file) const -> std::string {
     if (!system.empty()) {
         include_groups.push_back(std::move(system));
     }
-    RenderContext const context{.include_groups = include_groups};
+    RenderState state;
+    initialize_namespaces(state, file_nodes);
+    RenderContext const context{.include_groups = include_groups, .state = &state};
     std::string output;
     if (flags.clang_format_off()) {
         output += "// clang-format off\n";

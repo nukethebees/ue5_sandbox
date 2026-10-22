@@ -39,6 +39,14 @@ Generated templates are constructed directly; authored `#cpp` template parameter
 remain raw language-boundary inputs. Export specifiers are interned identifiers. Compiler function,
 member and output-file flags are generated packed values checked into the source tree.
 
+C++ type references retain qualified-name components and composed type handles alongside their
+canonical spellings. Rendering borrows a per-render namespace stack and lexical binding scopes,
+and removes enclosing namespace prefixes only when their remaining first name is not hidden.
+Signatures, templates and typed expressions share this context. Canonical spellings and dependency
+policies remain independent of their displayed names. Authored C++ stays opaque; unknown raw
+declarations or inherited scopes retain qualification. Generated raw declarations can describe
+their bindings explicitly through `CppIR::set_scope_bindings`.
+
 `NodeId` identifies a generated node. `Modules` and `CppFiles` retain output assembly metadata in
 the same C++ IR owner, with file/module handles, shared text and flat ordered node/text ranges.
 Final standalone artifacts acquire their own path/content only at publication.

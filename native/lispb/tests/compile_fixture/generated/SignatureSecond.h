@@ -8,12 +8,11 @@ struct A;
 } // namespace codegen_compile_fixture::first
 namespace codegen_compile_fixture::second {
 struct B {
-    auto make() -> codegen_compile_fixture::first::A;
+    auto make() -> first::A;
 
-    auto pointer() -> codegen_compile_fixture::first::A*;
+    auto pointer() -> first::A*;
 
-    auto ref(codegen_compile_fixture::first::A const& value)
-        -> codegen_compile_fixture::first::A const&;
+    auto ref(first::A const& value) -> first::A const&;
 };
 
 union Payload {

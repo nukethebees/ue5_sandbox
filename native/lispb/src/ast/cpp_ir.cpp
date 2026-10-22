@@ -577,6 +577,7 @@ auto CppIR::definition(FunctionId function,
     return function_node(function, owner, false, header, syntax);
 }
 void CppIR::clear() {
+    scope_bindings_.clear();
     auto clear = [](auto&... columns) { (columns.clear(), ...); };
     clear(line_directive_nodes_.line, line_directive_nodes_.path);
     clear(for_stmt_nodes_.initializer,

@@ -41,6 +41,57 @@
 namespace lispb::codegen::detail {
 namespace {
 
+void describe_compact_scope(LoweringContext& context, RecordId record, DeclarationHandle schema) {
+    if (!context.declarations.soas.using_declarations[context.declarations.soas.index(schema)]
+             .empty()) {
+        return;
+    }
+    // Describe inherited runtime members and declarations retained as generated raw C++.
+    std::vector<IdentifierId> names;
+    for (auto const name : {"StorageState",
+                            "StorageOperations",
+                            "CompactViewOperations",
+                            "Operations",
+                            "Layout",
+                            "size_type",
+                            "byte_size_type",
+                            "capacity_granularity",
+                            "allocation_alignment",
+                            "capacity_block_bound",
+                            "max_capacity",
+                            "layout_bytes",
+                            "data_",
+                            "num_",
+                            "capacity_",
+                            "release_storage",
+                            "take_storage",
+                            "move_assign",
+                            "allocate_storage",
+                            "reallocate",
+                            "num",
+                            "capacity",
+                            "is_empty",
+                            "allocated_bytes",
+                            "reserve",
+                            "reset",
+                            "set_num",
+                            "add_defaulted",
+                            "add_uninitialised",
+                            "remove_at_swap",
+                            "copy_element",
+                            "copy_elements",
+                            "append_from",
+                            "validate",
+                            "get_view",
+                            "get_const_view",
+                            "slice",
+                            "left",
+                            "right"}) {
+        names.push_back(context.ir.strings.intern(name));
+    }
+    context.ir.set_scope_bindings(record, names);
+}
+
 auto adjacent(LoweringContext& context, Nodes const& nodes) -> Nodes {
     auto& ir{context.ir};
     NodeListBuilder result{ir};
@@ -224,11 +275,7 @@ auto data_pointers_node(LoweringContext& context, SingleAllocationModelId model)
         ir.template_declaration({ir.type_template_parameter(ir.strings.intern("T"))})));
     for (auto const column : context.ir.lowering.items(model_store.columns[model_store_index])) {
         children.new_lines(1).add(ir.instance_member(
-            ir.types.intern(
-                "Element<" +
-                    std::string{ir.types.spelling(column_store.type[column_store.index(column)])} +
-                    ">*",
-                ir.types.dependencies(column_store.type[column_store.index(column)])),
+            ir.types.decorate(column_store.type[column_store.index(column)], "Element<", ">*"),
             column_store.flattened_identifier[column_store.index(column)],
             ir.raw_expr("")));
     }
@@ -694,15 +741,17 @@ auto compact_view_node(LoweringContext& context,
             auto const prefix{context.text(model_store.vector_namespace[model_store.index(model)]) +
                               std::string{compact_vector_prefix(
                                   compact_store.kind[compact_store.index(vector)])}};
-            auto const element{
-                std::string{
-                    ir.types.spelling(compact_store.element_type[compact_store.index(vector)])} +
-                (compact_store.equivalent_type[compact_store.index(vector)].value == 0
-                     ? ""
-                     : ", " + std::string{ir.types.spelling(
-                                  compact_store.equivalent_type[compact_store.index(vector)])})};
-            auto view_type{ir.types.intern("std::conditional_t<Const, " + prefix + "ConstView<" +
-                                           element + ">, " + prefix + "View<" + element + ">>")};
+            std::vector<CppTypeId> elements{
+                compact_store.element_type[compact_store.index(vector)]};
+            if (auto const equivalent{compact_store.equivalent_type[compact_store.index(vector)]};
+                equivalent.value != 0) {
+                elements.push_back(equivalent);
+            }
+            auto view_type{ir.types.template_type(
+                ir.types.named("std::conditional_t"),
+                {ir.types.intern("Const"),
+                 ir.types.template_type(ir.types.named(prefix + "ConstView"), elements),
+                 ir.types.template_type(ir.types.named(prefix + "View"), elements)})};
             if (pointer_view && !rotation_view) {
                 view_type = ir.types.intern(
                     "ioj::Vector3SoAView<Element<float>>",
@@ -729,10 +778,9 @@ auto compact_view_node(LoweringContext& context,
                      {ir.raw(std::string{"using ioj::soa_storage_detail::"} +
                              (pointer_view ? "three_column_view;" : "strided_vector_view;")),
                       ir.return_stmt(
-                          ir.call(ir.named(std::string{pointer_view ? "three_column_view<"
-                                                                    : "strided_vector_view<"} +
-                                               std::string{ir.types.spelling(view_type)} + ">",
-                                           ir.types.dependencies(view_type)),
+                          ir.call(ir.template_id(ir.named(pointer_view ? "three_column_view"
+                                                                       : "strided_vector_view"),
+                                                 {ir.type_reference(view_type)}),
                                   std::move(arguments)))});
         } else {
             auto const column{column_for(context, model, path)};
@@ -830,6 +878,7 @@ auto compact_view_node(LoweringContext& context,
                  ir.types.intern("size_type"), ir.strings.intern("count_"), ir.raw_expr(""))}));
     auto const created_record{
         ir.record(ir.strings.intern(name), children.build(), RecordKind::struct_)};
+    describe_compact_scope(context, created_record, view_store.schema[view_store_index]);
     ir.set_record_bases(created_record,
                         {ir.types.intern("ioj::soa_storage_detail::CompactViewOperations")});
     ir.set_record_template(created_record,
@@ -875,10 +924,8 @@ auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationMod
     for (auto const column : context.ir.lowering.items(model_store.columns[model_store_index])) {
         columns
             .add(ir.instance_member(
-                ir.types.intern(
-                    "ColLayout<" +
-                    std::string{ir.types.spelling(column_store.type[column_store.index(column)])} +
-                    ">"),
+                ir.types.template_type(ir.types.intern("ColLayout"),
+                                       {column_store.type[column_store.index(column)]}),
                 column_store.layout_identifier[column_store.index(column)]))
             .new_lines(1);
         constructor_initializers.push_back(
@@ -887,11 +934,20 @@ auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationMod
         previous_column = context.text(column_store.layout_identifier[column_store.index(column)]);
     }
     ir.set_function_body(constructor, {}, constructor_initializers);
+    auto const copy_constructor{ir.constructor(ir.strings.intern(columns_name))};
+    ir.set_function_parameters(copy_constructor, {ir.parameter(columns_name + " const&")});
+    ir.set_function_deleted(copy_constructor);
+    auto const copy_assignment{ir.function("operator=", columns_name + "&")};
+    ir.set_function_parameters(copy_assignment, {ir.parameter(columns_name + " const&")});
+    ir.set_function_return_type(
+        copy_assignment, ir.function_return_type(copy_assignment), ReturnSyntax::trailing);
+    ir.set_function_deleted(copy_assignment);
     columns.new_lines(2)
         .add(inline_function(context, constructor))
         .new_lines(1)
-        .add(ir.raw(columns_name + "(" + columns_name + " const&) = delete;\nauto operator=(" +
-                    columns_name + " const&) -> " + columns_name + "& = delete;"));
+        .add(ir.header_function(copy_constructor))
+        .new_lines(1)
+        .add(ir.header_function(copy_assignment));
     auto const last_column{
         "columns." +
         context.text(column_store.layout_identifier[column_store.index(
@@ -1166,6 +1222,7 @@ auto emit_single_allocation_container(LoweringContext& context,
     source.append(std::move(api.source)).new_lines(2);
     auto const created_record{ir.record(
         model_store.owner_name[model_store_index], children.build(), RecordKind::struct_)};
+    describe_compact_scope(context, created_record, model_store.schema[model_store_index]);
     ir.set_record_bases(
         created_record,
         {ir.types.intern("protected " +

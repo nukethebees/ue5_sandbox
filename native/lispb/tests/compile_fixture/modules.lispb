@@ -539,6 +539,19 @@ return result;}cpp#)
   (record Position
     (member x float)
     (member y float))
+  (record NamespaceLookup
+    (member local codegen_compile_fixture::mixed::Position :count 2)
+    (member parent codegen_compile_fixture::ApiPair)
+    (member sibling codegen_compile_fixture::second::B))
+  (record HiddenLookup
+    (member Position int :initializer "7")
+    (member token codegen_compile_fixture::mixed::Position :initializer "")
+    (member mixed int :initializer "0"))
+  (record ParameterLookup
+    (function select codegen_compile_fixture::mixed::Position :static true
+      (parameter Position int)
+      (parameter value codegen_compile_fixture::mixed::Position)
+      :body ("(void)Position;" "return value;")))
   (enum Kind @standard_uint8 (value Data)))
 
 (module signature_first

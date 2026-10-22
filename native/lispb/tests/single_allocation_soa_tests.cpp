@@ -34,7 +34,7 @@ TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
             (member local_types array example::Token)
             (member nested_types array example::sub::Token)
             (member foreign_types array other::Token)
-            (member shadowed_types array example::Layout)
+            (member shadowed_types array example::ColLayout)
             (single-allocation SingleRows))))"))};
     auto const& output{files.front().content};
     EXPECT_EQ(output.find("struct RowsView"), std::string::npos);
@@ -45,7 +45,7 @@ TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
     EXPECT_NE(output.find("ColLayout<Token> LocalTypesColumn"), std::string::npos);
     EXPECT_NE(output.find("ColLayout<sub::Token> NestedTypesColumn"), std::string::npos);
     EXPECT_NE(output.find("ColLayout<other::Token> ForeignTypesColumn"), std::string::npos);
-    EXPECT_NE(output.find("ColLayout<example::Layout> ShadowedTypesColumn"), std::string::npos);
+    EXPECT_NE(output.find("ColLayout<example::ColLayout> ShadowedTypesColumn"), std::string::npos);
     EXPECT_EQ(output.find("using Base::count_;"), std::string::npos);
     EXPECT_EQ(output.find("this->count_"), std::string::npos);
     EXPECT_EQ(output.find("CompactViewState"), std::string::npos);

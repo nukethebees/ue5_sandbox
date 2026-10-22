@@ -65,158 +65,12 @@ auto recognize_compact_vector(LoweringContext& context,
     return result;
 }
 
-auto relative_column_spelling(LoweringContext& context,
-                              std::string const& spelling,
-                              std::string const& namespace_name,
-                              SingleAllocationModelId model,
-                              std::map<IdentifierId, DeclarationHandle> const& schemas)
-    -> std::string {
-    auto& model_store{context.ir.lowering.single_allocation_models};
-    auto const model_store_index{model_store.index(model)};
-    auto& column_store{context.ir.lowering.single_allocation_columns};
-    auto const prefix{namespace_name + "::"};
-    if (namespace_name.empty() || !spelling.starts_with(prefix) ||
-        spelling.find_first_not_of(
-            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789:") !=
-            std::string::npos) {
-        return spelling;
-    }
-
-    auto relative{spelling.substr(prefix.size())};
-    auto const first{relative.substr(0, relative.find("::"))};
-    // Preserve qualification when class or template scope hides the namespace member.
-    static std::set<std::string_view> const generated_names{"Base",
-                                                            "Byte",
-                                                            "ColLayout",
-                                                            "Columns",
-                                                            "Const",
-                                                            "ConstView",
-                                                            "DataPointers",
-                                                            "Element",
-                                                            "Enabled",
-                                                            "Func",
-                                                            "Layout",
-                                                            "LayoutStart",
-                                                            "Operations",
-                                                            "Overlapping",
-                                                            "Self",
-                                                            "State",
-                                                            "Storage",
-                                                            "T",
-                                                            "View",
-                                                            "size_type",
-                                                            "byte_size_type",
-                                                            "equivalent_type",
-                                                            "soa_schema",
-                                                            "allocation_alignment",
-                                                            "capacity_granularity",
-                                                            "column_gap",
-                                                            "capacity_block_bound",
-                                                            "max_capacity",
-                                                            "layout_bytes",
-                                                            "data_",
-                                                            "num_",
-                                                            "capacity_",
-                                                            "resource_",
-                                                            "state_",
-                                                            "count_",
-                                                            "offset_",
-                                                            "source",
-                                                            "count",
-                                                            "first",
-                                                            "source_first",
-                                                            "blocks",
-                                                            "capacity_blocks",
-                                                            "validate",
-                                                            "num",
-                                                            "capacity",
-                                                            "is_empty",
-                                                            "allocated_bytes",
-                                                            "get_memory_resource",
-                                                            "get_view",
-                                                            "get_const_view",
-                                                            "slice",
-                                                            "left",
-                                                            "right",
-                                                            "get_data",
-                                                            "make_data_unchecked",
-                                                            "default_construct_columns",
-                                                            "swap_remove_columns",
-                                                            "swap_remove_indices",
-                                                            "copy_columns",
-                                                            "transfer_columns",
-                                                            "source_pointers",
-                                                            "copy_columns_from",
-                                                            "append_columns",
-                                                            "copy_live_columns",
-                                                            "each_column",
-                                                            "apply_arrays",
-                                                            "add_defaulted",
-                                                            "add_uninitialised",
-                                                            "append_from",
-                                                            "copy_element",
-                                                            "copy_elements",
-                                                            "remove_at_swap",
-                                                            "reserve",
-                                                            "reset",
-                                                            "set_num",
-                                                            "reallocate"};
-    if (generated_names.contains(first) ||
-        first == context.text(model_store.owner_name[model_store_index]) ||
-        first == context.text(model_store.layout_name[model_store_index]) ||
-        first == context.text(model_store.view_name[model_store_index]) ||
-        first == context.text(model_store.const_view_name[model_store_index])) {
-        return spelling;
-    }
-    for (auto const& [name, schema] : schemas) {
-        if (!context.declarations.soas.using_declarations[context.declarations.soas.index(schema)]
-                 .empty()) {
-            return spelling;
-        }
-        for (auto const member_id : context.declarations.items(
-                 context.declarations.soas.members[context.declarations.soas.index(schema)])) {
-            auto const member{member_id};
-            if (first == context.text(context.declarations.soa_members
-                                          .name[context.declarations.soa_members.index(member)]) ||
-                first == "view_" + context.text(
-                                       context.declarations.soa_members
-                                           .name[context.declarations.soa_members.index(member)])) {
-                return spelling;
-            }
-        }
-        for (auto const* functions :
-             {&context.declarations.soas.functions[context.declarations.soas.index(schema)],
-              &context.declarations.soas
-                   .mutable_view_functions[context.declarations.soas.index(schema)],
-              &context.declarations.soas
-                   .const_view_functions[context.declarations.soas.index(schema)]}) {
-            if (std::ranges::any_of(
-                    context.declarations.items(*functions), [&](auto const function_id) {
-                        return context.text(
-                                   context.declarations.functions
-                                       .name[context.declarations.functions.index(function_id)]) ==
-                               first;
-                    })) {
-                return spelling;
-            }
-        }
-    }
-    for (auto const column : context.ir.lowering.items(model_store.columns[model_store_index])) {
-        if (first == context.text(column_store.flattened_identifier[column_store.index(column)]) ||
-            first == context.text(column_store.layout_identifier[column_store.index(column)])) {
-            return spelling;
-        }
-    }
-    return relative;
-}
-
 } // namespace
 
 auto build_single_allocation_model(LoweringContext& context,
                                    DeclarationHandle schema,
                                    std::map<IdentifierId, DeclarationHandle> const& schemas,
                                    SoaBackend const backend) -> SingleAllocationModelId {
-    auto& column_store{context.ir.lowering.single_allocation_columns};
     auto& ir{context.ir};
     auto const& type_graph{context.semantic};
     auto const module_name{context.module};
@@ -385,18 +239,7 @@ auto build_single_allocation_model(LoweringContext& context,
     };
     collect_columns(collect_columns, root_type, {});
 
-    auto const& namespace_name{type_graph.namespace_name(*root_id)};
     models.columns[row] = storage.save(std::span<SingleAllocationColumnId const>{column_ids});
-    for (auto const column : column_ids) {
-        column_store.type[column_store.index(column)] = ir.types.derive(
-            column_store.type[column_store.index(column)],
-            relative_column_spelling(
-                context,
-                std::string{ir.types.spelling(column_store.type[column_store.index(column)])},
-                context.text(namespace_name),
-                result,
-                schemas));
-    }
 
     models.dependencies[row] = storage.save(std::span<TypeDependencyId const>{dependencies});
     return result;

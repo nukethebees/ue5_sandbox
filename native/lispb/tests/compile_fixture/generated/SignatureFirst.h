@@ -11,16 +11,16 @@ union Payload;
 } // namespace codegen_compile_fixture::second
 namespace codegen_compile_fixture::first {
 struct A {
-    codegen_compile_fixture::second::B make();
+    second::B make();
 
-    void accept(codegen_compile_fixture::second::B value);
+    void accept(second::B value);
 
-    codegen_compile_fixture::second::B* pointer();
+    second::B* pointer();
 
-    codegen_compile_fixture::second::B const& ref(codegen_compile_fixture::second::B const& value);
+    second::B const& ref(second::B const& value);
 
-    auto move(codegen_compile_fixture::second::B&& value) -> codegen_compile_fixture::second::B&&;
+    auto move(second::B&& value) -> second::B&&;
 
-    codegen_compile_fixture::second::Payload payload();
+    second::Payload payload();
 };
 } // namespace codegen_compile_fixture::first

@@ -10,14 +10,14 @@
 
 namespace codegen_compile_fixture {
 struct CrossModuleFactory {
-    codegen_compile_fixture::first::A make() { return {}; }
+    first::A make() { return {}; }
 
-    auto make_second() -> codegen_compile_fixture::second::B { return {}; }
+    auto make_second() -> second::B { return {}; }
 
-    void accept(codegen_compile_fixture::first::A value) { (void)value; }
+    void accept(first::A value) { (void)value; }
 
-    codegen_compile_fixture::StandardInt count();
+    StandardInt count();
 
-    codegen_compile_fixture::mixed::Kind tag();
+    mixed::Kind tag();
 };
 } // namespace codegen_compile_fixture

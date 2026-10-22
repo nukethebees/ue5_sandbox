@@ -19,14 +19,12 @@
 namespace lispb::codegen::detail {
 namespace {
 auto composed(LoweringContext& context,
-              std::string const& spelling,
+              std::string_view const primary,
               std::string_view const header,
               CppTypeId const contained) -> CppTypeId {
     auto& ir{context.ir};
-    std::vector<TypeDependencyId> dependencies{ir.types.dependency(spelling, header)};
-    auto const nested{ir.types.dependencies(contained)};
-    dependencies.insert(dependencies.end(), nested.begin(), nested.end());
-    return ir.types.intern(spelling, dependencies);
+    return ir.types.template_type(ir.types.named(primary, {ir.types.dependency(primary, header)}),
+                                  {contained});
 }
 
 } // namespace
@@ -50,28 +48,21 @@ auto resolve_members(LoweringContext& context, DeclarationHandle schema)
             auto const scope{spelling.rfind("::")};
             spelling.insert(scope == std::string::npos ? 0 : scope + 2,
                             context.text(context.soa_variant_prefix));
-            element = ir.types.derive(element, spelling);
+            element = ir.types.reference(ir.types.derive(element, spelling));
         }
         if (context.declarations.soa_members.kind[context.declarations.soa_members.index(member)] ==
             SoaMemberKind::array) {
-            auto spelling{"TArray<" + std::string{ir.types.spelling(element)}};
-            auto const nested{ir.types.dependencies(element)};
-            std::vector<TypeDependencyId> dependencies{nested.begin(), nested.end()};
+            std::vector<CppTypeId> arguments{element};
             if (context.declarations.soas
                     .array_allocator[context.declarations.soas.index(schema)]) {
                 auto const allocator{context.resolve(
                     *context.declarations.soas
                          .array_allocator[context.declarations.soas.index(schema)])};
-                spelling += ", " + std::string{ir.types.spelling(allocator)};
-                auto const allocator_dependencies{ir.types.dependencies(allocator)};
-                dependencies.insert(dependencies.end(),
-                                    allocator_dependencies.begin(),
-                                    allocator_dependencies.end());
+                arguments.push_back(allocator);
             }
-            spelling += '>';
-            dependencies.insert(dependencies.begin(),
-                                ir.types.dependency(spelling, "Containers/Array.h"));
-            auto const container{ir.types.add(spelling, dependencies)};
+            auto const container{ir.types.clone(ir.types.template_type(
+                ir.types.named("TArray", {ir.types.dependency("TArray", "Containers/Array.h")}),
+                arguments))};
             ir.types.set_operation(container, TypeOperation::remove_at_swap, "RemoveAtSwap");
             auto const id{resolved.append()};
             auto const row{resolved.index(id)};
@@ -83,15 +74,9 @@ auto resolve_members(LoweringContext& context, DeclarationHandle schema)
             resolved.element_type[row] = element;
             resolved.container_type[row] = container;
             resolved.view_type[row] =
-                composed(context,
-                         "TArrayView<" + std::string{ir.types.spelling(element)} + ">",
-                         "Containers/ArrayView.h",
-                         element);
+                composed(context, "TArrayView", "Containers/ArrayView.h", element);
             resolved.const_view_type[row] =
-                composed(context,
-                         "TConstArrayView<" + std::string{ir.types.spelling(element)} + ">",
-                         "Containers/ArrayView.h",
-                         element);
+                composed(context, "TConstArrayView", "Containers/ArrayView.h", element);
             result.push_back(id);
         } else {
             auto const id{resolved.append()};
@@ -103,11 +88,8 @@ auto resolve_members(LoweringContext& context, DeclarationHandle schema)
                                      .kind[context.declarations.soa_members.index(member)];
             resolved.element_type[row] = element;
             resolved.container_type[row] = element;
-            resolved.view_type[row] = ir.types.intern(
-                std::string{ir.types.spelling(element)} + "::View", ir.types.dependencies(element));
-            resolved.const_view_type[row] =
-                ir.types.intern(std::string{ir.types.spelling(element)} + "::ConstView",
-                                ir.types.dependencies(element));
+            resolved.view_type[row] = ir.types.decorate(element, "", "::View");
+            resolved.const_view_type[row] = ir.types.decorate(element, "", "::ConstView");
             result.push_back(id);
         }
     }

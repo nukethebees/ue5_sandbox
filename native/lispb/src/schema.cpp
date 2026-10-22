@@ -55,14 +55,17 @@ auto resolve_type_use(TypeRefId const reference_id, TypeRegistry const& types)
         }
     }
 
+    result = cpp_types.reference(result);
     auto const base{classify_physical_type_use(cpp_types, result)};
-    auto spelling{std::string{cpp_types.spelling(result)}};
+    std::string suffix;
     if (references.nested[reference].has_value()) {
-        spelling += "::";
-        spelling += cpp_types.strings().view(*references.nested[reference]);
+        suffix += "::";
+        suffix += cpp_types.strings().view(*references.nested[reference]);
     }
-    spelling += cpp_types.strings().view(references.suffix[reference]);
-    result = cpp_types.derive(result, spelling);
+    suffix += cpp_types.strings().view(references.suffix[reference]);
+    if (!suffix.empty()) {
+        result = cpp_types.decorate(result, "", suffix);
+    }
     auto physical{classify_physical_type_use(cpp_types, result)};
     physical.names_semantic_type = !references.nested[reference].has_value() &&
                                    cpp_types.strings().view(physical.object_spelling) ==

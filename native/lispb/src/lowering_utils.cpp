@@ -103,7 +103,7 @@ void append_type_dependencies(std::vector<TypeDependencyId>& result,
 }
 
 auto qualify(CppIR& ir, CppTypeId type, std::string const& suffix) -> CppTypeId {
-    return ir.types.derive(type, std::string{ir.types.spelling(type)} + suffix);
+    return ir.types.decorate(type, "", suffix);
 }
 
 auto native_spelling(std::string const& spelling) -> std::string {

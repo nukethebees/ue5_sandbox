@@ -206,7 +206,8 @@ auto CppIR::expr_precedence(Expr expr) const -> int {
             return 8;
     }
 }
-void CppIR::append_expr(std::string& output, Expr expr, int minimum, bool equal) const {
+void CppIR::append_expr(
+    std::string& output, Expr expr, RenderContext const& context, int minimum, bool equal) const {
     auto const index{expr.index()};
     auto const precedence{expr_precedence(expr)};
     auto const parenthesize{precedence < minimum || (equal && precedence == minimum)};
@@ -219,21 +220,21 @@ void CppIR::append_expr(std::string& output, Expr expr, int minimum, bool equal)
             if (!first) {
                 output += ", ";
             }
-            append_expr(output, argument, 1);
+            append_expr(output, argument, context, 1);
             first = false;
         }
     };
     switch (expr.kind()) {
         case ExprKind::type_reference:
-            output += types.spelling(type_reference_exprs_.type[index]);
+            types.append(output, type_reference_exprs_.type[index], context);
             break;
         case ExprKind::parenthesized:
             output += '(';
-            append_expr(output, parenthesized_exprs_.operand[index]);
+            append_expr(output, parenthesized_exprs_.operand[index], context);
             output += ')';
             break;
         case ExprKind::template_id:
-            append_expr(output, template_id_exprs_.callee[index], 8);
+            append_expr(output, template_id_exprs_.callee[index], context, 8);
             output += '<';
             append_arguments(template_id_exprs_.arguments[index]);
             output += '>';
@@ -253,30 +254,30 @@ void CppIR::append_expr(std::string& output, Expr expr, int minimum, bool equal)
             output += strings.view(raw_exprs_.text[index]);
             break;
         case ExprKind::call:
-            append_expr(output, call_exprs_.callee[index], 8);
+            append_expr(output, call_exprs_.callee[index], context, 8);
             output += '(';
             append_arguments(call_exprs_.arguments[index]);
             output += ')';
             break;
         case ExprKind::member_access:
-            append_expr(output, member_exprs_.object[index], 8);
+            append_expr(output, member_exprs_.object[index], context, 8);
             output += member_exprs_.through_pointer[index] ? "->" : ".";
             output += strings.view(member_exprs_.member[index]);
             break;
         case ExprKind::subscript:
-            append_expr(output, subscript_exprs_.object[index], 8);
+            append_expr(output, subscript_exprs_.object[index], context, 8);
             output += '[';
-            append_expr(output, subscript_exprs_.index[index], 1);
+            append_expr(output, subscript_exprs_.index[index], context, 1);
             output += ']';
             break;
         case ExprKind::binary:
-            append_expr(output, binary_exprs_.left[index], precedence);
+            append_expr(output, binary_exprs_.left[index], context, precedence);
             output += expr_detail::binary_spelling(binary_exprs_.operation[index]);
             if (binary_exprs_.line_break_after[index]) {
                 output.pop_back();
                 output += "\n    ";
             }
-            append_expr(output, binary_exprs_.right[index], precedence, true);
+            append_expr(output, binary_exprs_.right[index], context, precedence, true);
             break;
         case ExprKind::unary:
             switch (unary_exprs_.operation[index]) {
@@ -293,23 +294,23 @@ void CppIR::append_expr(std::string& output, Expr expr, int minimum, bool equal)
                     output += "++";
                     break;
             }
-            append_expr(output, unary_exprs_.operand[index], 7, true);
+            append_expr(output, unary_exprs_.operand[index], context, 7, true);
             break;
         case ExprKind::static_cast_:
             output += "static_cast<";
-            output += types.spelling(cast_exprs_.type[index]);
+            types.append(output, cast_exprs_.type[index], context);
             output += ">(";
-            append_expr(output, cast_exprs_.operand[index], 1);
+            append_expr(output, cast_exprs_.operand[index], context, 1);
             output += ')';
             break;
         case ExprKind::sizeof_type:
             output += "sizeof(";
-            output += types.spelling(sizeof_exprs_.type[index]);
+            types.append(output, sizeof_exprs_.type[index], context);
             output += ')';
             break;
         case ExprKind::initializer_list:
             if (auto const type{initializer_exprs_.type[index]}) {
-                output += types.spelling(*type);
+                types.append(output, *type, context);
             }
             output += '{';
             append_arguments(initializer_exprs_.elements[index]);
@@ -322,9 +323,14 @@ void CppIR::append_expr(std::string& output, Expr expr, int minimum, bool equal)
         output += ')';
     }
 }
-auto CppIR::render(Expr expr) const -> std::string {
+auto CppIR::render(Expr expr, RenderContext const& context) const -> std::string {
+    RenderState state;
+    auto active{context};
+    if (active.state == nullptr) {
+        active.state = &state;
+    }
     std::string result;
-    append_expr(result, expr);
+    append_expr(result, expr, active);
     return result;
 }
 void CppIR::collect_dependencies(Expr expr, std::vector<TypeDependencyId>& result) const {

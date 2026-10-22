@@ -646,15 +646,20 @@ class TypeGraphBuilder {
                         resolved.cpp_type = manifest_.types.cpp_types.intern("");
                         resolved.physical = {};
                     } else {
-                        auto spelling{str(graph_.cpp_spelling(node))};
+                        auto& types{manifest_.types.cpp_types};
+                        auto const original{resolved.cpp_type};
+                        auto physical_type{types.reference(
+                            types.derive(original, str(graph_.cpp_spelling(node))))};
+                        std::string suffix;
                         if (store_.type_refs.nested[store_.type_refs.index(reference)]) {
-                            spelling +=
+                            suffix +=
                                 "::" +
                                 str(*store_.type_refs.nested[store_.type_refs.index(reference)]);
                         }
-                        spelling += str(store_.type_refs.suffix[store_.type_refs.index(reference)]);
-                        auto& types{manifest_.types.cpp_types};
-                        resolved.cpp_type = types.derive(resolved.cpp_type, spelling);
+                        suffix += str(store_.type_refs.suffix[store_.type_refs.index(reference)]);
+                        resolved.cpp_type = suffix.empty()
+                                              ? physical_type
+                                              : types.decorate(physical_type, "", suffix);
                         auto const names_semantic_type{resolved.physical.names_semantic_type};
                         resolved.physical =
                             codegen::classify_physical_type_use(types, resolved.cpp_type);
@@ -718,9 +723,8 @@ class TypeGraphBuilder {
             dependencies.push_back(dependency);
         }
         auto const row{graph_.occurrences().index(target)};
-        auto const cpp_type{types.derive(graph_.occurrences().cpp_type[row],
-                                         types.spelling(graph_.occurrences().cpp_type[row]),
-                                         dependencies)};
+        auto const cpp_type{
+            types.with_dependencies(graph_.occurrences().cpp_type[row], dependencies)};
         if (!preserve_existing) {
             graph_.occurrences_.cpp_type[row] = cpp_type;
             return target;

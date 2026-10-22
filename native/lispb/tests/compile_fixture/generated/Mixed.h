@@ -4,7 +4,9 @@
 #pragma once
 
 #include "SignatureSecond.h"
+#include "Soa.h"
 
+#include <array>
 #include <compare>
 #include <cstdint>
 
@@ -35,7 +37,7 @@ struct DefaultArguments {
 
     bool pointer(DefaultPointer* value = nullptr);
 
-    void cross(codegen_compile_fixture::second::B value = {});
+    void cross(second::B value = {});
 };
 
 using MethodCount = std::uint8_t;
@@ -84,11 +86,11 @@ struct ValueFactory {
 };
 
 struct CrossModuleReader {
-    codegen_compile_fixture::ApiPair make();
+    ApiPair make();
 
-    void accept(codegen_compile_fixture::ApiPair const& value);
+    void accept(ApiPair const& value);
 
-    auto pointer() -> codegen_compile_fixture::ApiPair*;
+    auto pointer() -> ApiPair*;
 };
 
 struct Uninitialized {
@@ -141,5 +143,28 @@ struct Event {
     };
 
     Payload payload;
+};
+
+struct NamespaceLookup {
+    std::array<Position, 2> local;
+
+    ApiPair parent;
+
+    second::B sibling;
+};
+
+struct HiddenLookup {
+    int Position{7};
+
+    codegen_compile_fixture::mixed::Position token{};
+
+    int mixed{0};
+};
+
+struct ParameterLookup {
+    static Position select(int Position, mixed::Position value) {
+        (void)Position;
+        return value;
+    }
 };
 } // namespace codegen_compile_fixture::mixed
