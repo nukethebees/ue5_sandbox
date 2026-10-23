@@ -231,13 +231,14 @@ auto settings_api(LoweringContext& context,
                   ModuleHandle module,
                   std::span<CppTypeId const> setting_types) -> NodeId {
     auto& ir{context.ir};
+    auto const& modules{context.declarations.settings_modules};
+    auto const module_row{modules.index(module)};
     NodeListBuilder members{ir};
     members.add(ir.access(Access::public_), 1);
-    auto const settings{context.declarations.settings_modules
-                            .settings_list[context.declarations.settings_modules.index(module)]};
+    auto const settings{context.declarations.items(modules.settings_list[module_row])};
     auto const setting_count{settings.size()};
     for (std::size_t index{}; index < setting_count; ++index) {
-        auto const setting{context.declarations.items(settings)[index]};
+        auto const setting{settings[index]};
         auto const name{
             context.declarations.settings.name[context.declarations.settings.index(setting)]};
         auto const getter{ir.function(name, ir.types.intern("auto"))};
@@ -277,10 +278,7 @@ auto settings_api(LoweringContext& context,
                 derived_type, ir.unary(UnaryOperator::dereference, ir.named("this"))))});
         members.add(ir.header_function(function), 1);
     }
-    auto const result{ir.record(context.declarations.settings_modules
-                                    .api_name[context.declarations.settings_modules.index(module)],
-                                members.build(),
-                                RecordKind::class_)};
+    auto const result{ir.record(modules.api_name[module_row], members.build(), RecordKind::class_)};
     ir.set_record_template(
         result,
         ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Derived"))}));
@@ -293,11 +291,13 @@ auto build_header(LoweringContext& context,
                   std::span<FunctionId const> const functions,
                   std::vector<TypeDependencyId>& dependencies) -> Nodes {
     auto& ir{context.ir};
+    auto const& modules{context.declarations.settings_modules};
+    auto const& setting_schemas{context.declarations.settings};
+    auto const& controls{context.declarations.setting_controls};
     auto const& declarations{context.declarations};
-    auto const module_row{declarations.settings_modules.index(module)};
-    auto const settings{declarations.settings_modules.settings[module_row]};
-    auto const setting_list{
-        declarations.items(declarations.settings_modules.settings_list[module_row])};
+    auto const module_row{modules.index(module)};
+    auto const settings{modules.settings[module_row]};
+    auto const setting_list{declarations.items(modules.settings_list[module_row])};
     std::vector<std::string> setting_names;
     std::vector<std::string> category_names;
     std::vector<std::string> value_types;
@@ -310,9 +310,8 @@ auto build_header(LoweringContext& context,
     auto const setting_count{setting_list.size()};
     for (std::size_t index{}; index < setting_count; ++index) {
         auto const setting{setting_list[index]};
-        auto const row{declarations.settings.index(setting)};
-        auto const control_row{
-            declarations.setting_controls.index(declarations.settings.control[row])};
+        auto const row{setting_schemas.index(setting)};
+        auto const control_row{controls.index(setting_schemas.control[row])};
         auto const type{setting_types[index]};
         auto const type_dependencies{ir.types.dependencies(type)};
         dependencies.insert(dependencies.end(), type_dependencies.begin(), type_dependencies.end());
@@ -323,17 +322,16 @@ auto build_header(LoweringContext& context,
         if (unique_type_names.insert(type_name).second) {
             type_names.push_back(type_name);
         }
-        setting_names.push_back(title_case(context.text(declarations.settings.name[row])));
-        backends.insert(context.text(declarations.settings.backend[row]));
-        if (auto const provider{declarations.setting_controls.options_provider[control_row]}) {
+        setting_names.push_back(title_case(context.text(setting_schemas.name[row])));
+        backends.insert(context.text(setting_schemas.backend[row]));
+        if (auto const provider{controls.options_provider[control_row]}) {
             option_providers.insert(context.text(*provider));
         }
-        if (auto const provider{declarations.setting_controls.availability_provider[control_row]}) {
+        if (auto const provider{controls.availability_provider[control_row]}) {
             availability_providers.insert(context.text(*provider));
         }
     }
-    for (auto const category :
-         declarations.items(declarations.settings_modules.categories[module_row])) {
+    for (auto const category : declarations.items(modules.categories[module_row])) {
         category_names.push_back(
             title_case(context.text(declarations.setting_categories
                                         .name[declarations.setting_categories.index(category)])));
@@ -378,8 +376,7 @@ auto build_header(LoweringContext& context,
                             1);
             }
             auto const record{ir.record(ir.strings.intern(name), members.build())};
-            ir.set_record_export_specifier(
-                record, declarations.settings_modules.export_specifier[module_row]);
+            ir.set_record_export_specifier(record, modules.export_specifier[module_row]);
             ir.set_record_dependencies(record, dependencies);
             header.add(record, 2);
         };
@@ -406,13 +403,12 @@ auto build_header(LoweringContext& context,
     NodeListBuilder state_members{ir};
     for (std::size_t index{}; index < setting_count; ++index) {
         state_members.add(
-            ir.instance_member(
-                setting_types[index],
-                declarations.settings.name[declarations.settings.index(setting_list[index])],
-                ir.init_list({})),
+            ir.instance_member(setting_types[index],
+                               setting_schemas.name[setting_schemas.index(setting_list[index])],
+                               ir.init_list({})),
             1);
     }
-    auto const state_name{declarations.settings_modules.state_name[module_row]};
+    auto const state_name{modules.state_name[module_row]};
     auto const equality{ir.function("operator==", "bool")};
     ir.set_function_return_type(equality, ir.types.intern("bool"), ReturnSyntax::trailing);
     ir.set_function_parameters(
@@ -421,8 +417,7 @@ auto build_header(LoweringContext& context,
     ir.set_function_defaulted(equality);
     state_members.new_lines(2).add(ir.header_function(equality), 1);
     auto const state{ir.record(state_name, state_members.build())};
-    ir.set_record_export_specifier(state,
-                                   declarations.settings_modules.export_specifier[module_row]);
+    ir.set_record_export_specifier(state, modules.export_specifier[module_row]);
     ir.set_record_dependencies(state, dependencies);
     header.add(state, 2).add(
         ir.using_declaration(
@@ -447,59 +442,53 @@ auto build_source(LoweringContext& context,
                   ModuleHandle const module,
                   std::span<FunctionId const> const functions) -> Nodes {
     auto& ir{context.ir};
+    auto const& modules{context.declarations.settings_modules};
+    auto const& setting_schemas{context.declarations.settings};
+    auto const& controls{context.declarations.setting_controls};
+    auto const& category_schemas{context.declarations.setting_categories};
     auto const& declarations{context.declarations};
-    auto const module_row{declarations.settings_modules.index(module)};
-    auto const settings{declarations.settings_modules.settings[module_row]};
+    auto const module_row{modules.index(module)};
+    auto const settings{modules.settings[module_row]};
     auto enum_value = [&](std::string_view const type, std::string_view const name) {
         return ir.named(std::format("{}::{}", type, name));
     };
 
     std::vector<Expr> categories;
-    for (auto const category :
-         declarations.items(declarations.settings_modules.categories[module_row])) {
-        auto const row{declarations.setting_categories.index(category)};
+    for (auto const category : declarations.items(modules.categories[module_row])) {
+        auto const row{category_schemas.index(category)};
         categories.push_back(ir.init_list({
             enum_value("EGameSettingCategory",
-                       title_case(context.text(declarations.setting_categories.name[row]))),
-            text_value(ir, context.text(declarations.setting_categories.label[row])),
+                       title_case(context.text(category_schemas.name[row]))),
+            text_value(ir, context.text(category_schemas.label[row])),
         }));
     }
     std::vector<Expr> descriptors;
-    for (auto const setting :
-         declarations.items(declarations.settings_modules.settings_list[module_row])) {
-        auto const row{declarations.settings.index(setting)};
-        auto const control_row{
-            declarations.setting_controls.index(declarations.settings.control[row])};
-        auto const options{declarations.setting_controls.options_provider[control_row]};
-        auto const availability{declarations.setting_controls.availability_provider[control_row]};
+    for (auto const setting : declarations.items(modules.settings_list[module_row])) {
+        auto const row{setting_schemas.index(setting)};
+        auto const control_row{controls.index(setting_schemas.control[row])};
+        auto const options{controls.options_provider[control_row]};
+        auto const availability{controls.availability_provider[control_row]};
         descriptors.push_back(ir.init_list({
-            enum_value("EGameSetting", title_case(context.text(declarations.settings.name[row]))),
+            enum_value("EGameSetting", title_case(context.text(setting_schemas.name[row]))),
             enum_value("EGameSettingCategory",
-                       title_case(context.text(declarations.settings.category[row]))),
+                       title_case(context.text(setting_schemas.category[row]))),
             enum_value("EGameSettingValueType", setting_type_name(context, setting)),
             enum_value("EGameSettingBackend",
-                       title_case(context.text(declarations.settings.backend[row]))),
-            enum_value("ESettingApplyMode", enum_name(declarations.settings.apply_mode[row])),
-            enum_value("EGameSettingDevice", enum_name(declarations.settings.device[row])),
-            enum_value("ESettingControlKind",
-                       enum_name(declarations.setting_controls.kind[control_row])),
+                       title_case(context.text(setting_schemas.backend[row]))),
+            enum_value("ESettingApplyMode", enum_name(setting_schemas.apply_mode[row])),
+            enum_value("EGameSettingDevice", enum_name(setting_schemas.device[row])),
+            enum_value("ESettingControlKind", enum_name(controls.kind[control_row])),
             enum_value("EGameSettingOptionProvider",
                        options ? title_case(context.text(*options)) : "None"),
             enum_value("EGameSettingAvailabilityProvider",
                        availability ? title_case(context.text(*availability)) : "Always"),
-            text_literal(ir, context.text(declarations.settings.name[row])),
-            text_value(ir, context.text(declarations.settings.label[row])),
-            text_value(ir, context.optional_text(declarations.settings.tooltip[row]).value_or("")),
-            ir.literal(std::format(
-                "{:.6g}", declarations.setting_controls.minimum[control_row].value_or(0.0))),
-            ir.literal(std::format(
-                "{:.6g}", declarations.setting_controls.maximum[control_row].value_or(0.0))),
-            ir.literal(std::format("{:.6g}",
-                                   declarations.setting_controls.step[control_row].value_or(0.0))),
-            text_literal(
-                ir,
-                context.optional_text(declarations.setting_controls.custom_row[control_row])
-                    .value_or("")),
+            text_literal(ir, context.text(setting_schemas.name[row])),
+            text_value(ir, context.text(setting_schemas.label[row])),
+            text_value(ir, context.optional_text(setting_schemas.tooltip[row]).value_or("")),
+            ir.literal(std::format("{:.6g}", controls.minimum[control_row].value_or(0.0))),
+            ir.literal(std::format("{:.6g}", controls.maximum[control_row].value_or(0.0))),
+            ir.literal(std::format("{:.6g}", controls.step[control_row].value_or(0.0))),
+            text_literal(ir, context.optional_text(controls.custom_row[control_row]).value_or("")),
         }));
     }
 
@@ -531,8 +520,13 @@ auto build_source(LoweringContext& context,
 
 auto lower_settings_module(LoweringContext& context, ModuleHandle module) -> ModuleId {
     auto& ir{context.ir};
-    auto const settings{context.declarations.settings_modules
-                            .settings[context.declarations.settings_modules.index(module)]};
+    auto const& modules{context.declarations.settings_modules};
+    auto const& setting_schemas{context.declarations.settings};
+    auto const& settings_store{context.declarations.module_settings_store};
+    auto const module_row{modules.index(module)};
+    auto const settings{modules.settings[module_row]};
+    auto const settings_row{settings_store.index(settings)};
+    auto const setting_list{context.declarations.items(modules.settings_list[module_row])};
     std::vector<TypeDependencyId> dependencies{
         ir.types.dependency("uint8", "CoreMinimal.h"),
         ir.types.dependency("FText", "CoreMinimal.h"),
@@ -540,37 +534,22 @@ auto lower_settings_module(LoweringContext& context, ModuleHandle module) -> Mod
         ir.types.dependency("std::variant", "variant"),
     };
     std::vector<CppTypeId> setting_types;
-    setting_types.reserve(context.declarations.settings_modules
-                              .settings_list[context.declarations.settings_modules.index(module)]
-                              .size());
-    for (auto const setting_id : context.declarations.items(
-             context.declarations.settings_modules
-                 .settings_list[context.declarations.settings_modules.index(module)])) {
-        auto const setting{setting_id};
-
+    setting_types.reserve(setting_list.size());
+    for (auto const setting : setting_list) {
         setting_types.push_back(
-            context.resolve(context.declarations.settings
-                                .value_type[context.declarations.settings.index(setting)]));
+            context.resolve(setting_schemas.value_type[setting_schemas.index(setting)]));
     }
     auto const functions{build_functions(context, module, setting_types)};
     auto header_declarations{build_header(context, module, setting_types, functions, dependencies)};
 
     NodeListBuilder header_nodes{ir};
     header_nodes.add(ir.include_dependencies(), 2);
-    if (!context.declarations.module_settings_store
-             .prelude_lines[context.declarations.module_settings_store.index(settings)]
-             .empty()) {
-        header_nodes.add(
-            ir.raw(join_lines(
-                context,
-                context.declarations.module_settings_store
-                    .prelude_lines[context.declarations.module_settings_store.index(settings)])),
-            2);
+    auto const prelude{settings_store.prelude_lines[settings_row]};
+    if (!prelude.empty()) {
+        header_nodes.add(ir.raw(join_lines(context, prelude)), 2);
     }
     header_nodes.append(std::move(header_declarations));
 
-    auto const& settings_store{context.declarations.module_settings_store};
-    auto const settings_row{settings_store.index(settings)};
     auto const include_order{
         context.declarations.items(settings_store.include_order[settings_row])};
     auto const header_file{

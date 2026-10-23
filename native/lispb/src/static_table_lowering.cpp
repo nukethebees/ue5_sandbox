@@ -61,88 +61,64 @@ auto group_getter(LoweringContext& context, StaticTableGroupId group) -> NodeId 
 
 auto table_node(LoweringContext& context, DeclarationHandle table) -> NodeId {
     auto& ir{context.ir};
-    auto const rows{context.declarations.items(
-        context.declarations.static_tables.rows[context.declarations.static_tables.index(table)])};
+    auto const& tables{context.declarations.static_tables};
+    auto const& column_schemas{context.declarations.static_table_columns};
+    auto const& row_schemas{context.declarations.static_table_rows};
+    auto const table_row{tables.index(table)};
+    auto const rows{context.declarations.items(tables.rows[table_row])};
+    auto const row_count{rows.size()};
+    auto const columns{context.declarations.items(tables.columns[table_row])};
     auto const int32_type{
         ir.types.intern("int32", {ir.types.dependency("int32", "CoreMinimal.h")})};
     NodeListBuilder children{ir};
     children.add(ir.constexpr_member(int32_type,
                                      ir.strings.intern("num_rows"),
-                                     ir.literal(std::to_string(rows.size()))),
+                                     ir.literal(std::to_string(row_count))),
                  2);
 
-    for (std::size_t index{0}; index < rows.size(); ++index) {
-        children.add(
-            ir.constexpr_member(
-                int32_type,
-                ir.strings.intern(
-                    context.text(
-                        context.declarations.static_table_rows
-                            .name[context.declarations.static_table_rows.index(rows[index])]) +
-                    "_index"),
-                ir.literal(std::to_string(index))),
-            index + 1 < rows.size() ? 1 : 2);
+    for (std::size_t index{0}; index < row_count; ++index) {
+        auto const name{context.text(row_schemas.name[row_schemas.index(rows[index])])};
+        children.add(ir.constexpr_member(int32_type,
+                                         ir.strings.intern(name + "_index"),
+                                         ir.literal(std::to_string(index))),
+                     index + 1 < row_count ? 1 : 2);
     }
 
-    children.add(ir.header_function([&] {
-        auto const created_function{ir.function("num", "auto")};
-        ir.set_function_body(created_function, {ir.return_stmt(ir.named("num_rows"))});
-        ir.set_function_return_type(created_function, int32_type, ReturnSyntax::trailing);
-        ir.set_function_noexcept(created_function);
-        ir.set_function_receiver(created_function, FunctionReceiver::static_);
-        ir.function_flags(created_function).set_is_constexpr(true);
-        ir.function_flags(created_function).set_is_inline(true);
-        ir.function_flags(created_function).set_define_in_header(true);
-        return created_function;
-    }()),
-                 2);
+    auto const num{ir.function("num", "auto")};
+    ir.set_function_body(num, {ir.return_stmt(ir.named("num_rows"))});
+    ir.set_function_return_type(num, int32_type, ReturnSyntax::trailing);
+    ir.set_function_noexcept(num);
+    ir.set_function_receiver(num, FunctionReceiver::static_);
+    auto& flags{ir.function_flags(num)};
+    flags.set_is_constexpr(true);
+    flags.set_is_inline(true);
+    flags.set_define_in_header(true);
+    children.add(ir.header_function(num), 2);
 
     std::vector<std::string> column_names;
-    column_names.reserve(
-        context.declarations.static_tables.columns[context.declarations.static_tables.index(table)]
-            .size());
-    for (auto const column_id : context.declarations.items(
-             context.declarations.static_tables
-                 .columns[context.declarations.static_tables.index(table)])) {
-        auto const column{column_id};
-        column_names.push_back(
-            context.text(context.declarations.static_table_columns
-                             .name[context.declarations.static_table_columns.index(column)]));
+    column_names.reserve(columns.size());
+    for (auto const column : columns) {
+        column_names.push_back(context.text(column_schemas.name[column_schemas.index(column)]));
     }
     children.add(column_apply_arrays_function(ir, column_names), 2)
         .add(column_apply_array_pairs_function(ir, column_names), 2);
 
-    for (auto const group :
-         context.declarations.items(context.declarations.static_tables
-                                        .groups[context.declarations.static_tables.index(table)])) {
+    for (auto const group : context.declarations.items(tables.groups[table_row])) {
         children.add(group_getter(context, group), 2);
     }
 
-    for (auto const column_id : context.declarations.items(
-             context.declarations.static_tables
-                 .columns[context.declarations.static_tables.index(table)])) {
-        auto const column{column_id};
-        children.add(
-            ir.instance_member(
-                static_array_type(
-                    ir,
-                    context.resolve(
-                        context.declarations.static_table_columns
-                            .type[context.declarations.static_table_columns.index(column)])),
-                context.declarations.static_table_columns
-                    .name[context.declarations.static_table_columns.index(column)],
-                ir.init_list({})),
-            1);
+    for (auto const column : columns) {
+        auto const column_row{column_schemas.index(column)};
+        children.add(ir.instance_member(
+                         static_array_type(ir, context.resolve(column_schemas.type[column_row])),
+                         column_schemas.name[column_row],
+                         ir.init_list({})),
+                     1);
     }
 
-    auto const created_record{ir.record(
-        context.declarations.static_tables.name[context.declarations.static_tables.index(table)],
-        children.build(),
-        RecordKind::struct_)};
-    ir.set_record_export_specifier(
-        created_record,
-        context.declarations.static_tables
-            .export_specifier[context.declarations.static_tables.index(table)]);
+    auto const created_record{
+        ir.record(tables.name[table_row], children.build(), RecordKind::struct_)};
+    ir.set_record_export_specifier(created_record, tables.export_specifier[table_row]);
     return created_record;
 }
 

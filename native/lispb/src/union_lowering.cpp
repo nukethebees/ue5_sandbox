@@ -41,68 +41,45 @@ auto alternative_type(LoweringContext& context,
 
 auto union_node(LoweringContext& context, DeclarationHandle schema) -> NodeId {
     auto& ir{context.ir};
+    auto const& unions{context.declarations.unions};
+    auto const& schemas{context.declarations.union_alternatives};
+    auto const row{unions.index(schema)};
     NodeListBuilder alternatives{ir};
-    for (auto const id : context.declarations.items(
-             context.declarations.unions.alternatives[context.declarations.unions.index(schema)])) {
-        auto const alternative{id};
-        alternatives.add(ir.instance_member(
-            alternative_type(
-                context,
-                context.declarations.union_alternatives
-                    .type[context.declarations.union_alternatives.index(alternative)],
-                context.declarations.union_alternatives
-                    .count[context.declarations.union_alternatives.index(alternative)]),
-            context.declarations.union_alternatives
-                .name[context.declarations.union_alternatives.index(alternative)]));
+    for (auto const alternative : context.declarations.items(unions.alternatives[row])) {
+        auto const alternative_row{schemas.index(alternative)};
+        alternatives.add(ir.instance_member(alternative_type(context,
+                                                             schemas.type[alternative_row],
+                                                             schemas.count[alternative_row]),
+                                            schemas.name[alternative_row]));
     }
     auto const created_record{
-        ir.record(context.declarations.unions.name[context.declarations.unions.index(schema)],
-                  alternatives.build(),
-                  RecordKind::union_)};
-    ir.set_record_export_specifier(
-        created_record,
-        context.declarations.unions.export_specifier[context.declarations.unions.index(schema)]);
+        ir.record(unions.name[row], alternatives.build(), RecordKind::union_)};
+    ir.set_record_export_specifier(created_record, unions.export_specifier[row]);
     return created_record;
 }
 
 auto tagged_union_node(LoweringContext& context, DeclarationHandle schema) -> NodeId {
     auto& ir{context.ir};
+    auto const& unions{context.declarations.tagged_unions};
+    auto const& schemas{context.declarations.tagged_union_alternatives};
+    auto const row{unions.index(schema)};
     NodeListBuilder alternatives{ir};
-    for (auto const id : context.declarations.items(
-             context.declarations.tagged_unions
-                 .alternatives[context.declarations.tagged_unions.index(schema)])) {
-        auto const alternative{id};
-        alternatives.add(ir.line_comment(
-            "tag: " +
-            context.text(
-                context.declarations.tagged_union_alternatives
-                    .tag[context.declarations.tagged_union_alternatives.index(alternative)])));
-        alternatives.add(ir.instance_member(
-            alternative_type(
-                context,
-                context.declarations.tagged_union_alternatives
-                    .type[context.declarations.tagged_union_alternatives.index(alternative)],
-                context.declarations.tagged_union_alternatives
-                    .count[context.declarations.tagged_union_alternatives.index(alternative)]),
-            context.declarations.tagged_union_alternatives
-                .name[context.declarations.tagged_union_alternatives.index(alternative)]));
+    for (auto const alternative : context.declarations.items(unions.alternatives[row])) {
+        auto const alternative_row{schemas.index(alternative)};
+        alternatives.add(ir.line_comment("tag: " + context.text(schemas.tag[alternative_row])));
+        alternatives.add(ir.instance_member(alternative_type(context,
+                                                             schemas.type[alternative_row],
+                                                             schemas.count[alternative_row]),
+                                            schemas.name[alternative_row]));
     }
 
     NodeListBuilder members{ir};
-    members.add(ir.instance_member(
-        context.resolve(context.declarations.tagged_unions
-                            .discriminant[context.declarations.tagged_unions.index(schema)]),
-        ir.strings.intern("tag")));
+    members.add(
+        ir.instance_member(context.resolve(unions.discriminant[row]), ir.strings.intern("tag")));
     members.add(ir.record(ir.strings.intern("Payload"), alternatives.build(), RecordKind::union_));
     members.add(ir.instance_member(ir.types.intern("Payload"), ir.strings.intern("payload")));
-    auto const created_record{ir.record(
-        context.declarations.tagged_unions.name[context.declarations.tagged_unions.index(schema)],
-        members.build(),
-        RecordKind::struct_)};
-    ir.set_record_export_specifier(
-        created_record,
-        context.declarations.tagged_unions
-            .export_specifier[context.declarations.tagged_unions.index(schema)]);
+    auto const created_record{ir.record(unions.name[row], members.build(), RecordKind::struct_)};
+    ir.set_record_export_specifier(created_record, unions.export_specifier[row]);
     return created_record;
 }
 

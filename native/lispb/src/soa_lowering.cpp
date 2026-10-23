@@ -4,6 +4,7 @@
 #include "lowering_context.h"
 #include "lowering_utils.h"
 #include "soa_internal.h"
+#include <ioj/format_writer.h>
 
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>
@@ -12,19 +13,13 @@
 #include <codegen/ast/nodes.h>
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/indices.h>
-#include <codegen/schema/normal_module_schemas.h>
 #include <codegen/schema/soa_mask_dimension_schemas.h>
 #include <codegen/schema/soa_member_schemas.h>
 #include <codegen/schema/soa_schemas.h>
-#include <lispb/indices.h>
-#include <lispb/schema/soa_types.h>
-#include <lispb/schema/type_graph.h>
 #include <lispb/strings.h>
 
 #include <cstddef>
-#include <map>
-#include <optional>
-#include <span>
+#include <iterator>
 #include <string>
 #include <utility>
 #include <vector>
@@ -33,50 +28,34 @@ namespace lispb::codegen::detail {
 namespace {
 
 auto mask_field_width(LoweringContext& context, SoaMemberId member) -> std::string {
-    if (context.declarations.soa_members
-            .mask_dimensions[context.declarations.soa_members.index(member)]
-            .empty()) {
+    auto const& declarations{context.declarations};
+    auto const& members{declarations.soa_members};
+    auto const& dimensions{declarations.soa_mask_dimensions};
+    auto const selected{declarations.items(members.mask_dimensions[members.index(member)])};
+    if (selected.empty()) {
         return "1";
     }
     std::vector<std::string> extents;
-    extents.reserve(context.declarations.soa_members
-                        .mask_dimensions[context.declarations.soa_members.index(member)]
-                        .size());
-    for (auto const dimension_id : context.declarations.items(
-             context.declarations.soa_members
-                 .mask_dimensions[context.declarations.soa_members.index(member)])) {
-        auto const dimension{dimension_id};
-        extents.push_back(
-            "(" +
-            context.text(context.declarations.soa_mask_dimensions
-                             .extent[context.declarations.soa_mask_dimensions.index(dimension)]) +
-            ")");
+    extents.reserve(selected.size());
+    for (auto const dimension : selected) {
+        extents.push_back("(" + context.text(dimensions.extent[dimensions.index(dimension)]) + ")");
     }
     return join(extents, " * ");
 }
 
 auto mask_index_expression(LoweringContext& context, SoaMemberId member) -> std::string {
+    auto const& declarations{context.declarations};
+    auto const& members{declarations.soa_members};
+    auto const& dimensions{declarations.soa_mask_dimensions};
+    auto const selected{declarations.items(members.mask_dimensions[members.index(member)])};
+    auto const count{selected.size()};
     std::vector<std::string> terms;
-    auto const dimension_count{context.declarations.soa_members
-                                   .mask_dimensions[context.declarations.soa_members.index(member)]
-                                   .size()};
-    terms.reserve(dimension_count);
-    for (std::size_t index{}; index < dimension_count; ++index) {
-        auto term{context.text(
-            context.declarations.soa_mask_dimensions
-                .index_name[context.declarations.soa_mask_dimensions.index(
-                    context.declarations.items(context.declarations.soa_members
-                                                   .mask_dimensions[context.declarations.soa_members
-                                                                        .index(member)])[index])])};
-        for (auto extent_index{index + 1}; extent_index < dimension_count; ++extent_index) {
-            term +=
-                " * (" +
-                context.text(
-                    context.declarations.soa_mask_dimensions.extent
-                        [context.declarations.soa_mask_dimensions.index(context.declarations.items(
-                            context.declarations.soa_members.mask_dimensions
-                                [context.declarations.soa_members.index(member)])[extent_index])]) +
-                ")";
+    terms.reserve(count);
+    for (std::size_t index{}; index < count; ++index) {
+        auto term{context.text(dimensions.index_name[dimensions.index(selected[index])])};
+        for (auto extent_index{index + 1}; extent_index < count; ++extent_index) {
+            term += " * (" +
+                    context.text(dimensions.extent[dimensions.index(selected[extent_index])]) + ")";
         }
         terms.push_back(std::move(term));
     }
@@ -85,155 +64,107 @@ auto mask_index_expression(LoweringContext& context, SoaMemberId member) -> std:
 
 auto field_mask_nodes(LoweringContext& context, DeclarationHandle schema) -> Nodes {
     auto& ir{context.ir};
-    if (!context.declarations.soas.field_mask_name[context.declarations.soas.index(schema)]
-             .has_value()) {
+    auto const& declarations{context.declarations};
+    auto const& soas{declarations.soas};
+    auto const& members{declarations.soa_members};
+    auto const& dimensions{declarations.soa_mask_dimensions};
+    auto const row{soas.index(schema)};
+    if (!soas.field_mask_name[row].has_value()) {
         return {};
     }
 
-    std::string const uint8_type{"std::uint8_t"};
-    std::string const uint16_type{"std::uint16_t"};
-    std::string const uint32_type{"std::uint32_t"};
-    std::string const uint64_type{"std::uint64_t"};
-    std::string const int32_type{"std::int32_t"};
-
-    auto const mask_name{context.text(
-        *context.declarations.soas.field_mask_name[context.declarations.soas.index(schema)])};
-    auto const enum_name{context.text(
-        *context.declarations.soas.field_enum_name[context.declarations.soas.index(schema)])};
-    std::string output{"enum class " + enum_name + " : " + uint8_type + " {\n"};
+    auto const mask_name{context.text(*soas.field_mask_name[row])};
+    auto const enum_name{context.text(*soas.field_enum_name[row])};
+    auto const selected{declarations.items(soas.members[row])};
+    std::string output;
+    auto write{ioj::FormatWriter{std::back_inserter(output)}};
+    write("enum class {} : std::uint8_t {{\n", enum_name);
     std::string previous_name;
     std::string previous_width;
-    for (auto const member_id : context.declarations.items(
-             context.declarations.soas.members[context.declarations.soas.index(schema)])) {
-        auto const member{member_id};
-        if (!context.declarations.soa_members
-                 .mask_field[context.declarations.soa_members.index(member)]) {
+    for (auto const member : selected) {
+        auto const member_row{members.index(member)};
+        if (!members.mask_field[member_row]) {
             continue;
         }
-        auto const name{title_case_identifier(
-            context.text(context.declarations.soa_members
-                             .name[context.declarations.soa_members.index(member)]))};
-        auto const initializer{previous_name.empty() ? "0"
-                                                     : "static_cast<" + uint8_type + ">(" +
-                                                           previous_name + ") + " + previous_width};
-        output += "    " + name + " = " + initializer + ",\n";
+        auto const name{title_case_identifier(context.text(members.name[member_row]))};
+        if (previous_name.empty()) {
+            write("    {} = 0,\n", name);
+        } else {
+            write("    {} = static_cast<std::uint8_t>({}) + {},\n",
+                  name,
+                  previous_name,
+                  previous_width);
+        }
         previous_name = name;
         previous_width = mask_field_width(context, member);
     }
-    output += "    Count = static_cast<" + uint8_type + ">(" + previous_name + ") + " +
-              previous_width + ",\n};\n\n";
+    write(
+        "    Count = static_cast<std::uint8_t>({}) + {},\n}};\n\n", previous_name, previous_width);
+    write(R"(struct {0} {{
+    inline static constexpr std::int32_t field_count{{static_cast<std::int32_t>({1}::Count)}};
+    static_assert(field_count <= 64, "Field mask exceeds 64 bits.");
+    using storage_type = std::conditional_t<
+        field_count <= 8,
+        std::uint8_t,
+        std::conditional_t<field_count <= 16,
+                           std::uint16_t,
+                           std::conditional_t<field_count <= 32, std::uint32_t, std::uint64_t>>>;
 
-    output +=
-        "struct " + mask_name +
-        " {\n"
-        "    inline static constexpr " +
-        int32_type + " field_count{static_cast<" + int32_type + ">(" + enum_name +
-        "::Count)};\n"
-        "    static_assert(field_count <= 64, \"Field mask exceeds 64 bits.\");\n"
-        "    using storage_type = std::conditional_t<\n"
-        "        field_count <= 8,\n"
-        "        " +
-        uint8_type +
-        ",\n"
-        "        std::conditional_t<field_count <= 16,\n"
-        "                           " +
-        uint16_type +
-        ",\n"
-        "                           std::conditional_t<field_count <= 32, " +
-        uint32_type + ", " + uint64_type +
-        ">>>;\n\n"
-        "    constexpr " +
-        mask_name +
-        "() noexcept = default;\n"
-        "    explicit constexpr " +
-        mask_name +
-        "(storage_type const value) noexcept : value_{value} {}\n\n"
-        "    [[nodiscard]] constexpr auto value() const noexcept -> storage_type { return value_; "
-        "}\n"
-        "    [[nodiscard]] constexpr auto is_empty() const noexcept -> bool { return value_ == 0; "
-        "}\n"
-        "    [[nodiscard]] constexpr auto has(" +
-        enum_name +
-        " const field) const noexcept -> bool {\n"
-        "        return (value_ & bit(field)) != 0;\n"
-        "    }\n"
-        "    [[nodiscard]] static constexpr auto index(" +
-        enum_name + " const field) noexcept -> " + int32_type +
-        " {\n"
-        "        return static_cast<" +
-        int32_type +
-        ">(field);\n"
-        "    }\n"
-        "    constexpr void set(" +
-        enum_name +
-        " const field) noexcept { value_ |= bit(field); }\n"
-        "    constexpr void set(" +
-        mask_name +
-        " const fields) noexcept { value_ |= fields.value_; }\n"
-        "    constexpr void clear(" +
-        enum_name +
-        " const field) noexcept {\n"
-        "        value_ = static_cast<storage_type>(value_ & ~bit(field));\n"
-        "    }\n";
+    constexpr {0}() noexcept = default;
+    explicit constexpr {0}(storage_type const value) noexcept : value_{{value}} {{}}
 
-    for (auto const member_id : context.declarations.items(
-             context.declarations.soas.members[context.declarations.soas.index(schema)])) {
-        auto const member{member_id};
-        if (!context.declarations.soa_members
-                 .mask_field[context.declarations.soa_members.index(member)] ||
-            context.declarations.soa_members
-                .mask_dimensions[context.declarations.soa_members.index(member)]
-                .empty()) {
+    [[nodiscard]] constexpr auto value() const noexcept -> storage_type {{ return value_; }}
+    [[nodiscard]] constexpr auto is_empty() const noexcept -> bool {{ return value_ == 0; }}
+    [[nodiscard]] constexpr auto has({1} const field) const noexcept -> bool {{
+        return (value_ & bit(field)) != 0;
+    }}
+    [[nodiscard]] static constexpr auto index({1} const field) noexcept -> std::int32_t {{
+        return static_cast<std::int32_t>(field);
+    }}
+    constexpr void set({1} const field) noexcept {{ value_ |= bit(field); }}
+    constexpr void set({0} const fields) noexcept {{ value_ |= fields.value_; }}
+    constexpr void clear({1} const field) noexcept {{
+        value_ = static_cast<storage_type>(value_ & ~bit(field));
+    }}
+)",
+          mask_name,
+          enum_name);
+
+    for (auto const member : selected) {
+        auto const member_row{members.index(member)};
+        auto const selected_dimensions{declarations.items(members.mask_dimensions[member_row])};
+        if (!members.mask_field[member_row] || selected_dimensions.empty()) {
             continue;
         }
-        output += "\n    [[nodiscard]] static constexpr auto " +
-                  context.text(context.declarations.soa_members
-                                   .name[context.declarations.soa_members.index(member)]) +
-                  "_field(";
-        for (std::size_t index{};
-             index < context.declarations.soa_members
-                         .mask_dimensions[context.declarations.soa_members.index(member)]
-                         .size();
-             ++index) {
-            if (index > 0) {
-                output += ", ";
-            }
-            output +=
-                "" + int32_type + " const " +
-                context.text(
-                    context.declarations.soa_mask_dimensions
-                        .index_name[context.declarations.soa_mask_dimensions.index(
-                            context.declarations.items(
-                                context.declarations.soa_members.mask_dimensions
-                                    [context.declarations.soa_members.index(member)])[index])]);
+        auto const name{context.text(members.name[member_row])};
+        write("\n    [[nodiscard]] static constexpr auto {}_field(", name);
+        auto const count{selected_dimensions.size()};
+        for (std::size_t index{}; index < count; ++index) {
+            write(
+                "{}std::int32_t const {}",
+                index > 0 ? ", " : "",
+                context.text(dimensions.index_name[dimensions.index(selected_dimensions[index])]));
         }
-        output += ") noexcept -> " + enum_name +
-                  " {\n"
-                  "        return static_cast<" +
-                  enum_name + ">(static_cast<" + int32_type + ">(" + enum_name + "::" +
-                  title_case_identifier(
-                      context.text(context.declarations.soa_members
-                                       .name[context.declarations.soa_members.index(member)])) +
-                  ") + " + mask_index_expression(context, member) +
-                  ");\n"
-                  "    }\n";
+        write(R"() noexcept -> {0} {{
+        return static_cast<{0}>(static_cast<std::int32_t>({0}::{1}) + {2});
+    }}
+)",
+              enum_name,
+              title_case_identifier(name),
+              mask_index_expression(context, member));
     }
 
-    output += "  private:\n"
-              "    [[nodiscard]] static constexpr auto bit(" +
-              enum_name +
-              " const field) noexcept -> storage_type {\n"
-              "        return static_cast<storage_type>(" +
-              uint64_type + "{1} << static_cast<" + uint8_type +
-              ">(field));\n"
-              "    }\n\n"
-              "    storage_type value_{};\n"
-              "};\n"
-              "static_assert(sizeof(" +
-              mask_name + ") == sizeof(" + mask_name +
-              "::storage_type));\n"
-              "static_assert(std::is_trivially_copyable_v<" +
-              mask_name + ">);";
+    write(R"(  private:
+    [[nodiscard]] static constexpr auto bit({1} const field) noexcept -> storage_type {{
+        return static_cast<storage_type>(std::uint64_t{{1}} << static_cast<std::uint8_t>(field));
+    }}
+
+    storage_type value_{{}};
+}};
+static_assert(sizeof({0}) == sizeof({0}::storage_type));
+static_assert(std::is_trivially_copyable_v<{0}>);)",
+          mask_name,
+          enum_name);
 
     return {ir.raw(std::move(output),
                    {ir.types.dependency("std::conditional_t", "type_traits"),
@@ -245,14 +176,13 @@ auto field_mask_nodes(LoweringContext& context, DeclarationHandle schema) -> Nod
 auto lower_soa_declaration(LoweringContext& context, DeclarationHandle schema)
     -> DeclarationEmission {
     auto& ir{context.ir};
+    auto const& soas{context.declarations.soas};
+    auto const row{soas.index(schema)};
     NodeListBuilder header{ir};
-    header
-        .add(ir.forward_declaration(ir.strings.intern(
-            context.text(context.declarations.soas.name[context.declarations.soas.index(schema)]) +
-            "Schema")))
+    header.add(ir.forward_declaration(ir.strings.intern(context.text(soas.name[row]) + "Schema")))
         .new_lines(2);
     header.append(field_mask_nodes(context, schema)).new_lines(1);
-    if (context.declarations.soas.layout_only[context.declarations.soas.index(schema)]) {
+    if (soas.layout_only[row]) {
         return {.header = header.build(), .format_generated = true};
     }
     auto lowered{lower_single_allocation(context, schema)};

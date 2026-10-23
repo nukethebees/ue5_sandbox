@@ -27,75 +27,52 @@ namespace {
 
 auto record_member_type(LoweringContext& context, RecordMemberId member) -> CppTypeId {
     auto& ir{context.ir};
-    auto element{context.resolve(context.declarations.record_members
-                                     .type[context.declarations.record_members.index(member)])};
-    if (!context.declarations.record_members
-             .count[context.declarations.record_members.index(member)]
-             .has_value()) {
+    auto const& members{context.declarations.record_members};
+    auto const row{members.index(member)};
+    auto const element{context.resolve(members.type[row])};
+    auto const count{members.count[row]};
+    if (!count) {
         return element;
     }
-    auto const count{*context.declarations.record_members
-                          .count[context.declarations.record_members.index(member)]};
     return ir.types.template_type(
         ir.types.named("std::array", {ir.types.dependency("std::array", "array")}),
-        {element, ir.types.intern(std::to_string(count))});
+        {element, ir.types.intern(std::to_string(*count))});
 }
 
 auto record_node(LoweringContext& context, DeclarationHandle record) -> NodeId {
     auto& ir{context.ir};
+    auto const& records{context.declarations.records};
+    auto const& record_members{context.declarations.record_members};
+    auto const row{records.index(record)};
     NodeListBuilder members{ir};
-    for (auto const id : context.declarations.items(
-             context.declarations.records.members[context.declarations.records.index(record)])) {
-        auto const member{id};
+    for (auto const member : context.declarations.items(records.members[row])) {
+        auto const member_row{record_members.index(member)};
+        auto const initializer{record_members.initializer[member_row]};
         members.add(ir.instance_member(
             record_member_type(context, member),
-            context.declarations.record_members
-                .name[context.declarations.record_members.index(member)],
-            context.declarations.record_members
-                    .initializer[context.declarations.record_members.index(member)]
-                ? std::optional<Expr>{ir.raw_expr(
-                      *context.declarations.record_members
-                           .initializer[context.declarations.record_members.index(member)],
-                      {})}
-                : std::nullopt));
+            record_members.name[member_row],
+            initializer ? std::optional<Expr>{ir.raw_expr(*initializer, {})} : std::nullopt));
     }
-    if (context.declarations.records.comparison[context.declarations.records.index(record)] !=
-        RecordComparison::none) {
-        auto const three_way{
-            context.declarations.records.comparison[context.declarations.records.index(record)] ==
-            RecordComparison::three_way};
-        members.add(ir.header_function([&] {
-            auto const created_function{ir.function(
-                three_way ? "operator<=>" : "operator==",
-                three_way ? ir.types.intern("auto", {ir.types.dependency("auto", "compare")})
-                          : ir.types.intern("bool"))};
-            ir.set_function_parameters(
-                created_function,
-                {ir.parameter(context.text(context.declarations.records
-                                               .name[context.declarations.records.index(record)]) +
-                                  " const&",
-                              "")});
-            ir.set_function_receiver(created_function, FunctionReceiver::const_);
-            if (context.declarations.records
-                    .comparison_noexcept[context.declarations.records.index(record)]) {
-                ir.set_function_noexcept(created_function);
-            }
-            ir.set_function_defaulted(created_function);
-            return created_function;
-        }()));
+    if (records.comparison[row] != RecordComparison::none) {
+        auto const three_way{records.comparison[row] == RecordComparison::three_way};
+        auto const comparison{ir.function(
+            three_way ? "operator<=>" : "operator==",
+            three_way ? ir.types.intern("auto", {ir.types.dependency("auto", "compare")})
+                      : ir.types.intern("bool"))};
+        ir.set_function_parameters(comparison,
+                                   {ir.parameter(context.text(records.name[row]) + " const&", "")});
+        ir.set_function_receiver(comparison, FunctionReceiver::const_);
+        if (records.comparison_noexcept[row]) {
+            ir.set_function_noexcept(comparison);
+        }
+        ir.set_function_defaulted(comparison);
+        members.add(ir.header_function(comparison));
     }
-    for (auto const id : context.declarations.items(
-             context.declarations.records.functions[context.declarations.records.index(record)])) {
-        auto const function{id};
+    for (auto const function : context.declarations.items(records.functions[row])) {
         members.add(ir.header_function(lower_schema_function(context, function)));
     }
-    auto const created_record{
-        ir.record(context.declarations.records.name[context.declarations.records.index(record)],
-                  members.build(),
-                  RecordKind::struct_)};
-    ir.set_record_export_specifier(
-        created_record,
-        context.declarations.records.export_specifier[context.declarations.records.index(record)]);
+    auto const created_record{ir.record(records.name[row], members.build(), RecordKind::struct_)};
+    ir.set_record_export_specifier(created_record, records.export_specifier[row]);
     return created_record;
 }
 
