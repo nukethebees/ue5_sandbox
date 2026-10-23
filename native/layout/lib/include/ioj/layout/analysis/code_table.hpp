@@ -5,255 +5,496 @@
 
 #include "ioj/layout/analyzer/enum_code_value.hpp"
 #include "ioj/native_soa/storage.h"
-#include "ioj/native_soa/vector_storage_ops.h"
 
 #include "codegen/schema/packed_integer_value.h"
 
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <memory_resource>
 #include <optional>
 #include <string_view>
-#include <utility>
 
 namespace ioj::layout {
 struct CodeTableSchema;
 
-struct CodeTableView;
-struct CodeTableConstView;
-struct CodeTableConstView {
-    using View = CodeTableView;
-    using ConstView = CodeTableConstView;
-    using size_type = std::uint32_t;
-    std::span<std::string_view const> name;
-    std::span<std::uint8_t const> sentinel;
-    std::span<std::uint8_t const> count_sentinel;
-    std::span<std::optional<ioj::layout::EnumCodeValue> const> code;
-    std::span<std::optional<lispb::codegen::PackedIntegerValue> const> integer_value;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(name.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(name);
-        fn(sentinel);
-        fn(count_sentinel);
-        fn(code);
-        fn(integer_value);
-    }
-    void validate_array_sizes() const {
-        ioj::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> CodeTableConstView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            name.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            sentinel.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            count_sentinel.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
-            code.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            integer_value.subspan(static_cast<std::size_t>(offset),
-                                  static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> CodeTableConstView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> CodeTableConstView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            name,
-            sentinel,
-            count_sentinel,
-            code,
-            integer_value,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> CodeTableConstView { return slice(0, count); }
-    auto right(size_type const count) const -> CodeTableConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
+struct CodeTableSingleView;
+struct CodeTableSingleConstView;
+struct CodeTableSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ioj::native_soa::ColumnLayout<T>;
+
+    ioj::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<std::string_view> NameColumn;
+    ColLayout<std::uint8_t> SentinelColumn;
+    ColLayout<std::uint8_t> CountSentinelColumn;
+    ColLayout<std::optional<ioj::layout::EnumCodeValue>> CodeColumn;
+    ColLayout<std::optional<lispb::codegen::PackedIntegerValue>> IntegerValueColumn;
+
+    constexpr CodeTableSingleLayoutColumns() noexcept
+        : NameColumn{LayoutStart}
+        , SentinelColumn{NameColumn}
+        , CountSentinelColumn{SentinelColumn}
+        , CodeColumn{CountSentinelColumn}
+        , IntegerValueColumn{CodeColumn} {}
+    CodeTableSingleLayoutColumns(CodeTableSingleLayoutColumns const&) = delete;
+    auto operator=(CodeTableSingleLayoutColumns const&) -> CodeTableSingleLayoutColumns& = delete;
 };
-struct CodeTableView {
-    using View = CodeTableView;
-    using ConstView = CodeTableConstView;
+struct CodeTableSingleLayout {
     using size_type = std::uint32_t;
-    std::span<std::string_view> name;
-    std::span<std::uint8_t> sentinel;
-    std::span<std::uint8_t> count_sentinel;
-    std::span<std::optional<ioj::layout::EnumCodeValue>> code;
-    std::span<std::optional<lispb::codegen::PackedIntegerValue>> integer_value;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(name.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(name);
-        fn(sentinel);
-        fn(count_sentinel);
-        fn(code);
-        fn(integer_value);
+    using byte_size_type = std::size_t;
+
+    static constexpr size_type capacity_granularity{
+        ioj::native_soa::LayoutPolicy::capacity_granularity};
+    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
+
+    static constexpr CodeTableSingleLayoutColumns columns{};
+
+    static constexpr byte_size_type allocation_alignment{
+        columns.IntegerValueColumn.allocation_alignment};
+
+    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
+    // capacity.
+    static constexpr byte_size_type capacity_block_bound{
+        ioj::native_soa::capacity_block_bound(columns.IntegerValueColumn)};
+    static constexpr size_type max_capacity{
+        ioj::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0 ? 0 : columns.IntegerValueColumn.data_end(blocks);
     }
-    void validate_array_sizes() const {
-        ioj::native_soa::vector_storage_ops::validate_array_sizes(*this);
+    static_assert(max_capacity >= capacity_granularity);
+};
+
+struct CodeTableSingleResolvedView;
+struct CodeTableSingleResolvedConstView;
+template <bool Const>
+struct CodeTableSingleResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = CodeTableSingleResolvedView;
+    using ConstView = CodeTableSingleResolvedConstView;
+    using soa_schema = CodeTableSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    CodeTableSingleResolvedViewImpl() = default;
+    CodeTableSingleResolvedViewImpl(
+        Element<std::string_view>* name,
+        Element<std::uint8_t>* sentinel,
+        Element<std::uint8_t>* count_sentinel,
+        Element<std::optional<ioj::layout::EnumCodeValue>>* code,
+        Element<std::optional<lispb::codegen::PackedIntegerValue>>* integer_value,
+        size_type count)
+        : name_{name}
+        , sentinel_{sentinel}
+        , count_sentinel_{count_sentinel}
+        , code_{code}
+        , integer_value_{integer_value}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, name_, sentinel_, count_sentinel_, code_, integer_value_);
     }
-    auto slice(size_type const offset, size_type const count) const -> CodeTableView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            name.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            sentinel.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            count_sentinel.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
-            code.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            integer_value.subspan(static_cast<std::size_t>(offset),
-                                  static_cast<std::size_t>(count)),
-        };
+    CodeTableSingleResolvedViewImpl(
+        std::span<Element<std::string_view>> name,
+        std::span<Element<std::uint8_t>> sentinel,
+        std::span<Element<std::uint8_t>> count_sentinel,
+        std::span<Element<std::optional<ioj::layout::EnumCodeValue>>> code,
+        std::span<Element<std::optional<lispb::codegen::PackedIntegerValue>>> integer_value)
+        : CodeTableSingleResolvedViewImpl{name.data(),
+                                          sentinel.data(),
+                                          count_sentinel.data(),
+                                          code.data(),
+                                          integer_value.data(),
+                                          ioj::soa_storage_detail::checked_row_count(name.size())} {
+        assert(name.size() == count_);
+        assert(sentinel.size() == count_);
+        assert(count_sentinel.size() == count_);
+        assert(code.size() == count_);
+        assert(integer_value.size() == count_);
     }
-    auto get_view() const -> CodeTableView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> CodeTableView {
-        return slice(offset, count);
+    template <bool Enabled = Const>
+    CodeTableSingleResolvedViewImpl(CodeTableSingleResolvedViewImpl<false> const& other)
+        requires Enabled
+        : name_{other.name_}
+        , sentinel_{other.sentinel_}
+        , count_sentinel_{other.count_sentinel_}
+        , code_{other.code_}
+        , integer_value_{other.integer_value_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.name_,
+                      self.sentinel_,
+                      self.count_sentinel_,
+                      self.code_,
+                      self.integer_value_,
+                      self.count_};
     }
-    auto get_const_view() const -> ConstView {
-        return {
-            name,
-            sentinel,
-            count_sentinel,
-            code,
-            integer_value,
-        };
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.name_ == nullptr ? nullptr : self.name_ + offset,
+                      self.sentinel_ == nullptr ? nullptr : self.sentinel_ + offset,
+                      self.count_sentinel_ == nullptr ? nullptr : self.count_sentinel_ + offset,
+                      self.code_ == nullptr ? nullptr : self.code_ + offset,
+                      self.integer_value_ == nullptr ? nullptr : self.integer_value_ + offset,
+                      count};
     }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
     }
-    auto left(size_type const count) const -> CodeTableView { return slice(0, count); }
-    auto right(size_type const count) const -> CodeTableView {
-        assert(count <= num());
-        return slice(num() - count, count);
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
     }
-    void set(size_type const index,
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto name() const -> std::span<Element<std::string_view>> { return {name_, count_}; }
+    auto sentinel() const -> std::span<Element<std::uint8_t>> { return {sentinel_, count_}; }
+    auto count_sentinel() const -> std::span<Element<std::uint8_t>> {
+        return {count_sentinel_, count_};
+    }
+    auto code() const -> std::span<Element<std::optional<ioj::layout::EnumCodeValue>>> {
+        return {code_, count_};
+    }
+    auto integer_value() const
+        -> std::span<Element<std::optional<lispb::codegen::PackedIntegerValue>>> {
+        return {integer_value_, count_};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<std::string_view>>{name_, count_});
+        func(std::span<Element<std::uint8_t>>{sentinel_, count_});
+        func(std::span<Element<std::uint8_t>>{count_sentinel_, count_});
+        func(std::span<Element<std::optional<ioj::layout::EnumCodeValue>>>{code_, count_});
+        func(std::span<Element<std::optional<lispb::codegen::PackedIntegerValue>>>{integer_value_,
+                                                                                   count_});
+    }
+  private:
+    template <bool>
+    friend struct CodeTableSingleResolvedViewImpl;
+    Element<std::string_view>* name_{};
+    Element<std::uint8_t>* sentinel_{};
+    Element<std::uint8_t>* count_sentinel_{};
+    Element<std::optional<ioj::layout::EnumCodeValue>>* code_{};
+    Element<std::optional<lispb::codegen::PackedIntegerValue>>* integer_value_{};
+    size_type count_{};
+};
+struct CodeTableSingleResolvedConstView : CodeTableSingleResolvedViewImpl<true> {
+    using Base = CodeTableSingleResolvedViewImpl<true>;
+    using Base::Base;
+};
+struct CodeTableSingleResolvedView : CodeTableSingleResolvedViewImpl<false> {
+    using Base = CodeTableSingleResolvedViewImpl<false>;
+    using Base::Base;
+    void set(size_type index,
              std::string_view const new_name,
              std::uint8_t const new_sentinel,
              std::uint8_t const new_count_sentinel,
              std::optional<ioj::layout::EnumCodeValue> const new_code,
              std::optional<lispb::codegen::PackedIntegerValue> const new_integer_value) const {
         assert(index < num());
-        name[static_cast<std::size_t>(index)] = new_name;
-        sentinel[static_cast<std::size_t>(index)] = new_sentinel;
-        count_sentinel[static_cast<std::size_t>(index)] = new_count_sentinel;
-        code[static_cast<std::size_t>(index)] = new_code;
-        integer_value[static_cast<std::size_t>(index)] = new_integer_value;
+        this->name()[index] = new_name;
+        this->sentinel()[index] = new_sentinel;
+        this->count_sentinel()[index] = new_count_sentinel;
+        this->code()[index] = new_code;
+        this->integer_value()[index] = new_integer_value;
     }
 };
-struct CodeTable {
-    using View = CodeTableView;
-    using ConstView = CodeTableConstView;
+template <bool Const>
+struct CodeTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = CodeTableSchema;
     using size_type = std::uint32_t;
-    ioj::native_soa::Vector<std::string_view> name;
-    ioj::native_soa::Vector<std::uint8_t> sentinel;
-    ioj::native_soa::Vector<std::uint8_t> count_sentinel;
-    ioj::native_soa::Vector<std::optional<ioj::layout::EnumCodeValue>> code;
-    ioj::native_soa::Vector<std::optional<lispb::codegen::PackedIntegerValue>> integer_value;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(name.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) {
-        fn(name);
-        fn(sentinel);
-        fn(count_sentinel);
-        fn(code);
-        fn(integer_value);
+    using Layout = CodeTableSingleLayout;
+    using Storage = ioj::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    using View = CodeTableSingleView;
+    using ConstView = CodeTableSingleConstView;
+    CodeTableSingleViewImpl() = default;
+    CodeTableSingleViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+    template <bool Enabled = Const>
+    CodeTableSingleViewImpl(CodeTableSingleViewImpl<false> const& other)
+        requires Enabled
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    auto name() const { return make_column_view(Layout::columns.NameColumn); }
+    auto sentinel() const { return make_column_view(Layout::columns.SentinelColumn); }
+    auto count_sentinel() const { return make_column_view(Layout::columns.CountSentinelColumn); }
+    auto code() const { return make_column_view(Layout::columns.CodeColumn); }
+    auto integer_value() const { return make_column_view(Layout::columns.IntegerValueColumn); }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(name());
+        func(sentinel());
+        func(count_sentinel());
+        func(code());
+        func(integer_value());
     }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(name);
-        fn(sentinel);
-        fn(count_sentinel);
-        fn(code);
-        fn(integer_value);
+    auto resolve() const -> std::
+        conditional_t<Const, CodeTableSingleResolvedConstView, CodeTableSingleResolvedView> {
+        return {(make_column_view(Layout::columns.NameColumn).data()),
+                (make_column_view(Layout::columns.SentinelColumn).data()),
+                (make_column_view(Layout::columns.CountSentinelColumn).data()),
+                (make_column_view(Layout::columns.CodeColumn).data()),
+                (make_column_view(Layout::columns.IntegerValueColumn).data()),
+                count_};
     }
-    void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void set_num(size_type const count) {
-        ioj::native_soa::vector_storage_ops::set_num(*this, count);
+  private:
+    template <typename T>
+    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
     }
-    void reset() { ioj::native_soa::vector_storage_ops::reset(*this); }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        ioj::native_soa::vector_storage_ops::apply_permutation(*this, indices);
+    friend ioj::soa_storage_detail::CompactViewOperations;
+    template <bool>
+    friend struct CodeTableSingleViewImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
+struct CodeTableSingleConstView : CodeTableSingleViewImpl<true> {
+    using Base = CodeTableSingleViewImpl<true>;
+    using Base::Base;
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<CodeTableSingleConstView>());
+struct CodeTableSingleView : CodeTableSingleViewImpl<false> {
+    using Base = CodeTableSingleViewImpl<false>;
+    using Base::Base;
+    void set(size_type index,
+             std::string_view const new_name,
+             std::uint8_t const new_sentinel,
+             std::uint8_t const new_count_sentinel,
+             std::optional<ioj::layout::EnumCodeValue> const new_code,
+             std::optional<lispb::codegen::PackedIntegerValue> const new_integer_value) const {
+        assert(index < num());
+        this->name()[index] = new_name;
+        this->sentinel()[index] = new_sentinel;
+        this->count_sentinel()[index] = new_count_sentinel;
+        this->code()[index] = new_code;
+        this->integer_value()[index] = new_integer_value;
     }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        ioj::native_soa::vector_storage_ops::sort(
-            *this, std::forward<Compare>(compare), scratch_indices);
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<CodeTableSingleView>());
+// Columns:
+// name: std::string_view
+// sentinel: std::uint8_t
+// count_sentinel: std::uint8_t
+// code: std::optional<ioj::layout::EnumCodeValue>
+// integer_value: std::optional<lispb::codegen::PackedIntegerValue>
+struct CodeTable
+    : protected ioj::native_soa::StorageState
+    , ioj::native_soa::StorageOperations {
+    using soa_schema = CodeTableSchema;
+    using Operations = ioj::native_soa::StorageOperations;
+    using Layout = CodeTableSingleLayout;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
+
+    static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    static constexpr auto max_capacity = Layout::max_capacity;
+
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
     }
-    void set(size_type const index,
+
+    using View = CodeTableSingleView;
+    using ConstView = CodeTableSingleConstView;
+
+    /* **************************************** */
+    // Lifetime
+    /* **************************************** */
+    CodeTable() noexcept
+        : CodeTable{*std::pmr::get_default_resource()} {}
+    explicit CodeTable(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
+    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    ~CodeTable() { Operations::release_storage(*this); }
+    CodeTable(CodeTable const&) = delete;
+    auto operator=(CodeTable const&) -> CodeTable& = delete;
+    CodeTable(CodeTable&& other) noexcept
+        : resource_{other.resource_} {
+        Operations::take_storage(*this, other);
+    }
+    auto operator=(CodeTable&& other) -> CodeTable& {
+        return Operations::move_assign(*this, other);
+    }
+  protected:
+    template <typename Byte>
+    struct DataPointers {
+        template <typename T>
+        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+        Element<std::string_view>* name{};
+        Element<std::uint8_t>* sentinel{};
+        Element<std::uint8_t>* count_sentinel{};
+        Element<std::optional<ioj::layout::EnumCodeValue>>* code{};
+        Element<std::optional<lispb::codegen::PackedIntegerValue>>* integer_value{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (name == nullptr) {
+                return {};
+            }
+            return {name + offset,
+                    sentinel + offset,
+                    count_sentinel + offset,
+                    code + offset,
+                    integer_value + offset};
+        }
+    };
+    template <typename Self>
+    auto get_data(this Self& self) noexcept {
+        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
+        if (self.data_ == nullptr) {
+            return DataPointers<Byte>{};
+        }
+        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
+    }
+    template <typename Self>
+    auto get_data(this Self& self, size_type const offset) noexcept {
+        return self.get_data() + offset;
+    }
+  private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
+    /* **************************************** */
+    // Column pointers
+    /* **************************************** */
+    template <typename Byte>
+    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
+        -> DataPointers<Byte> {
+        ioj::native_soa::LayoutCursor cursor{blocks};
+        return {cursor.column_pointer(data, Layout::columns.NameColumn),
+                cursor.column_pointer(data, Layout::columns.SentinelColumn),
+                cursor.column_pointer(data, Layout::columns.CountSentinelColumn),
+                cursor.column_pointer(data, Layout::columns.CodeColumn),
+                cursor.column_pointer(data, Layout::columns.IntegerValueColumn)};
+    }
+    auto capacity_blocks() const noexcept -> byte_size_type {
+        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
+    }
+
+    /* **************************************** */
+    // Typed mutations and growth
+    /* **************************************** */
+    void default_construct_columns(size_type const first, size_type const count) {
+        using ioj::native_soa::default_construct_n;
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
+        default_construct_n(columns.name, count);
+        default_construct_n(columns.sentinel, count);
+        default_construct_n(columns.count_sentinel, count);
+        default_construct_n(columns.code, count);
+        default_construct_n(columns.integer_value, count);
+    }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        auto transfer = [count](auto* dst, auto const* src) {
+            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.name, source.name);
+        transfer(destination.sentinel, source.sentinel);
+        transfer(destination.count_sentinel, source.count_sentinel);
+        transfer(destination.code, source.code);
+        transfer(destination.integer_value, source.integer_value);
+    }
+    void swap_remove_columns(size_type const index,
+                             size_type const source,
+                             size_type const move_count) {
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
+        transfer_columns<false>(columns + index, columns + source, move_count);
+    }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ioj::soa_storage_detail::for_each_removal_run(
+            num_, indices, [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, CodeTable, size_type>
+    {
+        using ioj::native_soa::source_data;
+        return {source_data(source.name()),
+                source_data(source.sentinel()),
+                source_data(source.count_sentinel()),
+                source_data(source.code()),
+                source_data(source.integer_value())};
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count)
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, CodeTable, size_type>
+    {
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
+    }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count)
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, CodeTable, size_type>
+    {
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
+    }
+    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
+        auto const old_blocks{capacity_blocks()};
+        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+        auto const destination{make_data_unchecked(new_data, new_blocks)};
+        transfer_columns<false>(destination, source, num_);
+    }
+  public:
+    auto name(this auto& self) { return self.get_view().name(); }
+    auto sentinel(this auto& self) { return self.get_view().sentinel(); }
+    auto count_sentinel(this auto& self) { return self.get_view().count_sentinel(); }
+    auto code(this auto& self) { return self.get_view().code(); }
+    auto integer_value(this auto& self) { return self.get_view().integer_value(); }
+    void set(size_type index,
              std::string_view const new_name,
              std::uint8_t const new_sentinel,
              std::uint8_t const new_count_sentinel,
              std::optional<ioj::layout::EnumCodeValue> const new_code,
              std::optional<lispb::codegen::PackedIntegerValue> const new_integer_value) {
-        get_view().set(
-            index, new_name, new_sentinel, new_count_sentinel, new_code, new_integer_value);
+        assert(index < num());
+        get_view().name()[index] = new_name;
+        get_view().sentinel()[index] = new_sentinel;
+        get_view().count_sentinel()[index] = new_count_sentinel;
+        get_view().code()[index] = new_code;
+        get_view().integer_value()[index] = new_integer_value;
     }
-    auto add(std::string_view const new_name,
-             std::uint8_t const new_sentinel,
-             std::uint8_t const new_count_sentinel,
-             std::optional<ioj::layout::EnumCodeValue> const new_code,
-             std::optional<lispb::codegen::PackedIntegerValue> const new_integer_value)
-        -> size_type {
-        return ioj::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
-            name.emplace_back(new_name);
-            sentinel.emplace_back(new_sentinel);
-            count_sentinel.emplace_back(new_count_sentinel);
-            code.emplace_back(new_code);
-            integer_value.emplace_back(new_integer_value);
-        });
-    }
-    auto get_view() -> View {
-        return {
-            name,
-            sentinel,
-            count_sentinel,
-            code,
-            integer_value,
-        };
-    }
-    auto get_view() const -> ConstView {
-        return {
-            name,
-            sentinel,
-            count_sentinel,
-            code,
-            integer_value,
-        };
-    }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        return get_view().slice(offset, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_view().slice(offset, count);
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
-        return get_view(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view(offset, count);
-    }
-    auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
+    size_type add(std::string_view const new_name,
+                  std::uint8_t const new_sentinel,
+                  std::uint8_t const new_count_sentinel,
+                  std::optional<ioj::layout::EnumCodeValue> const new_code,
+                  std::optional<lispb::codegen::PackedIntegerValue> const new_integer_value) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index, new_name, new_sentinel, new_count_sentinel, new_code, new_integer_value);
+        return index;
     }
     std::size_t append();
+  private:
+    std::pmr::memory_resource* resource_{};
 };
-
 } // namespace ioj::layout

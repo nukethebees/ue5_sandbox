@@ -6,8 +6,7 @@
   :namespace ioj::layout
   :prelude #cpp{#include <optional>}cpp#
   (struct ScalarTable
-    :storage vector
-    :operations (set-num reset)
+    (single-allocation ScalarTable)
     (member type array @type_id)
     (member integer_domain array @optional_integer_domain)
     (member enum_domain array @optional_enum_domain)
@@ -20,12 +19,13 @@
     (function append @size_t :definition-in-source true
       (parameter value @type_id)
       :body #cpp{auto const row{num()};
-set_num(row + 1);
-type[row] = value;
+add_defaulted(1);
+type()[row] = value;
 return row;}cpp#)
     (function find @size_t :const true :definition-in-source true
       (parameter value @type_id)
-      :body #cpp{auto const found{std::ranges::find(type, value)};
-assert(found != type.end());
-return static_cast<std::size_t>(found - type.begin());}cpp#)
+      :body #cpp{auto const types{type()};
+auto const found{std::ranges::find(types, value)};
+assert(found != types.end());
+return static_cast<std::size_t>(found - types.begin());}cpp#)
   ))

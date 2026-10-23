@@ -6,8 +6,7 @@
   :namespace ioj::layout
   :prelude #cpp{#include <optional>}cpp#
   (struct TagTable
-    :storage vector
-    :operations (set-num reset)
+    (single-allocation TagTable)
     (member name array @string_view)
     (member mapped array @uint8_t)
     (member sentinel array @uint8_t)

@@ -12,9 +12,9 @@ namespace ioj::layout {
 auto SelectionTable::append(std::size_t selected_source,
                             ioj::layout::AccessOperation selected_operation) -> std::size_t {
     auto const row{num()};
-    set_num(row + 1);
-    source[row] = selected_source;
-    operation[row] = selected_operation;
+    add_defaulted(1);
+    source()[row] = selected_source;
+    operation()[row] = selected_operation;
     return row;
 }
 

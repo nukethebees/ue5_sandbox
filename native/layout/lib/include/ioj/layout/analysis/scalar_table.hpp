@@ -12,177 +12,279 @@
 #include "ioj/layout/analysis/quantized_encoding.hpp"
 #include "ioj/layout/analysis/varint_encoding.hpp"
 #include "ioj/native_soa/storage.h"
-#include "ioj/native_soa/vector_storage_ops.h"
 
 #include "lispb/schema/indices.h"
 
 #include <cassert>
 #include <cstddef>
+#include <memory_resource>
 #include <optional>
-#include <utility>
 
 namespace ioj::layout {
 struct ScalarTableSchema;
 
-struct ScalarTableView;
-struct ScalarTableConstView;
-struct ScalarTableConstView {
-    using View = ScalarTableView;
-    using ConstView = ScalarTableConstView;
-    using size_type = std::uint32_t;
-    std::span<lispb::schema::TypeId const> type;
-    std::span<std::optional<ioj::layout::IntegerDomain> const> integer_domain;
-    std::span<std::optional<ioj::layout::EnumDomain> const> enum_domain;
-    std::span<std::optional<ioj::layout::OptionalSentinelEncoding> const>
-        optional_sentinel_encoding;
-    std::span<std::optional<ioj::layout::OptionalPresenceEncoding> const>
-        optional_presence_encoding;
-    std::span<std::optional<ioj::layout::QuantizedEncoding> const> quantized_encoding;
-    std::span<std::optional<ioj::layout::FixedEncoding> const> fixed_encoding;
-    std::span<std::optional<ioj::layout::FloatEncoding> const> float_encoding;
-    std::span<std::optional<ioj::layout::VarintEncoding> const> varint_encoding;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(type.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(type);
-        fn(integer_domain);
-        fn(enum_domain);
-        fn(optional_sentinel_encoding);
-        fn(optional_presence_encoding);
-        fn(quantized_encoding);
-        fn(fixed_encoding);
-        fn(float_encoding);
-        fn(varint_encoding);
-    }
-    void validate_array_sizes() const {
-        ioj::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ScalarTableConstView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            type.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            integer_domain.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
-            enum_domain.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            optional_sentinel_encoding.subspan(static_cast<std::size_t>(offset),
-                                               static_cast<std::size_t>(count)),
-            optional_presence_encoding.subspan(static_cast<std::size_t>(offset),
-                                               static_cast<std::size_t>(count)),
-            quantized_encoding.subspan(static_cast<std::size_t>(offset),
-                                       static_cast<std::size_t>(count)),
-            fixed_encoding.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
-            float_encoding.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
-            varint_encoding.subspan(static_cast<std::size_t>(offset),
-                                    static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> ScalarTableConstView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> ScalarTableConstView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            type,
-            integer_domain,
-            enum_domain,
-            optional_sentinel_encoding,
-            optional_presence_encoding,
-            quantized_encoding,
-            fixed_encoding,
-            float_encoding,
-            varint_encoding,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> ScalarTableConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ScalarTableConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
+struct ScalarTableSingleView;
+struct ScalarTableSingleConstView;
+struct ScalarTableSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ioj::native_soa::ColumnLayout<T>;
+
+    ioj::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<lispb::schema::TypeId> TypeColumn;
+    ColLayout<std::optional<ioj::layout::IntegerDomain>> IntegerDomainColumn;
+    ColLayout<std::optional<ioj::layout::EnumDomain>> EnumDomainColumn;
+    ColLayout<std::optional<ioj::layout::OptionalSentinelEncoding>> OptionalSentinelEncodingColumn;
+    ColLayout<std::optional<ioj::layout::OptionalPresenceEncoding>> OptionalPresenceEncodingColumn;
+    ColLayout<std::optional<ioj::layout::QuantizedEncoding>> QuantizedEncodingColumn;
+    ColLayout<std::optional<ioj::layout::FixedEncoding>> FixedEncodingColumn;
+    ColLayout<std::optional<ioj::layout::FloatEncoding>> FloatEncodingColumn;
+    ColLayout<std::optional<ioj::layout::VarintEncoding>> VarintEncodingColumn;
+
+    constexpr ScalarTableSingleLayoutColumns() noexcept
+        : TypeColumn{LayoutStart}
+        , IntegerDomainColumn{TypeColumn}
+        , EnumDomainColumn{IntegerDomainColumn}
+        , OptionalSentinelEncodingColumn{EnumDomainColumn}
+        , OptionalPresenceEncodingColumn{OptionalSentinelEncodingColumn}
+        , QuantizedEncodingColumn{OptionalPresenceEncodingColumn}
+        , FixedEncodingColumn{QuantizedEncodingColumn}
+        , FloatEncodingColumn{FixedEncodingColumn}
+        , VarintEncodingColumn{FloatEncodingColumn} {}
+    ScalarTableSingleLayoutColumns(ScalarTableSingleLayoutColumns const&) = delete;
+    auto operator=(ScalarTableSingleLayoutColumns const&)
+        -> ScalarTableSingleLayoutColumns& = delete;
 };
-struct ScalarTableView {
-    using View = ScalarTableView;
-    using ConstView = ScalarTableConstView;
+struct ScalarTableSingleLayout {
     using size_type = std::uint32_t;
-    std::span<lispb::schema::TypeId> type;
-    std::span<std::optional<ioj::layout::IntegerDomain>> integer_domain;
-    std::span<std::optional<ioj::layout::EnumDomain>> enum_domain;
-    std::span<std::optional<ioj::layout::OptionalSentinelEncoding>> optional_sentinel_encoding;
-    std::span<std::optional<ioj::layout::OptionalPresenceEncoding>> optional_presence_encoding;
-    std::span<std::optional<ioj::layout::QuantizedEncoding>> quantized_encoding;
-    std::span<std::optional<ioj::layout::FixedEncoding>> fixed_encoding;
-    std::span<std::optional<ioj::layout::FloatEncoding>> float_encoding;
-    std::span<std::optional<ioj::layout::VarintEncoding>> varint_encoding;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(type.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(type);
-        fn(integer_domain);
-        fn(enum_domain);
-        fn(optional_sentinel_encoding);
-        fn(optional_presence_encoding);
-        fn(quantized_encoding);
-        fn(fixed_encoding);
-        fn(float_encoding);
-        fn(varint_encoding);
+    using byte_size_type = std::size_t;
+
+    static constexpr size_type capacity_granularity{
+        ioj::native_soa::LayoutPolicy::capacity_granularity};
+    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
+
+    static constexpr ScalarTableSingleLayoutColumns columns{};
+
+    static constexpr byte_size_type allocation_alignment{
+        columns.VarintEncodingColumn.allocation_alignment};
+
+    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
+    // capacity.
+    static constexpr byte_size_type capacity_block_bound{
+        ioj::native_soa::capacity_block_bound(columns.VarintEncodingColumn)};
+    static constexpr size_type max_capacity{
+        ioj::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0 ? 0 : columns.VarintEncodingColumn.data_end(blocks);
     }
-    void validate_array_sizes() const {
-        ioj::native_soa::vector_storage_ops::validate_array_sizes(*this);
+    static_assert(max_capacity >= capacity_granularity);
+};
+
+struct ScalarTableSingleResolvedView;
+struct ScalarTableSingleResolvedConstView;
+template <bool Const>
+struct ScalarTableSingleResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = ScalarTableSingleResolvedView;
+    using ConstView = ScalarTableSingleResolvedConstView;
+    using soa_schema = ScalarTableSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    ScalarTableSingleResolvedViewImpl() = default;
+    ScalarTableSingleResolvedViewImpl(
+        Element<lispb::schema::TypeId>* type,
+        Element<std::optional<ioj::layout::IntegerDomain>>* integer_domain,
+        Element<std::optional<ioj::layout::EnumDomain>>* enum_domain,
+        Element<std::optional<ioj::layout::OptionalSentinelEncoding>>* optional_sentinel_encoding,
+        Element<std::optional<ioj::layout::OptionalPresenceEncoding>>* optional_presence_encoding,
+        Element<std::optional<ioj::layout::QuantizedEncoding>>* quantized_encoding,
+        Element<std::optional<ioj::layout::FixedEncoding>>* fixed_encoding,
+        Element<std::optional<ioj::layout::FloatEncoding>>* float_encoding,
+        Element<std::optional<ioj::layout::VarintEncoding>>* varint_encoding,
+        size_type count)
+        : type_{type}
+        , integer_domain_{integer_domain}
+        , enum_domain_{enum_domain}
+        , optional_sentinel_encoding_{optional_sentinel_encoding}
+        , optional_presence_encoding_{optional_presence_encoding}
+        , quantized_encoding_{quantized_encoding}
+        , fixed_encoding_{fixed_encoding}
+        , float_encoding_{float_encoding}
+        , varint_encoding_{varint_encoding}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(count_,
+                                                          type_,
+                                                          integer_domain_,
+                                                          enum_domain_,
+                                                          optional_sentinel_encoding_,
+                                                          optional_presence_encoding_,
+                                                          quantized_encoding_,
+                                                          fixed_encoding_,
+                                                          float_encoding_,
+                                                          varint_encoding_);
     }
-    auto slice(size_type const offset, size_type const count) const -> ScalarTableView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            type.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            integer_domain.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
-            enum_domain.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            optional_sentinel_encoding.subspan(static_cast<std::size_t>(offset),
-                                               static_cast<std::size_t>(count)),
-            optional_presence_encoding.subspan(static_cast<std::size_t>(offset),
-                                               static_cast<std::size_t>(count)),
-            quantized_encoding.subspan(static_cast<std::size_t>(offset),
-                                       static_cast<std::size_t>(count)),
-            fixed_encoding.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
-            float_encoding.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
-            varint_encoding.subspan(static_cast<std::size_t>(offset),
-                                    static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> ScalarTableView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> ScalarTableView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            type,
-            integer_domain,
-            enum_domain,
+    ScalarTableSingleResolvedViewImpl(
+        std::span<Element<lispb::schema::TypeId>> type,
+        std::span<Element<std::optional<ioj::layout::IntegerDomain>>> integer_domain,
+        std::span<Element<std::optional<ioj::layout::EnumDomain>>> enum_domain,
+        std::span<Element<std::optional<ioj::layout::OptionalSentinelEncoding>>>
             optional_sentinel_encoding,
+        std::span<Element<std::optional<ioj::layout::OptionalPresenceEncoding>>>
             optional_presence_encoding,
-            quantized_encoding,
-            fixed_encoding,
-            float_encoding,
-            varint_encoding,
-        };
+        std::span<Element<std::optional<ioj::layout::QuantizedEncoding>>> quantized_encoding,
+        std::span<Element<std::optional<ioj::layout::FixedEncoding>>> fixed_encoding,
+        std::span<Element<std::optional<ioj::layout::FloatEncoding>>> float_encoding,
+        std::span<Element<std::optional<ioj::layout::VarintEncoding>>> varint_encoding)
+        : ScalarTableSingleResolvedViewImpl{
+              type.data(),
+              integer_domain.data(),
+              enum_domain.data(),
+              optional_sentinel_encoding.data(),
+              optional_presence_encoding.data(),
+              quantized_encoding.data(),
+              fixed_encoding.data(),
+              float_encoding.data(),
+              varint_encoding.data(),
+              ioj::soa_storage_detail::checked_row_count(type.size())} {
+        assert(type.size() == count_);
+        assert(integer_domain.size() == count_);
+        assert(enum_domain.size() == count_);
+        assert(optional_sentinel_encoding.size() == count_);
+        assert(optional_presence_encoding.size() == count_);
+        assert(quantized_encoding.size() == count_);
+        assert(fixed_encoding.size() == count_);
+        assert(float_encoding.size() == count_);
+        assert(varint_encoding.size() == count_);
     }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
+    template <bool Enabled = Const>
+    ScalarTableSingleResolvedViewImpl(ScalarTableSingleResolvedViewImpl<false> const& other)
+        requires Enabled
+        : type_{other.type_}
+        , integer_domain_{other.integer_domain_}
+        , enum_domain_{other.enum_domain_}
+        , optional_sentinel_encoding_{other.optional_sentinel_encoding_}
+        , optional_presence_encoding_{other.optional_presence_encoding_}
+        , quantized_encoding_{other.quantized_encoding_}
+        , fixed_encoding_{other.fixed_encoding_}
+        , float_encoding_{other.float_encoding_}
+        , varint_encoding_{other.varint_encoding_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.type_,
+                      self.integer_domain_,
+                      self.enum_domain_,
+                      self.optional_sentinel_encoding_,
+                      self.optional_presence_encoding_,
+                      self.quantized_encoding_,
+                      self.fixed_encoding_,
+                      self.float_encoding_,
+                      self.varint_encoding_,
+                      self.count_};
     }
-    auto left(size_type const count) const -> ScalarTableView { return slice(0, count); }
-    auto right(size_type const count) const -> ScalarTableView {
-        assert(count <= num());
-        return slice(num() - count, count);
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{
+            self.type_ == nullptr ? nullptr : self.type_ + offset,
+            self.integer_domain_ == nullptr ? nullptr : self.integer_domain_ + offset,
+            self.enum_domain_ == nullptr ? nullptr : self.enum_domain_ + offset,
+            self.optional_sentinel_encoding_ == nullptr ? nullptr
+                                                        : self.optional_sentinel_encoding_ + offset,
+            self.optional_presence_encoding_ == nullptr ? nullptr
+                                                        : self.optional_presence_encoding_ + offset,
+            self.quantized_encoding_ == nullptr ? nullptr : self.quantized_encoding_ + offset,
+            self.fixed_encoding_ == nullptr ? nullptr : self.fixed_encoding_ + offset,
+            self.float_encoding_ == nullptr ? nullptr : self.float_encoding_ + offset,
+            self.varint_encoding_ == nullptr ? nullptr : self.varint_encoding_ + offset,
+            count};
     }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto type() const -> std::span<Element<lispb::schema::TypeId>> { return {type_, count_}; }
+    auto integer_domain() const -> std::span<Element<std::optional<ioj::layout::IntegerDomain>>> {
+        return {integer_domain_, count_};
+    }
+    auto enum_domain() const -> std::span<Element<std::optional<ioj::layout::EnumDomain>>> {
+        return {enum_domain_, count_};
+    }
+    auto optional_sentinel_encoding() const
+        -> std::span<Element<std::optional<ioj::layout::OptionalSentinelEncoding>>> {
+        return {optional_sentinel_encoding_, count_};
+    }
+    auto optional_presence_encoding() const
+        -> std::span<Element<std::optional<ioj::layout::OptionalPresenceEncoding>>> {
+        return {optional_presence_encoding_, count_};
+    }
+    auto quantized_encoding() const
+        -> std::span<Element<std::optional<ioj::layout::QuantizedEncoding>>> {
+        return {quantized_encoding_, count_};
+    }
+    auto fixed_encoding() const -> std::span<Element<std::optional<ioj::layout::FixedEncoding>>> {
+        return {fixed_encoding_, count_};
+    }
+    auto float_encoding() const -> std::span<Element<std::optional<ioj::layout::FloatEncoding>>> {
+        return {float_encoding_, count_};
+    }
+    auto varint_encoding() const -> std::span<Element<std::optional<ioj::layout::VarintEncoding>>> {
+        return {varint_encoding_, count_};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<lispb::schema::TypeId>>{type_, count_});
+        func(
+            std::span<Element<std::optional<ioj::layout::IntegerDomain>>>{integer_domain_, count_});
+        func(std::span<Element<std::optional<ioj::layout::EnumDomain>>>{enum_domain_, count_});
+        func(std::span<Element<std::optional<ioj::layout::OptionalSentinelEncoding>>>{
+            optional_sentinel_encoding_, count_});
+        func(std::span<Element<std::optional<ioj::layout::OptionalPresenceEncoding>>>{
+            optional_presence_encoding_, count_});
+        func(std::span<Element<std::optional<ioj::layout::QuantizedEncoding>>>{quantized_encoding_,
+                                                                               count_});
+        func(
+            std::span<Element<std::optional<ioj::layout::FixedEncoding>>>{fixed_encoding_, count_});
+        func(
+            std::span<Element<std::optional<ioj::layout::FloatEncoding>>>{float_encoding_, count_});
+        func(std::span<Element<std::optional<ioj::layout::VarintEncoding>>>{varint_encoding_,
+                                                                            count_});
+    }
+  private:
+    template <bool>
+    friend struct ScalarTableSingleResolvedViewImpl;
+    Element<lispb::schema::TypeId>* type_{};
+    Element<std::optional<ioj::layout::IntegerDomain>>* integer_domain_{};
+    Element<std::optional<ioj::layout::EnumDomain>>* enum_domain_{};
+    Element<std::optional<ioj::layout::OptionalSentinelEncoding>>* optional_sentinel_encoding_{};
+    Element<std::optional<ioj::layout::OptionalPresenceEncoding>>* optional_presence_encoding_{};
+    Element<std::optional<ioj::layout::QuantizedEncoding>>* quantized_encoding_{};
+    Element<std::optional<ioj::layout::FixedEncoding>>* fixed_encoding_{};
+    Element<std::optional<ioj::layout::FloatEncoding>>* float_encoding_{};
+    Element<std::optional<ioj::layout::VarintEncoding>>* varint_encoding_{};
+    size_type count_{};
+};
+struct ScalarTableSingleResolvedConstView : ScalarTableSingleResolvedViewImpl<true> {
+    using Base = ScalarTableSingleResolvedViewImpl<true>;
+    using Base::Base;
+};
+struct ScalarTableSingleResolvedView : ScalarTableSingleResolvedViewImpl<false> {
+    using Base = ScalarTableSingleResolvedViewImpl<false>;
+    using Base::Base;
     void set(
-        size_type const index,
+        size_type index,
         lispb::schema::TypeId const new_type,
         std::optional<ioj::layout::IntegerDomain> const new_integer_domain,
         std::optional<ioj::layout::EnumDomain> const new_enum_domain,
@@ -193,75 +295,345 @@ struct ScalarTableView {
         std::optional<ioj::layout::FloatEncoding> const new_float_encoding,
         std::optional<ioj::layout::VarintEncoding> const new_varint_encoding) const {
         assert(index < num());
-        type[static_cast<std::size_t>(index)] = new_type;
-        integer_domain[static_cast<std::size_t>(index)] = new_integer_domain;
-        enum_domain[static_cast<std::size_t>(index)] = new_enum_domain;
-        optional_sentinel_encoding[static_cast<std::size_t>(index)] =
-            new_optional_sentinel_encoding;
-        optional_presence_encoding[static_cast<std::size_t>(index)] =
-            new_optional_presence_encoding;
-        quantized_encoding[static_cast<std::size_t>(index)] = new_quantized_encoding;
-        fixed_encoding[static_cast<std::size_t>(index)] = new_fixed_encoding;
-        float_encoding[static_cast<std::size_t>(index)] = new_float_encoding;
-        varint_encoding[static_cast<std::size_t>(index)] = new_varint_encoding;
+        this->type()[index] = new_type;
+        this->integer_domain()[index] = new_integer_domain;
+        this->enum_domain()[index] = new_enum_domain;
+        this->optional_sentinel_encoding()[index] = new_optional_sentinel_encoding;
+        this->optional_presence_encoding()[index] = new_optional_presence_encoding;
+        this->quantized_encoding()[index] = new_quantized_encoding;
+        this->fixed_encoding()[index] = new_fixed_encoding;
+        this->float_encoding()[index] = new_float_encoding;
+        this->varint_encoding()[index] = new_varint_encoding;
     }
 };
-struct ScalarTable {
-    using View = ScalarTableView;
-    using ConstView = ScalarTableConstView;
+template <bool Const>
+struct ScalarTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = ScalarTableSchema;
     using size_type = std::uint32_t;
-    ioj::native_soa::Vector<lispb::schema::TypeId> type;
-    ioj::native_soa::Vector<std::optional<ioj::layout::IntegerDomain>> integer_domain;
-    ioj::native_soa::Vector<std::optional<ioj::layout::EnumDomain>> enum_domain;
-    ioj::native_soa::Vector<std::optional<ioj::layout::OptionalSentinelEncoding>>
-        optional_sentinel_encoding;
-    ioj::native_soa::Vector<std::optional<ioj::layout::OptionalPresenceEncoding>>
-        optional_presence_encoding;
-    ioj::native_soa::Vector<std::optional<ioj::layout::QuantizedEncoding>> quantized_encoding;
-    ioj::native_soa::Vector<std::optional<ioj::layout::FixedEncoding>> fixed_encoding;
-    ioj::native_soa::Vector<std::optional<ioj::layout::FloatEncoding>> float_encoding;
-    ioj::native_soa::Vector<std::optional<ioj::layout::VarintEncoding>> varint_encoding;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(type.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) {
-        fn(type);
-        fn(integer_domain);
-        fn(enum_domain);
-        fn(optional_sentinel_encoding);
-        fn(optional_presence_encoding);
-        fn(quantized_encoding);
-        fn(fixed_encoding);
-        fn(float_encoding);
-        fn(varint_encoding);
+    using Layout = ScalarTableSingleLayout;
+    using Storage = ioj::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    using View = ScalarTableSingleView;
+    using ConstView = ScalarTableSingleConstView;
+    ScalarTableSingleViewImpl() = default;
+    ScalarTableSingleViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+    template <bool Enabled = Const>
+    ScalarTableSingleViewImpl(ScalarTableSingleViewImpl<false> const& other)
+        requires Enabled
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    auto type() const { return make_column_view(Layout::columns.TypeColumn); }
+    auto integer_domain() const { return make_column_view(Layout::columns.IntegerDomainColumn); }
+    auto enum_domain() const { return make_column_view(Layout::columns.EnumDomainColumn); }
+    auto optional_sentinel_encoding() const {
+        return make_column_view(Layout::columns.OptionalSentinelEncodingColumn);
     }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(type);
-        fn(integer_domain);
-        fn(enum_domain);
-        fn(optional_sentinel_encoding);
-        fn(optional_presence_encoding);
-        fn(quantized_encoding);
-        fn(fixed_encoding);
-        fn(float_encoding);
-        fn(varint_encoding);
+    auto optional_presence_encoding() const {
+        return make_column_view(Layout::columns.OptionalPresenceEncodingColumn);
     }
-    void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void set_num(size_type const count) {
-        ioj::native_soa::vector_storage_ops::set_num(*this, count);
+    auto quantized_encoding() const {
+        return make_column_view(Layout::columns.QuantizedEncodingColumn);
     }
-    void reset() { ioj::native_soa::vector_storage_ops::reset(*this); }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        ioj::native_soa::vector_storage_ops::apply_permutation(*this, indices);
+    auto fixed_encoding() const { return make_column_view(Layout::columns.FixedEncodingColumn); }
+    auto float_encoding() const { return make_column_view(Layout::columns.FloatEncodingColumn); }
+    auto varint_encoding() const { return make_column_view(Layout::columns.VarintEncodingColumn); }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(type());
+        func(integer_domain());
+        func(enum_domain());
+        func(optional_sentinel_encoding());
+        func(optional_presence_encoding());
+        func(quantized_encoding());
+        func(fixed_encoding());
+        func(float_encoding());
+        func(varint_encoding());
     }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        ioj::native_soa::vector_storage_ops::sort(
-            *this, std::forward<Compare>(compare), scratch_indices);
+    auto resolve() const -> std::
+        conditional_t<Const, ScalarTableSingleResolvedConstView, ScalarTableSingleResolvedView> {
+        return {(make_column_view(Layout::columns.TypeColumn).data()),
+                (make_column_view(Layout::columns.IntegerDomainColumn).data()),
+                (make_column_view(Layout::columns.EnumDomainColumn).data()),
+                (make_column_view(Layout::columns.OptionalSentinelEncodingColumn).data()),
+                (make_column_view(Layout::columns.OptionalPresenceEncodingColumn).data()),
+                (make_column_view(Layout::columns.QuantizedEncodingColumn).data()),
+                (make_column_view(Layout::columns.FixedEncodingColumn).data()),
+                (make_column_view(Layout::columns.FloatEncodingColumn).data()),
+                (make_column_view(Layout::columns.VarintEncodingColumn).data()),
+                count_};
     }
+  private:
+    template <typename T>
+    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
+    friend ioj::soa_storage_detail::CompactViewOperations;
+    template <bool>
+    friend struct ScalarTableSingleViewImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
+struct ScalarTableSingleConstView : ScalarTableSingleViewImpl<true> {
+    using Base = ScalarTableSingleViewImpl<true>;
+    using Base::Base;
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<ScalarTableSingleConstView>());
+struct ScalarTableSingleView : ScalarTableSingleViewImpl<false> {
+    using Base = ScalarTableSingleViewImpl<false>;
+    using Base::Base;
     void set(
-        size_type const index,
+        size_type index,
+        lispb::schema::TypeId const new_type,
+        std::optional<ioj::layout::IntegerDomain> const new_integer_domain,
+        std::optional<ioj::layout::EnumDomain> const new_enum_domain,
+        std::optional<ioj::layout::OptionalSentinelEncoding> const new_optional_sentinel_encoding,
+        std::optional<ioj::layout::OptionalPresenceEncoding> const new_optional_presence_encoding,
+        std::optional<ioj::layout::QuantizedEncoding> const new_quantized_encoding,
+        std::optional<ioj::layout::FixedEncoding> const new_fixed_encoding,
+        std::optional<ioj::layout::FloatEncoding> const new_float_encoding,
+        std::optional<ioj::layout::VarintEncoding> const new_varint_encoding) const {
+        assert(index < num());
+        this->type()[index] = new_type;
+        this->integer_domain()[index] = new_integer_domain;
+        this->enum_domain()[index] = new_enum_domain;
+        this->optional_sentinel_encoding()[index] = new_optional_sentinel_encoding;
+        this->optional_presence_encoding()[index] = new_optional_presence_encoding;
+        this->quantized_encoding()[index] = new_quantized_encoding;
+        this->fixed_encoding()[index] = new_fixed_encoding;
+        this->float_encoding()[index] = new_float_encoding;
+        this->varint_encoding()[index] = new_varint_encoding;
+    }
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<ScalarTableSingleView>());
+// Columns:
+// type: lispb::schema::TypeId
+// integer_domain: std::optional<ioj::layout::IntegerDomain>
+// enum_domain: std::optional<ioj::layout::EnumDomain>
+// optional_sentinel_encoding: std::optional<ioj::layout::OptionalSentinelEncoding>
+// optional_presence_encoding: std::optional<ioj::layout::OptionalPresenceEncoding>
+// quantized_encoding: std::optional<ioj::layout::QuantizedEncoding>
+// fixed_encoding: std::optional<ioj::layout::FixedEncoding>
+// float_encoding: std::optional<ioj::layout::FloatEncoding>
+// varint_encoding: std::optional<ioj::layout::VarintEncoding>
+struct ScalarTable
+    : protected ioj::native_soa::StorageState
+    , ioj::native_soa::StorageOperations {
+    using soa_schema = ScalarTableSchema;
+    using Operations = ioj::native_soa::StorageOperations;
+    using Layout = ScalarTableSingleLayout;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
+
+    static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    static constexpr auto max_capacity = Layout::max_capacity;
+
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
+    }
+
+    using View = ScalarTableSingleView;
+    using ConstView = ScalarTableSingleConstView;
+
+    /* **************************************** */
+    // Lifetime
+    /* **************************************** */
+    ScalarTable() noexcept
+        : ScalarTable{*std::pmr::get_default_resource()} {}
+    explicit ScalarTable(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
+    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    ~ScalarTable() { Operations::release_storage(*this); }
+    ScalarTable(ScalarTable const&) = delete;
+    auto operator=(ScalarTable const&) -> ScalarTable& = delete;
+    ScalarTable(ScalarTable&& other) noexcept
+        : resource_{other.resource_} {
+        Operations::take_storage(*this, other);
+    }
+    auto operator=(ScalarTable&& other) -> ScalarTable& {
+        return Operations::move_assign(*this, other);
+    }
+  protected:
+    template <typename Byte>
+    struct DataPointers {
+        template <typename T>
+        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+        Element<lispb::schema::TypeId>* type{};
+        Element<std::optional<ioj::layout::IntegerDomain>>* integer_domain{};
+        Element<std::optional<ioj::layout::EnumDomain>>* enum_domain{};
+        Element<std::optional<ioj::layout::OptionalSentinelEncoding>>* optional_sentinel_encoding{};
+        Element<std::optional<ioj::layout::OptionalPresenceEncoding>>* optional_presence_encoding{};
+        Element<std::optional<ioj::layout::QuantizedEncoding>>* quantized_encoding{};
+        Element<std::optional<ioj::layout::FixedEncoding>>* fixed_encoding{};
+        Element<std::optional<ioj::layout::FloatEncoding>>* float_encoding{};
+        Element<std::optional<ioj::layout::VarintEncoding>>* varint_encoding{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (type == nullptr) {
+                return {};
+            }
+            return {type + offset,
+                    integer_domain + offset,
+                    enum_domain + offset,
+                    optional_sentinel_encoding + offset,
+                    optional_presence_encoding + offset,
+                    quantized_encoding + offset,
+                    fixed_encoding + offset,
+                    float_encoding + offset,
+                    varint_encoding + offset};
+        }
+    };
+    template <typename Self>
+    auto get_data(this Self& self) noexcept {
+        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
+        if (self.data_ == nullptr) {
+            return DataPointers<Byte>{};
+        }
+        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
+    }
+    template <typename Self>
+    auto get_data(this Self& self, size_type const offset) noexcept {
+        return self.get_data() + offset;
+    }
+  private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
+    /* **************************************** */
+    // Column pointers
+    /* **************************************** */
+    template <typename Byte>
+    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
+        -> DataPointers<Byte> {
+        ioj::native_soa::LayoutCursor cursor{blocks};
+        return {cursor.column_pointer(data, Layout::columns.TypeColumn),
+                cursor.column_pointer(data, Layout::columns.IntegerDomainColumn),
+                cursor.column_pointer(data, Layout::columns.EnumDomainColumn),
+                cursor.column_pointer(data, Layout::columns.OptionalSentinelEncodingColumn),
+                cursor.column_pointer(data, Layout::columns.OptionalPresenceEncodingColumn),
+                cursor.column_pointer(data, Layout::columns.QuantizedEncodingColumn),
+                cursor.column_pointer(data, Layout::columns.FixedEncodingColumn),
+                cursor.column_pointer(data, Layout::columns.FloatEncodingColumn),
+                cursor.column_pointer(data, Layout::columns.VarintEncodingColumn)};
+    }
+    auto capacity_blocks() const noexcept -> byte_size_type {
+        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
+    }
+
+    /* **************************************** */
+    // Typed mutations and growth
+    /* **************************************** */
+    void default_construct_columns(size_type const first, size_type const count) {
+        using ioj::native_soa::default_construct_n;
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
+        default_construct_n(columns.type, count);
+        default_construct_n(columns.integer_domain, count);
+        default_construct_n(columns.enum_domain, count);
+        default_construct_n(columns.optional_sentinel_encoding, count);
+        default_construct_n(columns.optional_presence_encoding, count);
+        default_construct_n(columns.quantized_encoding, count);
+        default_construct_n(columns.fixed_encoding, count);
+        default_construct_n(columns.float_encoding, count);
+        default_construct_n(columns.varint_encoding, count);
+    }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        auto transfer = [count](auto* dst, auto const* src) {
+            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.type, source.type);
+        transfer(destination.integer_domain, source.integer_domain);
+        transfer(destination.enum_domain, source.enum_domain);
+        transfer(destination.optional_sentinel_encoding, source.optional_sentinel_encoding);
+        transfer(destination.optional_presence_encoding, source.optional_presence_encoding);
+        transfer(destination.quantized_encoding, source.quantized_encoding);
+        transfer(destination.fixed_encoding, source.fixed_encoding);
+        transfer(destination.float_encoding, source.float_encoding);
+        transfer(destination.varint_encoding, source.varint_encoding);
+    }
+    void swap_remove_columns(size_type const index,
+                             size_type const source,
+                             size_type const move_count) {
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
+        transfer_columns<false>(columns + index, columns + source, move_count);
+    }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ioj::soa_storage_detail::for_each_removal_run(
+            num_, indices, [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, ScalarTable, size_type>
+    {
+        using ioj::native_soa::source_data;
+        return {source_data(source.type()),
+                source_data(source.integer_domain()),
+                source_data(source.enum_domain()),
+                source_data(source.optional_sentinel_encoding()),
+                source_data(source.optional_presence_encoding()),
+                source_data(source.quantized_encoding()),
+                source_data(source.fixed_encoding()),
+                source_data(source.float_encoding()),
+                source_data(source.varint_encoding())};
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count)
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, ScalarTable, size_type>
+    {
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
+    }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count)
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, ScalarTable, size_type>
+    {
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
+    }
+    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
+        auto const old_blocks{capacity_blocks()};
+        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+        auto const destination{make_data_unchecked(new_data, new_blocks)};
+        transfer_columns<false>(destination, source, num_);
+    }
+  public:
+    auto type(this auto& self) { return self.get_view().type(); }
+    auto integer_domain(this auto& self) { return self.get_view().integer_domain(); }
+    auto enum_domain(this auto& self) { return self.get_view().enum_domain(); }
+    auto optional_sentinel_encoding(this auto& self) {
+        return self.get_view().optional_sentinel_encoding();
+    }
+    auto optional_presence_encoding(this auto& self) {
+        return self.get_view().optional_presence_encoding();
+    }
+    auto quantized_encoding(this auto& self) { return self.get_view().quantized_encoding(); }
+    auto fixed_encoding(this auto& self) { return self.get_view().fixed_encoding(); }
+    auto float_encoding(this auto& self) { return self.get_view().float_encoding(); }
+    auto varint_encoding(this auto& self) { return self.get_view().varint_encoding(); }
+    void set(
+        size_type index,
         lispb::schema::TypeId const new_type,
         std::optional<ioj::layout::IntegerDomain> const new_integer_domain,
         std::optional<ioj::layout::EnumDomain> const new_enum_domain,
@@ -271,18 +643,18 @@ struct ScalarTable {
         std::optional<ioj::layout::FixedEncoding> const new_fixed_encoding,
         std::optional<ioj::layout::FloatEncoding> const new_float_encoding,
         std::optional<ioj::layout::VarintEncoding> const new_varint_encoding) {
-        get_view().set(index,
-                       new_type,
-                       new_integer_domain,
-                       new_enum_domain,
-                       new_optional_sentinel_encoding,
-                       new_optional_presence_encoding,
-                       new_quantized_encoding,
-                       new_fixed_encoding,
-                       new_float_encoding,
-                       new_varint_encoding);
+        assert(index < num());
+        get_view().type()[index] = new_type;
+        get_view().integer_domain()[index] = new_integer_domain;
+        get_view().enum_domain()[index] = new_enum_domain;
+        get_view().optional_sentinel_encoding()[index] = new_optional_sentinel_encoding;
+        get_view().optional_presence_encoding()[index] = new_optional_presence_encoding;
+        get_view().quantized_encoding()[index] = new_quantized_encoding;
+        get_view().fixed_encoding()[index] = new_fixed_encoding;
+        get_view().float_encoding()[index] = new_float_encoding;
+        get_view().varint_encoding()[index] = new_varint_encoding;
     }
-    auto add(
+    size_type add(
         lispb::schema::TypeId const new_type,
         std::optional<ioj::layout::IntegerDomain> const new_integer_domain,
         std::optional<ioj::layout::EnumDomain> const new_enum_domain,
@@ -291,73 +663,24 @@ struct ScalarTable {
         std::optional<ioj::layout::QuantizedEncoding> const new_quantized_encoding,
         std::optional<ioj::layout::FixedEncoding> const new_fixed_encoding,
         std::optional<ioj::layout::FloatEncoding> const new_float_encoding,
-        std::optional<ioj::layout::VarintEncoding> const new_varint_encoding) -> size_type {
-        return ioj::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
-            type.emplace_back(new_type);
-            integer_domain.emplace_back(new_integer_domain);
-            enum_domain.emplace_back(new_enum_domain);
-            optional_sentinel_encoding.emplace_back(new_optional_sentinel_encoding);
-            optional_presence_encoding.emplace_back(new_optional_presence_encoding);
-            quantized_encoding.emplace_back(new_quantized_encoding);
-            fixed_encoding.emplace_back(new_fixed_encoding);
-            float_encoding.emplace_back(new_float_encoding);
-            varint_encoding.emplace_back(new_varint_encoding);
-        });
-    }
-    auto get_view() -> View {
-        return {
-            type,
-            integer_domain,
-            enum_domain,
-            optional_sentinel_encoding,
-            optional_presence_encoding,
-            quantized_encoding,
-            fixed_encoding,
-            float_encoding,
-            varint_encoding,
-        };
-    }
-    auto get_view() const -> ConstView {
-        return {
-            type,
-            integer_domain,
-            enum_domain,
-            optional_sentinel_encoding,
-            optional_presence_encoding,
-            quantized_encoding,
-            fixed_encoding,
-            float_encoding,
-            varint_encoding,
-        };
-    }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        return get_view().slice(offset, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_view().slice(offset, count);
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
-        return get_view(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view(offset, count);
-    }
-    auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
+        std::optional<ioj::layout::VarintEncoding> const new_varint_encoding) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index,
+            new_type,
+            new_integer_domain,
+            new_enum_domain,
+            new_optional_sentinel_encoding,
+            new_optional_presence_encoding,
+            new_quantized_encoding,
+            new_fixed_encoding,
+            new_float_encoding,
+            new_varint_encoding);
+        return index;
     }
     std::size_t append(lispb::schema::TypeId value);
     std::size_t find(lispb::schema::TypeId value) const;
+  private:
+    std::pmr::memory_resource* resource_{};
 };
-
 } // namespace ioj::layout

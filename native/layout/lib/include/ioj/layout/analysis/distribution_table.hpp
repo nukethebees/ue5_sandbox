@@ -7,181 +7,285 @@
 #include "ioj/layout/analysis/distribution_id.hpp"
 #include "ioj/layout/analysis/row_range.hpp"
 #include "ioj/native_soa/storage.h"
-#include "ioj/native_soa/vector_storage_ops.h"
 
 #include <cassert>
 #include <cstdint>
+#include <memory_resource>
 #include <optional>
-#include <utility>
 
 namespace ioj::layout {
 struct DistributionTableSchema;
 
-struct DistributionTableView;
-struct DistributionTableConstView;
-struct DistributionTableConstView {
-    using View = DistributionTableView;
-    using ConstView = DistributionTableConstView;
-    using size_type = std::uint32_t;
-    std::span<ioj::layout::AnalysisId const> analysis;
-    std::span<ioj::layout::RowRange const> entries;
-    std::span<std::uint64_t const> element_count;
-    std::span<std::optional<std::uint64_t> const> total_weight;
-    std::span<std::optional<std::uint64_t> const> total_extent_bytes;
-    std::span<std::optional<std::uint64_t> const> total_slack_bytes;
-    std::span<std::optional<long double> const> expected_extent_bytes;
-    std::span<std::optional<long double> const> expected_slack_bytes;
-    std::span<std::optional<long double> const> expected_selected_extent_bytes;
-    std::span<std::optional<long double> const> expected_selected_slack_bytes;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(analysis.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(analysis);
-        fn(entries);
-        fn(element_count);
-        fn(total_weight);
-        fn(total_extent_bytes);
-        fn(total_slack_bytes);
-        fn(expected_extent_bytes);
-        fn(expected_slack_bytes);
-        fn(expected_selected_extent_bytes);
-        fn(expected_selected_slack_bytes);
-    }
-    void validate_array_sizes() const {
-        ioj::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> DistributionTableConstView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            analysis.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            entries.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            element_count.subspan(static_cast<std::size_t>(offset),
-                                  static_cast<std::size_t>(count)),
-            total_weight.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            total_extent_bytes.subspan(static_cast<std::size_t>(offset),
-                                       static_cast<std::size_t>(count)),
-            total_slack_bytes.subspan(static_cast<std::size_t>(offset),
-                                      static_cast<std::size_t>(count)),
-            expected_extent_bytes.subspan(static_cast<std::size_t>(offset),
-                                          static_cast<std::size_t>(count)),
-            expected_slack_bytes.subspan(static_cast<std::size_t>(offset),
-                                         static_cast<std::size_t>(count)),
-            expected_selected_extent_bytes.subspan(static_cast<std::size_t>(offset),
-                                                   static_cast<std::size_t>(count)),
-            expected_selected_slack_bytes.subspan(static_cast<std::size_t>(offset),
-                                                  static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> DistributionTableConstView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const
-        -> DistributionTableConstView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            analysis,
-            entries,
-            element_count,
-            total_weight,
-            total_extent_bytes,
-            total_slack_bytes,
-            expected_extent_bytes,
-            expected_slack_bytes,
-            expected_selected_extent_bytes,
-            expected_selected_slack_bytes,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> DistributionTableConstView { return slice(0, count); }
-    auto right(size_type const count) const -> DistributionTableConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
+struct DistributionTableSingleView;
+struct DistributionTableSingleConstView;
+struct DistributionTableSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ioj::native_soa::ColumnLayout<T>;
+
+    ioj::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<AnalysisId> AnalysisColumn;
+    ColLayout<RowRange> EntriesColumn;
+    ColLayout<std::uint64_t> ElementCountColumn;
+    ColLayout<std::optional<std::uint64_t>> TotalWeightColumn;
+    ColLayout<std::optional<std::uint64_t>> TotalExtentBytesColumn;
+    ColLayout<std::optional<std::uint64_t>> TotalSlackBytesColumn;
+    ColLayout<std::optional<long double>> ExpectedExtentBytesColumn;
+    ColLayout<std::optional<long double>> ExpectedSlackBytesColumn;
+    ColLayout<std::optional<long double>> ExpectedSelectedExtentBytesColumn;
+    ColLayout<std::optional<long double>> ExpectedSelectedSlackBytesColumn;
+
+    constexpr DistributionTableSingleLayoutColumns() noexcept
+        : AnalysisColumn{LayoutStart}
+        , EntriesColumn{AnalysisColumn}
+        , ElementCountColumn{EntriesColumn}
+        , TotalWeightColumn{ElementCountColumn}
+        , TotalExtentBytesColumn{TotalWeightColumn}
+        , TotalSlackBytesColumn{TotalExtentBytesColumn}
+        , ExpectedExtentBytesColumn{TotalSlackBytesColumn}
+        , ExpectedSlackBytesColumn{ExpectedExtentBytesColumn}
+        , ExpectedSelectedExtentBytesColumn{ExpectedSlackBytesColumn}
+        , ExpectedSelectedSlackBytesColumn{ExpectedSelectedExtentBytesColumn} {}
+    DistributionTableSingleLayoutColumns(DistributionTableSingleLayoutColumns const&) = delete;
+    auto operator=(DistributionTableSingleLayoutColumns const&)
+        -> DistributionTableSingleLayoutColumns& = delete;
 };
-struct DistributionTableView {
-    using View = DistributionTableView;
-    using ConstView = DistributionTableConstView;
+struct DistributionTableSingleLayout {
     using size_type = std::uint32_t;
-    std::span<ioj::layout::AnalysisId> analysis;
-    std::span<ioj::layout::RowRange> entries;
-    std::span<std::uint64_t> element_count;
-    std::span<std::optional<std::uint64_t>> total_weight;
-    std::span<std::optional<std::uint64_t>> total_extent_bytes;
-    std::span<std::optional<std::uint64_t>> total_slack_bytes;
-    std::span<std::optional<long double>> expected_extent_bytes;
-    std::span<std::optional<long double>> expected_slack_bytes;
-    std::span<std::optional<long double>> expected_selected_extent_bytes;
-    std::span<std::optional<long double>> expected_selected_slack_bytes;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(analysis.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(analysis);
-        fn(entries);
-        fn(element_count);
-        fn(total_weight);
-        fn(total_extent_bytes);
-        fn(total_slack_bytes);
-        fn(expected_extent_bytes);
-        fn(expected_slack_bytes);
-        fn(expected_selected_extent_bytes);
-        fn(expected_selected_slack_bytes);
+    using byte_size_type = std::size_t;
+
+    static constexpr size_type capacity_granularity{
+        ioj::native_soa::LayoutPolicy::capacity_granularity};
+    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
+
+    static constexpr DistributionTableSingleLayoutColumns columns{};
+
+    static constexpr byte_size_type allocation_alignment{
+        columns.ExpectedSelectedSlackBytesColumn.allocation_alignment};
+
+    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
+    // capacity.
+    static constexpr byte_size_type capacity_block_bound{
+        ioj::native_soa::capacity_block_bound(columns.ExpectedSelectedSlackBytesColumn)};
+    static constexpr size_type max_capacity{
+        ioj::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0 ? 0 : columns.ExpectedSelectedSlackBytesColumn.data_end(blocks);
     }
-    void validate_array_sizes() const {
-        ioj::native_soa::vector_storage_ops::validate_array_sizes(*this);
+    static_assert(max_capacity >= capacity_granularity);
+};
+
+struct DistributionTableSingleResolvedView;
+struct DistributionTableSingleResolvedConstView;
+template <bool Const>
+struct DistributionTableSingleResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = DistributionTableSingleResolvedView;
+    using ConstView = DistributionTableSingleResolvedConstView;
+    using soa_schema = DistributionTableSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    DistributionTableSingleResolvedViewImpl() = default;
+    DistributionTableSingleResolvedViewImpl(
+        Element<ioj::layout::AnalysisId>* analysis,
+        Element<ioj::layout::RowRange>* entries,
+        Element<std::uint64_t>* element_count,
+        Element<std::optional<std::uint64_t>>* total_weight,
+        Element<std::optional<std::uint64_t>>* total_extent_bytes,
+        Element<std::optional<std::uint64_t>>* total_slack_bytes,
+        Element<std::optional<long double>>* expected_extent_bytes,
+        Element<std::optional<long double>>* expected_slack_bytes,
+        Element<std::optional<long double>>* expected_selected_extent_bytes,
+        Element<std::optional<long double>>* expected_selected_slack_bytes,
+        size_type count)
+        : analysis_{analysis}
+        , entries_{entries}
+        , element_count_{element_count}
+        , total_weight_{total_weight}
+        , total_extent_bytes_{total_extent_bytes}
+        , total_slack_bytes_{total_slack_bytes}
+        , expected_extent_bytes_{expected_extent_bytes}
+        , expected_slack_bytes_{expected_slack_bytes}
+        , expected_selected_extent_bytes_{expected_selected_extent_bytes}
+        , expected_selected_slack_bytes_{expected_selected_slack_bytes}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(count_,
+                                                          analysis_,
+                                                          entries_,
+                                                          element_count_,
+                                                          total_weight_,
+                                                          total_extent_bytes_,
+                                                          total_slack_bytes_,
+                                                          expected_extent_bytes_,
+                                                          expected_slack_bytes_,
+                                                          expected_selected_extent_bytes_,
+                                                          expected_selected_slack_bytes_);
     }
-    auto slice(size_type const offset, size_type const count) const -> DistributionTableView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            analysis.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            entries.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            element_count.subspan(static_cast<std::size_t>(offset),
-                                  static_cast<std::size_t>(count)),
-            total_weight.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            total_extent_bytes.subspan(static_cast<std::size_t>(offset),
-                                       static_cast<std::size_t>(count)),
-            total_slack_bytes.subspan(static_cast<std::size_t>(offset),
-                                      static_cast<std::size_t>(count)),
-            expected_extent_bytes.subspan(static_cast<std::size_t>(offset),
-                                          static_cast<std::size_t>(count)),
-            expected_slack_bytes.subspan(static_cast<std::size_t>(offset),
-                                         static_cast<std::size_t>(count)),
-            expected_selected_extent_bytes.subspan(static_cast<std::size_t>(offset),
-                                                   static_cast<std::size_t>(count)),
-            expected_selected_slack_bytes.subspan(static_cast<std::size_t>(offset),
-                                                  static_cast<std::size_t>(count)),
-        };
+    DistributionTableSingleResolvedViewImpl(
+        std::span<Element<ioj::layout::AnalysisId>> analysis,
+        std::span<Element<ioj::layout::RowRange>> entries,
+        std::span<Element<std::uint64_t>> element_count,
+        std::span<Element<std::optional<std::uint64_t>>> total_weight,
+        std::span<Element<std::optional<std::uint64_t>>> total_extent_bytes,
+        std::span<Element<std::optional<std::uint64_t>>> total_slack_bytes,
+        std::span<Element<std::optional<long double>>> expected_extent_bytes,
+        std::span<Element<std::optional<long double>>> expected_slack_bytes,
+        std::span<Element<std::optional<long double>>> expected_selected_extent_bytes,
+        std::span<Element<std::optional<long double>>> expected_selected_slack_bytes)
+        : DistributionTableSingleResolvedViewImpl{
+              analysis.data(),
+              entries.data(),
+              element_count.data(),
+              total_weight.data(),
+              total_extent_bytes.data(),
+              total_slack_bytes.data(),
+              expected_extent_bytes.data(),
+              expected_slack_bytes.data(),
+              expected_selected_extent_bytes.data(),
+              expected_selected_slack_bytes.data(),
+              ioj::soa_storage_detail::checked_row_count(analysis.size())} {
+        assert(analysis.size() == count_);
+        assert(entries.size() == count_);
+        assert(element_count.size() == count_);
+        assert(total_weight.size() == count_);
+        assert(total_extent_bytes.size() == count_);
+        assert(total_slack_bytes.size() == count_);
+        assert(expected_extent_bytes.size() == count_);
+        assert(expected_slack_bytes.size() == count_);
+        assert(expected_selected_extent_bytes.size() == count_);
+        assert(expected_selected_slack_bytes.size() == count_);
     }
-    auto get_view() const -> DistributionTableView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> DistributionTableView {
-        return slice(offset, count);
+    template <bool Enabled = Const>
+    DistributionTableSingleResolvedViewImpl(
+        DistributionTableSingleResolvedViewImpl<false> const& other)
+        requires Enabled
+        : analysis_{other.analysis_}
+        , entries_{other.entries_}
+        , element_count_{other.element_count_}
+        , total_weight_{other.total_weight_}
+        , total_extent_bytes_{other.total_extent_bytes_}
+        , total_slack_bytes_{other.total_slack_bytes_}
+        , expected_extent_bytes_{other.expected_extent_bytes_}
+        , expected_slack_bytes_{other.expected_slack_bytes_}
+        , expected_selected_extent_bytes_{other.expected_selected_extent_bytes_}
+        , expected_selected_slack_bytes_{other.expected_selected_slack_bytes_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.analysis_,
+                      self.entries_,
+                      self.element_count_,
+                      self.total_weight_,
+                      self.total_extent_bytes_,
+                      self.total_slack_bytes_,
+                      self.expected_extent_bytes_,
+                      self.expected_slack_bytes_,
+                      self.expected_selected_extent_bytes_,
+                      self.expected_selected_slack_bytes_,
+                      self.count_};
     }
-    auto get_const_view() const -> ConstView {
-        return {
-            analysis,
-            entries,
-            element_count,
-            total_weight,
-            total_extent_bytes,
-            total_slack_bytes,
-            expected_extent_bytes,
-            expected_slack_bytes,
-            expected_selected_extent_bytes,
-            expected_selected_slack_bytes,
-        };
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{
+            self.analysis_ == nullptr ? nullptr : self.analysis_ + offset,
+            self.entries_ == nullptr ? nullptr : self.entries_ + offset,
+            self.element_count_ == nullptr ? nullptr : self.element_count_ + offset,
+            self.total_weight_ == nullptr ? nullptr : self.total_weight_ + offset,
+            self.total_extent_bytes_ == nullptr ? nullptr : self.total_extent_bytes_ + offset,
+            self.total_slack_bytes_ == nullptr ? nullptr : self.total_slack_bytes_ + offset,
+            self.expected_extent_bytes_ == nullptr ? nullptr : self.expected_extent_bytes_ + offset,
+            self.expected_slack_bytes_ == nullptr ? nullptr : self.expected_slack_bytes_ + offset,
+            self.expected_selected_extent_bytes_ == nullptr
+                ? nullptr
+                : self.expected_selected_extent_bytes_ + offset,
+            self.expected_selected_slack_bytes_ == nullptr
+                ? nullptr
+                : self.expected_selected_slack_bytes_ + offset,
+            count};
     }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
     }
-    auto left(size_type const count) const -> DistributionTableView { return slice(0, count); }
-    auto right(size_type const count) const -> DistributionTableView {
-        assert(count <= num());
-        return slice(num() - count, count);
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
     }
-    void set(size_type const index,
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto analysis() const -> std::span<Element<ioj::layout::AnalysisId>> {
+        return {analysis_, count_};
+    }
+    auto entries() const -> std::span<Element<ioj::layout::RowRange>> { return {entries_, count_}; }
+    auto element_count() const -> std::span<Element<std::uint64_t>> {
+        return {element_count_, count_};
+    }
+    auto total_weight() const -> std::span<Element<std::optional<std::uint64_t>>> {
+        return {total_weight_, count_};
+    }
+    auto total_extent_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
+        return {total_extent_bytes_, count_};
+    }
+    auto total_slack_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
+        return {total_slack_bytes_, count_};
+    }
+    auto expected_extent_bytes() const -> std::span<Element<std::optional<long double>>> {
+        return {expected_extent_bytes_, count_};
+    }
+    auto expected_slack_bytes() const -> std::span<Element<std::optional<long double>>> {
+        return {expected_slack_bytes_, count_};
+    }
+    auto expected_selected_extent_bytes() const -> std::span<Element<std::optional<long double>>> {
+        return {expected_selected_extent_bytes_, count_};
+    }
+    auto expected_selected_slack_bytes() const -> std::span<Element<std::optional<long double>>> {
+        return {expected_selected_slack_bytes_, count_};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<ioj::layout::AnalysisId>>{analysis_, count_});
+        func(std::span<Element<ioj::layout::RowRange>>{entries_, count_});
+        func(std::span<Element<std::uint64_t>>{element_count_, count_});
+        func(std::span<Element<std::optional<std::uint64_t>>>{total_weight_, count_});
+        func(std::span<Element<std::optional<std::uint64_t>>>{total_extent_bytes_, count_});
+        func(std::span<Element<std::optional<std::uint64_t>>>{total_slack_bytes_, count_});
+        func(std::span<Element<std::optional<long double>>>{expected_extent_bytes_, count_});
+        func(std::span<Element<std::optional<long double>>>{expected_slack_bytes_, count_});
+        func(std::span<Element<std::optional<long double>>>{expected_selected_extent_bytes_,
+                                                            count_});
+        func(
+            std::span<Element<std::optional<long double>>>{expected_selected_slack_bytes_, count_});
+    }
+  private:
+    template <bool>
+    friend struct DistributionTableSingleResolvedViewImpl;
+    Element<ioj::layout::AnalysisId>* analysis_{};
+    Element<ioj::layout::RowRange>* entries_{};
+    Element<std::uint64_t>* element_count_{};
+    Element<std::optional<std::uint64_t>>* total_weight_{};
+    Element<std::optional<std::uint64_t>>* total_extent_bytes_{};
+    Element<std::optional<std::uint64_t>>* total_slack_bytes_{};
+    Element<std::optional<long double>>* expected_extent_bytes_{};
+    Element<std::optional<long double>>* expected_slack_bytes_{};
+    Element<std::optional<long double>>* expected_selected_extent_bytes_{};
+    Element<std::optional<long double>>* expected_selected_slack_bytes_{};
+    size_type count_{};
+};
+struct DistributionTableSingleResolvedConstView : DistributionTableSingleResolvedViewImpl<true> {
+    using Base = DistributionTableSingleResolvedViewImpl<true>;
+    using Base::Base;
+};
+struct DistributionTableSingleResolvedView : DistributionTableSingleResolvedViewImpl<false> {
+    using Base = DistributionTableSingleResolvedViewImpl<false>;
+    using Base::Base;
+    void set(size_type index,
              ioj::layout::AnalysisId const new_analysis,
              ioj::layout::RowRange const new_entries,
              std::uint64_t const new_element_count,
@@ -193,76 +297,364 @@ struct DistributionTableView {
              std::optional<long double> const new_expected_selected_extent_bytes,
              std::optional<long double> const new_expected_selected_slack_bytes) const {
         assert(index < num());
-        analysis[static_cast<std::size_t>(index)] = new_analysis;
-        entries[static_cast<std::size_t>(index)] = new_entries;
-        element_count[static_cast<std::size_t>(index)] = new_element_count;
-        total_weight[static_cast<std::size_t>(index)] = new_total_weight;
-        total_extent_bytes[static_cast<std::size_t>(index)] = new_total_extent_bytes;
-        total_slack_bytes[static_cast<std::size_t>(index)] = new_total_slack_bytes;
-        expected_extent_bytes[static_cast<std::size_t>(index)] = new_expected_extent_bytes;
-        expected_slack_bytes[static_cast<std::size_t>(index)] = new_expected_slack_bytes;
-        expected_selected_extent_bytes[static_cast<std::size_t>(index)] =
-            new_expected_selected_extent_bytes;
-        expected_selected_slack_bytes[static_cast<std::size_t>(index)] =
-            new_expected_selected_slack_bytes;
+        this->analysis()[index] = new_analysis;
+        this->entries()[index] = new_entries;
+        this->element_count()[index] = new_element_count;
+        this->total_weight()[index] = new_total_weight;
+        this->total_extent_bytes()[index] = new_total_extent_bytes;
+        this->total_slack_bytes()[index] = new_total_slack_bytes;
+        this->expected_extent_bytes()[index] = new_expected_extent_bytes;
+        this->expected_slack_bytes()[index] = new_expected_slack_bytes;
+        this->expected_selected_extent_bytes()[index] = new_expected_selected_extent_bytes;
+        this->expected_selected_slack_bytes()[index] = new_expected_selected_slack_bytes;
     }
 };
-struct DistributionTable {
-    using View = DistributionTableView;
-    using ConstView = DistributionTableConstView;
+template <bool Const>
+struct DistributionTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = DistributionTableSchema;
     using size_type = std::uint32_t;
-    ioj::native_soa::Vector<ioj::layout::AnalysisId> analysis;
-    ioj::native_soa::Vector<ioj::layout::RowRange> entries;
-    ioj::native_soa::Vector<std::uint64_t> element_count;
-    ioj::native_soa::Vector<std::optional<std::uint64_t>> total_weight;
-    ioj::native_soa::Vector<std::optional<std::uint64_t>> total_extent_bytes;
-    ioj::native_soa::Vector<std::optional<std::uint64_t>> total_slack_bytes;
-    ioj::native_soa::Vector<std::optional<long double>> expected_extent_bytes;
-    ioj::native_soa::Vector<std::optional<long double>> expected_slack_bytes;
-    ioj::native_soa::Vector<std::optional<long double>> expected_selected_extent_bytes;
-    ioj::native_soa::Vector<std::optional<long double>> expected_selected_slack_bytes;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(analysis.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) {
-        fn(analysis);
-        fn(entries);
-        fn(element_count);
-        fn(total_weight);
-        fn(total_extent_bytes);
-        fn(total_slack_bytes);
-        fn(expected_extent_bytes);
-        fn(expected_slack_bytes);
-        fn(expected_selected_extent_bytes);
-        fn(expected_selected_slack_bytes);
+    using Layout = DistributionTableSingleLayout;
+    using Storage = ioj::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    using View = DistributionTableSingleView;
+    using ConstView = DistributionTableSingleConstView;
+    DistributionTableSingleViewImpl() = default;
+    DistributionTableSingleViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+    template <bool Enabled = Const>
+    DistributionTableSingleViewImpl(DistributionTableSingleViewImpl<false> const& other)
+        requires Enabled
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    auto analysis() const { return make_column_view(Layout::columns.AnalysisColumn); }
+    auto entries() const { return make_column_view(Layout::columns.EntriesColumn); }
+    auto element_count() const { return make_column_view(Layout::columns.ElementCountColumn); }
+    auto total_weight() const { return make_column_view(Layout::columns.TotalWeightColumn); }
+    auto total_extent_bytes() const {
+        return make_column_view(Layout::columns.TotalExtentBytesColumn);
     }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(analysis);
-        fn(entries);
-        fn(element_count);
-        fn(total_weight);
-        fn(total_extent_bytes);
-        fn(total_slack_bytes);
-        fn(expected_extent_bytes);
-        fn(expected_slack_bytes);
-        fn(expected_selected_extent_bytes);
-        fn(expected_selected_slack_bytes);
+    auto total_slack_bytes() const {
+        return make_column_view(Layout::columns.TotalSlackBytesColumn);
     }
-    void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void set_num(size_type const count) {
-        ioj::native_soa::vector_storage_ops::set_num(*this, count);
+    auto expected_extent_bytes() const {
+        return make_column_view(Layout::columns.ExpectedExtentBytesColumn);
     }
-    void reset() { ioj::native_soa::vector_storage_ops::reset(*this); }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        ioj::native_soa::vector_storage_ops::apply_permutation(*this, indices);
+    auto expected_slack_bytes() const {
+        return make_column_view(Layout::columns.ExpectedSlackBytesColumn);
     }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        ioj::native_soa::vector_storage_ops::sort(
-            *this, std::forward<Compare>(compare), scratch_indices);
+    auto expected_selected_extent_bytes() const {
+        return make_column_view(Layout::columns.ExpectedSelectedExtentBytesColumn);
     }
-    void set(size_type const index,
+    auto expected_selected_slack_bytes() const {
+        return make_column_view(Layout::columns.ExpectedSelectedSlackBytesColumn);
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(analysis());
+        func(entries());
+        func(element_count());
+        func(total_weight());
+        func(total_extent_bytes());
+        func(total_slack_bytes());
+        func(expected_extent_bytes());
+        func(expected_slack_bytes());
+        func(expected_selected_extent_bytes());
+        func(expected_selected_slack_bytes());
+    }
+    auto resolve() const -> std::conditional_t<Const,
+                                               DistributionTableSingleResolvedConstView,
+                                               DistributionTableSingleResolvedView> {
+        return {(make_column_view(Layout::columns.AnalysisColumn).data()),
+                (make_column_view(Layout::columns.EntriesColumn).data()),
+                (make_column_view(Layout::columns.ElementCountColumn).data()),
+                (make_column_view(Layout::columns.TotalWeightColumn).data()),
+                (make_column_view(Layout::columns.TotalExtentBytesColumn).data()),
+                (make_column_view(Layout::columns.TotalSlackBytesColumn).data()),
+                (make_column_view(Layout::columns.ExpectedExtentBytesColumn).data()),
+                (make_column_view(Layout::columns.ExpectedSlackBytesColumn).data()),
+                (make_column_view(Layout::columns.ExpectedSelectedExtentBytesColumn).data()),
+                (make_column_view(Layout::columns.ExpectedSelectedSlackBytesColumn).data()),
+                count_};
+    }
+  private:
+    template <typename T>
+    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
+    friend ioj::soa_storage_detail::CompactViewOperations;
+    template <bool>
+    friend struct DistributionTableSingleViewImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
+struct DistributionTableSingleConstView : DistributionTableSingleViewImpl<true> {
+    using Base = DistributionTableSingleViewImpl<true>;
+    using Base::Base;
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<DistributionTableSingleConstView>());
+struct DistributionTableSingleView : DistributionTableSingleViewImpl<false> {
+    using Base = DistributionTableSingleViewImpl<false>;
+    using Base::Base;
+    void set(size_type index,
+             ioj::layout::AnalysisId const new_analysis,
+             ioj::layout::RowRange const new_entries,
+             std::uint64_t const new_element_count,
+             std::optional<std::uint64_t> const new_total_weight,
+             std::optional<std::uint64_t> const new_total_extent_bytes,
+             std::optional<std::uint64_t> const new_total_slack_bytes,
+             std::optional<long double> const new_expected_extent_bytes,
+             std::optional<long double> const new_expected_slack_bytes,
+             std::optional<long double> const new_expected_selected_extent_bytes,
+             std::optional<long double> const new_expected_selected_slack_bytes) const {
+        assert(index < num());
+        this->analysis()[index] = new_analysis;
+        this->entries()[index] = new_entries;
+        this->element_count()[index] = new_element_count;
+        this->total_weight()[index] = new_total_weight;
+        this->total_extent_bytes()[index] = new_total_extent_bytes;
+        this->total_slack_bytes()[index] = new_total_slack_bytes;
+        this->expected_extent_bytes()[index] = new_expected_extent_bytes;
+        this->expected_slack_bytes()[index] = new_expected_slack_bytes;
+        this->expected_selected_extent_bytes()[index] = new_expected_selected_extent_bytes;
+        this->expected_selected_slack_bytes()[index] = new_expected_selected_slack_bytes;
+    }
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<DistributionTableSingleView>());
+// Columns:
+// analysis: ioj::layout::AnalysisId
+// entries: ioj::layout::RowRange
+// element_count: std::uint64_t
+// total_weight: std::optional<std::uint64_t>
+// total_extent_bytes: std::optional<std::uint64_t>
+// total_slack_bytes: std::optional<std::uint64_t>
+// expected_extent_bytes: std::optional<long double>
+// expected_slack_bytes: std::optional<long double>
+// expected_selected_extent_bytes: std::optional<long double>
+// expected_selected_slack_bytes: std::optional<long double>
+struct DistributionTable
+    : protected ioj::native_soa::StorageState
+    , ioj::native_soa::StorageOperations {
+    using soa_schema = DistributionTableSchema;
+    using Operations = ioj::native_soa::StorageOperations;
+    using Layout = DistributionTableSingleLayout;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
+
+    static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    static constexpr auto max_capacity = Layout::max_capacity;
+
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
+    }
+
+    using View = DistributionTableSingleView;
+    using ConstView = DistributionTableSingleConstView;
+
+    /* **************************************** */
+    // Lifetime
+    /* **************************************** */
+    DistributionTable() noexcept
+        : DistributionTable{*std::pmr::get_default_resource()} {}
+    explicit DistributionTable(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
+    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    ~DistributionTable() { Operations::release_storage(*this); }
+    DistributionTable(DistributionTable const&) = delete;
+    auto operator=(DistributionTable const&) -> DistributionTable& = delete;
+    DistributionTable(DistributionTable&& other) noexcept
+        : resource_{other.resource_} {
+        Operations::take_storage(*this, other);
+    }
+    auto operator=(DistributionTable&& other) -> DistributionTable& {
+        return Operations::move_assign(*this, other);
+    }
+  protected:
+    template <typename Byte>
+    struct DataPointers {
+        template <typename T>
+        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+        Element<AnalysisId>* analysis{};
+        Element<RowRange>* entries{};
+        Element<std::uint64_t>* element_count{};
+        Element<std::optional<std::uint64_t>>* total_weight{};
+        Element<std::optional<std::uint64_t>>* total_extent_bytes{};
+        Element<std::optional<std::uint64_t>>* total_slack_bytes{};
+        Element<std::optional<long double>>* expected_extent_bytes{};
+        Element<std::optional<long double>>* expected_slack_bytes{};
+        Element<std::optional<long double>>* expected_selected_extent_bytes{};
+        Element<std::optional<long double>>* expected_selected_slack_bytes{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (analysis == nullptr) {
+                return {};
+            }
+            return {analysis + offset,
+                    entries + offset,
+                    element_count + offset,
+                    total_weight + offset,
+                    total_extent_bytes + offset,
+                    total_slack_bytes + offset,
+                    expected_extent_bytes + offset,
+                    expected_slack_bytes + offset,
+                    expected_selected_extent_bytes + offset,
+                    expected_selected_slack_bytes + offset};
+        }
+    };
+    template <typename Self>
+    auto get_data(this Self& self) noexcept {
+        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
+        if (self.data_ == nullptr) {
+            return DataPointers<Byte>{};
+        }
+        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
+    }
+    template <typename Self>
+    auto get_data(this Self& self, size_type const offset) noexcept {
+        return self.get_data() + offset;
+    }
+  private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
+    /* **************************************** */
+    // Column pointers
+    /* **************************************** */
+    template <typename Byte>
+    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
+        -> DataPointers<Byte> {
+        ioj::native_soa::LayoutCursor cursor{blocks};
+        return {cursor.column_pointer(data, Layout::columns.AnalysisColumn),
+                cursor.column_pointer(data, Layout::columns.EntriesColumn),
+                cursor.column_pointer(data, Layout::columns.ElementCountColumn),
+                cursor.column_pointer(data, Layout::columns.TotalWeightColumn),
+                cursor.column_pointer(data, Layout::columns.TotalExtentBytesColumn),
+                cursor.column_pointer(data, Layout::columns.TotalSlackBytesColumn),
+                cursor.column_pointer(data, Layout::columns.ExpectedExtentBytesColumn),
+                cursor.column_pointer(data, Layout::columns.ExpectedSlackBytesColumn),
+                cursor.column_pointer(data, Layout::columns.ExpectedSelectedExtentBytesColumn),
+                cursor.column_pointer(data, Layout::columns.ExpectedSelectedSlackBytesColumn)};
+    }
+    auto capacity_blocks() const noexcept -> byte_size_type {
+        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
+    }
+
+    /* **************************************** */
+    // Typed mutations and growth
+    /* **************************************** */
+    void default_construct_columns(size_type const first, size_type const count) {
+        using ioj::native_soa::default_construct_n;
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
+        default_construct_n(columns.analysis, count);
+        default_construct_n(columns.entries, count);
+        default_construct_n(columns.element_count, count);
+        default_construct_n(columns.total_weight, count);
+        default_construct_n(columns.total_extent_bytes, count);
+        default_construct_n(columns.total_slack_bytes, count);
+        default_construct_n(columns.expected_extent_bytes, count);
+        default_construct_n(columns.expected_slack_bytes, count);
+        default_construct_n(columns.expected_selected_extent_bytes, count);
+        default_construct_n(columns.expected_selected_slack_bytes, count);
+    }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        auto transfer = [count](auto* dst, auto const* src) {
+            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.analysis, source.analysis);
+        transfer(destination.entries, source.entries);
+        transfer(destination.element_count, source.element_count);
+        transfer(destination.total_weight, source.total_weight);
+        transfer(destination.total_extent_bytes, source.total_extent_bytes);
+        transfer(destination.total_slack_bytes, source.total_slack_bytes);
+        transfer(destination.expected_extent_bytes, source.expected_extent_bytes);
+        transfer(destination.expected_slack_bytes, source.expected_slack_bytes);
+        transfer(destination.expected_selected_extent_bytes, source.expected_selected_extent_bytes);
+        transfer(destination.expected_selected_slack_bytes, source.expected_selected_slack_bytes);
+    }
+    void swap_remove_columns(size_type const index,
+                             size_type const source,
+                             size_type const move_count) {
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
+        transfer_columns<false>(columns + index, columns + source, move_count);
+    }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ioj::soa_storage_detail::for_each_removal_run(
+            num_, indices, [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, DistributionTable, size_type>
+    {
+        using ioj::native_soa::source_data;
+        return {source_data(source.analysis()),
+                source_data(source.entries()),
+                source_data(source.element_count()),
+                source_data(source.total_weight()),
+                source_data(source.total_extent_bytes()),
+                source_data(source.total_slack_bytes()),
+                source_data(source.expected_extent_bytes()),
+                source_data(source.expected_slack_bytes()),
+                source_data(source.expected_selected_extent_bytes()),
+                source_data(source.expected_selected_slack_bytes())};
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count)
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, DistributionTable, size_type>
+    {
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
+    }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count)
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, DistributionTable, size_type>
+    {
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
+    }
+    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
+        auto const old_blocks{capacity_blocks()};
+        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+        auto const destination{make_data_unchecked(new_data, new_blocks)};
+        transfer_columns<false>(destination, source, num_);
+    }
+  public:
+    auto analysis(this auto& self) { return self.get_view().analysis(); }
+    auto entries(this auto& self) { return self.get_view().entries(); }
+    auto element_count(this auto& self) { return self.get_view().element_count(); }
+    auto total_weight(this auto& self) { return self.get_view().total_weight(); }
+    auto total_extent_bytes(this auto& self) { return self.get_view().total_extent_bytes(); }
+    auto total_slack_bytes(this auto& self) { return self.get_view().total_slack_bytes(); }
+    auto expected_extent_bytes(this auto& self) { return self.get_view().expected_extent_bytes(); }
+    auto expected_slack_bytes(this auto& self) { return self.get_view().expected_slack_bytes(); }
+    auto expected_selected_extent_bytes(this auto& self) {
+        return self.get_view().expected_selected_extent_bytes();
+    }
+    auto expected_selected_slack_bytes(this auto& self) {
+        return self.get_view().expected_selected_slack_bytes();
+    }
+    void set(size_type index,
              ioj::layout::AnalysisId const new_analysis,
              ioj::layout::RowRange const new_entries,
              std::uint64_t const new_element_count,
@@ -273,97 +665,45 @@ struct DistributionTable {
              std::optional<long double> const new_expected_slack_bytes,
              std::optional<long double> const new_expected_selected_extent_bytes,
              std::optional<long double> const new_expected_selected_slack_bytes) {
-        get_view().set(index,
-                       new_analysis,
-                       new_entries,
-                       new_element_count,
-                       new_total_weight,
-                       new_total_extent_bytes,
-                       new_total_slack_bytes,
-                       new_expected_extent_bytes,
-                       new_expected_slack_bytes,
-                       new_expected_selected_extent_bytes,
-                       new_expected_selected_slack_bytes);
+        assert(index < num());
+        get_view().analysis()[index] = new_analysis;
+        get_view().entries()[index] = new_entries;
+        get_view().element_count()[index] = new_element_count;
+        get_view().total_weight()[index] = new_total_weight;
+        get_view().total_extent_bytes()[index] = new_total_extent_bytes;
+        get_view().total_slack_bytes()[index] = new_total_slack_bytes;
+        get_view().expected_extent_bytes()[index] = new_expected_extent_bytes;
+        get_view().expected_slack_bytes()[index] = new_expected_slack_bytes;
+        get_view().expected_selected_extent_bytes()[index] = new_expected_selected_extent_bytes;
+        get_view().expected_selected_slack_bytes()[index] = new_expected_selected_slack_bytes;
     }
-    auto add(ioj::layout::AnalysisId const new_analysis,
-             ioj::layout::RowRange const new_entries,
-             std::uint64_t const new_element_count,
-             std::optional<std::uint64_t> const new_total_weight,
-             std::optional<std::uint64_t> const new_total_extent_bytes,
-             std::optional<std::uint64_t> const new_total_slack_bytes,
-             std::optional<long double> const new_expected_extent_bytes,
-             std::optional<long double> const new_expected_slack_bytes,
-             std::optional<long double> const new_expected_selected_extent_bytes,
-             std::optional<long double> const new_expected_selected_slack_bytes) -> size_type {
-        return ioj::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
-            analysis.emplace_back(new_analysis);
-            entries.emplace_back(new_entries);
-            element_count.emplace_back(new_element_count);
-            total_weight.emplace_back(new_total_weight);
-            total_extent_bytes.emplace_back(new_total_extent_bytes);
-            total_slack_bytes.emplace_back(new_total_slack_bytes);
-            expected_extent_bytes.emplace_back(new_expected_extent_bytes);
-            expected_slack_bytes.emplace_back(new_expected_slack_bytes);
-            expected_selected_extent_bytes.emplace_back(new_expected_selected_extent_bytes);
-            expected_selected_slack_bytes.emplace_back(new_expected_selected_slack_bytes);
-        });
+    size_type add(ioj::layout::AnalysisId const new_analysis,
+                  ioj::layout::RowRange const new_entries,
+                  std::uint64_t const new_element_count,
+                  std::optional<std::uint64_t> const new_total_weight,
+                  std::optional<std::uint64_t> const new_total_extent_bytes,
+                  std::optional<std::uint64_t> const new_total_slack_bytes,
+                  std::optional<long double> const new_expected_extent_bytes,
+                  std::optional<long double> const new_expected_slack_bytes,
+                  std::optional<long double> const new_expected_selected_extent_bytes,
+                  std::optional<long double> const new_expected_selected_slack_bytes) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index,
+            new_analysis,
+            new_entries,
+            new_element_count,
+            new_total_weight,
+            new_total_extent_bytes,
+            new_total_slack_bytes,
+            new_expected_extent_bytes,
+            new_expected_slack_bytes,
+            new_expected_selected_extent_bytes,
+            new_expected_selected_slack_bytes);
+        return index;
     }
-    auto get_view() -> View {
-        return {
-            analysis,
-            entries,
-            element_count,
-            total_weight,
-            total_extent_bytes,
-            total_slack_bytes,
-            expected_extent_bytes,
-            expected_slack_bytes,
-            expected_selected_extent_bytes,
-            expected_selected_slack_bytes,
-        };
-    }
-    auto get_view() const -> ConstView {
-        return {
-            analysis,
-            entries,
-            element_count,
-            total_weight,
-            total_extent_bytes,
-            total_slack_bytes,
-            expected_extent_bytes,
-            expected_slack_bytes,
-            expected_selected_extent_bytes,
-            expected_selected_slack_bytes,
-        };
-    }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        return get_view().slice(offset, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_view().slice(offset, count);
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
-        return get_view(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view(offset, count);
-    }
-    auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    ioj::layout::DistributionId
-        append(ioj::layout::AnalysisId owner, ioj::layout::RowRange samples, std::uint64_t count);
+    DistributionId append(AnalysisId owner, RowRange samples, std::uint64_t count);
+  private:
+    std::pmr::memory_resource* resource_{};
 };
-
 } // namespace ioj::layout

@@ -11,15 +11,16 @@ namespace ioj::layout {
 
 auto ScalarTable::append(lispb::schema::TypeId value) -> std::size_t {
     auto const row{num()};
-    set_num(row + 1);
-    type[row] = value;
+    add_defaulted(1);
+    type()[row] = value;
     return row;
 }
 
 auto ScalarTable::find(lispb::schema::TypeId value) const -> std::size_t {
-    auto const found{std::ranges::find(type, value)};
-    assert(found != type.end());
-    return static_cast<std::size_t>(found - type.begin());
+    auto const types{type()};
+    auto const found{std::ranges::find(types, value)};
+    assert(found != types.end());
+    return static_cast<std::size_t>(found - types.begin());
 }
 
 } // namespace ioj::layout

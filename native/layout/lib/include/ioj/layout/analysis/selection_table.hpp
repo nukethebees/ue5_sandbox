@@ -7,145 +7,225 @@
 #include "ioj/layout/analysis/region_footprint.hpp"
 #include "ioj/layout/analyzer/access_operation.hpp"
 #include "ioj/native_soa/storage.h"
-#include "ioj/native_soa/vector_storage_ops.h"
 
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <memory_resource>
 #include <optional>
-#include <utility>
 
 namespace ioj::layout {
 struct SelectionTableSchema;
 
-struct SelectionTableView;
-struct SelectionTableConstView;
-struct SelectionTableConstView {
-    using View = SelectionTableView;
-    using ConstView = SelectionTableConstView;
-    using size_type = std::uint32_t;
-    std::span<std::size_t const> source;
-    std::span<ioj::layout::AccessOperation const> operation;
-    std::span<ioj::layout::PayloadFootprint const> bytes;
-    std::span<ioj::layout::PayloadFootprint const> bits;
-    std::span<ioj::layout::RegionFootprint const> cache;
-    std::span<ioj::layout::RegionFootprint const> pages;
-    std::span<std::optional<std::uint64_t> const> capacity_slack_bytes;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(source.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(source);
-        fn(operation);
-        fn(bytes);
-        fn(bits);
-        fn(cache);
-        fn(pages);
-        fn(capacity_slack_bytes);
-    }
-    void validate_array_sizes() const {
-        ioj::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> SelectionTableConstView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            source.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            operation.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            bytes.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            bits.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            cache.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            pages.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            capacity_slack_bytes.subspan(static_cast<std::size_t>(offset),
-                                         static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> SelectionTableConstView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> SelectionTableConstView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            source,
-            operation,
-            bytes,
-            bits,
-            cache,
-            pages,
-            capacity_slack_bytes,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> SelectionTableConstView { return slice(0, count); }
-    auto right(size_type const count) const -> SelectionTableConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
+struct SelectionTableSingleView;
+struct SelectionTableSingleConstView;
+struct SelectionTableSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ioj::native_soa::ColumnLayout<T>;
+
+    ioj::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<std::size_t> SourceColumn;
+    ColLayout<AccessOperation> OperationColumn;
+    ColLayout<PayloadFootprint> BytesColumn;
+    ColLayout<PayloadFootprint> BitsColumn;
+    ColLayout<RegionFootprint> CacheColumn;
+    ColLayout<RegionFootprint> PagesColumn;
+    ColLayout<std::optional<std::uint64_t>> CapacitySlackBytesColumn;
+
+    constexpr SelectionTableSingleLayoutColumns() noexcept
+        : SourceColumn{LayoutStart}
+        , OperationColumn{SourceColumn}
+        , BytesColumn{OperationColumn}
+        , BitsColumn{BytesColumn}
+        , CacheColumn{BitsColumn}
+        , PagesColumn{CacheColumn}
+        , CapacitySlackBytesColumn{PagesColumn} {}
+    SelectionTableSingleLayoutColumns(SelectionTableSingleLayoutColumns const&) = delete;
+    auto operator=(SelectionTableSingleLayoutColumns const&)
+        -> SelectionTableSingleLayoutColumns& = delete;
 };
-struct SelectionTableView {
-    using View = SelectionTableView;
-    using ConstView = SelectionTableConstView;
+struct SelectionTableSingleLayout {
     using size_type = std::uint32_t;
-    std::span<std::size_t> source;
-    std::span<ioj::layout::AccessOperation> operation;
-    std::span<ioj::layout::PayloadFootprint> bytes;
-    std::span<ioj::layout::PayloadFootprint> bits;
-    std::span<ioj::layout::RegionFootprint> cache;
-    std::span<ioj::layout::RegionFootprint> pages;
-    std::span<std::optional<std::uint64_t>> capacity_slack_bytes;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(source.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(source);
-        fn(operation);
-        fn(bytes);
-        fn(bits);
-        fn(cache);
-        fn(pages);
-        fn(capacity_slack_bytes);
+    using byte_size_type = std::size_t;
+
+    static constexpr size_type capacity_granularity{
+        ioj::native_soa::LayoutPolicy::capacity_granularity};
+    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
+
+    static constexpr SelectionTableSingleLayoutColumns columns{};
+
+    static constexpr byte_size_type allocation_alignment{
+        columns.CapacitySlackBytesColumn.allocation_alignment};
+
+    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
+    // capacity.
+    static constexpr byte_size_type capacity_block_bound{
+        ioj::native_soa::capacity_block_bound(columns.CapacitySlackBytesColumn)};
+    static constexpr size_type max_capacity{
+        ioj::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0 ? 0 : columns.CapacitySlackBytesColumn.data_end(blocks);
     }
-    void validate_array_sizes() const {
-        ioj::native_soa::vector_storage_ops::validate_array_sizes(*this);
+    static_assert(max_capacity >= capacity_granularity);
+};
+
+struct SelectionTableSingleResolvedView;
+struct SelectionTableSingleResolvedConstView;
+template <bool Const>
+struct SelectionTableSingleResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = SelectionTableSingleResolvedView;
+    using ConstView = SelectionTableSingleResolvedConstView;
+    using soa_schema = SelectionTableSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    SelectionTableSingleResolvedViewImpl() = default;
+    SelectionTableSingleResolvedViewImpl(
+        Element<std::size_t>* source,
+        Element<ioj::layout::AccessOperation>* operation,
+        Element<ioj::layout::PayloadFootprint>* bytes,
+        Element<ioj::layout::PayloadFootprint>* bits,
+        Element<ioj::layout::RegionFootprint>* cache,
+        Element<ioj::layout::RegionFootprint>* pages,
+        Element<std::optional<std::uint64_t>>* capacity_slack_bytes,
+        size_type count)
+        : source_{source}
+        , operation_{operation}
+        , bytes_{bytes}
+        , bits_{bits}
+        , cache_{cache}
+        , pages_{pages}
+        , capacity_slack_bytes_{capacity_slack_bytes}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, source_, operation_, bytes_, bits_, cache_, pages_, capacity_slack_bytes_);
     }
-    auto slice(size_type const offset, size_type const count) const -> SelectionTableView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            source.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            operation.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            bytes.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            bits.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            cache.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            pages.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            capacity_slack_bytes.subspan(static_cast<std::size_t>(offset),
-                                         static_cast<std::size_t>(count)),
-        };
+    SelectionTableSingleResolvedViewImpl(
+        std::span<Element<std::size_t>> source,
+        std::span<Element<ioj::layout::AccessOperation>> operation,
+        std::span<Element<ioj::layout::PayloadFootprint>> bytes,
+        std::span<Element<ioj::layout::PayloadFootprint>> bits,
+        std::span<Element<ioj::layout::RegionFootprint>> cache,
+        std::span<Element<ioj::layout::RegionFootprint>> pages,
+        std::span<Element<std::optional<std::uint64_t>>> capacity_slack_bytes)
+        : SelectionTableSingleResolvedViewImpl{
+              source.data(),
+              operation.data(),
+              bytes.data(),
+              bits.data(),
+              cache.data(),
+              pages.data(),
+              capacity_slack_bytes.data(),
+              ioj::soa_storage_detail::checked_row_count(source.size())} {
+        assert(source.size() == count_);
+        assert(operation.size() == count_);
+        assert(bytes.size() == count_);
+        assert(bits.size() == count_);
+        assert(cache.size() == count_);
+        assert(pages.size() == count_);
+        assert(capacity_slack_bytes.size() == count_);
     }
-    auto get_view() const -> SelectionTableView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> SelectionTableView {
-        return slice(offset, count);
+    template <bool Enabled = Const>
+    SelectionTableSingleResolvedViewImpl(SelectionTableSingleResolvedViewImpl<false> const& other)
+        requires Enabled
+        : source_{other.source_}
+        , operation_{other.operation_}
+        , bytes_{other.bytes_}
+        , bits_{other.bits_}
+        , cache_{other.cache_}
+        , pages_{other.pages_}
+        , capacity_slack_bytes_{other.capacity_slack_bytes_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.source_,
+                      self.operation_,
+                      self.bytes_,
+                      self.bits_,
+                      self.cache_,
+                      self.pages_,
+                      self.capacity_slack_bytes_,
+                      self.count_};
     }
-    auto get_const_view() const -> ConstView {
-        return {
-            source,
-            operation,
-            bytes,
-            bits,
-            cache,
-            pages,
-            capacity_slack_bytes,
-        };
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.source_ == nullptr ? nullptr : self.source_ + offset,
+                      self.operation_ == nullptr ? nullptr : self.operation_ + offset,
+                      self.bytes_ == nullptr ? nullptr : self.bytes_ + offset,
+                      self.bits_ == nullptr ? nullptr : self.bits_ + offset,
+                      self.cache_ == nullptr ? nullptr : self.cache_ + offset,
+                      self.pages_ == nullptr ? nullptr : self.pages_ + offset,
+                      self.capacity_slack_bytes_ == nullptr ? nullptr
+                                                            : self.capacity_slack_bytes_ + offset,
+                      count};
     }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
     }
-    auto left(size_type const count) const -> SelectionTableView { return slice(0, count); }
-    auto right(size_type const count) const -> SelectionTableView {
-        assert(count <= num());
-        return slice(num() - count, count);
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
     }
-    void set(size_type const index,
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto source() const -> std::span<Element<std::size_t>> { return {source_, count_}; }
+    auto operation() const -> std::span<Element<ioj::layout::AccessOperation>> {
+        return {operation_, count_};
+    }
+    auto bytes() const -> std::span<Element<ioj::layout::PayloadFootprint>> {
+        return {bytes_, count_};
+    }
+    auto bits() const -> std::span<Element<ioj::layout::PayloadFootprint>> {
+        return {bits_, count_};
+    }
+    auto cache() const -> std::span<Element<ioj::layout::RegionFootprint>> {
+        return {cache_, count_};
+    }
+    auto pages() const -> std::span<Element<ioj::layout::RegionFootprint>> {
+        return {pages_, count_};
+    }
+    auto capacity_slack_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
+        return {capacity_slack_bytes_, count_};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<std::size_t>>{source_, count_});
+        func(std::span<Element<ioj::layout::AccessOperation>>{operation_, count_});
+        func(std::span<Element<ioj::layout::PayloadFootprint>>{bytes_, count_});
+        func(std::span<Element<ioj::layout::PayloadFootprint>>{bits_, count_});
+        func(std::span<Element<ioj::layout::RegionFootprint>>{cache_, count_});
+        func(std::span<Element<ioj::layout::RegionFootprint>>{pages_, count_});
+        func(std::span<Element<std::optional<std::uint64_t>>>{capacity_slack_bytes_, count_});
+    }
+  private:
+    template <bool>
+    friend struct SelectionTableSingleResolvedViewImpl;
+    Element<std::size_t>* source_{};
+    Element<ioj::layout::AccessOperation>* operation_{};
+    Element<ioj::layout::PayloadFootprint>* bytes_{};
+    Element<ioj::layout::PayloadFootprint>* bits_{};
+    Element<ioj::layout::RegionFootprint>* cache_{};
+    Element<ioj::layout::RegionFootprint>* pages_{};
+    Element<std::optional<std::uint64_t>>* capacity_slack_bytes_{};
+    size_type count_{};
+};
+struct SelectionTableSingleResolvedConstView : SelectionTableSingleResolvedViewImpl<true> {
+    using Base = SelectionTableSingleResolvedViewImpl<true>;
+    using Base::Base;
+};
+struct SelectionTableSingleResolvedView : SelectionTableSingleResolvedViewImpl<false> {
+    using Base = SelectionTableSingleResolvedViewImpl<false>;
+    using Base::Base;
+    void set(size_type index,
              std::size_t const new_source,
              ioj::layout::AccessOperation const new_operation,
              ioj::layout::PayloadFootprint const new_bytes,
@@ -154,62 +234,308 @@ struct SelectionTableView {
              ioj::layout::RegionFootprint const new_pages,
              std::optional<std::uint64_t> const new_capacity_slack_bytes) const {
         assert(index < num());
-        source[static_cast<std::size_t>(index)] = new_source;
-        operation[static_cast<std::size_t>(index)] = new_operation;
-        bytes[static_cast<std::size_t>(index)] = new_bytes;
-        bits[static_cast<std::size_t>(index)] = new_bits;
-        cache[static_cast<std::size_t>(index)] = new_cache;
-        pages[static_cast<std::size_t>(index)] = new_pages;
-        capacity_slack_bytes[static_cast<std::size_t>(index)] = new_capacity_slack_bytes;
+        this->source()[index] = new_source;
+        this->operation()[index] = new_operation;
+        this->bytes()[index] = new_bytes;
+        this->bits()[index] = new_bits;
+        this->cache()[index] = new_cache;
+        this->pages()[index] = new_pages;
+        this->capacity_slack_bytes()[index] = new_capacity_slack_bytes;
     }
 };
-struct SelectionTable {
-    using View = SelectionTableView;
-    using ConstView = SelectionTableConstView;
+template <bool Const>
+struct SelectionTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = SelectionTableSchema;
     using size_type = std::uint32_t;
-    ioj::native_soa::Vector<std::size_t> source;
-    ioj::native_soa::Vector<ioj::layout::AccessOperation> operation;
-    ioj::native_soa::Vector<ioj::layout::PayloadFootprint> bytes;
-    ioj::native_soa::Vector<ioj::layout::PayloadFootprint> bits;
-    ioj::native_soa::Vector<ioj::layout::RegionFootprint> cache;
-    ioj::native_soa::Vector<ioj::layout::RegionFootprint> pages;
-    ioj::native_soa::Vector<std::optional<std::uint64_t>> capacity_slack_bytes;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(source.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) {
-        fn(source);
-        fn(operation);
-        fn(bytes);
-        fn(bits);
-        fn(cache);
-        fn(pages);
-        fn(capacity_slack_bytes);
+    using Layout = SelectionTableSingleLayout;
+    using Storage = ioj::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    using View = SelectionTableSingleView;
+    using ConstView = SelectionTableSingleConstView;
+    SelectionTableSingleViewImpl() = default;
+    SelectionTableSingleViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+    template <bool Enabled = Const>
+    SelectionTableSingleViewImpl(SelectionTableSingleViewImpl<false> const& other)
+        requires Enabled
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    auto source() const { return make_column_view(Layout::columns.SourceColumn); }
+    auto operation() const { return make_column_view(Layout::columns.OperationColumn); }
+    auto bytes() const { return make_column_view(Layout::columns.BytesColumn); }
+    auto bits() const { return make_column_view(Layout::columns.BitsColumn); }
+    auto cache() const { return make_column_view(Layout::columns.CacheColumn); }
+    auto pages() const { return make_column_view(Layout::columns.PagesColumn); }
+    auto capacity_slack_bytes() const {
+        return make_column_view(Layout::columns.CapacitySlackBytesColumn);
     }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(source);
-        fn(operation);
-        fn(bytes);
-        fn(bits);
-        fn(cache);
-        fn(pages);
-        fn(capacity_slack_bytes);
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(source());
+        func(operation());
+        func(bytes());
+        func(bits());
+        func(cache());
+        func(pages());
+        func(capacity_slack_bytes());
     }
-    void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void set_num(size_type const count) {
-        ioj::native_soa::vector_storage_ops::set_num(*this, count);
+    auto resolve() const -> std::conditional_t<Const,
+                                               SelectionTableSingleResolvedConstView,
+                                               SelectionTableSingleResolvedView> {
+        return {(make_column_view(Layout::columns.SourceColumn).data()),
+                (make_column_view(Layout::columns.OperationColumn).data()),
+                (make_column_view(Layout::columns.BytesColumn).data()),
+                (make_column_view(Layout::columns.BitsColumn).data()),
+                (make_column_view(Layout::columns.CacheColumn).data()),
+                (make_column_view(Layout::columns.PagesColumn).data()),
+                (make_column_view(Layout::columns.CapacitySlackBytesColumn).data()),
+                count_};
     }
-    void reset() { ioj::native_soa::vector_storage_ops::reset(*this); }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        ioj::native_soa::vector_storage_ops::apply_permutation(*this, indices);
+  private:
+    template <typename T>
+    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
     }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        ioj::native_soa::vector_storage_ops::sort(
-            *this, std::forward<Compare>(compare), scratch_indices);
+    friend ioj::soa_storage_detail::CompactViewOperations;
+    template <bool>
+    friend struct SelectionTableSingleViewImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
+struct SelectionTableSingleConstView : SelectionTableSingleViewImpl<true> {
+    using Base = SelectionTableSingleViewImpl<true>;
+    using Base::Base;
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<SelectionTableSingleConstView>());
+struct SelectionTableSingleView : SelectionTableSingleViewImpl<false> {
+    using Base = SelectionTableSingleViewImpl<false>;
+    using Base::Base;
+    void set(size_type index,
+             std::size_t const new_source,
+             ioj::layout::AccessOperation const new_operation,
+             ioj::layout::PayloadFootprint const new_bytes,
+             ioj::layout::PayloadFootprint const new_bits,
+             ioj::layout::RegionFootprint const new_cache,
+             ioj::layout::RegionFootprint const new_pages,
+             std::optional<std::uint64_t> const new_capacity_slack_bytes) const {
+        assert(index < num());
+        this->source()[index] = new_source;
+        this->operation()[index] = new_operation;
+        this->bytes()[index] = new_bytes;
+        this->bits()[index] = new_bits;
+        this->cache()[index] = new_cache;
+        this->pages()[index] = new_pages;
+        this->capacity_slack_bytes()[index] = new_capacity_slack_bytes;
     }
-    void set(size_type const index,
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<SelectionTableSingleView>());
+// Columns:
+// source: std::size_t
+// operation: ioj::layout::AccessOperation
+// bytes: ioj::layout::PayloadFootprint
+// bits: ioj::layout::PayloadFootprint
+// cache: ioj::layout::RegionFootprint
+// pages: ioj::layout::RegionFootprint
+// capacity_slack_bytes: std::optional<std::uint64_t>
+struct SelectionTable
+    : protected ioj::native_soa::StorageState
+    , ioj::native_soa::StorageOperations {
+    using soa_schema = SelectionTableSchema;
+    using Operations = ioj::native_soa::StorageOperations;
+    using Layout = SelectionTableSingleLayout;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
+
+    static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    static constexpr auto max_capacity = Layout::max_capacity;
+
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
+    }
+
+    using View = SelectionTableSingleView;
+    using ConstView = SelectionTableSingleConstView;
+
+    /* **************************************** */
+    // Lifetime
+    /* **************************************** */
+    SelectionTable() noexcept
+        : SelectionTable{*std::pmr::get_default_resource()} {}
+    explicit SelectionTable(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
+    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    ~SelectionTable() { Operations::release_storage(*this); }
+    SelectionTable(SelectionTable const&) = delete;
+    auto operator=(SelectionTable const&) -> SelectionTable& = delete;
+    SelectionTable(SelectionTable&& other) noexcept
+        : resource_{other.resource_} {
+        Operations::take_storage(*this, other);
+    }
+    auto operator=(SelectionTable&& other) -> SelectionTable& {
+        return Operations::move_assign(*this, other);
+    }
+  protected:
+    template <typename Byte>
+    struct DataPointers {
+        template <typename T>
+        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+        Element<std::size_t>* source{};
+        Element<AccessOperation>* operation{};
+        Element<PayloadFootprint>* bytes{};
+        Element<PayloadFootprint>* bits{};
+        Element<RegionFootprint>* cache{};
+        Element<RegionFootprint>* pages{};
+        Element<std::optional<std::uint64_t>>* capacity_slack_bytes{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (source == nullptr) {
+                return {};
+            }
+            return {source + offset,
+                    operation + offset,
+                    bytes + offset,
+                    bits + offset,
+                    cache + offset,
+                    pages + offset,
+                    capacity_slack_bytes + offset};
+        }
+    };
+    template <typename Self>
+    auto get_data(this Self& self) noexcept {
+        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
+        if (self.data_ == nullptr) {
+            return DataPointers<Byte>{};
+        }
+        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
+    }
+    template <typename Self>
+    auto get_data(this Self& self, size_type const offset) noexcept {
+        return self.get_data() + offset;
+    }
+  private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
+    /* **************************************** */
+    // Column pointers
+    /* **************************************** */
+    template <typename Byte>
+    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
+        -> DataPointers<Byte> {
+        ioj::native_soa::LayoutCursor cursor{blocks};
+        return {cursor.column_pointer(data, Layout::columns.SourceColumn),
+                cursor.column_pointer(data, Layout::columns.OperationColumn),
+                cursor.column_pointer(data, Layout::columns.BytesColumn),
+                cursor.column_pointer(data, Layout::columns.BitsColumn),
+                cursor.column_pointer(data, Layout::columns.CacheColumn),
+                cursor.column_pointer(data, Layout::columns.PagesColumn),
+                cursor.column_pointer(data, Layout::columns.CapacitySlackBytesColumn)};
+    }
+    auto capacity_blocks() const noexcept -> byte_size_type {
+        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
+    }
+
+    /* **************************************** */
+    // Typed mutations and growth
+    /* **************************************** */
+    void default_construct_columns(size_type const first, size_type const count) {
+        using ioj::native_soa::default_construct_n;
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
+        default_construct_n(columns.source, count);
+        default_construct_n(columns.operation, count);
+        default_construct_n(columns.bytes, count);
+        default_construct_n(columns.bits, count);
+        default_construct_n(columns.cache, count);
+        default_construct_n(columns.pages, count);
+        default_construct_n(columns.capacity_slack_bytes, count);
+    }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        auto transfer = [count](auto* dst, auto const* src) {
+            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.source, source.source);
+        transfer(destination.operation, source.operation);
+        transfer(destination.bytes, source.bytes);
+        transfer(destination.bits, source.bits);
+        transfer(destination.cache, source.cache);
+        transfer(destination.pages, source.pages);
+        transfer(destination.capacity_slack_bytes, source.capacity_slack_bytes);
+    }
+    void swap_remove_columns(size_type const index,
+                             size_type const source,
+                             size_type const move_count) {
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
+        transfer_columns<false>(columns + index, columns + source, move_count);
+    }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ioj::soa_storage_detail::for_each_removal_run(
+            num_, indices, [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, SelectionTable, size_type>
+    {
+        using ioj::native_soa::source_data;
+        return {source_data(source.source()),
+                source_data(source.operation()),
+                source_data(source.bytes()),
+                source_data(source.bits()),
+                source_data(source.cache()),
+                source_data(source.pages()),
+                source_data(source.capacity_slack_bytes())};
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count)
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, SelectionTable, size_type>
+    {
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
+    }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count)
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, SelectionTable, size_type>
+    {
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
+    }
+    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
+        auto const old_blocks{capacity_blocks()};
+        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+        auto const destination{make_data_unchecked(new_data, new_blocks)};
+        transfer_columns<false>(destination, source, num_);
+    }
+  public:
+    auto source(this auto& self) { return self.get_view().source(); }
+    auto operation(this auto& self) { return self.get_view().operation(); }
+    auto bytes(this auto& self) { return self.get_view().bytes(); }
+    auto bits(this auto& self) { return self.get_view().bits(); }
+    auto cache(this auto& self) { return self.get_view().cache(); }
+    auto pages(this auto& self) { return self.get_view().pages(); }
+    auto capacity_slack_bytes(this auto& self) { return self.get_view().capacity_slack_bytes(); }
+    void set(size_type index,
              std::size_t const new_source,
              ioj::layout::AccessOperation const new_operation,
              ioj::layout::PayloadFootprint const new_bytes,
@@ -217,82 +543,36 @@ struct SelectionTable {
              ioj::layout::RegionFootprint const new_cache,
              ioj::layout::RegionFootprint const new_pages,
              std::optional<std::uint64_t> const new_capacity_slack_bytes) {
-        get_view().set(index,
-                       new_source,
-                       new_operation,
-                       new_bytes,
-                       new_bits,
-                       new_cache,
-                       new_pages,
-                       new_capacity_slack_bytes);
+        assert(index < num());
+        get_view().source()[index] = new_source;
+        get_view().operation()[index] = new_operation;
+        get_view().bytes()[index] = new_bytes;
+        get_view().bits()[index] = new_bits;
+        get_view().cache()[index] = new_cache;
+        get_view().pages()[index] = new_pages;
+        get_view().capacity_slack_bytes()[index] = new_capacity_slack_bytes;
     }
-    auto add(std::size_t const new_source,
-             ioj::layout::AccessOperation const new_operation,
-             ioj::layout::PayloadFootprint const new_bytes,
-             ioj::layout::PayloadFootprint const new_bits,
-             ioj::layout::RegionFootprint const new_cache,
-             ioj::layout::RegionFootprint const new_pages,
-             std::optional<std::uint64_t> const new_capacity_slack_bytes) -> size_type {
-        return ioj::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
-            source.emplace_back(new_source);
-            operation.emplace_back(new_operation);
-            bytes.emplace_back(new_bytes);
-            bits.emplace_back(new_bits);
-            cache.emplace_back(new_cache);
-            pages.emplace_back(new_pages);
-            capacity_slack_bytes.emplace_back(new_capacity_slack_bytes);
-        });
+    size_type add(std::size_t const new_source,
+                  ioj::layout::AccessOperation const new_operation,
+                  ioj::layout::PayloadFootprint const new_bytes,
+                  ioj::layout::PayloadFootprint const new_bits,
+                  ioj::layout::RegionFootprint const new_cache,
+                  ioj::layout::RegionFootprint const new_pages,
+                  std::optional<std::uint64_t> const new_capacity_slack_bytes) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index,
+            new_source,
+            new_operation,
+            new_bytes,
+            new_bits,
+            new_cache,
+            new_pages,
+            new_capacity_slack_bytes);
+        return index;
     }
-    auto get_view() -> View {
-        return {
-            source,
-            operation,
-            bytes,
-            bits,
-            cache,
-            pages,
-            capacity_slack_bytes,
-        };
-    }
-    auto get_view() const -> ConstView {
-        return {
-            source,
-            operation,
-            bytes,
-            bits,
-            cache,
-            pages,
-            capacity_slack_bytes,
-        };
-    }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        return get_view().slice(offset, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_view().slice(offset, count);
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
-        return get_view(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view(offset, count);
-    }
-    auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    std::size_t append(std::size_t selected_source,
-                       ioj::layout::AccessOperation selected_operation);
+    std::size_t append(std::size_t selected_source, AccessOperation selected_operation);
+  private:
+    std::pmr::memory_resource* resource_{};
 };
-
 } // namespace ioj::layout

@@ -21,22 +21,22 @@ AnalysisCase const cases[]{
           (value Count :value "16"))))",
      [](AnalysisContext& context) {
          auto const run{run_analysis(context, "Value", {.element_count = 1})};
-         auto const& result{scalar_result(context, context.storage.scalars.enum_domain)};
-         auto const& backing{context.storage.types.enum_backing[run.analysis.value].value()};
+         auto const& result{scalar_result(context, context.storage.scalars.enum_domain())};
+         auto const& backing{context.storage.types.enum_backing()[run.analysis.value].value()};
          EXPECT_EQ(result.live_value_count, 2);
          EXPECT_EQ(result.reserved_value_count, 2);
          EXPECT_EQ(result.minimum_required_bits, 5);
          EXPECT_EQ(backing.backing_bits, 8);
-         EXPECT_TRUE(context.storage.codes.sentinel[result.codes.begin + 2]);
-         EXPECT_TRUE(context.storage.codes.count_sentinel[result.codes.begin + 3]);
+         EXPECT_TRUE(context.storage.codes.sentinel()[result.codes.begin + 2]);
+         EXPECT_TRUE(context.storage.codes.count_sentinel()[result.codes.begin + 3]);
      }},
     {"SignedEnum",
      R"((module game :header "Game.h"
         (enum Value std::int8_t (value Low :value "-4") (value High :value "3"))))",
      [](AnalysisContext& context) {
          auto const run{run_analysis(context, "Value", {.element_count = 1})};
-         auto const& result{scalar_result(context, context.storage.scalars.enum_domain)};
-         auto const& backing{context.storage.types.enum_backing[run.analysis.value].value()};
+         auto const& result{scalar_result(context, context.storage.scalars.enum_domain())};
+         auto const& backing{context.storage.types.enum_backing()[run.analysis.value].value()};
          EXPECT_EQ(result.signed_domain, true);
          EXPECT_EQ(result.minimum_required_bits, 3);
          EXPECT_EQ(backing.backing_can_represent_domain, true);
@@ -47,9 +47,9 @@ AnalysisCase const cases[]{
         (enum Value std::uint8_t (value Mask :value "1 << 3") (value Next))))",
      [](AnalysisContext& context) {
          run_analysis(context, "Value", {}, true);
-         auto const& result{scalar_result(context, context.storage.scalars.enum_domain)};
-         EXPECT_FALSE(context.storage.codes.code[result.codes.begin + 0]);
-         EXPECT_FALSE(context.storage.codes.code[result.codes.begin + 1]);
+         auto const& result{scalar_result(context, context.storage.scalars.enum_domain())};
+         EXPECT_FALSE(context.storage.codes.code()[result.codes.begin + 0]);
+         EXPECT_FALSE(context.storage.codes.code()[result.codes.begin + 1]);
          EXPECT_FALSE(result.minimum_required_bits);
      }},
     {"ScalarDomainAndSentinel",
@@ -58,7 +58,7 @@ AnalysisCase const cases[]{
           (code Invalid :value 15 :sentinel true))))",
      [](AnalysisContext& context) {
          run_analysis(context, "Value", {.element_count = 1});
-         auto const& result{scalar_result(context, context.storage.scalars.integer_domain)};
+         auto const& result{scalar_result(context, context.storage.scalars.integer_domain())};
          EXPECT_EQ(result,
                    (IntegerDomain{.maximum_value = 10,
                                   .live_value_count = 11,
@@ -74,7 +74,7 @@ AnalysisCase const cases[]{
         (integer-scalar Value :signed false :minimum 0 :maximum 18446744073709551615)))",
      [](AnalysisContext& context) {
          run_analysis(context, "Value", {.element_count = 1});
-         auto const& result{scalar_result(context, context.storage.scalars.integer_domain)};
+         auto const& result{scalar_result(context, context.storage.scalars.integer_domain())};
          EXPECT_EQ(result,
                    (IntegerDomain{.maximum_value = std::numeric_limits<std::uint64_t>::max(),
                                   .minimum_required_bits = 64,
@@ -98,9 +98,9 @@ AnalysisCase const cases[]{
          analyze_requests(context, requests);
          auto const& storage{context.storage};
          auto const& first{
-             scalar_result(context, storage.scalars.optional_sentinel_encoding, "Sentinel")};
+             scalar_result(context, storage.scalars.optional_sentinel_encoding(), "Sentinel")};
          auto const& second{
-             scalar_result(context, storage.scalars.optional_presence_encoding, "Presence")};
+             scalar_result(context, storage.scalars.optional_presence_encoding(), "Presence")};
          EXPECT_EQ(first.encoded_storage_bits, 4);
          EXPECT_EQ(storage.totals[0].total_encoded_bits, 400);
          EXPECT_EQ(second.encoded_storage_bits, 5);
@@ -118,7 +118,7 @@ AnalysisCase const cases[]{
          run_analysis(
              context, "Value", {.element_count = std::numeric_limits<std::uint64_t>::max()}, true);
          auto const& result{
-             scalar_result(context, context.storage.scalars.optional_presence_encoding)};
+             scalar_result(context, context.storage.scalars.optional_presence_encoding())};
          EXPECT_EQ(result.encoded_storage_bits, 65);
          EXPECT_FALSE(context.storage.totals[0].total_encoded_bits);
      }},
@@ -137,8 +137,8 @@ AnalysisCase const cases[]{
              AnalysisRequest{.type = fine, .abi = &abi, .element_count = 10}};
          analyze_requests(context, requests);
          auto const& storage{context.storage};
-         auto const& first{scalar_result(context, storage.scalars.quantized_encoding, "Coarse")};
-         auto const& second{scalar_result(context, storage.scalars.quantized_encoding, "Fine")};
+         auto const& first{scalar_result(context, storage.scalars.quantized_encoding(), "Coarse")};
+         auto const& second{scalar_result(context, storage.scalars.quantized_encoding(), "Fine")};
          EXPECT_TRUE(compare_runs(context, 0, 1));
          EXPECT_EQ(first.usable_code_count.value, 254);
          EXPECT_NEAR(static_cast<double>(first.resolution), 200.0 / 253, 1e-12);
@@ -155,7 +155,7 @@ AnalysisCase const cases[]{
         (linear-quantized Value :source Domain :bits 64 :reserved-codes 0 :clipping reject)))",
      [](AnalysisContext& context) {
          run_analysis(context, "Value", {.element_count = 1});
-         auto const& result{scalar_result(context, context.storage.scalars.quantized_encoding)};
+         auto const& result{scalar_result(context, context.storage.scalars.quantized_encoding())};
          EXPECT_TRUE(result.total_code_count.two_to_64);
          EXPECT_TRUE(result.usable_code_count.two_to_64);
          EXPECT_GT(result.resolution, 0);
@@ -165,7 +165,7 @@ AnalysisCase const cases[]{
         (fixed-point Value :signed true :total-bits 12 :fractional-bits 4 :rounding toward-zero)))",
      [](AnalysisContext& context) {
          run_analysis(context, "Value", {.element_count = 10});
-         auto const& result{scalar_result(context, context.storage.scalars.fixed_encoding)};
+         auto const& result{scalar_result(context, context.storage.scalars.fixed_encoding())};
          EXPECT_EQ(result.whole_bits, 7);
          EXPECT_EQ(result.resolution, 0.0625L);
          EXPECT_EQ(result.minimum_value, -128.0L);
@@ -177,7 +177,7 @@ AnalysisCase const cases[]{
         (mini-float Value :sign-bits 1 :exponent-bits 5 :significand-bits 10 :bias 15)))",
      [](AnalysisContext& context) {
          run_analysis(context, "Value", {.element_count = 10});
-         auto const& result{scalar_result(context, context.storage.scalars.float_encoding)};
+         auto const& result{scalar_result(context, context.storage.scalars.float_encoding())};
          EXPECT_EQ(result.total_bits, 16);
          EXPECT_EQ(result.zero_code_count, 2);
          EXPECT_EQ(result.infinity_code_count, 2);
@@ -191,7 +191,7 @@ AnalysisCase const cases[]{
         (mini-float Value :sign-bits 1 :exponent-bits 5 :significand-bits 10 :bias -32768)))",
      [](AnalysisContext& context) {
          run_analysis(context, "Value", {.element_count = 1}, true);
-         auto const& result{scalar_result(context, context.storage.scalars.float_encoding)};
+         auto const& result{scalar_result(context, context.storage.scalars.float_encoding())};
          EXPECT_EQ(result.minimum_normal_exponent, 32769);
          EXPECT_FALSE(result.maximum_finite);
          EXPECT_FALSE(result.minimum_positive_normal);
@@ -210,13 +210,13 @@ AnalysisCase const cases[]{
          EXPECT_EQ(context.storage.totals[0].maximum_total_bytes, 300);
          auto const distribution{run.distribution->value};
          auto const& values{context.storage.distributions};
-         EXPECT_EQ(values.total_weight[distribution], 5);
-         EXPECT_EQ(values.total_extent_bytes[distribution], 10);
-         EXPECT_EQ(values.expected_extent_bytes[distribution], 2.0L);
-         EXPECT_EQ(values.expected_selected_extent_bytes[distribution], 200.0L);
+         EXPECT_EQ(values.total_weight()[distribution], 5);
+         EXPECT_EQ(values.total_extent_bytes()[distribution], 10);
+         EXPECT_EQ(values.expected_extent_bytes()[distribution], 2.0L);
+         EXPECT_EQ(values.expected_selected_extent_bytes()[distribution], 200.0L);
          auto const empty{run_analysis(context, "Value", {.distribution_requested = true}, true)};
          EXPECT_FALSE(
-             context.storage.distributions.expected_extent_bytes[empty.distribution->value]);
+             context.storage.distributions.expected_extent_bytes()[empty.distribution->value]);
      }},
     {"SignedVarintComparison",
      R"((module game :header "Game.h"
@@ -236,8 +236,9 @@ AnalysisCase const cases[]{
          EXPECT_EQ(context.storage.totals[0].minimum_total_bytes, 100);
          EXPECT_EQ(context.storage.totals[1].maximum_total_bytes, 200);
          auto const& scalars{context.storage.scalars};
-         EXPECT_EQ(scalar_result(context, scalars.varint_encoding, "Signed").maximum_encoded_bytes,
-                   scalar_result(context, scalars.varint_encoding, "Zigzag").maximum_encoded_bytes);
+         EXPECT_EQ(
+             scalar_result(context, scalars.varint_encoding(), "Signed").maximum_encoded_bytes,
+             scalar_result(context, scalars.varint_encoding(), "Zigzag").maximum_encoded_bytes);
      }},
     {"IncompatibleSources",
      R"((module game :header "Game.h"
@@ -273,13 +274,13 @@ AnalysisCase const cases[]{
          auto const rejected{
              run_analysis(context, "Value", {.varint_distribution = invalid}, true)};
          auto const row{rejected.distribution->value};
-         EXPECT_EQ(context.storage.distributions.entries[row].count, 0);
-         EXPECT_FALSE(context.storage.distributions.expected_extent_bytes[row]);
+         EXPECT_EQ(context.storage.distributions.entries()[row].count, 0);
+         EXPECT_FALSE(context.storage.distributions.expected_extent_bytes()[row]);
          std::array const overflow{IntegerVarintDistributionEntry{
              .value = 128, .weight = std::numeric_limits<std::uint64_t>::max()}};
          auto const run{run_analysis(context, "Value", {.varint_distribution = overflow}, true)};
-         EXPECT_FALSE(context.storage.distributions.total_extent_bytes[run.distribution->value]);
-         EXPECT_EQ(context.storage.distributions.expected_extent_bytes[run.distribution->value],
+         EXPECT_FALSE(context.storage.distributions.total_extent_bytes()[run.distribution->value]);
+         EXPECT_EQ(context.storage.distributions.expected_extent_bytes()[run.distribution->value],
                    2.0L);
      }},
     {"FullWidthFixedPointOverflow",
@@ -288,7 +289,7 @@ AnalysisCase const cases[]{
      [](AnalysisContext& context) {
          run_analysis(
              context, "Value", {.element_count = std::numeric_limits<std::uint64_t>::max()}, true);
-         auto const& result{scalar_result(context, context.storage.scalars.fixed_encoding)};
+         auto const& result{scalar_result(context, context.storage.scalars.fixed_encoding())};
          EXPECT_EQ(result.total_bits, 64);
          EXPECT_EQ(result.minimum_raw_value,
                    lispb::codegen::PackedIntegerValue{std::numeric_limits<std::int64_t>::min()});
@@ -301,7 +302,7 @@ AnalysisCase const cases[]{
      [](AnalysisContext& context) {
          run_analysis(
              context, "Value", {.element_count = std::numeric_limits<std::uint64_t>::max()}, true);
-         auto const& result{scalar_result(context, context.storage.scalars.varint_encoding)};
+         auto const& result{scalar_result(context, context.storage.scalars.varint_encoding())};
          EXPECT_EQ(result.maximum_encoded_bytes, 10);
          EXPECT_FALSE(context.storage.totals[0].maximum_total_bytes);
      }}};

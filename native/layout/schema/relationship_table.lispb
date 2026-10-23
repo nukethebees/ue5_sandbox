@@ -6,14 +6,13 @@
   :namespace ioj::layout
   :prelude #cpp{#include <optional>}cpp#
   (struct RelationshipTable
-    :storage vector
-    :operations (set-num reset)
+    (single-allocation RelationshipTable)
     (member owner array @analysis_id)
     (member field array @optional_size_t)
     (member relationship array @relationship_id)
     (member metrics array @optional_relationship_metrics)
     (function append @size_t :definition-in-source true
       :body #cpp{auto const row{num()};
-set_num(row + 1);
+add_defaulted(1);
 return row;}cpp#)
   ))

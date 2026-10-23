@@ -35,29 +35,30 @@ TEST(PhysicalFacts, GeneratedCppAgreesForPointersNestedRecordsAndAlignedExternal
         std::array requests{AnalysisRequest{.type = *document.find_type("native_soa_fixture", name),
                                             .abi = &profile}};
         Analyzer::analyze(context, requests);
-        auto const& facts{storage.types.physical[storage.runs.front().analysis.value]};
+        auto const& facts{storage.types.physical()[storage.runs.front().analysis.value]};
         ASSERT_TRUE(facts);
         EXPECT_EQ(storage.physical_facts.size_bytes()[facts->value], size);
         EXPECT_EQ(storage.physical_facts.alignment_bytes()[facts->value], alignment);
         EXPECT_EQ(storage.physical_facts.origin()[facts->value], FactOrigin::derived);
     }
     auto const envelope{storage.runs.front().analysis};
-    auto const first{storage.types.aggregate[envelope.value]->members.begin};
-    EXPECT_EQ(storage.components.offset_bytes[first], offsetof(Envelope, pairs));
-    EXPECT_EQ(storage.components.offset_bytes[first + 1], offsetof(Envelope, node));
-    EXPECT_EQ(storage.components.offset_bytes[first + 2], offsetof(Envelope, aligned));
+    auto const first{storage.types.aggregate()[envelope.value]->members.begin};
+    EXPECT_EQ(storage.components.offset_bytes()[first], offsetof(Envelope, pairs));
+    EXPECT_EQ(storage.components.offset_bytes()[first + 1], offsetof(Envelope, node));
+    EXPECT_EQ(storage.components.offset_bytes()[first + 2], offsetof(Envelope, aligned));
     std::array requests{
         AnalysisRequest{.type = *document.find_type("native_soa_fixture", "PairRows"),
                         .abi = &profile,
                         .element_count = 7,
                         .default_capacity = 7}};
     Analyzer::analyze(context, requests);
-    auto const first_column{storage.types.soa[storage.runs.front().analysis.value]->columns.begin};
+    auto const first_column{
+        storage.types.soa()[storage.runs.front().analysis.value]->columns.begin};
     PairRows generated;
     generated.set_num(7);
-    EXPECT_EQ(storage.columns.total_bytes[first_column],
+    EXPECT_EQ(storage.columns.total_bytes()[first_column],
               generated.pairs.size() * sizeof(generated.pairs[0]));
-    EXPECT_EQ(storage.columns.total_bytes[first_column + 1],
+    EXPECT_EQ(storage.columns.total_bytes()[first_column + 1],
               generated.pointers.size() * sizeof(Node*));
 }
 
@@ -81,10 +82,10 @@ TEST(PhysicalFacts, SingleOnlySchemasUseOwnerFactsAndLayoutsHaveNoPhysicalObject
     AnalysisStorage storage;
     AnalysisContext context{document, storage};
     Analyzer::analyze(context, requests);
-    auto const& facts{storage.types.physical[storage.runs[0].analysis.value]};
+    auto const& facts{storage.types.physical()[storage.runs[0].analysis.value]};
     ASSERT_TRUE(facts);
     EXPECT_EQ(storage.physical_facts.size_bytes()[facts->value], sizeof(ApiOwner));
-    EXPECT_FALSE(storage.types.physical[storage.runs[1].analysis.value]);
+    EXPECT_FALSE(storage.types.physical()[storage.runs[1].analysis.value]);
     expect_analysis_diagnostics(context);
 }
 
@@ -108,7 +109,7 @@ TEST_P(PhysicalSpelling, DoesNotGuessUnsupportedOrMissingRepresentations) {
     AnalysisStorage storage;
     AnalysisContext context{document, storage};
     analyze_requests(context, requests, !test.known);
-    auto const& facts{storage.types.physical[storage.runs.front().analysis.value]};
+    auto const& facts{storage.types.physical()[storage.runs.front().analysis.value]};
     EXPECT_EQ(facts.has_value(), test.known);
 }
 INSTANTIATE_TEST_SUITE_P(
@@ -146,12 +147,12 @@ TEST(PhysicalFacts, PointerPolicyRetainsManualEvidence) {
     AnalysisStorage storage;
     AnalysisContext context{document, storage};
     Analyzer::analyze(context, requests);
-    ASSERT_TRUE(storage.components.element_facts.front());
-    EXPECT_EQ(storage.physical_facts.origin()[storage.components.element_facts.front()->value],
+    ASSERT_TRUE(storage.components.element_facts().front());
+    EXPECT_EQ(storage.physical_facts.origin()[storage.components.element_facts().front()->value],
               FactOrigin::manual_assumption);
     EXPECT_TRUE(storage.strings
                     .view(storage.physical_facts
-                              .provenance()[storage.components.element_facts.front()->value])
+                              .provenance()[storage.components.element_facts().front()->value])
                     .contains(pointer.provenance));
 }
 
@@ -170,7 +171,7 @@ TEST(PhysicalFacts, SuppliedFactsCannotSilentlyReplaceGeneratedLayout) {
     AnalysisStorage storage;
     AnalysisContext context{document, storage};
     Analyzer::analyze(context, requests);
-    EXPECT_FALSE(storage.types.physical[storage.runs.front().analysis.value]);
+    EXPECT_FALSE(storage.types.physical()[storage.runs.front().analysis.value]);
     ASSERT_GT(editor.diagnostics().size(), 0);
     EXPECT_EQ(editor.diagnostics().severity(
                   lispb::DiagnosticId{static_cast<std::uint32_t>(editor.diagnostics().size() - 1)}),

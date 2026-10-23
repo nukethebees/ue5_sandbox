@@ -9,7 +9,7 @@ namespace ioj::layout {
 
 auto SoaColumnTable::append() -> std::size_t {
     auto const row{num()};
-    set_num(row + 1);
+    add_defaulted(1);
     return row;
 }
 

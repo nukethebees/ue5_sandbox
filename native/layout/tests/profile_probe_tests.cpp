@@ -165,23 +165,23 @@ type "void*" 8 8 non-integer unknown "generic target representation" compiler-pr
     AnalysisStorage storage;
     AnalysisContext context{document, storage};
     Analyzer::analyze(context, requests);
-    auto const exact{storage.components.element_facts[0]};
+    auto const exact{storage.components.element_facts()[0]};
     ASSERT_TRUE(exact);
     EXPECT_EQ(storage.physical_facts.size_bytes()[exact->value], 16);
     EXPECT_EQ(storage.physical_facts.alignment_bytes()[exact->value], 8);
     EXPECT_EQ(storage.strings.view(storage.physical_facts.provenance()[exact->value]),
               "exact target measurement");
     EXPECT_EQ(storage.physical_facts.origin()[exact->value], FactOrigin::compiler_probe);
-    EXPECT_FALSE(storage.components.element_facts[1]);
+    EXPECT_FALSE(storage.components.element_facts()[1]);
     profile->set_object_pointer_representation("void*");
     Analyzer::analyze(context, requests);
-    EXPECT_EQ(storage.components.element_facts[0], exact);
-    ASSERT_TRUE(storage.components.element_facts[1]);
-    EXPECT_EQ(storage.physical_facts.size_bytes()[storage.components.element_facts[1]->value], 8);
+    EXPECT_EQ(storage.components.element_facts()[0], exact);
+    ASSERT_TRUE(storage.components.element_facts()[1]);
+    EXPECT_EQ(storage.physical_facts.size_bytes()[storage.components.element_facts()[1]->value], 8);
     AbiProfile const other{"other target"};
     requests.front().abi = &other;
     Analyzer::analyze(context, requests);
-    EXPECT_FALSE(storage.components.element_facts[0]);
+    EXPECT_FALSE(storage.components.element_facts()[0]);
 }
 
 } // namespace ioj::layout::profile_probe_tests

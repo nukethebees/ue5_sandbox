@@ -16,11 +16,11 @@ auto WorkloadTable::append(ioj::layout::AnalysisId owner,
                            std::uint64_t count,
                            std::uint64_t repeat) -> ioj::layout::WorkloadId {
     auto const row{num()};
-    set_num(row + 1);
-    analysis[row] = owner;
-    selections[row] = selected;
-    element_count[row] = count;
-    multiplicity[row] = repeat;
+    add_defaulted(1);
+    analysis()[row] = owner;
+    selections()[row] = selected;
+    element_count()[row] = count;
+    multiplicity()[row] = repeat;
     return WorkloadId{row};
 }
 

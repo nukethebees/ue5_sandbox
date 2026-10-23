@@ -6,8 +6,7 @@
   :namespace ioj::layout
   :prelude #cpp{#include <optional>}cpp#
   (struct SoaColumnTable
-    :storage vector
-    :operations (set-num reset)
+    (single-allocation SoaColumnTable)
     (member parent array @analysis_id)
     (member name array @string_view)
     (member semantic_type array @type_id)
@@ -25,6 +24,6 @@
     (member cache_line_tiling array @optional_cache_line_tiling)
     (function append @size_t :definition-in-source true
       :body #cpp{auto const row{num()};
-set_num(row + 1);
+add_defaulted(1);
 return row;}cpp#)
   ))

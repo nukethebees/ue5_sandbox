@@ -6,8 +6,7 @@
   :namespace ioj::layout
   :prelude #cpp{#include <optional>}cpp#
   (struct TypeAnalysisTable
-    :storage vector
-    :operations (set-num reset)
+    (single-allocation TypeAnalysisTable)
     (member schema_type array @type_id)
     (member scenario array @scenario_id)
     (member physical array @optional_physical_fact_id)
@@ -19,16 +18,18 @@
       (parameter type @type_id)
       (parameter scenario_id @scenario_id)
       :body #cpp{auto const row{num()};
-set_num(row + 1);
-schema_type[row] = type;
-scenario[row] = scenario_id;
+add_defaulted(1);
+schema_type()[row] = type;
+scenario()[row] = scenario_id;
 return AnalysisId{row};}cpp#)
     (function find @analysis_id :const true :definition-in-source true
       (parameter type @type_id)
       (parameter scenario_id @scenario_id)
-      :body #cpp{auto const count{num()};
+      :body #cpp{auto const types{schema_type()};
+auto const scenarios{scenario()};
+auto const count{num()};
 for (std::uint32_t row{}; row < count; ++row) {
-    if (schema_type[row] == type && scenario[row] == scenario_id) {
+    if (types[row] == type && scenarios[row] == scenario_id) {
         return AnalysisId{row};
     }
 }

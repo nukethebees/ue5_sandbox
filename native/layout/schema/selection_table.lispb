@@ -6,8 +6,7 @@
   :namespace ioj::layout
   :prelude #cpp{#include <optional>}cpp#
   (struct SelectionTable
-    :storage vector
-    :operations (set-num reset)
+    (single-allocation SelectionTable)
     (member source array @size_t)
     (member operation array @access_operation)
     (member bytes array @payload_footprint)
@@ -19,8 +18,8 @@
       (parameter selected_source @size_t)
       (parameter selected_operation @access_operation)
       :body #cpp{auto const row{num()};
-set_num(row + 1);
-source[row] = selected_source;
-operation[row] = selected_operation;
+add_defaulted(1);
+source()[row] = selected_source;
+operation()[row] = selected_operation;
 return row;}cpp#)
   ))

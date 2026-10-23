@@ -6,8 +6,7 @@
   :namespace ioj::layout
   :prelude #cpp{#include <optional>}cpp#
   (struct CodeTable
-    :storage vector
-    :operations (set-num reset)
+    (single-allocation CodeTable)
     (member name array @string_view)
     (member sentinel array @uint8_t)
     (member count_sentinel array @uint8_t)
@@ -15,6 +14,6 @@
     (member integer_value array @optional_packed_integer_value)
     (function append @size_t :definition-in-source true
       :body #cpp{auto const row{num()};
-set_num(row + 1);
+add_defaulted(1);
 return row;}cpp#)
   ))

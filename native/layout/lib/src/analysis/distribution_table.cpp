@@ -15,13 +15,13 @@ auto DistributionTable::append(ioj::layout::AnalysisId owner,
                                ioj::layout::RowRange samples,
                                std::uint64_t count) -> ioj::layout::DistributionId {
     auto const row{num()};
-    set_num(row + 1);
-    analysis[row] = owner;
-    entries[row] = samples;
-    element_count[row] = count;
-    total_weight[row] = 0;
-    total_extent_bytes[row] = 0;
-    total_slack_bytes[row] = 0;
+    add_defaulted(1);
+    analysis()[row] = owner;
+    entries()[row] = samples;
+    element_count()[row] = count;
+    total_weight()[row] = 0;
+    total_extent_bytes()[row] = 0;
+    total_slack_bytes()[row] = 0;
     return DistributionId{row};
 }
 

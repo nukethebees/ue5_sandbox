@@ -4,229 +4,444 @@
 #pragma once
 
 #include "ioj/native_soa/storage.h"
-#include "ioj/native_soa/vector_storage_ops.h"
 
 #include <cassert>
 #include <cstdint>
+#include <memory_resource>
 #include <optional>
 #include <string_view>
-#include <utility>
 
 namespace ioj::layout {
 struct TagTableSchema;
 
-struct TagTableView;
-struct TagTableConstView;
-struct TagTableConstView {
-    using View = TagTableView;
-    using ConstView = TagTableConstView;
-    using size_type = std::uint32_t;
-    std::span<std::string_view const> name;
-    std::span<std::uint8_t const> mapped;
-    std::span<std::uint8_t const> sentinel;
-    std::span<std::uint8_t const> count_sentinel;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(name.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(name);
-        fn(mapped);
-        fn(sentinel);
-        fn(count_sentinel);
-    }
-    void validate_array_sizes() const {
-        ioj::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> TagTableConstView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            name.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            mapped.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            sentinel.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            count_sentinel.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> TagTableConstView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> TagTableConstView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            name,
-            mapped,
-            sentinel,
-            count_sentinel,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> TagTableConstView { return slice(0, count); }
-    auto right(size_type const count) const -> TagTableConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
+struct TagTableSingleView;
+struct TagTableSingleConstView;
+struct TagTableSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ioj::native_soa::ColumnLayout<T>;
+
+    ioj::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<std::string_view> NameColumn;
+    ColLayout<std::uint8_t> MappedColumn;
+    ColLayout<std::uint8_t> SentinelColumn;
+    ColLayout<std::uint8_t> CountSentinelColumn;
+
+    constexpr TagTableSingleLayoutColumns() noexcept
+        : NameColumn{LayoutStart}
+        , MappedColumn{NameColumn}
+        , SentinelColumn{MappedColumn}
+        , CountSentinelColumn{SentinelColumn} {}
+    TagTableSingleLayoutColumns(TagTableSingleLayoutColumns const&) = delete;
+    auto operator=(TagTableSingleLayoutColumns const&) -> TagTableSingleLayoutColumns& = delete;
 };
-struct TagTableView {
-    using View = TagTableView;
-    using ConstView = TagTableConstView;
+struct TagTableSingleLayout {
     using size_type = std::uint32_t;
-    std::span<std::string_view> name;
-    std::span<std::uint8_t> mapped;
-    std::span<std::uint8_t> sentinel;
-    std::span<std::uint8_t> count_sentinel;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(name.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(name);
-        fn(mapped);
-        fn(sentinel);
-        fn(count_sentinel);
+    using byte_size_type = std::size_t;
+
+    static constexpr size_type capacity_granularity{
+        ioj::native_soa::LayoutPolicy::capacity_granularity};
+    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
+
+    static constexpr TagTableSingleLayoutColumns columns{};
+
+    static constexpr byte_size_type allocation_alignment{
+        columns.CountSentinelColumn.allocation_alignment};
+
+    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
+    // capacity.
+    static constexpr byte_size_type capacity_block_bound{
+        ioj::native_soa::capacity_block_bound(columns.CountSentinelColumn)};
+    static constexpr size_type max_capacity{
+        ioj::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0 ? 0 : columns.CountSentinelColumn.data_end(blocks);
     }
-    void validate_array_sizes() const {
-        ioj::native_soa::vector_storage_ops::validate_array_sizes(*this);
+    static_assert(max_capacity >= capacity_granularity);
+};
+
+struct TagTableSingleResolvedView;
+struct TagTableSingleResolvedConstView;
+template <bool Const>
+struct TagTableSingleResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = TagTableSingleResolvedView;
+    using ConstView = TagTableSingleResolvedConstView;
+    using soa_schema = TagTableSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    TagTableSingleResolvedViewImpl() = default;
+    TagTableSingleResolvedViewImpl(Element<std::string_view>* name,
+                                   Element<std::uint8_t>* mapped,
+                                   Element<std::uint8_t>* sentinel,
+                                   Element<std::uint8_t>* count_sentinel,
+                                   size_type count)
+        : name_{name}
+        , mapped_{mapped}
+        , sentinel_{sentinel}
+        , count_sentinel_{count_sentinel}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, name_, mapped_, sentinel_, count_sentinel_);
     }
-    auto slice(size_type const offset, size_type const count) const -> TagTableView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            name.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            mapped.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            sentinel.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            count_sentinel.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
-        };
+    TagTableSingleResolvedViewImpl(std::span<Element<std::string_view>> name,
+                                   std::span<Element<std::uint8_t>> mapped,
+                                   std::span<Element<std::uint8_t>> sentinel,
+                                   std::span<Element<std::uint8_t>> count_sentinel)
+        : TagTableSingleResolvedViewImpl{name.data(),
+                                         mapped.data(),
+                                         sentinel.data(),
+                                         count_sentinel.data(),
+                                         ioj::soa_storage_detail::checked_row_count(name.size())} {
+        assert(name.size() == count_);
+        assert(mapped.size() == count_);
+        assert(sentinel.size() == count_);
+        assert(count_sentinel.size() == count_);
     }
-    auto get_view() const -> TagTableView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> TagTableView {
-        return slice(offset, count);
+    template <bool Enabled = Const>
+    TagTableSingleResolvedViewImpl(TagTableSingleResolvedViewImpl<false> const& other)
+        requires Enabled
+        : name_{other.name_}
+        , mapped_{other.mapped_}
+        , sentinel_{other.sentinel_}
+        , count_sentinel_{other.count_sentinel_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.name_, self.mapped_, self.sentinel_, self.count_sentinel_, self.count_};
     }
-    auto get_const_view() const -> ConstView {
-        return {
-            name,
-            mapped,
-            sentinel,
-            count_sentinel,
-        };
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.name_ == nullptr ? nullptr : self.name_ + offset,
+                      self.mapped_ == nullptr ? nullptr : self.mapped_ + offset,
+                      self.sentinel_ == nullptr ? nullptr : self.sentinel_ + offset,
+                      self.count_sentinel_ == nullptr ? nullptr : self.count_sentinel_ + offset,
+                      count};
     }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
     }
-    auto left(size_type const count) const -> TagTableView { return slice(0, count); }
-    auto right(size_type const count) const -> TagTableView {
-        assert(count <= num());
-        return slice(num() - count, count);
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
     }
-    void set(size_type const index,
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto name() const -> std::span<Element<std::string_view>> { return {name_, count_}; }
+    auto mapped() const -> std::span<Element<std::uint8_t>> { return {mapped_, count_}; }
+    auto sentinel() const -> std::span<Element<std::uint8_t>> { return {sentinel_, count_}; }
+    auto count_sentinel() const -> std::span<Element<std::uint8_t>> {
+        return {count_sentinel_, count_};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<std::string_view>>{name_, count_});
+        func(std::span<Element<std::uint8_t>>{mapped_, count_});
+        func(std::span<Element<std::uint8_t>>{sentinel_, count_});
+        func(std::span<Element<std::uint8_t>>{count_sentinel_, count_});
+    }
+  private:
+    template <bool>
+    friend struct TagTableSingleResolvedViewImpl;
+    Element<std::string_view>* name_{};
+    Element<std::uint8_t>* mapped_{};
+    Element<std::uint8_t>* sentinel_{};
+    Element<std::uint8_t>* count_sentinel_{};
+    size_type count_{};
+};
+struct TagTableSingleResolvedConstView : TagTableSingleResolvedViewImpl<true> {
+    using Base = TagTableSingleResolvedViewImpl<true>;
+    using Base::Base;
+};
+struct TagTableSingleResolvedView : TagTableSingleResolvedViewImpl<false> {
+    using Base = TagTableSingleResolvedViewImpl<false>;
+    using Base::Base;
+    void set(size_type index,
              std::string_view const new_name,
              std::uint8_t const new_mapped,
              std::uint8_t const new_sentinel,
              std::uint8_t const new_count_sentinel) const {
         assert(index < num());
-        name[static_cast<std::size_t>(index)] = new_name;
-        mapped[static_cast<std::size_t>(index)] = new_mapped;
-        sentinel[static_cast<std::size_t>(index)] = new_sentinel;
-        count_sentinel[static_cast<std::size_t>(index)] = new_count_sentinel;
+        this->name()[index] = new_name;
+        this->mapped()[index] = new_mapped;
+        this->sentinel()[index] = new_sentinel;
+        this->count_sentinel()[index] = new_count_sentinel;
     }
 };
-struct TagTable {
-    using View = TagTableView;
-    using ConstView = TagTableConstView;
+template <bool Const>
+struct TagTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = TagTableSchema;
     using size_type = std::uint32_t;
-    ioj::native_soa::Vector<std::string_view> name;
-    ioj::native_soa::Vector<std::uint8_t> mapped;
-    ioj::native_soa::Vector<std::uint8_t> sentinel;
-    ioj::native_soa::Vector<std::uint8_t> count_sentinel;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(name.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) {
-        fn(name);
-        fn(mapped);
-        fn(sentinel);
-        fn(count_sentinel);
+    using Layout = TagTableSingleLayout;
+    using Storage = ioj::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    using View = TagTableSingleView;
+    using ConstView = TagTableSingleConstView;
+    TagTableSingleViewImpl() = default;
+    TagTableSingleViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+    template <bool Enabled = Const>
+    TagTableSingleViewImpl(TagTableSingleViewImpl<false> const& other)
+        requires Enabled
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    auto name() const { return make_column_view(Layout::columns.NameColumn); }
+    auto mapped() const { return make_column_view(Layout::columns.MappedColumn); }
+    auto sentinel() const { return make_column_view(Layout::columns.SentinelColumn); }
+    auto count_sentinel() const { return make_column_view(Layout::columns.CountSentinelColumn); }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(name());
+        func(mapped());
+        func(sentinel());
+        func(count_sentinel());
     }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(name);
-        fn(mapped);
-        fn(sentinel);
-        fn(count_sentinel);
+    auto resolve() const
+        -> std::conditional_t<Const, TagTableSingleResolvedConstView, TagTableSingleResolvedView> {
+        return {(make_column_view(Layout::columns.NameColumn).data()),
+                (make_column_view(Layout::columns.MappedColumn).data()),
+                (make_column_view(Layout::columns.SentinelColumn).data()),
+                (make_column_view(Layout::columns.CountSentinelColumn).data()),
+                count_};
     }
-    void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void set_num(size_type const count) {
-        ioj::native_soa::vector_storage_ops::set_num(*this, count);
+  private:
+    template <typename T>
+    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
     }
-    void reset() { ioj::native_soa::vector_storage_ops::reset(*this); }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        ioj::native_soa::vector_storage_ops::apply_permutation(*this, indices);
+    friend ioj::soa_storage_detail::CompactViewOperations;
+    template <bool>
+    friend struct TagTableSingleViewImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
+struct TagTableSingleConstView : TagTableSingleViewImpl<true> {
+    using Base = TagTableSingleViewImpl<true>;
+    using Base::Base;
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<TagTableSingleConstView>());
+struct TagTableSingleView : TagTableSingleViewImpl<false> {
+    using Base = TagTableSingleViewImpl<false>;
+    using Base::Base;
+    void set(size_type index,
+             std::string_view const new_name,
+             std::uint8_t const new_mapped,
+             std::uint8_t const new_sentinel,
+             std::uint8_t const new_count_sentinel) const {
+        assert(index < num());
+        this->name()[index] = new_name;
+        this->mapped()[index] = new_mapped;
+        this->sentinel()[index] = new_sentinel;
+        this->count_sentinel()[index] = new_count_sentinel;
     }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        ioj::native_soa::vector_storage_ops::sort(
-            *this, std::forward<Compare>(compare), scratch_indices);
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<TagTableSingleView>());
+// Columns:
+// name: std::string_view
+// mapped: std::uint8_t
+// sentinel: std::uint8_t
+// count_sentinel: std::uint8_t
+struct TagTable
+    : protected ioj::native_soa::StorageState
+    , ioj::native_soa::StorageOperations {
+    using soa_schema = TagTableSchema;
+    using Operations = ioj::native_soa::StorageOperations;
+    using Layout = TagTableSingleLayout;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
+
+    static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    static constexpr auto max_capacity = Layout::max_capacity;
+
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
     }
-    void set(size_type const index,
+
+    using View = TagTableSingleView;
+    using ConstView = TagTableSingleConstView;
+
+    /* **************************************** */
+    // Lifetime
+    /* **************************************** */
+    TagTable() noexcept
+        : TagTable{*std::pmr::get_default_resource()} {}
+    explicit TagTable(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
+    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    ~TagTable() { Operations::release_storage(*this); }
+    TagTable(TagTable const&) = delete;
+    auto operator=(TagTable const&) -> TagTable& = delete;
+    TagTable(TagTable&& other) noexcept
+        : resource_{other.resource_} {
+        Operations::take_storage(*this, other);
+    }
+    auto operator=(TagTable&& other) -> TagTable& { return Operations::move_assign(*this, other); }
+  protected:
+    template <typename Byte>
+    struct DataPointers {
+        template <typename T>
+        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+        Element<std::string_view>* name{};
+        Element<std::uint8_t>* mapped{};
+        Element<std::uint8_t>* sentinel{};
+        Element<std::uint8_t>* count_sentinel{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (name == nullptr) {
+                return {};
+            }
+            return {name + offset, mapped + offset, sentinel + offset, count_sentinel + offset};
+        }
+    };
+    template <typename Self>
+    auto get_data(this Self& self) noexcept {
+        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
+        if (self.data_ == nullptr) {
+            return DataPointers<Byte>{};
+        }
+        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
+    }
+    template <typename Self>
+    auto get_data(this Self& self, size_type const offset) noexcept {
+        return self.get_data() + offset;
+    }
+  private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
+    /* **************************************** */
+    // Column pointers
+    /* **************************************** */
+    template <typename Byte>
+    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
+        -> DataPointers<Byte> {
+        ioj::native_soa::LayoutCursor cursor{blocks};
+        return {cursor.column_pointer(data, Layout::columns.NameColumn),
+                cursor.column_pointer(data, Layout::columns.MappedColumn),
+                cursor.column_pointer(data, Layout::columns.SentinelColumn),
+                cursor.column_pointer(data, Layout::columns.CountSentinelColumn)};
+    }
+    auto capacity_blocks() const noexcept -> byte_size_type {
+        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
+    }
+
+    /* **************************************** */
+    // Typed mutations and growth
+    /* **************************************** */
+    void default_construct_columns(size_type const first, size_type const count) {
+        using ioj::native_soa::default_construct_n;
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
+        default_construct_n(columns.name, count);
+        default_construct_n(columns.mapped, count);
+        default_construct_n(columns.sentinel, count);
+        default_construct_n(columns.count_sentinel, count);
+    }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        auto transfer = [count](auto* dst, auto const* src) {
+            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.name, source.name);
+        transfer(destination.mapped, source.mapped);
+        transfer(destination.sentinel, source.sentinel);
+        transfer(destination.count_sentinel, source.count_sentinel);
+    }
+    void swap_remove_columns(size_type const index,
+                             size_type const source,
+                             size_type const move_count) {
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
+        transfer_columns<false>(columns + index, columns + source, move_count);
+    }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ioj::soa_storage_detail::for_each_removal_run(
+            num_, indices, [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, TagTable, size_type>
+    {
+        using ioj::native_soa::source_data;
+        return {source_data(source.name()),
+                source_data(source.mapped()),
+                source_data(source.sentinel()),
+                source_data(source.count_sentinel())};
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count)
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, TagTable, size_type>
+    {
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
+    }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count)
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, TagTable, size_type>
+    {
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
+    }
+    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
+        auto const old_blocks{capacity_blocks()};
+        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+        auto const destination{make_data_unchecked(new_data, new_blocks)};
+        transfer_columns<false>(destination, source, num_);
+    }
+  public:
+    auto name(this auto& self) { return self.get_view().name(); }
+    auto mapped(this auto& self) { return self.get_view().mapped(); }
+    auto sentinel(this auto& self) { return self.get_view().sentinel(); }
+    auto count_sentinel(this auto& self) { return self.get_view().count_sentinel(); }
+    void set(size_type index,
              std::string_view const new_name,
              std::uint8_t const new_mapped,
              std::uint8_t const new_sentinel,
              std::uint8_t const new_count_sentinel) {
-        get_view().set(index, new_name, new_mapped, new_sentinel, new_count_sentinel);
+        assert(index < num());
+        get_view().name()[index] = new_name;
+        get_view().mapped()[index] = new_mapped;
+        get_view().sentinel()[index] = new_sentinel;
+        get_view().count_sentinel()[index] = new_count_sentinel;
     }
-    auto add(std::string_view const new_name,
-             std::uint8_t const new_mapped,
-             std::uint8_t const new_sentinel,
-             std::uint8_t const new_count_sentinel) -> size_type {
-        return ioj::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
-            name.emplace_back(new_name);
-            mapped.emplace_back(new_mapped);
-            sentinel.emplace_back(new_sentinel);
-            count_sentinel.emplace_back(new_count_sentinel);
-        });
+    size_type add(std::string_view const new_name,
+                  std::uint8_t const new_mapped,
+                  std::uint8_t const new_sentinel,
+                  std::uint8_t const new_count_sentinel) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index, new_name, new_mapped, new_sentinel, new_count_sentinel);
+        return index;
     }
-    auto get_view() -> View {
-        return {
-            name,
-            mapped,
-            sentinel,
-            count_sentinel,
-        };
-    }
-    auto get_view() const -> ConstView {
-        return {
-            name,
-            mapped,
-            sentinel,
-            count_sentinel,
-        };
-    }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        return get_view().slice(offset, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_view().slice(offset, count);
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
-        return get_view(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view(offset, count);
-    }
-    auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
+  private:
+    std::pmr::memory_resource* resource_{};
 };
-
 } // namespace ioj::layout

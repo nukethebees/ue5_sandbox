@@ -6,8 +6,7 @@
   :namespace ioj::layout
   :prelude #cpp{#include <optional>}cpp#
   (struct WorkloadTable
-    :storage vector
-    :operations (set-num reset)
+    (single-allocation WorkloadTable)
     (member analysis array @analysis_id)
     (member selections array @row_range)
     (member element_count array @uint64_t)
@@ -30,10 +29,10 @@
       (parameter count @uint64_t)
       (parameter repeat @uint64_t)
       :body #cpp{auto const row{num()};
-set_num(row + 1);
-analysis[row] = owner;
-selections[row] = selected;
-element_count[row] = count;
-multiplicity[row] = repeat;
+add_defaulted(1);
+analysis()[row] = owner;
+selections()[row] = selected;
+element_count()[row] = count;
+multiplicity()[row] = repeat;
 return WorkloadId{row};}cpp#)
   ))

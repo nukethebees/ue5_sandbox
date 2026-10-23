@@ -53,17 +53,17 @@ void record_layout(layout::AnalysisStorage const& storage, layout::AggregateLayo
         ImGui::TableSetupColumn("Padding before");
         ImGui::TableHeadersRow();
         auto const end{record.members.begin + record.members.count};
-        auto const& members{storage.components};
+        auto const members{storage.components.get_const_view().resolve()};
         for (auto row{record.members.begin}; row < end; ++row) {
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
-            label(members.name[row]);
+            label(members.name()[row]);
             ImGui::TableNextColumn();
-            label(number(members.offset_bytes[row]));
+            label(number(members.offset_bytes()[row]));
             ImGui::TableNextColumn();
-            label(number(members.extent_bytes[row]));
+            label(number(members.extent_bytes()[row]));
             ImGui::TableNextColumn();
-            label(number(members.padding_before_bytes[row]));
+            label(number(members.padding_before_bytes()[row]));
         }
         ImGui::EndTable();
     }
@@ -83,17 +83,17 @@ void packed_layout(layout::AnalysisStorage const& storage, layout::PackedLayout 
         ImGui::TableSetupColumn("Low bit");
         ImGui::TableHeadersRow();
         auto const end{packed.fields.begin + packed.fields.count};
-        auto const& fields{storage.fields};
+        auto const fields{storage.fields.get_const_view().resolve()};
         for (auto row{packed.fields.begin}; row < end; ++row) {
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
-            label(fields.name[row]);
+            label(fields.name()[row]);
             ImGui::TableNextColumn();
-            label(storage.strings.view(fields.logical_type[row]));
+            label(storage.strings.view(fields.logical_type()[row]));
             ImGui::TableNextColumn();
-            label(std::to_string(fields.bit_width[row]));
+            label(std::to_string(fields.bit_width()[row]));
             ImGui::TableNextColumn();
-            label(std::to_string(fields.least_significant_bit[row]));
+            label(std::to_string(fields.least_significant_bit()[row]));
         }
         ImGui::EndTable();
     }
@@ -112,17 +112,17 @@ void soa_layout(layout::AnalysisStorage const& storage, layout::SoaLayout const&
         ImGui::TableSetupColumn("Allocation offset");
         ImGui::TableHeadersRow();
         auto const end{soa.columns.begin + soa.columns.count};
-        auto const& columns{storage.columns};
+        auto const columns{storage.columns.get_const_view().resolve()};
         for (auto row{soa.columns.begin}; row < end; ++row) {
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
-            label(columns.name[row]);
+            label(columns.name()[row]);
             ImGui::TableNextColumn();
-            label(storage.strings.view(columns.physical_type[row]));
+            label(storage.strings.view(columns.physical_type()[row]));
             ImGui::TableNextColumn();
-            label(number(columns.total_bytes[row]));
+            label(number(columns.total_bytes()[row]));
             ImGui::TableNextColumn();
-            label(number(columns.allocation_offset_bytes[row]));
+            label(number(columns.allocation_offset_bytes()[row]));
         }
         ImGui::EndTable();
     }
@@ -722,22 +722,22 @@ void PlannerUi::draw_analysis() {
             }
             if (!storage.runs.empty()) {
                 auto const row{storage.runs.front().analysis.value};
-                if (auto const& packed{storage.types.packed[row]}) {
+                if (auto const& packed{storage.types.packed()[row]}) {
                     auto const end{packed->fields.begin + packed->fields.count};
                     for (auto index{packed->fields.begin}; index < end; ++index) {
-                        choose(storage.fields.name[index]);
+                        choose(storage.fields.name()[index]);
                     }
                 }
-                if (auto const& record{storage.types.aggregate[row]}) {
+                if (auto const& record{storage.types.aggregate()[row]}) {
                     auto const end{record->members.begin + record->members.count};
                     for (auto index{record->members.begin}; index < end; ++index) {
-                        choose(storage.components.name[index]);
+                        choose(storage.components.name()[index]);
                     }
                 }
-                if (auto const& soa{storage.types.soa[row]}) {
+                if (auto const& soa{storage.types.soa()[row]}) {
                     auto const end{soa->columns.begin + soa->columns.count};
                     for (auto index{soa->columns.begin}; index < end; ++index) {
-                        choose(storage.columns.name[index]);
+                        choose(storage.columns.name()[index]);
                     }
                 }
             }
@@ -783,77 +783,77 @@ void PlannerUi::draw_analysis() {
         metric("Total storage (bytes)", totals.total_storage_bytes);
         metric("Minimum cache lines", totals.minimum_cache_lines);
         metric("Minimum pages", totals.minimum_pages);
-        if (auto const& value{storage.types.packed[row]}) {
+        if (auto const& value{storage.types.packed()[row]}) {
             packed_layout(storage, *value);
         }
-        if (auto const& value{storage.types.aggregate[row]}) {
+        if (auto const& value{storage.types.aggregate()[row]}) {
             record_layout(storage, *value);
         }
-        if (auto const& value{storage.types.soa[row]}) {
+        if (auto const& value{storage.types.soa()[row]}) {
             soa_layout(storage, *value);
         }
-        if (auto const& value{storage.types.enum_backing[row]}) {
+        if (auto const& value{storage.types.enum_backing()[row]}) {
             metric("Enum backing bits", value->backing_bits);
         }
 
-        auto const scalar{storage.scalars.find(storage.types.schema_type[row])};
+        auto const scalar{storage.scalars.find(storage.types.schema_type()[row])};
         {
-            if (auto const& value{storage.scalars.enum_domain[scalar]}) {
+            if (auto const& value{storage.scalars.enum_domain()[scalar]}) {
                 metric("Enum live values", value->live_value_count);
                 metric("Enum effective width", value->effective_bit_width);
             }
-            if (auto const& value{storage.scalars.integer_domain[scalar]}) {
+            if (auto const& value{storage.scalars.integer_domain()[scalar]}) {
                 metric("Integer effective width", value->effective_bit_width);
                 metric("Integer required width", value->minimum_required_bits);
                 metric("Integer unused codes", value->unused_codes);
             }
-            if (auto const& value{storage.scalars.quantized_encoding[scalar]}) {
+            if (auto const& value{storage.scalars.quantized_encoding()[scalar]}) {
                 metric("Quantized width", value->encoded_storage_bits);
                 ImGui::Text("Resolution: %.9g", static_cast<double>(value->resolution));
                 ImGui::Text("Maximum rounding error: %.9g",
                             static_cast<double>(value->maximum_rounding_error));
             }
-            if (auto const& value{storage.scalars.varint_encoding[scalar]}) {
+            if (auto const& value{storage.scalars.varint_encoding()[scalar]}) {
                 metric("Minimum encoded bytes", value->minimum_encoded_bytes);
                 metric("Maximum encoded bytes", value->maximum_encoded_bytes);
                 metric("Maximum total bytes", totals.maximum_total_bytes);
             }
-            if (auto const& value{storage.scalars.fixed_encoding[scalar]}) {
+            if (auto const& value{storage.scalars.fixed_encoding()[scalar]}) {
                 metric("Fixed point bits", value->total_bits);
                 ImGui::Text("Resolution: %.9g", static_cast<double>(value->resolution));
             }
-            if (auto const& value{storage.scalars.float_encoding[scalar]}) {
+            if (auto const& value{storage.scalars.float_encoding()[scalar]}) {
                 metric("Mini float bits", value->total_bits);
                 ImGui::Text("Maximum relative rounding error: %.9g",
                             static_cast<double>(value->maximum_relative_rounding_error));
             }
-            if (auto const& value{storage.scalars.optional_sentinel_encoding[scalar]}) {
+            if (auto const& value{storage.scalars.optional_sentinel_encoding()[scalar]}) {
                 metric("Optional sentinel bits", value->encoded_storage_bits);
             }
-            if (auto const& value{storage.scalars.optional_presence_encoding[scalar]}) {
+            if (auto const& value{storage.scalars.optional_presence_encoding()[scalar]}) {
                 metric("Optional presence bits", value->encoded_storage_bits);
             }
         }
         if (run.access) {
             auto const access{run.access->value};
             ImGui::SeparatorText("Access footprint");
-            metric("Useful bits", storage.workloads.bits[access].useful);
-            metric("Useful bytes", storage.workloads.bytes[access].useful);
-            metric("Cache bytes touched", storage.workloads.cache[access].bytes);
-            metric("Pages touched", storage.workloads.pages[access].count);
+            metric("Useful bits", storage.workloads.bits()[access].useful);
+            metric("Useful bytes", storage.workloads.bytes()[access].useful);
+            metric("Cache bytes touched", storage.workloads.cache()[access].bytes);
+            metric("Pages touched", storage.workloads.pages()[access].count);
         }
         if (run.distribution) {
             auto const distribution{run.distribution->value};
             auto const& values{storage.distributions};
             ImGui::SeparatorText("Distribution");
-            metric("Total weight", values.total_weight[distribution]);
-            if (values.expected_extent_bytes[distribution]) {
+            metric("Total weight", values.total_weight()[distribution]);
+            if (values.expected_extent_bytes()[distribution]) {
                 ImGui::Text("Expected extent (bytes): %.9g",
-                            static_cast<double>(*values.expected_extent_bytes[distribution]));
+                            static_cast<double>(*values.expected_extent_bytes()[distribution]));
             }
-            if (values.expected_slack_bytes[distribution]) {
+            if (values.expected_slack_bytes()[distribution]) {
                 ImGui::Text("Expected slack (bytes): %.9g",
-                            static_cast<double>(*values.expected_slack_bytes[distribution]));
+                            static_cast<double>(*values.expected_slack_bytes()[distribution]));
             }
         }
         if (settings.comparison_abi && ImGui::CollapsingHeader("Target comparison")) {
@@ -863,10 +863,10 @@ void PlannerUi::draw_analysis() {
                        totals.total_storage_bytes,
                        storage.totals[1].total_storage_bytes);
             auto const second{storage.runs[1].analysis.value};
-            if (storage.types.soa[row] && storage.types.soa[second]) {
+            if (storage.types.soa()[row] && storage.types.soa()[second]) {
                 comparison("SoA allocation bytes",
-                           storage.types.soa[row]->total_allocation_bytes,
-                           storage.types.soa[second]->total_allocation_bytes);
+                           storage.types.soa()[row]->total_allocation_bytes,
+                           storage.types.soa()[second]->total_allocation_bytes);
             }
         }
     }
@@ -1095,10 +1095,10 @@ void PlannerUi::draw_variants() {
                        storage.totals[3].total_storage_bytes);
             auto const first{storage.runs[2].analysis.value};
             auto const second{storage.runs[3].analysis.value};
-            if (storage.types.soa[first] && storage.types.soa[second]) {
+            if (storage.types.soa()[first] && storage.types.soa()[second]) {
                 comparison("SoA allocation bytes",
-                           storage.types.soa[first]->total_allocation_bytes,
-                           storage.types.soa[second]->total_allocation_bytes);
+                           storage.types.soa()[first]->total_allocation_bytes,
+                           storage.types.soa()[second]->total_allocation_bytes);
             }
         }
     }

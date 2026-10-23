@@ -7,7 +7,6 @@
 #include "ioj/layout/analysis/physical_fact_id.hpp"
 #include "ioj/layout/analyzer/cache_line_tiling.hpp"
 #include "ioj/native_soa/storage.h"
-#include "ioj/native_soa/vector_storage_ops.h"
 
 #include "lispb/indices.h"
 #include "lispb/schema/indices.h"
@@ -15,221 +14,357 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <memory_resource>
 #include <optional>
 #include <string_view>
-#include <utility>
 
 namespace ioj::layout {
 struct SoaColumnTableSchema;
 
-struct SoaColumnTableView;
-struct SoaColumnTableConstView;
-struct SoaColumnTableConstView {
-    using View = SoaColumnTableView;
-    using ConstView = SoaColumnTableConstView;
-    using size_type = std::uint32_t;
-    std::span<ioj::layout::AnalysisId const> parent;
-    std::span<std::string_view const> name;
-    std::span<lispb::schema::TypeId const> semantic_type;
-    std::span<lispb::StringId const> schema_type;
-    std::span<lispb::StringId const> physical_type;
-    std::span<std::uint8_t const> overridden;
-    std::span<std::optional<ioj::layout::PhysicalFactId> const> type_facts;
-    std::span<std::optional<std::uint64_t> const> total_bytes;
-    std::span<std::optional<std::uint64_t> const> allocation_offset_bytes;
-    std::span<std::optional<std::uint64_t> const> padding_before_bytes;
-    std::span<std::optional<std::uint64_t> const> minimum_cache_lines;
-    std::span<std::optional<std::uint64_t> const> elements_per_cache_line;
-    std::span<std::optional<std::uint64_t> const> minimum_pages;
-    std::span<std::optional<std::uint64_t> const> complete_elements_per_page;
-    std::span<std::optional<ioj::layout::CacheLineTiling> const> cache_line_tiling;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(parent.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(parent);
-        fn(name);
-        fn(semantic_type);
-        fn(schema_type);
-        fn(physical_type);
-        fn(overridden);
-        fn(type_facts);
-        fn(total_bytes);
-        fn(allocation_offset_bytes);
-        fn(padding_before_bytes);
-        fn(minimum_cache_lines);
-        fn(elements_per_cache_line);
-        fn(minimum_pages);
-        fn(complete_elements_per_page);
-        fn(cache_line_tiling);
-    }
-    void validate_array_sizes() const {
-        ioj::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> SoaColumnTableConstView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            parent.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            name.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            semantic_type.subspan(static_cast<std::size_t>(offset),
-                                  static_cast<std::size_t>(count)),
-            schema_type.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            physical_type.subspan(static_cast<std::size_t>(offset),
-                                  static_cast<std::size_t>(count)),
-            overridden.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            type_facts.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            total_bytes.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            allocation_offset_bytes.subspan(static_cast<std::size_t>(offset),
-                                            static_cast<std::size_t>(count)),
-            padding_before_bytes.subspan(static_cast<std::size_t>(offset),
-                                         static_cast<std::size_t>(count)),
-            minimum_cache_lines.subspan(static_cast<std::size_t>(offset),
-                                        static_cast<std::size_t>(count)),
-            elements_per_cache_line.subspan(static_cast<std::size_t>(offset),
-                                            static_cast<std::size_t>(count)),
-            minimum_pages.subspan(static_cast<std::size_t>(offset),
-                                  static_cast<std::size_t>(count)),
-            complete_elements_per_page.subspan(static_cast<std::size_t>(offset),
-                                               static_cast<std::size_t>(count)),
-            cache_line_tiling.subspan(static_cast<std::size_t>(offset),
-                                      static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> SoaColumnTableConstView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> SoaColumnTableConstView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            parent,
-            name,
-            semantic_type,
-            schema_type,
-            physical_type,
-            overridden,
-            type_facts,
-            total_bytes,
-            allocation_offset_bytes,
-            padding_before_bytes,
-            minimum_cache_lines,
-            elements_per_cache_line,
-            minimum_pages,
-            complete_elements_per_page,
-            cache_line_tiling,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> SoaColumnTableConstView { return slice(0, count); }
-    auto right(size_type const count) const -> SoaColumnTableConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
+struct SoaColumnTableSingleView;
+struct SoaColumnTableSingleConstView;
+struct SoaColumnTableSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ioj::native_soa::ColumnLayout<T>;
+
+    ioj::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<AnalysisId> ParentColumn;
+    ColLayout<std::string_view> NameColumn;
+    ColLayout<lispb::schema::TypeId> SemanticTypeColumn;
+    ColLayout<lispb::StringId> SchemaTypeColumn;
+    ColLayout<lispb::StringId> PhysicalTypeColumn;
+    ColLayout<std::uint8_t> OverriddenColumn;
+    ColLayout<std::optional<ioj::layout::PhysicalFactId>> TypeFactsColumn;
+    ColLayout<std::optional<std::uint64_t>> TotalBytesColumn;
+    ColLayout<std::optional<std::uint64_t>> AllocationOffsetBytesColumn;
+    ColLayout<std::optional<std::uint64_t>> PaddingBeforeBytesColumn;
+    ColLayout<std::optional<std::uint64_t>> MinimumCacheLinesColumn;
+    ColLayout<std::optional<std::uint64_t>> ElementsPerCacheLineColumn;
+    ColLayout<std::optional<std::uint64_t>> MinimumPagesColumn;
+    ColLayout<std::optional<std::uint64_t>> CompleteElementsPerPageColumn;
+    ColLayout<std::optional<ioj::layout::CacheLineTiling>> CacheLineTilingColumn;
+
+    constexpr SoaColumnTableSingleLayoutColumns() noexcept
+        : ParentColumn{LayoutStart}
+        , NameColumn{ParentColumn}
+        , SemanticTypeColumn{NameColumn}
+        , SchemaTypeColumn{SemanticTypeColumn}
+        , PhysicalTypeColumn{SchemaTypeColumn}
+        , OverriddenColumn{PhysicalTypeColumn}
+        , TypeFactsColumn{OverriddenColumn}
+        , TotalBytesColumn{TypeFactsColumn}
+        , AllocationOffsetBytesColumn{TotalBytesColumn}
+        , PaddingBeforeBytesColumn{AllocationOffsetBytesColumn}
+        , MinimumCacheLinesColumn{PaddingBeforeBytesColumn}
+        , ElementsPerCacheLineColumn{MinimumCacheLinesColumn}
+        , MinimumPagesColumn{ElementsPerCacheLineColumn}
+        , CompleteElementsPerPageColumn{MinimumPagesColumn}
+        , CacheLineTilingColumn{CompleteElementsPerPageColumn} {}
+    SoaColumnTableSingleLayoutColumns(SoaColumnTableSingleLayoutColumns const&) = delete;
+    auto operator=(SoaColumnTableSingleLayoutColumns const&)
+        -> SoaColumnTableSingleLayoutColumns& = delete;
 };
-struct SoaColumnTableView {
-    using View = SoaColumnTableView;
-    using ConstView = SoaColumnTableConstView;
+struct SoaColumnTableSingleLayout {
     using size_type = std::uint32_t;
-    std::span<ioj::layout::AnalysisId> parent;
-    std::span<std::string_view> name;
-    std::span<lispb::schema::TypeId> semantic_type;
-    std::span<lispb::StringId> schema_type;
-    std::span<lispb::StringId> physical_type;
-    std::span<std::uint8_t> overridden;
-    std::span<std::optional<ioj::layout::PhysicalFactId>> type_facts;
-    std::span<std::optional<std::uint64_t>> total_bytes;
-    std::span<std::optional<std::uint64_t>> allocation_offset_bytes;
-    std::span<std::optional<std::uint64_t>> padding_before_bytes;
-    std::span<std::optional<std::uint64_t>> minimum_cache_lines;
-    std::span<std::optional<std::uint64_t>> elements_per_cache_line;
-    std::span<std::optional<std::uint64_t>> minimum_pages;
-    std::span<std::optional<std::uint64_t>> complete_elements_per_page;
-    std::span<std::optional<ioj::layout::CacheLineTiling>> cache_line_tiling;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(parent.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(parent);
-        fn(name);
-        fn(semantic_type);
-        fn(schema_type);
-        fn(physical_type);
-        fn(overridden);
-        fn(type_facts);
-        fn(total_bytes);
-        fn(allocation_offset_bytes);
-        fn(padding_before_bytes);
-        fn(minimum_cache_lines);
-        fn(elements_per_cache_line);
-        fn(minimum_pages);
-        fn(complete_elements_per_page);
-        fn(cache_line_tiling);
+    using byte_size_type = std::size_t;
+
+    static constexpr size_type capacity_granularity{
+        ioj::native_soa::LayoutPolicy::capacity_granularity};
+    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
+
+    static constexpr SoaColumnTableSingleLayoutColumns columns{};
+
+    static constexpr byte_size_type allocation_alignment{
+        columns.CacheLineTilingColumn.allocation_alignment};
+
+    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
+    // capacity.
+    static constexpr byte_size_type capacity_block_bound{
+        ioj::native_soa::capacity_block_bound(columns.CacheLineTilingColumn)};
+    static constexpr size_type max_capacity{
+        ioj::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0 ? 0 : columns.CacheLineTilingColumn.data_end(blocks);
     }
-    void validate_array_sizes() const {
-        ioj::native_soa::vector_storage_ops::validate_array_sizes(*this);
+    static_assert(max_capacity >= capacity_granularity);
+};
+
+struct SoaColumnTableSingleResolvedView;
+struct SoaColumnTableSingleResolvedConstView;
+template <bool Const>
+struct SoaColumnTableSingleResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = SoaColumnTableSingleResolvedView;
+    using ConstView = SoaColumnTableSingleResolvedConstView;
+    using soa_schema = SoaColumnTableSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    SoaColumnTableSingleResolvedViewImpl() = default;
+    SoaColumnTableSingleResolvedViewImpl(
+        Element<ioj::layout::AnalysisId>* parent,
+        Element<std::string_view>* name,
+        Element<lispb::schema::TypeId>* semantic_type,
+        Element<lispb::StringId>* schema_type,
+        Element<lispb::StringId>* physical_type,
+        Element<std::uint8_t>* overridden,
+        Element<std::optional<ioj::layout::PhysicalFactId>>* type_facts,
+        Element<std::optional<std::uint64_t>>* total_bytes,
+        Element<std::optional<std::uint64_t>>* allocation_offset_bytes,
+        Element<std::optional<std::uint64_t>>* padding_before_bytes,
+        Element<std::optional<std::uint64_t>>* minimum_cache_lines,
+        Element<std::optional<std::uint64_t>>* elements_per_cache_line,
+        Element<std::optional<std::uint64_t>>* minimum_pages,
+        Element<std::optional<std::uint64_t>>* complete_elements_per_page,
+        Element<std::optional<ioj::layout::CacheLineTiling>>* cache_line_tiling,
+        size_type count)
+        : parent_{parent}
+        , name_{name}
+        , semantic_type_{semantic_type}
+        , schema_type_{schema_type}
+        , physical_type_{physical_type}
+        , overridden_{overridden}
+        , type_facts_{type_facts}
+        , total_bytes_{total_bytes}
+        , allocation_offset_bytes_{allocation_offset_bytes}
+        , padding_before_bytes_{padding_before_bytes}
+        , minimum_cache_lines_{minimum_cache_lines}
+        , elements_per_cache_line_{elements_per_cache_line}
+        , minimum_pages_{minimum_pages}
+        , complete_elements_per_page_{complete_elements_per_page}
+        , cache_line_tiling_{cache_line_tiling}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(count_,
+                                                          parent_,
+                                                          name_,
+                                                          semantic_type_,
+                                                          schema_type_,
+                                                          physical_type_,
+                                                          overridden_,
+                                                          type_facts_,
+                                                          total_bytes_,
+                                                          allocation_offset_bytes_,
+                                                          padding_before_bytes_,
+                                                          minimum_cache_lines_,
+                                                          elements_per_cache_line_,
+                                                          minimum_pages_,
+                                                          complete_elements_per_page_,
+                                                          cache_line_tiling_);
     }
-    auto slice(size_type const offset, size_type const count) const -> SoaColumnTableView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            parent.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            name.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            semantic_type.subspan(static_cast<std::size_t>(offset),
-                                  static_cast<std::size_t>(count)),
-            schema_type.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            physical_type.subspan(static_cast<std::size_t>(offset),
-                                  static_cast<std::size_t>(count)),
-            overridden.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            type_facts.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            total_bytes.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            allocation_offset_bytes.subspan(static_cast<std::size_t>(offset),
-                                            static_cast<std::size_t>(count)),
-            padding_before_bytes.subspan(static_cast<std::size_t>(offset),
-                                         static_cast<std::size_t>(count)),
-            minimum_cache_lines.subspan(static_cast<std::size_t>(offset),
-                                        static_cast<std::size_t>(count)),
-            elements_per_cache_line.subspan(static_cast<std::size_t>(offset),
-                                            static_cast<std::size_t>(count)),
-            minimum_pages.subspan(static_cast<std::size_t>(offset),
-                                  static_cast<std::size_t>(count)),
-            complete_elements_per_page.subspan(static_cast<std::size_t>(offset),
-                                               static_cast<std::size_t>(count)),
-            cache_line_tiling.subspan(static_cast<std::size_t>(offset),
-                                      static_cast<std::size_t>(count)),
-        };
+    SoaColumnTableSingleResolvedViewImpl(
+        std::span<Element<ioj::layout::AnalysisId>> parent,
+        std::span<Element<std::string_view>> name,
+        std::span<Element<lispb::schema::TypeId>> semantic_type,
+        std::span<Element<lispb::StringId>> schema_type,
+        std::span<Element<lispb::StringId>> physical_type,
+        std::span<Element<std::uint8_t>> overridden,
+        std::span<Element<std::optional<ioj::layout::PhysicalFactId>>> type_facts,
+        std::span<Element<std::optional<std::uint64_t>>> total_bytes,
+        std::span<Element<std::optional<std::uint64_t>>> allocation_offset_bytes,
+        std::span<Element<std::optional<std::uint64_t>>> padding_before_bytes,
+        std::span<Element<std::optional<std::uint64_t>>> minimum_cache_lines,
+        std::span<Element<std::optional<std::uint64_t>>> elements_per_cache_line,
+        std::span<Element<std::optional<std::uint64_t>>> minimum_pages,
+        std::span<Element<std::optional<std::uint64_t>>> complete_elements_per_page,
+        std::span<Element<std::optional<ioj::layout::CacheLineTiling>>> cache_line_tiling)
+        : SoaColumnTableSingleResolvedViewImpl{
+              parent.data(),
+              name.data(),
+              semantic_type.data(),
+              schema_type.data(),
+              physical_type.data(),
+              overridden.data(),
+              type_facts.data(),
+              total_bytes.data(),
+              allocation_offset_bytes.data(),
+              padding_before_bytes.data(),
+              minimum_cache_lines.data(),
+              elements_per_cache_line.data(),
+              minimum_pages.data(),
+              complete_elements_per_page.data(),
+              cache_line_tiling.data(),
+              ioj::soa_storage_detail::checked_row_count(parent.size())} {
+        assert(parent.size() == count_);
+        assert(name.size() == count_);
+        assert(semantic_type.size() == count_);
+        assert(schema_type.size() == count_);
+        assert(physical_type.size() == count_);
+        assert(overridden.size() == count_);
+        assert(type_facts.size() == count_);
+        assert(total_bytes.size() == count_);
+        assert(allocation_offset_bytes.size() == count_);
+        assert(padding_before_bytes.size() == count_);
+        assert(minimum_cache_lines.size() == count_);
+        assert(elements_per_cache_line.size() == count_);
+        assert(minimum_pages.size() == count_);
+        assert(complete_elements_per_page.size() == count_);
+        assert(cache_line_tiling.size() == count_);
     }
-    auto get_view() const -> SoaColumnTableView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> SoaColumnTableView {
-        return slice(offset, count);
+    template <bool Enabled = Const>
+    SoaColumnTableSingleResolvedViewImpl(SoaColumnTableSingleResolvedViewImpl<false> const& other)
+        requires Enabled
+        : parent_{other.parent_}
+        , name_{other.name_}
+        , semantic_type_{other.semantic_type_}
+        , schema_type_{other.schema_type_}
+        , physical_type_{other.physical_type_}
+        , overridden_{other.overridden_}
+        , type_facts_{other.type_facts_}
+        , total_bytes_{other.total_bytes_}
+        , allocation_offset_bytes_{other.allocation_offset_bytes_}
+        , padding_before_bytes_{other.padding_before_bytes_}
+        , minimum_cache_lines_{other.minimum_cache_lines_}
+        , elements_per_cache_line_{other.elements_per_cache_line_}
+        , minimum_pages_{other.minimum_pages_}
+        , complete_elements_per_page_{other.complete_elements_per_page_}
+        , cache_line_tiling_{other.cache_line_tiling_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.parent_,
+                      self.name_,
+                      self.semantic_type_,
+                      self.schema_type_,
+                      self.physical_type_,
+                      self.overridden_,
+                      self.type_facts_,
+                      self.total_bytes_,
+                      self.allocation_offset_bytes_,
+                      self.padding_before_bytes_,
+                      self.minimum_cache_lines_,
+                      self.elements_per_cache_line_,
+                      self.minimum_pages_,
+                      self.complete_elements_per_page_,
+                      self.cache_line_tiling_,
+                      self.count_};
     }
-    auto get_const_view() const -> ConstView {
-        return {
-            parent,
-            name,
-            semantic_type,
-            schema_type,
-            physical_type,
-            overridden,
-            type_facts,
-            total_bytes,
-            allocation_offset_bytes,
-            padding_before_bytes,
-            minimum_cache_lines,
-            elements_per_cache_line,
-            minimum_pages,
-            complete_elements_per_page,
-            cache_line_tiling,
-        };
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{
+            self.parent_ == nullptr ? nullptr : self.parent_ + offset,
+            self.name_ == nullptr ? nullptr : self.name_ + offset,
+            self.semantic_type_ == nullptr ? nullptr : self.semantic_type_ + offset,
+            self.schema_type_ == nullptr ? nullptr : self.schema_type_ + offset,
+            self.physical_type_ == nullptr ? nullptr : self.physical_type_ + offset,
+            self.overridden_ == nullptr ? nullptr : self.overridden_ + offset,
+            self.type_facts_ == nullptr ? nullptr : self.type_facts_ + offset,
+            self.total_bytes_ == nullptr ? nullptr : self.total_bytes_ + offset,
+            self.allocation_offset_bytes_ == nullptr ? nullptr
+                                                     : self.allocation_offset_bytes_ + offset,
+            self.padding_before_bytes_ == nullptr ? nullptr : self.padding_before_bytes_ + offset,
+            self.minimum_cache_lines_ == nullptr ? nullptr : self.minimum_cache_lines_ + offset,
+            self.elements_per_cache_line_ == nullptr ? nullptr
+                                                     : self.elements_per_cache_line_ + offset,
+            self.minimum_pages_ == nullptr ? nullptr : self.minimum_pages_ + offset,
+            self.complete_elements_per_page_ == nullptr ? nullptr
+                                                        : self.complete_elements_per_page_ + offset,
+            self.cache_line_tiling_ == nullptr ? nullptr : self.cache_line_tiling_ + offset,
+            count};
     }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
     }
-    auto left(size_type const count) const -> SoaColumnTableView { return slice(0, count); }
-    auto right(size_type const count) const -> SoaColumnTableView {
-        assert(count <= num());
-        return slice(num() - count, count);
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
     }
-    void set(size_type const index,
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto parent() const -> std::span<Element<ioj::layout::AnalysisId>> { return {parent_, count_}; }
+    auto name() const -> std::span<Element<std::string_view>> { return {name_, count_}; }
+    auto semantic_type() const -> std::span<Element<lispb::schema::TypeId>> {
+        return {semantic_type_, count_};
+    }
+    auto schema_type() const -> std::span<Element<lispb::StringId>> {
+        return {schema_type_, count_};
+    }
+    auto physical_type() const -> std::span<Element<lispb::StringId>> {
+        return {physical_type_, count_};
+    }
+    auto overridden() const -> std::span<Element<std::uint8_t>> { return {overridden_, count_}; }
+    auto type_facts() const -> std::span<Element<std::optional<ioj::layout::PhysicalFactId>>> {
+        return {type_facts_, count_};
+    }
+    auto total_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
+        return {total_bytes_, count_};
+    }
+    auto allocation_offset_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
+        return {allocation_offset_bytes_, count_};
+    }
+    auto padding_before_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
+        return {padding_before_bytes_, count_};
+    }
+    auto minimum_cache_lines() const -> std::span<Element<std::optional<std::uint64_t>>> {
+        return {minimum_cache_lines_, count_};
+    }
+    auto elements_per_cache_line() const -> std::span<Element<std::optional<std::uint64_t>>> {
+        return {elements_per_cache_line_, count_};
+    }
+    auto minimum_pages() const -> std::span<Element<std::optional<std::uint64_t>>> {
+        return {minimum_pages_, count_};
+    }
+    auto complete_elements_per_page() const -> std::span<Element<std::optional<std::uint64_t>>> {
+        return {complete_elements_per_page_, count_};
+    }
+    auto cache_line_tiling() const
+        -> std::span<Element<std::optional<ioj::layout::CacheLineTiling>>> {
+        return {cache_line_tiling_, count_};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<ioj::layout::AnalysisId>>{parent_, count_});
+        func(std::span<Element<std::string_view>>{name_, count_});
+        func(std::span<Element<lispb::schema::TypeId>>{semantic_type_, count_});
+        func(std::span<Element<lispb::StringId>>{schema_type_, count_});
+        func(std::span<Element<lispb::StringId>>{physical_type_, count_});
+        func(std::span<Element<std::uint8_t>>{overridden_, count_});
+        func(std::span<Element<std::optional<ioj::layout::PhysicalFactId>>>{type_facts_, count_});
+        func(std::span<Element<std::optional<std::uint64_t>>>{total_bytes_, count_});
+        func(std::span<Element<std::optional<std::uint64_t>>>{allocation_offset_bytes_, count_});
+        func(std::span<Element<std::optional<std::uint64_t>>>{padding_before_bytes_, count_});
+        func(std::span<Element<std::optional<std::uint64_t>>>{minimum_cache_lines_, count_});
+        func(std::span<Element<std::optional<std::uint64_t>>>{elements_per_cache_line_, count_});
+        func(std::span<Element<std::optional<std::uint64_t>>>{minimum_pages_, count_});
+        func(std::span<Element<std::optional<std::uint64_t>>>{complete_elements_per_page_, count_});
+        func(std::span<Element<std::optional<ioj::layout::CacheLineTiling>>>{cache_line_tiling_,
+                                                                             count_});
+    }
+  private:
+    template <bool>
+    friend struct SoaColumnTableSingleResolvedViewImpl;
+    Element<ioj::layout::AnalysisId>* parent_{};
+    Element<std::string_view>* name_{};
+    Element<lispb::schema::TypeId>* semantic_type_{};
+    Element<lispb::StringId>* schema_type_{};
+    Element<lispb::StringId>* physical_type_{};
+    Element<std::uint8_t>* overridden_{};
+    Element<std::optional<ioj::layout::PhysicalFactId>>* type_facts_{};
+    Element<std::optional<std::uint64_t>>* total_bytes_{};
+    Element<std::optional<std::uint64_t>>* allocation_offset_bytes_{};
+    Element<std::optional<std::uint64_t>>* padding_before_bytes_{};
+    Element<std::optional<std::uint64_t>>* minimum_cache_lines_{};
+    Element<std::optional<std::uint64_t>>* elements_per_cache_line_{};
+    Element<std::optional<std::uint64_t>>* minimum_pages_{};
+    Element<std::optional<std::uint64_t>>* complete_elements_per_page_{};
+    Element<std::optional<ioj::layout::CacheLineTiling>>* cache_line_tiling_{};
+    size_type count_{};
+};
+struct SoaColumnTableSingleResolvedConstView : SoaColumnTableSingleResolvedViewImpl<true> {
+    using Base = SoaColumnTableSingleResolvedViewImpl<true>;
+    using Base::Base;
+};
+struct SoaColumnTableSingleResolvedView : SoaColumnTableSingleResolvedViewImpl<false> {
+    using Base = SoaColumnTableSingleResolvedViewImpl<false>;
+    using Base::Base;
+    void set(size_type index,
              ioj::layout::AnalysisId const new_parent,
              std::string_view const new_name,
              lispb::schema::TypeId const new_semantic_type,
@@ -246,95 +381,436 @@ struct SoaColumnTableView {
              std::optional<std::uint64_t> const new_complete_elements_per_page,
              std::optional<ioj::layout::CacheLineTiling> const new_cache_line_tiling) const {
         assert(index < num());
-        parent[static_cast<std::size_t>(index)] = new_parent;
-        name[static_cast<std::size_t>(index)] = new_name;
-        semantic_type[static_cast<std::size_t>(index)] = new_semantic_type;
-        schema_type[static_cast<std::size_t>(index)] = new_schema_type;
-        physical_type[static_cast<std::size_t>(index)] = new_physical_type;
-        overridden[static_cast<std::size_t>(index)] = new_overridden;
-        type_facts[static_cast<std::size_t>(index)] = new_type_facts;
-        total_bytes[static_cast<std::size_t>(index)] = new_total_bytes;
-        allocation_offset_bytes[static_cast<std::size_t>(index)] = new_allocation_offset_bytes;
-        padding_before_bytes[static_cast<std::size_t>(index)] = new_padding_before_bytes;
-        minimum_cache_lines[static_cast<std::size_t>(index)] = new_minimum_cache_lines;
-        elements_per_cache_line[static_cast<std::size_t>(index)] = new_elements_per_cache_line;
-        minimum_pages[static_cast<std::size_t>(index)] = new_minimum_pages;
-        complete_elements_per_page[static_cast<std::size_t>(index)] =
-            new_complete_elements_per_page;
-        cache_line_tiling[static_cast<std::size_t>(index)] = new_cache_line_tiling;
+        this->parent()[index] = new_parent;
+        this->name()[index] = new_name;
+        this->semantic_type()[index] = new_semantic_type;
+        this->schema_type()[index] = new_schema_type;
+        this->physical_type()[index] = new_physical_type;
+        this->overridden()[index] = new_overridden;
+        this->type_facts()[index] = new_type_facts;
+        this->total_bytes()[index] = new_total_bytes;
+        this->allocation_offset_bytes()[index] = new_allocation_offset_bytes;
+        this->padding_before_bytes()[index] = new_padding_before_bytes;
+        this->minimum_cache_lines()[index] = new_minimum_cache_lines;
+        this->elements_per_cache_line()[index] = new_elements_per_cache_line;
+        this->minimum_pages()[index] = new_minimum_pages;
+        this->complete_elements_per_page()[index] = new_complete_elements_per_page;
+        this->cache_line_tiling()[index] = new_cache_line_tiling;
     }
 };
-struct SoaColumnTable {
-    using View = SoaColumnTableView;
-    using ConstView = SoaColumnTableConstView;
+template <bool Const>
+struct SoaColumnTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = SoaColumnTableSchema;
     using size_type = std::uint32_t;
-    ioj::native_soa::Vector<ioj::layout::AnalysisId> parent;
-    ioj::native_soa::Vector<std::string_view> name;
-    ioj::native_soa::Vector<lispb::schema::TypeId> semantic_type;
-    ioj::native_soa::Vector<lispb::StringId> schema_type;
-    ioj::native_soa::Vector<lispb::StringId> physical_type;
-    ioj::native_soa::Vector<std::uint8_t> overridden;
-    ioj::native_soa::Vector<std::optional<ioj::layout::PhysicalFactId>> type_facts;
-    ioj::native_soa::Vector<std::optional<std::uint64_t>> total_bytes;
-    ioj::native_soa::Vector<std::optional<std::uint64_t>> allocation_offset_bytes;
-    ioj::native_soa::Vector<std::optional<std::uint64_t>> padding_before_bytes;
-    ioj::native_soa::Vector<std::optional<std::uint64_t>> minimum_cache_lines;
-    ioj::native_soa::Vector<std::optional<std::uint64_t>> elements_per_cache_line;
-    ioj::native_soa::Vector<std::optional<std::uint64_t>> minimum_pages;
-    ioj::native_soa::Vector<std::optional<std::uint64_t>> complete_elements_per_page;
-    ioj::native_soa::Vector<std::optional<ioj::layout::CacheLineTiling>> cache_line_tiling;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(parent.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) {
-        fn(parent);
-        fn(name);
-        fn(semantic_type);
-        fn(schema_type);
-        fn(physical_type);
-        fn(overridden);
-        fn(type_facts);
-        fn(total_bytes);
-        fn(allocation_offset_bytes);
-        fn(padding_before_bytes);
-        fn(minimum_cache_lines);
-        fn(elements_per_cache_line);
-        fn(minimum_pages);
-        fn(complete_elements_per_page);
-        fn(cache_line_tiling);
+    using Layout = SoaColumnTableSingleLayout;
+    using Storage = ioj::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    using View = SoaColumnTableSingleView;
+    using ConstView = SoaColumnTableSingleConstView;
+    SoaColumnTableSingleViewImpl() = default;
+    SoaColumnTableSingleViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+    template <bool Enabled = Const>
+    SoaColumnTableSingleViewImpl(SoaColumnTableSingleViewImpl<false> const& other)
+        requires Enabled
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    auto parent() const { return make_column_view(Layout::columns.ParentColumn); }
+    auto name() const { return make_column_view(Layout::columns.NameColumn); }
+    auto semantic_type() const { return make_column_view(Layout::columns.SemanticTypeColumn); }
+    auto schema_type() const { return make_column_view(Layout::columns.SchemaTypeColumn); }
+    auto physical_type() const { return make_column_view(Layout::columns.PhysicalTypeColumn); }
+    auto overridden() const { return make_column_view(Layout::columns.OverriddenColumn); }
+    auto type_facts() const { return make_column_view(Layout::columns.TypeFactsColumn); }
+    auto total_bytes() const { return make_column_view(Layout::columns.TotalBytesColumn); }
+    auto allocation_offset_bytes() const {
+        return make_column_view(Layout::columns.AllocationOffsetBytesColumn);
     }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(parent);
-        fn(name);
-        fn(semantic_type);
-        fn(schema_type);
-        fn(physical_type);
-        fn(overridden);
-        fn(type_facts);
-        fn(total_bytes);
-        fn(allocation_offset_bytes);
-        fn(padding_before_bytes);
-        fn(minimum_cache_lines);
-        fn(elements_per_cache_line);
-        fn(minimum_pages);
-        fn(complete_elements_per_page);
-        fn(cache_line_tiling);
+    auto padding_before_bytes() const {
+        return make_column_view(Layout::columns.PaddingBeforeBytesColumn);
     }
-    void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void set_num(size_type const count) {
-        ioj::native_soa::vector_storage_ops::set_num(*this, count);
+    auto minimum_cache_lines() const {
+        return make_column_view(Layout::columns.MinimumCacheLinesColumn);
     }
-    void reset() { ioj::native_soa::vector_storage_ops::reset(*this); }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        ioj::native_soa::vector_storage_ops::apply_permutation(*this, indices);
+    auto elements_per_cache_line() const {
+        return make_column_view(Layout::columns.ElementsPerCacheLineColumn);
     }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        ioj::native_soa::vector_storage_ops::sort(
-            *this, std::forward<Compare>(compare), scratch_indices);
+    auto minimum_pages() const { return make_column_view(Layout::columns.MinimumPagesColumn); }
+    auto complete_elements_per_page() const {
+        return make_column_view(Layout::columns.CompleteElementsPerPageColumn);
     }
-    void set(size_type const index,
+    auto cache_line_tiling() const {
+        return make_column_view(Layout::columns.CacheLineTilingColumn);
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(parent());
+        func(name());
+        func(semantic_type());
+        func(schema_type());
+        func(physical_type());
+        func(overridden());
+        func(type_facts());
+        func(total_bytes());
+        func(allocation_offset_bytes());
+        func(padding_before_bytes());
+        func(minimum_cache_lines());
+        func(elements_per_cache_line());
+        func(minimum_pages());
+        func(complete_elements_per_page());
+        func(cache_line_tiling());
+    }
+    auto resolve() const -> std::conditional_t<Const,
+                                               SoaColumnTableSingleResolvedConstView,
+                                               SoaColumnTableSingleResolvedView> {
+        return {(make_column_view(Layout::columns.ParentColumn).data()),
+                (make_column_view(Layout::columns.NameColumn).data()),
+                (make_column_view(Layout::columns.SemanticTypeColumn).data()),
+                (make_column_view(Layout::columns.SchemaTypeColumn).data()),
+                (make_column_view(Layout::columns.PhysicalTypeColumn).data()),
+                (make_column_view(Layout::columns.OverriddenColumn).data()),
+                (make_column_view(Layout::columns.TypeFactsColumn).data()),
+                (make_column_view(Layout::columns.TotalBytesColumn).data()),
+                (make_column_view(Layout::columns.AllocationOffsetBytesColumn).data()),
+                (make_column_view(Layout::columns.PaddingBeforeBytesColumn).data()),
+                (make_column_view(Layout::columns.MinimumCacheLinesColumn).data()),
+                (make_column_view(Layout::columns.ElementsPerCacheLineColumn).data()),
+                (make_column_view(Layout::columns.MinimumPagesColumn).data()),
+                (make_column_view(Layout::columns.CompleteElementsPerPageColumn).data()),
+                (make_column_view(Layout::columns.CacheLineTilingColumn).data()),
+                count_};
+    }
+  private:
+    template <typename T>
+    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
+    friend ioj::soa_storage_detail::CompactViewOperations;
+    template <bool>
+    friend struct SoaColumnTableSingleViewImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
+struct SoaColumnTableSingleConstView : SoaColumnTableSingleViewImpl<true> {
+    using Base = SoaColumnTableSingleViewImpl<true>;
+    using Base::Base;
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<SoaColumnTableSingleConstView>());
+struct SoaColumnTableSingleView : SoaColumnTableSingleViewImpl<false> {
+    using Base = SoaColumnTableSingleViewImpl<false>;
+    using Base::Base;
+    void set(size_type index,
+             ioj::layout::AnalysisId const new_parent,
+             std::string_view const new_name,
+             lispb::schema::TypeId const new_semantic_type,
+             lispb::StringId const new_schema_type,
+             lispb::StringId const new_physical_type,
+             std::uint8_t const new_overridden,
+             std::optional<ioj::layout::PhysicalFactId> const new_type_facts,
+             std::optional<std::uint64_t> const new_total_bytes,
+             std::optional<std::uint64_t> const new_allocation_offset_bytes,
+             std::optional<std::uint64_t> const new_padding_before_bytes,
+             std::optional<std::uint64_t> const new_minimum_cache_lines,
+             std::optional<std::uint64_t> const new_elements_per_cache_line,
+             std::optional<std::uint64_t> const new_minimum_pages,
+             std::optional<std::uint64_t> const new_complete_elements_per_page,
+             std::optional<ioj::layout::CacheLineTiling> const new_cache_line_tiling) const {
+        assert(index < num());
+        this->parent()[index] = new_parent;
+        this->name()[index] = new_name;
+        this->semantic_type()[index] = new_semantic_type;
+        this->schema_type()[index] = new_schema_type;
+        this->physical_type()[index] = new_physical_type;
+        this->overridden()[index] = new_overridden;
+        this->type_facts()[index] = new_type_facts;
+        this->total_bytes()[index] = new_total_bytes;
+        this->allocation_offset_bytes()[index] = new_allocation_offset_bytes;
+        this->padding_before_bytes()[index] = new_padding_before_bytes;
+        this->minimum_cache_lines()[index] = new_minimum_cache_lines;
+        this->elements_per_cache_line()[index] = new_elements_per_cache_line;
+        this->minimum_pages()[index] = new_minimum_pages;
+        this->complete_elements_per_page()[index] = new_complete_elements_per_page;
+        this->cache_line_tiling()[index] = new_cache_line_tiling;
+    }
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<SoaColumnTableSingleView>());
+// Columns:
+// parent: ioj::layout::AnalysisId
+// name: std::string_view
+// semantic_type: lispb::schema::TypeId
+// schema_type: lispb::StringId
+// physical_type: lispb::StringId
+// overridden: std::uint8_t
+// type_facts: std::optional<ioj::layout::PhysicalFactId>
+// total_bytes: std::optional<std::uint64_t>
+// allocation_offset_bytes: std::optional<std::uint64_t>
+// padding_before_bytes: std::optional<std::uint64_t>
+// minimum_cache_lines: std::optional<std::uint64_t>
+// elements_per_cache_line: std::optional<std::uint64_t>
+// minimum_pages: std::optional<std::uint64_t>
+// complete_elements_per_page: std::optional<std::uint64_t>
+// cache_line_tiling: std::optional<ioj::layout::CacheLineTiling>
+struct SoaColumnTable
+    : protected ioj::native_soa::StorageState
+    , ioj::native_soa::StorageOperations {
+    using soa_schema = SoaColumnTableSchema;
+    using Operations = ioj::native_soa::StorageOperations;
+    using Layout = SoaColumnTableSingleLayout;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
+
+    static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    static constexpr auto max_capacity = Layout::max_capacity;
+
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
+    }
+
+    using View = SoaColumnTableSingleView;
+    using ConstView = SoaColumnTableSingleConstView;
+
+    /* **************************************** */
+    // Lifetime
+    /* **************************************** */
+    SoaColumnTable() noexcept
+        : SoaColumnTable{*std::pmr::get_default_resource()} {}
+    explicit SoaColumnTable(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
+    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    ~SoaColumnTable() { Operations::release_storage(*this); }
+    SoaColumnTable(SoaColumnTable const&) = delete;
+    auto operator=(SoaColumnTable const&) -> SoaColumnTable& = delete;
+    SoaColumnTable(SoaColumnTable&& other) noexcept
+        : resource_{other.resource_} {
+        Operations::take_storage(*this, other);
+    }
+    auto operator=(SoaColumnTable&& other) -> SoaColumnTable& {
+        return Operations::move_assign(*this, other);
+    }
+  protected:
+    template <typename Byte>
+    struct DataPointers {
+        template <typename T>
+        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+        Element<AnalysisId>* parent{};
+        Element<std::string_view>* name{};
+        Element<lispb::schema::TypeId>* semantic_type{};
+        Element<lispb::StringId>* schema_type{};
+        Element<lispb::StringId>* physical_type{};
+        Element<std::uint8_t>* overridden{};
+        Element<std::optional<ioj::layout::PhysicalFactId>>* type_facts{};
+        Element<std::optional<std::uint64_t>>* total_bytes{};
+        Element<std::optional<std::uint64_t>>* allocation_offset_bytes{};
+        Element<std::optional<std::uint64_t>>* padding_before_bytes{};
+        Element<std::optional<std::uint64_t>>* minimum_cache_lines{};
+        Element<std::optional<std::uint64_t>>* elements_per_cache_line{};
+        Element<std::optional<std::uint64_t>>* minimum_pages{};
+        Element<std::optional<std::uint64_t>>* complete_elements_per_page{};
+        Element<std::optional<ioj::layout::CacheLineTiling>>* cache_line_tiling{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (parent == nullptr) {
+                return {};
+            }
+            return {parent + offset,
+                    name + offset,
+                    semantic_type + offset,
+                    schema_type + offset,
+                    physical_type + offset,
+                    overridden + offset,
+                    type_facts + offset,
+                    total_bytes + offset,
+                    allocation_offset_bytes + offset,
+                    padding_before_bytes + offset,
+                    minimum_cache_lines + offset,
+                    elements_per_cache_line + offset,
+                    minimum_pages + offset,
+                    complete_elements_per_page + offset,
+                    cache_line_tiling + offset};
+        }
+    };
+    template <typename Self>
+    auto get_data(this Self& self) noexcept {
+        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
+        if (self.data_ == nullptr) {
+            return DataPointers<Byte>{};
+        }
+        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
+    }
+    template <typename Self>
+    auto get_data(this Self& self, size_type const offset) noexcept {
+        return self.get_data() + offset;
+    }
+  private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
+    /* **************************************** */
+    // Column pointers
+    /* **************************************** */
+    template <typename Byte>
+    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
+        -> DataPointers<Byte> {
+        ioj::native_soa::LayoutCursor cursor{blocks};
+        return {cursor.column_pointer(data, Layout::columns.ParentColumn),
+                cursor.column_pointer(data, Layout::columns.NameColumn),
+                cursor.column_pointer(data, Layout::columns.SemanticTypeColumn),
+                cursor.column_pointer(data, Layout::columns.SchemaTypeColumn),
+                cursor.column_pointer(data, Layout::columns.PhysicalTypeColumn),
+                cursor.column_pointer(data, Layout::columns.OverriddenColumn),
+                cursor.column_pointer(data, Layout::columns.TypeFactsColumn),
+                cursor.column_pointer(data, Layout::columns.TotalBytesColumn),
+                cursor.column_pointer(data, Layout::columns.AllocationOffsetBytesColumn),
+                cursor.column_pointer(data, Layout::columns.PaddingBeforeBytesColumn),
+                cursor.column_pointer(data, Layout::columns.MinimumCacheLinesColumn),
+                cursor.column_pointer(data, Layout::columns.ElementsPerCacheLineColumn),
+                cursor.column_pointer(data, Layout::columns.MinimumPagesColumn),
+                cursor.column_pointer(data, Layout::columns.CompleteElementsPerPageColumn),
+                cursor.column_pointer(data, Layout::columns.CacheLineTilingColumn)};
+    }
+    auto capacity_blocks() const noexcept -> byte_size_type {
+        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
+    }
+
+    /* **************************************** */
+    // Typed mutations and growth
+    /* **************************************** */
+    void default_construct_columns(size_type const first, size_type const count) {
+        using ioj::native_soa::default_construct_n;
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
+        default_construct_n(columns.parent, count);
+        default_construct_n(columns.name, count);
+        default_construct_n(columns.semantic_type, count);
+        default_construct_n(columns.schema_type, count);
+        default_construct_n(columns.physical_type, count);
+        default_construct_n(columns.overridden, count);
+        default_construct_n(columns.type_facts, count);
+        default_construct_n(columns.total_bytes, count);
+        default_construct_n(columns.allocation_offset_bytes, count);
+        default_construct_n(columns.padding_before_bytes, count);
+        default_construct_n(columns.minimum_cache_lines, count);
+        default_construct_n(columns.elements_per_cache_line, count);
+        default_construct_n(columns.minimum_pages, count);
+        default_construct_n(columns.complete_elements_per_page, count);
+        default_construct_n(columns.cache_line_tiling, count);
+    }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        auto transfer = [count](auto* dst, auto const* src) {
+            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.parent, source.parent);
+        transfer(destination.name, source.name);
+        transfer(destination.semantic_type, source.semantic_type);
+        transfer(destination.schema_type, source.schema_type);
+        transfer(destination.physical_type, source.physical_type);
+        transfer(destination.overridden, source.overridden);
+        transfer(destination.type_facts, source.type_facts);
+        transfer(destination.total_bytes, source.total_bytes);
+        transfer(destination.allocation_offset_bytes, source.allocation_offset_bytes);
+        transfer(destination.padding_before_bytes, source.padding_before_bytes);
+        transfer(destination.minimum_cache_lines, source.minimum_cache_lines);
+        transfer(destination.elements_per_cache_line, source.elements_per_cache_line);
+        transfer(destination.minimum_pages, source.minimum_pages);
+        transfer(destination.complete_elements_per_page, source.complete_elements_per_page);
+        transfer(destination.cache_line_tiling, source.cache_line_tiling);
+    }
+    void swap_remove_columns(size_type const index,
+                             size_type const source,
+                             size_type const move_count) {
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
+        transfer_columns<false>(columns + index, columns + source, move_count);
+    }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ioj::soa_storage_detail::for_each_removal_run(
+            num_, indices, [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, SoaColumnTable, size_type>
+    {
+        using ioj::native_soa::source_data;
+        return {source_data(source.parent()),
+                source_data(source.name()),
+                source_data(source.semantic_type()),
+                source_data(source.schema_type()),
+                source_data(source.physical_type()),
+                source_data(source.overridden()),
+                source_data(source.type_facts()),
+                source_data(source.total_bytes()),
+                source_data(source.allocation_offset_bytes()),
+                source_data(source.padding_before_bytes()),
+                source_data(source.minimum_cache_lines()),
+                source_data(source.elements_per_cache_line()),
+                source_data(source.minimum_pages()),
+                source_data(source.complete_elements_per_page()),
+                source_data(source.cache_line_tiling())};
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count)
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, SoaColumnTable, size_type>
+    {
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
+    }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count)
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, SoaColumnTable, size_type>
+    {
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
+    }
+    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
+        auto const old_blocks{capacity_blocks()};
+        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+        auto const destination{make_data_unchecked(new_data, new_blocks)};
+        transfer_columns<false>(destination, source, num_);
+    }
+  public:
+    auto parent(this auto& self) { return self.get_view().parent(); }
+    auto name(this auto& self) { return self.get_view().name(); }
+    auto semantic_type(this auto& self) { return self.get_view().semantic_type(); }
+    auto schema_type(this auto& self) { return self.get_view().schema_type(); }
+    auto physical_type(this auto& self) { return self.get_view().physical_type(); }
+    auto overridden(this auto& self) { return self.get_view().overridden(); }
+    auto type_facts(this auto& self) { return self.get_view().type_facts(); }
+    auto total_bytes(this auto& self) { return self.get_view().total_bytes(); }
+    auto allocation_offset_bytes(this auto& self) {
+        return self.get_view().allocation_offset_bytes();
+    }
+    auto padding_before_bytes(this auto& self) { return self.get_view().padding_before_bytes(); }
+    auto minimum_cache_lines(this auto& self) { return self.get_view().minimum_cache_lines(); }
+    auto elements_per_cache_line(this auto& self) {
+        return self.get_view().elements_per_cache_line();
+    }
+    auto minimum_pages(this auto& self) { return self.get_view().minimum_pages(); }
+    auto complete_elements_per_page(this auto& self) {
+        return self.get_view().complete_elements_per_page();
+    }
+    auto cache_line_tiling(this auto& self) { return self.get_view().cache_line_tiling(); }
+    void set(size_type index,
              ioj::layout::AnalysisId const new_parent,
              std::string_view const new_name,
              lispb::schema::TypeId const new_semantic_type,
@@ -350,121 +826,60 @@ struct SoaColumnTable {
              std::optional<std::uint64_t> const new_minimum_pages,
              std::optional<std::uint64_t> const new_complete_elements_per_page,
              std::optional<ioj::layout::CacheLineTiling> const new_cache_line_tiling) {
-        get_view().set(index,
-                       new_parent,
-                       new_name,
-                       new_semantic_type,
-                       new_schema_type,
-                       new_physical_type,
-                       new_overridden,
-                       new_type_facts,
-                       new_total_bytes,
-                       new_allocation_offset_bytes,
-                       new_padding_before_bytes,
-                       new_minimum_cache_lines,
-                       new_elements_per_cache_line,
-                       new_minimum_pages,
-                       new_complete_elements_per_page,
-                       new_cache_line_tiling);
+        assert(index < num());
+        get_view().parent()[index] = new_parent;
+        get_view().name()[index] = new_name;
+        get_view().semantic_type()[index] = new_semantic_type;
+        get_view().schema_type()[index] = new_schema_type;
+        get_view().physical_type()[index] = new_physical_type;
+        get_view().overridden()[index] = new_overridden;
+        get_view().type_facts()[index] = new_type_facts;
+        get_view().total_bytes()[index] = new_total_bytes;
+        get_view().allocation_offset_bytes()[index] = new_allocation_offset_bytes;
+        get_view().padding_before_bytes()[index] = new_padding_before_bytes;
+        get_view().minimum_cache_lines()[index] = new_minimum_cache_lines;
+        get_view().elements_per_cache_line()[index] = new_elements_per_cache_line;
+        get_view().minimum_pages()[index] = new_minimum_pages;
+        get_view().complete_elements_per_page()[index] = new_complete_elements_per_page;
+        get_view().cache_line_tiling()[index] = new_cache_line_tiling;
     }
-    auto add(ioj::layout::AnalysisId const new_parent,
-             std::string_view const new_name,
-             lispb::schema::TypeId const new_semantic_type,
-             lispb::StringId const new_schema_type,
-             lispb::StringId const new_physical_type,
-             std::uint8_t const new_overridden,
-             std::optional<ioj::layout::PhysicalFactId> const new_type_facts,
-             std::optional<std::uint64_t> const new_total_bytes,
-             std::optional<std::uint64_t> const new_allocation_offset_bytes,
-             std::optional<std::uint64_t> const new_padding_before_bytes,
-             std::optional<std::uint64_t> const new_minimum_cache_lines,
-             std::optional<std::uint64_t> const new_elements_per_cache_line,
-             std::optional<std::uint64_t> const new_minimum_pages,
-             std::optional<std::uint64_t> const new_complete_elements_per_page,
-             std::optional<ioj::layout::CacheLineTiling> const new_cache_line_tiling) -> size_type {
-        return ioj::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
-            parent.emplace_back(new_parent);
-            name.emplace_back(new_name);
-            semantic_type.emplace_back(new_semantic_type);
-            schema_type.emplace_back(new_schema_type);
-            physical_type.emplace_back(new_physical_type);
-            overridden.emplace_back(new_overridden);
-            type_facts.emplace_back(new_type_facts);
-            total_bytes.emplace_back(new_total_bytes);
-            allocation_offset_bytes.emplace_back(new_allocation_offset_bytes);
-            padding_before_bytes.emplace_back(new_padding_before_bytes);
-            minimum_cache_lines.emplace_back(new_minimum_cache_lines);
-            elements_per_cache_line.emplace_back(new_elements_per_cache_line);
-            minimum_pages.emplace_back(new_minimum_pages);
-            complete_elements_per_page.emplace_back(new_complete_elements_per_page);
-            cache_line_tiling.emplace_back(new_cache_line_tiling);
-        });
-    }
-    auto get_view() -> View {
-        return {
-            parent,
-            name,
-            semantic_type,
-            schema_type,
-            physical_type,
-            overridden,
-            type_facts,
-            total_bytes,
-            allocation_offset_bytes,
-            padding_before_bytes,
-            minimum_cache_lines,
-            elements_per_cache_line,
-            minimum_pages,
-            complete_elements_per_page,
-            cache_line_tiling,
-        };
-    }
-    auto get_view() const -> ConstView {
-        return {
-            parent,
-            name,
-            semantic_type,
-            schema_type,
-            physical_type,
-            overridden,
-            type_facts,
-            total_bytes,
-            allocation_offset_bytes,
-            padding_before_bytes,
-            minimum_cache_lines,
-            elements_per_cache_line,
-            minimum_pages,
-            complete_elements_per_page,
-            cache_line_tiling,
-        };
-    }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        return get_view().slice(offset, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_view().slice(offset, count);
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
-        return get_view(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view(offset, count);
-    }
-    auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
+    size_type add(ioj::layout::AnalysisId const new_parent,
+                  std::string_view const new_name,
+                  lispb::schema::TypeId const new_semantic_type,
+                  lispb::StringId const new_schema_type,
+                  lispb::StringId const new_physical_type,
+                  std::uint8_t const new_overridden,
+                  std::optional<ioj::layout::PhysicalFactId> const new_type_facts,
+                  std::optional<std::uint64_t> const new_total_bytes,
+                  std::optional<std::uint64_t> const new_allocation_offset_bytes,
+                  std::optional<std::uint64_t> const new_padding_before_bytes,
+                  std::optional<std::uint64_t> const new_minimum_cache_lines,
+                  std::optional<std::uint64_t> const new_elements_per_cache_line,
+                  std::optional<std::uint64_t> const new_minimum_pages,
+                  std::optional<std::uint64_t> const new_complete_elements_per_page,
+                  std::optional<ioj::layout::CacheLineTiling> const new_cache_line_tiling) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index,
+            new_parent,
+            new_name,
+            new_semantic_type,
+            new_schema_type,
+            new_physical_type,
+            new_overridden,
+            new_type_facts,
+            new_total_bytes,
+            new_allocation_offset_bytes,
+            new_padding_before_bytes,
+            new_minimum_cache_lines,
+            new_elements_per_cache_line,
+            new_minimum_pages,
+            new_complete_elements_per_page,
+            new_cache_line_tiling);
+        return index;
     }
     std::size_t append();
+  private:
+    std::pmr::memory_resource* resource_{};
 };
-
 } // namespace ioj::layout

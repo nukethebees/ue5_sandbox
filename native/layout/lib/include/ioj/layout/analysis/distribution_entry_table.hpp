@@ -4,154 +4,237 @@
 #pragma once
 
 #include "ioj/native_soa/storage.h"
-#include "ioj/native_soa/vector_storage_ops.h"
 
 #include "codegen/schema/packed_integer_value.h"
 
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <memory_resource>
 #include <optional>
-#include <utility>
 
 namespace ioj::layout {
 struct DistributionEntryTableSchema;
 
-struct DistributionEntryTableView;
-struct DistributionEntryTableConstView;
-struct DistributionEntryTableConstView {
-    using View = DistributionEntryTableView;
-    using ConstView = DistributionEntryTableConstView;
-    using size_type = std::uint32_t;
-    std::span<std::optional<std::size_t> const> component;
-    std::span<std::optional<lispb::codegen::PackedIntegerValue> const> value;
-    std::span<std::uint64_t const> weight;
-    std::span<std::optional<std::uint64_t> const> extent_bytes;
-    std::span<std::optional<std::uint64_t> const> slack_bytes;
-    std::span<std::optional<std::uint64_t> const> weighted_extent_bytes;
-    std::span<std::optional<std::uint64_t> const> weighted_slack_bytes;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(component.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(component);
-        fn(value);
-        fn(weight);
-        fn(extent_bytes);
-        fn(slack_bytes);
-        fn(weighted_extent_bytes);
-        fn(weighted_slack_bytes);
-    }
-    void validate_array_sizes() const {
-        ioj::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const
-        -> DistributionEntryTableConstView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            component.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            value.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            weight.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            extent_bytes.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            slack_bytes.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            weighted_extent_bytes.subspan(static_cast<std::size_t>(offset),
-                                          static_cast<std::size_t>(count)),
-            weighted_slack_bytes.subspan(static_cast<std::size_t>(offset),
-                                         static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> DistributionEntryTableConstView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const
-        -> DistributionEntryTableConstView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            component,
-            value,
-            weight,
-            extent_bytes,
-            slack_bytes,
-            weighted_extent_bytes,
-            weighted_slack_bytes,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> DistributionEntryTableConstView {
-        return slice(0, count);
-    }
-    auto right(size_type const count) const -> DistributionEntryTableConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
+struct DistributionEntryTableSingleView;
+struct DistributionEntryTableSingleConstView;
+struct DistributionEntryTableSingleLayoutColumns {
+    template <typename T>
+    using ColLayout = ioj::native_soa::ColumnLayout<T>;
+
+    ioj::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<std::optional<std::size_t>> ComponentColumn;
+    ColLayout<std::optional<lispb::codegen::PackedIntegerValue>> ValueColumn;
+    ColLayout<std::uint64_t> WeightColumn;
+    ColLayout<std::optional<std::uint64_t>> ExtentBytesColumn;
+    ColLayout<std::optional<std::uint64_t>> SlackBytesColumn;
+    ColLayout<std::optional<std::uint64_t>> WeightedExtentBytesColumn;
+    ColLayout<std::optional<std::uint64_t>> WeightedSlackBytesColumn;
+
+    constexpr DistributionEntryTableSingleLayoutColumns() noexcept
+        : ComponentColumn{LayoutStart}
+        , ValueColumn{ComponentColumn}
+        , WeightColumn{ValueColumn}
+        , ExtentBytesColumn{WeightColumn}
+        , SlackBytesColumn{ExtentBytesColumn}
+        , WeightedExtentBytesColumn{SlackBytesColumn}
+        , WeightedSlackBytesColumn{WeightedExtentBytesColumn} {}
+    DistributionEntryTableSingleLayoutColumns(DistributionEntryTableSingleLayoutColumns const&) =
+        delete;
+    auto operator=(DistributionEntryTableSingleLayoutColumns const&)
+        -> DistributionEntryTableSingleLayoutColumns& = delete;
 };
-struct DistributionEntryTableView {
-    using View = DistributionEntryTableView;
-    using ConstView = DistributionEntryTableConstView;
+struct DistributionEntryTableSingleLayout {
     using size_type = std::uint32_t;
-    std::span<std::optional<std::size_t>> component;
-    std::span<std::optional<lispb::codegen::PackedIntegerValue>> value;
-    std::span<std::uint64_t> weight;
-    std::span<std::optional<std::uint64_t>> extent_bytes;
-    std::span<std::optional<std::uint64_t>> slack_bytes;
-    std::span<std::optional<std::uint64_t>> weighted_extent_bytes;
-    std::span<std::optional<std::uint64_t>> weighted_slack_bytes;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(component.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(component);
-        fn(value);
-        fn(weight);
-        fn(extent_bytes);
-        fn(slack_bytes);
-        fn(weighted_extent_bytes);
-        fn(weighted_slack_bytes);
+    using byte_size_type = std::size_t;
+
+    static constexpr size_type capacity_granularity{
+        ioj::native_soa::LayoutPolicy::capacity_granularity};
+    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
+
+    static constexpr DistributionEntryTableSingleLayoutColumns columns{};
+
+    static constexpr byte_size_type allocation_alignment{
+        columns.WeightedSlackBytesColumn.allocation_alignment};
+
+    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
+    // capacity.
+    static constexpr byte_size_type capacity_block_bound{
+        ioj::native_soa::capacity_block_bound(columns.WeightedSlackBytesColumn)};
+    static constexpr size_type max_capacity{
+        ioj::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0 ? 0 : columns.WeightedSlackBytesColumn.data_end(blocks);
     }
-    void validate_array_sizes() const {
-        ioj::native_soa::vector_storage_ops::validate_array_sizes(*this);
+    static_assert(max_capacity >= capacity_granularity);
+};
+
+struct DistributionEntryTableSingleResolvedView;
+struct DistributionEntryTableSingleResolvedConstView;
+template <bool Const>
+struct DistributionEntryTableSingleResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = DistributionEntryTableSingleResolvedView;
+    using ConstView = DistributionEntryTableSingleResolvedConstView;
+    using soa_schema = DistributionEntryTableSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    DistributionEntryTableSingleResolvedViewImpl() = default;
+    DistributionEntryTableSingleResolvedViewImpl(
+        Element<std::optional<std::size_t>>* component,
+        Element<std::optional<lispb::codegen::PackedIntegerValue>>* value,
+        Element<std::uint64_t>* weight,
+        Element<std::optional<std::uint64_t>>* extent_bytes,
+        Element<std::optional<std::uint64_t>>* slack_bytes,
+        Element<std::optional<std::uint64_t>>* weighted_extent_bytes,
+        Element<std::optional<std::uint64_t>>* weighted_slack_bytes,
+        size_type count)
+        : component_{component}
+        , value_{value}
+        , weight_{weight}
+        , extent_bytes_{extent_bytes}
+        , slack_bytes_{slack_bytes}
+        , weighted_extent_bytes_{weighted_extent_bytes}
+        , weighted_slack_bytes_{weighted_slack_bytes}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(count_,
+                                                          component_,
+                                                          value_,
+                                                          weight_,
+                                                          extent_bytes_,
+                                                          slack_bytes_,
+                                                          weighted_extent_bytes_,
+                                                          weighted_slack_bytes_);
     }
-    auto slice(size_type const offset, size_type const count) const -> DistributionEntryTableView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            component.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            value.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            weight.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            extent_bytes.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            slack_bytes.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            weighted_extent_bytes.subspan(static_cast<std::size_t>(offset),
-                                          static_cast<std::size_t>(count)),
-            weighted_slack_bytes.subspan(static_cast<std::size_t>(offset),
-                                         static_cast<std::size_t>(count)),
-        };
+    DistributionEntryTableSingleResolvedViewImpl(
+        std::span<Element<std::optional<std::size_t>>> component,
+        std::span<Element<std::optional<lispb::codegen::PackedIntegerValue>>> value,
+        std::span<Element<std::uint64_t>> weight,
+        std::span<Element<std::optional<std::uint64_t>>> extent_bytes,
+        std::span<Element<std::optional<std::uint64_t>>> slack_bytes,
+        std::span<Element<std::optional<std::uint64_t>>> weighted_extent_bytes,
+        std::span<Element<std::optional<std::uint64_t>>> weighted_slack_bytes)
+        : DistributionEntryTableSingleResolvedViewImpl{
+              component.data(),
+              value.data(),
+              weight.data(),
+              extent_bytes.data(),
+              slack_bytes.data(),
+              weighted_extent_bytes.data(),
+              weighted_slack_bytes.data(),
+              ioj::soa_storage_detail::checked_row_count(component.size())} {
+        assert(component.size() == count_);
+        assert(value.size() == count_);
+        assert(weight.size() == count_);
+        assert(extent_bytes.size() == count_);
+        assert(slack_bytes.size() == count_);
+        assert(weighted_extent_bytes.size() == count_);
+        assert(weighted_slack_bytes.size() == count_);
     }
-    auto get_view() const -> DistributionEntryTableView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const
-        -> DistributionEntryTableView {
-        return slice(offset, count);
+    template <bool Enabled = Const>
+    DistributionEntryTableSingleResolvedViewImpl(
+        DistributionEntryTableSingleResolvedViewImpl<false> const& other)
+        requires Enabled
+        : component_{other.component_}
+        , value_{other.value_}
+        , weight_{other.weight_}
+        , extent_bytes_{other.extent_bytes_}
+        , slack_bytes_{other.slack_bytes_}
+        , weighted_extent_bytes_{other.weighted_extent_bytes_}
+        , weighted_slack_bytes_{other.weighted_slack_bytes_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.component_,
+                      self.value_,
+                      self.weight_,
+                      self.extent_bytes_,
+                      self.slack_bytes_,
+                      self.weighted_extent_bytes_,
+                      self.weighted_slack_bytes_,
+                      self.count_};
     }
-    auto get_const_view() const -> ConstView {
-        return {
-            component,
-            value,
-            weight,
-            extent_bytes,
-            slack_bytes,
-            weighted_extent_bytes,
-            weighted_slack_bytes,
-        };
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{
+            self.component_ == nullptr ? nullptr : self.component_ + offset,
+            self.value_ == nullptr ? nullptr : self.value_ + offset,
+            self.weight_ == nullptr ? nullptr : self.weight_ + offset,
+            self.extent_bytes_ == nullptr ? nullptr : self.extent_bytes_ + offset,
+            self.slack_bytes_ == nullptr ? nullptr : self.slack_bytes_ + offset,
+            self.weighted_extent_bytes_ == nullptr ? nullptr : self.weighted_extent_bytes_ + offset,
+            self.weighted_slack_bytes_ == nullptr ? nullptr : self.weighted_slack_bytes_ + offset,
+            count};
     }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
     }
-    auto left(size_type const count) const -> DistributionEntryTableView { return slice(0, count); }
-    auto right(size_type const count) const -> DistributionEntryTableView {
-        assert(count <= num());
-        return slice(num() - count, count);
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
     }
-    void set(size_type const index,
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto component() const -> std::span<Element<std::optional<std::size_t>>> {
+        return {component_, count_};
+    }
+    auto value() const -> std::span<Element<std::optional<lispb::codegen::PackedIntegerValue>>> {
+        return {value_, count_};
+    }
+    auto weight() const -> std::span<Element<std::uint64_t>> { return {weight_, count_}; }
+    auto extent_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
+        return {extent_bytes_, count_};
+    }
+    auto slack_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
+        return {slack_bytes_, count_};
+    }
+    auto weighted_extent_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
+        return {weighted_extent_bytes_, count_};
+    }
+    auto weighted_slack_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
+        return {weighted_slack_bytes_, count_};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<std::optional<std::size_t>>>{component_, count_});
+        func(std::span<Element<std::optional<lispb::codegen::PackedIntegerValue>>>{value_, count_});
+        func(std::span<Element<std::uint64_t>>{weight_, count_});
+        func(std::span<Element<std::optional<std::uint64_t>>>{extent_bytes_, count_});
+        func(std::span<Element<std::optional<std::uint64_t>>>{slack_bytes_, count_});
+        func(std::span<Element<std::optional<std::uint64_t>>>{weighted_extent_bytes_, count_});
+        func(std::span<Element<std::optional<std::uint64_t>>>{weighted_slack_bytes_, count_});
+    }
+  private:
+    template <bool>
+    friend struct DistributionEntryTableSingleResolvedViewImpl;
+    Element<std::optional<std::size_t>>* component_{};
+    Element<std::optional<lispb::codegen::PackedIntegerValue>>* value_{};
+    Element<std::uint64_t>* weight_{};
+    Element<std::optional<std::uint64_t>>* extent_bytes_{};
+    Element<std::optional<std::uint64_t>>* slack_bytes_{};
+    Element<std::optional<std::uint64_t>>* weighted_extent_bytes_{};
+    Element<std::optional<std::uint64_t>>* weighted_slack_bytes_{};
+    size_type count_{};
+};
+struct DistributionEntryTableSingleResolvedConstView
+    : DistributionEntryTableSingleResolvedViewImpl<true> {
+    using Base = DistributionEntryTableSingleResolvedViewImpl<true>;
+    using Base::Base;
+};
+struct DistributionEntryTableSingleResolvedView
+    : DistributionEntryTableSingleResolvedViewImpl<false> {
+    using Base = DistributionEntryTableSingleResolvedViewImpl<false>;
+    using Base::Base;
+    void set(size_type index,
              std::optional<std::size_t> const new_component,
              std::optional<lispb::codegen::PackedIntegerValue> const new_value,
              std::uint64_t const new_weight,
@@ -160,62 +243,311 @@ struct DistributionEntryTableView {
              std::optional<std::uint64_t> const new_weighted_extent_bytes,
              std::optional<std::uint64_t> const new_weighted_slack_bytes) const {
         assert(index < num());
-        component[static_cast<std::size_t>(index)] = new_component;
-        value[static_cast<std::size_t>(index)] = new_value;
-        weight[static_cast<std::size_t>(index)] = new_weight;
-        extent_bytes[static_cast<std::size_t>(index)] = new_extent_bytes;
-        slack_bytes[static_cast<std::size_t>(index)] = new_slack_bytes;
-        weighted_extent_bytes[static_cast<std::size_t>(index)] = new_weighted_extent_bytes;
-        weighted_slack_bytes[static_cast<std::size_t>(index)] = new_weighted_slack_bytes;
+        this->component()[index] = new_component;
+        this->value()[index] = new_value;
+        this->weight()[index] = new_weight;
+        this->extent_bytes()[index] = new_extent_bytes;
+        this->slack_bytes()[index] = new_slack_bytes;
+        this->weighted_extent_bytes()[index] = new_weighted_extent_bytes;
+        this->weighted_slack_bytes()[index] = new_weighted_slack_bytes;
     }
 };
-struct DistributionEntryTable {
-    using View = DistributionEntryTableView;
-    using ConstView = DistributionEntryTableConstView;
+template <bool Const>
+struct DistributionEntryTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = DistributionEntryTableSchema;
     using size_type = std::uint32_t;
-    ioj::native_soa::Vector<std::optional<std::size_t>> component;
-    ioj::native_soa::Vector<std::optional<lispb::codegen::PackedIntegerValue>> value;
-    ioj::native_soa::Vector<std::uint64_t> weight;
-    ioj::native_soa::Vector<std::optional<std::uint64_t>> extent_bytes;
-    ioj::native_soa::Vector<std::optional<std::uint64_t>> slack_bytes;
-    ioj::native_soa::Vector<std::optional<std::uint64_t>> weighted_extent_bytes;
-    ioj::native_soa::Vector<std::optional<std::uint64_t>> weighted_slack_bytes;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(component.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) {
-        fn(component);
-        fn(value);
-        fn(weight);
-        fn(extent_bytes);
-        fn(slack_bytes);
-        fn(weighted_extent_bytes);
-        fn(weighted_slack_bytes);
+    using Layout = DistributionEntryTableSingleLayout;
+    using Storage = ioj::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    using View = DistributionEntryTableSingleView;
+    using ConstView = DistributionEntryTableSingleConstView;
+    DistributionEntryTableSingleViewImpl() = default;
+    DistributionEntryTableSingleViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+    template <bool Enabled = Const>
+    DistributionEntryTableSingleViewImpl(DistributionEntryTableSingleViewImpl<false> const& other)
+        requires Enabled
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    auto component() const { return make_column_view(Layout::columns.ComponentColumn); }
+    auto value() const { return make_column_view(Layout::columns.ValueColumn); }
+    auto weight() const { return make_column_view(Layout::columns.WeightColumn); }
+    auto extent_bytes() const { return make_column_view(Layout::columns.ExtentBytesColumn); }
+    auto slack_bytes() const { return make_column_view(Layout::columns.SlackBytesColumn); }
+    auto weighted_extent_bytes() const {
+        return make_column_view(Layout::columns.WeightedExtentBytesColumn);
     }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(component);
-        fn(value);
-        fn(weight);
-        fn(extent_bytes);
-        fn(slack_bytes);
-        fn(weighted_extent_bytes);
-        fn(weighted_slack_bytes);
+    auto weighted_slack_bytes() const {
+        return make_column_view(Layout::columns.WeightedSlackBytesColumn);
     }
-    void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void set_num(size_type const count) {
-        ioj::native_soa::vector_storage_ops::set_num(*this, count);
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(component());
+        func(value());
+        func(weight());
+        func(extent_bytes());
+        func(slack_bytes());
+        func(weighted_extent_bytes());
+        func(weighted_slack_bytes());
     }
-    void reset() { ioj::native_soa::vector_storage_ops::reset(*this); }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        ioj::native_soa::vector_storage_ops::apply_permutation(*this, indices);
+    auto resolve() const -> std::conditional_t<Const,
+                                               DistributionEntryTableSingleResolvedConstView,
+                                               DistributionEntryTableSingleResolvedView> {
+        return {(make_column_view(Layout::columns.ComponentColumn).data()),
+                (make_column_view(Layout::columns.ValueColumn).data()),
+                (make_column_view(Layout::columns.WeightColumn).data()),
+                (make_column_view(Layout::columns.ExtentBytesColumn).data()),
+                (make_column_view(Layout::columns.SlackBytesColumn).data()),
+                (make_column_view(Layout::columns.WeightedExtentBytesColumn).data()),
+                (make_column_view(Layout::columns.WeightedSlackBytesColumn).data()),
+                count_};
     }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        ioj::native_soa::vector_storage_ops::sort(
-            *this, std::forward<Compare>(compare), scratch_indices);
+  private:
+    template <typename T>
+    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
     }
-    void set(size_type const index,
+    friend ioj::soa_storage_detail::CompactViewOperations;
+    template <bool>
+    friend struct DistributionEntryTableSingleViewImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
+struct DistributionEntryTableSingleConstView : DistributionEntryTableSingleViewImpl<true> {
+    using Base = DistributionEntryTableSingleViewImpl<true>;
+    using Base::Base;
+};
+static_assert(
+    ioj::soa_storage_detail::validate_compact_view<DistributionEntryTableSingleConstView>());
+struct DistributionEntryTableSingleView : DistributionEntryTableSingleViewImpl<false> {
+    using Base = DistributionEntryTableSingleViewImpl<false>;
+    using Base::Base;
+    void set(size_type index,
+             std::optional<std::size_t> const new_component,
+             std::optional<lispb::codegen::PackedIntegerValue> const new_value,
+             std::uint64_t const new_weight,
+             std::optional<std::uint64_t> const new_extent_bytes,
+             std::optional<std::uint64_t> const new_slack_bytes,
+             std::optional<std::uint64_t> const new_weighted_extent_bytes,
+             std::optional<std::uint64_t> const new_weighted_slack_bytes) const {
+        assert(index < num());
+        this->component()[index] = new_component;
+        this->value()[index] = new_value;
+        this->weight()[index] = new_weight;
+        this->extent_bytes()[index] = new_extent_bytes;
+        this->slack_bytes()[index] = new_slack_bytes;
+        this->weighted_extent_bytes()[index] = new_weighted_extent_bytes;
+        this->weighted_slack_bytes()[index] = new_weighted_slack_bytes;
+    }
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<DistributionEntryTableSingleView>());
+// Columns:
+// component: std::optional<std::size_t>
+// value: std::optional<lispb::codegen::PackedIntegerValue>
+// weight: std::uint64_t
+// extent_bytes: std::optional<std::uint64_t>
+// slack_bytes: std::optional<std::uint64_t>
+// weighted_extent_bytes: std::optional<std::uint64_t>
+// weighted_slack_bytes: std::optional<std::uint64_t>
+struct DistributionEntryTable
+    : protected ioj::native_soa::StorageState
+    , ioj::native_soa::StorageOperations {
+    using soa_schema = DistributionEntryTableSchema;
+    using Operations = ioj::native_soa::StorageOperations;
+    using Layout = DistributionEntryTableSingleLayout;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
+
+    static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    static constexpr auto max_capacity = Layout::max_capacity;
+
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
+    }
+
+    using View = DistributionEntryTableSingleView;
+    using ConstView = DistributionEntryTableSingleConstView;
+
+    /* **************************************** */
+    // Lifetime
+    /* **************************************** */
+    DistributionEntryTable() noexcept
+        : DistributionEntryTable{*std::pmr::get_default_resource()} {}
+    explicit DistributionEntryTable(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
+    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    ~DistributionEntryTable() { Operations::release_storage(*this); }
+    DistributionEntryTable(DistributionEntryTable const&) = delete;
+    auto operator=(DistributionEntryTable const&) -> DistributionEntryTable& = delete;
+    DistributionEntryTable(DistributionEntryTable&& other) noexcept
+        : resource_{other.resource_} {
+        Operations::take_storage(*this, other);
+    }
+    auto operator=(DistributionEntryTable&& other) -> DistributionEntryTable& {
+        return Operations::move_assign(*this, other);
+    }
+  protected:
+    template <typename Byte>
+    struct DataPointers {
+        template <typename T>
+        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+        Element<std::optional<std::size_t>>* component{};
+        Element<std::optional<lispb::codegen::PackedIntegerValue>>* value{};
+        Element<std::uint64_t>* weight{};
+        Element<std::optional<std::uint64_t>>* extent_bytes{};
+        Element<std::optional<std::uint64_t>>* slack_bytes{};
+        Element<std::optional<std::uint64_t>>* weighted_extent_bytes{};
+        Element<std::optional<std::uint64_t>>* weighted_slack_bytes{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (component == nullptr) {
+                return {};
+            }
+            return {component + offset,
+                    value + offset,
+                    weight + offset,
+                    extent_bytes + offset,
+                    slack_bytes + offset,
+                    weighted_extent_bytes + offset,
+                    weighted_slack_bytes + offset};
+        }
+    };
+    template <typename Self>
+    auto get_data(this Self& self) noexcept {
+        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
+        if (self.data_ == nullptr) {
+            return DataPointers<Byte>{};
+        }
+        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
+    }
+    template <typename Self>
+    auto get_data(this Self& self, size_type const offset) noexcept {
+        return self.get_data() + offset;
+    }
+  private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
+    /* **************************************** */
+    // Column pointers
+    /* **************************************** */
+    template <typename Byte>
+    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
+        -> DataPointers<Byte> {
+        ioj::native_soa::LayoutCursor cursor{blocks};
+        return {cursor.column_pointer(data, Layout::columns.ComponentColumn),
+                cursor.column_pointer(data, Layout::columns.ValueColumn),
+                cursor.column_pointer(data, Layout::columns.WeightColumn),
+                cursor.column_pointer(data, Layout::columns.ExtentBytesColumn),
+                cursor.column_pointer(data, Layout::columns.SlackBytesColumn),
+                cursor.column_pointer(data, Layout::columns.WeightedExtentBytesColumn),
+                cursor.column_pointer(data, Layout::columns.WeightedSlackBytesColumn)};
+    }
+    auto capacity_blocks() const noexcept -> byte_size_type {
+        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
+    }
+
+    /* **************************************** */
+    // Typed mutations and growth
+    /* **************************************** */
+    void default_construct_columns(size_type const first, size_type const count) {
+        using ioj::native_soa::default_construct_n;
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
+        default_construct_n(columns.component, count);
+        default_construct_n(columns.value, count);
+        default_construct_n(columns.weight, count);
+        default_construct_n(columns.extent_bytes, count);
+        default_construct_n(columns.slack_bytes, count);
+        default_construct_n(columns.weighted_extent_bytes, count);
+        default_construct_n(columns.weighted_slack_bytes, count);
+    }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        auto transfer = [count](auto* dst, auto const* src) {
+            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.component, source.component);
+        transfer(destination.value, source.value);
+        transfer(destination.weight, source.weight);
+        transfer(destination.extent_bytes, source.extent_bytes);
+        transfer(destination.slack_bytes, source.slack_bytes);
+        transfer(destination.weighted_extent_bytes, source.weighted_extent_bytes);
+        transfer(destination.weighted_slack_bytes, source.weighted_slack_bytes);
+    }
+    void swap_remove_columns(size_type const index,
+                             size_type const source,
+                             size_type const move_count) {
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
+        transfer_columns<false>(columns + index, columns + source, move_count);
+    }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ioj::soa_storage_detail::for_each_removal_run(
+            num_, indices, [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, DistributionEntryTable, size_type>
+    {
+        using ioj::native_soa::source_data;
+        return {source_data(source.component()),
+                source_data(source.value()),
+                source_data(source.weight()),
+                source_data(source.extent_bytes()),
+                source_data(source.slack_bytes()),
+                source_data(source.weighted_extent_bytes()),
+                source_data(source.weighted_slack_bytes())};
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count)
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, DistributionEntryTable, size_type>
+    {
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
+    }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count)
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, DistributionEntryTable, size_type>
+    {
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
+    }
+    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
+        auto const old_blocks{capacity_blocks()};
+        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+        auto const destination{make_data_unchecked(new_data, new_blocks)};
+        transfer_columns<false>(destination, source, num_);
+    }
+  public:
+    auto component(this auto& self) { return self.get_view().component(); }
+    auto value(this auto& self) { return self.get_view().value(); }
+    auto weight(this auto& self) { return self.get_view().weight(); }
+    auto extent_bytes(this auto& self) { return self.get_view().extent_bytes(); }
+    auto slack_bytes(this auto& self) { return self.get_view().slack_bytes(); }
+    auto weighted_extent_bytes(this auto& self) { return self.get_view().weighted_extent_bytes(); }
+    auto weighted_slack_bytes(this auto& self) { return self.get_view().weighted_slack_bytes(); }
+    void set(size_type index,
              std::optional<std::size_t> const new_component,
              std::optional<lispb::codegen::PackedIntegerValue> const new_value,
              std::uint64_t const new_weight,
@@ -223,80 +555,35 @@ struct DistributionEntryTable {
              std::optional<std::uint64_t> const new_slack_bytes,
              std::optional<std::uint64_t> const new_weighted_extent_bytes,
              std::optional<std::uint64_t> const new_weighted_slack_bytes) {
-        get_view().set(index,
-                       new_component,
-                       new_value,
-                       new_weight,
-                       new_extent_bytes,
-                       new_slack_bytes,
-                       new_weighted_extent_bytes,
-                       new_weighted_slack_bytes);
+        assert(index < num());
+        get_view().component()[index] = new_component;
+        get_view().value()[index] = new_value;
+        get_view().weight()[index] = new_weight;
+        get_view().extent_bytes()[index] = new_extent_bytes;
+        get_view().slack_bytes()[index] = new_slack_bytes;
+        get_view().weighted_extent_bytes()[index] = new_weighted_extent_bytes;
+        get_view().weighted_slack_bytes()[index] = new_weighted_slack_bytes;
     }
-    auto add(std::optional<std::size_t> const new_component,
-             std::optional<lispb::codegen::PackedIntegerValue> const new_value,
-             std::uint64_t const new_weight,
-             std::optional<std::uint64_t> const new_extent_bytes,
-             std::optional<std::uint64_t> const new_slack_bytes,
-             std::optional<std::uint64_t> const new_weighted_extent_bytes,
-             std::optional<std::uint64_t> const new_weighted_slack_bytes) -> size_type {
-        return ioj::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
-            component.emplace_back(new_component);
-            value.emplace_back(new_value);
-            weight.emplace_back(new_weight);
-            extent_bytes.emplace_back(new_extent_bytes);
-            slack_bytes.emplace_back(new_slack_bytes);
-            weighted_extent_bytes.emplace_back(new_weighted_extent_bytes);
-            weighted_slack_bytes.emplace_back(new_weighted_slack_bytes);
-        });
+    size_type add(std::optional<std::size_t> const new_component,
+                  std::optional<lispb::codegen::PackedIntegerValue> const new_value,
+                  std::uint64_t const new_weight,
+                  std::optional<std::uint64_t> const new_extent_bytes,
+                  std::optional<std::uint64_t> const new_slack_bytes,
+                  std::optional<std::uint64_t> const new_weighted_extent_bytes,
+                  std::optional<std::uint64_t> const new_weighted_slack_bytes) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index,
+            new_component,
+            new_value,
+            new_weight,
+            new_extent_bytes,
+            new_slack_bytes,
+            new_weighted_extent_bytes,
+            new_weighted_slack_bytes);
+        return index;
     }
-    auto get_view() -> View {
-        return {
-            component,
-            value,
-            weight,
-            extent_bytes,
-            slack_bytes,
-            weighted_extent_bytes,
-            weighted_slack_bytes,
-        };
-    }
-    auto get_view() const -> ConstView {
-        return {
-            component,
-            value,
-            weight,
-            extent_bytes,
-            slack_bytes,
-            weighted_extent_bytes,
-            weighted_slack_bytes,
-        };
-    }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        return get_view().slice(offset, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_view().slice(offset, count);
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
-        return get_view(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view(offset, count);
-    }
-    auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
+  private:
+    std::pmr::memory_resource* resource_{};
 };
-
 } // namespace ioj::layout

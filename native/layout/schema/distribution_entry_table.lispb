@@ -6,8 +6,7 @@
   :namespace ioj::layout
   :prelude #cpp{#include <optional>}cpp#
   (struct DistributionEntryTable
-    :storage vector
-    :operations (set-num reset)
+    (single-allocation DistributionEntryTable)
     (member component array @optional_size_t)
     (member value array @optional_packed_integer_value)
     (member weight array @uint64_t)

@@ -20,10 +20,10 @@ auto compute_element_totals(AnalysisContext& context,
     using namespace analysis_detail;
     using Quantity = std::optional<std::uint64_t>;
     auto const& storage{context.storage};
-    auto const& physical{storage.types.physical[analysis.value]};
-    auto const& aggregate{storage.types.aggregate[analysis.value]};
-    auto const& packed{storage.types.packed[analysis.value]};
-    auto const& soa{storage.types.soa[analysis.value]};
+    auto const& physical{storage.types.physical()[analysis.value]};
+    auto const& aggregate{storage.types.aggregate()[analysis.value]};
+    auto const& packed{storage.types.packed()[analysis.value]};
+    auto const& soa{storage.types.soa()[analysis.value]};
     ElementTotals result{.element_count = request.element_count};
 
     auto scale = [&](Quantity value, std::string_view label) -> Quantity {
@@ -81,33 +81,33 @@ auto compute_element_totals(AnalysisContext& context,
     switch (kind) {
         case lispb::schema::TypeDefinitionKind::optional_sentinel:
             result.total_encoded_bits =
-                scale(scalars.optional_sentinel_encoding[scalars.find(request.type)]
+                scale(scalars.optional_sentinel_encoding()[scalars.find(request.type)]
                           ->encoded_storage_bits,
                       "Optional encoding bits");
             break;
         case lispb::schema::TypeDefinitionKind::optional_presence_bit:
             result.total_encoded_bits =
-                scale(scalars.optional_presence_encoding[scalars.find(request.type)]
+                scale(scalars.optional_presence_encoding()[scalars.find(request.type)]
                           ->encoded_storage_bits,
                       "Optional encoding bits");
             break;
         case lispb::schema::TypeDefinitionKind::linear_quantized:
-            result.total_encoded_bits =
-                scale(scalars.quantized_encoding[scalars.find(request.type)]->encoded_storage_bits,
-                      "Quantized encoding bits");
+            result.total_encoded_bits = scale(
+                scalars.quantized_encoding()[scalars.find(request.type)]->encoded_storage_bits,
+                "Quantized encoding bits");
             break;
         case lispb::schema::TypeDefinitionKind::fixed_point:
             result.total_encoded_bits =
-                scale(scalars.fixed_encoding[scalars.find(request.type)]->total_bits,
+                scale(scalars.fixed_encoding()[scalars.find(request.type)]->total_bits,
                       "Fixed-point encoding bits");
             break;
         case lispb::schema::TypeDefinitionKind::mini_float:
             result.total_encoded_bits =
-                scale(scalars.float_encoding[scalars.find(request.type)]->total_bits,
+                scale(scalars.float_encoding()[scalars.find(request.type)]->total_bits,
                       "Mini-float encoding bits");
             break;
         case lispb::schema::TypeDefinitionKind::integer_varint: {
-            auto const& encoding{*scalars.varint_encoding[scalars.find(request.type)]};
+            auto const& encoding{*scalars.varint_encoding()[scalars.find(request.type)]};
             result.minimum_total_bytes =
                 scale(encoding.minimum_encoded_bytes, "Minimum encoded bytes");
             result.maximum_total_bytes =
@@ -134,7 +134,7 @@ auto compute_element_totals(AnalysisContext& context,
             minimum_count = 0;
             auto const end{soa->columns.begin + soa->columns.count};
             for (auto column{soa->columns.begin}; column != end; ++column) {
-                auto const bytes{storage.columns.total_bytes[column]};
+                auto const bytes{storage.columns.total_bytes()[column]};
                 if (!bytes) {
                     minimum_count.reset();
                     break;

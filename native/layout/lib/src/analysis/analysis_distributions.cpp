@@ -64,8 +64,7 @@ auto analyze_distribution(AnalysisContext& context,
     auto& storage{context.storage};
     auto& table{storage.distributions};
     auto& entries{storage.distribution_entries};
-    DistributionId const id{
-        table.append(analysis, {entries.weight.size(), 0}, request.element_count)};
+    DistributionId const id{table.append(analysis, {entries.num(), 0}, request.element_count)};
     auto const row{id.value};
     auto numerical_weight{0.0L};
     auto numerical_extent{0.0L};
@@ -80,18 +79,12 @@ auto analyze_distribution(AnalysisContext& context,
                             Quantity slack) {
         auto const weighted_extent{weighted_value(context, extent, weight, "extent bytes")};
         auto const weighted_slack{weighted_value(context, slack, weight, "slack bytes")};
-        entries.component.push_back(component);
-        entries.value.push_back(value);
-        entries.weight.push_back(weight);
-        entries.extent_bytes.push_back(extent);
-        entries.slack_bytes.push_back(slack);
-        entries.weighted_extent_bytes.push_back(weighted_extent);
-        entries.weighted_slack_bytes.push_back(weighted_slack);
-        ++table.entries[row].count;
+        entries.add(component, value, weight, extent, slack, weighted_extent, weighted_slack);
+        ++table.entries()[row].count;
 
-        add_exact(context, table.total_weight[row], weight, "weight");
-        add_exact(context, table.total_extent_bytes[row], weighted_extent, "extent bytes");
-        add_exact(context, table.total_slack_bytes[row], weighted_slack, "slack bytes");
+        add_exact(context, table.total_weight()[row], weight, "weight");
+        add_exact(context, table.total_extent_bytes()[row], weighted_extent, "extent bytes");
+        add_exact(context, table.total_slack_bytes()[row], weighted_slack, "slack bytes");
         numerical_weight += static_cast<long double>(weight);
         if (extent) {
             numerical_extent +=
@@ -144,11 +137,11 @@ auto analyze_distribution(AnalysisContext& context,
     } else {
         auto const tagged{kind == lispb::schema::TypeDefinitionKind::tagged_union};
         assert(tagged || kind == lispb::schema::TypeDefinitionKind::union_type);
-        auto const& aggregate{storage.types.aggregate[analysis.value]};
+        auto const& aggregate{storage.types.aggregate()[analysis.value]};
         assert(aggregate.has_value());
         auto const range{aggregate->members};
         auto const& components{storage.components};
-        auto const& names{tagged ? components.tag : components.name};
+        auto const names{tagged ? components.tag() : components.name()};
         StringSet seen;
         auto add_alternative = [&](std::string const& name, std::uint64_t weight) {
             if (!seen.insert(name).second) {
@@ -169,12 +162,12 @@ auto analyze_distribution(AnalysisContext& context,
                     auto const& tags{storage.tags};
                     auto const tags_end{aggregate->tags.begin + aggregate->tags.count};
                     for (auto tag{aggregate->tags.begin}; tag != tags_end; ++tag) {
-                        if (tags.name[tag] != name) {
+                        if (tags.name()[tag] != name) {
                             continue;
                         }
-                        role = tags.count_sentinel[tag] ? "count sentinel"
-                             : tags.sentinel[tag]       ? "sentinel"
-                                                        : "unmapped live";
+                        role = tags.count_sentinel()[tag] ? "count sentinel"
+                             : tags.sentinel()[tag]       ? "sentinel"
+                                                          : "unmapped live";
                         break;
                     }
                 }
@@ -186,8 +179,8 @@ auto analyze_distribution(AnalysisContext& context,
             append_entry(component,
                          std::nullopt,
                          weight,
-                         components.extent_bytes[component],
-                         components.slack_bytes[component]);
+                         components.extent_bytes()[component],
+                         components.slack_bytes()[component]);
         };
         if (tagged) {
             for (auto const& entry : request.tagged_union_distribution) {
@@ -202,14 +195,16 @@ auto analyze_distribution(AnalysisContext& context,
 
     if (numerical_weight > 0.0L) {
         if (extent_complete) {
-            table.expected_extent_bytes[row] = numerical_extent / numerical_weight;
-            table.expected_selected_extent_bytes[row] =
-                *table.expected_extent_bytes[row] * static_cast<long double>(request.element_count);
+            table.expected_extent_bytes()[row] = numerical_extent / numerical_weight;
+            table.expected_selected_extent_bytes()[row] =
+                *table.expected_extent_bytes()[row] *
+                static_cast<long double>(request.element_count);
         }
         if (slack_complete) {
-            table.expected_slack_bytes[row] = numerical_slack / numerical_weight;
-            table.expected_selected_slack_bytes[row] =
-                *table.expected_slack_bytes[row] * static_cast<long double>(request.element_count);
+            table.expected_slack_bytes()[row] = numerical_slack / numerical_weight;
+            table.expected_selected_slack_bytes()[row] =
+                *table.expected_slack_bytes()[row] *
+                static_cast<long double>(request.element_count);
         }
     }
     if (numerical_weight == 0.0L || !extent_complete || !slack_complete) {

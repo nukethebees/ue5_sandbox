@@ -13,17 +13,19 @@ namespace ioj::layout {
 auto TypeAnalysisTable::append(lispb::schema::TypeId type, ioj::layout::ScenarioId scenario_id)
     -> ioj::layout::AnalysisId {
     auto const row{num()};
-    set_num(row + 1);
-    schema_type[row] = type;
-    scenario[row] = scenario_id;
+    add_defaulted(1);
+    schema_type()[row] = type;
+    scenario()[row] = scenario_id;
     return AnalysisId{row};
 }
 
 auto TypeAnalysisTable::find(lispb::schema::TypeId type, ioj::layout::ScenarioId scenario_id) const
     -> ioj::layout::AnalysisId {
+    auto const types{schema_type()};
+    auto const scenarios{scenario()};
     auto const count{num()};
     for (std::uint32_t row{}; row < count; ++row) {
-        if (schema_type[row] == type && scenario[row] == scenario_id) {
+        if (types[row] == type && scenarios[row] == scenario_id) {
             return AnalysisId{row};
         }
     }

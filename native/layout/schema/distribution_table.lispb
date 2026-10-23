@@ -6,8 +6,7 @@
   :namespace ioj::layout
   :prelude #cpp{#include <optional>}cpp#
   (struct DistributionTable
-    :storage vector
-    :operations (set-num reset)
+    (single-allocation DistributionTable)
     (member analysis array @analysis_id)
     (member entries array @row_range)
     (member element_count array @uint64_t)
@@ -23,12 +22,12 @@
       (parameter samples @row_range)
       (parameter count @uint64_t)
       :body #cpp{auto const row{num()};
-set_num(row + 1);
-analysis[row] = owner;
-entries[row] = samples;
-element_count[row] = count;
-total_weight[row] = 0;
-total_extent_bytes[row] = 0;
-total_slack_bytes[row] = 0;
+add_defaulted(1);
+analysis()[row] = owner;
+entries()[row] = samples;
+element_count()[row] = count;
+total_weight()[row] = 0;
+total_extent_bytes()[row] = 0;
+total_slack_bytes()[row] = 0;
 return DistributionId{row};}cpp#)
   ))

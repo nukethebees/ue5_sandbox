@@ -174,7 +174,7 @@ void column_footprint(AnalysisContext& context,
     finish_regions(context, result, useful);
 }
 
-auto find_child(std::vector<std::string_view> const& names, RowRange range, std::string_view name)
+auto find_child(std::span<std::string_view const> names, RowRange range, std::string_view name)
     -> std::optional<std::size_t> {
     auto const end{range.begin + range.count};
     for (auto i{range.begin}; i != end; ++i) {
@@ -193,12 +193,12 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
     auto& storage{context.storage};
     auto& table{storage.workloads};
     auto& selections{storage.selections};
-    WorkloadId const id{table.append(
-        analysis, {selections.source.size(), 0}, request.element_count, request.multiplicity)};
+    WorkloadId const id{
+        table.append(analysis, {selections.num(), 0}, request.element_count, request.multiplicity)};
     auto const row{id.value};
-    auto const& packed{storage.types.packed[analysis.value]};
-    auto const& aggregate{storage.types.aggregate[analysis.value]};
-    auto const& soa{storage.types.soa[analysis.value]};
+    auto const& packed{storage.types.packed()[analysis.value]};
+    auto const& aggregate{storage.types.aggregate()[analysis.value]};
+    auto const& soa{storage.types.soa()[analysis.value]};
     assert(packed || aggregate || soa);
     assert(request.abi != nullptr);
     auto const& memory{request.abi->memory_facts()};
@@ -207,18 +207,18 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
                               : Quantity{}};
     auto const page_size{memory.page_bytes && *memory.page_bytes != 0 ? memory.page_bytes
                                                                       : Quantity{}};
-    table.cache[row].region_bytes = cache_size;
-    table.pages[row].region_bytes = page_size;
-    table.cache_capacity[row] = cache_capacity_analysis(std::nullopt, memory);
+    table.cache()[row].region_bytes = cache_size;
+    table.pages()[row].region_bytes = page_size;
+    table.cache_capacity()[row] = cache_capacity_analysis(std::nullopt, memory);
     if (request.multiplicity == 0) {
         error(context, "Access multiplicity must be non-zero.");
     }
 
     auto const range{packed ? packed->fields : soa ? soa->columns : aggregate->members};
-    auto const& names{packed ? storage.fields.name
-                      : soa  ? storage.columns.name
-                             : storage.components.name};
-    auto& payload{packed ? table.bits[row] : table.bytes[row]};
+    auto const names{packed ? storage.fields.name()
+                     : soa  ? storage.columns.name()
+                            : storage.components.name()};
+    auto& payload{packed ? table.bits()[row] : table.bytes()[row]};
     payload.useful = 0;
     payload.read = 0;
     payload.write = 0;
@@ -232,18 +232,18 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
     bool has_writes{};
 
     if (soa) {
-        table.storage_bytes[row] = soa->total_allocation_bytes;
-        table.allocated_payload_bytes[row] = soa->total_payload_bytes;
-        table.full_logical_payload_bytes[row] = multiply(
+        table.storage_bytes()[row] = soa->total_allocation_bytes;
+        table.allocated_payload_bytes()[row] = soa->total_payload_bytes;
+        table.full_logical_payload_bytes()[row] = multiply(
             context, soa->bytes_per_logical_element, request.element_count, "SoA logical payload");
-        table.capacity_slack_bytes[row] =
-            difference(soa->total_payload_bytes, table.full_logical_payload_bytes[row]);
-        table.cache[row].count = cache_size ? Quantity{0} : Quantity{};
-        table.cache[row].read_count = table.cache[row].count;
-        table.cache[row].write_count = table.cache[row].count;
-        table.pages[row].count = page_size ? Quantity{0} : Quantity{};
-        table.pages[row].read_count = table.pages[row].count;
-        table.pages[row].write_count = table.pages[row].count;
+        table.capacity_slack_bytes()[row] =
+            difference(soa->total_payload_bytes, table.full_logical_payload_bytes()[row]);
+        table.cache()[row].count = cache_size ? Quantity{0} : Quantity{};
+        table.cache()[row].read_count = table.cache()[row].count;
+        table.cache()[row].write_count = table.cache()[row].count;
+        table.pages()[row].count = page_size ? Quantity{0} : Quantity{};
+        table.pages()[row].read_count = table.pages()[row].count;
+        table.pages()[row].write_count = table.pages()[row].count;
         if (request.element_count > soa->capacity) {
             context.report({DiagnosticSeverity::warning,
                             "Selected access count exceeds the modeled SoA allocation capacity."});
@@ -253,7 +253,7 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
             return storage.physical_facts.size_bytes()[fact.value];
         })
                                         : aggregate->size_bytes};
-        table.storage_bytes[row] =
+        table.storage_bytes()[row] =
             multiply(context, physical_size, request.element_count, "Access storage bytes");
     }
 
@@ -265,22 +265,23 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
                 continue;
             }
             auto const child{*source};
-            if (packed && storage.fields.reserved[child]) {
+            if (packed && storage.fields.reserved()[child]) {
                 error(context,
                       "Reserved packed region '" + name + "' cannot be selected for access.");
                 continue;
             }
             auto const selected{selections.append(child, operation)};
-            ++table.selections[row].count;
+            ++table.selections()[row].count;
             has_reads |= access_includes_read(operation);
             has_writes |= access_includes_write(operation);
             auto const per_element{
-                packed ? Quantity{storage.fields.bit_width[child]}
-                : soa  ? storage.columns.type_facts[child].transform([&](PhysicalFactId fact) {
+                packed ? Quantity{storage.fields.bit_width()[child]}
+                : soa  ? storage.columns.type_facts()[child].transform([&](PhysicalFactId fact) {
                       return storage.physical_facts.size_bytes()[fact.value];
                   })
-                       : storage.components.extent_bytes[child]};
-            auto& selected_payload{packed ? selections.bits[selected] : selections.bytes[selected]};
+                       : storage.components.extent_bytes()[child]};
+            auto& selected_payload{packed ? selections.bits()[selected]
+                                          : selections.bytes()[selected]};
             auto const useful{multiply(context,
                                        per_element,
                                        request.element_count,
@@ -291,8 +292,8 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
             if (packed) {
                 continue;
             }
-            auto const offset{soa ? storage.columns.allocation_offset_bytes[child]
-                                  : storage.components.offset_bytes[child]};
+            auto const offset{soa ? storage.columns.allocation_offset_bytes()[child]
+                                  : storage.components.offset_bytes()[child]};
             auto const extent{soa ? useful : per_element};
             if (offset && extent) {
                 all.emplace_back(*offset, *extent);
@@ -311,13 +312,13 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
                 continue;
             }
 
-            selections.capacity_slack_bytes[selected] =
-                difference(storage.columns.total_bytes[child], useful);
+            selections.capacity_slack_bytes()[selected] =
+                difference(storage.columns.total_bytes()[child], useful);
             auto const contiguous{soa->allocation_strategy ==
                                   SoaAllocationStrategy::aligned_contiguous};
             auto const allocation_offset{contiguous ? offset : Quantity{}};
             column_footprint(context,
-                             selections.cache[selected],
+                             selections.cache()[selected],
                              cache_size,
                              per_element,
                              useful,
@@ -325,7 +326,7 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
                              request.element_count,
                              operation);
             column_footprint(context,
-                             selections.pages[selected],
+                             selections.pages()[selected],
                              page_size,
                              per_element,
                              useful,
@@ -337,23 +338,24 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
                 accumulate(context, total.read_count, value.read_count, "Read region count");
                 accumulate(context, total.write_count, value.write_count, "Write region count");
             };
-            add_regions(table.cache[row], selections.cache[selected]);
-            add_regions(table.pages[row], selections.pages[selected]);
+            add_regions(table.cache()[row], selections.cache()[selected]);
+            add_regions(table.pages()[row], selections.pages()[selected]);
         }
     }
 
-    if (table.selections[row].count == 0) {
+    if (table.selections()[row].count == 0) {
         payload = {};
-        table.cache[row] = {.region_bytes = cache_size};
-        table.pages[row] = {.region_bytes = page_size};
+        table.cache()[row] = {.region_bytes = cache_size};
+        table.pages()[row] = {.region_bytes = page_size};
         context.report({DiagnosticSeverity::warning, "No members are selected for access."});
         return id;
     }
 
     finish_payload(context, payload, request.multiplicity);
     if (packed) {
-        auto& waste{table.packed_waste[row]};
-        waste.storage_bits = multiply(context, table.storage_bytes[row], 8, "Packed storage bits");
+        auto& waste{table.packed_waste()[row]};
+        waste.storage_bits =
+            multiply(context, table.storage_bytes()[row], 8, "Packed storage bits");
         waste.non_useful_bits = difference(waste.storage_bits, payload.useful);
         if (waste.storage_bits && payload.useful && !waste.non_useful_bits) {
             error(context, "Selected useful bits exceed the packed physical storage footprint.");
@@ -362,11 +364,11 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
             Quantity unselected{0};
             auto const end{range.begin + range.count};
             for (auto field{range.begin}; field != end; ++field) {
-                if (!storage.fields.reserved[field] &&
-                    !request.accesses->contains(storage.fields.name[field])) {
+                if (!storage.fields.reserved()[field] &&
+                    !request.accesses->contains(storage.fields.name()[field])) {
                     accumulate(context,
                                unselected,
-                               storage.fields.bit_width[field],
+                               storage.fields.bit_width()[field],
                                "Unselected field bits");
                 }
             }
@@ -378,24 +380,24 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
                 context, packed->unused_bits, request.element_count, "Unused storage bits");
         }
         auto packed_regions = [&](RegionFootprint& footprint) {
-            if (footprint.region_bytes && table.storage_bytes[row]) {
+            if (footprint.region_bytes && table.storage_bytes()[row]) {
                 footprint.count =
-                    minimum_regions(*table.storage_bytes[row], *footprint.region_bytes);
+                    minimum_regions(*table.storage_bytes()[row], *footprint.region_bytes);
             }
             footprint.read_count = has_reads ? footprint.count : Quantity{0};
             footprint.write_count = has_writes ? footprint.count : Quantity{0};
         };
-        packed_regions(table.cache[row]);
-        packed_regions(table.pages[row]);
+        packed_regions(table.cache()[row]);
+        packed_regions(table.pages()[row]);
     } else if (soa) {
-        table.unselected_payload_bytes[row] =
-            difference(table.full_logical_payload_bytes[row], payload.useful);
+        table.unselected_payload_bytes()[row] =
+            difference(table.full_logical_payload_bytes()[row], payload.useful);
         if (soa->allocation_strategy == SoaAllocationStrategy::aligned_contiguous) {
             auto const complete{request.element_count <= soa->capacity &&
                                 soa->total_allocation_bytes.has_value()};
-            table.footprint_exact[row] = complete && all_complete;
+            table.footprint_exact()[row] = complete && all_complete;
             interval_footprint(context,
-                               table.cache[row],
+                               table.cache()[row],
                                0,
                                all,
                                reads,
@@ -405,7 +407,7 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
                                complete && reads_complete,
                                complete && writes_complete);
             interval_footprint(context,
-                               table.pages[row],
+                               table.pages()[row],
                                0,
                                all,
                                reads,
@@ -416,9 +418,9 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
                                complete && writes_complete);
         }
     } else {
-        table.footprint_exact[row] = all_complete && aggregate->size_bytes.has_value();
+        table.footprint_exact()[row] = all_complete && aggregate->size_bytes.has_value();
         interval_footprint(context,
-                           table.cache[row],
+                           table.cache()[row],
                            aggregate->size_bytes,
                            all,
                            reads,
@@ -428,7 +430,7 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
                            reads_complete,
                            writes_complete);
         interval_footprint(context,
-                           table.pages[row],
+                           table.pages()[row],
                            aggregate->size_bytes,
                            all,
                            reads,
@@ -440,16 +442,16 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
     }
 
     if (!has_reads) {
-        table.cache[row].read_count = 0;
-        table.pages[row].read_count = 0;
+        table.cache()[row].read_count = 0;
+        table.pages()[row].read_count = 0;
     }
     if (!has_writes) {
-        table.cache[row].write_count = 0;
-        table.pages[row].write_count = 0;
+        table.cache()[row].write_count = 0;
+        table.pages()[row].write_count = 0;
     }
-    finish_regions(context, table.cache[row], packed ? Quantity{} : payload.useful);
-    finish_regions(context, table.pages[row], packed ? Quantity{} : payload.useful);
-    table.cache_capacity[row] = cache_capacity_analysis(table.cache[row].bytes, memory);
+    finish_regions(context, table.cache()[row], packed ? Quantity{} : payload.useful);
+    finish_regions(context, table.pages()[row], packed ? Quantity{} : payload.useful);
+    table.cache_capacity()[row] = cache_capacity_analysis(table.cache()[row].bytes, memory);
     return id;
 }
 

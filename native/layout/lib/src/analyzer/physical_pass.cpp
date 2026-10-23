@@ -103,7 +103,7 @@ auto physical_use(AnalysisContext& context,
         return lookup_physical(context, abi, types.cpp_types().spelling(cpp_type));
     }
     if (names_semantic_type && lispb::schema::is_valid(type)) {
-        return context.storage.types.physical[context.storage.types.find(type, scenario).value];
+        return context.storage.types.physical()[context.storage.types.find(type, scenario).value];
     }
     return lookup_physical(context, abi, types.strings().view(object_spelling));
 }
@@ -153,17 +153,18 @@ auto append_component(AnalysisContext& context,
                       std::uint64_t count) -> std::size_t {
     auto& members{context.storage.components};
     auto const row{members.append()};
-    members.parent[row] = parent;
-    members.name[row] = name;
-    members.tag[row] = tag;
-    members.semantic_type[row] =
+    members.parent()[row] = parent;
+    members.name()[row] = name;
+    members.tag()[row] = tag;
+    members.semantic_type()[row] =
         context.types.occurrences().type[context.types.occurrences().index(occurrence)];
-    members.element_count[row] = count;
-    members.element_facts[row] = physical_occurrence(context, scenario, abi, occurrence);
-    if (members.element_facts[row]) {
-        members.extent_bytes[row] = checked_multiply(
-            context.storage.physical_facts.size_bytes()[members.element_facts[row]->value], count);
-        if (!members.extent_bytes[row]) {
+    members.element_count()[row] = count;
+    members.element_facts()[row] = physical_occurrence(context, scenario, abi, occurrence);
+    if (members.element_facts()[row]) {
+        members.extent_bytes()[row] = checked_multiply(
+            context.storage.physical_facts.size_bytes()[members.element_facts()[row]->value],
+            count);
+        if (!members.extent_bytes()[row]) {
             context.report(
                 {DiagnosticSeverity::error,
                  "Fixed-array extent overflows uint64 for '" + std::string{name} + "'."});
@@ -177,13 +178,13 @@ void aggregate_layout(AnalysisContext& context,
                       ScenarioId scenario,
                       AbiProfile const& abi) {
     auto const& types{context.types};
-    auto const type{context.storage.types.schema_type[id.value]};
+    auto const type{context.storage.types.schema_type()[id.value]};
     auto const definition{types.definition(type)};
     auto const kind{definition.kind()};
     using Kind = lispb::schema::TypeDefinitionKind;
     auto& components{context.storage.components};
     AggregateLayout result;
-    result.members.begin = components.parent.size();
+    result.members.begin = components.num();
     if (kind == Kind::record) {
         auto const& schema{types.definitions().record_members};
         for (auto const member : types.definitions().records.members_of(definition)) {
@@ -234,26 +235,27 @@ void aggregate_layout(AnalysisContext& context,
                 types.definitions().enums.domain[types.definitions().enums.index(enum_definition)]};
             auto const& domains{types.enum_domains()};
             auto& tags{context.storage.tags};
-            result.tags.begin = tags.name.size();
+            result.tags.begin = tags.num();
             auto const& enumerators{types.declarations().enumerators};
+            auto const component_count{components.num()};
+            auto const component_tags{components.tag()};
             for (auto const enumerator : domains.values(domain)) {
                 auto const row{enumerators.index(enumerator)};
                 auto const name{types.strings().view(enumerators.name[row])};
-                tags.name.push_back(name);
-                tags.sentinel.push_back(enumerators.sentinel[row]);
-                tags.count_sentinel.push_back(static_cast<std::uint8_t>(
-                    enumerator == domains.count_value[domains.index(domain)]));
                 auto mapped{false};
-                for (auto member = result.members.begin; member < components.parent.size();
-                     ++member) {
-                    mapped = mapped || components.tag[member] == name;
+                for (auto member = result.members.begin; member < component_count; ++member) {
+                    mapped = mapped || component_tags[member] == name;
                 }
-                tags.mapped.push_back(static_cast<std::uint8_t>(mapped));
+                tags.add(name,
+                         static_cast<std::uint8_t>(mapped),
+                         enumerators.sentinel[row],
+                         static_cast<std::uint8_t>(enumerator ==
+                                                   domains.count_value[domains.index(domain)]));
             }
-            result.tags.count = tags.name.size() - result.tags.begin;
+            result.tags.count = tags.num() - result.tags.begin;
         }
     }
-    result.members.count = components.parent.size() - result.members.begin;
+    result.members.count = components.num() - result.members.begin;
 
     auto const facts{context.storage.physical_facts.get_const_view().resolve()};
     auto const alignments{facts.alignment_bytes()};
@@ -265,17 +267,17 @@ void aggregate_layout(AnalysisContext& context,
     bool complete{true};
     auto const end{result.members.begin + result.members.count};
     for (auto row = result.members.begin; row < end; ++row) {
-        if (!components.extent_bytes[row] || !components.element_facts[row]) {
+        if (!components.extent_bytes()[row] || !components.element_facts()[row]) {
             complete = false;
             offset.reset();
             continue;
         }
-        auto const extent{*components.extent_bytes[row]};
-        auto const member_alignment{alignments[components.element_facts[row]->value]};
+        auto const extent{*components.extent_bytes()[row]};
+        auto const member_alignment{alignments[components.element_facts()[row]->value]};
         alignment = std::max(alignment, member_alignment);
         largest = std::max(largest, extent);
         if (kind != Kind::record) {
-            components.offset_bytes[row] = 0;
+            components.offset_bytes()[row] = 0;
             continue;
         }
         if (!offset) {
@@ -288,11 +290,11 @@ void aggregate_layout(AnalysisContext& context,
             context.report({DiagnosticSeverity::error, "Record aligned offset overflows uint64."});
             continue;
         }
-        components.offset_bytes[row] = aligned;
-        components.padding_before_bytes[row] = *aligned - *offset;
+        components.offset_bytes()[row] = aligned;
+        components.padding_before_bytes()[row] = *aligned - *offset;
         auto const next{checked_add(*aligned, extent)};
         auto const next_payload{checked_add(payload, extent)};
-        auto const next_padding{checked_add(padding, *components.padding_before_bytes[row])};
+        auto const next_padding{checked_add(padding, *components.padding_before_bytes()[row])};
         if (!next || !next_payload || !next_padding) {
             complete = false;
             offset.reset();
@@ -319,7 +321,7 @@ void aggregate_layout(AnalysisContext& context,
         } else {
             result.largest_alternative_bytes = largest;
             for (auto row = result.members.begin; row < end; ++row) {
-                components.slack_bytes[row] = *size - *components.extent_bytes[row];
+                components.slack_bytes()[row] = *size - *components.extent_bytes()[row];
             }
             if (kind == Kind::union_type) {
                 result.size_bytes = size;
@@ -374,9 +376,9 @@ void aggregate_layout(AnalysisContext& context,
                  context.storage.strings.intern("Derived from LispB '" + std::string{spelling} +
                                                 "' using profile '" + abi.name() + "'."),
                  FactOrigin::derived);
-        context.storage.types.physical[id.value] = fact;
+        context.storage.types.physical()[id.value] = fact;
     }
-    context.storage.types.aggregate[id.value] = std::move(result);
+    context.storage.types.aggregate()[id.value] = std::move(result);
 }
 
 auto physical_inputs(AnalysisContext& context,
@@ -434,11 +436,11 @@ void derive_leaf(AnalysisContext& context,
                  ResolvedVariant const& variant,
                  bool required) {
     auto const& types{context.types};
-    auto const type{context.storage.types.schema_type[id.value]};
+    auto const type{context.storage.types.schema_type()[id.value]};
     auto const definition{types.definition(type)};
     auto const& definitions{types.definitions()};
     using Kind = lispb::schema::TypeDefinitionKind;
-    auto& facts{context.storage.types.physical[id.value]};
+    auto& facts{context.storage.types.physical()[id.value]};
     switch (definition.kind()) {
         case Kind::record:
         case Kind::union_type:

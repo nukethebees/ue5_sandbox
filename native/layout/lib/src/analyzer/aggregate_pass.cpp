@@ -18,9 +18,9 @@
 namespace ioj::layout::analysis_detail {
 void analyze_enum_backing(AnalysisContext& context, AnalysisId id) {
     auto const& types{context.types};
-    auto const type{context.storage.types.schema_type[id.value]};
+    auto const type{context.storage.types.schema_type()[id.value]};
     auto const enumeration{types.definition(type)};
-    auto const& domain{*context.storage.scalars.enum_domain[context.storage.scalars.find(type)]};
+    auto const& domain{*context.storage.scalars.enum_domain()[context.storage.scalars.find(type)]};
     auto const& domains{types.enum_domains()};
     auto const domain_id{
         types.definitions().enums.domain[types.definitions().enums.index(enumeration)]};
@@ -40,7 +40,7 @@ void analyze_enum_backing(AnalysisContext& context, AnalysisId id) {
     auto const facts{context.storage.physical_facts.get_const_view().resolve()};
     EnumBacking result;
     result.backing_type = context.storage.strings.intern(backing_type);
-    result.backing_facts = context.storage.types.physical[id.value];
+    result.backing_facts = context.storage.types.physical()[id.value];
     if (backing_type == "Unknown") {
         context.report(
             {DiagnosticSeverity::error,
@@ -101,7 +101,7 @@ void analyze_enum_backing(AnalysisContext& context, AnalysisId id) {
         }
     }
 
-    context.storage.types.enum_backing[id.value] = std::move(result);
+    context.storage.types.enum_backing()[id.value] = std::move(result);
 }
 
 void relationship_check(AnalysisContext& context,
@@ -126,14 +126,14 @@ void relationship_check(AnalysisContext& context,
     }
     auto& relationships{context.storage.relationships};
     auto const row{relationships.append()};
-    relationships.owner[row] = owner;
-    relationships.field[row] = field;
-    relationships.relationship[row] = relationship;
+    relationships.owner()[row] = owner;
+    relationships.field()[row] = field;
+    relationships.relationship()[row] = relationship;
     auto const target_type{
         types.occurrences().type[types.occurrences().index(schema.target[schema_row])]};
     auto const target{
-        context.storage.types.find(target_type, context.storage.types.scenario[owner.value])};
-    auto const& allocation{context.storage.types.soa[target.value]};
+        context.storage.types.find(target_type, context.storage.types.scenario()[owner.value])};
+    auto const& allocation{context.storage.types.soa()[target.value]};
     if (!allocation) {
         return;
     }
@@ -149,12 +149,12 @@ void relationship_check(AnalysisContext& context,
         return;
     }
     auto label{std::string{
-        types.strings().view(types.name(context.storage.types.schema_type[owner.value]))}};
+        types.strings().view(types.name(context.storage.types.schema_type()[owner.value]))}};
     if (field) {
         label += '.';
-        label += context.storage.fields.name[*field];
+        label += context.storage.fields.name()[*field];
     }
-    relationships.metrics[row] = analyze_unsigned_relationship_extent(
+    relationships.metrics()[row] = analyze_unsigned_relationship_extent(
         context, types.declarations(), label, kind, *extent, codes, width, minimum, maximum);
 }
 
@@ -174,20 +174,20 @@ void analyze_relationships(AnalysisContext& context, ScenarioId scenario) {
                                table.bit_width[row],
                                table.minimum_value[row],
                                table.maximum_value[row]);
-        } else if (auto const& packed = context.storage.types.packed[owner.value]; packed) {
+        } else if (auto const& packed = context.storage.types.packed()[owner.value]; packed) {
             auto const& table{types.definitions().packed_fields};
             auto const end{packed->fields.begin + packed->fields.count};
             for (auto row = packed->fields.begin; row < end; ++row) {
-                if (context.storage.fields.reserved[row]) {
+                if (context.storage.fields.reserved()[row]) {
                     continue;
                 }
-                auto const schema_row{table.index(context.storage.fields.segment[row])};
+                auto const schema_row{table.index(context.storage.fields.segment()[row])};
                 relationship_check(context,
                                    owner,
                                    row,
                                    table.relationship[schema_row],
                                    table.named_codes[schema_row],
-                                   context.storage.fields.bit_width[row],
+                                   context.storage.fields.bit_width()[row],
                                    table.minimum_value[schema_row],
                                    table.maximum_value[schema_row]);
             }

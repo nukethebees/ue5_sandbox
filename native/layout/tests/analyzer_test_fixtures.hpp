@@ -68,8 +68,8 @@ inline auto run_analysis(AnalysisContext& context,
 
 template <typename T>
 auto scalar_result(AnalysisContext const& context,
-                   std::vector<std::optional<T>> const& column,
-                   std::string_view name = "Value") -> T const& {
+                   std::span<T> column,
+                   std::string_view name = "Value") -> auto const& {
     auto const type{context.document.find_type("game", name).value()};
     return column[context.storage.scalars.find(type)].value();
 }

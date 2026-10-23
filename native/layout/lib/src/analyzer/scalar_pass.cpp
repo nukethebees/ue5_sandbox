@@ -68,15 +68,15 @@ auto compute_integer_domain(AnalysisContext& context, lispb::schema::TypeId type
     auto required_maximum{integer_scalars.maximum_value[scalar_row]};
     auto sentinel_count{std::uint64_t{0}};
     auto& codes{context.storage.codes};
-    auto const code_begin{codes.name.size()};
+    auto const code_begin{codes.num()};
     for (auto const code_id : types.declarations().items(integer_scalars.named_codes[scalar_row])) {
         auto const code{code_id};
         auto const named_row{types.declarations().packed_named_codes.index(code)};
         auto const code_row{codes.append()};
-        codes.name[code_row] =
+        codes.name()[code_row] =
             types.strings().view(types.declarations().packed_named_codes.name[named_row]);
-        codes.integer_value[code_row] = types.declarations().packed_named_codes.value[named_row];
-        codes.sentinel[code_row] = types.declarations().packed_named_codes.sentinel[named_row];
+        codes.integer_value()[code_row] = types.declarations().packed_named_codes.value[named_row];
+        codes.sentinel()[code_row] = types.declarations().packed_named_codes.sentinel[named_row];
         if (types.declarations()
                 .packed_named_codes.sentinel[types.declarations().packed_named_codes.index(code)]) {
             ++sentinel_count;
@@ -147,7 +147,7 @@ auto compute_integer_domain(AnalysisContext& context, lispb::schema::TypeId type
                                 : std::optional{integer_scalars.bit_width[scalar_row]},
         .effective_bit_width = integer_scalars.bit_width[scalar_row],
         .unused_codes = unused_codes,
-        .codes = {code_begin, codes.name.size() - code_begin}}};
+        .codes = {code_begin, codes.num() - code_begin}}};
     return result;
 }
 
@@ -168,7 +168,7 @@ auto compute_optional_sentinel_encoding(AnalysisContext& context, lispb::schema:
         types.occurrences()
             .type[types.occurrences().index(optional_sentinels.source[optional_row])]};
     auto const& source_analysis{
-        *context.storage.scalars.integer_domain[context.storage.scalars.find(source_type)]};
+        *context.storage.scalars.integer_domain()[context.storage.scalars.find(source_type)]};
 
     OptionalSentinelEncoding result{
         .source_type =
@@ -214,7 +214,7 @@ auto compute_optional_presence_encoding(AnalysisContext& context, lispb::schema:
         types.occurrences()
             .type[types.occurrences().index(optional_presence_bits.source[optional_row])]};
     auto const& source_analysis{
-        *context.storage.scalars.integer_domain[context.storage.scalars.find(source_type)]};
+        *context.storage.scalars.integer_domain()[context.storage.scalars.find(source_type)]};
 
     OptionalPresenceEncoding result{
         .source_type =
@@ -528,17 +528,17 @@ auto compute_enum_domain(AnalysisContext& context, lispb::schema::TypeId type) -
         }
     }
     auto const value_count{domains.values(domain).size()};
-    result.codes = {context.storage.codes.name.size(), value_count};
+    result.codes = {context.storage.codes.num(), value_count};
     for (std::size_t index{}; index < value_count; ++index) {
         auto const enumerator{domains.values(domain)[index]};
         auto const& enumerators{types.declarations().enumerators};
         auto const row{enumerators.index(enumerator)};
         auto& codes{context.storage.codes};
         auto const code_row{codes.append()};
-        codes.name[code_row] = types.strings().view(enumerators.name[row]);
-        codes.sentinel[code_row] = enumerators.sentinel[row];
-        codes.count_sentinel[code_row] = enumerator == domains.count_value[domain_row];
-        codes.code[code_row] = domains.code(domain, index);
+        codes.name()[code_row] = types.strings().view(enumerators.name[row]);
+        codes.sentinel()[code_row] = enumerators.sentinel[row];
+        codes.count_sentinel()[code_row] = enumerator == domains.count_value[domain_row];
+        codes.code()[code_row] = domains.code(domain, index);
     }
     auto const issue_count{domains.issue_count(domain)};
     for (std::uint32_t issue{}; issue < issue_count; ++issue) {
@@ -560,34 +560,34 @@ void analyze_scalar_domains(AnalysisContext& context) {
     for (auto const type : context.types.types()) {
         auto const row{scalar.find(type)};
         if (lispb::schema::integer_domain(context.types, type).has_value()) {
-            scalar.integer_domain[row] = compute_integer_domain(context, type);
+            scalar.integer_domain()[row] = compute_integer_domain(context, type);
         } else if (context.types.definition(type).kind() ==
                    lispb::schema::TypeDefinitionKind::enumeration) {
-            scalar.enum_domain[row] = compute_enum_domain(context, type);
+            scalar.enum_domain()[row] = compute_enum_domain(context, type);
         }
     }
     for (auto const type : context.types.types()) {
         auto const row{scalar.find(type)};
         switch (context.types.definition(type).kind()) {
             case lispb::schema::TypeDefinitionKind::optional_sentinel:
-                scalar.optional_sentinel_encoding[row] =
+                scalar.optional_sentinel_encoding()[row] =
                     compute_optional_sentinel_encoding(context, type);
                 break;
             case lispb::schema::TypeDefinitionKind::optional_presence_bit:
-                scalar.optional_presence_encoding[row] =
+                scalar.optional_presence_encoding()[row] =
                     compute_optional_presence_encoding(context, type);
                 break;
             case lispb::schema::TypeDefinitionKind::linear_quantized:
-                scalar.quantized_encoding[row] = compute_quantized_encoding(context, type);
+                scalar.quantized_encoding()[row] = compute_quantized_encoding(context, type);
                 break;
             case lispb::schema::TypeDefinitionKind::fixed_point:
-                scalar.fixed_encoding[row] = compute_fixed_encoding(context, type);
+                scalar.fixed_encoding()[row] = compute_fixed_encoding(context, type);
                 break;
             case lispb::schema::TypeDefinitionKind::mini_float:
-                scalar.float_encoding[row] = compute_float_encoding(context, type);
+                scalar.float_encoding()[row] = compute_float_encoding(context, type);
                 break;
             case lispb::schema::TypeDefinitionKind::integer_varint:
-                scalar.varint_encoding[row] = compute_varint_encoding(context, type);
+                scalar.varint_encoding()[row] = compute_varint_encoding(context, type);
                 break;
             default:
                 break;

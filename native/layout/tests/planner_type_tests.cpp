@@ -93,12 +93,12 @@ TEST(AnalysisBatch, ReusesPhysicalRowsAcrossCountsAndSeparatesAbiScenarios) {
     EXPECT_EQ(storage.totals[0].total_storage_bytes, 40);
     EXPECT_EQ(storage.totals[1].total_storage_bytes, 80);
     EXPECT_FALSE(storage.totals[2].total_storage_bytes);
-    EXPECT_EQ(std::ranges::count(storage.components.parent, first), 1);
-    EXPECT_FALSE(storage.types.physical[third.value]);
+    EXPECT_EQ(std::ranges::count(storage.components.parent(), first), 1);
+    EXPECT_FALSE(storage.types.physical()[third.value]);
     ASSERT_GT(editor.diagnostics().size(), 0);
     auto const errors{editor.diagnostics().size()};
     storage.clear();
-    EXPECT_TRUE(storage.types.schema_type.empty());
+    EXPECT_TRUE(storage.types.is_empty());
     EXPECT_TRUE(storage.runs.empty());
     EXPECT_EQ(editor.diagnostics().size(), errors);
 }
@@ -123,10 +123,10 @@ TEST(AnalysisBatch, ExternalFactsApplyOnlyToTheirRequestedTarget) {
     AnalysisContext context{document, storage};
     Analyzer::analyze(context, requests);
     ASSERT_EQ(storage.runs.size(), 2);
-    auto const physical{storage.types.physical[storage.runs[0].analysis.value]};
+    auto const physical{storage.types.physical()[storage.runs[0].analysis.value]};
     ASSERT_TRUE(physical);
     EXPECT_EQ(storage.physical_facts.size_bytes()[physical->value], 12);
-    EXPECT_FALSE(storage.types.physical[storage.runs[1].analysis.value]);
+    EXPECT_FALSE(storage.types.physical()[storage.runs[1].analysis.value]);
     EXPECT_FALSE(unknown.find("OpaqueVector"));
 }
 
@@ -150,8 +150,8 @@ TEST(AnalysisBatch, VariantOverflowDoesNotAlterAuthoredSchema) {
     AnalysisContext context{document, storage};
     Analyzer::analyze(context, requests);
     ASSERT_EQ(storage.runs.size(), 2);
-    EXPECT_EQ(storage.types.packed[storage.runs[0].analysis.value]->overflow_bits, 0);
-    EXPECT_EQ(storage.types.packed[storage.runs[1].analysis.value]->overflow_bits, 8);
+    EXPECT_EQ(storage.types.packed()[storage.runs[0].analysis.value]->overflow_bits, 0);
+    EXPECT_EQ(storage.types.packed()[storage.runs[1].analysis.value]->overflow_bits, 8);
     EXPECT_GT(editor.diagnostics().size(), 0);
     EXPECT_EQ(document.query().module("test").packed_value("Value").field("value").bits(), 8);
 }

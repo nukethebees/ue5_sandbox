@@ -11,22 +11,22 @@ namespace ioj::layout {
 auto compare_runs(AnalysisContext& context, std::size_t first, std::size_t second) -> bool {
     auto const& storage{context.storage};
     assert(first < storage.runs.size() && second < storage.runs.size());
-    auto const first_type{storage.types.schema_type[storage.runs[first].analysis.value]};
-    auto const second_type{storage.types.schema_type[storage.runs[second].analysis.value]};
+    auto const first_type{storage.types.schema_type()[storage.runs[first].analysis.value]};
+    auto const second_type{storage.types.schema_type()[storage.runs[second].analysis.value]};
     auto source = [&](lispb::schema::TypeId type) {
         auto const row{storage.scalars.find(type)};
         auto const& scalars{storage.scalars};
-        if (scalars.optional_sentinel_encoding[row]) {
-            return scalars.optional_sentinel_encoding[row]->source_type;
+        if (scalars.optional_sentinel_encoding()[row]) {
+            return scalars.optional_sentinel_encoding()[row]->source_type;
         }
-        if (scalars.optional_presence_encoding[row]) {
-            return scalars.optional_presence_encoding[row]->source_type;
+        if (scalars.optional_presence_encoding()[row]) {
+            return scalars.optional_presence_encoding()[row]->source_type;
         }
-        if (scalars.quantized_encoding[row]) {
-            return scalars.quantized_encoding[row]->source_type;
+        if (scalars.quantized_encoding()[row]) {
+            return scalars.quantized_encoding()[row]->source_type;
         }
-        if (scalars.varint_encoding[row]) {
-            return scalars.varint_encoding[row]->source_type;
+        if (scalars.varint_encoding()[row]) {
+            return scalars.varint_encoding()[row]->source_type;
         }
         return type;
     };
