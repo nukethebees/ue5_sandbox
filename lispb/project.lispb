@@ -126,29 +126,18 @@
     :sources ("native/lispb/slate/tests/compile/widgets.lispb")
     :output-root (build-path "native/lispb/slate/compile-generated"))
 
-  (kernel sandbox-kernels
+  (kernel kernel-standard
     :sources (
       "Plugins/SandboxCore/Source/SandboxCore/Kernels/array_math.lispb"
-      "Plugins/SandboxCore/Source/SandboxCore/Kernels/candidate_math.lispb")
-    (emission kernel-unreal
-      :profile unreal
-      :output-root (project-path "Plugins/SandboxCore/Source/SandboxCore"))
-    (emission kernel-standard
-      :profile standard
-      :output-root (build-path "native/lispb/kernel/standard-generated")))
+      "Plugins/SandboxCore/Source/SandboxCore/Kernels/candidate_math.lispb"
+      "native/lispb/kernel/tests/constants.lispb")
+    :output-root (build-path "native/lispb/kernel/standard-generated"))
 
-  (kernel native-core-kernels
+  (kernel kernel-native-core
     :sources (
       "Plugins/SandboxCore/Source/SandboxCore/Kernels/array_math.lispb"
       "native/core/Kernels/vector_lerp.lispb")
-    (emission kernel-native-core
-      :profile standard
-      :output-root (project-path "native/core")))
-  (kernel kernel-fixtures
-    :sources ("native/lispb/kernel/tests/compile/array_math.lispb")
-    (emission kernel-compile-fixture
-      :profile unreal
-      :output-root (build-path "native/lispb/kernel/compile-generated")))
+    :output-root (project-path "native/core"))
 
   (material ui-glow-material
     :source "Plugins/SandboxUI/Source/SandboxUI/Private/materials/UiGlowComposite.lispb"
@@ -205,7 +194,7 @@
       slate-game-options
       slate-level-select))
   (group committed-code
-    :targets (compiler-ir compiler-schema layout-analysis sandbox-code native-soa-fixture slate-production kernel-unreal kernel-native-core))
+    :targets (compiler-ir compiler-schema layout-analysis sandbox-code native-soa-fixture slate-production kernel-native-core))
   (group materials
     :targets (
       ui-glow-material

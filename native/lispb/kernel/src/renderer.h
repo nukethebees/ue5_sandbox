@@ -5,7 +5,6 @@
 #include <kernel_codegen/document.h>
 #include <kernel_codegen/indices.h>
 #include <lispb/compilation.h>
-#include <lispb/kernel_profile.h>
 #include <lispb/text_artifact.h>
 
 #include <vector>

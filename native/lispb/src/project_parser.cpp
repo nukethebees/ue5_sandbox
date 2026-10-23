@@ -64,17 +64,6 @@ void ProjectParser::output_path(Project& project,
                        path_id);
 }
 
-auto ProjectParser::parse_profile(FormId const form) -> KernelProfile {
-    auto const value{parser_.text(form, "kernel profile")};
-    if (value == "unreal") {
-        return KernelProfile::unreal;
-    }
-    if (value == "standard") {
-        return KernelProfile::standard;
-    }
-    parser_.fail(form, "unknown kernel profile '" + std::string{value} + "'");
-}
-
 auto ProjectParser::parse(codegen::sexpr::SourceFileId file,
                           codegen::sexpr::HandleRange forms,
                           std::filesystem::path const& project_path) -> Project {
@@ -119,19 +108,11 @@ auto ProjectParser::parse(codegen::sexpr::SourceFileId file,
                 }
                 output_path(project, target, fields.required("output-root"), "output root");
             } else if (head == "kernel") {
-                fields.validate({"sources"}, {"emission"});
-                auto const sources{paths(project, fields.required("sources"), "sources")};
-                for (auto const emission : fields.declarations()) {
-                    Fields const emission_fields{parser_, emission, "emission", 1};
-                    emission_fields.validate({"profile", "output-root"});
-                    auto const target{project.append(
-                        TargetKind::kernel,
-                        parser_.identifier(emission_fields.positional(0), "target name"))};
-                    project.set_sources(target, sources);
-                    project.set_profile(target, parse_profile(emission_fields.required("profile")));
-                    output_path(
-                        project, target, emission_fields.required("output-root"), "output root");
-                }
+                fields.validate({"sources", "output-root"});
+                auto const target{project.append(
+                    TargetKind::kernel, parser_.identifier(fields.positional(0), "target name"))};
+                project.set_sources(target, paths(project, fields.required("sources"), "sources"));
+                output_path(project, target, fields.required("output-root"), "output root");
             } else if (head == "material") {
                 fields.validate({"source", "artifact"});
                 auto const target{project.append(

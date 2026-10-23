@@ -2,7 +2,6 @@
 
 #include <codegen/sexpr/handle_range.h>
 #include <codegen/sexpr/parser.h>
-#include <lispb/kernel_profile.h>
 #include <lispb/target_id.h>
 
 #include <filesystem>
@@ -26,7 +25,6 @@ class ProjectParser {
                      TargetId target,
                      codegen::sexpr::FormId form,
                      std::string_view purpose);
-    auto parse_profile(codegen::sexpr::FormId form) -> KernelProfile;
     codegen::sexpr::Syntax& syntax_;
     codegen::sexpr::Parser parser_;
 };

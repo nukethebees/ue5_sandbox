@@ -9,7 +9,6 @@
 #include <codegen/sexpr/syntax.h>
 #include <kernel_codegen/document.h>
 #include <lispb/compilation.h>
-#include <lispb/kernel_profile.h>
 
 #include <cstdint>
 #include <span>
@@ -23,7 +22,6 @@ void compile(lispb::codegen::sexpr::Syntax& syntax,
              lispb::codegen::CppIR& cpp,
              lispb::Compilation& output,
              std::span<lispb::codegen::sexpr::SourceFileId const> const inputs,
-             lispb::KernelProfile const profile,
              bool const generate) {
     auto const first_module{document.modules.size()};
     for (auto const input : inputs) {
@@ -35,8 +33,8 @@ void compile(lispb::codegen::sexpr::Syntax& syntax,
     std::vector<detail::ModuleAnalysis> analyses;
     analyses.reserve(module_count - first_module);
     for (auto index{first_module}; index < module_count; ++index) {
-        analyses.push_back(detail::analyze(
-            syntax, document, detail::ModuleId{static_cast<std::uint32_t>(index)}, profile));
+        analyses.push_back(
+            detail::analyze(syntax, document, detail::ModuleId{static_cast<std::uint32_t>(index)}));
     }
     if (!generate) {
         return;

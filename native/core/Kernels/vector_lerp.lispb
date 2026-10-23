@@ -1,5 +1,5 @@
 (kernel-module vector_lerp
-  (emit standard
+  (emit
     (header "include/ioj/generated/vector_lerp_kernels.h")
     (source "src/generated/vector_lerp_kernels.cpp")
     (header-include "ioj/generated/vector_lerp_kernels.h")

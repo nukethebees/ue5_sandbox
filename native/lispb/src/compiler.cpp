@@ -100,13 +100,7 @@ auto Compiler::compile(Project const& project,
                 sources.push_back(storage_.sources.load(path));
                 compilation.dependencies.push_back(path);
             }
-            kernel_codegen::compile(storage_.syntax,
-                                    kernel_,
-                                    cpp_,
-                                    compilation,
-                                    sources,
-                                    project.profile(target),
-                                    emit);
+            kernel_codegen::compile(storage_.syntax, kernel_, cpp_, compilation, sources, emit);
             output_.publication = {.path_base = output, .output_root = output};
             break;
         }

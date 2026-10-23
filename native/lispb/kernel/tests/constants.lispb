@@ -1,0 +1,30 @@
+(kernel-module constants
+  (emit
+    (header "constants.h")
+    (source "constants.cpp")
+    (tests "constants_tests.cpp")
+    (header-include "constants.h")
+    (namespace kernel_tests))
+
+  (type-set floating float double)
+
+  (map add_nan
+    (types floating)
+    (operand data array)
+    (output out)
+    (expression (+ data (constant nan)))
+    (variants (out-of-place add_nan)))
+
+  (map add_infinity
+    (types floating)
+    (operand data array)
+    (output out)
+    (expression (+ data (constant infinity)))
+    (variants (out-of-place add_infinity)))
+
+  (map add_negative_infinity
+    (types floating)
+    (operand data array)
+    (output out)
+    (expression (+ data (constant negative-infinity)))
+    (variants (out-of-place add_negative_infinity))))

@@ -149,28 +149,23 @@ void Operations::clear() {
     variants_.clear();
 }
 
-auto Emissions::add(lispb::KernelProfile const profile,
-                    lispb::codegen::sexpr::SourceSpan const span) -> EmissionId {
-    auto const id{EmissionId{static_cast<std::uint32_t>(profile_.size())}};
-    profile_.push_back(profile);
+auto Emissions::add(lispb::codegen::sexpr::SourceSpan const span) -> EmissionId {
+    auto const id{EmissionId{static_cast<std::uint32_t>(span_.size())}};
     span_.push_back(span);
     header_.push_back({});
     source_.push_back({});
     tests_.push_back({});
     header_include_.push_back({});
     cpp_namespace_.push_back({});
-    export_specifier_.push_back({});
     return id;
 }
 void Emissions::clear() {
-    profile_.clear();
     span_.clear();
     header_.clear();
     source_.clear();
     tests_.clear();
     header_include_.clear();
     cpp_namespace_.clear();
-    export_specifier_.clear();
 }
 
 auto Modules::add(lispb::StringId const name, lispb::codegen::sexpr::SourceSpan const span)
@@ -181,7 +176,7 @@ auto Modules::add(lispb::StringId const name, lispb::codegen::sexpr::SourceSpan 
     span_.push_back(span);
     type_sets_ranges_.push_back({static_cast<std::uint32_t>(type_sets_.size()), 0});
     operations_ranges_.push_back({static_cast<std::uint32_t>(operations_.size()), 0});
-    emissions_ranges_.push_back({static_cast<std::uint32_t>(emissions_.size()), 0});
+    emission_.push_back({});
     return id;
 }
 auto Modules::type_sets(ModuleId const id) const -> std::span<TypeSetId const> {
@@ -204,16 +199,6 @@ void Modules::append_operations(ModuleId const id, OperationId const value) {
     operations_.push_back(value);
     ++range.count;
 }
-auto Modules::emissions(ModuleId const id) const -> std::span<EmissionId const> {
-    auto const range{emissions_ranges_[id.value]};
-    return std::span{emissions_}.subspan(range.offset, range.count);
-}
-void Modules::append_emissions(ModuleId const id, EmissionId const value) {
-    auto& range{emissions_ranges_[id.value]};
-    assert(is_tail(range, emissions_));
-    emissions_.push_back(value);
-    ++range.count;
-}
 void Modules::clear() {
     expanded_variants_.clear();
     name_.clear();
@@ -222,8 +207,7 @@ void Modules::clear() {
     type_sets_.clear();
     operations_ranges_.clear();
     operations_.clear();
-    emissions_ranges_.clear();
-    emissions_.clear();
+    emission_.clear();
 }
 
 auto Document::operand_index(OperationId const operation, OperandId const operand) const

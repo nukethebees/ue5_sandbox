@@ -2,7 +2,6 @@
 
 #include <codegen/sexpr/handle_range.h>
 #include <lispb/indices.h>
-#include <lispb/kernel_profile.h>
 #include <lispb/rooted_path.h>
 #include <lispb/strings.h>
 #include <lispb/target_columns.h>
@@ -81,10 +80,6 @@ auto Project::include_directories(TargetId const target) const
     assert(target.kind() == TargetKind::slate);
     return paths(slate_includes_[target.index()]);
 }
-auto Project::profile(TargetId const target) const -> KernelProfile {
-    assert(target.kind() == TargetKind::kernel);
-    return kernel_profiles_[target.index()];
-}
 auto Project::output_path(TargetId const target) const -> RootedPath {
     auto const& data{columns(target)};
     return {data.output_bases[target.index()],
@@ -107,8 +102,6 @@ auto Project::append(TargetKind const kind, StringId const name) -> TargetId {
         cpp_types_.emplace_back();
     } else if (kind == TargetKind::slate) {
         slate_includes_.emplace_back();
-    } else if (kind == TargetKind::kernel) {
-        kernel_profiles_.push_back(KernelProfile::unreal);
     }
     names_.emplace(name, id);
     order_.push_back(id);
@@ -130,10 +123,6 @@ void Project::set_types(TargetId const target, StringId const types) {
 void Project::set_includes(TargetId const target, codegen::sexpr::HandleRange const includes) {
     assert(target.kind() == TargetKind::slate);
     slate_includes_[target.index()] = includes;
-}
-void Project::set_profile(TargetId const target, KernelProfile const profile) {
-    assert(target.kind() == TargetKind::kernel);
-    kernel_profiles_[target.index()] = profile;
 }
 void Project::set_output(TargetId const target, PathBase const base, StringId const path) {
     auto& data{columns(target)};

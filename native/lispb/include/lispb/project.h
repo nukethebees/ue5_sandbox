@@ -2,7 +2,6 @@
 
 #include <codegen/sexpr/handle_range.h>
 #include <lispb/indices.h>
-#include <lispb/kernel_profile.h>
 #include <lispb/rooted_path.h>
 #include <lispb/target_columns.h>
 #include <lispb/target_groups.h>
@@ -42,7 +41,6 @@ class Project {
     [[nodiscard]] auto types(TargetId target) const -> std::filesystem::path;
     [[nodiscard]] auto include_directories(TargetId target) const
         -> std::vector<std::filesystem::path>;
-    [[nodiscard]] auto profile(TargetId target) const -> KernelProfile;
     [[nodiscard]] auto output_path(TargetId target) const -> RootedPath;
     [[nodiscard]] auto expand(std::string_view name) const -> std::vector<TargetId>;
     auto append(TargetKind kind, StringId name) -> TargetId;
@@ -50,7 +48,6 @@ class Project {
     void set_sources(TargetId target, codegen::sexpr::HandleRange sources);
     void set_types(TargetId target, StringId types);
     void set_includes(TargetId target, codegen::sexpr::HandleRange includes);
-    void set_profile(TargetId target, KernelProfile profile);
     void set_output(TargetId target, PathBase base, StringId path);
     void add_group(StringId name, std::span<StringId const> members);
     void resolve_groups();
@@ -85,7 +82,6 @@ class Project {
     std::vector<StringId> paths_;
     std::vector<StringId> cpp_types_;
     std::vector<codegen::sexpr::HandleRange> slate_includes_;
-    std::vector<KernelProfile> kernel_profiles_;
     std::vector<StringId> unresolved_group_members_;
 };
 

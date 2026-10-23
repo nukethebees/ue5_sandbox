@@ -9,7 +9,6 @@
 #include <codegen/sexpr/syntax.h>
 #include <kernel_codegen/document.h>
 #include <lispb/diagnostics.h>
-#include <lispb/kernel_profile.h>
 #include <lispb/strings.h>
 #include <lispb/text_artifact.h>
 
@@ -33,12 +32,11 @@ namespace {
 
 constexpr std::string_view valid_source = R"(
 (kernel-module arithmetic
-  (emit unreal
+  (emit
     (header "ArrayKernels.h")
     (source "ArrayKernels.cpp")
     (header-include "ArrayKernels.h")
-    (namespace ioj)
-    (export COMPILE_FIXTURE_API))
+    (namespace ioj))
   (type-set numeric int32 float double)
   (map multiply
     (types numeric)
@@ -51,33 +49,13 @@ constexpr std::string_view valid_source = R"(
       (in-place lhs multiply_in_place))))
 )";
 
-constexpr std::string_view standard_source = R"(
-(kernel-module arithmetic
-  (emit standard
-    (header "standard/ArrayKernels.h")
-    (source "standard/ArrayKernels.cpp")
-    (tests "standard/ArrayKernelsTests.cpp")
-    (header-include "standard/ArrayKernels.h")
-    (namespace ioj::standard))
-  (type-set numeric uint32 float)
-  (map multiply
-    (types numeric)
-    (operand lhs array)
-    (operand rhs (array scalar))
-    (output out)
-    (expression (* lhs rhs))
-    (variants
-      (out-of-place multiply)
-      (in-place lhs multiply_in_place))))
-)";
-
-constexpr std::string_view component_standard_source = R"(
+constexpr std::string_view component_source = R"(
 (kernel-module vector_lerp
-  (emit standard
-    (header "standard/VectorLerp.h")
-    (source "standard/VectorLerp.cpp")
-    (header-include "standard/VectorLerp.h")
-    (namespace ioj::standard))
+  (emit
+    (header "VectorLerp.h")
+    (source "VectorLerp.cpp")
+    (header-include "VectorLerp.h")
+    (namespace ioj))
   (type-set floating float)
   (component-map lerp_3d
     (components x y z)
@@ -123,25 +101,23 @@ auto parse_document(std::string_view const path, std::string_view const source) 
     return ParsedDocument{path, source};
 }
 
-auto render_document(ParsedDocument& document, lispb::KernelProfile const profile)
-    -> std::vector<lispb::TextArtifact> {
-    auto const analysis{analyze(document.syntax, document.data, ModuleId{0}, profile)};
+auto render_document(ParsedDocument& document) -> std::vector<lispb::TextArtifact> {
+    auto const analysis{analyze(document.syntax, document.data, ModuleId{0})};
     return render(document.cpp, document.data, analysis);
 }
 
 auto render_source(std::string_view const source) -> std::vector<lispb::TextArtifact> {
     auto document{parse_document("test.lispb", source)};
-    return render_document(document, lispb::KernelProfile::unreal);
+    return render_document(document);
 }
 
 auto literal_source(std::string_view const types, std::string_view const literal) -> std::string {
     return std::string{R"((kernel-module literals
-  (emit unreal
+  (emit
     (header "ArrayKernels.h")
     (source "ArrayKernels.cpp")
     (header-include "ArrayKernels.h")
-    (namespace ioj)
-    (export COMPILE_FIXTURE_API))
+    (namespace ioj))
   (type-set numeric )"} +
            std::string{types} + R"()
   (map add_literal
@@ -172,23 +148,33 @@ TEST(KernelRenderer, GeneratesConcreteOverloadsAndSourceLoops) {
     auto const files{render_source(valid_source)};
 
     ASSERT_EQ(files.size(), 2);
-    EXPECT_EQ(files[0].content.find("template"), std::string::npos);
-    EXPECT_NE(files[0].content.find("void COMPILE_FIXTURE_API multiply("), std::string::npos);
-    EXPECT_NE(files[0].content.find("TConstArrayView<float> const rhs"), std::string::npos);
-    EXPECT_NE(files[0].content.find("float const rhs"), std::string::npos);
-    EXPECT_NE(files[0].content.find("TArray<float>& lhs"), std::string::npos);
-    EXPECT_NE(files[1].content.find("for (int32 i{0}; i < count; ++i)"), std::string::npos);
-    EXPECT_NE(files[1].content.find("lhs[i] * rhs[i]"), std::string::npos);
-    EXPECT_NE(files[1].content.find("lhs[i] * rhs"), std::string::npos);
-    EXPECT_NE(files[1].content.find("float const* lhs, float const* rhs, float* RESTRICT out"),
-              std::string::npos);
-    EXPECT_NE(files[1].content.find("multiply: out and lhs must not overlap"), std::string::npos);
-    EXPECT_EQ(files[1].content.find("multiply: lhs and rhs must not overlap"), std::string::npos);
+    auto const& header{files[0].content};
+    auto const& source{files[1].content};
+    EXPECT_FALSE(header.contains("template"));
+    EXPECT_TRUE(header.contains("void multiply("));
+    EXPECT_TRUE(header.contains("std::span<float const> rhs"));
+    EXPECT_TRUE(header.contains("float rhs"));
+    EXPECT_TRUE(header.contains("std::span<float> lhs"));
+    EXPECT_TRUE(source.contains("for (std::size_t i{}; i < count; ++i)"));
+    EXPECT_TRUE(source.contains("lhs[i] * rhs[i]"));
+    EXPECT_TRUE(source.contains("lhs[i] * rhs"));
+    EXPECT_TRUE(source.contains("float const* lhs, float const* rhs, float* out"));
+
+    auto const begin{source.find("void multiply(")};
+    ASSERT_NE(begin, std::string::npos);
+    auto const end{source.find("\n}", begin)};
+    ASSERT_NE(end, std::string::npos);
+    auto const out_of_place{std::string_view{source}.substr(begin, end - begin)};
+    EXPECT_TRUE(
+        out_of_place.contains("arithmetic_detail::require(!arithmetic_detail::ranges_overlap("
+                              "out.data(), out.size_bytes(), lhs.data(), lhs.size_bytes()))"));
+    EXPECT_FALSE(out_of_place.contains("arithmetic_detail::ranges_overlap(lhs.data(), "
+                                       "lhs.size_bytes(), rhs.data(), rhs.size_bytes())"));
 }
 
 TEST(KernelRenderer, GeneratesFusedComponentMapBindings) {
-    auto document{parse_document("test.lispb", component_standard_source)};
-    auto const files{render_document(document, lispb::KernelProfile::standard)};
+    auto document{parse_document("test.lispb", component_source)};
+    auto const files{render_document(document)};
 
     ASSERT_EQ(files.size(), 2);
     EXPECT_TRUE(files[0].content.contains("std::span<float const> from_x"));
@@ -204,7 +190,7 @@ TEST(KernelRenderer, GeneratesFusedComponentMapBindings) {
 }
 
 TEST(KernelParser, RejectsInvalidComponentMapDeclarations) {
-    auto duplicate_component_source{std::string{component_standard_source}};
+    auto duplicate_component_source{std::string{component_source}};
     duplicate_component_source.replace(duplicate_component_source.find("(components x y z)"),
                                        std::string{"(components x y z)"}.size(),
                                        "(components x x)");
@@ -212,7 +198,7 @@ TEST(KernelParser, RejectsInvalidComponentMapDeclarations) {
     EXPECT_THROW(static_cast<void>(parse_document("test.lispb", duplicate_component_source)),
                  lispb::codegen::sexpr::SourceError);
 
-    auto scalar_target_source{std::string{component_standard_source}};
+    auto scalar_target_source{std::string{component_source}};
     scalar_target_source.replace(scalar_target_source.find("(in-place from lerp_3d_in_place)"),
                                  std::string{"(in-place from lerp_3d_in_place)"}.size(),
                                  "(in-place alpha lerp_3d_in_place)");
@@ -224,7 +210,7 @@ TEST(KernelParser, RejectsInvalidComponentMapDeclarations) {
 TEST(KernelAnalysis, RejectsInvalidIntegralReferenceFixtures) {
     constexpr std::string_view prefix = R"(
 (kernel-module invalid_reference
-  (emit standard
+  (emit
     (header "ArrayKernels.h")
     (source "ArrayKernels.cpp")
     (tests "ArrayKernelsTests.cpp")
@@ -244,10 +230,8 @@ TEST(KernelAnalysis, RejectsInvalidIntegralReferenceFixtures) {
     for (auto const expression : {"(* (* data 50000) 50000)", "(/ data 0)"}) {
         auto const source{std::string{prefix} + expression + std::string{suffix}};
         auto document{parse_document("test.lispb", source)};
-        EXPECT_THROW(
-            static_cast<void>(analyze(
-                document.syntax, document.data, ModuleId{0}, lispb::KernelProfile::standard)),
-            lispb::codegen::sexpr::SourceError);
+        EXPECT_THROW(static_cast<void>(analyze(document.syntax, document.data, ModuleId{0})),
+                     lispb::codegen::sexpr::SourceError);
         EXPECT_TRUE(document.cpp.files.path.empty());
     }
 }
@@ -255,7 +239,7 @@ TEST(KernelAnalysis, RejectsInvalidIntegralReferenceFixtures) {
 TEST(KernelReferenceEvaluator, EvaluatesEveryOperatorForEveryNumericType) {
     constexpr std::string_view source = R"(
 (kernel-module reference_operators
-  (emit standard
+  (emit
     (header "ArrayKernels.h")
     (source "ArrayKernels.cpp")
     (tests "ArrayKernelsTests.cpp")
@@ -276,7 +260,7 @@ TEST(KernelReferenceEvaluator, EvaluatesEveryOperatorForEveryNumericType) {
 )";
 
     auto document{parse_document("test.lispb", source)};
-    auto const files{render_document(document, lispb::KernelProfile::standard)};
+    auto const files{render_document(document)};
 
     ASSERT_EQ(files.size(), 3);
     EXPECT_TRUE(files[2].content.contains("make_array<std::int32_t>("));
@@ -285,41 +269,30 @@ TEST(KernelReferenceEvaluator, EvaluatesEveryOperatorForEveryNumericType) {
     EXPECT_TRUE(files[2].content.contains("make_array<double>("));
 }
 
-TEST(KernelRenderer, SkipsModulesWithoutTheSelectedProfile) {
-    auto document{parse_document("test.lispb", valid_source)};
-
-    EXPECT_TRUE(render_document(document, lispb::KernelProfile::standard).empty());
-}
-
-TEST(KernelParser, RejectsInvalidEmissionProfiles) {
+TEST(KernelParser, RejectsInvalidEmissions) {
     auto unknown{std::string{valid_source}};
-    unknown.replace(
-        unknown.find("emit unreal"), std::string{"emit unreal"}.size(), "emit portable");
+    unknown.insert(unknown.find("    (namespace ioj)"), "    (unsupported-option value)\n");
     EXPECT_THROW(static_cast<void>(parse_document("bad.lispb", unknown)), std::runtime_error);
 
     auto duplicate{std::string{valid_source}};
-    auto const emission_begin{duplicate.find("  (emit unreal")};
+    auto const emission_begin{duplicate.find("  (emit")};
     auto const emission_end{duplicate.find("\n  (type-set", emission_begin)};
     duplicate.insert(emission_end, duplicate.substr(emission_begin, emission_end - emission_begin));
     EXPECT_THROW(static_cast<void>(parse_document("bad.lispb", duplicate)), std::runtime_error);
 
-    auto ignored_export{std::string{standard_source}};
-    ignored_export.replace(ignored_export.find("    (namespace ioj::standard)"),
-                           std::string{"    (namespace ioj::standard)"}.size(),
-                           "    (namespace ioj::standard)\n    (export UNUSED_API)");
-    EXPECT_THROW(static_cast<void>(parse_document("bad.lispb", ignored_export)),
-                 std::runtime_error);
+    auto missing{std::string{valid_source}};
+    missing.erase(emission_begin, emission_end - emission_begin);
+    EXPECT_THROW(static_cast<void>(parse_document("bad.lispb", missing)), std::runtime_error);
 }
 
 TEST(KernelRenderer, ExpandsStorageCartesianProductWithoutRewritingExpression) {
     constexpr std::string_view source = R"(
 (kernel-module arithmetic
-  (emit unreal
+  (emit
     (header "ArrayKernels.h")
     (source "ArrayKernels.cpp")
     (header-include "ArrayKernels.h")
-    (namespace ioj)
-    (export COMPILE_FIXTURE_API))
+    (namespace ioj))
   (type-set numeric float)
   (map difference
     (types numeric)
@@ -334,31 +307,18 @@ TEST(KernelRenderer, ExpandsStorageCartesianProductWithoutRewritingExpression) {
 
     auto const files{render_source(source)};
 
-    EXPECT_EQ(occurrence_count(files[0].content, "void COMPILE_FIXTURE_API difference("), 3);
+    EXPECT_EQ(occurrence_count(files[0].content, "void difference("), 3);
     EXPECT_TRUE(files[1].content.contains("a[i] - (b[i] + c)"));
     EXPECT_TRUE(files[1].content.contains("a[i] - (b + c)"));
     EXPECT_TRUE(files[1].content.contains("a - (b[i] + c)"));
     EXPECT_FALSE(files[1].content.contains("a - (b + c)"));
 }
 
-TEST(KernelRenderer, PairwiseDisjointRestrictsAndChecksEveryArray) {
+TEST(KernelRenderer, PairwiseDisjointChecksEveryArray) {
     auto source{std::string{valid_source}};
     source.replace(source.find("(variants"), 0, "(aliasing pairwise-disjoint)\n    ");
-
-    auto const files{render_source(source)};
-
-    EXPECT_TRUE(files[1].content.contains(
-        "float const* RESTRICT lhs, float const* RESTRICT rhs, float* RESTRICT out"));
-    EXPECT_TRUE(files[1].content.contains("multiply: lhs and rhs must not overlap"));
-    EXPECT_TRUE(files[1].content.contains("multiply: lhs and out must not overlap"));
-    EXPECT_TRUE(files[1].content.contains("multiply: rhs and out must not overlap"));
-}
-
-TEST(KernelRenderer, StandardPairwiseDisjointChecksEveryArray) {
-    auto source{std::string{standard_source}};
-    source.replace(source.find("(variants"), 0, "(aliasing pairwise-disjoint)\n    ");
     auto document{parse_document("test.lispb", source)};
-    auto const files{render_document(document, lispb::KernelProfile::standard)};
+    auto const files{render_document(document)};
 
     EXPECT_TRUE(
         files[1].content.contains("arithmetic_detail::require(!arithmetic_detail::ranges_overlap("
@@ -374,17 +334,11 @@ TEST(KernelRenderer, StandardPairwiseDisjointChecksEveryArray) {
 TEST(KernelRenderer, RendersNamedConstantsForEachConcreteFloatingType) {
     constexpr std::string_view source = R"(
 (kernel-module constants
-  (emit unreal
+  (emit
     (header "ArrayKernels.h")
     (source "ArrayKernels.cpp")
+    (tests "ArrayKernelsTests.cpp")
     (header-include "ArrayKernels.h")
-    (namespace ioj)
-    (export COMPILE_FIXTURE_API))
-  (emit standard
-    (header "standard/ArrayKernels.h")
-    (source "standard/ArrayKernels.cpp")
-    (tests "standard/ArrayKernelsTests.cpp")
-    (header-include "standard/ArrayKernels.h")
     (namespace ioj))
   (type-set floating float double)
   (map classify
@@ -405,23 +359,16 @@ TEST(KernelRenderer, RendersNamedConstantsForEachConcreteFloatingType) {
     EXPECT_TRUE(files[1].content.contains("-std::numeric_limits<float>::infinity()"));
     EXPECT_TRUE(files[1].content.contains("std::numeric_limits<double>::quiet_NaN()"));
     EXPECT_TRUE(files[1].content.contains("-std::numeric_limits<double>::infinity()"));
-
-    auto document{parse_document("test.lispb", source)};
-    auto const standard_files{render_document(document, lispb::KernelProfile::standard)};
-
-    EXPECT_TRUE(standard_files[1].content.contains("#include <limits>"));
-    EXPECT_TRUE(standard_files[1].content.contains("std::numeric_limits<float>::quiet_NaN()"));
 }
 
 TEST(KernelRenderer, TreatsBareNanAndInfAsOperandReferences) {
     constexpr std::string_view source = R"(
 (kernel-module constants
-  (emit unreal
+  (emit
     (header "ArrayKernels.h")
     (source "ArrayKernels.cpp")
     (header-include "ArrayKernels.h")
-    (namespace ioj)
-    (export COMPILE_FIXTURE_API))
+    (namespace ioj))
   (type-set floating float)
   (map add
     (types floating)
@@ -538,8 +485,7 @@ TEST(KernelAnalysis, RejectsCollidingPublicSignatures) {
 
     EXPECT_THROW(static_cast<void>(render_source(source)), lispb::codegen::sexpr::SourceError);
     auto document{parse_document("test.lispb", source)};
-    EXPECT_THROW(static_cast<void>(analyze(
-                     document.syntax, document.data, ModuleId{0}, lispb::KernelProfile::unreal)),
+    EXPECT_THROW(static_cast<void>(analyze(document.syntax, document.data, ModuleId{0})),
                  lispb::codegen::sexpr::SourceError);
     EXPECT_TRUE(document.cpp.files.path.empty());
 }

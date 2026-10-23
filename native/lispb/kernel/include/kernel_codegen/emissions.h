@@ -3,7 +3,6 @@
 #include <codegen/sexpr/source_span.h>
 #include <kernel_codegen/indices.h>
 #include <lispb/indices.h>
-#include <lispb/kernel_profile.h>
 
 #include <cstddef>
 #include <optional>
@@ -12,8 +11,7 @@
 namespace kernel_codegen::detail {
 class Emissions {
   public:
-    auto add(lispb::KernelProfile profile, lispb::codegen::sexpr::SourceSpan span) -> EmissionId;
-    auto profile(EmissionId const id) const -> lispb::KernelProfile { return profile_[id.value]; }
+    auto add(lispb::codegen::sexpr::SourceSpan span) -> EmissionId;
     auto span(EmissionId const id) const -> lispb::codegen::sexpr::SourceSpan {
         return span_[id.value];
     }
@@ -35,22 +33,14 @@ class Emissions {
         return cpp_namespace_[id.value];
     }
     auto cpp_namespace(EmissionId const id) -> lispb::StringId& { return cpp_namespace_[id.value]; }
-    auto export_specifier(EmissionId const id) const -> lispb::StringId {
-        return export_specifier_[id.value];
-    }
-    auto export_specifier(EmissionId const id) -> lispb::StringId& {
-        return export_specifier_[id.value];
-    }
-    auto size() const -> std::size_t { return profile_.size(); }
+    auto size() const -> std::size_t { return span_.size(); }
     void clear();
   private:
-    std::vector<lispb::KernelProfile> profile_;
     std::vector<lispb::codegen::sexpr::SourceSpan> span_;
     std::vector<lispb::StringId> header_;
     std::vector<lispb::StringId> source_;
     std::vector<std::optional<lispb::StringId>> tests_;
     std::vector<lispb::StringId> header_include_;
     std::vector<lispb::StringId> cpp_namespace_;
-    std::vector<lispb::StringId> export_specifier_;
 };
 }

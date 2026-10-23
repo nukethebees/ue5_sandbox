@@ -7,6 +7,7 @@
 #include <lispb/indices.h>
 
 #include <cstddef>
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -23,8 +24,10 @@ class Modules {
     void append_type_sets(ModuleId id, TypeSetId value);
     auto operations(ModuleId id) const -> std::span<OperationId const>;
     void append_operations(ModuleId id, OperationId value);
-    auto emissions(ModuleId id) const -> std::span<EmissionId const>;
-    void append_emissions(ModuleId id, EmissionId value);
+    auto emission(ModuleId const id) const -> std::optional<EmissionId> const& {
+        return emission_[id.value];
+    }
+    auto emission(ModuleId const id) -> std::optional<EmissionId>& { return emission_[id.value]; }
     auto expanded_variants(ModuleId const id) const -> lispb::codegen::sexpr::HandleRange {
         return expanded_variants_[id.value];
     }
@@ -41,7 +44,6 @@ class Modules {
     std::vector<TypeSetId> type_sets_;
     std::vector<lispb::codegen::sexpr::HandleRange> operations_ranges_;
     std::vector<OperationId> operations_;
-    std::vector<lispb::codegen::sexpr::HandleRange> emissions_ranges_;
-    std::vector<EmissionId> emissions_;
+    std::vector<std::optional<EmissionId>> emission_;
 };
 }

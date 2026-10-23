@@ -1,5 +1,6 @@
 #pragma once
 
+#include <codegen/ast/indices.h>
 #include <kernel_codegen/document.h>
 #include <kernel_codegen/indices.h>
 
@@ -8,7 +9,16 @@
 #include <string>
 #include <vector>
 
+namespace lispb::codegen {
+class CppIR;
+}
+
 namespace kernel_codegen::detail {
+
+auto lower_module(lispb::codegen::CppIR& cpp,
+                  ModuleId module,
+                  EmissionId emission,
+                  Document const& document) -> lispb::codegen::ModuleId;
 
 auto is_target(Document const& document, ExpandedVariantId id, std::size_t operand_index) -> bool;
 auto operand_names(Document const& document, ExpandedVariantId id, std::size_t operand_index)

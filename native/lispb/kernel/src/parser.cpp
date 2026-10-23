@@ -18,7 +18,6 @@
 #include <kernel_codegen/variant_kind.h>
 #include <lispb/diagnostics.h>
 #include <lispb/indices.h>
-#include <lispb/kernel_profile.h>
 #include <lispb/strings.h>
 
 #include <algorithm>
@@ -49,12 +48,6 @@ using lispb::codegen::sexpr::TokenKind;
 struct DecimalLiteral {
     std::string spelling;
     long double value;
-};
-
-struct OutputPath {
-    lispb::KernelProfile profile;
-    std::filesystem::path path;
-    auto operator<=>(OutputPath const&) const = default;
 };
 
 struct VariantShape {
@@ -159,19 +152,15 @@ class Parser {
     void parse() {
         auto const initial_modules{document_.modules.size()};
         std::set<lispb::StringId> names;
-        std::set<OutputPath> output_paths;
+        std::set<std::filesystem::path> output_paths;
         for (std::size_t index{}; index < initial_modules; ++index) {
             auto const module{ModuleId{static_cast<std::uint32_t>(index)}};
             names.insert(document_.modules.name(module));
-            for (auto const emission : document_.modules.emissions(module)) {
-                auto const profile{document_.emissions.profile(emission)};
-                output_paths.insert(
-                    {profile, document_.text(document_.emissions.header(emission))});
-                output_paths.insert(
-                    {profile, document_.text(document_.emissions.source(emission))});
-                if (auto const tests{document_.emissions.tests(emission)}) {
-                    output_paths.insert({profile, document_.text(*tests)});
-                }
+            auto const emission{*document_.modules.emission(module)};
+            output_paths.insert(document_.text(document_.emissions.header(emission)));
+            output_paths.insert(document_.text(document_.emissions.source(emission)));
+            if (auto const tests{document_.emissions.tests(emission)}) {
+                output_paths.insert(document_.text(*tests));
             }
         }
 
@@ -181,21 +170,16 @@ class Parser {
                 fail(document_.modules.span(module),
                      "duplicate kernel module '" + text(document_.modules.name(module)) + "'");
             }
-            for (auto const& emission : document_.modules.emissions(module)) {
-                std::vector<lispb::StringId> paths{document_.emissions.header(emission),
-                                                   document_.emissions.source(emission)};
-                if (document_.emissions.tests(emission)) {
-                    paths.push_back(*document_.emissions.tests(emission));
-                }
-                for (auto const& output_path : paths) {
-                    if (!output_paths
-                             .insert({document_.emissions.profile(emission),
-                                      document_.text(output_path)})
-                             .second) {
-                        fail(document_.emissions.span(emission),
-                             "duplicate generated output path '" + document_.text(output_path) +
-                                 "'");
-                    }
+            auto const emission{*document_.modules.emission(module)};
+            std::vector<lispb::StringId> paths{document_.emissions.header(emission),
+                                               document_.emissions.source(emission)};
+            if (document_.emissions.tests(emission)) {
+                paths.push_back(*document_.emissions.tests(emission));
+            }
+            for (auto const output_path : paths) {
+                if (!output_paths.insert(document_.text(output_path)).second) {
+                    fail(document_.emissions.span(emission),
+                         "duplicate generated output path '" + document_.text(output_path) + "'");
                 }
             }
         }
@@ -735,23 +719,9 @@ class Parser {
     }
 
     auto parse_emission(FormId const form) const -> EmissionId {
-        if (head(form, "emit") != "emit" || syntax_.children(form).size() < 2) {
-            fail(syntax_.token_span(form), "expected '(emit unreal|standard ...)'");
-        }
-        auto const& profile_name{atom(syntax_.children(form)[1], "expected emission profile")};
-        lispb::KernelProfile profile;
-        if (profile_name == "unreal") {
-            profile = lispb::KernelProfile::unreal;
-        } else if (profile_name == "standard") {
-            profile = lispb::KernelProfile::standard;
-        } else {
-            fail(syntax_.token_span(syntax_.children(form)[1]),
-                 "unknown emission profile '" + profile_name + "'");
-        }
-
-        auto const result{document_.emissions.add(profile, syntax_.token_span(form))};
+        auto const result{document_.emissions.add(syntax_.token_span(form))};
         std::set<lispb::StringId> fields;
-        for (std::size_t index{2}; index < syntax_.children(form).size(); ++index) {
+        for (std::size_t index{1}; index < syntax_.children(form).size(); ++index) {
             auto const& field{syntax_.children(form)[index]};
             auto const& field_name{head(field, "emission field")};
             if (!fields.insert(syntax_.identifier(syntax_.children(field).front())).second) {
@@ -778,14 +748,6 @@ class Parser {
                     fail(syntax_.token_span(syntax_.children(field)[1]),
                          "namespace must be a qualified C++ identifier");
                 }
-            } else if (field_name == "export") {
-                static_cast<void>(atom(syntax_.children(field)[1], "expected export specifier"));
-                document_.emissions.export_specifier(result) =
-                    syntax_.identifier(syntax_.children(field)[1]);
-                if (!is_identifier(text(document_.emissions.export_specifier(result)))) {
-                    fail(syntax_.token_span(syntax_.children(field)[1]),
-                         "export specifier must be an identifier");
-                }
             } else {
                 fail(syntax_.token_span(field), "unknown emission field '" + field_name + "'");
             }
@@ -796,18 +758,6 @@ class Parser {
             document_.emissions.cpp_namespace(result).value == 0) {
             fail(syntax_.token_span(form),
                  "emit requires header, source, header-include, and namespace");
-        }
-        if (profile == lispb::KernelProfile::unreal &&
-            document_.emissions.export_specifier(result).value == 0) {
-            fail(syntax_.token_span(form), "unreal emission requires export");
-        }
-        if (profile == lispb::KernelProfile::unreal && document_.emissions.tests(result)) {
-            fail(syntax_.token_span(form),
-                 "generated tests are supported only by the standard profile");
-        }
-        if (profile == lispb::KernelProfile::standard &&
-            document_.emissions.export_specifier(result).value != 0) {
-            fail(syntax_.token_span(form), "export is supported only by the unreal profile");
         }
         validate_output_path(document_.text(document_.emissions.header(result)),
                              document_.emissions.span(result));
@@ -832,7 +782,6 @@ class Parser {
         auto const result{document_.modules.add(syntax_.identifier(syntax_.children(form)[1]),
                                                 syntax_.token_span(form))};
         std::set<lispb::StringId> fields;
-        std::set<lispb::KernelProfile> profiles;
         std::set<lispb::StringId> type_sets;
         std::set<lispb::StringId> operation_names;
         auto const field_count{syntax_.children(form).size()};
@@ -864,11 +813,10 @@ class Parser {
                 continue;
             }
             if (field_name == "emit") {
-                auto emission{parse_emission(field)};
-                if (!profiles.insert(document_.emissions.profile(emission)).second) {
-                    fail(document_.emissions.span(emission), "duplicate emission profile");
+                if (document_.modules.emission(result)) {
+                    fail(syntax_.token_span(field), "duplicate emission");
                 }
-                document_.modules.append_emissions(result, emission);
+                document_.modules.emission(result) = parse_emission(field);
                 continue;
             }
             if (!fields.insert(syntax_.identifier(syntax_.children(field).front())).second) {
@@ -877,22 +825,10 @@ class Parser {
             }
             fail(syntax_.token_span(field), "unknown kernel module field '" + field_name + "'");
         }
-        if (document_.modules.emissions(result).empty() ||
-            document_.modules.type_sets(result).empty() ||
+        if (!document_.modules.emission(result) || document_.modules.type_sets(result).empty() ||
             document_.modules.operations(result).empty()) {
             fail(syntax_.token_span(form),
-                 "kernel-module requires emissions, type sets, and operations");
-        }
-        auto const has_component_map{
-            std::ranges::any_of(document_.modules.operations(result), [](auto const id) {
-                return id.kind() == OperationKind::component_map;
-            })};
-        if (has_component_map &&
-            std::ranges::any_of(document_.modules.emissions(result), [&](auto const emission) {
-                return document_.emissions.profile(emission) != lispb::KernelProfile::standard;
-            })) {
-            fail(syntax_.token_span(form),
-                 "component-map operations are supported only by standard emissions");
+                 "kernel-module requires an emission, type sets, and operations");
         }
         for (auto const operation : document_.modules.operations(result)) {
             auto const operation_types{document_.operations.type_set(operation)};

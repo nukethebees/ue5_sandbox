@@ -139,7 +139,7 @@ Lispb parses constrained declarative input and emits checked source assets; it i
 runtime or an escape hatch for arbitrary C++. Each DSL owns its grammar, semantic validation, and
 stable output contract while sharing the parser and generation workflow.
 
-`kernel` describes typed SandboxCore operations and C++ emission profiles. `slate` describes static
+`kernel` describes typed operations and native C++ output files. `slate` describes static
 Slate trees and host integration. `material` describes material graphs and emits Unreal assets.
 Generated outputs are checked in as ordinary repository source, with public headers in each
 consumer's public include directory and private headers/sources beside their handwritten peers.

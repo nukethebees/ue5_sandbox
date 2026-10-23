@@ -1,6 +1,6 @@
 #include "renderer.h"
 
-#include "portable_renderer.h"
+#include "lowering.h"
 #include "test_renderer.h"
 
 #include <codegen/ast/cpp_files.h>
@@ -18,12 +18,8 @@
 namespace kernel_codegen::detail {
 auto render(lispb::codegen::CppIR& cpp, Document const& document, ModuleAnalysis const& analysis)
     -> std::vector<lispb::TextArtifact> {
-    if (!analysis.emission) {
-        return {};
-    }
-
-    auto const emission{*analysis.emission};
-    auto const generated{lower_portable(cpp, analysis.module, emission, document)};
+    auto const emission{analysis.emission};
+    auto const generated{lower_module(cpp, analysis.module, emission, document)};
     auto const generated_index{cpp.modules.index(generated)};
     std::vector<lispb::codegen::CppFileId> files{cpp.modules.header[generated_index],
                                                  cpp.modules.source[generated_index]};

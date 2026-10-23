@@ -8,7 +8,6 @@
 #include <kernel_codegen/document.h>
 #include <lispb/compilation.h>
 #include <lispb/diagnostics.h>
-#include <lispb/kernel_profile.h>
 #include <lispb/output.h>
 #include <lispb/publication_options.h>
 #include <lispb/strings.h>
@@ -29,12 +28,11 @@ namespace {
 
 constexpr std::string_view kernel_source = R"(
 (kernel-module arithmetic
-  (emit unreal
+  (emit
     (header "ArrayKernels.h")
     (source "ArrayKernels.cpp")
     (header-include "ArrayKernels.h")
-    (namespace ioj)
-    (export COMPILE_FIXTURE_API))
+    (namespace ioj))
   (type-set numeric float)
   (map multiply
     (types numeric)
@@ -90,7 +88,6 @@ class TemporaryProject {
 
 auto compile(TemporaryProject const& project,
              std::vector<std::filesystem::path> const& inputs,
-             lispb::KernelProfile const profile = lispb::KernelProfile::unreal,
              bool const check = false) -> int {
     auto const root{project.path({})};
     lispb::Strings strings;
@@ -105,7 +102,7 @@ auto compile(TemporaryProject const& project,
     for (auto const& input : inputs) {
         files.push_back(sources.add(input.generic_string(), project.read(input)));
     }
-    kernel_codegen::compile(syntax, document, cpp, compilation, files, profile, true);
+    kernel_codegen::compile(syntax, document, cpp, compilation, files, true);
     return lispb::publish(
         compilation,
         {.path_base = root / "generated", .output_root = root / "generated", .check_only = check});
@@ -116,13 +113,13 @@ TEST(KernelCompiler, WritesChecksAndDetectsStaleOutputs) {
     project.write("array_math.lispb", kernel_source);
     ASSERT_EQ(compile(project, {"array_math.lispb"}), 0);
     EXPECT_TRUE(
-        project.read("generated/ArrayKernels.h").contains("void COMPILE_FIXTURE_API multiply("));
+        project.read("generated/ArrayKernels.h").contains("multiply(std::span<float const>"));
     EXPECT_TRUE(project.read("generated/ArrayKernels.cpp").contains("lhs[i] * rhs"));
     EXPECT_TRUE(project.read("generated/.lispb-outputs").contains("ArrayKernels.cpp"));
-    EXPECT_EQ(compile(project, {"array_math.lispb"}, lispb::KernelProfile::unreal, true), 0);
+    EXPECT_EQ(compile(project, {"array_math.lispb"}, true), 0);
 
     project.write("generated/ArrayKernels.h", "stale\n");
-    EXPECT_EQ(compile(project, {"array_math.lispb"}, lispb::KernelProfile::unreal, true), 1);
+    EXPECT_EQ(compile(project, {"array_math.lispb"}, true), 1);
 }
 
 TEST(KernelCompiler, ValidationDoesNotProduceArtifacts) {
@@ -135,13 +132,7 @@ TEST(KernelCompiler, ValidationDoesNotProduceArtifacts) {
     lispb::codegen::CppIR cpp{strings, types};
     lispb::Compilation compilation;
     auto const file{sources.add("array_math.lispb", kernel_source)};
-    kernel_codegen::compile(syntax,
-                            document,
-                            cpp,
-                            compilation,
-                            std::span{&file, 1},
-                            lispb::KernelProfile::unreal,
-                            false);
+    kernel_codegen::compile(syntax, document, cpp, compilation, std::span{&file, 1}, false);
     EXPECT_TRUE(compilation.artifacts.empty());
 }
 
@@ -154,23 +145,16 @@ TEST(KernelCompiler, RejectsOutputCollisionsAcrossInputs) {
                  lispb::codegen::sexpr::SourceError);
 }
 
-TEST(KernelCompiler, EmitsOnlyTheSelectedProfile) {
-    TemporaryProject project{"profile-selection"};
+TEST(KernelCompiler, EmitsReferenceTestsWhenRequested) {
+    TemporaryProject project{"reference-tests"};
     auto source{std::string{kernel_source}};
-    auto const insertion{source.find("  (type-set")};
-    source.insert(insertion,
-                  "  (emit standard\n"
-                  "    (header \"standard/Kernels.h\")\n"
-                  "    (source \"standard/Kernels.cpp\")\n"
-                  "    (tests \"standard/KernelsTests.cpp\")\n"
-                  "    (header-include \"standard/Kernels.h\")\n"
-                  "    (namespace ioj))\n");
+    source.insert(source.find("    (header-include"), "    (tests \"ArrayKernelsTests.cpp\")\n");
     project.write("array_math.lispb", source);
 
-    ASSERT_EQ(compile(project, {"array_math.lispb"}, lispb::KernelProfile::standard), 0);
-    EXPECT_TRUE(project.read("generated/standard/Kernels.h").contains("std::span<float const>"));
-    EXPECT_TRUE(project.read("generated/standard/KernelsTests.cpp").contains("TEST("));
-    EXPECT_FALSE(std::filesystem::exists(project.path("generated/ArrayKernels.h")));
+    ASSERT_EQ(compile(project, {"array_math.lispb"}), 0);
+    EXPECT_TRUE(project.read("generated/ArrayKernels.h").contains("std::span<float const>"));
+    EXPECT_TRUE(project.read("generated/ArrayKernelsTests.cpp").contains("TEST("));
+    EXPECT_TRUE(project.read("generated/.lispb-outputs").contains("ArrayKernelsTests.cpp"));
 }
 
 }

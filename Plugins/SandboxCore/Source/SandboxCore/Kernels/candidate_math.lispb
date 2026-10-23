@@ -1,5 +1,5 @@
 (kernel-module candidate_math
-  (emit standard
+  (emit
     (header "standard/candidate_math_kernels.h")
     (source "standard/candidate_math_kernels.cpp")
     (tests "standard/candidate_math_kernels_tests.cpp")

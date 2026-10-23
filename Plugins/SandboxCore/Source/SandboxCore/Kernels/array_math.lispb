@@ -1,5 +1,5 @@
 (kernel-module array_math
-  (emit standard
+  (emit
     (header "include/ioj/generated/array_math_kernels.h")
     (source "src/generated/array_math_kernels.cpp")
     (tests "tests/generated/array_math_kernels_tests.cpp")
