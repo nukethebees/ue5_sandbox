@@ -15,6 +15,13 @@
 #include <vector>
 
 namespace ioj::sim {
+
+[[nodiscard]] inline auto valid_lookup_id(EntityId const id,
+                                          EntityType const type,
+                                          std::size_t const handle_count) noexcept -> bool {
+    return id != EntityId{} && id.entity_type() == type && id.index() < handle_count;
+}
+
 class EntityLookupTable {
   public:
     explicit EntityLookupTable(
@@ -38,7 +45,7 @@ class EntityLookupTable {
         [[maybe_unused]] auto const handle_count{handles_.size()};
         for (EntityFrameIndex row{}; row < count; ++row) {
             auto const id{ids[row]};
-            assert(id.entity_type() == type_ && id.index() < handle_count);
+            assert(valid_lookup_id(id, type_, handle_count));
             auto& handle{handles_[id.index()]};
             if (!healths.empty() && is_dead(healths[row])) {
                 handle = {};
@@ -54,7 +61,7 @@ class EntityLookupTable {
     void retire(std::span<EntityId const> const ids) {
         [[maybe_unused]] auto const handle_count{handles_.size()};
         for (auto const id : ids) {
-            assert(id.entity_type() == type_ && id.index() < handle_count);
+            assert(valid_lookup_id(id, type_, handle_count));
             handles_[id.index()] = {};
         }
     }
@@ -64,7 +71,7 @@ class EntityLookupTable {
         [[maybe_unused]] auto const handle_count{handles_.size()};
         for (auto const row : rows) {
             auto const id{ids[row]};
-            assert(id.entity_type() == type_ && id.index() < handle_count);
+            assert(valid_lookup_id(id, type_, handle_count));
             handles_[id.index()] = {};
         }
     }
@@ -80,7 +87,7 @@ class EntityLookupTable {
         [[maybe_unused]] auto const handle_count{handles.size()};
         for (std::size_t index{}; index < count; ++index) {
             auto const id{ids[index]};
-            assert(id != EntityId{} && id.entity_type() == type_ && id.index() < handle_count);
+            assert(valid_lookup_id(id, type_, handle_count));
             output[index] = handles[id.index()];
         }
     }
