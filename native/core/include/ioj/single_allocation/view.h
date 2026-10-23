@@ -173,4 +173,102 @@ struct CompactViewBase : ViewOperations {
     size_type count_{};
 };
 
+template <typename T, bool Const>
+struct StridedViewBase : ViewOperations {
+    using size_type = std::uint32_t;
+    template <typename U>
+    using Element = std::conditional_t<Const, U const, U>;
+    using element_type = Element<T>;
+
+    StridedViewBase() = default;
+
+    // All columns must belong to one allocation and have the same byte stride. Each must
+    // contain count live elements; independently allocated columns require a resolved view.
+    StridedViewBase(element_type* first, std::size_t byte_stride, size_type count)
+        : first_{reinterpret_cast<Element<std::byte>*>(first)}
+        , stride_{encode_stride(byte_stride)}
+        , count_{count} {
+        validate_column_pointers(count, first);
+        assert(byte_stride % alignof(T) == 0);
+    }
+
+    auto num() const noexcept -> size_type { return count_; }
+
+    template <typename Self>
+    auto slice(this Self const& self, size_type offset, size_type count) -> Self {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto result{self};
+        if (result.first_) {
+            result.first_ += static_cast<std::size_t>(offset) * sizeof(T);
+        }
+        result.count_ = count;
+        return result;
+    }
+  protected:
+    template <typename, bool>
+    friend struct StridedViewBase;
+
+    template <bool Enabled = Const>
+        requires Enabled
+    StridedViewBase(StridedViewBase<T, false> const& other)
+        : first_{other.first_}
+        , stride_{other.stride_}
+        , count_{other.count_} {}
+
+    auto column(std::size_t index) const -> std::span<element_type> {
+        auto* data{first_ ? reinterpret_cast<element_type*>(first_ + index * byte_stride())
+                          : nullptr};
+        return {data, count_};
+    }
+  private:
+    using Policy = single_allocation_layout::LayoutPolicy;
+    static constexpr auto alignment{
+        alignof(T) > Policy::minimum_alignment ? alignof(T) : Policy::minimum_alignment};
+    static constexpr auto gap{
+        single_allocation_layout::layout_align(Policy::column_gap, alignment)};
+    // Rounded capacities leave one granularity block below the uint32 limit. Store the
+    // stride in elements only when the fixed gap fits in that remaining space exactly.
+    static constexpr bool compact_stride{gap % sizeof(T) == 0 &&
+                                         gap / sizeof(T) < Policy::capacity_granularity};
+    using Stride = std::conditional_t<compact_stride, size_type, std::size_t>;
+
+    static auto encode_stride(std::size_t bytes) -> Stride {
+        if constexpr (compact_stride) {
+            assert(bytes % sizeof(T) == 0);
+            assert(bytes / sizeof(T) <= std::numeric_limits<size_type>::max());
+            return static_cast<size_type>(bytes / sizeof(T));
+        } else {
+            return bytes;
+        }
+    }
+
+    auto byte_stride() const noexcept -> std::size_t {
+        if constexpr (compact_stride) {
+            return static_cast<std::size_t>(stride_) * sizeof(T);
+        } else {
+            return stride_;
+        }
+    }
+
+    Element<std::byte>* first_{};
+    Stride stride_{};
+    size_type count_{};
+};
+
+template <typename View, typename State, typename T>
+auto make_strided_view(State* state,
+                       std::uint32_t offset,
+                       std::uint32_t count,
+                       single_allocation_layout::ColumnLayout<T> const& first,
+                       single_allocation_layout::ColumnLayout<T> const& second) -> View {
+    validate_view(state, offset, count);
+    if (!state || !state->data_) {
+        return {};
+    }
+    auto const blocks{view_capacity_blocks(state)};
+    auto const first_offset{first.offset(blocks)};
+    auto const stride{second.offset(blocks) - first_offset};
+    return View{view_column_data_unchecked<T>(state, offset, first_offset), stride, count};
+}
+
 } // namespace ioj::soa_storage_detail
