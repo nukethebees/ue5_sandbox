@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/field_mask.h"
 #include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
@@ -16,7 +17,6 @@
 #include <cassert>
 #include <cstdint>
 #include <memory_resource>
-#include <type_traits>
 
 #define NATIVE_SOA_FIXTURE_API
 
@@ -3031,49 +3031,10 @@ enum class ApiField : std::uint8_t {
     Values = 0,
     Count = static_cast<std::uint8_t>(Values) + 1,
 };
-struct ApiMask {
-    inline static constexpr std::int32_t field_count{static_cast<std::int32_t>(ApiField::Count)};
+struct ApiMask : ioj::FieldMask<ApiField> {
+    using Base = ioj::FieldMask<ApiField>;
 
-    static_assert(field_count <= 64, "Field mask exceeds 64 bits.");
-
-    using storage_type = std::conditional_t<
-        field_count <= 8,
-        std::uint8_t,
-        std::conditional_t<field_count <= 16,
-                           std::uint16_t,
-                           std::conditional_t<field_count <= 32, std::uint32_t, std::uint64_t>>>;
-    constexpr ApiMask() noexcept = default;
-
-    constexpr explicit ApiMask(storage_type const value) noexcept
-        : value_{value} {}
-    [[nodiscard]] constexpr auto value() const noexcept -> storage_type { return value_; }
-
-    [[nodiscard]] constexpr auto is_empty() const noexcept -> bool { return value_ == 0; }
-
-    [[nodiscard]] constexpr auto has(ApiField const field) const noexcept -> bool {
-        return (value_ & bit(field)) != 0;
-    }
-
-    [[nodiscard]] static constexpr auto index(ApiField const field) noexcept -> std::int32_t {
-        return static_cast<std::int32_t>(field);
-    }
-
-    constexpr void set(ApiField const field) noexcept {
-        value_ = static_cast<storage_type>(value_ | bit(field));
-    }
-
-    constexpr void set(ApiMask const fields) noexcept {
-        value_ = static_cast<storage_type>(value_ | fields.value_);
-    }
-
-    constexpr void clear(ApiField const field) noexcept {
-        value_ = static_cast<storage_type>(value_ & ~bit(field));
-    }
-  private:
-    [[nodiscard]] static constexpr auto bit(ApiField const field) noexcept -> storage_type {
-        return static_cast<storage_type>(std::uint64_t{1} << static_cast<std::uint8_t>(field));
-    }
-    storage_type value_{};
+    using Base::Base;
 };
 
 static_assert(sizeof(ApiMask) == sizeof(ApiMask::storage_type));

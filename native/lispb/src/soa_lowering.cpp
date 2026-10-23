@@ -22,7 +22,6 @@
 #include <lispb/schema/type_graph.h>
 #include <lispb/strings.h>
 
-#include <array>
 #include <cstddef>
 #include <string>
 #include <utility>
@@ -86,10 +85,7 @@ auto field_mask_nodes(LoweringContext& context, DeclarationHandle schema) -> Nod
         ir.types.intern("std::uint8_t", {ir.types.dependency("std::uint8_t", "cstdint")})};
     auto const int32_type{
         ir.types.intern("std::int32_t", {ir.types.dependency("std::int32_t", "cstdint")})};
-    auto const uint64_type{
-        ir.types.intern("std::uint64_t", {ir.types.dependency("std::uint64_t", "cstdint")})};
     auto const enum_type{ir.types.intern(enum_name)};
-    auto const storage_type{ir.types.intern("storage_type")};
     std::vector<EnumValueId> values;
     std::string previous_name;
     std::string previous_width;
@@ -110,110 +106,13 @@ auto field_mask_nodes(LoweringContext& context, DeclarationHandle schema) -> Nod
     }
     values.push_back(ir.enumerator(ir.store_text("Count"), ir.store_text(next_value())));
 
+    auto const base{ir.types.template_type(
+        ir.types.intern("ioj::FieldMask",
+                        {ir.types.dependency("ioj::FieldMask", "ioj/field_mask.h")}),
+        {enum_type})};
     NodeListBuilder children{ir};
-    children
-        .add(ir.constexpr_member(int32_type,
-                                 ir.store_text("field_count"),
-                                 ir.static_cast_expr(int32_type, ir.named(enum_name + "::Count")),
-                                 true))
-        .add(ir.static_assertion(ir.store_text("field_count <= 64"),
-                                 ir.store_text("Field mask exceeds 64 bits.")))
-        .add(ir.using_declaration(
-            ir.store_text("storage_type"),
-            ir.types.intern("std::conditional_t<field_count <= 8, std::uint8_t, "
-                            "std::conditional_t<field_count <= 16, std::uint16_t, "
-                            "std::conditional_t<field_count <= 32, std::uint32_t, std::uint64_t>>>",
-                            {ir.types.dependency("std::conditional_t", "type_traits"),
-                             ir.types.dependency("std::uint64_t", "cstdint")})))
-        .new_lines(1);
-
-    auto prepare = [&](FunctionId function) {
-        ir.function_flags(function).set_is_constexpr(true);
-        ir.function_flags(function).set_define_in_header(true);
-        ir.set_function_noexcept(function);
-        ir.function_formatting(function).body_layout = FunctionBodyLayout::compact;
-        return function;
-    };
-    auto const default_constructor{prepare(ir.constructor(mask_name))};
-    ir.set_function_defaulted(default_constructor);
-    children.add(ir.declaration(default_constructor));
-    auto const value_constructor{prepare(ir.constructor(mask_name, true))};
-    ir.set_function_parameters(value_constructor, {ir.parameter("storage_type const", "value")});
-    ir.set_function_body(value_constructor,
-                         {},
-                         {ir.member_initializer(ir.store_text("value_"), ir.store_text("value"))});
-    children.add(ir.header_function(value_constructor)).new_lines(1);
-
-    auto method = [&](std::string_view name,
-                      CppTypeId return_type,
-                      FunctionReceiver receiver,
-                      std::span<FunctionParameterId const> parameters,
-                      Nodes const& body,
-                      bool nodiscard = true) {
-        auto const function{prepare(ir.function(name, return_type))};
-        ir.function_flags(function).set_is_nodiscard(nodiscard);
-        ir.set_function_receiver(function, receiver);
-        ir.set_function_parameters(function, parameters);
-        ir.set_function_body(function, body);
-        if (nodiscard) {
-            ir.set_function_return_type(function, return_type, ReturnSyntax::trailing);
-        }
-        children.add(ir.header_function(function));
-    };
-    auto const field_parameter{ir.parameter(enum_name + " const", "field")};
-    std::array const field_parameters{field_parameter};
-    auto const field{ir.named("field")};
-    auto const value{ir.named("value_")};
-    auto const bit{ir.call(ir.named("bit"), {field})};
-    method("value", storage_type, FunctionReceiver::const_, {}, {ir.return_stmt(value)});
-    method("is_empty",
-           ir.types.intern("bool"),
-           FunctionReceiver::const_,
-           {},
-           {ir.return_stmt(ir.binary(BinaryOperator::equal, value, ir.literal("0")))});
-    method("has",
-           ir.types.intern("bool"),
-           FunctionReceiver::const_,
-           field_parameters,
-           {ir.return_stmt(ir.binary(BinaryOperator::not_equal,
-                                     ir.binary(BinaryOperator::bitwise_and, value, bit),
-                                     ir.literal("0")))});
-    method("index",
-           int32_type,
-           FunctionReceiver::static_,
-           field_parameters,
-           {ir.return_stmt(ir.static_cast_expr(int32_type, field))});
-    method("set",
-           ir.types.intern("void"),
-           FunctionReceiver::unqualified,
-           field_parameters,
-           {ir.assignment(value,
-                          ir.static_cast_expr(storage_type,
-                                              ir.binary(BinaryOperator::bitwise_or, value, bit)))},
-           false);
-    std::array const mask_parameters{ir.parameter(context.text(mask_name) + " const", "fields")};
-    method("set",
-           ir.types.intern("void"),
-           FunctionReceiver::unqualified,
-           mask_parameters,
-           {ir.assignment(
-               value,
-               ir.static_cast_expr(storage_type,
-                                   ir.binary(BinaryOperator::bitwise_or,
-                                             value,
-                                             ir.member_access(ir.named("fields"), "value_"))))},
-           false);
-    method(
-        "clear",
-        ir.types.intern("void"),
-        FunctionReceiver::unqualified,
-        field_parameters,
-        {ir.assignment(value,
-                       ir.static_cast_expr(storage_type,
-                                           ir.binary(BinaryOperator::bitwise_and,
-                                                     value,
-                                                     ir.unary(UnaryOperator::bitwise_not, bit))))},
-        false);
+    children.add(ir.using_declaration(ir.store_text("Base"), base))
+        .add(ir.raw("using Base::Base;"));
 
     for (auto const member : selected) {
         auto const member_row{members.index(member)};
@@ -227,37 +126,34 @@ auto field_mask_nodes(LoweringContext& context, DeclarationHandle schema) -> Nod
             parameters.push_back(ir.parameter(ir.types.intern("std::int32_t const"),
                                               dimensions.index_name[dimensions.index(dimension)]));
         }
-        children.new_lines(1);
-        method(
-            name + "_field",
-            enum_type,
-            FunctionReceiver::static_,
-            parameters,
+        auto const function{ir.function(name + "_field", enum_type)};
+        auto& flags{ir.function_flags(function)};
+        flags.set_is_constexpr(true);
+        flags.set_define_in_header(true);
+        flags.set_is_nodiscard(true);
+        ir.set_function_noexcept(function);
+        ir.function_formatting(function).body_layout = FunctionBodyLayout::compact;
+        ir.set_function_receiver(function, FunctionReceiver::static_);
+        ir.set_function_parameters(function, parameters);
+        ir.set_function_return_type(function, enum_type, ReturnSyntax::trailing);
+        ir.set_function_body(
+            function,
             {ir.return_stmt(ir.static_cast_expr(
                 enum_type,
                 ir.binary(BinaryOperator::add,
                           ir.static_cast_expr(
                               int32_type, ir.named(enum_name + "::" + title_case_identifier(name))),
                           mask_index_expression(context, member))))});
+        children.new_lines(1).add(ir.header_function(function));
     }
 
-    children.add(ir.access(Access::private_));
-    method(
-        "bit",
-        storage_type,
-        FunctionReceiver::static_,
-        field_parameters,
-        {ir.return_stmt(ir.static_cast_expr(storage_type,
-                                            ir.binary(BinaryOperator::shift_left,
-                                                      ir.init_list({ir.literal("1")}, uint64_type),
-                                                      ir.static_cast_expr(uint8_type, field))))});
-    children.new_lines(1).add(
-        ir.instance_member(storage_type, ir.store_text("value_"), ir.init_list({})));
+    auto const mask{ir.record(mask_name, children.build())};
+    ir.set_record_bases(mask, {base});
 
     NodeListBuilder result{ir};
     result.add(ir.enumeration(*soas.field_enum_name[row], uint8_type, values))
         .new_lines(1)
-        .add(ir.record(mask_name, children.build()))
+        .add(mask)
         .add(
             ir.static_assertion(ir.store_text("sizeof(" + context.text(mask_name) + ") == sizeof(" +
                                               context.text(mask_name) + "::storage_type)"),

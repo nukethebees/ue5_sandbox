@@ -3,10 +3,10 @@
 
 #pragma once
 
+#include "ioj/field_mask.h"
 #include "ioj/single_allocation/layout.h"
 
 #include <cstdint>
-#include <type_traits>
 
 namespace codegen_compile_fixture {
 
@@ -14,53 +14,14 @@ enum class EField8 : std::uint8_t {
     Values = 0,
     Count = static_cast<std::uint8_t>(Values) + (8),
 };
-struct FFieldMask8 {
-    inline static constexpr std::int32_t field_count{static_cast<std::int32_t>(EField8::Count)};
+struct FFieldMask8 : ioj::FieldMask<EField8> {
+    using Base = ioj::FieldMask<EField8>;
 
-    static_assert(field_count <= 64, "Field mask exceeds 64 bits.");
-
-    using storage_type = std::conditional_t<
-        field_count <= 8,
-        std::uint8_t,
-        std::conditional_t<field_count <= 16,
-                           std::uint16_t,
-                           std::conditional_t<field_count <= 32, std::uint32_t, std::uint64_t>>>;
-    constexpr FFieldMask8() noexcept = default;
-
-    constexpr explicit FFieldMask8(storage_type const value) noexcept
-        : value_{value} {}
-    [[nodiscard]] constexpr auto value() const noexcept -> storage_type { return value_; }
-
-    [[nodiscard]] constexpr auto is_empty() const noexcept -> bool { return value_ == 0; }
-
-    [[nodiscard]] constexpr auto has(EField8 const field) const noexcept -> bool {
-        return (value_ & bit(field)) != 0;
-    }
-
-    [[nodiscard]] static constexpr auto index(EField8 const field) noexcept -> std::int32_t {
-        return static_cast<std::int32_t>(field);
-    }
-
-    constexpr void set(EField8 const field) noexcept {
-        value_ = static_cast<storage_type>(value_ | bit(field));
-    }
-
-    constexpr void set(FFieldMask8 const fields) noexcept {
-        value_ = static_cast<storage_type>(value_ | fields.value_);
-    }
-
-    constexpr void clear(EField8 const field) noexcept {
-        value_ = static_cast<storage_type>(value_ & ~bit(field));
-    }
+    using Base::Base;
     [[nodiscard]] static constexpr auto values_field(std::int32_t const value_index) noexcept
         -> EField8 {
         return static_cast<EField8>(static_cast<std::int32_t>(EField8::Values) + value_index);
     }
-  private:
-    [[nodiscard]] static constexpr auto bit(EField8 const field) noexcept -> storage_type {
-        return static_cast<storage_type>(std::uint64_t{1} << static_cast<std::uint8_t>(field));
-    }
-    storage_type value_{};
 };
 
 static_assert(sizeof(FFieldMask8) == sizeof(FFieldMask8::storage_type));
@@ -92,53 +53,14 @@ enum class EField9 : std::uint8_t {
     Tail = static_cast<std::uint8_t>(Values) + (8),
     Count = static_cast<std::uint8_t>(Tail) + 1,
 };
-struct FFieldMask9 {
-    inline static constexpr std::int32_t field_count{static_cast<std::int32_t>(EField9::Count)};
+struct FFieldMask9 : ioj::FieldMask<EField9> {
+    using Base = ioj::FieldMask<EField9>;
 
-    static_assert(field_count <= 64, "Field mask exceeds 64 bits.");
-
-    using storage_type = std::conditional_t<
-        field_count <= 8,
-        std::uint8_t,
-        std::conditional_t<field_count <= 16,
-                           std::uint16_t,
-                           std::conditional_t<field_count <= 32, std::uint32_t, std::uint64_t>>>;
-    constexpr FFieldMask9() noexcept = default;
-
-    constexpr explicit FFieldMask9(storage_type const value) noexcept
-        : value_{value} {}
-    [[nodiscard]] constexpr auto value() const noexcept -> storage_type { return value_; }
-
-    [[nodiscard]] constexpr auto is_empty() const noexcept -> bool { return value_ == 0; }
-
-    [[nodiscard]] constexpr auto has(EField9 const field) const noexcept -> bool {
-        return (value_ & bit(field)) != 0;
-    }
-
-    [[nodiscard]] static constexpr auto index(EField9 const field) noexcept -> std::int32_t {
-        return static_cast<std::int32_t>(field);
-    }
-
-    constexpr void set(EField9 const field) noexcept {
-        value_ = static_cast<storage_type>(value_ | bit(field));
-    }
-
-    constexpr void set(FFieldMask9 const fields) noexcept {
-        value_ = static_cast<storage_type>(value_ | fields.value_);
-    }
-
-    constexpr void clear(EField9 const field) noexcept {
-        value_ = static_cast<storage_type>(value_ & ~bit(field));
-    }
+    using Base::Base;
     [[nodiscard]] static constexpr auto values_field(std::int32_t const value_index) noexcept
         -> EField9 {
         return static_cast<EField9>(static_cast<std::int32_t>(EField9::Values) + value_index);
     }
-  private:
-    [[nodiscard]] static constexpr auto bit(EField9 const field) noexcept -> storage_type {
-        return static_cast<storage_type>(std::uint64_t{1} << static_cast<std::uint8_t>(field));
-    }
-    storage_type value_{};
 };
 
 static_assert(sizeof(FFieldMask9) == sizeof(FFieldMask9::storage_type));
@@ -171,53 +93,14 @@ enum class EField16 : std::uint8_t {
     Values = 0,
     Count = static_cast<std::uint8_t>(Values) + (16),
 };
-struct FFieldMask16 {
-    inline static constexpr std::int32_t field_count{static_cast<std::int32_t>(EField16::Count)};
+struct FFieldMask16 : ioj::FieldMask<EField16> {
+    using Base = ioj::FieldMask<EField16>;
 
-    static_assert(field_count <= 64, "Field mask exceeds 64 bits.");
-
-    using storage_type = std::conditional_t<
-        field_count <= 8,
-        std::uint8_t,
-        std::conditional_t<field_count <= 16,
-                           std::uint16_t,
-                           std::conditional_t<field_count <= 32, std::uint32_t, std::uint64_t>>>;
-    constexpr FFieldMask16() noexcept = default;
-
-    constexpr explicit FFieldMask16(storage_type const value) noexcept
-        : value_{value} {}
-    [[nodiscard]] constexpr auto value() const noexcept -> storage_type { return value_; }
-
-    [[nodiscard]] constexpr auto is_empty() const noexcept -> bool { return value_ == 0; }
-
-    [[nodiscard]] constexpr auto has(EField16 const field) const noexcept -> bool {
-        return (value_ & bit(field)) != 0;
-    }
-
-    [[nodiscard]] static constexpr auto index(EField16 const field) noexcept -> std::int32_t {
-        return static_cast<std::int32_t>(field);
-    }
-
-    constexpr void set(EField16 const field) noexcept {
-        value_ = static_cast<storage_type>(value_ | bit(field));
-    }
-
-    constexpr void set(FFieldMask16 const fields) noexcept {
-        value_ = static_cast<storage_type>(value_ | fields.value_);
-    }
-
-    constexpr void clear(EField16 const field) noexcept {
-        value_ = static_cast<storage_type>(value_ & ~bit(field));
-    }
+    using Base::Base;
     [[nodiscard]] static constexpr auto values_field(std::int32_t const value_index) noexcept
         -> EField16 {
         return static_cast<EField16>(static_cast<std::int32_t>(EField16::Values) + value_index);
     }
-  private:
-    [[nodiscard]] static constexpr auto bit(EField16 const field) noexcept -> storage_type {
-        return static_cast<storage_type>(std::uint64_t{1} << static_cast<std::uint8_t>(field));
-    }
-    storage_type value_{};
 };
 
 static_assert(sizeof(FFieldMask16) == sizeof(FFieldMask16::storage_type));
@@ -248,53 +131,14 @@ enum class EField17 : std::uint8_t {
     Values = 0,
     Count = static_cast<std::uint8_t>(Values) + (17),
 };
-struct FFieldMask17 {
-    inline static constexpr std::int32_t field_count{static_cast<std::int32_t>(EField17::Count)};
+struct FFieldMask17 : ioj::FieldMask<EField17> {
+    using Base = ioj::FieldMask<EField17>;
 
-    static_assert(field_count <= 64, "Field mask exceeds 64 bits.");
-
-    using storage_type = std::conditional_t<
-        field_count <= 8,
-        std::uint8_t,
-        std::conditional_t<field_count <= 16,
-                           std::uint16_t,
-                           std::conditional_t<field_count <= 32, std::uint32_t, std::uint64_t>>>;
-    constexpr FFieldMask17() noexcept = default;
-
-    constexpr explicit FFieldMask17(storage_type const value) noexcept
-        : value_{value} {}
-    [[nodiscard]] constexpr auto value() const noexcept -> storage_type { return value_; }
-
-    [[nodiscard]] constexpr auto is_empty() const noexcept -> bool { return value_ == 0; }
-
-    [[nodiscard]] constexpr auto has(EField17 const field) const noexcept -> bool {
-        return (value_ & bit(field)) != 0;
-    }
-
-    [[nodiscard]] static constexpr auto index(EField17 const field) noexcept -> std::int32_t {
-        return static_cast<std::int32_t>(field);
-    }
-
-    constexpr void set(EField17 const field) noexcept {
-        value_ = static_cast<storage_type>(value_ | bit(field));
-    }
-
-    constexpr void set(FFieldMask17 const fields) noexcept {
-        value_ = static_cast<storage_type>(value_ | fields.value_);
-    }
-
-    constexpr void clear(EField17 const field) noexcept {
-        value_ = static_cast<storage_type>(value_ & ~bit(field));
-    }
+    using Base::Base;
     [[nodiscard]] static constexpr auto values_field(std::int32_t const value_index) noexcept
         -> EField17 {
         return static_cast<EField17>(static_cast<std::int32_t>(EField17::Values) + value_index);
     }
-  private:
-    [[nodiscard]] static constexpr auto bit(EField17 const field) noexcept -> storage_type {
-        return static_cast<storage_type>(std::uint64_t{1} << static_cast<std::uint8_t>(field));
-    }
-    storage_type value_{};
 };
 
 static_assert(sizeof(FFieldMask17) == sizeof(FFieldMask17::storage_type));
@@ -325,53 +169,14 @@ enum class EField32 : std::uint8_t {
     Values = 0,
     Count = static_cast<std::uint8_t>(Values) + (32),
 };
-struct FFieldMask32 {
-    inline static constexpr std::int32_t field_count{static_cast<std::int32_t>(EField32::Count)};
+struct FFieldMask32 : ioj::FieldMask<EField32> {
+    using Base = ioj::FieldMask<EField32>;
 
-    static_assert(field_count <= 64, "Field mask exceeds 64 bits.");
-
-    using storage_type = std::conditional_t<
-        field_count <= 8,
-        std::uint8_t,
-        std::conditional_t<field_count <= 16,
-                           std::uint16_t,
-                           std::conditional_t<field_count <= 32, std::uint32_t, std::uint64_t>>>;
-    constexpr FFieldMask32() noexcept = default;
-
-    constexpr explicit FFieldMask32(storage_type const value) noexcept
-        : value_{value} {}
-    [[nodiscard]] constexpr auto value() const noexcept -> storage_type { return value_; }
-
-    [[nodiscard]] constexpr auto is_empty() const noexcept -> bool { return value_ == 0; }
-
-    [[nodiscard]] constexpr auto has(EField32 const field) const noexcept -> bool {
-        return (value_ & bit(field)) != 0;
-    }
-
-    [[nodiscard]] static constexpr auto index(EField32 const field) noexcept -> std::int32_t {
-        return static_cast<std::int32_t>(field);
-    }
-
-    constexpr void set(EField32 const field) noexcept {
-        value_ = static_cast<storage_type>(value_ | bit(field));
-    }
-
-    constexpr void set(FFieldMask32 const fields) noexcept {
-        value_ = static_cast<storage_type>(value_ | fields.value_);
-    }
-
-    constexpr void clear(EField32 const field) noexcept {
-        value_ = static_cast<storage_type>(value_ & ~bit(field));
-    }
+    using Base::Base;
     [[nodiscard]] static constexpr auto values_field(std::int32_t const value_index) noexcept
         -> EField32 {
         return static_cast<EField32>(static_cast<std::int32_t>(EField32::Values) + value_index);
     }
-  private:
-    [[nodiscard]] static constexpr auto bit(EField32 const field) noexcept -> storage_type {
-        return static_cast<storage_type>(std::uint64_t{1} << static_cast<std::uint8_t>(field));
-    }
-    storage_type value_{};
 };
 
 static_assert(sizeof(FFieldMask32) == sizeof(FFieldMask32::storage_type));
@@ -402,53 +207,14 @@ enum class EField33 : std::uint8_t {
     Values = 0,
     Count = static_cast<std::uint8_t>(Values) + (33),
 };
-struct FFieldMask33 {
-    inline static constexpr std::int32_t field_count{static_cast<std::int32_t>(EField33::Count)};
+struct FFieldMask33 : ioj::FieldMask<EField33> {
+    using Base = ioj::FieldMask<EField33>;
 
-    static_assert(field_count <= 64, "Field mask exceeds 64 bits.");
-
-    using storage_type = std::conditional_t<
-        field_count <= 8,
-        std::uint8_t,
-        std::conditional_t<field_count <= 16,
-                           std::uint16_t,
-                           std::conditional_t<field_count <= 32, std::uint32_t, std::uint64_t>>>;
-    constexpr FFieldMask33() noexcept = default;
-
-    constexpr explicit FFieldMask33(storage_type const value) noexcept
-        : value_{value} {}
-    [[nodiscard]] constexpr auto value() const noexcept -> storage_type { return value_; }
-
-    [[nodiscard]] constexpr auto is_empty() const noexcept -> bool { return value_ == 0; }
-
-    [[nodiscard]] constexpr auto has(EField33 const field) const noexcept -> bool {
-        return (value_ & bit(field)) != 0;
-    }
-
-    [[nodiscard]] static constexpr auto index(EField33 const field) noexcept -> std::int32_t {
-        return static_cast<std::int32_t>(field);
-    }
-
-    constexpr void set(EField33 const field) noexcept {
-        value_ = static_cast<storage_type>(value_ | bit(field));
-    }
-
-    constexpr void set(FFieldMask33 const fields) noexcept {
-        value_ = static_cast<storage_type>(value_ | fields.value_);
-    }
-
-    constexpr void clear(EField33 const field) noexcept {
-        value_ = static_cast<storage_type>(value_ & ~bit(field));
-    }
+    using Base::Base;
     [[nodiscard]] static constexpr auto values_field(std::int32_t const value_index) noexcept
         -> EField33 {
         return static_cast<EField33>(static_cast<std::int32_t>(EField33::Values) + value_index);
     }
-  private:
-    [[nodiscard]] static constexpr auto bit(EField33 const field) noexcept -> storage_type {
-        return static_cast<storage_type>(std::uint64_t{1} << static_cast<std::uint8_t>(field));
-    }
-    storage_type value_{};
 };
 
 static_assert(sizeof(FFieldMask33) == sizeof(FFieldMask33::storage_type));

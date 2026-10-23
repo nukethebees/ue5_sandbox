@@ -188,7 +188,19 @@ TEST(GeneratedMixedModule, ResolvesForwardPhysicalDependenciesAcrossDeclarationK
     EXPECT_EQ(position.y, 4.0f);
 }
 
+template <typename Mask, typename Value>
+concept CanSetMask = requires(Mask& mask, Value const& value) { mask.set(value); };
+
 TEST(GeneratedFieldMask, Operations) {
+    static_assert(CanSetMask<FFieldMask8, FFieldMask8>);
+    static_assert(!CanSetMask<FFieldMask8, FFieldMask9>);
+    static_assert(!CanSetMask<FFieldMask8, EField9>);
+    static_assert(!CanSetMask<FFieldMask8 const, FFieldMask8>);
+    static_assert(!CanSetMask<FFieldMask8 const, EField8>);
+    static_assert(std::is_standard_layout_v<FFieldMask8>);
+    static_assert(!std::is_convertible_v<std::uint8_t, FFieldMask8>);
+    constexpr FFieldMask8 raw{std::uint8_t{0x80}};
+    static_assert(raw.has(FFieldMask8::values_field(7)));
     static_assert(FFieldMask8::field_count == 8);
     static_assert(sizeof(FFieldMask8) == sizeof(std::uint8_t));
     static_assert(FFieldMask9::field_count == 9);

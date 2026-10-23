@@ -29,6 +29,7 @@ target_sources(native-core
     include/ioj/require.h
     include/ioj/constrained_numbers.h
     include/ioj/enum_traits.h
+    include/ioj/field_mask.h
     include/ioj/packed_value.h
     include/ioj/parallel_for.h
     include/ioj/countdown_timers.h

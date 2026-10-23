@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/field_mask.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/entities/entity_telemetry.h"
 #include "ioj/sim/sim_tick.h"
@@ -12,7 +13,6 @@
 #include <cassert>
 #include <cstdint>
 #include <memory_resource>
-#include <type_traits>
 
 namespace ioj::sim::telemetry {
 
@@ -29,45 +29,10 @@ enum class HistoryField : std::uint8_t {
     LasersFired = static_cast<std::uint8_t>(ActiveLasers) + 1,
     Count = static_cast<std::uint8_t>(LasersFired) + 1,
 };
-struct HistoryFieldMask {
-    inline static constexpr std::int32_t field_count{
-        static_cast<std::int32_t>(HistoryField::Count)};
+struct HistoryFieldMask : ioj::FieldMask<HistoryField> {
+    using Base = ioj::FieldMask<HistoryField>;
 
-    static_assert(field_count <= 64, "Field mask exceeds 64 bits.");
-
-    using storage_type = std::conditional_t<
-        field_count <= 8,
-        std::uint8_t,
-        std::conditional_t<field_count <= 16,
-                           std::uint16_t,
-                           std::conditional_t<field_count <= 32, std::uint32_t, std::uint64_t>>>;
-    constexpr HistoryFieldMask() noexcept = default;
-
-    constexpr explicit HistoryFieldMask(storage_type const value) noexcept
-        : value_{value} {}
-    [[nodiscard]] constexpr auto value() const noexcept -> storage_type { return value_; }
-
-    [[nodiscard]] constexpr auto is_empty() const noexcept -> bool { return value_ == 0; }
-
-    [[nodiscard]] constexpr auto has(HistoryField const field) const noexcept -> bool {
-        return (value_ & bit(field)) != 0;
-    }
-
-    [[nodiscard]] static constexpr auto index(HistoryField const field) noexcept -> std::int32_t {
-        return static_cast<std::int32_t>(field);
-    }
-
-    constexpr void set(HistoryField const field) noexcept {
-        value_ = static_cast<storage_type>(value_ | bit(field));
-    }
-
-    constexpr void set(HistoryFieldMask const fields) noexcept {
-        value_ = static_cast<storage_type>(value_ | fields.value_);
-    }
-
-    constexpr void clear(HistoryField const field) noexcept {
-        value_ = static_cast<storage_type>(value_ & ~bit(field));
-    }
+    using Base::Base;
     [[nodiscard]] static constexpr auto
         active_entities_by_type_field(std::int32_t const entity_type_index) noexcept
         -> HistoryField {
@@ -82,11 +47,6 @@ struct HistoryFieldMask {
             static_cast<std::int32_t>(HistoryField::ActiveEntitiesByTeamAndType) +
             (team_index * (entity_type_count) + entity_type_index));
     }
-  private:
-    [[nodiscard]] static constexpr auto bit(HistoryField const field) noexcept -> storage_type {
-        return static_cast<storage_type>(std::uint64_t{1} << static_cast<std::uint8_t>(field));
-    }
-    storage_type value_{};
 };
 
 static_assert(sizeof(HistoryFieldMask) == sizeof(HistoryFieldMask::storage_type));
