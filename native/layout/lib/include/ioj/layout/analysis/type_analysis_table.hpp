@@ -21,16 +21,17 @@
 #include <optional>
 
 namespace ioj::layout {
-struct TypeAnalysisTableSchema;
-struct TypeAnalysisTableResolvedView;
-struct TypeAnalysisTableResolvedConstView;
-struct TypeAnalysisTableView;
-struct TypeAnalysisTableConstView;
+namespace type_analysis_table {
+struct Schema;
+struct View;
+struct ConstView;
+struct ResolvedView;
+struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct TypeAnalysisTableLayoutColumns {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<lispb::schema::TypeId> SchemaTypeColumn;
@@ -41,7 +42,7 @@ struct TypeAnalysisTableLayoutColumns {
     ColLayout<std::optional<ioj::layout::PackedLayout>> PackedColumn;
     ColLayout<std::optional<ioj::layout::SoaLayout>> SoaColumn;
 
-    constexpr explicit TypeAnalysisTableLayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : SchemaTypeColumn{previous}
         , ScenarioColumn{SchemaTypeColumn}
@@ -54,34 +55,31 @@ struct TypeAnalysisTableLayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return SoaColumn;
     }
-    TypeAnalysisTableLayoutColumns(TypeAnalysisTableLayoutColumns const&) = delete;
-    auto operator=(TypeAnalysisTableLayoutColumns const&)
-        -> TypeAnalysisTableLayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-struct TypeAnalysisTableLayout
-    : ioj::single_allocation_layout::Layout<TypeAnalysisTableLayoutColumns> {};
+struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct TypeAnalysisTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
+struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
-    using View = TypeAnalysisTableResolvedView;
-    using ConstView = TypeAnalysisTableResolvedConstView;
-    using soa_schema = ::ioj::layout::TypeAnalysisTableSchema;
+    using view_type = ::ioj::layout::type_analysis_table::ResolvedView;
+    using const_view_type = ::ioj::layout::type_analysis_table::ResolvedConstView;
+    using soa_schema = ::ioj::layout::type_analysis_table::Schema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    TypeAnalysisTableResolvedViewImpl() = default;
-    TypeAnalysisTableResolvedViewImpl(
-        Element<lispb::schema::TypeId>* schema_type,
-        Element<ioj::layout::ScenarioId>* scenario,
-        Element<std::optional<ioj::layout::PhysicalFactId>>* physical,
-        Element<std::optional<ioj::layout::EnumBacking>>* enum_backing,
-        Element<std::optional<ioj::layout::AggregateLayout>>* aggregate,
-        Element<std::optional<ioj::layout::PackedLayout>>* packed,
-        Element<std::optional<ioj::layout::SoaLayout>>* soa,
-        size_type count)
+    ResolvedViewImpl() = default;
+    ResolvedViewImpl(Element<lispb::schema::TypeId>* schema_type,
+                     Element<ioj::layout::ScenarioId>* scenario,
+                     Element<std::optional<ioj::layout::PhysicalFactId>>* physical,
+                     Element<std::optional<ioj::layout::EnumBacking>>* enum_backing,
+                     Element<std::optional<ioj::layout::AggregateLayout>>* aggregate,
+                     Element<std::optional<ioj::layout::PackedLayout>>* packed,
+                     Element<std::optional<ioj::layout::SoaLayout>>* soa,
+                     size_type count)
         : schema_type_{schema_type}
         , scenario_{scenario}
         , physical_{physical}
@@ -93,28 +91,26 @@ struct TypeAnalysisTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
         ioj::soa_storage_detail::validate_column_pointers(
             count_, schema_type_, scenario_, physical_, enum_backing_, aggregate_, packed_, soa_);
     }
-    TypeAnalysisTableResolvedViewImpl(
-        std::span<Element<lispb::schema::TypeId>> schema_type,
-        std::span<Element<ioj::layout::ScenarioId>> scenario,
-        std::span<Element<std::optional<ioj::layout::PhysicalFactId>>> physical,
-        std::span<Element<std::optional<ioj::layout::EnumBacking>>> enum_backing,
-        std::span<Element<std::optional<ioj::layout::AggregateLayout>>> aggregate,
-        std::span<Element<std::optional<ioj::layout::PackedLayout>>> packed,
-        std::span<Element<std::optional<ioj::layout::SoaLayout>>> soa)
-        : TypeAnalysisTableResolvedViewImpl{
-              schema_type.data(),
-              scenario.data(),
-              physical.data(),
-              enum_backing.data(),
-              aggregate.data(),
-              packed.data(),
-              soa.data(),
-              ioj::soa_storage_detail::checked_row_count(schema_type.size())} {
+    ResolvedViewImpl(std::span<Element<lispb::schema::TypeId>> schema_type,
+                     std::span<Element<ioj::layout::ScenarioId>> scenario,
+                     std::span<Element<std::optional<ioj::layout::PhysicalFactId>>> physical,
+                     std::span<Element<std::optional<ioj::layout::EnumBacking>>> enum_backing,
+                     std::span<Element<std::optional<ioj::layout::AggregateLayout>>> aggregate,
+                     std::span<Element<std::optional<ioj::layout::PackedLayout>>> packed,
+                     std::span<Element<std::optional<ioj::layout::SoaLayout>>> soa)
+        : ResolvedViewImpl{schema_type.data(),
+                           scenario.data(),
+                           physical.data(),
+                           enum_backing.data(),
+                           aggregate.data(),
+                           packed.data(),
+                           soa.data(),
+                           ioj::soa_storage_detail::checked_row_count(schema_type.size())} {
         ioj::soa_storage_detail::validate_column_sizes(
             count_, schema_type, scenario, physical, enum_backing, aggregate, packed, soa);
     }
     template <bool Enabled = Const>
-    TypeAnalysisTableResolvedViewImpl(TypeAnalysisTableResolvedViewImpl<false> const& other)
+    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : schema_type_{other.schema_type_}
         , scenario_{other.scenario_}
@@ -157,7 +153,7 @@ struct TypeAnalysisTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
     }
   private:
     template <bool>
-    friend struct TypeAnalysisTableResolvedViewImpl;
+    friend struct ResolvedViewImpl;
     Element<lispb::schema::TypeId>* schema_type_{};
     Element<ioj::layout::ScenarioId>* scenario_{};
     Element<std::optional<ioj::layout::PhysicalFactId>>* physical_{};
@@ -167,12 +163,12 @@ struct TypeAnalysisTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
     Element<std::optional<ioj::layout::SoaLayout>>* soa_{};
     size_type count_{};
 };
-struct TypeAnalysisTableResolvedConstView : TypeAnalysisTableResolvedViewImpl<true> {
-    using Base = TypeAnalysisTableResolvedViewImpl<true>;
+struct ResolvedConstView : ResolvedViewImpl<true> {
+    using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct TypeAnalysisTableResolvedView : TypeAnalysisTableResolvedViewImpl<false> {
-    using Base = TypeAnalysisTableResolvedViewImpl<false>;
+struct ResolvedView : ResolvedViewImpl<false> {
+    using Base = ResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              lispb::schema::TypeId const new_schema_type,
@@ -197,15 +193,15 @@ struct TypeAnalysisTableResolvedView : TypeAnalysisTableResolvedViewImpl<false> 
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct TypeAnalysisTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = TypeAnalysisTableSchema;
+struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = ::ioj::layout::type_analysis_table::Schema;
     using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = TypeAnalysisTableLayout;
-    using View = TypeAnalysisTableView;
-    using ConstView = TypeAnalysisTableConstView;
+    using Layout = ::ioj::layout::type_analysis_table::Layout;
+    using view_type = ::ioj::layout::type_analysis_table::View;
+    using const_view_type = ::ioj::layout::type_analysis_table::ConstView;
     template <bool Enabled = Const>
-    TypeAnalysisTableViewImpl(TypeAnalysisTableViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto schema_type() const { return this->column(Layout::columns.SchemaTypeColumn); }
@@ -225,8 +221,10 @@ struct TypeAnalysisTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
         func(packed());
         func(soa());
     }
-    auto resolve() const -> std::
-        conditional_t<Const, TypeAnalysisTableResolvedConstView, TypeAnalysisTableResolvedView> {
+    auto resolve() const
+        -> std::conditional_t<Const,
+                              ::ioj::layout::type_analysis_table::ResolvedConstView,
+                              ::ioj::layout::type_analysis_table::ResolvedView> {
         return {this->column(Layout::columns.SchemaTypeColumn).data(),
                 this->column(Layout::columns.ScenarioColumn).data(),
                 this->column(Layout::columns.PhysicalColumn).data(),
@@ -234,16 +232,16 @@ struct TypeAnalysisTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
                 this->column(Layout::columns.AggregateColumn).data(),
                 this->column(Layout::columns.PackedColumn).data(),
                 this->column(Layout::columns.SoaColumn).data(),
-                this->count_};
+                this->num()};
     }
 };
-struct TypeAnalysisTableConstView : TypeAnalysisTableViewImpl<true> {
-    using Base = TypeAnalysisTableViewImpl<true>;
+struct ConstView : ViewImpl<true> {
+    using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<TypeAnalysisTableConstView>());
-struct TypeAnalysisTableView : TypeAnalysisTableViewImpl<false> {
-    using Base = TypeAnalysisTableViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
+struct View : ViewImpl<false> {
+    using Base = ViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              lispb::schema::TypeId const new_schema_type,
@@ -263,7 +261,9 @@ struct TypeAnalysisTableView : TypeAnalysisTableViewImpl<false> {
         this->soa()[index] = new_soa;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<TypeAnalysisTableView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+
+} // namespace type_analysis_table
 
 /* **************************************** */
 // Owner
@@ -279,9 +279,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<TypeAnalysisTableVi
 struct TypeAnalysisTable
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
-    using soa_schema = TypeAnalysisTableSchema;
+    using soa_schema = ::ioj::layout::type_analysis_table::Schema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = TypeAnalysisTableLayout;
+    using Layout = ::ioj::layout::type_analysis_table::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -294,8 +294,8 @@ struct TypeAnalysisTable
         return Layout::layout_bytes(blocks);
     }
 
-    using View = TypeAnalysisTableView;
-    using ConstView = TypeAnalysisTableConstView;
+    using View = ::ioj::layout::type_analysis_table::View;
+    using ConstView = ::ioj::layout::type_analysis_table::ConstView;
 
     /* **************************************** */
     // Lifetime

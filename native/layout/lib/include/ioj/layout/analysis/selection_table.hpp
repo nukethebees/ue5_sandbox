@@ -17,16 +17,17 @@
 #include <optional>
 
 namespace ioj::layout {
-struct SelectionTableSchema;
-struct SelectionTableResolvedView;
-struct SelectionTableResolvedConstView;
-struct SelectionTableView;
-struct SelectionTableConstView;
+namespace selection_table {
+struct Schema;
+struct View;
+struct ConstView;
+struct ResolvedView;
+struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct SelectionTableLayoutColumns {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<std::size_t> SourceColumn;
@@ -37,7 +38,7 @@ struct SelectionTableLayoutColumns {
     ColLayout<RegionFootprint> PagesColumn;
     ColLayout<std::optional<std::uint64_t>> CapacitySlackBytesColumn;
 
-    constexpr explicit SelectionTableLayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : SourceColumn{previous}
         , OperationColumn{SourceColumn}
@@ -50,31 +51,31 @@ struct SelectionTableLayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return CapacitySlackBytesColumn;
     }
-    SelectionTableLayoutColumns(SelectionTableLayoutColumns const&) = delete;
-    auto operator=(SelectionTableLayoutColumns const&) -> SelectionTableLayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-struct SelectionTableLayout : ioj::single_allocation_layout::Layout<SelectionTableLayoutColumns> {};
+struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct SelectionTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
+struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
-    using View = SelectionTableResolvedView;
-    using ConstView = SelectionTableResolvedConstView;
-    using soa_schema = ::ioj::layout::SelectionTableSchema;
+    using view_type = ::ioj::layout::selection_table::ResolvedView;
+    using const_view_type = ::ioj::layout::selection_table::ResolvedConstView;
+    using soa_schema = ::ioj::layout::selection_table::Schema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    SelectionTableResolvedViewImpl() = default;
-    SelectionTableResolvedViewImpl(Element<std::size_t>* source,
-                                   Element<ioj::layout::AccessOperation>* operation,
-                                   Element<ioj::layout::PayloadFootprint>* bytes,
-                                   Element<ioj::layout::PayloadFootprint>* bits,
-                                   Element<ioj::layout::RegionFootprint>* cache,
-                                   Element<ioj::layout::RegionFootprint>* pages,
-                                   Element<std::optional<std::uint64_t>>* capacity_slack_bytes,
-                                   size_type count)
+    ResolvedViewImpl() = default;
+    ResolvedViewImpl(Element<std::size_t>* source,
+                     Element<ioj::layout::AccessOperation>* operation,
+                     Element<ioj::layout::PayloadFootprint>* bytes,
+                     Element<ioj::layout::PayloadFootprint>* bits,
+                     Element<ioj::layout::RegionFootprint>* cache,
+                     Element<ioj::layout::RegionFootprint>* pages,
+                     Element<std::optional<std::uint64_t>>* capacity_slack_bytes,
+                     size_type count)
         : source_{source}
         , operation_{operation}
         , bytes_{bytes}
@@ -86,28 +87,26 @@ struct SelectionTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations 
         ioj::soa_storage_detail::validate_column_pointers(
             count_, source_, operation_, bytes_, bits_, cache_, pages_, capacity_slack_bytes_);
     }
-    SelectionTableResolvedViewImpl(
-        std::span<Element<std::size_t>> source,
-        std::span<Element<ioj::layout::AccessOperation>> operation,
-        std::span<Element<ioj::layout::PayloadFootprint>> bytes,
-        std::span<Element<ioj::layout::PayloadFootprint>> bits,
-        std::span<Element<ioj::layout::RegionFootprint>> cache,
-        std::span<Element<ioj::layout::RegionFootprint>> pages,
-        std::span<Element<std::optional<std::uint64_t>>> capacity_slack_bytes)
-        : SelectionTableResolvedViewImpl{
-              source.data(),
-              operation.data(),
-              bytes.data(),
-              bits.data(),
-              cache.data(),
-              pages.data(),
-              capacity_slack_bytes.data(),
-              ioj::soa_storage_detail::checked_row_count(source.size())} {
+    ResolvedViewImpl(std::span<Element<std::size_t>> source,
+                     std::span<Element<ioj::layout::AccessOperation>> operation,
+                     std::span<Element<ioj::layout::PayloadFootprint>> bytes,
+                     std::span<Element<ioj::layout::PayloadFootprint>> bits,
+                     std::span<Element<ioj::layout::RegionFootprint>> cache,
+                     std::span<Element<ioj::layout::RegionFootprint>> pages,
+                     std::span<Element<std::optional<std::uint64_t>>> capacity_slack_bytes)
+        : ResolvedViewImpl{source.data(),
+                           operation.data(),
+                           bytes.data(),
+                           bits.data(),
+                           cache.data(),
+                           pages.data(),
+                           capacity_slack_bytes.data(),
+                           ioj::soa_storage_detail::checked_row_count(source.size())} {
         ioj::soa_storage_detail::validate_column_sizes(
             count_, source, operation, bytes, bits, cache, pages, capacity_slack_bytes);
     }
     template <bool Enabled = Const>
-    SelectionTableResolvedViewImpl(SelectionTableResolvedViewImpl<false> const& other)
+    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : source_{other.source_}
         , operation_{other.operation_}
@@ -151,7 +150,7 @@ struct SelectionTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations 
     }
   private:
     template <bool>
-    friend struct SelectionTableResolvedViewImpl;
+    friend struct ResolvedViewImpl;
     Element<std::size_t>* source_{};
     Element<ioj::layout::AccessOperation>* operation_{};
     Element<ioj::layout::PayloadFootprint>* bytes_{};
@@ -161,12 +160,12 @@ struct SelectionTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations 
     Element<std::optional<std::uint64_t>>* capacity_slack_bytes_{};
     size_type count_{};
 };
-struct SelectionTableResolvedConstView : SelectionTableResolvedViewImpl<true> {
-    using Base = SelectionTableResolvedViewImpl<true>;
+struct ResolvedConstView : ResolvedViewImpl<true> {
+    using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct SelectionTableResolvedView : SelectionTableResolvedViewImpl<false> {
-    using Base = SelectionTableResolvedViewImpl<false>;
+struct ResolvedView : ResolvedViewImpl<false> {
+    using Base = ResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              std::size_t const new_source,
@@ -191,15 +190,15 @@ struct SelectionTableResolvedView : SelectionTableResolvedViewImpl<false> {
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct SelectionTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = SelectionTableSchema;
+struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = ::ioj::layout::selection_table::Schema;
     using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = SelectionTableLayout;
-    using View = SelectionTableView;
-    using ConstView = SelectionTableConstView;
+    using Layout = ::ioj::layout::selection_table::Layout;
+    using view_type = ::ioj::layout::selection_table::View;
+    using const_view_type = ::ioj::layout::selection_table::ConstView;
     template <bool Enabled = Const>
-    SelectionTableViewImpl(SelectionTableViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto source() const { return this->column(Layout::columns.SourceColumn); }
@@ -221,8 +220,9 @@ struct SelectionTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> 
         func(pages());
         func(capacity_slack_bytes());
     }
-    auto resolve() const
-        -> std::conditional_t<Const, SelectionTableResolvedConstView, SelectionTableResolvedView> {
+    auto resolve() const -> std::conditional_t<Const,
+                                               ::ioj::layout::selection_table::ResolvedConstView,
+                                               ::ioj::layout::selection_table::ResolvedView> {
         return {this->column(Layout::columns.SourceColumn).data(),
                 this->column(Layout::columns.OperationColumn).data(),
                 this->column(Layout::columns.BytesColumn).data(),
@@ -230,16 +230,16 @@ struct SelectionTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> 
                 this->column(Layout::columns.CacheColumn).data(),
                 this->column(Layout::columns.PagesColumn).data(),
                 this->column(Layout::columns.CapacitySlackBytesColumn).data(),
-                this->count_};
+                this->num()};
     }
 };
-struct SelectionTableConstView : SelectionTableViewImpl<true> {
-    using Base = SelectionTableViewImpl<true>;
+struct ConstView : ViewImpl<true> {
+    using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<SelectionTableConstView>());
-struct SelectionTableView : SelectionTableViewImpl<false> {
-    using Base = SelectionTableViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
+struct View : ViewImpl<false> {
+    using Base = ViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              std::size_t const new_source,
@@ -259,7 +259,9 @@ struct SelectionTableView : SelectionTableViewImpl<false> {
         this->capacity_slack_bytes()[index] = new_capacity_slack_bytes;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<SelectionTableView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+
+} // namespace selection_table
 
 /* **************************************** */
 // Owner
@@ -275,9 +277,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<SelectionTableView>
 struct SelectionTable
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
-    using soa_schema = SelectionTableSchema;
+    using soa_schema = ::ioj::layout::selection_table::Schema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = SelectionTableLayout;
+    using Layout = ::ioj::layout::selection_table::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -290,8 +292,8 @@ struct SelectionTable
         return Layout::layout_bytes(blocks);
     }
 
-    using View = SelectionTableView;
-    using ConstView = SelectionTableConstView;
+    using View = ::ioj::layout::selection_table::View;
+    using ConstView = ::ioj::layout::selection_table::ConstView;
 
     /* **************************************** */
     // Lifetime

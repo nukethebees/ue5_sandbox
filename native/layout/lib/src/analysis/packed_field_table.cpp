@@ -6,7 +6,6 @@
 #include <cstddef>
 
 namespace ioj::layout {
-
 auto PackedFieldTable::append() -> std::size_t {
     auto const row{this->num()};
     this->add_defaulted(1);

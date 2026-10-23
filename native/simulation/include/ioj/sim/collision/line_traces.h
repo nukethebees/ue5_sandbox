@@ -13,26 +13,23 @@
 #include <memory_resource>
 
 namespace ioj::sim {
-struct LineTracesSchema;
-struct LineTracesResolvedView;
-struct LineTracesResolvedConstView;
-struct LineTracesView;
-struct LineTracesConstView;
-struct LineTracesView_starts;
-struct LineTracesConstView_starts;
-struct LineTracesView_ends;
-struct LineTracesConstView_ends;
+namespace line_traces {
+struct Schema;
+struct View;
+struct ConstView;
+struct ResolvedView;
+struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LineTracesLayoutColumns {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ::ioj::Vectors3fLayoutColumns Starts;
-    ::ioj::Vectors3fLayoutColumns Ends;
+    ::ioj::vectors3f::LayoutColumns Starts;
+    ::ioj::vectors3f::LayoutColumns Ends;
 
-    constexpr explicit LineTracesLayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : Starts{previous}
         , Ends{Starts.last_column()} {}
@@ -40,30 +37,30 @@ struct LineTracesLayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return Ends.last_column();
     }
-    LineTracesLayoutColumns(LineTracesLayoutColumns const&) = delete;
-    auto operator=(LineTracesLayoutColumns const&) -> LineTracesLayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-struct LineTracesLayout : ioj::single_allocation_layout::Layout<LineTracesLayoutColumns> {};
+struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct LineTracesResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
+struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
-    using View = LineTracesResolvedView;
-    using ConstView = LineTracesResolvedConstView;
-    using soa_schema = ::ioj::sim::LineTracesSchema;
+    using view_type = ::ioj::sim::line_traces::ResolvedView;
+    using const_view_type = ::ioj::sim::line_traces::ResolvedConstView;
+    using soa_schema = ::ioj::sim::line_traces::Schema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    LineTracesResolvedViewImpl() = default;
-    LineTracesResolvedViewImpl(Element<float>* starts_xs,
-                               Element<float>* starts_ys,
-                               Element<float>* starts_zs,
-                               Element<float>* ends_xs,
-                               Element<float>* ends_ys,
-                               Element<float>* ends_zs,
-                               size_type count)
+    ResolvedViewImpl() = default;
+    ResolvedViewImpl(Element<float>* starts_xs,
+                     Element<float>* starts_ys,
+                     Element<float>* starts_zs,
+                     Element<float>* ends_xs,
+                     Element<float>* ends_ys,
+                     Element<float>* ends_zs,
+                     size_type count)
         : starts_xs_{starts_xs}
         , starts_ys_{starts_ys}
         , starts_zs_{starts_zs}
@@ -74,24 +71,24 @@ struct LineTracesResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         ioj::soa_storage_detail::validate_column_pointers(
             count_, starts_xs_, starts_ys_, starts_zs_, ends_xs_, ends_ys_, ends_zs_);
     }
-    LineTracesResolvedViewImpl(std::span<Element<float>> starts_xs,
-                               std::span<Element<float>> starts_ys,
-                               std::span<Element<float>> starts_zs,
-                               std::span<Element<float>> ends_xs,
-                               std::span<Element<float>> ends_ys,
-                               std::span<Element<float>> ends_zs)
-        : LineTracesResolvedViewImpl{starts_xs.data(),
-                                     starts_ys.data(),
-                                     starts_zs.data(),
-                                     ends_xs.data(),
-                                     ends_ys.data(),
-                                     ends_zs.data(),
-                                     ioj::soa_storage_detail::checked_row_count(starts_xs.size())} {
+    ResolvedViewImpl(std::span<Element<float>> starts_xs,
+                     std::span<Element<float>> starts_ys,
+                     std::span<Element<float>> starts_zs,
+                     std::span<Element<float>> ends_xs,
+                     std::span<Element<float>> ends_ys,
+                     std::span<Element<float>> ends_zs)
+        : ResolvedViewImpl{starts_xs.data(),
+                           starts_ys.data(),
+                           starts_zs.data(),
+                           ends_xs.data(),
+                           ends_ys.data(),
+                           ends_zs.data(),
+                           ioj::soa_storage_detail::checked_row_count(starts_xs.size())} {
         ioj::soa_storage_detail::validate_column_sizes(
             count_, starts_xs, starts_ys, starts_zs, ends_xs, ends_ys, ends_zs);
     }
     template <bool Enabled = Const>
-    LineTracesResolvedViewImpl(LineTracesResolvedViewImpl<false> const& other)
+    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : starts_xs_{other.starts_xs_}
         , starts_ys_{other.starts_ys_}
@@ -114,11 +111,11 @@ struct LineTracesResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                       count};
     }
     auto view_starts() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
+        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {starts_xs_, starts_ys_, starts_zs_, count_};
     }
     auto view_ends() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
+        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {ends_xs_, ends_ys_, ends_zs_, count_};
     }
     template <typename Func>
@@ -132,7 +129,7 @@ struct LineTracesResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     }
   private:
     template <bool>
-    friend struct LineTracesResolvedViewImpl;
+    friend struct ResolvedViewImpl;
     Element<float>* starts_xs_{};
     Element<float>* starts_ys_{};
     Element<float>* starts_zs_{};
@@ -141,12 +138,12 @@ struct LineTracesResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<float>* ends_zs_{};
     size_type count_{};
 };
-struct LineTracesResolvedConstView : LineTracesResolvedViewImpl<true> {
-    using Base = LineTracesResolvedViewImpl<true>;
+struct ResolvedConstView : ResolvedViewImpl<true> {
+    using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct LineTracesResolvedView : LineTracesResolvedViewImpl<false> {
-    using Base = LineTracesResolvedViewImpl<false>;
+struct ResolvedView : ResolvedViewImpl<false> {
+    using Base = ResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              float const new_starts_xs,
@@ -171,151 +168,36 @@ struct LineTracesResolvedView : LineTracesResolvedViewImpl<false> {
 };
 
 /* **************************************** */
-// starts compact views
+// Strided views
 /* **************************************** */
 template <bool Const>
-struct LineTracesView_startsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Vectors3fSchema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
+    using soa_schema = ::ioj::sim::line_traces::Schema;
+    using Base = ioj::soa_storage_detail::StridedViewBase<float, Const>;
     using Base::Base;
-    using Layout = LineTracesLayout;
-    using View = LineTracesView_starts;
-    using ConstView = LineTracesConstView_starts;
+    using Layout = ::ioj::sim::line_traces::Layout;
+    using view_type = ::ioj::sim::line_traces::View;
+    using const_view_type = ::ioj::sim::line_traces::ConstView;
+    using State = std::conditional_t<Const,
+                                     ioj::soa_storage_detail::StorageState const,
+                                     ioj::soa_storage_detail::StorageState>;
+    ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
+        : Base{ioj::soa_storage_detail::make_strided_view<Base>(state,
+                                                                offset,
+                                                                count,
+                                                                Layout::columns.Starts.XsColumn,
+                                                                Layout::columns.Starts.YsColumn)} {}
     template <bool Enabled = Const>
-    LineTracesView_startsImpl(LineTracesView_startsImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.Starts.XsColumn); }
-    auto ys() const { return this->column(Layout::columns.Starts.YsColumn); }
-    auto zs() const { return this->column(Layout::columns.Starts.ZsColumn); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(xs());
-        func(ys());
-        func(zs());
-    }
-    auto resolve() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {this->column(Layout::columns.Starts.XsColumn).data(),
-                this->column(Layout::columns.Starts.YsColumn).data(),
-                this->column(Layout::columns.Starts.ZsColumn).data(),
-                this->count_};
-    }
-};
-struct LineTracesConstView_starts : LineTracesView_startsImpl<true> {
-    using Base = LineTracesView_startsImpl<true>;
-    using Base::Base;
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(ioj::soa_storage_detail::validate_compact_view<LineTracesConstView_starts>());
-struct LineTracesView_starts : LineTracesView_startsImpl<false> {
-    using Base = LineTracesView_startsImpl<false>;
-    using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-        this->zs()[index] = new_zs;
-    }
-    void set(size_type index, Vector3f const value) const {
-        set(index, (value.x()), (value.y()), (value.z()));
-    }
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(ioj::soa_storage_detail::validate_compact_view<LineTracesView_starts>());
-
-/* **************************************** */
-// ends compact views
-/* **************************************** */
-template <bool Const>
-struct LineTracesView_endsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Vectors3fSchema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = LineTracesLayout;
-    using View = LineTracesView_ends;
-    using ConstView = LineTracesConstView_ends;
-    template <bool Enabled = Const>
-    LineTracesView_endsImpl(LineTracesView_endsImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.Ends.XsColumn); }
-    auto ys() const { return this->column(Layout::columns.Ends.YsColumn); }
-    auto zs() const { return this->column(Layout::columns.Ends.ZsColumn); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(xs());
-        func(ys());
-        func(zs());
-    }
-    auto resolve() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {this->column(Layout::columns.Ends.XsColumn).data(),
-                this->column(Layout::columns.Ends.YsColumn).data(),
-                this->column(Layout::columns.Ends.ZsColumn).data(),
-                this->count_};
-    }
-};
-struct LineTracesConstView_ends : LineTracesView_endsImpl<true> {
-    using Base = LineTracesView_endsImpl<true>;
-    using Base::Base;
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(ioj::soa_storage_detail::validate_compact_view<LineTracesConstView_ends>());
-struct LineTracesView_ends : LineTracesView_endsImpl<false> {
-    using Base = LineTracesView_endsImpl<false>;
-    using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-        this->zs()[index] = new_zs;
-    }
-    void set(size_type index, Vector3f const value) const {
-        set(index, (value.x()), (value.y()), (value.z()));
-    }
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(ioj::soa_storage_detail::validate_compact_view<LineTracesView_ends>());
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct LineTracesViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = LineTracesSchema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = LineTracesLayout;
-    using View = LineTracesView;
-    using ConstView = LineTracesConstView;
-    template <bool Enabled = Const>
-    LineTracesViewImpl(LineTracesViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto view_starts() const
-        -> std::conditional_t<Const, LineTracesConstView_starts, LineTracesView_starts> {
-        return {this->state_, this->offset_, this->count_};
+        -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
+        return {this->column(0).data(), this->byte_stride(), this->num()};
     }
     auto view_ends() const
-        -> std::conditional_t<Const, LineTracesConstView_ends, LineTracesView_ends> {
-        return {this->state_, this->offset_, this->count_};
+        -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
+        return {this->column(3).data(), this->byte_stride(), this->num()};
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -328,24 +210,25 @@ struct LineTracesViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         func(ends_view.ys());
         func(ends_view.zs());
     }
-    auto resolve() const
-        -> std::conditional_t<Const, LineTracesResolvedConstView, LineTracesResolvedView> {
-        return {this->column(Layout::columns.Starts.XsColumn).data(),
-                this->column(Layout::columns.Starts.YsColumn).data(),
-                this->column(Layout::columns.Starts.ZsColumn).data(),
-                this->column(Layout::columns.Ends.XsColumn).data(),
-                this->column(Layout::columns.Ends.YsColumn).data(),
-                this->column(Layout::columns.Ends.ZsColumn).data(),
-                this->count_};
+    auto resolve() const -> std::conditional_t<Const,
+                                               ::ioj::sim::line_traces::ResolvedConstView,
+                                               ::ioj::sim::line_traces::ResolvedView> {
+        return {this->column(0).data(),
+                this->column(1).data(),
+                this->column(2).data(),
+                this->column(3).data(),
+                this->column(4).data(),
+                this->column(5).data(),
+                this->num()};
     }
 };
-struct LineTracesConstView : LineTracesViewImpl<true> {
-    using Base = LineTracesViewImpl<true>;
+struct ConstView : ViewImpl<true> {
+    using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<LineTracesConstView>());
-struct LineTracesView : LineTracesViewImpl<false> {
-    using Base = LineTracesViewImpl<false>;
+static_assert(std::is_trivially_copyable_v<ConstView>);
+struct View : ViewImpl<false> {
+    using Base = ViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              float const new_starts_xs,
@@ -368,7 +251,9 @@ struct LineTracesView : LineTracesViewImpl<false> {
         this->view_ends().set(index, new_ends);
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<LineTracesView>());
+static_assert(std::is_trivially_copyable_v<View>);
+
+} // namespace line_traces
 
 /* **************************************** */
 // Owner
@@ -383,9 +268,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<LineTracesView>());
 struct LineTraces
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
-    using soa_schema = LineTracesSchema;
+    using soa_schema = ::ioj::sim::line_traces::Schema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = LineTracesLayout;
+    using Layout = ::ioj::sim::line_traces::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -398,8 +283,8 @@ struct LineTraces
         return Layout::layout_bytes(blocks);
     }
 
-    using View = LineTracesView;
-    using ConstView = LineTracesConstView;
+    using View = ::ioj::sim::line_traces::View;
+    using ConstView = ::ioj::sim::line_traces::ConstView;
 
     /* **************************************** */
     // Lifetime

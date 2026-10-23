@@ -13,23 +13,24 @@
 #include <memory_resource>
 
 namespace ioj::sim {
-struct DirectDamageEventsSchema;
-struct DirectDamageEventsResolvedView;
-struct DirectDamageEventsResolvedConstView;
-struct DirectDamageEventsView;
-struct DirectDamageEventsConstView;
+namespace direct_damage_events {
+struct Schema;
+struct View;
+struct ConstView;
+struct ResolvedView;
+struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct DirectDamageEventsLayoutColumns {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<EntityId> DamagedEntitiesColumn;
     ColLayout<std::int32_t> DamageAmountsColumn;
     ColLayout<EntityId> InstigatorsColumn;
 
-    constexpr explicit DirectDamageEventsLayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : DamagedEntitiesColumn{previous}
         , DamageAmountsColumn{DamagedEntitiesColumn}
@@ -38,29 +39,27 @@ struct DirectDamageEventsLayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return InstigatorsColumn;
     }
-    DirectDamageEventsLayoutColumns(DirectDamageEventsLayoutColumns const&) = delete;
-    auto operator=(DirectDamageEventsLayoutColumns const&)
-        -> DirectDamageEventsLayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-struct DirectDamageEventsLayout
-    : ioj::single_allocation_layout::Layout<DirectDamageEventsLayoutColumns> {};
+struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct DirectDamageEventsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
+struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
-    using View = DirectDamageEventsResolvedView;
-    using ConstView = DirectDamageEventsResolvedConstView;
-    using soa_schema = ::ioj::sim::DirectDamageEventsSchema;
+    using view_type = ::ioj::sim::direct_damage_events::ResolvedView;
+    using const_view_type = ::ioj::sim::direct_damage_events::ResolvedConstView;
+    using soa_schema = ::ioj::sim::direct_damage_events::Schema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    DirectDamageEventsResolvedViewImpl() = default;
-    DirectDamageEventsResolvedViewImpl(Element<EntityId>* damaged_entities,
-                                       Element<std::int32_t>* damage_amounts,
-                                       Element<EntityId>* instigators,
-                                       size_type count)
+    ResolvedViewImpl() = default;
+    ResolvedViewImpl(Element<EntityId>* damaged_entities,
+                     Element<std::int32_t>* damage_amounts,
+                     Element<EntityId>* instigators,
+                     size_type count)
         : damaged_entities_{damaged_entities}
         , damage_amounts_{damage_amounts}
         , instigators_{instigators}
@@ -68,19 +67,18 @@ struct DirectDamageEventsResolvedViewImpl : ioj::soa_storage_detail::ViewOperati
         ioj::soa_storage_detail::validate_column_pointers(
             count_, damaged_entities_, damage_amounts_, instigators_);
     }
-    DirectDamageEventsResolvedViewImpl(std::span<Element<EntityId>> damaged_entities,
-                                       std::span<Element<std::int32_t>> damage_amounts,
-                                       std::span<Element<EntityId>> instigators)
-        : DirectDamageEventsResolvedViewImpl{
-              damaged_entities.data(),
-              damage_amounts.data(),
-              instigators.data(),
-              ioj::soa_storage_detail::checked_row_count(damaged_entities.size())} {
+    ResolvedViewImpl(std::span<Element<EntityId>> damaged_entities,
+                     std::span<Element<std::int32_t>> damage_amounts,
+                     std::span<Element<EntityId>> instigators)
+        : ResolvedViewImpl{damaged_entities.data(),
+                           damage_amounts.data(),
+                           instigators.data(),
+                           ioj::soa_storage_detail::checked_row_count(damaged_entities.size())} {
         ioj::soa_storage_detail::validate_column_sizes(
             count_, damaged_entities, damage_amounts, instigators);
     }
     template <bool Enabled = Const>
-    DirectDamageEventsResolvedViewImpl(DirectDamageEventsResolvedViewImpl<false> const& other)
+    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : damaged_entities_{other.damaged_entities_}
         , damage_amounts_{other.damage_amounts_}
@@ -107,18 +105,18 @@ struct DirectDamageEventsResolvedViewImpl : ioj::soa_storage_detail::ViewOperati
     }
   private:
     template <bool>
-    friend struct DirectDamageEventsResolvedViewImpl;
+    friend struct ResolvedViewImpl;
     Element<EntityId>* damaged_entities_{};
     Element<std::int32_t>* damage_amounts_{};
     Element<EntityId>* instigators_{};
     size_type count_{};
 };
-struct DirectDamageEventsResolvedConstView : DirectDamageEventsResolvedViewImpl<true> {
-    using Base = DirectDamageEventsResolvedViewImpl<true>;
+struct ResolvedConstView : ResolvedViewImpl<true> {
+    using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct DirectDamageEventsResolvedView : DirectDamageEventsResolvedViewImpl<false> {
-    using Base = DirectDamageEventsResolvedViewImpl<false>;
+struct ResolvedView : ResolvedViewImpl<false> {
+    using Base = ResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              EntityId const new_damaged_entities,
@@ -135,15 +133,15 @@ struct DirectDamageEventsResolvedView : DirectDamageEventsResolvedViewImpl<false
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct DirectDamageEventsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = DirectDamageEventsSchema;
+struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = ::ioj::sim::direct_damage_events::Schema;
     using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = DirectDamageEventsLayout;
-    using View = DirectDamageEventsView;
-    using ConstView = DirectDamageEventsConstView;
+    using Layout = ::ioj::sim::direct_damage_events::Layout;
+    using view_type = ::ioj::sim::direct_damage_events::View;
+    using const_view_type = ::ioj::sim::direct_damage_events::ConstView;
     template <bool Enabled = Const>
-    DirectDamageEventsViewImpl(DirectDamageEventsViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto damaged_entities() const { return this->column(Layout::columns.DamagedEntitiesColumn); }
@@ -155,21 +153,22 @@ struct DirectDamageEventsViewImpl : ioj::soa_storage_detail::CompactViewBase<Con
         func(damage_amounts());
         func(instigators());
     }
-    auto resolve() const -> std::
-        conditional_t<Const, DirectDamageEventsResolvedConstView, DirectDamageEventsResolvedView> {
+    auto resolve() const -> std::conditional_t<Const,
+                                               ::ioj::sim::direct_damage_events::ResolvedConstView,
+                                               ::ioj::sim::direct_damage_events::ResolvedView> {
         return {this->column(Layout::columns.DamagedEntitiesColumn).data(),
                 this->column(Layout::columns.DamageAmountsColumn).data(),
                 this->column(Layout::columns.InstigatorsColumn).data(),
-                this->count_};
+                this->num()};
     }
 };
-struct DirectDamageEventsConstView : DirectDamageEventsViewImpl<true> {
-    using Base = DirectDamageEventsViewImpl<true>;
+struct ConstView : ViewImpl<true> {
+    using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<DirectDamageEventsConstView>());
-struct DirectDamageEventsView : DirectDamageEventsViewImpl<false> {
-    using Base = DirectDamageEventsViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
+struct View : ViewImpl<false> {
+    using Base = ViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              EntityId const new_damaged_entities,
@@ -181,7 +180,9 @@ struct DirectDamageEventsView : DirectDamageEventsViewImpl<false> {
         this->instigators()[index] = new_instigators;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<DirectDamageEventsView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+
+} // namespace direct_damage_events
 
 /* **************************************** */
 // Owner
@@ -193,9 +194,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<DirectDamageEventsV
 struct DirectDamageEvents
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
-    using soa_schema = DirectDamageEventsSchema;
+    using soa_schema = ::ioj::sim::direct_damage_events::Schema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = DirectDamageEventsLayout;
+    using Layout = ::ioj::sim::direct_damage_events::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -208,8 +209,8 @@ struct DirectDamageEvents
         return Layout::layout_bytes(blocks);
     }
 
-    using View = DirectDamageEventsView;
-    using ConstView = DirectDamageEventsConstView;
+    using View = ::ioj::sim::direct_damage_events::View;
+    using ConstView = ::ioj::sim::direct_damage_events::ConstView;
 
     /* **************************************** */
     // Lifetime

@@ -13,16 +13,17 @@
 #include <memory_resource>
 
 namespace ioj::sim {
-struct FighterOrderQueueSchema;
-struct FighterOrderQueueResolvedView;
-struct FighterOrderQueueResolvedConstView;
-struct FighterOrderQueueView;
-struct FighterOrderQueueConstView;
+namespace fighter_order_queue {
+struct Schema;
+struct View;
+struct ConstView;
+struct ResolvedView;
+struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct FighterOrderQueueLayoutColumns {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<EntityId> EntityIdsColumn;
@@ -30,7 +31,7 @@ struct FighterOrderQueueLayoutColumns {
     ColLayout<FighterTask> TasksColumn;
     ColLayout<EntityId> TargetsColumn;
 
-    constexpr explicit FighterOrderQueueLayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : EntityIdsColumn{previous}
         , OrdersColumn{EntityIdsColumn}
@@ -40,30 +41,28 @@ struct FighterOrderQueueLayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return TargetsColumn;
     }
-    FighterOrderQueueLayoutColumns(FighterOrderQueueLayoutColumns const&) = delete;
-    auto operator=(FighterOrderQueueLayoutColumns const&)
-        -> FighterOrderQueueLayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-struct FighterOrderQueueLayout
-    : ioj::single_allocation_layout::Layout<FighterOrderQueueLayoutColumns> {};
+struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct FighterOrderQueueResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
+struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
-    using View = FighterOrderQueueResolvedView;
-    using ConstView = FighterOrderQueueResolvedConstView;
-    using soa_schema = ::ioj::sim::FighterOrderQueueSchema;
+    using view_type = ::ioj::sim::fighter_order_queue::ResolvedView;
+    using const_view_type = ::ioj::sim::fighter_order_queue::ResolvedConstView;
+    using soa_schema = ::ioj::sim::fighter_order_queue::Schema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    FighterOrderQueueResolvedViewImpl() = default;
-    FighterOrderQueueResolvedViewImpl(Element<EntityId>* entity_ids,
-                                      Element<FighterOrder>* orders,
-                                      Element<FighterTask>* tasks,
-                                      Element<EntityId>* targets,
-                                      size_type count)
+    ResolvedViewImpl() = default;
+    ResolvedViewImpl(Element<EntityId>* entity_ids,
+                     Element<FighterOrder>* orders,
+                     Element<FighterTask>* tasks,
+                     Element<EntityId>* targets,
+                     size_type count)
         : entity_ids_{entity_ids}
         , orders_{orders}
         , tasks_{tasks}
@@ -72,20 +71,19 @@ struct FighterOrderQueueResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
         ioj::soa_storage_detail::validate_column_pointers(
             count_, entity_ids_, orders_, tasks_, targets_);
     }
-    FighterOrderQueueResolvedViewImpl(std::span<Element<EntityId>> entity_ids,
-                                      std::span<Element<FighterOrder>> orders,
-                                      std::span<Element<FighterTask>> tasks,
-                                      std::span<Element<EntityId>> targets)
-        : FighterOrderQueueResolvedViewImpl{
-              entity_ids.data(),
-              orders.data(),
-              tasks.data(),
-              targets.data(),
-              ioj::soa_storage_detail::checked_row_count(entity_ids.size())} {
+    ResolvedViewImpl(std::span<Element<EntityId>> entity_ids,
+                     std::span<Element<FighterOrder>> orders,
+                     std::span<Element<FighterTask>> tasks,
+                     std::span<Element<EntityId>> targets)
+        : ResolvedViewImpl{entity_ids.data(),
+                           orders.data(),
+                           tasks.data(),
+                           targets.data(),
+                           ioj::soa_storage_detail::checked_row_count(entity_ids.size())} {
         ioj::soa_storage_detail::validate_column_sizes(count_, entity_ids, orders, tasks, targets);
     }
     template <bool Enabled = Const>
-    FighterOrderQueueResolvedViewImpl(FighterOrderQueueResolvedViewImpl<false> const& other)
+    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : entity_ids_{other.entity_ids_}
         , orders_{other.orders_}
@@ -116,19 +114,19 @@ struct FighterOrderQueueResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
     }
   private:
     template <bool>
-    friend struct FighterOrderQueueResolvedViewImpl;
+    friend struct ResolvedViewImpl;
     Element<EntityId>* entity_ids_{};
     Element<FighterOrder>* orders_{};
     Element<FighterTask>* tasks_{};
     Element<EntityId>* targets_{};
     size_type count_{};
 };
-struct FighterOrderQueueResolvedConstView : FighterOrderQueueResolvedViewImpl<true> {
-    using Base = FighterOrderQueueResolvedViewImpl<true>;
+struct ResolvedConstView : ResolvedViewImpl<true> {
+    using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct FighterOrderQueueResolvedView : FighterOrderQueueResolvedViewImpl<false> {
-    using Base = FighterOrderQueueResolvedViewImpl<false>;
+struct ResolvedView : ResolvedViewImpl<false> {
+    using Base = ResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              EntityId const new_entity_ids,
@@ -147,15 +145,15 @@ struct FighterOrderQueueResolvedView : FighterOrderQueueResolvedViewImpl<false> 
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct FighterOrderQueueViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = FighterOrderQueueSchema;
+struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = ::ioj::sim::fighter_order_queue::Schema;
     using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = FighterOrderQueueLayout;
-    using View = FighterOrderQueueView;
-    using ConstView = FighterOrderQueueConstView;
+    using Layout = ::ioj::sim::fighter_order_queue::Layout;
+    using view_type = ::ioj::sim::fighter_order_queue::View;
+    using const_view_type = ::ioj::sim::fighter_order_queue::ConstView;
     template <bool Enabled = Const>
-    FighterOrderQueueViewImpl(FighterOrderQueueViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto entity_ids() const { return this->column(Layout::columns.EntityIdsColumn); }
@@ -169,22 +167,23 @@ struct FighterOrderQueueViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
         func(tasks());
         func(targets());
     }
-    auto resolve() const -> std::
-        conditional_t<Const, FighterOrderQueueResolvedConstView, FighterOrderQueueResolvedView> {
+    auto resolve() const -> std::conditional_t<Const,
+                                               ::ioj::sim::fighter_order_queue::ResolvedConstView,
+                                               ::ioj::sim::fighter_order_queue::ResolvedView> {
         return {this->column(Layout::columns.EntityIdsColumn).data(),
                 this->column(Layout::columns.OrdersColumn).data(),
                 this->column(Layout::columns.TasksColumn).data(),
                 this->column(Layout::columns.TargetsColumn).data(),
-                this->count_};
+                this->num()};
     }
 };
-struct FighterOrderQueueConstView : FighterOrderQueueViewImpl<true> {
-    using Base = FighterOrderQueueViewImpl<true>;
+struct ConstView : ViewImpl<true> {
+    using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<FighterOrderQueueConstView>());
-struct FighterOrderQueueView : FighterOrderQueueViewImpl<false> {
-    using Base = FighterOrderQueueViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
+struct View : ViewImpl<false> {
+    using Base = ViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              EntityId const new_entity_ids,
@@ -198,7 +197,9 @@ struct FighterOrderQueueView : FighterOrderQueueViewImpl<false> {
         this->targets()[index] = new_targets;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<FighterOrderQueueView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+
+} // namespace fighter_order_queue
 
 /* **************************************** */
 // Owner
@@ -211,9 +212,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<FighterOrderQueueVi
 struct FighterOrderQueue
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
-    using soa_schema = FighterOrderQueueSchema;
+    using soa_schema = ::ioj::sim::fighter_order_queue::Schema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = FighterOrderQueueLayout;
+    using Layout = ::ioj::sim::fighter_order_queue::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -226,8 +227,8 @@ struct FighterOrderQueue
         return Layout::layout_bytes(blocks);
     }
 
-    using View = FighterOrderQueueView;
-    using ConstView = FighterOrderQueueConstView;
+    using View = ::ioj::sim::fighter_order_queue::View;
+    using ConstView = ::ioj::sim::fighter_order_queue::ConstView;
 
     /* **************************************** */
     // Lifetime

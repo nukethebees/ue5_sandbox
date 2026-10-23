@@ -18,16 +18,17 @@
 #include <string_view>
 
 namespace ioj::layout {
-struct CodeTableSchema;
-struct CodeTableResolvedView;
-struct CodeTableResolvedConstView;
-struct CodeTableView;
-struct CodeTableConstView;
+namespace code_table {
+struct Schema;
+struct View;
+struct ConstView;
+struct ResolvedView;
+struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct CodeTableLayoutColumns {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<std::string_view> NameColumn;
@@ -36,7 +37,7 @@ struct CodeTableLayoutColumns {
     ColLayout<std::optional<ioj::layout::EnumCodeValue>> CodeColumn;
     ColLayout<std::optional<lispb::codegen::PackedIntegerValue>> IntegerValueColumn;
 
-    constexpr explicit CodeTableLayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : NameColumn{previous}
         , SentinelColumn{NameColumn}
@@ -47,30 +48,29 @@ struct CodeTableLayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return IntegerValueColumn;
     }
-    CodeTableLayoutColumns(CodeTableLayoutColumns const&) = delete;
-    auto operator=(CodeTableLayoutColumns const&) -> CodeTableLayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-struct CodeTableLayout : ioj::single_allocation_layout::Layout<CodeTableLayoutColumns> {};
+struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct CodeTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
+struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
-    using View = CodeTableResolvedView;
-    using ConstView = CodeTableResolvedConstView;
-    using soa_schema = ::ioj::layout::CodeTableSchema;
+    using view_type = ::ioj::layout::code_table::ResolvedView;
+    using const_view_type = ::ioj::layout::code_table::ResolvedConstView;
+    using soa_schema = ::ioj::layout::code_table::Schema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    CodeTableResolvedViewImpl() = default;
-    CodeTableResolvedViewImpl(
-        Element<std::string_view>* name,
-        Element<std::uint8_t>* sentinel,
-        Element<std::uint8_t>* count_sentinel,
-        Element<std::optional<ioj::layout::EnumCodeValue>>* code,
-        Element<std::optional<lispb::codegen::PackedIntegerValue>>* integer_value,
-        size_type count)
+    ResolvedViewImpl() = default;
+    ResolvedViewImpl(Element<std::string_view>* name,
+                     Element<std::uint8_t>* sentinel,
+                     Element<std::uint8_t>* count_sentinel,
+                     Element<std::optional<ioj::layout::EnumCodeValue>>* code,
+                     Element<std::optional<lispb::codegen::PackedIntegerValue>>* integer_value,
+                     size_type count)
         : name_{name}
         , sentinel_{sentinel}
         , count_sentinel_{count_sentinel}
@@ -80,23 +80,23 @@ struct CodeTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         ioj::soa_storage_detail::validate_column_pointers(
             count_, name_, sentinel_, count_sentinel_, code_, integer_value_);
     }
-    CodeTableResolvedViewImpl(
+    ResolvedViewImpl(
         std::span<Element<std::string_view>> name,
         std::span<Element<std::uint8_t>> sentinel,
         std::span<Element<std::uint8_t>> count_sentinel,
         std::span<Element<std::optional<ioj::layout::EnumCodeValue>>> code,
         std::span<Element<std::optional<lispb::codegen::PackedIntegerValue>>> integer_value)
-        : CodeTableResolvedViewImpl{name.data(),
-                                    sentinel.data(),
-                                    count_sentinel.data(),
-                                    code.data(),
-                                    integer_value.data(),
-                                    ioj::soa_storage_detail::checked_row_count(name.size())} {
+        : ResolvedViewImpl{name.data(),
+                           sentinel.data(),
+                           count_sentinel.data(),
+                           code.data(),
+                           integer_value.data(),
+                           ioj::soa_storage_detail::checked_row_count(name.size())} {
         ioj::soa_storage_detail::validate_column_sizes(
             count_, name, sentinel, count_sentinel, code, integer_value);
     }
     template <bool Enabled = Const>
-    CodeTableResolvedViewImpl(CodeTableResolvedViewImpl<false> const& other)
+    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : name_{other.name_}
         , sentinel_{other.sentinel_}
@@ -131,7 +131,7 @@ struct CodeTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     }
   private:
     template <bool>
-    friend struct CodeTableResolvedViewImpl;
+    friend struct ResolvedViewImpl;
     Element<std::string_view>* name_{};
     Element<std::uint8_t>* sentinel_{};
     Element<std::uint8_t>* count_sentinel_{};
@@ -139,12 +139,12 @@ struct CodeTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<std::optional<lispb::codegen::PackedIntegerValue>>* integer_value_{};
     size_type count_{};
 };
-struct CodeTableResolvedConstView : CodeTableResolvedViewImpl<true> {
-    using Base = CodeTableResolvedViewImpl<true>;
+struct ResolvedConstView : ResolvedViewImpl<true> {
+    using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct CodeTableResolvedView : CodeTableResolvedViewImpl<false> {
-    using Base = CodeTableResolvedViewImpl<false>;
+struct ResolvedView : ResolvedViewImpl<false> {
+    using Base = ResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              std::string_view const new_name,
@@ -165,15 +165,15 @@ struct CodeTableResolvedView : CodeTableResolvedViewImpl<false> {
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct CodeTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = CodeTableSchema;
+struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = ::ioj::layout::code_table::Schema;
     using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = CodeTableLayout;
-    using View = CodeTableView;
-    using ConstView = CodeTableConstView;
+    using Layout = ::ioj::layout::code_table::Layout;
+    using view_type = ::ioj::layout::code_table::View;
+    using const_view_type = ::ioj::layout::code_table::ConstView;
     template <bool Enabled = Const>
-    CodeTableViewImpl(CodeTableViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto name() const { return this->column(Layout::columns.NameColumn); }
@@ -189,23 +189,24 @@ struct CodeTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         func(code());
         func(integer_value());
     }
-    auto resolve() const
-        -> std::conditional_t<Const, CodeTableResolvedConstView, CodeTableResolvedView> {
+    auto resolve() const -> std::conditional_t<Const,
+                                               ::ioj::layout::code_table::ResolvedConstView,
+                                               ::ioj::layout::code_table::ResolvedView> {
         return {this->column(Layout::columns.NameColumn).data(),
                 this->column(Layout::columns.SentinelColumn).data(),
                 this->column(Layout::columns.CountSentinelColumn).data(),
                 this->column(Layout::columns.CodeColumn).data(),
                 this->column(Layout::columns.IntegerValueColumn).data(),
-                this->count_};
+                this->num()};
     }
 };
-struct CodeTableConstView : CodeTableViewImpl<true> {
-    using Base = CodeTableViewImpl<true>;
+struct ConstView : ViewImpl<true> {
+    using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<CodeTableConstView>());
-struct CodeTableView : CodeTableViewImpl<false> {
-    using Base = CodeTableViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
+struct View : ViewImpl<false> {
+    using Base = ViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              std::string_view const new_name,
@@ -221,7 +222,9 @@ struct CodeTableView : CodeTableViewImpl<false> {
         this->integer_value()[index] = new_integer_value;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<CodeTableView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+
+} // namespace code_table
 
 /* **************************************** */
 // Owner
@@ -235,9 +238,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<CodeTableView>());
 struct CodeTable
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
-    using soa_schema = CodeTableSchema;
+    using soa_schema = ::ioj::layout::code_table::Schema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = CodeTableLayout;
+    using Layout = ::ioj::layout::code_table::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -250,8 +253,8 @@ struct CodeTable
         return Layout::layout_bytes(blocks);
     }
 
-    using View = CodeTableView;
-    using ConstView = CodeTableConstView;
+    using View = ::ioj::layout::code_table::View;
+    using ConstView = ::ioj::layout::code_table::ConstView;
 
     /* **************************************** */
     // Lifetime

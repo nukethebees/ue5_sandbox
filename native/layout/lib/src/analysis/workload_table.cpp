@@ -10,7 +10,6 @@
 #include <cstdint>
 
 namespace ioj::layout {
-
 auto WorkloadTable::append(ioj::layout::AnalysisId owner,
                            ioj::layout::RowRange selected,
                            std::uint64_t count,

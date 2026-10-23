@@ -10,7 +10,6 @@
 #include <cstdint>
 
 namespace ioj::layout {
-
 auto DistributionTable::append(ioj::layout::AnalysisId owner,
                                ioj::layout::RowRange samples,
                                std::uint64_t count) -> ioj::layout::DistributionId {

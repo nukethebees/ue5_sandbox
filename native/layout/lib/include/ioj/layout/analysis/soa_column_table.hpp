@@ -21,16 +21,17 @@
 #include <string_view>
 
 namespace ioj::layout {
-struct SoaColumnTableSchema;
-struct SoaColumnTableResolvedView;
-struct SoaColumnTableResolvedConstView;
-struct SoaColumnTableView;
-struct SoaColumnTableConstView;
+namespace soa_column_table {
+struct Schema;
+struct View;
+struct ConstView;
+struct ResolvedView;
+struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct SoaColumnTableLayoutColumns {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<AnalysisId> ParentColumn;
@@ -49,7 +50,7 @@ struct SoaColumnTableLayoutColumns {
     ColLayout<std::optional<std::uint64_t>> CompleteElementsPerPageColumn;
     ColLayout<std::optional<ioj::layout::CacheLineTiling>> CacheLineTilingColumn;
 
-    constexpr explicit SoaColumnTableLayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : ParentColumn{previous}
         , NameColumn{ParentColumn}
@@ -70,40 +71,39 @@ struct SoaColumnTableLayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return CacheLineTilingColumn;
     }
-    SoaColumnTableLayoutColumns(SoaColumnTableLayoutColumns const&) = delete;
-    auto operator=(SoaColumnTableLayoutColumns const&) -> SoaColumnTableLayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-struct SoaColumnTableLayout : ioj::single_allocation_layout::Layout<SoaColumnTableLayoutColumns> {};
+struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct SoaColumnTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
+struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
-    using View = SoaColumnTableResolvedView;
-    using ConstView = SoaColumnTableResolvedConstView;
-    using soa_schema = ::ioj::layout::SoaColumnTableSchema;
+    using view_type = ::ioj::layout::soa_column_table::ResolvedView;
+    using const_view_type = ::ioj::layout::soa_column_table::ResolvedConstView;
+    using soa_schema = ::ioj::layout::soa_column_table::Schema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    SoaColumnTableResolvedViewImpl() = default;
-    SoaColumnTableResolvedViewImpl(
-        Element<ioj::layout::AnalysisId>* parent,
-        Element<std::string_view>* name,
-        Element<lispb::schema::TypeId>* semantic_type,
-        Element<lispb::StringId>* schema_type,
-        Element<lispb::StringId>* physical_type,
-        Element<std::uint8_t>* overridden,
-        Element<std::optional<ioj::layout::PhysicalFactId>>* type_facts,
-        Element<std::optional<std::uint64_t>>* total_bytes,
-        Element<std::optional<std::uint64_t>>* allocation_offset_bytes,
-        Element<std::optional<std::uint64_t>>* padding_before_bytes,
-        Element<std::optional<std::uint64_t>>* minimum_cache_lines,
-        Element<std::optional<std::uint64_t>>* elements_per_cache_line,
-        Element<std::optional<std::uint64_t>>* minimum_pages,
-        Element<std::optional<std::uint64_t>>* complete_elements_per_page,
-        Element<std::optional<ioj::layout::CacheLineTiling>>* cache_line_tiling,
-        size_type count)
+    ResolvedViewImpl() = default;
+    ResolvedViewImpl(Element<ioj::layout::AnalysisId>* parent,
+                     Element<std::string_view>* name,
+                     Element<lispb::schema::TypeId>* semantic_type,
+                     Element<lispb::StringId>* schema_type,
+                     Element<lispb::StringId>* physical_type,
+                     Element<std::uint8_t>* overridden,
+                     Element<std::optional<ioj::layout::PhysicalFactId>>* type_facts,
+                     Element<std::optional<std::uint64_t>>* total_bytes,
+                     Element<std::optional<std::uint64_t>>* allocation_offset_bytes,
+                     Element<std::optional<std::uint64_t>>* padding_before_bytes,
+                     Element<std::optional<std::uint64_t>>* minimum_cache_lines,
+                     Element<std::optional<std::uint64_t>>* elements_per_cache_line,
+                     Element<std::optional<std::uint64_t>>* minimum_pages,
+                     Element<std::optional<std::uint64_t>>* complete_elements_per_page,
+                     Element<std::optional<ioj::layout::CacheLineTiling>>* cache_line_tiling,
+                     size_type count)
         : parent_{parent}
         , name_{name}
         , semantic_type_{semantic_type}
@@ -137,7 +137,7 @@ struct SoaColumnTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations 
                                                           complete_elements_per_page_,
                                                           cache_line_tiling_);
     }
-    SoaColumnTableResolvedViewImpl(
+    ResolvedViewImpl(
         std::span<Element<ioj::layout::AnalysisId>> parent,
         std::span<Element<std::string_view>> name,
         std::span<Element<lispb::schema::TypeId>> semantic_type,
@@ -153,23 +153,22 @@ struct SoaColumnTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations 
         std::span<Element<std::optional<std::uint64_t>>> minimum_pages,
         std::span<Element<std::optional<std::uint64_t>>> complete_elements_per_page,
         std::span<Element<std::optional<ioj::layout::CacheLineTiling>>> cache_line_tiling)
-        : SoaColumnTableResolvedViewImpl{
-              parent.data(),
-              name.data(),
-              semantic_type.data(),
-              schema_type.data(),
-              physical_type.data(),
-              overridden.data(),
-              type_facts.data(),
-              total_bytes.data(),
-              allocation_offset_bytes.data(),
-              padding_before_bytes.data(),
-              minimum_cache_lines.data(),
-              elements_per_cache_line.data(),
-              minimum_pages.data(),
-              complete_elements_per_page.data(),
-              cache_line_tiling.data(),
-              ioj::soa_storage_detail::checked_row_count(parent.size())} {
+        : ResolvedViewImpl{parent.data(),
+                           name.data(),
+                           semantic_type.data(),
+                           schema_type.data(),
+                           physical_type.data(),
+                           overridden.data(),
+                           type_facts.data(),
+                           total_bytes.data(),
+                           allocation_offset_bytes.data(),
+                           padding_before_bytes.data(),
+                           minimum_cache_lines.data(),
+                           elements_per_cache_line.data(),
+                           minimum_pages.data(),
+                           complete_elements_per_page.data(),
+                           cache_line_tiling.data(),
+                           ioj::soa_storage_detail::checked_row_count(parent.size())} {
         ioj::soa_storage_detail::validate_column_sizes(count_,
                                                        parent,
                                                        name,
@@ -188,7 +187,7 @@ struct SoaColumnTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations 
                                                        cache_line_tiling);
     }
     template <bool Enabled = Const>
-    SoaColumnTableResolvedViewImpl(SoaColumnTableResolvedViewImpl<false> const& other)
+    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : parent_{other.parent_}
         , name_{other.name_}
@@ -269,7 +268,7 @@ struct SoaColumnTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations 
     }
   private:
     template <bool>
-    friend struct SoaColumnTableResolvedViewImpl;
+    friend struct ResolvedViewImpl;
     Element<ioj::layout::AnalysisId>* parent_{};
     Element<std::string_view>* name_{};
     Element<lispb::schema::TypeId>* semantic_type_{};
@@ -287,12 +286,12 @@ struct SoaColumnTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations 
     Element<std::optional<ioj::layout::CacheLineTiling>>* cache_line_tiling_{};
     size_type count_{};
 };
-struct SoaColumnTableResolvedConstView : SoaColumnTableResolvedViewImpl<true> {
-    using Base = SoaColumnTableResolvedViewImpl<true>;
+struct ResolvedConstView : ResolvedViewImpl<true> {
+    using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct SoaColumnTableResolvedView : SoaColumnTableResolvedViewImpl<false> {
-    using Base = SoaColumnTableResolvedViewImpl<false>;
+struct ResolvedView : ResolvedViewImpl<false> {
+    using Base = ResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::layout::AnalysisId const new_parent,
@@ -333,15 +332,15 @@ struct SoaColumnTableResolvedView : SoaColumnTableResolvedViewImpl<false> {
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct SoaColumnTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = SoaColumnTableSchema;
+struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = ::ioj::layout::soa_column_table::Schema;
     using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = SoaColumnTableLayout;
-    using View = SoaColumnTableView;
-    using ConstView = SoaColumnTableConstView;
+    using Layout = ::ioj::layout::soa_column_table::Layout;
+    using view_type = ::ioj::layout::soa_column_table::View;
+    using const_view_type = ::ioj::layout::soa_column_table::ConstView;
     template <bool Enabled = Const>
-    SoaColumnTableViewImpl(SoaColumnTableViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto parent() const { return this->column(Layout::columns.ParentColumn); }
@@ -387,8 +386,9 @@ struct SoaColumnTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> 
         func(complete_elements_per_page());
         func(cache_line_tiling());
     }
-    auto resolve() const
-        -> std::conditional_t<Const, SoaColumnTableResolvedConstView, SoaColumnTableResolvedView> {
+    auto resolve() const -> std::conditional_t<Const,
+                                               ::ioj::layout::soa_column_table::ResolvedConstView,
+                                               ::ioj::layout::soa_column_table::ResolvedView> {
         return {this->column(Layout::columns.ParentColumn).data(),
                 this->column(Layout::columns.NameColumn).data(),
                 this->column(Layout::columns.SemanticTypeColumn).data(),
@@ -404,16 +404,16 @@ struct SoaColumnTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> 
                 this->column(Layout::columns.MinimumPagesColumn).data(),
                 this->column(Layout::columns.CompleteElementsPerPageColumn).data(),
                 this->column(Layout::columns.CacheLineTilingColumn).data(),
-                this->count_};
+                this->num()};
     }
 };
-struct SoaColumnTableConstView : SoaColumnTableViewImpl<true> {
-    using Base = SoaColumnTableViewImpl<true>;
+struct ConstView : ViewImpl<true> {
+    using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<SoaColumnTableConstView>());
-struct SoaColumnTableView : SoaColumnTableViewImpl<false> {
-    using Base = SoaColumnTableViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
+struct View : ViewImpl<false> {
+    using Base = ViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::layout::AnalysisId const new_parent,
@@ -449,7 +449,9 @@ struct SoaColumnTableView : SoaColumnTableViewImpl<false> {
         this->cache_line_tiling()[index] = new_cache_line_tiling;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<SoaColumnTableView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+
+} // namespace soa_column_table
 
 /* **************************************** */
 // Owner
@@ -473,9 +475,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<SoaColumnTableView>
 struct SoaColumnTable
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
-    using soa_schema = SoaColumnTableSchema;
+    using soa_schema = ::ioj::layout::soa_column_table::Schema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = SoaColumnTableLayout;
+    using Layout = ::ioj::layout::soa_column_table::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -488,8 +490,8 @@ struct SoaColumnTable
         return Layout::layout_bytes(blocks);
     }
 
-    using View = SoaColumnTableView;
-    using ConstView = SoaColumnTableConstView;
+    using View = ::ioj::layout::soa_column_table::View;
+    using ConstView = ::ioj::layout::soa_column_table::ConstView;
 
     /* **************************************** */
     // Lifetime

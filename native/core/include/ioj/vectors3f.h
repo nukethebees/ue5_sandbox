@@ -12,23 +12,24 @@
 #include <memory_resource>
 
 namespace ioj {
-struct Vectors3fSchema;
-struct Vectors3fResolvedView;
-struct Vectors3fResolvedConstView;
-struct Vectors3fView;
-struct Vectors3fConstView;
+namespace vectors3f {
+struct Schema;
+struct View;
+struct ConstView;
+struct ResolvedView;
+struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Vectors3fLayoutColumns {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<float> XsColumn;
     ColLayout<float> YsColumn;
     ColLayout<float> ZsColumn;
 
-    constexpr explicit Vectors3fLayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : XsColumn{previous}
         , YsColumn{XsColumn}
@@ -37,44 +38,41 @@ struct Vectors3fLayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return ZsColumn;
     }
-    Vectors3fLayoutColumns(Vectors3fLayoutColumns const&) = delete;
-    auto operator=(Vectors3fLayoutColumns const&) -> Vectors3fLayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-struct Vectors3fLayout : ioj::single_allocation_layout::Layout<Vectors3fLayoutColumns> {};
+struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct Vectors3fResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
+struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
-    using View = Vectors3fResolvedView;
-    using ConstView = Vectors3fResolvedConstView;
-    using soa_schema = ::ioj::Vectors3fSchema;
+    using view_type = ::ioj::vectors3f::ResolvedView;
+    using const_view_type = ::ioj::vectors3f::ResolvedConstView;
+    using soa_schema = ::ioj::vectors3f::Schema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    Vectors3fResolvedViewImpl() = default;
-    Vectors3fResolvedViewImpl(Element<float>* xs,
-                              Element<float>* ys,
-                              Element<float>* zs,
-                              size_type count)
+    ResolvedViewImpl() = default;
+    ResolvedViewImpl(Element<float>* xs, Element<float>* ys, Element<float>* zs, size_type count)
         : xs_{xs}
         , ys_{ys}
         , zs_{zs}
         , count_{count} {
         ioj::soa_storage_detail::validate_column_pointers(count_, xs_, ys_, zs_);
     }
-    Vectors3fResolvedViewImpl(std::span<Element<float>> xs,
-                              std::span<Element<float>> ys,
-                              std::span<Element<float>> zs)
-        : Vectors3fResolvedViewImpl{xs.data(),
-                                    ys.data(),
-                                    zs.data(),
-                                    ioj::soa_storage_detail::checked_row_count(xs.size())} {
+    ResolvedViewImpl(std::span<Element<float>> xs,
+                     std::span<Element<float>> ys,
+                     std::span<Element<float>> zs)
+        : ResolvedViewImpl{xs.data(),
+                           ys.data(),
+                           zs.data(),
+                           ioj::soa_storage_detail::checked_row_count(xs.size())} {
         ioj::soa_storage_detail::validate_column_sizes(count_, xs, ys, zs);
     }
     template <bool Enabled = Const>
-    Vectors3fResolvedViewImpl(Vectors3fResolvedViewImpl<false> const& other)
+    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : xs_{other.xs_}
         , ys_{other.ys_}
@@ -101,14 +99,14 @@ struct Vectors3fResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     }
   private:
     template <bool>
-    friend struct Vectors3fResolvedViewImpl;
+    friend struct ResolvedViewImpl;
     Element<float>* xs_{};
     Element<float>* ys_{};
     Element<float>* zs_{};
     size_type count_{};
 };
-struct Vectors3fResolvedConstView : Vectors3fResolvedViewImpl<true> {
-    using Base = Vectors3fResolvedViewImpl<true>;
+struct ResolvedConstView : ResolvedViewImpl<true> {
+    using Base = ResolvedViewImpl<true>;
     using Base::Base;
     using equivalent_type = Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
@@ -116,8 +114,8 @@ struct Vectors3fResolvedConstView : Vectors3fResolvedViewImpl<true> {
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
     }
 };
-struct Vectors3fResolvedView : Vectors3fResolvedViewImpl<false> {
-    using Base = Vectors3fResolvedViewImpl<false>;
+struct ResolvedView : ResolvedViewImpl<false> {
+    using Base = ResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
         assert(index < num());
@@ -136,39 +134,43 @@ struct Vectors3fResolvedView : Vectors3fResolvedViewImpl<false> {
 };
 
 /* **************************************** */
-// Compact views
+// Strided views
 /* **************************************** */
 template <bool Const>
-struct Vectors3fViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Vectors3fSchema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
+    using soa_schema = ::ioj::vectors3f::Schema;
+    using Base = ioj::soa_storage_detail::StridedViewBase<float, Const>;
     using Base::Base;
-    using Layout = Vectors3fLayout;
-    using View = Vectors3fView;
-    using ConstView = Vectors3fConstView;
+    using Layout = ::ioj::vectors3f::Layout;
+    using view_type = ::ioj::vectors3f::View;
+    using const_view_type = ::ioj::vectors3f::ConstView;
+    using State = std::conditional_t<Const,
+                                     ioj::soa_storage_detail::StorageState const,
+                                     ioj::soa_storage_detail::StorageState>;
+    ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
+        : Base{ioj::soa_storage_detail::make_strided_view<Base>(
+              state, offset, count, Layout::columns.XsColumn, Layout::columns.YsColumn)} {}
     template <bool Enabled = Const>
-    Vectors3fViewImpl(Vectors3fViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.XsColumn); }
-    auto ys() const { return this->column(Layout::columns.YsColumn); }
-    auto zs() const { return this->column(Layout::columns.ZsColumn); }
+    auto xs() const { return this->column(0); }
+    auto ys() const { return this->column(1); }
+    auto zs() const { return this->column(2); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
         func(ys());
         func(zs());
     }
-    auto resolve() const
-        -> std::conditional_t<Const, Vectors3fResolvedConstView, Vectors3fResolvedView> {
-        return {this->column(Layout::columns.XsColumn).data(),
-                this->column(Layout::columns.YsColumn).data(),
-                this->column(Layout::columns.ZsColumn).data(),
-                this->count_};
+    auto resolve() const -> std::
+        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
+        return {
+            this->column(0).data(), this->column(1).data(), this->column(2).data(), this->num()};
     }
 };
-struct Vectors3fConstView : Vectors3fViewImpl<true> {
-    using Base = Vectors3fViewImpl<true>;
+struct ConstView : ViewImpl<true> {
+    using Base = ViewImpl<true>;
     using Base::Base;
     using equivalent_type = Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
@@ -176,9 +178,9 @@ struct Vectors3fConstView : Vectors3fViewImpl<true> {
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<Vectors3fConstView>());
-struct Vectors3fView : Vectors3fViewImpl<false> {
-    using Base = Vectors3fViewImpl<false>;
+static_assert(std::is_trivially_copyable_v<ConstView>);
+struct View : ViewImpl<false> {
+    using Base = ViewImpl<false>;
     using Base::Base;
     void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
         assert(index < num());
@@ -195,7 +197,9 @@ struct Vectors3fView : Vectors3fViewImpl<false> {
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<Vectors3fView>());
+static_assert(std::is_trivially_copyable_v<View>);
+
+} // namespace vectors3f
 
 /* **************************************** */
 // Owner
@@ -207,9 +211,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<Vectors3fView>());
 struct Vectors3f
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
-    using soa_schema = Vectors3fSchema;
+    using soa_schema = ::ioj::vectors3f::Schema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = Vectors3fLayout;
+    using Layout = ::ioj::vectors3f::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -222,8 +226,8 @@ struct Vectors3f
         return Layout::layout_bytes(blocks);
     }
 
-    using View = Vectors3fView;
-    using ConstView = Vectors3fConstView;
+    using View = ::ioj::vectors3f::View;
+    using ConstView = ::ioj::vectors3f::ConstView;
 
     /* **************************************** */
     // Lifetime

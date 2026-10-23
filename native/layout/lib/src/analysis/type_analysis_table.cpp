@@ -9,7 +9,6 @@
 #include "lispb/schema/indices.h"
 
 namespace ioj::layout {
-
 auto TypeAnalysisTable::append(lispb::schema::TypeId type, ioj::layout::ScenarioId scenario_id)
     -> ioj::layout::AnalysisId {
     auto const row{this->num()};

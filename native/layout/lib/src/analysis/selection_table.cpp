@@ -8,7 +8,6 @@
 #include <cstddef>
 
 namespace ioj::layout {
-
 auto SelectionTable::append(std::size_t selected_source,
                             ioj::layout::AccessOperation selected_operation) -> std::size_t {
     auto const row{this->num()};

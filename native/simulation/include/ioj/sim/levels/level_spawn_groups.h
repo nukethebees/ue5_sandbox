@@ -14,23 +14,24 @@
 #include <memory_resource>
 
 namespace ioj::sim {
-struct LevelSpawnGroupsSchema;
-struct LevelSpawnGroupsResolvedView;
-struct LevelSpawnGroupsResolvedConstView;
-struct LevelSpawnGroupsView;
-struct LevelSpawnGroupsConstView;
+namespace level_spawn_groups {
+struct Schema;
+struct View;
+struct ConstView;
+struct ResolvedView;
+struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LevelSpawnGroupsLayoutColumns {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<EntityType> TypesColumn;
     ColLayout<std::int32_t> OffsetsColumn;
     ColLayout<LevelEventCount> CountsColumn;
 
-    constexpr explicit LevelSpawnGroupsLayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : TypesColumn{previous}
         , OffsetsColumn{TypesColumn}
@@ -39,46 +40,44 @@ struct LevelSpawnGroupsLayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return CountsColumn;
     }
-    LevelSpawnGroupsLayoutColumns(LevelSpawnGroupsLayoutColumns const&) = delete;
-    auto operator=(LevelSpawnGroupsLayoutColumns const&) -> LevelSpawnGroupsLayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-struct LevelSpawnGroupsLayout
-    : ioj::single_allocation_layout::Layout<LevelSpawnGroupsLayoutColumns> {};
+struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct LevelSpawnGroupsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
+struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
-    using View = LevelSpawnGroupsResolvedView;
-    using ConstView = LevelSpawnGroupsResolvedConstView;
-    using soa_schema = ::ioj::sim::LevelSpawnGroupsSchema;
+    using view_type = ::ioj::sim::level_spawn_groups::ResolvedView;
+    using const_view_type = ::ioj::sim::level_spawn_groups::ResolvedConstView;
+    using soa_schema = ::ioj::sim::level_spawn_groups::Schema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    LevelSpawnGroupsResolvedViewImpl() = default;
-    LevelSpawnGroupsResolvedViewImpl(Element<ioj::sim::EntityType>* types,
-                                     Element<std::int32_t>* offsets,
-                                     Element<LevelEventCount>* counts,
-                                     size_type count)
+    ResolvedViewImpl() = default;
+    ResolvedViewImpl(Element<ioj::sim::EntityType>* types,
+                     Element<std::int32_t>* offsets,
+                     Element<LevelEventCount>* counts,
+                     size_type count)
         : types_{types}
         , offsets_{offsets}
         , counts_{counts}
         , count_{count} {
         ioj::soa_storage_detail::validate_column_pointers(count_, types_, offsets_, counts_);
     }
-    LevelSpawnGroupsResolvedViewImpl(std::span<Element<ioj::sim::EntityType>> types,
-                                     std::span<Element<std::int32_t>> offsets,
-                                     std::span<Element<LevelEventCount>> counts)
-        : LevelSpawnGroupsResolvedViewImpl{
-              types.data(),
-              offsets.data(),
-              counts.data(),
-              ioj::soa_storage_detail::checked_row_count(types.size())} {
+    ResolvedViewImpl(std::span<Element<ioj::sim::EntityType>> types,
+                     std::span<Element<std::int32_t>> offsets,
+                     std::span<Element<LevelEventCount>> counts)
+        : ResolvedViewImpl{types.data(),
+                           offsets.data(),
+                           counts.data(),
+                           ioj::soa_storage_detail::checked_row_count(types.size())} {
         ioj::soa_storage_detail::validate_column_sizes(count_, types, offsets, counts);
     }
     template <bool Enabled = Const>
-    LevelSpawnGroupsResolvedViewImpl(LevelSpawnGroupsResolvedViewImpl<false> const& other)
+    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : types_{other.types_}
         , offsets_{other.offsets_}
@@ -105,18 +104,18 @@ struct LevelSpawnGroupsResolvedViewImpl : ioj::soa_storage_detail::ViewOperation
     }
   private:
     template <bool>
-    friend struct LevelSpawnGroupsResolvedViewImpl;
+    friend struct ResolvedViewImpl;
     Element<ioj::sim::EntityType>* types_{};
     Element<std::int32_t>* offsets_{};
     Element<LevelEventCount>* counts_{};
     size_type count_{};
 };
-struct LevelSpawnGroupsResolvedConstView : LevelSpawnGroupsResolvedViewImpl<true> {
-    using Base = LevelSpawnGroupsResolvedViewImpl<true>;
+struct ResolvedConstView : ResolvedViewImpl<true> {
+    using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct LevelSpawnGroupsResolvedView : LevelSpawnGroupsResolvedViewImpl<false> {
-    using Base = LevelSpawnGroupsResolvedViewImpl<false>;
+struct ResolvedView : ResolvedViewImpl<false> {
+    using Base = ResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::sim::EntityType const new_types,
@@ -133,15 +132,15 @@ struct LevelSpawnGroupsResolvedView : LevelSpawnGroupsResolvedViewImpl<false> {
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct LevelSpawnGroupsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = LevelSpawnGroupsSchema;
+struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = ::ioj::sim::level_spawn_groups::Schema;
     using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = LevelSpawnGroupsLayout;
-    using View = LevelSpawnGroupsView;
-    using ConstView = LevelSpawnGroupsConstView;
+    using Layout = ::ioj::sim::level_spawn_groups::Layout;
+    using view_type = ::ioj::sim::level_spawn_groups::View;
+    using const_view_type = ::ioj::sim::level_spawn_groups::ConstView;
     template <bool Enabled = Const>
-    LevelSpawnGroupsViewImpl(LevelSpawnGroupsViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto types() const { return this->column(Layout::columns.TypesColumn); }
@@ -153,21 +152,22 @@ struct LevelSpawnGroupsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const
         func(offsets());
         func(counts());
     }
-    auto resolve() const -> std::
-        conditional_t<Const, LevelSpawnGroupsResolvedConstView, LevelSpawnGroupsResolvedView> {
+    auto resolve() const -> std::conditional_t<Const,
+                                               ::ioj::sim::level_spawn_groups::ResolvedConstView,
+                                               ::ioj::sim::level_spawn_groups::ResolvedView> {
         return {this->column(Layout::columns.TypesColumn).data(),
                 this->column(Layout::columns.OffsetsColumn).data(),
                 this->column(Layout::columns.CountsColumn).data(),
-                this->count_};
+                this->num()};
     }
 };
-struct LevelSpawnGroupsConstView : LevelSpawnGroupsViewImpl<true> {
-    using Base = LevelSpawnGroupsViewImpl<true>;
+struct ConstView : ViewImpl<true> {
+    using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<LevelSpawnGroupsConstView>());
-struct LevelSpawnGroupsView : LevelSpawnGroupsViewImpl<false> {
-    using Base = LevelSpawnGroupsViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
+struct View : ViewImpl<false> {
+    using Base = ViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::sim::EntityType const new_types,
@@ -179,7 +179,9 @@ struct LevelSpawnGroupsView : LevelSpawnGroupsViewImpl<false> {
         this->counts()[index] = new_counts;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<LevelSpawnGroupsView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+
+} // namespace level_spawn_groups
 
 /* **************************************** */
 // Owner
@@ -191,9 +193,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<LevelSpawnGroupsVie
 struct LevelSpawnGroups
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
-    using soa_schema = LevelSpawnGroupsSchema;
+    using soa_schema = ::ioj::sim::level_spawn_groups::Schema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = LevelSpawnGroupsLayout;
+    using Layout = ::ioj::sim::level_spawn_groups::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -206,8 +208,8 @@ struct LevelSpawnGroups
         return Layout::layout_bytes(blocks);
     }
 
-    using View = LevelSpawnGroupsView;
-    using ConstView = LevelSpawnGroupsConstView;
+    using View = ::ioj::sim::level_spawn_groups::View;
+    using ConstView = ::ioj::sim::level_spawn_groups::ConstView;
 
     /* **************************************** */
     // Lifetime

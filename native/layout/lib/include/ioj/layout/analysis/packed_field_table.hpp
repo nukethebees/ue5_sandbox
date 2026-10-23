@@ -23,16 +23,17 @@
 #include <string_view>
 
 namespace ioj::layout {
-struct PackedFieldTableSchema;
-struct PackedFieldTableResolvedView;
-struct PackedFieldTableResolvedConstView;
-struct PackedFieldTableView;
-struct PackedFieldTableConstView;
+namespace packed_field_table {
+struct Schema;
+struct View;
+struct ConstView;
+struct ResolvedView;
+struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct PackedFieldTableLayoutColumns {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<AnalysisId> ParentColumn;
@@ -60,7 +61,7 @@ struct PackedFieldTableLayoutColumns {
     ColLayout<std::optional<std::uint64_t>> UnusedCodesColumn;
     ColLayout<RowRange> CodesColumn;
 
-    constexpr explicit PackedFieldTableLayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : ParentColumn{previous}
         , SegmentColumn{ParentColumn}
@@ -90,25 +91,24 @@ struct PackedFieldTableLayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return CodesColumn;
     }
-    PackedFieldTableLayoutColumns(PackedFieldTableLayoutColumns const&) = delete;
-    auto operator=(PackedFieldTableLayoutColumns const&) -> PackedFieldTableLayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-struct PackedFieldTableLayout
-    : ioj::single_allocation_layout::Layout<PackedFieldTableLayoutColumns> {};
+struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct PackedFieldTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
+struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
-    using View = PackedFieldTableResolvedView;
-    using ConstView = PackedFieldTableResolvedConstView;
-    using soa_schema = ::ioj::layout::PackedFieldTableSchema;
+    using view_type = ::ioj::layout::packed_field_table::ResolvedView;
+    using const_view_type = ::ioj::layout::packed_field_table::ResolvedConstView;
+    using soa_schema = ::ioj::layout::packed_field_table::Schema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    PackedFieldTableResolvedViewImpl() = default;
-    PackedFieldTableResolvedViewImpl(
+    ResolvedViewImpl() = default;
+    ResolvedViewImpl(
         Element<ioj::layout::AnalysisId>* parent,
         Element<lispb::schema::PackedSegmentId>* segment,
         Element<std::string_view>* name,
@@ -185,59 +185,57 @@ struct PackedFieldTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperation
                                                           unused_codes_,
                                                           codes_);
     }
-    PackedFieldTableResolvedViewImpl(
-        std::span<Element<ioj::layout::AnalysisId>> parent,
-        std::span<Element<lispb::schema::PackedSegmentId>> segment,
-        std::span<Element<std::string_view>> name,
-        std::span<Element<std::optional<lispb::schema::TypeId>>> semantic_type,
-        std::span<Element<lispb::StringId>> logical_type,
-        std::span<Element<lispb::codegen::PackedFieldKind>> kind,
-        std::span<Element<std::uint8_t>> reserved,
-        std::span<Element<std::uint32_t>> schema_bit_width,
-        std::span<Element<std::uint8_t>> schema_bit_width_auto,
-        std::span<Element<std::uint32_t>> bit_width,
-        std::span<Element<std::uint8_t>> overridden,
-        std::span<Element<std::uint64_t>> least_significant_bit,
-        std::span<Element<std::optional<std::uint64_t>>> most_significant_bit,
-        std::span<Element<std::optional<std::uint64_t>>> maximum_unsigned_value,
-        std::span<Element<std::optional<std::int64_t>>> minimum_signed_value,
-        std::span<Element<std::optional<std::int64_t>>> maximum_signed_value,
-        std::span<Element<std::optional<lispb::codegen::PackedIntegerValue>>>
-            minimum_semantic_value,
-        std::span<Element<std::optional<lispb::codegen::PackedIntegerValue>>>
-            maximum_semantic_value,
-        std::span<Element<std::optional<std::uint64_t>>> semantic_value_count,
-        std::span<Element<std::uint64_t>> sentinel_code_count,
-        std::span<Element<std::optional<std::uint64_t>>> required_code_count,
-        std::span<Element<std::optional<std::uint32_t>>> minimum_required_bits,
-        std::span<Element<std::optional<std::uint64_t>>> unused_codes,
-        std::span<Element<ioj::layout::RowRange>> codes)
-        : PackedFieldTableResolvedViewImpl{
-              parent.data(),
-              segment.data(),
-              name.data(),
-              semantic_type.data(),
-              logical_type.data(),
-              kind.data(),
-              reserved.data(),
-              schema_bit_width.data(),
-              schema_bit_width_auto.data(),
-              bit_width.data(),
-              overridden.data(),
-              least_significant_bit.data(),
-              most_significant_bit.data(),
-              maximum_unsigned_value.data(),
-              minimum_signed_value.data(),
-              maximum_signed_value.data(),
-              minimum_semantic_value.data(),
-              maximum_semantic_value.data(),
-              semantic_value_count.data(),
-              sentinel_code_count.data(),
-              required_code_count.data(),
-              minimum_required_bits.data(),
-              unused_codes.data(),
-              codes.data(),
-              ioj::soa_storage_detail::checked_row_count(parent.size())} {
+    ResolvedViewImpl(std::span<Element<ioj::layout::AnalysisId>> parent,
+                     std::span<Element<lispb::schema::PackedSegmentId>> segment,
+                     std::span<Element<std::string_view>> name,
+                     std::span<Element<std::optional<lispb::schema::TypeId>>> semantic_type,
+                     std::span<Element<lispb::StringId>> logical_type,
+                     std::span<Element<lispb::codegen::PackedFieldKind>> kind,
+                     std::span<Element<std::uint8_t>> reserved,
+                     std::span<Element<std::uint32_t>> schema_bit_width,
+                     std::span<Element<std::uint8_t>> schema_bit_width_auto,
+                     std::span<Element<std::uint32_t>> bit_width,
+                     std::span<Element<std::uint8_t>> overridden,
+                     std::span<Element<std::uint64_t>> least_significant_bit,
+                     std::span<Element<std::optional<std::uint64_t>>> most_significant_bit,
+                     std::span<Element<std::optional<std::uint64_t>>> maximum_unsigned_value,
+                     std::span<Element<std::optional<std::int64_t>>> minimum_signed_value,
+                     std::span<Element<std::optional<std::int64_t>>> maximum_signed_value,
+                     std::span<Element<std::optional<lispb::codegen::PackedIntegerValue>>>
+                         minimum_semantic_value,
+                     std::span<Element<std::optional<lispb::codegen::PackedIntegerValue>>>
+                         maximum_semantic_value,
+                     std::span<Element<std::optional<std::uint64_t>>> semantic_value_count,
+                     std::span<Element<std::uint64_t>> sentinel_code_count,
+                     std::span<Element<std::optional<std::uint64_t>>> required_code_count,
+                     std::span<Element<std::optional<std::uint32_t>>> minimum_required_bits,
+                     std::span<Element<std::optional<std::uint64_t>>> unused_codes,
+                     std::span<Element<ioj::layout::RowRange>> codes)
+        : ResolvedViewImpl{parent.data(),
+                           segment.data(),
+                           name.data(),
+                           semantic_type.data(),
+                           logical_type.data(),
+                           kind.data(),
+                           reserved.data(),
+                           schema_bit_width.data(),
+                           schema_bit_width_auto.data(),
+                           bit_width.data(),
+                           overridden.data(),
+                           least_significant_bit.data(),
+                           most_significant_bit.data(),
+                           maximum_unsigned_value.data(),
+                           minimum_signed_value.data(),
+                           maximum_signed_value.data(),
+                           minimum_semantic_value.data(),
+                           maximum_semantic_value.data(),
+                           semantic_value_count.data(),
+                           sentinel_code_count.data(),
+                           required_code_count.data(),
+                           minimum_required_bits.data(),
+                           unused_codes.data(),
+                           codes.data(),
+                           ioj::soa_storage_detail::checked_row_count(parent.size())} {
         ioj::soa_storage_detail::validate_column_sizes(count_,
                                                        parent,
                                                        segment,
@@ -265,7 +263,7 @@ struct PackedFieldTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperation
                                                        codes);
     }
     template <bool Enabled = Const>
-    PackedFieldTableResolvedViewImpl(PackedFieldTableResolvedViewImpl<false> const& other)
+    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : parent_{other.parent_}
         , segment_{other.segment_}
@@ -380,7 +378,7 @@ struct PackedFieldTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperation
     }
   private:
     template <bool>
-    friend struct PackedFieldTableResolvedViewImpl;
+    friend struct ResolvedViewImpl;
     Element<ioj::layout::AnalysisId>* parent_{};
     Element<lispb::schema::PackedSegmentId>* segment_{};
     Element<std::string_view>* name_{};
@@ -407,12 +405,12 @@ struct PackedFieldTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperation
     Element<ioj::layout::RowRange>* codes_{};
     size_type count_{};
 };
-struct PackedFieldTableResolvedConstView : PackedFieldTableResolvedViewImpl<true> {
-    using Base = PackedFieldTableResolvedViewImpl<true>;
+struct ResolvedConstView : ResolvedViewImpl<true> {
+    using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct PackedFieldTableResolvedView : PackedFieldTableResolvedViewImpl<false> {
-    using Base = PackedFieldTableResolvedViewImpl<false>;
+struct ResolvedView : ResolvedViewImpl<false> {
+    using Base = ResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::layout::AnalysisId const new_parent,
@@ -471,15 +469,15 @@ struct PackedFieldTableResolvedView : PackedFieldTableResolvedViewImpl<false> {
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct PackedFieldTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = PackedFieldTableSchema;
+struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = ::ioj::layout::packed_field_table::Schema;
     using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = PackedFieldTableLayout;
-    using View = PackedFieldTableView;
-    using ConstView = PackedFieldTableConstView;
+    using Layout = ::ioj::layout::packed_field_table::Layout;
+    using view_type = ::ioj::layout::packed_field_table::View;
+    using const_view_type = ::ioj::layout::packed_field_table::ConstView;
     template <bool Enabled = Const>
-    PackedFieldTableViewImpl(PackedFieldTableViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto parent() const { return this->column(Layout::columns.ParentColumn); }
@@ -557,8 +555,9 @@ struct PackedFieldTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const
         func(unused_codes());
         func(codes());
     }
-    auto resolve() const -> std::
-        conditional_t<Const, PackedFieldTableResolvedConstView, PackedFieldTableResolvedView> {
+    auto resolve() const -> std::conditional_t<Const,
+                                               ::ioj::layout::packed_field_table::ResolvedConstView,
+                                               ::ioj::layout::packed_field_table::ResolvedView> {
         return {this->column(Layout::columns.ParentColumn).data(),
                 this->column(Layout::columns.SegmentColumn).data(),
                 this->column(Layout::columns.NameColumn).data(),
@@ -583,16 +582,16 @@ struct PackedFieldTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const
                 this->column(Layout::columns.MinimumRequiredBitsColumn).data(),
                 this->column(Layout::columns.UnusedCodesColumn).data(),
                 this->column(Layout::columns.CodesColumn).data(),
-                this->count_};
+                this->num()};
     }
 };
-struct PackedFieldTableConstView : PackedFieldTableViewImpl<true> {
-    using Base = PackedFieldTableViewImpl<true>;
+struct ConstView : ViewImpl<true> {
+    using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<PackedFieldTableConstView>());
-struct PackedFieldTableView : PackedFieldTableViewImpl<false> {
-    using Base = PackedFieldTableViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
+struct View : ViewImpl<false> {
+    using Base = ViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::layout::AnalysisId const new_parent,
@@ -646,7 +645,9 @@ struct PackedFieldTableView : PackedFieldTableViewImpl<false> {
         this->codes()[index] = new_codes;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<PackedFieldTableView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+
+} // namespace packed_field_table
 
 /* **************************************** */
 // Owner
@@ -679,9 +680,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<PackedFieldTableVie
 struct PackedFieldTable
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
-    using soa_schema = PackedFieldTableSchema;
+    using soa_schema = ::ioj::layout::packed_field_table::Schema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = PackedFieldTableLayout;
+    using Layout = ::ioj::layout::packed_field_table::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -694,8 +695,8 @@ struct PackedFieldTable
         return Layout::layout_bytes(blocks);
     }
 
-    using View = PackedFieldTableView;
-    using ConstView = PackedFieldTableConstView;
+    using View = ::ioj::layout::packed_field_table::View;
+    using ConstView = ::ioj::layout::packed_field_table::ConstView;
 
     /* **************************************** */
     // Lifetime

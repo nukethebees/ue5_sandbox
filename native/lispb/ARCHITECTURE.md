@@ -324,26 +324,33 @@ allowing owner and view self-append across reallocation. External source storage
 during destination growth. Overlapping copy uses the per-column
 move path; allocation growth and non-overlapping append use the copy path.
 
-## Compact and resolved views
+## Shared schema views
 
-`CompactViewBase<Const>` owns the default view's state pointer, offset and count, plus construction,
-slicing and typed `std::span` column access. Both view representations inherit `ViewOperations`
-for emptiness, borrowing, const conversion and slice convenience functions.
-Named generated views retain schema accessors and one
-matching mutable-to-const conversion; unrelated views cannot convert through their shared base.
-Views remain trivially copyable and 16 bytes on native x64. Nested compact views refer to the same
-owner state and range, using member paths through its composed layout. Owner borrowing requires
-an lvalue and checks the initial
-range; slicing checks its subrange. Accessors rely on these established preconditions.
+Each schema has one snake-case namespace containing `LayoutColumns`, `Layout`, `Schema`,
+`View`, `ConstView`, `ResolvedView` and `ResolvedConstView`. Owners retain their declared names
+and expose `View` and `ConstView` aliases. Nested accessors return the child's shared view;
+the generator does not create types for individual occurrences of a nested schema.
+
+`CompactViewBase<Const>` stores a state pointer, offset and count for mixed-schema owners.
+`StridedViewBase<T, Const>` stores the first column address, stride and count for homogeneous
+schemas, including nested homogeneous groups. The existing layout guarantees evenly spaced,
+separate arrays of the same element type. Float groups occupy 16 bytes on native x64; types whose
+stride cannot safely fit the compact encoding use a `std::size_t` byte stride and occupy 24 bytes.
+Mixed nested groups use the child's resolved view. Scalar accessors return `std::span`.
+
+All views remain trivially copyable and inherit `ViewOperations` for borrowing and slice convenience
+functions. Schema-specific accessors and custom methods are emitted once per representation.
+Mutable views convert only to their matching const view. Owner borrowing requires an lvalue and
+checks the initial range; slicing checks its subrange. Accessors trust these preconditions.
 
 Calling `.resolve()` materializes a pointer per physical column plus one count. Resolve once
 outside a hot loop when repeated layout calculations would be wasteful. Resolved views preserve
 logical nesting and the declared equivalent-value and custom view API. A dynamic nested group's
-resolved view uses the child's canonical resolved type. Layout-only groups receive local generated
-resolved views. Resolving an already resolved view returns that view. External span constructors
+resolved view uses the child's canonical resolved type, including layout-only groups.
+Resolving an already resolved view returns that view. External span constructors
 check equal lengths, non-null pointers for nonempty columns, and row-count conversion.
 
-Both representations borrow storage. The owner and resource must outlive them. Reallocation, owner
+All representations borrow storage. The owner and resource must outlive them. Reallocation, owner
 moves, reset, and mutation that removes or reorders borrowed rows require reacquiring views.
 Resolved pointers do not follow reallocation. View validation checks meaningful source and range
 preconditions; it does not add owner column-size invariants or detect stale borrows.
@@ -388,5 +395,7 @@ Generated headers are checked in with their consumers. Regenerate production and
 after changes to schema, layout planning, or emission. The `codegen` and `native-soa` checks cover
 schema rejection, nested composition, equivalent values, external sources, layout, growth, aliasing,
 move/resource behavior, and view bounds. Native simulation tests cover the production consumers.
+Fixture schemas and generated code live in `tests/native_soa`; production-schema benchmarks live
+in `benchmarks/soa`. PMR contract tests cover resources independently of the container tests.
 The SoA compiler and generated owners require no Unreal headers or libraries; separate enum,
-settings, Slate, material, and kernel features retain their own integration contracts.
+settings, Slate and material features retain their own integration contracts.

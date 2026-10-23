@@ -17,16 +17,17 @@
 #include <optional>
 
 namespace ioj::layout {
-struct RelationshipTableSchema;
-struct RelationshipTableResolvedView;
-struct RelationshipTableResolvedConstView;
-struct RelationshipTableView;
-struct RelationshipTableConstView;
+namespace relationship_table {
+struct Schema;
+struct View;
+struct ConstView;
+struct ResolvedView;
+struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct RelationshipTableLayoutColumns {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<AnalysisId> OwnerColumn;
@@ -34,7 +35,7 @@ struct RelationshipTableLayoutColumns {
     ColLayout<lispb::schema::RelationshipId> RelationshipColumn;
     ColLayout<std::optional<ioj::layout::RelationshipMetrics>> MetricsColumn;
 
-    constexpr explicit RelationshipTableLayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : OwnerColumn{previous}
         , FieldColumn{OwnerColumn}
@@ -44,31 +45,28 @@ struct RelationshipTableLayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return MetricsColumn;
     }
-    RelationshipTableLayoutColumns(RelationshipTableLayoutColumns const&) = delete;
-    auto operator=(RelationshipTableLayoutColumns const&)
-        -> RelationshipTableLayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-struct RelationshipTableLayout
-    : ioj::single_allocation_layout::Layout<RelationshipTableLayoutColumns> {};
+struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct RelationshipTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
+struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
-    using View = RelationshipTableResolvedView;
-    using ConstView = RelationshipTableResolvedConstView;
-    using soa_schema = ::ioj::layout::RelationshipTableSchema;
+    using view_type = ::ioj::layout::relationship_table::ResolvedView;
+    using const_view_type = ::ioj::layout::relationship_table::ResolvedConstView;
+    using soa_schema = ::ioj::layout::relationship_table::Schema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    RelationshipTableResolvedViewImpl() = default;
-    RelationshipTableResolvedViewImpl(
-        Element<ioj::layout::AnalysisId>* owner,
-        Element<std::optional<std::size_t>>* field,
-        Element<lispb::schema::RelationshipId>* relationship,
-        Element<std::optional<ioj::layout::RelationshipMetrics>>* metrics,
-        size_type count)
+    ResolvedViewImpl() = default;
+    ResolvedViewImpl(Element<ioj::layout::AnalysisId>* owner,
+                     Element<std::optional<std::size_t>>* field,
+                     Element<lispb::schema::RelationshipId>* relationship,
+                     Element<std::optional<ioj::layout::RelationshipMetrics>>* metrics,
+                     size_type count)
         : owner_{owner}
         , field_{field}
         , relationship_{relationship}
@@ -77,21 +75,19 @@ struct RelationshipTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
         ioj::soa_storage_detail::validate_column_pointers(
             count_, owner_, field_, relationship_, metrics_);
     }
-    RelationshipTableResolvedViewImpl(
-        std::span<Element<ioj::layout::AnalysisId>> owner,
-        std::span<Element<std::optional<std::size_t>>> field,
-        std::span<Element<lispb::schema::RelationshipId>> relationship,
-        std::span<Element<std::optional<ioj::layout::RelationshipMetrics>>> metrics)
-        : RelationshipTableResolvedViewImpl{
-              owner.data(),
-              field.data(),
-              relationship.data(),
-              metrics.data(),
-              ioj::soa_storage_detail::checked_row_count(owner.size())} {
+    ResolvedViewImpl(std::span<Element<ioj::layout::AnalysisId>> owner,
+                     std::span<Element<std::optional<std::size_t>>> field,
+                     std::span<Element<lispb::schema::RelationshipId>> relationship,
+                     std::span<Element<std::optional<ioj::layout::RelationshipMetrics>>> metrics)
+        : ResolvedViewImpl{owner.data(),
+                           field.data(),
+                           relationship.data(),
+                           metrics.data(),
+                           ioj::soa_storage_detail::checked_row_count(owner.size())} {
         ioj::soa_storage_detail::validate_column_sizes(count_, owner, field, relationship, metrics);
     }
     template <bool Enabled = Const>
-    RelationshipTableResolvedViewImpl(RelationshipTableResolvedViewImpl<false> const& other)
+    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : owner_{other.owner_}
         , field_{other.field_}
@@ -122,19 +118,19 @@ struct RelationshipTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
     }
   private:
     template <bool>
-    friend struct RelationshipTableResolvedViewImpl;
+    friend struct ResolvedViewImpl;
     Element<ioj::layout::AnalysisId>* owner_{};
     Element<std::optional<std::size_t>>* field_{};
     Element<lispb::schema::RelationshipId>* relationship_{};
     Element<std::optional<ioj::layout::RelationshipMetrics>>* metrics_{};
     size_type count_{};
 };
-struct RelationshipTableResolvedConstView : RelationshipTableResolvedViewImpl<true> {
-    using Base = RelationshipTableResolvedViewImpl<true>;
+struct ResolvedConstView : ResolvedViewImpl<true> {
+    using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct RelationshipTableResolvedView : RelationshipTableResolvedViewImpl<false> {
-    using Base = RelationshipTableResolvedViewImpl<false>;
+struct ResolvedView : ResolvedViewImpl<false> {
+    using Base = ResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::layout::AnalysisId const new_owner,
@@ -153,15 +149,15 @@ struct RelationshipTableResolvedView : RelationshipTableResolvedViewImpl<false> 
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct RelationshipTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = RelationshipTableSchema;
+struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = ::ioj::layout::relationship_table::Schema;
     using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = RelationshipTableLayout;
-    using View = RelationshipTableView;
-    using ConstView = RelationshipTableConstView;
+    using Layout = ::ioj::layout::relationship_table::Layout;
+    using view_type = ::ioj::layout::relationship_table::View;
+    using const_view_type = ::ioj::layout::relationship_table::ConstView;
     template <bool Enabled = Const>
-    RelationshipTableViewImpl(RelationshipTableViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto owner() const { return this->column(Layout::columns.OwnerColumn); }
@@ -175,22 +171,23 @@ struct RelationshipTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
         func(relationship());
         func(metrics());
     }
-    auto resolve() const -> std::
-        conditional_t<Const, RelationshipTableResolvedConstView, RelationshipTableResolvedView> {
+    auto resolve() const -> std::conditional_t<Const,
+                                               ::ioj::layout::relationship_table::ResolvedConstView,
+                                               ::ioj::layout::relationship_table::ResolvedView> {
         return {this->column(Layout::columns.OwnerColumn).data(),
                 this->column(Layout::columns.FieldColumn).data(),
                 this->column(Layout::columns.RelationshipColumn).data(),
                 this->column(Layout::columns.MetricsColumn).data(),
-                this->count_};
+                this->num()};
     }
 };
-struct RelationshipTableConstView : RelationshipTableViewImpl<true> {
-    using Base = RelationshipTableViewImpl<true>;
+struct ConstView : ViewImpl<true> {
+    using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<RelationshipTableConstView>());
-struct RelationshipTableView : RelationshipTableViewImpl<false> {
-    using Base = RelationshipTableViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
+struct View : ViewImpl<false> {
+    using Base = ViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::layout::AnalysisId const new_owner,
@@ -204,7 +201,9 @@ struct RelationshipTableView : RelationshipTableViewImpl<false> {
         this->metrics()[index] = new_metrics;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<RelationshipTableView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+
+} // namespace relationship_table
 
 /* **************************************** */
 // Owner
@@ -217,9 +216,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<RelationshipTableVi
 struct RelationshipTable
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
-    using soa_schema = RelationshipTableSchema;
+    using soa_schema = ::ioj::layout::relationship_table::Schema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = RelationshipTableLayout;
+    using Layout = ::ioj::layout::relationship_table::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -232,8 +231,8 @@ struct RelationshipTable
         return Layout::layout_bytes(blocks);
     }
 
-    using View = RelationshipTableView;
-    using ConstView = RelationshipTableConstView;
+    using View = ::ioj::layout::relationship_table::View;
+    using ConstView = ::ioj::layout::relationship_table::ConstView;
 
     /* **************************************** */
     // Lifetime

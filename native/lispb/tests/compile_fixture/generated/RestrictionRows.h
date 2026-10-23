@@ -12,58 +12,57 @@
 #include <memory_resource>
 
 namespace codegen_compile_fixture {
-struct SingleRestrictionRowsSchema;
-struct SingleRestrictionRowsResolvedView;
-struct SingleRestrictionRowsResolvedConstView;
-struct SingleRestrictionRowsView;
-struct SingleRestrictionRowsConstView;
+namespace single_restriction_rows {
+struct Schema;
+struct View;
+struct ConstView;
+struct ResolvedView;
+struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct SingleRestrictionRowsLayoutColumns {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<RestrictedLeaf> RestrictedColumn;
 
-    constexpr explicit SingleRestrictionRowsLayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : RestrictedColumn{previous} {}
     constexpr auto last_column() const noexcept
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return RestrictedColumn;
     }
-    SingleRestrictionRowsLayoutColumns(SingleRestrictionRowsLayoutColumns const&) = delete;
-    auto operator=(SingleRestrictionRowsLayoutColumns const&)
-        -> SingleRestrictionRowsLayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-struct SingleRestrictionRowsLayout
-    : ioj::single_allocation_layout::Layout<SingleRestrictionRowsLayoutColumns> {};
+struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct SingleRestrictionRowsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
+struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
-    using View = SingleRestrictionRowsResolvedView;
-    using ConstView = SingleRestrictionRowsResolvedConstView;
-    using soa_schema = ::codegen_compile_fixture::SingleRestrictionRowsSchema;
+    using view_type = ::codegen_compile_fixture::single_restriction_rows::ResolvedView;
+    using const_view_type = ::codegen_compile_fixture::single_restriction_rows::ResolvedConstView;
+    using soa_schema = ::codegen_compile_fixture::single_restriction_rows::Schema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    SingleRestrictionRowsResolvedViewImpl() = default;
-    SingleRestrictionRowsResolvedViewImpl(Element<RestrictedLeaf>* restricted, size_type count)
+    ResolvedViewImpl() = default;
+    ResolvedViewImpl(Element<RestrictedLeaf>* restricted, size_type count)
         : restricted_{restricted}
         , count_{count} {
         ioj::soa_storage_detail::validate_column_pointers(count_, restricted_);
     }
-    SingleRestrictionRowsResolvedViewImpl(std::span<Element<RestrictedLeaf>> restricted)
-        : SingleRestrictionRowsResolvedViewImpl{
-              restricted.data(), ioj::soa_storage_detail::checked_row_count(restricted.size())} {
+    ResolvedViewImpl(std::span<Element<RestrictedLeaf>> restricted)
+        : ResolvedViewImpl{restricted.data(),
+                           ioj::soa_storage_detail::checked_row_count(restricted.size())} {
         ioj::soa_storage_detail::validate_column_sizes(count_, restricted);
     }
     template <bool Enabled = Const>
-    SingleRestrictionRowsResolvedViewImpl(SingleRestrictionRowsResolvedViewImpl<false> const& other)
+    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : restricted_{other.restricted_}
         , count_{other.count_} {}
@@ -81,16 +80,16 @@ struct SingleRestrictionRowsResolvedViewImpl : ioj::soa_storage_detail::ViewOper
     }
   private:
     template <bool>
-    friend struct SingleRestrictionRowsResolvedViewImpl;
+    friend struct ResolvedViewImpl;
     Element<RestrictedLeaf>* restricted_{};
     size_type count_{};
 };
-struct SingleRestrictionRowsResolvedConstView : SingleRestrictionRowsResolvedViewImpl<true> {
-    using Base = SingleRestrictionRowsResolvedViewImpl<true>;
+struct ResolvedConstView : ResolvedViewImpl<true> {
+    using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct SingleRestrictionRowsResolvedView : SingleRestrictionRowsResolvedViewImpl<false> {
-    using Base = SingleRestrictionRowsResolvedViewImpl<false>;
+struct ResolvedView : ResolvedViewImpl<false> {
+    using Base = ResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index, RestrictedLeaf const new_restricted) const {
         assert(index < num());
@@ -102,15 +101,15 @@ struct SingleRestrictionRowsResolvedView : SingleRestrictionRowsResolvedViewImpl
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct SingleRestrictionRowsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = SingleRestrictionRowsSchema;
+struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = ::codegen_compile_fixture::single_restriction_rows::Schema;
     using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = SingleRestrictionRowsLayout;
-    using View = SingleRestrictionRowsView;
-    using ConstView = SingleRestrictionRowsConstView;
+    using Layout = ::codegen_compile_fixture::single_restriction_rows::Layout;
+    using view_type = ::codegen_compile_fixture::single_restriction_rows::View;
+    using const_view_type = ::codegen_compile_fixture::single_restriction_rows::ConstView;
     template <bool Enabled = Const>
-    SingleRestrictionRowsViewImpl(SingleRestrictionRowsViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto restricted() const { return this->column(Layout::columns.RestrictedColumn); }
@@ -118,26 +117,29 @@ struct SingleRestrictionRowsViewImpl : ioj::soa_storage_detail::CompactViewBase<
     void each_column(Func&& func) const {
         func(restricted());
     }
-    auto resolve() const -> std::conditional_t<Const,
-                                               SingleRestrictionRowsResolvedConstView,
-                                               SingleRestrictionRowsResolvedView> {
-        return {this->column(Layout::columns.RestrictedColumn).data(), this->count_};
+    auto resolve() const
+        -> std::conditional_t<Const,
+                              ::codegen_compile_fixture::single_restriction_rows::ResolvedConstView,
+                              ::codegen_compile_fixture::single_restriction_rows::ResolvedView> {
+        return {this->column(Layout::columns.RestrictedColumn).data(), this->num()};
     }
 };
-struct SingleRestrictionRowsConstView : SingleRestrictionRowsViewImpl<true> {
-    using Base = SingleRestrictionRowsViewImpl<true>;
+struct ConstView : ViewImpl<true> {
+    using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<SingleRestrictionRowsConstView>());
-struct SingleRestrictionRowsView : SingleRestrictionRowsViewImpl<false> {
-    using Base = SingleRestrictionRowsViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
+struct View : ViewImpl<false> {
+    using Base = ViewImpl<false>;
     using Base::Base;
     void set(size_type index, RestrictedLeaf const new_restricted) const {
         assert(index < num());
         this->restricted()[index] = new_restricted;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<SingleRestrictionRowsView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+
+} // namespace single_restriction_rows
 
 /* **************************************** */
 // Owner
@@ -147,9 +149,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<SingleRestrictionRo
 struct SingleRestrictionRows
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
-    using soa_schema = SingleRestrictionRowsSchema;
+    using soa_schema = ::codegen_compile_fixture::single_restriction_rows::Schema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = SingleRestrictionRowsLayout;
+    using Layout = ::codegen_compile_fixture::single_restriction_rows::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -162,8 +164,8 @@ struct SingleRestrictionRows
         return Layout::layout_bytes(blocks);
     }
 
-    using View = SingleRestrictionRowsView;
-    using ConstView = SingleRestrictionRowsConstView;
+    using View = ::codegen_compile_fixture::single_restriction_rows::View;
+    using ConstView = ::codegen_compile_fixture::single_restriction_rows::ConstView;
 
     /* **************************************** */
     // Lifetime

@@ -8,7 +8,6 @@
 #include <cstddef>
 
 namespace ioj::layout {
-
 auto ScalarTable::append(lispb::schema::TypeId value) -> std::size_t {
     auto const row{this->num()};
     this->add_defaulted(1);

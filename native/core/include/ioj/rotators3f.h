@@ -12,23 +12,24 @@
 #include <memory_resource>
 
 namespace ioj {
-struct Rotators3fSchema;
-struct Rotators3fResolvedView;
-struct Rotators3fResolvedConstView;
-struct Rotators3fView;
-struct Rotators3fConstView;
+namespace rotators3f {
+struct Schema;
+struct View;
+struct ConstView;
+struct ResolvedView;
+struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Rotators3fLayoutColumns {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<float> PitchesColumn;
     ColLayout<float> YawsColumn;
     ColLayout<float> RollsColumn;
 
-    constexpr explicit Rotators3fLayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : PitchesColumn{previous}
         , YawsColumn{PitchesColumn}
@@ -37,44 +38,44 @@ struct Rotators3fLayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return RollsColumn;
     }
-    Rotators3fLayoutColumns(Rotators3fLayoutColumns const&) = delete;
-    auto operator=(Rotators3fLayoutColumns const&) -> Rotators3fLayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-struct Rotators3fLayout : ioj::single_allocation_layout::Layout<Rotators3fLayoutColumns> {};
+struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct Rotators3fResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
+struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
-    using View = Rotators3fResolvedView;
-    using ConstView = Rotators3fResolvedConstView;
-    using soa_schema = ::ioj::Rotators3fSchema;
+    using view_type = ::ioj::rotators3f::ResolvedView;
+    using const_view_type = ::ioj::rotators3f::ResolvedConstView;
+    using soa_schema = ::ioj::rotators3f::Schema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    Rotators3fResolvedViewImpl() = default;
-    Rotators3fResolvedViewImpl(Element<float>* pitches,
-                               Element<float>* yaws,
-                               Element<float>* rolls,
-                               size_type count)
+    ResolvedViewImpl() = default;
+    ResolvedViewImpl(Element<float>* pitches,
+                     Element<float>* yaws,
+                     Element<float>* rolls,
+                     size_type count)
         : pitches_{pitches}
         , yaws_{yaws}
         , rolls_{rolls}
         , count_{count} {
         ioj::soa_storage_detail::validate_column_pointers(count_, pitches_, yaws_, rolls_);
     }
-    Rotators3fResolvedViewImpl(std::span<Element<float>> pitches,
-                               std::span<Element<float>> yaws,
-                               std::span<Element<float>> rolls)
-        : Rotators3fResolvedViewImpl{pitches.data(),
-                                     yaws.data(),
-                                     rolls.data(),
-                                     ioj::soa_storage_detail::checked_row_count(pitches.size())} {
+    ResolvedViewImpl(std::span<Element<float>> pitches,
+                     std::span<Element<float>> yaws,
+                     std::span<Element<float>> rolls)
+        : ResolvedViewImpl{pitches.data(),
+                           yaws.data(),
+                           rolls.data(),
+                           ioj::soa_storage_detail::checked_row_count(pitches.size())} {
         ioj::soa_storage_detail::validate_column_sizes(count_, pitches, yaws, rolls);
     }
     template <bool Enabled = Const>
-    Rotators3fResolvedViewImpl(Rotators3fResolvedViewImpl<false> const& other)
+    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : pitches_{other.pitches_}
         , yaws_{other.yaws_}
@@ -101,14 +102,14 @@ struct Rotators3fResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     }
   private:
     template <bool>
-    friend struct Rotators3fResolvedViewImpl;
+    friend struct ResolvedViewImpl;
     Element<float>* pitches_{};
     Element<float>* yaws_{};
     Element<float>* rolls_{};
     size_type count_{};
 };
-struct Rotators3fResolvedConstView : Rotators3fResolvedViewImpl<true> {
-    using Base = Rotators3fResolvedViewImpl<true>;
+struct ResolvedConstView : ResolvedViewImpl<true> {
+    using Base = ResolvedViewImpl<true>;
     using Base::Base;
     using equivalent_type = Rotator3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
@@ -116,8 +117,8 @@ struct Rotators3fResolvedConstView : Rotators3fResolvedViewImpl<true> {
         return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
     }
 };
-struct Rotators3fResolvedView : Rotators3fResolvedViewImpl<false> {
-    using Base = Rotators3fResolvedViewImpl<false>;
+struct ResolvedView : ResolvedViewImpl<false> {
+    using Base = ResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              float const new_pitches,
@@ -139,39 +140,44 @@ struct Rotators3fResolvedView : Rotators3fResolvedViewImpl<false> {
 };
 
 /* **************************************** */
-// Compact views
+// Strided views
 /* **************************************** */
 template <bool Const>
-struct Rotators3fViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Rotators3fSchema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
+    using soa_schema = ::ioj::rotators3f::Schema;
+    using Base = ioj::soa_storage_detail::StridedViewBase<float, Const>;
     using Base::Base;
-    using Layout = Rotators3fLayout;
-    using View = Rotators3fView;
-    using ConstView = Rotators3fConstView;
+    using Layout = ::ioj::rotators3f::Layout;
+    using view_type = ::ioj::rotators3f::View;
+    using const_view_type = ::ioj::rotators3f::ConstView;
+    using State = std::conditional_t<Const,
+                                     ioj::soa_storage_detail::StorageState const,
+                                     ioj::soa_storage_detail::StorageState>;
+    ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
+        : Base{ioj::soa_storage_detail::make_strided_view<Base>(
+              state, offset, count, Layout::columns.PitchesColumn, Layout::columns.YawsColumn)} {}
     template <bool Enabled = Const>
-    Rotators3fViewImpl(Rotators3fViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto pitches() const { return this->column(Layout::columns.PitchesColumn); }
-    auto yaws() const { return this->column(Layout::columns.YawsColumn); }
-    auto rolls() const { return this->column(Layout::columns.RollsColumn); }
+    auto pitches() const { return this->column(0); }
+    auto yaws() const { return this->column(1); }
+    auto rolls() const { return this->column(2); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(pitches());
         func(yaws());
         func(rolls());
     }
-    auto resolve() const
-        -> std::conditional_t<Const, Rotators3fResolvedConstView, Rotators3fResolvedView> {
-        return {this->column(Layout::columns.PitchesColumn).data(),
-                this->column(Layout::columns.YawsColumn).data(),
-                this->column(Layout::columns.RollsColumn).data(),
-                this->count_};
+    auto resolve() const -> std::conditional_t<Const,
+                                               ::ioj::rotators3f::ResolvedConstView,
+                                               ::ioj::rotators3f::ResolvedView> {
+        return {
+            this->column(0).data(), this->column(1).data(), this->column(2).data(), this->num()};
     }
 };
-struct Rotators3fConstView : Rotators3fViewImpl<true> {
-    using Base = Rotators3fViewImpl<true>;
+struct ConstView : ViewImpl<true> {
+    using Base = ViewImpl<true>;
     using Base::Base;
     using equivalent_type = Rotator3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
@@ -179,9 +185,9 @@ struct Rotators3fConstView : Rotators3fViewImpl<true> {
         return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<Rotators3fConstView>());
-struct Rotators3fView : Rotators3fViewImpl<false> {
-    using Base = Rotators3fViewImpl<false>;
+static_assert(std::is_trivially_copyable_v<ConstView>);
+struct View : ViewImpl<false> {
+    using Base = ViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              float const new_pitches,
@@ -201,7 +207,9 @@ struct Rotators3fView : Rotators3fViewImpl<false> {
         return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<Rotators3fView>());
+static_assert(std::is_trivially_copyable_v<View>);
+
+} // namespace rotators3f
 
 /* **************************************** */
 // Owner
@@ -213,9 +221,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<Rotators3fView>());
 struct Rotators3f
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
-    using soa_schema = Rotators3fSchema;
+    using soa_schema = ::ioj::rotators3f::Schema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = Rotators3fLayout;
+    using Layout = ::ioj::rotators3f::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -228,8 +236,8 @@ struct Rotators3f
         return Layout::layout_bytes(blocks);
     }
 
-    using View = Rotators3fView;
-    using ConstView = Rotators3fConstView;
+    using View = ::ioj::rotators3f::View;
+    using ConstView = ::ioj::rotators3f::ConstView;
 
     /* **************************************** */
     // Lifetime

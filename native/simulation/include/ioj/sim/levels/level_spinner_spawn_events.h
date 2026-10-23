@@ -15,26 +15,25 @@
 #include <memory_resource>
 
 namespace ioj::sim {
-struct LevelSpinnerSpawnEventsSchema;
-struct LevelSpinnerSpawnEventsResolvedView;
-struct LevelSpinnerSpawnEventsResolvedConstView;
-struct LevelSpinnerSpawnEventsView;
-struct LevelSpinnerSpawnEventsConstView;
-struct LevelSpinnerSpawnEventsView_locations;
-struct LevelSpinnerSpawnEventsConstView_locations;
+namespace level_spinner_spawn_events {
+struct Schema;
+struct View;
+struct ConstView;
+struct ResolvedView;
+struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LevelSpinnerSpawnEventsLayoutColumns {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<LevelEntityIndex> EntityIndicesColumn;
-    ::ioj::Vectors3fLayoutColumns Locations;
+    ::ioj::vectors3f::LayoutColumns Locations;
     ColLayout<float> YawsColumn;
     ColLayout<std::int32_t> InitialFirePointIndicesColumn;
 
-    constexpr explicit LevelSpinnerSpawnEventsLayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : EntityIndicesColumn{previous}
         , Locations{EntityIndicesColumn}
@@ -44,32 +43,30 @@ struct LevelSpinnerSpawnEventsLayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return InitialFirePointIndicesColumn;
     }
-    LevelSpinnerSpawnEventsLayoutColumns(LevelSpinnerSpawnEventsLayoutColumns const&) = delete;
-    auto operator=(LevelSpinnerSpawnEventsLayoutColumns const&)
-        -> LevelSpinnerSpawnEventsLayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-struct LevelSpinnerSpawnEventsLayout
-    : ioj::single_allocation_layout::Layout<LevelSpinnerSpawnEventsLayoutColumns> {};
+struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct LevelSpinnerSpawnEventsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
+struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
-    using View = LevelSpinnerSpawnEventsResolvedView;
-    using ConstView = LevelSpinnerSpawnEventsResolvedConstView;
-    using soa_schema = ::ioj::sim::LevelSpinnerSpawnEventsSchema;
+    using view_type = ::ioj::sim::level_spinner_spawn_events::ResolvedView;
+    using const_view_type = ::ioj::sim::level_spinner_spawn_events::ResolvedConstView;
+    using soa_schema = ::ioj::sim::level_spinner_spawn_events::Schema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    LevelSpinnerSpawnEventsResolvedViewImpl() = default;
-    LevelSpinnerSpawnEventsResolvedViewImpl(Element<ioj::sim::LevelEntityIndex>* entity_indices,
-                                            Element<float>* locations_xs,
-                                            Element<float>* locations_ys,
-                                            Element<float>* locations_zs,
-                                            Element<float>* yaws,
-                                            Element<std::int32_t>* initial_fire_point_indices,
-                                            size_type count)
+    ResolvedViewImpl() = default;
+    ResolvedViewImpl(Element<ioj::sim::LevelEntityIndex>* entity_indices,
+                     Element<float>* locations_xs,
+                     Element<float>* locations_ys,
+                     Element<float>* locations_zs,
+                     Element<float>* yaws,
+                     Element<std::int32_t>* initial_fire_point_indices,
+                     size_type count)
         : entity_indices_{entity_indices}
         , locations_xs_{locations_xs}
         , locations_ys_{locations_ys}
@@ -85,21 +82,19 @@ struct LevelSpinnerSpawnEventsResolvedViewImpl : ioj::soa_storage_detail::ViewOp
                                                           yaws_,
                                                           initial_fire_point_indices_);
     }
-    LevelSpinnerSpawnEventsResolvedViewImpl(
-        std::span<Element<ioj::sim::LevelEntityIndex>> entity_indices,
-        std::span<Element<float>> locations_xs,
-        std::span<Element<float>> locations_ys,
-        std::span<Element<float>> locations_zs,
-        std::span<Element<float>> yaws,
-        std::span<Element<std::int32_t>> initial_fire_point_indices)
-        : LevelSpinnerSpawnEventsResolvedViewImpl{
-              entity_indices.data(),
-              locations_xs.data(),
-              locations_ys.data(),
-              locations_zs.data(),
-              yaws.data(),
-              initial_fire_point_indices.data(),
-              ioj::soa_storage_detail::checked_row_count(entity_indices.size())} {
+    ResolvedViewImpl(std::span<Element<ioj::sim::LevelEntityIndex>> entity_indices,
+                     std::span<Element<float>> locations_xs,
+                     std::span<Element<float>> locations_ys,
+                     std::span<Element<float>> locations_zs,
+                     std::span<Element<float>> yaws,
+                     std::span<Element<std::int32_t>> initial_fire_point_indices)
+        : ResolvedViewImpl{entity_indices.data(),
+                           locations_xs.data(),
+                           locations_ys.data(),
+                           locations_zs.data(),
+                           yaws.data(),
+                           initial_fire_point_indices.data(),
+                           ioj::soa_storage_detail::checked_row_count(entity_indices.size())} {
         ioj::soa_storage_detail::validate_column_sizes(count_,
                                                        entity_indices,
                                                        locations_xs,
@@ -109,8 +104,7 @@ struct LevelSpinnerSpawnEventsResolvedViewImpl : ioj::soa_storage_detail::ViewOp
                                                        initial_fire_point_indices);
     }
     template <bool Enabled = Const>
-    LevelSpinnerSpawnEventsResolvedViewImpl(
-        LevelSpinnerSpawnEventsResolvedViewImpl<false> const& other)
+    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : entity_indices_{other.entity_indices_}
         , locations_xs_{other.locations_xs_}
@@ -136,7 +130,7 @@ struct LevelSpinnerSpawnEventsResolvedViewImpl : ioj::soa_storage_detail::ViewOp
     }
     auto entity_indices() const { return std::span{entity_indices_, count_}; }
     auto view_locations() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
+        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {locations_xs_, locations_ys_, locations_zs_, count_};
     }
     auto yaws() const { return std::span{yaws_, count_}; }
@@ -154,7 +148,7 @@ struct LevelSpinnerSpawnEventsResolvedViewImpl : ioj::soa_storage_detail::ViewOp
     }
   private:
     template <bool>
-    friend struct LevelSpinnerSpawnEventsResolvedViewImpl;
+    friend struct ResolvedViewImpl;
     Element<ioj::sim::LevelEntityIndex>* entity_indices_{};
     Element<float>* locations_xs_{};
     Element<float>* locations_ys_{};
@@ -163,12 +157,12 @@ struct LevelSpinnerSpawnEventsResolvedViewImpl : ioj::soa_storage_detail::ViewOp
     Element<std::int32_t>* initial_fire_point_indices_{};
     size_type count_{};
 };
-struct LevelSpinnerSpawnEventsResolvedConstView : LevelSpinnerSpawnEventsResolvedViewImpl<true> {
-    using Base = LevelSpinnerSpawnEventsResolvedViewImpl<true>;
+struct ResolvedConstView : ResolvedViewImpl<true> {
+    using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct LevelSpinnerSpawnEventsResolvedView : LevelSpinnerSpawnEventsResolvedViewImpl<false> {
-    using Base = LevelSpinnerSpawnEventsResolvedViewImpl<false>;
+struct ResolvedView : ResolvedViewImpl<false> {
+    using Base = ResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::sim::LevelEntityIndex const new_entity_indices,
@@ -199,91 +193,30 @@ struct LevelSpinnerSpawnEventsResolvedView : LevelSpinnerSpawnEventsResolvedView
 };
 
 /* **************************************** */
-// locations compact views
-/* **************************************** */
-template <bool Const>
-struct LevelSpinnerSpawnEventsView_locationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Vectors3fSchema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = LevelSpinnerSpawnEventsLayout;
-    using View = LevelSpinnerSpawnEventsView_locations;
-    using ConstView = LevelSpinnerSpawnEventsConstView_locations;
-    template <bool Enabled = Const>
-    LevelSpinnerSpawnEventsView_locationsImpl(
-        LevelSpinnerSpawnEventsView_locationsImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.Locations.XsColumn); }
-    auto ys() const { return this->column(Layout::columns.Locations.YsColumn); }
-    auto zs() const { return this->column(Layout::columns.Locations.ZsColumn); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(xs());
-        func(ys());
-        func(zs());
-    }
-    auto resolve() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {this->column(Layout::columns.Locations.XsColumn).data(),
-                this->column(Layout::columns.Locations.YsColumn).data(),
-                this->column(Layout::columns.Locations.ZsColumn).data(),
-                this->count_};
-    }
-};
-struct LevelSpinnerSpawnEventsConstView_locations
-    : LevelSpinnerSpawnEventsView_locationsImpl<true> {
-    using Base = LevelSpinnerSpawnEventsView_locationsImpl<true>;
-    using Base::Base;
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(
-    ioj::soa_storage_detail::validate_compact_view<LevelSpinnerSpawnEventsConstView_locations>());
-struct LevelSpinnerSpawnEventsView_locations : LevelSpinnerSpawnEventsView_locationsImpl<false> {
-    using Base = LevelSpinnerSpawnEventsView_locationsImpl<false>;
-    using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-        this->zs()[index] = new_zs;
-    }
-    void set(size_type index, Vector3f const value) const {
-        set(index, (value.x()), (value.y()), (value.z()));
-    }
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(
-    ioj::soa_storage_detail::validate_compact_view<LevelSpinnerSpawnEventsView_locations>());
-
-/* **************************************** */
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct LevelSpinnerSpawnEventsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = LevelSpinnerSpawnEventsSchema;
+struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = ::ioj::sim::level_spinner_spawn_events::Schema;
     using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = LevelSpinnerSpawnEventsLayout;
-    using View = LevelSpinnerSpawnEventsView;
-    using ConstView = LevelSpinnerSpawnEventsConstView;
+    using Layout = ::ioj::sim::level_spinner_spawn_events::Layout;
+    using view_type = ::ioj::sim::level_spinner_spawn_events::View;
+    using const_view_type = ::ioj::sim::level_spinner_spawn_events::ConstView;
     template <bool Enabled = Const>
-    LevelSpinnerSpawnEventsViewImpl(LevelSpinnerSpawnEventsViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto entity_indices() const { return this->column(Layout::columns.EntityIndicesColumn); }
-    auto view_locations() const -> std::conditional_t<Const,
-                                                      LevelSpinnerSpawnEventsConstView_locations,
-                                                      LevelSpinnerSpawnEventsView_locations> {
-        return {this->state_, this->offset_, this->count_};
+    auto view_locations() const
+        -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
+        return ioj::soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
+            this->state_,
+            this->offset_,
+            this->num(),
+            Layout::columns.Locations.XsColumn,
+            Layout::columns.Locations.YsColumn);
     }
     auto yaws() const { return this->column(Layout::columns.YawsColumn); }
     auto initial_fire_point_indices() const {
@@ -299,25 +232,26 @@ struct LevelSpinnerSpawnEventsViewImpl : ioj::soa_storage_detail::CompactViewBas
         func(yaws());
         func(initial_fire_point_indices());
     }
-    auto resolve() const -> std::conditional_t<Const,
-                                               LevelSpinnerSpawnEventsResolvedConstView,
-                                               LevelSpinnerSpawnEventsResolvedView> {
+    auto resolve() const
+        -> std::conditional_t<Const,
+                              ::ioj::sim::level_spinner_spawn_events::ResolvedConstView,
+                              ::ioj::sim::level_spinner_spawn_events::ResolvedView> {
         return {this->column(Layout::columns.EntityIndicesColumn).data(),
                 this->column(Layout::columns.Locations.XsColumn).data(),
                 this->column(Layout::columns.Locations.YsColumn).data(),
                 this->column(Layout::columns.Locations.ZsColumn).data(),
                 this->column(Layout::columns.YawsColumn).data(),
                 this->column(Layout::columns.InitialFirePointIndicesColumn).data(),
-                this->count_};
+                this->num()};
     }
 };
-struct LevelSpinnerSpawnEventsConstView : LevelSpinnerSpawnEventsViewImpl<true> {
-    using Base = LevelSpinnerSpawnEventsViewImpl<true>;
+struct ConstView : ViewImpl<true> {
+    using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<LevelSpinnerSpawnEventsConstView>());
-struct LevelSpinnerSpawnEventsView : LevelSpinnerSpawnEventsViewImpl<false> {
-    using Base = LevelSpinnerSpawnEventsViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
+struct View : ViewImpl<false> {
+    using Base = ViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::sim::LevelEntityIndex const new_entity_indices,
@@ -346,7 +280,9 @@ struct LevelSpinnerSpawnEventsView : LevelSpinnerSpawnEventsViewImpl<false> {
         this->initial_fire_point_indices()[index] = new_initial_fire_point_indices;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<LevelSpinnerSpawnEventsView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+
+} // namespace level_spinner_spawn_events
 
 /* **************************************** */
 // Owner
@@ -361,9 +297,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<LevelSpinnerSpawnEv
 struct LevelSpinnerSpawnEvents
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
-    using soa_schema = LevelSpinnerSpawnEventsSchema;
+    using soa_schema = ::ioj::sim::level_spinner_spawn_events::Schema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = LevelSpinnerSpawnEventsLayout;
+    using Layout = ::ioj::sim::level_spinner_spawn_events::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -376,8 +312,8 @@ struct LevelSpinnerSpawnEvents
         return Layout::layout_bytes(blocks);
     }
 
-    using View = LevelSpinnerSpawnEventsView;
-    using ConstView = LevelSpinnerSpawnEventsConstView;
+    using View = ::ioj::sim::level_spinner_spawn_events::View;
+    using ConstView = ::ioj::sim::level_spinner_spawn_events::ConstView;
 
     /* **************************************** */
     // Lifetime

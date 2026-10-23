@@ -7,20 +7,39 @@
 
 namespace ioj::native_soa_fixture {
 
-auto ApiResolvedConstView::first_x() const -> float {
+namespace api_coordinates {
+auto ResolvedConstView::x_at(std::uint32_t index) const -> float {
+    return this->xs()[index];
+}
+auto ResolvedView::x_at(std::uint32_t index) const -> float {
+    return this->xs()[index];
+}
+auto ConstView::x_at(std::uint32_t index) const -> float {
+    return this->xs()[index];
+}
+
+auto View::x_at(std::uint32_t index) const -> float {
+    return this->xs()[index];
+}
+
+} // namespace api_coordinates
+
+namespace api_owner {
+auto ResolvedConstView::first_x() const -> float {
     return this->view_positions().xs()[0];
 }
-auto ApiResolvedView::first_x() const -> float {
+auto ResolvedView::first_x() const -> float {
+    return this->view_positions().xs()[0];
+}
+auto ConstView::first_x() const -> float {
     return this->view_positions().xs()[0];
 }
 
-auto ApiConstView::first_x() const -> float {
+auto View::first_x() const -> float {
     return this->view_positions().xs()[0];
 }
 
-auto ApiView::first_x() const -> float {
-    return this->view_positions().xs()[0];
-}
+} // namespace api_owner
 
 auto ApiOwner::append_empty() -> std::uint32_t {
     auto const row{this->num()};

@@ -13,16 +13,17 @@
 #include <memory_resource>
 
 namespace ioj::sim::collision {
-struct EntityCellDataSchema;
-struct EntityCellDataResolvedView;
-struct EntityCellDataResolvedConstView;
-struct EntityCellDataView;
-struct EntityCellDataConstView;
+namespace entity_cell_data {
+struct Schema;
+struct View;
+struct ConstView;
+struct ResolvedView;
+struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct EntityCellDataLayoutColumns {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<float> MinPointXsColumn;
@@ -39,7 +40,7 @@ struct EntityCellDataLayoutColumns {
     ColLayout<std::int32_t> MaxCellZsColumn;
     ColLayout<EntityId> EntityIdsColumn;
 
-    constexpr explicit EntityCellDataLayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : MinPointXsColumn{previous}
         , MinPointYsColumn{MinPointXsColumn}
@@ -58,37 +59,37 @@ struct EntityCellDataLayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return EntityIdsColumn;
     }
-    EntityCellDataLayoutColumns(EntityCellDataLayoutColumns const&) = delete;
-    auto operator=(EntityCellDataLayoutColumns const&) -> EntityCellDataLayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-struct EntityCellDataLayout : ioj::single_allocation_layout::Layout<EntityCellDataLayoutColumns> {};
+struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct EntityCellDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
+struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
-    using View = EntityCellDataResolvedView;
-    using ConstView = EntityCellDataResolvedConstView;
-    using soa_schema = ::ioj::sim::collision::EntityCellDataSchema;
+    using view_type = ::ioj::sim::collision::entity_cell_data::ResolvedView;
+    using const_view_type = ::ioj::sim::collision::entity_cell_data::ResolvedConstView;
+    using soa_schema = ::ioj::sim::collision::entity_cell_data::Schema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    EntityCellDataResolvedViewImpl() = default;
-    EntityCellDataResolvedViewImpl(Element<float>* min_point_xs,
-                                   Element<float>* min_point_ys,
-                                   Element<float>* min_point_zs,
-                                   Element<float>* max_point_xs,
-                                   Element<float>* max_point_ys,
-                                   Element<float>* max_point_zs,
-                                   Element<std::int32_t>* min_cell_xs,
-                                   Element<std::int32_t>* min_cell_ys,
-                                   Element<std::int32_t>* min_cell_zs,
-                                   Element<std::int32_t>* max_cell_xs,
-                                   Element<std::int32_t>* max_cell_ys,
-                                   Element<std::int32_t>* max_cell_zs,
-                                   Element<EntityId>* entity_ids,
-                                   size_type count)
+    ResolvedViewImpl() = default;
+    ResolvedViewImpl(Element<float>* min_point_xs,
+                     Element<float>* min_point_ys,
+                     Element<float>* min_point_zs,
+                     Element<float>* max_point_xs,
+                     Element<float>* max_point_ys,
+                     Element<float>* max_point_zs,
+                     Element<std::int32_t>* min_cell_xs,
+                     Element<std::int32_t>* min_cell_ys,
+                     Element<std::int32_t>* min_cell_zs,
+                     Element<std::int32_t>* max_cell_xs,
+                     Element<std::int32_t>* max_cell_ys,
+                     Element<std::int32_t>* max_cell_zs,
+                     Element<EntityId>* entity_ids,
+                     size_type count)
         : min_point_xs_{min_point_xs}
         , min_point_ys_{min_point_ys}
         , min_point_zs_{min_point_zs}
@@ -118,34 +119,33 @@ struct EntityCellDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperations 
                                                           max_cell_zs_,
                                                           entity_ids_);
     }
-    EntityCellDataResolvedViewImpl(std::span<Element<float>> min_point_xs,
-                                   std::span<Element<float>> min_point_ys,
-                                   std::span<Element<float>> min_point_zs,
-                                   std::span<Element<float>> max_point_xs,
-                                   std::span<Element<float>> max_point_ys,
-                                   std::span<Element<float>> max_point_zs,
-                                   std::span<Element<std::int32_t>> min_cell_xs,
-                                   std::span<Element<std::int32_t>> min_cell_ys,
-                                   std::span<Element<std::int32_t>> min_cell_zs,
-                                   std::span<Element<std::int32_t>> max_cell_xs,
-                                   std::span<Element<std::int32_t>> max_cell_ys,
-                                   std::span<Element<std::int32_t>> max_cell_zs,
-                                   std::span<Element<EntityId>> entity_ids)
-        : EntityCellDataResolvedViewImpl{
-              min_point_xs.data(),
-              min_point_ys.data(),
-              min_point_zs.data(),
-              max_point_xs.data(),
-              max_point_ys.data(),
-              max_point_zs.data(),
-              min_cell_xs.data(),
-              min_cell_ys.data(),
-              min_cell_zs.data(),
-              max_cell_xs.data(),
-              max_cell_ys.data(),
-              max_cell_zs.data(),
-              entity_ids.data(),
-              ioj::soa_storage_detail::checked_row_count(min_point_xs.size())} {
+    ResolvedViewImpl(std::span<Element<float>> min_point_xs,
+                     std::span<Element<float>> min_point_ys,
+                     std::span<Element<float>> min_point_zs,
+                     std::span<Element<float>> max_point_xs,
+                     std::span<Element<float>> max_point_ys,
+                     std::span<Element<float>> max_point_zs,
+                     std::span<Element<std::int32_t>> min_cell_xs,
+                     std::span<Element<std::int32_t>> min_cell_ys,
+                     std::span<Element<std::int32_t>> min_cell_zs,
+                     std::span<Element<std::int32_t>> max_cell_xs,
+                     std::span<Element<std::int32_t>> max_cell_ys,
+                     std::span<Element<std::int32_t>> max_cell_zs,
+                     std::span<Element<EntityId>> entity_ids)
+        : ResolvedViewImpl{min_point_xs.data(),
+                           min_point_ys.data(),
+                           min_point_zs.data(),
+                           max_point_xs.data(),
+                           max_point_ys.data(),
+                           max_point_zs.data(),
+                           min_cell_xs.data(),
+                           min_cell_ys.data(),
+                           min_cell_zs.data(),
+                           max_cell_xs.data(),
+                           max_cell_ys.data(),
+                           max_cell_zs.data(),
+                           entity_ids.data(),
+                           ioj::soa_storage_detail::checked_row_count(min_point_xs.size())} {
         ioj::soa_storage_detail::validate_column_sizes(count_,
                                                        min_point_xs,
                                                        min_point_ys,
@@ -162,7 +162,7 @@ struct EntityCellDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperations 
                                                        entity_ids);
     }
     template <bool Enabled = Const>
-    EntityCellDataResolvedViewImpl(EntityCellDataResolvedViewImpl<false> const& other)
+    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : min_point_xs_{other.min_point_xs_}
         , min_point_ys_{other.min_point_ys_}
@@ -229,7 +229,7 @@ struct EntityCellDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperations 
     }
   private:
     template <bool>
-    friend struct EntityCellDataResolvedViewImpl;
+    friend struct ResolvedViewImpl;
     Element<float>* min_point_xs_{};
     Element<float>* min_point_ys_{};
     Element<float>* min_point_zs_{};
@@ -245,12 +245,12 @@ struct EntityCellDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperations 
     Element<EntityId>* entity_ids_{};
     size_type count_{};
 };
-struct EntityCellDataResolvedConstView : EntityCellDataResolvedViewImpl<true> {
-    using Base = EntityCellDataResolvedViewImpl<true>;
+struct ResolvedConstView : ResolvedViewImpl<true> {
+    using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct EntityCellDataResolvedView : EntityCellDataResolvedViewImpl<false> {
-    using Base = EntityCellDataResolvedViewImpl<false>;
+struct ResolvedView : ResolvedViewImpl<false> {
+    using Base = ResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              float const new_min_point_xs,
@@ -287,15 +287,15 @@ struct EntityCellDataResolvedView : EntityCellDataResolvedViewImpl<false> {
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct EntityCellDataViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = EntityCellDataSchema;
+struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = ::ioj::sim::collision::entity_cell_data::Schema;
     using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = EntityCellDataLayout;
-    using View = EntityCellDataView;
-    using ConstView = EntityCellDataConstView;
+    using Layout = ::ioj::sim::collision::entity_cell_data::Layout;
+    using view_type = ::ioj::sim::collision::entity_cell_data::View;
+    using const_view_type = ::ioj::sim::collision::entity_cell_data::ConstView;
     template <bool Enabled = Const>
-    EntityCellDataViewImpl(EntityCellDataViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto min_point_xs() const { return this->column(Layout::columns.MinPointXsColumn); }
@@ -328,7 +328,9 @@ struct EntityCellDataViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> 
         func(entity_ids());
     }
     auto resolve() const
-        -> std::conditional_t<Const, EntityCellDataResolvedConstView, EntityCellDataResolvedView> {
+        -> std::conditional_t<Const,
+                              ::ioj::sim::collision::entity_cell_data::ResolvedConstView,
+                              ::ioj::sim::collision::entity_cell_data::ResolvedView> {
         return {this->column(Layout::columns.MinPointXsColumn).data(),
                 this->column(Layout::columns.MinPointYsColumn).data(),
                 this->column(Layout::columns.MinPointZsColumn).data(),
@@ -342,16 +344,16 @@ struct EntityCellDataViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> 
                 this->column(Layout::columns.MaxCellYsColumn).data(),
                 this->column(Layout::columns.MaxCellZsColumn).data(),
                 this->column(Layout::columns.EntityIdsColumn).data(),
-                this->count_};
+                this->num()};
     }
 };
-struct EntityCellDataConstView : EntityCellDataViewImpl<true> {
-    using Base = EntityCellDataViewImpl<true>;
+struct ConstView : ViewImpl<true> {
+    using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<EntityCellDataConstView>());
-struct EntityCellDataView : EntityCellDataViewImpl<false> {
-    using Base = EntityCellDataViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
+struct View : ViewImpl<false> {
+    using Base = ViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              float const new_min_point_xs,
@@ -383,7 +385,9 @@ struct EntityCellDataView : EntityCellDataViewImpl<false> {
         this->entity_ids()[index] = new_entity_ids;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<EntityCellDataView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+
+} // namespace entity_cell_data
 
 /* **************************************** */
 // Owner
@@ -405,9 +409,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<EntityCellDataView>
 struct EntityCellData
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
-    using soa_schema = EntityCellDataSchema;
+    using soa_schema = ::ioj::sim::collision::entity_cell_data::Schema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = EntityCellDataLayout;
+    using Layout = ::ioj::sim::collision::entity_cell_data::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -420,8 +424,8 @@ struct EntityCellData
         return Layout::layout_bytes(blocks);
     }
 
-    using View = EntityCellDataView;
-    using ConstView = EntityCellDataConstView;
+    using View = ::ioj::sim::collision::entity_cell_data::View;
+    using ConstView = ::ioj::sim::collision::entity_cell_data::ConstView;
 
     /* **************************************** */
     // Lifetime

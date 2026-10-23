@@ -11,16 +11,17 @@
 #include <memory_resource>
 
 namespace ioj::sim::collision {
-struct WorldAABBsSchema;
-struct WorldAABBsResolvedView;
-struct WorldAABBsResolvedConstView;
-struct WorldAABBsView;
-struct WorldAABBsConstView;
+namespace world_aab_bs {
+struct Schema;
+struct View;
+struct ConstView;
+struct ResolvedView;
+struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct WorldAABBsLayoutColumns {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<float> MinXsColumn;
@@ -30,7 +31,7 @@ struct WorldAABBsLayoutColumns {
     ColLayout<float> MaxYsColumn;
     ColLayout<float> MaxZsColumn;
 
-    constexpr explicit WorldAABBsLayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : MinXsColumn{previous}
         , MinYsColumn{MinXsColumn}
@@ -42,30 +43,30 @@ struct WorldAABBsLayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return MaxZsColumn;
     }
-    WorldAABBsLayoutColumns(WorldAABBsLayoutColumns const&) = delete;
-    auto operator=(WorldAABBsLayoutColumns const&) -> WorldAABBsLayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-struct WorldAABBsLayout : ioj::single_allocation_layout::Layout<WorldAABBsLayoutColumns> {};
+struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct WorldAABBsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
+struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
-    using View = WorldAABBsResolvedView;
-    using ConstView = WorldAABBsResolvedConstView;
-    using soa_schema = ::ioj::sim::collision::WorldAABBsSchema;
+    using view_type = ::ioj::sim::collision::world_aab_bs::ResolvedView;
+    using const_view_type = ::ioj::sim::collision::world_aab_bs::ResolvedConstView;
+    using soa_schema = ::ioj::sim::collision::world_aab_bs::Schema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    WorldAABBsResolvedViewImpl() = default;
-    WorldAABBsResolvedViewImpl(Element<float>* min_xs,
-                               Element<float>* min_ys,
-                               Element<float>* min_zs,
-                               Element<float>* max_xs,
-                               Element<float>* max_ys,
-                               Element<float>* max_zs,
-                               size_type count)
+    ResolvedViewImpl() = default;
+    ResolvedViewImpl(Element<float>* min_xs,
+                     Element<float>* min_ys,
+                     Element<float>* min_zs,
+                     Element<float>* max_xs,
+                     Element<float>* max_ys,
+                     Element<float>* max_zs,
+                     size_type count)
         : min_xs_{min_xs}
         , min_ys_{min_ys}
         , min_zs_{min_zs}
@@ -76,24 +77,24 @@ struct WorldAABBsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         ioj::soa_storage_detail::validate_column_pointers(
             count_, min_xs_, min_ys_, min_zs_, max_xs_, max_ys_, max_zs_);
     }
-    WorldAABBsResolvedViewImpl(std::span<Element<float>> min_xs,
-                               std::span<Element<float>> min_ys,
-                               std::span<Element<float>> min_zs,
-                               std::span<Element<float>> max_xs,
-                               std::span<Element<float>> max_ys,
-                               std::span<Element<float>> max_zs)
-        : WorldAABBsResolvedViewImpl{min_xs.data(),
-                                     min_ys.data(),
-                                     min_zs.data(),
-                                     max_xs.data(),
-                                     max_ys.data(),
-                                     max_zs.data(),
-                                     ioj::soa_storage_detail::checked_row_count(min_xs.size())} {
+    ResolvedViewImpl(std::span<Element<float>> min_xs,
+                     std::span<Element<float>> min_ys,
+                     std::span<Element<float>> min_zs,
+                     std::span<Element<float>> max_xs,
+                     std::span<Element<float>> max_ys,
+                     std::span<Element<float>> max_zs)
+        : ResolvedViewImpl{min_xs.data(),
+                           min_ys.data(),
+                           min_zs.data(),
+                           max_xs.data(),
+                           max_ys.data(),
+                           max_zs.data(),
+                           ioj::soa_storage_detail::checked_row_count(min_xs.size())} {
         ioj::soa_storage_detail::validate_column_sizes(
             count_, min_xs, min_ys, min_zs, max_xs, max_ys, max_zs);
     }
     template <bool Enabled = Const>
-    WorldAABBsResolvedViewImpl(WorldAABBsResolvedViewImpl<false> const& other)
+    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : min_xs_{other.min_xs_}
         , min_ys_{other.min_ys_}
@@ -132,7 +133,7 @@ struct WorldAABBsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     }
   private:
     template <bool>
-    friend struct WorldAABBsResolvedViewImpl;
+    friend struct ResolvedViewImpl;
     Element<float>* min_xs_{};
     Element<float>* min_ys_{};
     Element<float>* min_zs_{};
@@ -141,12 +142,12 @@ struct WorldAABBsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<float>* max_zs_{};
     size_type count_{};
 };
-struct WorldAABBsResolvedConstView : WorldAABBsResolvedViewImpl<true> {
-    using Base = WorldAABBsResolvedViewImpl<true>;
+struct ResolvedConstView : ResolvedViewImpl<true> {
+    using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct WorldAABBsResolvedView : WorldAABBsResolvedViewImpl<false> {
-    using Base = WorldAABBsResolvedViewImpl<false>;
+struct ResolvedView : ResolvedViewImpl<false> {
+    using Base = ResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              float const new_min_xs,
@@ -166,26 +167,32 @@ struct WorldAABBsResolvedView : WorldAABBsResolvedViewImpl<false> {
 };
 
 /* **************************************** */
-// Compact views
+// Strided views
 /* **************************************** */
 template <bool Const>
-struct WorldAABBsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = WorldAABBsSchema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
+    using soa_schema = ::ioj::sim::collision::world_aab_bs::Schema;
+    using Base = ioj::soa_storage_detail::StridedViewBase<float, Const>;
     using Base::Base;
-    using Layout = WorldAABBsLayout;
-    using View = WorldAABBsView;
-    using ConstView = WorldAABBsConstView;
+    using Layout = ::ioj::sim::collision::world_aab_bs::Layout;
+    using view_type = ::ioj::sim::collision::world_aab_bs::View;
+    using const_view_type = ::ioj::sim::collision::world_aab_bs::ConstView;
+    using State = std::conditional_t<Const,
+                                     ioj::soa_storage_detail::StorageState const,
+                                     ioj::soa_storage_detail::StorageState>;
+    ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
+        : Base{ioj::soa_storage_detail::make_strided_view<Base>(
+              state, offset, count, Layout::columns.MinXsColumn, Layout::columns.MinYsColumn)} {}
     template <bool Enabled = Const>
-    WorldAABBsViewImpl(WorldAABBsViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto min_xs() const { return this->column(Layout::columns.MinXsColumn); }
-    auto min_ys() const { return this->column(Layout::columns.MinYsColumn); }
-    auto min_zs() const { return this->column(Layout::columns.MinZsColumn); }
-    auto max_xs() const { return this->column(Layout::columns.MaxXsColumn); }
-    auto max_ys() const { return this->column(Layout::columns.MaxYsColumn); }
-    auto max_zs() const { return this->column(Layout::columns.MaxZsColumn); }
+    auto min_xs() const { return this->column(0); }
+    auto min_ys() const { return this->column(1); }
+    auto min_zs() const { return this->column(2); }
+    auto max_xs() const { return this->column(3); }
+    auto max_ys() const { return this->column(4); }
+    auto max_zs() const { return this->column(5); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(min_xs());
@@ -196,23 +203,25 @@ struct WorldAABBsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         func(max_zs());
     }
     auto resolve() const
-        -> std::conditional_t<Const, WorldAABBsResolvedConstView, WorldAABBsResolvedView> {
-        return {this->column(Layout::columns.MinXsColumn).data(),
-                this->column(Layout::columns.MinYsColumn).data(),
-                this->column(Layout::columns.MinZsColumn).data(),
-                this->column(Layout::columns.MaxXsColumn).data(),
-                this->column(Layout::columns.MaxYsColumn).data(),
-                this->column(Layout::columns.MaxZsColumn).data(),
-                this->count_};
+        -> std::conditional_t<Const,
+                              ::ioj::sim::collision::world_aab_bs::ResolvedConstView,
+                              ::ioj::sim::collision::world_aab_bs::ResolvedView> {
+        return {this->column(0).data(),
+                this->column(1).data(),
+                this->column(2).data(),
+                this->column(3).data(),
+                this->column(4).data(),
+                this->column(5).data(),
+                this->num()};
     }
 };
-struct WorldAABBsConstView : WorldAABBsViewImpl<true> {
-    using Base = WorldAABBsViewImpl<true>;
+struct ConstView : ViewImpl<true> {
+    using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<WorldAABBsConstView>());
-struct WorldAABBsView : WorldAABBsViewImpl<false> {
-    using Base = WorldAABBsViewImpl<false>;
+static_assert(std::is_trivially_copyable_v<ConstView>);
+struct View : ViewImpl<false> {
+    using Base = ViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              float const new_min_xs,
@@ -230,7 +239,9 @@ struct WorldAABBsView : WorldAABBsViewImpl<false> {
         this->max_zs()[index] = new_max_zs;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<WorldAABBsView>());
+static_assert(std::is_trivially_copyable_v<View>);
+
+} // namespace world_aab_bs
 
 /* **************************************** */
 // Owner
@@ -245,9 +256,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<WorldAABBsView>());
 struct WorldAABBs
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
-    using soa_schema = WorldAABBsSchema;
+    using soa_schema = ::ioj::sim::collision::world_aab_bs::Schema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = WorldAABBsLayout;
+    using Layout = ::ioj::sim::collision::world_aab_bs::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -260,8 +271,8 @@ struct WorldAABBs
         return Layout::layout_bytes(blocks);
     }
 
-    using View = WorldAABBsView;
-    using ConstView = WorldAABBsConstView;
+    using View = ::ioj::sim::collision::world_aab_bs::View;
+    using ConstView = ::ioj::sim::collision::world_aab_bs::ConstView;
 
     /* **************************************** */
     // Lifetime

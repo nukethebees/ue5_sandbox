@@ -14,25 +14,24 @@
 #include <memory_resource>
 
 namespace ioj::sim {
-struct RangeQueryMatchesSchema;
-struct RangeQueryMatchesResolvedView;
-struct RangeQueryMatchesResolvedConstView;
-struct RangeQueryMatchesView;
-struct RangeQueryMatchesConstView;
-struct RangeQueryMatchesView_directions;
-struct RangeQueryMatchesConstView_directions;
+namespace range_query_matches {
+struct Schema;
+struct View;
+struct ConstView;
+struct ResolvedView;
+struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct RangeQueryMatchesLayoutColumns {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<EntityId> EntitiesColumn;
     ColLayout<float> DistancesColumn;
-    ::ioj::Vectors3fLayoutColumns Directions;
+    ::ioj::vectors3f::LayoutColumns Directions;
 
-    constexpr explicit RangeQueryMatchesLayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : EntitiesColumn{previous}
         , DistancesColumn{EntitiesColumn}
@@ -41,31 +40,29 @@ struct RangeQueryMatchesLayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return Directions.last_column();
     }
-    RangeQueryMatchesLayoutColumns(RangeQueryMatchesLayoutColumns const&) = delete;
-    auto operator=(RangeQueryMatchesLayoutColumns const&)
-        -> RangeQueryMatchesLayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-struct RangeQueryMatchesLayout
-    : ioj::single_allocation_layout::Layout<RangeQueryMatchesLayoutColumns> {};
+struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct RangeQueryMatchesResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
+struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
-    using View = RangeQueryMatchesResolvedView;
-    using ConstView = RangeQueryMatchesResolvedConstView;
-    using soa_schema = ::ioj::sim::RangeQueryMatchesSchema;
+    using view_type = ::ioj::sim::range_query_matches::ResolvedView;
+    using const_view_type = ::ioj::sim::range_query_matches::ResolvedConstView;
+    using soa_schema = ::ioj::sim::range_query_matches::Schema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    RangeQueryMatchesResolvedViewImpl() = default;
-    RangeQueryMatchesResolvedViewImpl(Element<EntityId>* entities,
-                                      Element<float>* distances,
-                                      Element<float>* directions_xs,
-                                      Element<float>* directions_ys,
-                                      Element<float>* directions_zs,
-                                      size_type count)
+    ResolvedViewImpl() = default;
+    ResolvedViewImpl(Element<EntityId>* entities,
+                     Element<float>* distances,
+                     Element<float>* directions_xs,
+                     Element<float>* directions_ys,
+                     Element<float>* directions_zs,
+                     size_type count)
         : entities_{entities}
         , distances_{distances}
         , directions_xs_{directions_xs}
@@ -75,23 +72,22 @@ struct RangeQueryMatchesResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
         ioj::soa_storage_detail::validate_column_pointers(
             count_, entities_, distances_, directions_xs_, directions_ys_, directions_zs_);
     }
-    RangeQueryMatchesResolvedViewImpl(std::span<Element<EntityId>> entities,
-                                      std::span<Element<float>> distances,
-                                      std::span<Element<float>> directions_xs,
-                                      std::span<Element<float>> directions_ys,
-                                      std::span<Element<float>> directions_zs)
-        : RangeQueryMatchesResolvedViewImpl{
-              entities.data(),
-              distances.data(),
-              directions_xs.data(),
-              directions_ys.data(),
-              directions_zs.data(),
-              ioj::soa_storage_detail::checked_row_count(entities.size())} {
+    ResolvedViewImpl(std::span<Element<EntityId>> entities,
+                     std::span<Element<float>> distances,
+                     std::span<Element<float>> directions_xs,
+                     std::span<Element<float>> directions_ys,
+                     std::span<Element<float>> directions_zs)
+        : ResolvedViewImpl{entities.data(),
+                           distances.data(),
+                           directions_xs.data(),
+                           directions_ys.data(),
+                           directions_zs.data(),
+                           ioj::soa_storage_detail::checked_row_count(entities.size())} {
         ioj::soa_storage_detail::validate_column_sizes(
             count_, entities, distances, directions_xs, directions_ys, directions_zs);
     }
     template <bool Enabled = Const>
-    RangeQueryMatchesResolvedViewImpl(RangeQueryMatchesResolvedViewImpl<false> const& other)
+    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : entities_{other.entities_}
         , distances_{other.distances_}
@@ -114,7 +110,7 @@ struct RangeQueryMatchesResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
     auto entities() const { return std::span{entities_, count_}; }
     auto distances() const { return std::span{distances_, count_}; }
     auto view_directions() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
+        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {directions_xs_, directions_ys_, directions_zs_, count_};
     }
     template <typename Func>
@@ -127,7 +123,7 @@ struct RangeQueryMatchesResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
     }
   private:
     template <bool>
-    friend struct RangeQueryMatchesResolvedViewImpl;
+    friend struct ResolvedViewImpl;
     Element<EntityId>* entities_{};
     Element<float>* distances_{};
     Element<float>* directions_xs_{};
@@ -135,12 +131,12 @@ struct RangeQueryMatchesResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
     Element<float>* directions_zs_{};
     size_type count_{};
 };
-struct RangeQueryMatchesResolvedConstView : RangeQueryMatchesResolvedViewImpl<true> {
-    using Base = RangeQueryMatchesResolvedViewImpl<true>;
+struct ResolvedConstView : ResolvedViewImpl<true> {
+    using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct RangeQueryMatchesResolvedView : RangeQueryMatchesResolvedViewImpl<false> {
-    using Base = RangeQueryMatchesResolvedViewImpl<false>;
+struct ResolvedView : ResolvedViewImpl<false> {
+    using Base = ResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              EntityId const new_entities,
@@ -167,89 +163,31 @@ struct RangeQueryMatchesResolvedView : RangeQueryMatchesResolvedViewImpl<false> 
 };
 
 /* **************************************** */
-// directions compact views
-/* **************************************** */
-template <bool Const>
-struct RangeQueryMatchesView_directionsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Vectors3fSchema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = RangeQueryMatchesLayout;
-    using View = RangeQueryMatchesView_directions;
-    using ConstView = RangeQueryMatchesConstView_directions;
-    template <bool Enabled = Const>
-    RangeQueryMatchesView_directionsImpl(RangeQueryMatchesView_directionsImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.Directions.XsColumn); }
-    auto ys() const { return this->column(Layout::columns.Directions.YsColumn); }
-    auto zs() const { return this->column(Layout::columns.Directions.ZsColumn); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(xs());
-        func(ys());
-        func(zs());
-    }
-    auto resolve() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {this->column(Layout::columns.Directions.XsColumn).data(),
-                this->column(Layout::columns.Directions.YsColumn).data(),
-                this->column(Layout::columns.Directions.ZsColumn).data(),
-                this->count_};
-    }
-};
-struct RangeQueryMatchesConstView_directions : RangeQueryMatchesView_directionsImpl<true> {
-    using Base = RangeQueryMatchesView_directionsImpl<true>;
-    using Base::Base;
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(
-    ioj::soa_storage_detail::validate_compact_view<RangeQueryMatchesConstView_directions>());
-struct RangeQueryMatchesView_directions : RangeQueryMatchesView_directionsImpl<false> {
-    using Base = RangeQueryMatchesView_directionsImpl<false>;
-    using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-        this->zs()[index] = new_zs;
-    }
-    void set(size_type index, Vector3f const value) const {
-        set(index, (value.x()), (value.y()), (value.z()));
-    }
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(ioj::soa_storage_detail::validate_compact_view<RangeQueryMatchesView_directions>());
-
-/* **************************************** */
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct RangeQueryMatchesViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = RangeQueryMatchesSchema;
+struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = ::ioj::sim::range_query_matches::Schema;
     using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = RangeQueryMatchesLayout;
-    using View = RangeQueryMatchesView;
-    using ConstView = RangeQueryMatchesConstView;
+    using Layout = ::ioj::sim::range_query_matches::Layout;
+    using view_type = ::ioj::sim::range_query_matches::View;
+    using const_view_type = ::ioj::sim::range_query_matches::ConstView;
     template <bool Enabled = Const>
-    RangeQueryMatchesViewImpl(RangeQueryMatchesViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto entities() const { return this->column(Layout::columns.EntitiesColumn); }
     auto distances() const { return this->column(Layout::columns.DistancesColumn); }
-    auto view_directions() const -> std::conditional_t<Const,
-                                                       RangeQueryMatchesConstView_directions,
-                                                       RangeQueryMatchesView_directions> {
-        return {this->state_, this->offset_, this->count_};
+    auto view_directions() const
+        -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
+        return ioj::soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
+            this->state_,
+            this->offset_,
+            this->num(),
+            Layout::columns.Directions.XsColumn,
+            Layout::columns.Directions.YsColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -260,23 +198,24 @@ struct RangeQueryMatchesViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
         func(directions_view.ys());
         func(directions_view.zs());
     }
-    auto resolve() const -> std::
-        conditional_t<Const, RangeQueryMatchesResolvedConstView, RangeQueryMatchesResolvedView> {
+    auto resolve() const -> std::conditional_t<Const,
+                                               ::ioj::sim::range_query_matches::ResolvedConstView,
+                                               ::ioj::sim::range_query_matches::ResolvedView> {
         return {this->column(Layout::columns.EntitiesColumn).data(),
                 this->column(Layout::columns.DistancesColumn).data(),
                 this->column(Layout::columns.Directions.XsColumn).data(),
                 this->column(Layout::columns.Directions.YsColumn).data(),
                 this->column(Layout::columns.Directions.ZsColumn).data(),
-                this->count_};
+                this->num()};
     }
 };
-struct RangeQueryMatchesConstView : RangeQueryMatchesViewImpl<true> {
-    using Base = RangeQueryMatchesViewImpl<true>;
+struct ConstView : ViewImpl<true> {
+    using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<RangeQueryMatchesConstView>());
-struct RangeQueryMatchesView : RangeQueryMatchesViewImpl<false> {
-    using Base = RangeQueryMatchesViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
+struct View : ViewImpl<false> {
+    using Base = ViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              EntityId const new_entities,
@@ -301,7 +240,9 @@ struct RangeQueryMatchesView : RangeQueryMatchesViewImpl<false> {
         this->view_directions().set(index, new_directions);
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<RangeQueryMatchesView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+
+} // namespace range_query_matches
 
 /* **************************************** */
 // Owner
@@ -315,9 +256,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<RangeQueryMatchesVi
 struct RangeQueryMatches
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
-    using soa_schema = RangeQueryMatchesSchema;
+    using soa_schema = ::ioj::sim::range_query_matches::Schema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = RangeQueryMatchesLayout;
+    using Layout = ::ioj::sim::range_query_matches::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -330,8 +271,8 @@ struct RangeQueryMatches
         return Layout::layout_bytes(blocks);
     }
 
-    using View = RangeQueryMatchesView;
-    using ConstView = RangeQueryMatchesConstView;
+    using View = ::ioj::sim::range_query_matches::View;
+    using ConstView = ::ioj::sim::range_query_matches::ConstView;
 
     /* **************************************** */
     // Lifetime

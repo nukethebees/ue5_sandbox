@@ -18,51 +18,30 @@
 #include <memory_resource>
 
 namespace ioj::sim {
-struct FighterEntityDataSchema;
-struct FighterEntityDataResolvedView;
-struct FighterEntityDataResolvedConstView;
-struct FighterEntityDataView;
-struct FighterEntityDataConstView;
-struct FighterEntityDataView_locations;
-struct FighterEntityDataConstView_locations;
-struct FighterEntityDataView_desired_move_locations;
-struct FighterEntityDataConstView_desired_move_locations;
-struct FighterEntityDataView_aim_directions;
-struct FighterEntityDataConstView_aim_directions;
-struct FighterEntityDataView_planned_aim_directions;
-struct FighterEntityDataConstView_planned_aim_directions;
-struct FighterEntityDataView_desired_aiming_directions;
-struct FighterEntityDataConstView_desired_aiming_directions;
-struct FighterEntityDataView_movement_directions;
-struct FighterEntityDataConstView_movement_directions;
-struct FighterEntityDataView_velocities;
-struct FighterEntityDataConstView_velocities;
-struct FighterEntityDataView_separation_steering;
-struct FighterEntityDataConstView_separation_steering;
-struct FighterEntityDataView_target_locations;
-struct FighterEntityDataConstView_target_locations;
-struct FighterEntityDataView_target_velocities;
-struct FighterEntityDataConstView_target_velocities;
-struct FighterEntityDataView_target_directions;
-struct FighterEntityDataConstView_target_directions;
+namespace fighter_entity_data {
+struct Schema;
+struct View;
+struct ConstView;
+struct ResolvedView;
+struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct FighterEntityDataLayoutColumns {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<EntityId> EntityIdsColumn;
     ColLayout<std::uint32_t> IntegralBiasesColumn;
     ColLayout<float> FloatBiasesColumn;
     ColLayout<FighterTask> TasksColumn;
-    ::ioj::Vectors3fLayoutColumns Locations;
-    ::ioj::Vectors3fLayoutColumns DesiredMoveLocations;
-    ::ioj::Vectors3fLayoutColumns AimDirections;
-    ::ioj::Vectors3fLayoutColumns PlannedAimDirections;
-    ::ioj::Vectors3fLayoutColumns DesiredAimingDirections;
-    ::ioj::Vectors3fLayoutColumns MovementDirections;
-    ::ioj::Vectors3fLayoutColumns Velocities;
+    ::ioj::vectors3f::LayoutColumns Locations;
+    ::ioj::vectors3f::LayoutColumns DesiredMoveLocations;
+    ::ioj::vectors3f::LayoutColumns AimDirections;
+    ::ioj::vectors3f::LayoutColumns PlannedAimDirections;
+    ::ioj::vectors3f::LayoutColumns DesiredAimingDirections;
+    ::ioj::vectors3f::LayoutColumns MovementDirections;
+    ::ioj::vectors3f::LayoutColumns Velocities;
     ColLayout<float> MoveDistancesColumn;
     ColLayout<float> SpeedsColumn;
     ColLayout<::ioj::Team> TeamsColumn;
@@ -70,7 +49,7 @@ struct FighterEntityDataLayoutColumns {
     ColLayout<std::int8_t> AwarenessScanCountdownsColumn;
     ColLayout<std::int16_t> NavigationUpdateCountdownsRemainingTicksColumn;
     ColLayout<std::int16_t> NavigationUpdateCountdownsPeriodsColumn;
-    ::ioj::Vectors3fLayoutColumns SeparationSteering;
+    ::ioj::vectors3f::LayoutColumns SeparationSteering;
     ColLayout<fighters::NavigationRiskCode> NavigationRiskTiersColumn;
     ColLayout<fighters::NavigationScanCount> NavigationLowerRiskScanCountsColumn;
     ColLayout<fighters::AvoidanceChoice> AvoidanceChoiceIndicesColumn;
@@ -78,15 +57,15 @@ struct FighterEntityDataLayoutColumns {
     ColLayout<std::int16_t> AttackRepositionCountdownsColumn;
     ColLayout<std::int16_t> AttackCooldownsColumn;
     ColLayout<EntityId> TargetIdsColumn;
-    ::ioj::Vectors3fLayoutColumns TargetLocations;
-    ::ioj::Vectors3fLayoutColumns TargetVelocities;
-    ::ioj::Vectors3fLayoutColumns TargetDirections;
+    ::ioj::vectors3f::LayoutColumns TargetLocations;
+    ::ioj::vectors3f::LayoutColumns TargetVelocities;
+    ::ioj::vectors3f::LayoutColumns TargetDirections;
     ColLayout<float> InterceptTimesColumn;
     ColLayout<float> TargetDistanceSqColumn;
     ColLayout<float> TargetDistancesColumn;
     ColLayout<float> TargetRadiiColumn;
 
-    constexpr explicit FighterEntityDataLayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : EntityIdsColumn{previous}
         , IntegralBiasesColumn{EntityIdsColumn}
@@ -125,26 +104,24 @@ struct FighterEntityDataLayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return TargetRadiiColumn;
     }
-    FighterEntityDataLayoutColumns(FighterEntityDataLayoutColumns const&) = delete;
-    auto operator=(FighterEntityDataLayoutColumns const&)
-        -> FighterEntityDataLayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-struct FighterEntityDataLayout
-    : ioj::single_allocation_layout::Layout<FighterEntityDataLayoutColumns> {};
+struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct FighterEntityDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
+struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
-    using View = FighterEntityDataResolvedView;
-    using ConstView = FighterEntityDataResolvedConstView;
-    using soa_schema = ::ioj::sim::FighterEntityDataSchema;
+    using view_type = ::ioj::sim::fighter_entity_data::ResolvedView;
+    using const_view_type = ::ioj::sim::fighter_entity_data::ResolvedConstView;
+    using soa_schema = ::ioj::sim::fighter_entity_data::Schema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    FighterEntityDataResolvedViewImpl() = default;
-    FighterEntityDataResolvedViewImpl(
+    ResolvedViewImpl() = default;
+    ResolvedViewImpl(
         Element<EntityId>* entity_ids,
         Element<std::uint32_t>* integral_biases,
         Element<float>* float_biases,
@@ -315,7 +292,7 @@ struct FighterEntityDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
             target_distances_,
             target_radii_);
     }
-    FighterEntityDataResolvedViewImpl(
+    ResolvedViewImpl(
         std::span<Element<EntityId>> entity_ids,
         std::span<Element<std::uint32_t>> integral_biases,
         std::span<Element<float>> float_biases,
@@ -372,63 +349,62 @@ struct FighterEntityDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
         std::span<Element<float>> target_distance_sq,
         std::span<Element<float>> target_distances,
         std::span<Element<float>> target_radii)
-        : FighterEntityDataResolvedViewImpl{
-              entity_ids.data(),
-              integral_biases.data(),
-              float_biases.data(),
-              tasks.data(),
-              locations_xs.data(),
-              locations_ys.data(),
-              locations_zs.data(),
-              desired_move_locations_xs.data(),
-              desired_move_locations_ys.data(),
-              desired_move_locations_zs.data(),
-              aim_directions_xs.data(),
-              aim_directions_ys.data(),
-              aim_directions_zs.data(),
-              planned_aim_directions_xs.data(),
-              planned_aim_directions_ys.data(),
-              planned_aim_directions_zs.data(),
-              desired_aiming_directions_xs.data(),
-              desired_aiming_directions_ys.data(),
-              desired_aiming_directions_zs.data(),
-              movement_directions_xs.data(),
-              movement_directions_ys.data(),
-              movement_directions_zs.data(),
-              velocities_xs.data(),
-              velocities_ys.data(),
-              velocities_zs.data(),
-              move_distances.data(),
-              speeds.data(),
-              teams.data(),
-              parent_ids.data(),
-              awareness_scan_countdowns.data(),
-              navigation_update_countdowns_remaining_ticks.data(),
-              navigation_update_countdowns_periods.data(),
-              separation_steering_xs.data(),
-              separation_steering_ys.data(),
-              separation_steering_zs.data(),
-              navigation_risk_tiers.data(),
-              navigation_lower_risk_scan_counts.data(),
-              avoidance_choice_indices.data(),
-              avoidance_clear_scan_counts.data(),
-              attack_reposition_countdowns.data(),
-              attack_cooldowns.data(),
-              target_ids.data(),
-              target_locations_xs.data(),
-              target_locations_ys.data(),
-              target_locations_zs.data(),
-              target_velocities_xs.data(),
-              target_velocities_ys.data(),
-              target_velocities_zs.data(),
-              target_directions_xs.data(),
-              target_directions_ys.data(),
-              target_directions_zs.data(),
-              intercept_times.data(),
-              target_distance_sq.data(),
-              target_distances.data(),
-              target_radii.data(),
-              ioj::soa_storage_detail::checked_row_count(entity_ids.size())} {
+        : ResolvedViewImpl{entity_ids.data(),
+                           integral_biases.data(),
+                           float_biases.data(),
+                           tasks.data(),
+                           locations_xs.data(),
+                           locations_ys.data(),
+                           locations_zs.data(),
+                           desired_move_locations_xs.data(),
+                           desired_move_locations_ys.data(),
+                           desired_move_locations_zs.data(),
+                           aim_directions_xs.data(),
+                           aim_directions_ys.data(),
+                           aim_directions_zs.data(),
+                           planned_aim_directions_xs.data(),
+                           planned_aim_directions_ys.data(),
+                           planned_aim_directions_zs.data(),
+                           desired_aiming_directions_xs.data(),
+                           desired_aiming_directions_ys.data(),
+                           desired_aiming_directions_zs.data(),
+                           movement_directions_xs.data(),
+                           movement_directions_ys.data(),
+                           movement_directions_zs.data(),
+                           velocities_xs.data(),
+                           velocities_ys.data(),
+                           velocities_zs.data(),
+                           move_distances.data(),
+                           speeds.data(),
+                           teams.data(),
+                           parent_ids.data(),
+                           awareness_scan_countdowns.data(),
+                           navigation_update_countdowns_remaining_ticks.data(),
+                           navigation_update_countdowns_periods.data(),
+                           separation_steering_xs.data(),
+                           separation_steering_ys.data(),
+                           separation_steering_zs.data(),
+                           navigation_risk_tiers.data(),
+                           navigation_lower_risk_scan_counts.data(),
+                           avoidance_choice_indices.data(),
+                           avoidance_clear_scan_counts.data(),
+                           attack_reposition_countdowns.data(),
+                           attack_cooldowns.data(),
+                           target_ids.data(),
+                           target_locations_xs.data(),
+                           target_locations_ys.data(),
+                           target_locations_zs.data(),
+                           target_velocities_xs.data(),
+                           target_velocities_ys.data(),
+                           target_velocities_zs.data(),
+                           target_directions_xs.data(),
+                           target_directions_ys.data(),
+                           target_directions_zs.data(),
+                           intercept_times.data(),
+                           target_distance_sq.data(),
+                           target_distances.data(),
+                           target_radii.data(),
+                           ioj::soa_storage_detail::checked_row_count(entity_ids.size())} {
         ioj::soa_storage_detail::validate_column_sizes(count_,
                                                        entity_ids,
                                                        integral_biases,
@@ -487,7 +463,7 @@ struct FighterEntityDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
                                                        target_radii);
     }
     template <bool Enabled = Const>
-    FighterEntityDataResolvedViewImpl(FighterEntityDataResolvedViewImpl<false> const& other)
+    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : entity_ids_{other.entity_ids_}
         , integral_biases_{other.integral_biases_}
@@ -644,40 +620,40 @@ struct FighterEntityDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
     auto float_biases() const { return std::span{float_biases_, count_}; }
     auto tasks() const { return std::span{tasks_, count_}; }
     auto view_locations() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
+        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {locations_xs_, locations_ys_, locations_zs_, count_};
     }
     auto view_desired_move_locations() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
+        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {desired_move_locations_xs_,
                 desired_move_locations_ys_,
                 desired_move_locations_zs_,
                 count_};
     }
     auto view_aim_directions() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
+        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {aim_directions_xs_, aim_directions_ys_, aim_directions_zs_, count_};
     }
     auto view_planned_aim_directions() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
+        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {planned_aim_directions_xs_,
                 planned_aim_directions_ys_,
                 planned_aim_directions_zs_,
                 count_};
     }
     auto view_desired_aiming_directions() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
+        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {desired_aiming_directions_xs_,
                 desired_aiming_directions_ys_,
                 desired_aiming_directions_zs_,
                 count_};
     }
     auto view_movement_directions() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
+        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {movement_directions_xs_, movement_directions_ys_, movement_directions_zs_, count_};
     }
     auto view_velocities() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
+        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {velocities_xs_, velocities_ys_, velocities_zs_, count_};
     }
     auto move_distances() const { return std::span{move_distances_, count_}; }
@@ -692,7 +668,7 @@ struct FighterEntityDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
         return std::span{navigation_update_countdowns_periods_, count_};
     }
     auto view_separation_steering() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
+        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {separation_steering_xs_, separation_steering_ys_, separation_steering_zs_, count_};
     }
     auto navigation_risk_tiers() const { return std::span{navigation_risk_tiers_, count_}; }
@@ -709,15 +685,15 @@ struct FighterEntityDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
     auto attack_cooldowns() const { return std::span{attack_cooldowns_, count_}; }
     auto target_ids() const { return std::span{target_ids_, count_}; }
     auto view_target_locations() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
+        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {target_locations_xs_, target_locations_ys_, target_locations_zs_, count_};
     }
     auto view_target_velocities() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
+        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {target_velocities_xs_, target_velocities_ys_, target_velocities_zs_, count_};
     }
     auto view_target_directions() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
+        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {target_directions_xs_, target_directions_ys_, target_directions_zs_, count_};
     }
     auto intercept_times() const { return std::span{intercept_times_, count_}; }
@@ -784,7 +760,7 @@ struct FighterEntityDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
     }
   private:
     template <bool>
-    friend struct FighterEntityDataResolvedViewImpl;
+    friend struct ResolvedViewImpl;
     Element<EntityId>* entity_ids_{};
     Element<std::uint32_t>* integral_biases_{};
     Element<float>* float_biases_{};
@@ -842,12 +818,12 @@ struct FighterEntityDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
     Element<float>* target_radii_{};
     size_type count_{};
 };
-struct FighterEntityDataResolvedConstView : FighterEntityDataResolvedViewImpl<true> {
-    using Base = FighterEntityDataResolvedViewImpl<true>;
+struct ResolvedConstView : ResolvedViewImpl<true> {
+    using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct FighterEntityDataResolvedView : FighterEntityDataResolvedViewImpl<false> {
-    using Base = FighterEntityDataResolvedViewImpl<false>;
+struct ResolvedView : ResolvedViewImpl<false> {
+    using Base = ResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              EntityId const new_entity_ids,
@@ -1038,797 +1014,93 @@ struct FighterEntityDataResolvedView : FighterEntityDataResolvedViewImpl<false> 
 };
 
 /* **************************************** */
-// locations compact views
-/* **************************************** */
-template <bool Const>
-struct FighterEntityDataView_locationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Vectors3fSchema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = FighterEntityDataLayout;
-    using View = FighterEntityDataView_locations;
-    using ConstView = FighterEntityDataConstView_locations;
-    template <bool Enabled = Const>
-    FighterEntityDataView_locationsImpl(FighterEntityDataView_locationsImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.Locations.XsColumn); }
-    auto ys() const { return this->column(Layout::columns.Locations.YsColumn); }
-    auto zs() const { return this->column(Layout::columns.Locations.ZsColumn); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(xs());
-        func(ys());
-        func(zs());
-    }
-    auto resolve() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {this->column(Layout::columns.Locations.XsColumn).data(),
-                this->column(Layout::columns.Locations.YsColumn).data(),
-                this->column(Layout::columns.Locations.ZsColumn).data(),
-                this->count_};
-    }
-};
-struct FighterEntityDataConstView_locations : FighterEntityDataView_locationsImpl<true> {
-    using Base = FighterEntityDataView_locationsImpl<true>;
-    using Base::Base;
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(
-    ioj::soa_storage_detail::validate_compact_view<FighterEntityDataConstView_locations>());
-struct FighterEntityDataView_locations : FighterEntityDataView_locationsImpl<false> {
-    using Base = FighterEntityDataView_locationsImpl<false>;
-    using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-        this->zs()[index] = new_zs;
-    }
-    void set(size_type index, Vector3f const value) const {
-        set(index, (value.x()), (value.y()), (value.z()));
-    }
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(ioj::soa_storage_detail::validate_compact_view<FighterEntityDataView_locations>());
-
-/* **************************************** */
-// desired_move_locations compact views
-/* **************************************** */
-template <bool Const>
-struct FighterEntityDataView_desired_move_locationsImpl
-    : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Vectors3fSchema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = FighterEntityDataLayout;
-    using View = FighterEntityDataView_desired_move_locations;
-    using ConstView = FighterEntityDataConstView_desired_move_locations;
-    template <bool Enabled = Const>
-    FighterEntityDataView_desired_move_locationsImpl(
-        FighterEntityDataView_desired_move_locationsImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.DesiredMoveLocations.XsColumn); }
-    auto ys() const { return this->column(Layout::columns.DesiredMoveLocations.YsColumn); }
-    auto zs() const { return this->column(Layout::columns.DesiredMoveLocations.ZsColumn); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(xs());
-        func(ys());
-        func(zs());
-    }
-    auto resolve() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {this->column(Layout::columns.DesiredMoveLocations.XsColumn).data(),
-                this->column(Layout::columns.DesiredMoveLocations.YsColumn).data(),
-                this->column(Layout::columns.DesiredMoveLocations.ZsColumn).data(),
-                this->count_};
-    }
-};
-struct FighterEntityDataConstView_desired_move_locations
-    : FighterEntityDataView_desired_move_locationsImpl<true> {
-    using Base = FighterEntityDataView_desired_move_locationsImpl<true>;
-    using Base::Base;
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(ioj::soa_storage_detail::validate_compact_view<
-              FighterEntityDataConstView_desired_move_locations>());
-struct FighterEntityDataView_desired_move_locations
-    : FighterEntityDataView_desired_move_locationsImpl<false> {
-    using Base = FighterEntityDataView_desired_move_locationsImpl<false>;
-    using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-        this->zs()[index] = new_zs;
-    }
-    void set(size_type index, Vector3f const value) const {
-        set(index, (value.x()), (value.y()), (value.z()));
-    }
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(
-    ioj::soa_storage_detail::validate_compact_view<FighterEntityDataView_desired_move_locations>());
-
-/* **************************************** */
-// aim_directions compact views
-/* **************************************** */
-template <bool Const>
-struct FighterEntityDataView_aim_directionsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Vectors3fSchema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = FighterEntityDataLayout;
-    using View = FighterEntityDataView_aim_directions;
-    using ConstView = FighterEntityDataConstView_aim_directions;
-    template <bool Enabled = Const>
-    FighterEntityDataView_aim_directionsImpl(
-        FighterEntityDataView_aim_directionsImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.AimDirections.XsColumn); }
-    auto ys() const { return this->column(Layout::columns.AimDirections.YsColumn); }
-    auto zs() const { return this->column(Layout::columns.AimDirections.ZsColumn); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(xs());
-        func(ys());
-        func(zs());
-    }
-    auto resolve() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {this->column(Layout::columns.AimDirections.XsColumn).data(),
-                this->column(Layout::columns.AimDirections.YsColumn).data(),
-                this->column(Layout::columns.AimDirections.ZsColumn).data(),
-                this->count_};
-    }
-};
-struct FighterEntityDataConstView_aim_directions : FighterEntityDataView_aim_directionsImpl<true> {
-    using Base = FighterEntityDataView_aim_directionsImpl<true>;
-    using Base::Base;
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(
-    ioj::soa_storage_detail::validate_compact_view<FighterEntityDataConstView_aim_directions>());
-struct FighterEntityDataView_aim_directions : FighterEntityDataView_aim_directionsImpl<false> {
-    using Base = FighterEntityDataView_aim_directionsImpl<false>;
-    using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-        this->zs()[index] = new_zs;
-    }
-    void set(size_type index, Vector3f const value) const {
-        set(index, (value.x()), (value.y()), (value.z()));
-    }
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(
-    ioj::soa_storage_detail::validate_compact_view<FighterEntityDataView_aim_directions>());
-
-/* **************************************** */
-// planned_aim_directions compact views
-/* **************************************** */
-template <bool Const>
-struct FighterEntityDataView_planned_aim_directionsImpl
-    : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Vectors3fSchema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = FighterEntityDataLayout;
-    using View = FighterEntityDataView_planned_aim_directions;
-    using ConstView = FighterEntityDataConstView_planned_aim_directions;
-    template <bool Enabled = Const>
-    FighterEntityDataView_planned_aim_directionsImpl(
-        FighterEntityDataView_planned_aim_directionsImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.PlannedAimDirections.XsColumn); }
-    auto ys() const { return this->column(Layout::columns.PlannedAimDirections.YsColumn); }
-    auto zs() const { return this->column(Layout::columns.PlannedAimDirections.ZsColumn); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(xs());
-        func(ys());
-        func(zs());
-    }
-    auto resolve() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {this->column(Layout::columns.PlannedAimDirections.XsColumn).data(),
-                this->column(Layout::columns.PlannedAimDirections.YsColumn).data(),
-                this->column(Layout::columns.PlannedAimDirections.ZsColumn).data(),
-                this->count_};
-    }
-};
-struct FighterEntityDataConstView_planned_aim_directions
-    : FighterEntityDataView_planned_aim_directionsImpl<true> {
-    using Base = FighterEntityDataView_planned_aim_directionsImpl<true>;
-    using Base::Base;
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(ioj::soa_storage_detail::validate_compact_view<
-              FighterEntityDataConstView_planned_aim_directions>());
-struct FighterEntityDataView_planned_aim_directions
-    : FighterEntityDataView_planned_aim_directionsImpl<false> {
-    using Base = FighterEntityDataView_planned_aim_directionsImpl<false>;
-    using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-        this->zs()[index] = new_zs;
-    }
-    void set(size_type index, Vector3f const value) const {
-        set(index, (value.x()), (value.y()), (value.z()));
-    }
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(
-    ioj::soa_storage_detail::validate_compact_view<FighterEntityDataView_planned_aim_directions>());
-
-/* **************************************** */
-// desired_aiming_directions compact views
-/* **************************************** */
-template <bool Const>
-struct FighterEntityDataView_desired_aiming_directionsImpl
-    : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Vectors3fSchema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = FighterEntityDataLayout;
-    using View = FighterEntityDataView_desired_aiming_directions;
-    using ConstView = FighterEntityDataConstView_desired_aiming_directions;
-    template <bool Enabled = Const>
-    FighterEntityDataView_desired_aiming_directionsImpl(
-        FighterEntityDataView_desired_aiming_directionsImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.DesiredAimingDirections.XsColumn); }
-    auto ys() const { return this->column(Layout::columns.DesiredAimingDirections.YsColumn); }
-    auto zs() const { return this->column(Layout::columns.DesiredAimingDirections.ZsColumn); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(xs());
-        func(ys());
-        func(zs());
-    }
-    auto resolve() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {this->column(Layout::columns.DesiredAimingDirections.XsColumn).data(),
-                this->column(Layout::columns.DesiredAimingDirections.YsColumn).data(),
-                this->column(Layout::columns.DesiredAimingDirections.ZsColumn).data(),
-                this->count_};
-    }
-};
-struct FighterEntityDataConstView_desired_aiming_directions
-    : FighterEntityDataView_desired_aiming_directionsImpl<true> {
-    using Base = FighterEntityDataView_desired_aiming_directionsImpl<true>;
-    using Base::Base;
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(ioj::soa_storage_detail::validate_compact_view<
-              FighterEntityDataConstView_desired_aiming_directions>());
-struct FighterEntityDataView_desired_aiming_directions
-    : FighterEntityDataView_desired_aiming_directionsImpl<false> {
-    using Base = FighterEntityDataView_desired_aiming_directionsImpl<false>;
-    using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-        this->zs()[index] = new_zs;
-    }
-    void set(size_type index, Vector3f const value) const {
-        set(index, (value.x()), (value.y()), (value.z()));
-    }
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(ioj::soa_storage_detail::validate_compact_view<
-              FighterEntityDataView_desired_aiming_directions>());
-
-/* **************************************** */
-// movement_directions compact views
-/* **************************************** */
-template <bool Const>
-struct FighterEntityDataView_movement_directionsImpl
-    : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Vectors3fSchema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = FighterEntityDataLayout;
-    using View = FighterEntityDataView_movement_directions;
-    using ConstView = FighterEntityDataConstView_movement_directions;
-    template <bool Enabled = Const>
-    FighterEntityDataView_movement_directionsImpl(
-        FighterEntityDataView_movement_directionsImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.MovementDirections.XsColumn); }
-    auto ys() const { return this->column(Layout::columns.MovementDirections.YsColumn); }
-    auto zs() const { return this->column(Layout::columns.MovementDirections.ZsColumn); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(xs());
-        func(ys());
-        func(zs());
-    }
-    auto resolve() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {this->column(Layout::columns.MovementDirections.XsColumn).data(),
-                this->column(Layout::columns.MovementDirections.YsColumn).data(),
-                this->column(Layout::columns.MovementDirections.ZsColumn).data(),
-                this->count_};
-    }
-};
-struct FighterEntityDataConstView_movement_directions
-    : FighterEntityDataView_movement_directionsImpl<true> {
-    using Base = FighterEntityDataView_movement_directionsImpl<true>;
-    using Base::Base;
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(ioj::soa_storage_detail::validate_compact_view<
-              FighterEntityDataConstView_movement_directions>());
-struct FighterEntityDataView_movement_directions
-    : FighterEntityDataView_movement_directionsImpl<false> {
-    using Base = FighterEntityDataView_movement_directionsImpl<false>;
-    using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-        this->zs()[index] = new_zs;
-    }
-    void set(size_type index, Vector3f const value) const {
-        set(index, (value.x()), (value.y()), (value.z()));
-    }
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(
-    ioj::soa_storage_detail::validate_compact_view<FighterEntityDataView_movement_directions>());
-
-/* **************************************** */
-// velocities compact views
-/* **************************************** */
-template <bool Const>
-struct FighterEntityDataView_velocitiesImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Vectors3fSchema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = FighterEntityDataLayout;
-    using View = FighterEntityDataView_velocities;
-    using ConstView = FighterEntityDataConstView_velocities;
-    template <bool Enabled = Const>
-    FighterEntityDataView_velocitiesImpl(FighterEntityDataView_velocitiesImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.Velocities.XsColumn); }
-    auto ys() const { return this->column(Layout::columns.Velocities.YsColumn); }
-    auto zs() const { return this->column(Layout::columns.Velocities.ZsColumn); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(xs());
-        func(ys());
-        func(zs());
-    }
-    auto resolve() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {this->column(Layout::columns.Velocities.XsColumn).data(),
-                this->column(Layout::columns.Velocities.YsColumn).data(),
-                this->column(Layout::columns.Velocities.ZsColumn).data(),
-                this->count_};
-    }
-};
-struct FighterEntityDataConstView_velocities : FighterEntityDataView_velocitiesImpl<true> {
-    using Base = FighterEntityDataView_velocitiesImpl<true>;
-    using Base::Base;
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(
-    ioj::soa_storage_detail::validate_compact_view<FighterEntityDataConstView_velocities>());
-struct FighterEntityDataView_velocities : FighterEntityDataView_velocitiesImpl<false> {
-    using Base = FighterEntityDataView_velocitiesImpl<false>;
-    using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-        this->zs()[index] = new_zs;
-    }
-    void set(size_type index, Vector3f const value) const {
-        set(index, (value.x()), (value.y()), (value.z()));
-    }
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(ioj::soa_storage_detail::validate_compact_view<FighterEntityDataView_velocities>());
-
-/* **************************************** */
-// separation_steering compact views
-/* **************************************** */
-template <bool Const>
-struct FighterEntityDataView_separation_steeringImpl
-    : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Vectors3fSchema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = FighterEntityDataLayout;
-    using View = FighterEntityDataView_separation_steering;
-    using ConstView = FighterEntityDataConstView_separation_steering;
-    template <bool Enabled = Const>
-    FighterEntityDataView_separation_steeringImpl(
-        FighterEntityDataView_separation_steeringImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.SeparationSteering.XsColumn); }
-    auto ys() const { return this->column(Layout::columns.SeparationSteering.YsColumn); }
-    auto zs() const { return this->column(Layout::columns.SeparationSteering.ZsColumn); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(xs());
-        func(ys());
-        func(zs());
-    }
-    auto resolve() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {this->column(Layout::columns.SeparationSteering.XsColumn).data(),
-                this->column(Layout::columns.SeparationSteering.YsColumn).data(),
-                this->column(Layout::columns.SeparationSteering.ZsColumn).data(),
-                this->count_};
-    }
-};
-struct FighterEntityDataConstView_separation_steering
-    : FighterEntityDataView_separation_steeringImpl<true> {
-    using Base = FighterEntityDataView_separation_steeringImpl<true>;
-    using Base::Base;
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(ioj::soa_storage_detail::validate_compact_view<
-              FighterEntityDataConstView_separation_steering>());
-struct FighterEntityDataView_separation_steering
-    : FighterEntityDataView_separation_steeringImpl<false> {
-    using Base = FighterEntityDataView_separation_steeringImpl<false>;
-    using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-        this->zs()[index] = new_zs;
-    }
-    void set(size_type index, Vector3f const value) const {
-        set(index, (value.x()), (value.y()), (value.z()));
-    }
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(
-    ioj::soa_storage_detail::validate_compact_view<FighterEntityDataView_separation_steering>());
-
-/* **************************************** */
-// target_locations compact views
-/* **************************************** */
-template <bool Const>
-struct FighterEntityDataView_target_locationsImpl
-    : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Vectors3fSchema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = FighterEntityDataLayout;
-    using View = FighterEntityDataView_target_locations;
-    using ConstView = FighterEntityDataConstView_target_locations;
-    template <bool Enabled = Const>
-    FighterEntityDataView_target_locationsImpl(
-        FighterEntityDataView_target_locationsImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.TargetLocations.XsColumn); }
-    auto ys() const { return this->column(Layout::columns.TargetLocations.YsColumn); }
-    auto zs() const { return this->column(Layout::columns.TargetLocations.ZsColumn); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(xs());
-        func(ys());
-        func(zs());
-    }
-    auto resolve() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {this->column(Layout::columns.TargetLocations.XsColumn).data(),
-                this->column(Layout::columns.TargetLocations.YsColumn).data(),
-                this->column(Layout::columns.TargetLocations.ZsColumn).data(),
-                this->count_};
-    }
-};
-struct FighterEntityDataConstView_target_locations
-    : FighterEntityDataView_target_locationsImpl<true> {
-    using Base = FighterEntityDataView_target_locationsImpl<true>;
-    using Base::Base;
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(
-    ioj::soa_storage_detail::validate_compact_view<FighterEntityDataConstView_target_locations>());
-struct FighterEntityDataView_target_locations : FighterEntityDataView_target_locationsImpl<false> {
-    using Base = FighterEntityDataView_target_locationsImpl<false>;
-    using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-        this->zs()[index] = new_zs;
-    }
-    void set(size_type index, Vector3f const value) const {
-        set(index, (value.x()), (value.y()), (value.z()));
-    }
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(
-    ioj::soa_storage_detail::validate_compact_view<FighterEntityDataView_target_locations>());
-
-/* **************************************** */
-// target_velocities compact views
-/* **************************************** */
-template <bool Const>
-struct FighterEntityDataView_target_velocitiesImpl
-    : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Vectors3fSchema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = FighterEntityDataLayout;
-    using View = FighterEntityDataView_target_velocities;
-    using ConstView = FighterEntityDataConstView_target_velocities;
-    template <bool Enabled = Const>
-    FighterEntityDataView_target_velocitiesImpl(
-        FighterEntityDataView_target_velocitiesImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.TargetVelocities.XsColumn); }
-    auto ys() const { return this->column(Layout::columns.TargetVelocities.YsColumn); }
-    auto zs() const { return this->column(Layout::columns.TargetVelocities.ZsColumn); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(xs());
-        func(ys());
-        func(zs());
-    }
-    auto resolve() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {this->column(Layout::columns.TargetVelocities.XsColumn).data(),
-                this->column(Layout::columns.TargetVelocities.YsColumn).data(),
-                this->column(Layout::columns.TargetVelocities.ZsColumn).data(),
-                this->count_};
-    }
-};
-struct FighterEntityDataConstView_target_velocities
-    : FighterEntityDataView_target_velocitiesImpl<true> {
-    using Base = FighterEntityDataView_target_velocitiesImpl<true>;
-    using Base::Base;
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(
-    ioj::soa_storage_detail::validate_compact_view<FighterEntityDataConstView_target_velocities>());
-struct FighterEntityDataView_target_velocities
-    : FighterEntityDataView_target_velocitiesImpl<false> {
-    using Base = FighterEntityDataView_target_velocitiesImpl<false>;
-    using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-        this->zs()[index] = new_zs;
-    }
-    void set(size_type index, Vector3f const value) const {
-        set(index, (value.x()), (value.y()), (value.z()));
-    }
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(
-    ioj::soa_storage_detail::validate_compact_view<FighterEntityDataView_target_velocities>());
-
-/* **************************************** */
-// target_directions compact views
-/* **************************************** */
-template <bool Const>
-struct FighterEntityDataView_target_directionsImpl
-    : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = Vectors3fSchema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = FighterEntityDataLayout;
-    using View = FighterEntityDataView_target_directions;
-    using ConstView = FighterEntityDataConstView_target_directions;
-    template <bool Enabled = Const>
-    FighterEntityDataView_target_directionsImpl(
-        FighterEntityDataView_target_directionsImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.TargetDirections.XsColumn); }
-    auto ys() const { return this->column(Layout::columns.TargetDirections.YsColumn); }
-    auto zs() const { return this->column(Layout::columns.TargetDirections.ZsColumn); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(xs());
-        func(ys());
-        func(zs());
-    }
-    auto resolve() const -> std::
-        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {this->column(Layout::columns.TargetDirections.XsColumn).data(),
-                this->column(Layout::columns.TargetDirections.YsColumn).data(),
-                this->column(Layout::columns.TargetDirections.ZsColumn).data(),
-                this->count_};
-    }
-};
-struct FighterEntityDataConstView_target_directions
-    : FighterEntityDataView_target_directionsImpl<true> {
-    using Base = FighterEntityDataView_target_directionsImpl<true>;
-    using Base::Base;
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(
-    ioj::soa_storage_detail::validate_compact_view<FighterEntityDataConstView_target_directions>());
-struct FighterEntityDataView_target_directions
-    : FighterEntityDataView_target_directionsImpl<false> {
-    using Base = FighterEntityDataView_target_directionsImpl<false>;
-    using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-        this->zs()[index] = new_zs;
-    }
-    void set(size_type index, Vector3f const value) const {
-        set(index, (value.x()), (value.y()), (value.z()));
-    }
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-static_assert(
-    ioj::soa_storage_detail::validate_compact_view<FighterEntityDataView_target_directions>());
-
-/* **************************************** */
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct FighterEntityDataViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = FighterEntityDataSchema;
+struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = ::ioj::sim::fighter_entity_data::Schema;
     using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = FighterEntityDataLayout;
-    using View = FighterEntityDataView;
-    using ConstView = FighterEntityDataConstView;
+    using Layout = ::ioj::sim::fighter_entity_data::Layout;
+    using view_type = ::ioj::sim::fighter_entity_data::View;
+    using const_view_type = ::ioj::sim::fighter_entity_data::ConstView;
     template <bool Enabled = Const>
-    FighterEntityDataViewImpl(FighterEntityDataViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto entity_ids() const { return this->column(Layout::columns.EntityIdsColumn); }
     auto integral_biases() const { return this->column(Layout::columns.IntegralBiasesColumn); }
     auto float_biases() const { return this->column(Layout::columns.FloatBiasesColumn); }
     auto tasks() const { return this->column(Layout::columns.TasksColumn); }
-    auto view_locations() const -> std::conditional_t<Const,
-                                                      FighterEntityDataConstView_locations,
-                                                      FighterEntityDataView_locations> {
-        return {this->state_, this->offset_, this->count_};
+    auto view_locations() const
+        -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
+        return ioj::soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
+            this->state_,
+            this->offset_,
+            this->num(),
+            Layout::columns.Locations.XsColumn,
+            Layout::columns.Locations.YsColumn);
     }
     auto view_desired_move_locations() const
-        -> std::conditional_t<Const,
-                              FighterEntityDataConstView_desired_move_locations,
-                              FighterEntityDataView_desired_move_locations> {
-        return {this->state_, this->offset_, this->count_};
+        -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
+        return ioj::soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
+            this->state_,
+            this->offset_,
+            this->num(),
+            Layout::columns.DesiredMoveLocations.XsColumn,
+            Layout::columns.DesiredMoveLocations.YsColumn);
     }
     auto view_aim_directions() const
-        -> std::conditional_t<Const,
-                              FighterEntityDataConstView_aim_directions,
-                              FighterEntityDataView_aim_directions> {
-        return {this->state_, this->offset_, this->count_};
+        -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
+        return ioj::soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
+            this->state_,
+            this->offset_,
+            this->num(),
+            Layout::columns.AimDirections.XsColumn,
+            Layout::columns.AimDirections.YsColumn);
     }
     auto view_planned_aim_directions() const
-        -> std::conditional_t<Const,
-                              FighterEntityDataConstView_planned_aim_directions,
-                              FighterEntityDataView_planned_aim_directions> {
-        return {this->state_, this->offset_, this->count_};
+        -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
+        return ioj::soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
+            this->state_,
+            this->offset_,
+            this->num(),
+            Layout::columns.PlannedAimDirections.XsColumn,
+            Layout::columns.PlannedAimDirections.YsColumn);
     }
     auto view_desired_aiming_directions() const
-        -> std::conditional_t<Const,
-                              FighterEntityDataConstView_desired_aiming_directions,
-                              FighterEntityDataView_desired_aiming_directions> {
-        return {this->state_, this->offset_, this->count_};
+        -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
+        return ioj::soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
+            this->state_,
+            this->offset_,
+            this->num(),
+            Layout::columns.DesiredAimingDirections.XsColumn,
+            Layout::columns.DesiredAimingDirections.YsColumn);
     }
     auto view_movement_directions() const
-        -> std::conditional_t<Const,
-                              FighterEntityDataConstView_movement_directions,
-                              FighterEntityDataView_movement_directions> {
-        return {this->state_, this->offset_, this->count_};
+        -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
+        return ioj::soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
+            this->state_,
+            this->offset_,
+            this->num(),
+            Layout::columns.MovementDirections.XsColumn,
+            Layout::columns.MovementDirections.YsColumn);
     }
-    auto view_velocities() const -> std::conditional_t<Const,
-                                                       FighterEntityDataConstView_velocities,
-                                                       FighterEntityDataView_velocities> {
-        return {this->state_, this->offset_, this->count_};
+    auto view_velocities() const
+        -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
+        return ioj::soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
+            this->state_,
+            this->offset_,
+            this->num(),
+            Layout::columns.Velocities.XsColumn,
+            Layout::columns.Velocities.YsColumn);
     }
     auto move_distances() const { return this->column(Layout::columns.MoveDistancesColumn); }
     auto speeds() const { return this->column(Layout::columns.SpeedsColumn); }
@@ -1844,10 +1116,14 @@ struct FighterEntityDataViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
         return this->column(Layout::columns.NavigationUpdateCountdownsPeriodsColumn);
     }
     auto view_separation_steering() const
-        -> std::conditional_t<Const,
-                              FighterEntityDataConstView_separation_steering,
-                              FighterEntityDataView_separation_steering> {
-        return {this->state_, this->offset_, this->count_};
+        -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
+        return ioj::soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
+            this->state_,
+            this->offset_,
+            this->num(),
+            Layout::columns.SeparationSteering.XsColumn,
+            Layout::columns.SeparationSteering.YsColumn);
     }
     auto navigation_risk_tiers() const {
         return this->column(Layout::columns.NavigationRiskTiersColumn);
@@ -1867,22 +1143,34 @@ struct FighterEntityDataViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
     auto attack_cooldowns() const { return this->column(Layout::columns.AttackCooldownsColumn); }
     auto target_ids() const { return this->column(Layout::columns.TargetIdsColumn); }
     auto view_target_locations() const
-        -> std::conditional_t<Const,
-                              FighterEntityDataConstView_target_locations,
-                              FighterEntityDataView_target_locations> {
-        return {this->state_, this->offset_, this->count_};
+        -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
+        return ioj::soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
+            this->state_,
+            this->offset_,
+            this->num(),
+            Layout::columns.TargetLocations.XsColumn,
+            Layout::columns.TargetLocations.YsColumn);
     }
     auto view_target_velocities() const
-        -> std::conditional_t<Const,
-                              FighterEntityDataConstView_target_velocities,
-                              FighterEntityDataView_target_velocities> {
-        return {this->state_, this->offset_, this->count_};
+        -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
+        return ioj::soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
+            this->state_,
+            this->offset_,
+            this->num(),
+            Layout::columns.TargetVelocities.XsColumn,
+            Layout::columns.TargetVelocities.YsColumn);
     }
     auto view_target_directions() const
-        -> std::conditional_t<Const,
-                              FighterEntityDataConstView_target_directions,
-                              FighterEntityDataView_target_directions> {
-        return {this->state_, this->offset_, this->count_};
+        -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
+        return ioj::soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
+            this->state_,
+            this->offset_,
+            this->num(),
+            Layout::columns.TargetDirections.XsColumn,
+            Layout::columns.TargetDirections.YsColumn);
     }
     auto intercept_times() const { return this->column(Layout::columns.InterceptTimesColumn); }
     auto target_distance_sq() const { return this->column(Layout::columns.TargetDistanceSqColumn); }
@@ -1957,8 +1245,9 @@ struct FighterEntityDataViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
         func(target_distances());
         func(target_radii());
     }
-    auto resolve() const -> std::
-        conditional_t<Const, FighterEntityDataResolvedConstView, FighterEntityDataResolvedView> {
+    auto resolve() const -> std::conditional_t<Const,
+                                               ::ioj::sim::fighter_entity_data::ResolvedConstView,
+                                               ::ioj::sim::fighter_entity_data::ResolvedView> {
         return {this->column(Layout::columns.EntityIdsColumn).data(),
                 this->column(Layout::columns.IntegralBiasesColumn).data(),
                 this->column(Layout::columns.FloatBiasesColumn).data(),
@@ -2014,16 +1303,16 @@ struct FighterEntityDataViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
                 this->column(Layout::columns.TargetDistanceSqColumn).data(),
                 this->column(Layout::columns.TargetDistancesColumn).data(),
                 this->column(Layout::columns.TargetRadiiColumn).data(),
-                this->count_};
+                this->num()};
     }
 };
-struct FighterEntityDataConstView : FighterEntityDataViewImpl<true> {
-    using Base = FighterEntityDataViewImpl<true>;
+struct ConstView : ViewImpl<true> {
+    using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<FighterEntityDataConstView>());
-struct FighterEntityDataView : FighterEntityDataViewImpl<false> {
-    using Base = FighterEntityDataViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
+struct View : ViewImpl<false> {
+    using Base = ViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              EntityId const new_entity_ids,
@@ -2212,7 +1501,9 @@ struct FighterEntityDataView : FighterEntityDataViewImpl<false> {
         this->target_radii()[index] = new_target_radii;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<FighterEntityDataView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+
+} // namespace fighter_entity_data
 
 /* **************************************** */
 // Owner
@@ -2276,9 +1567,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<FighterEntityDataVi
 struct FighterEntityData
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
-    using soa_schema = FighterEntityDataSchema;
+    using soa_schema = ::ioj::sim::fighter_entity_data::Schema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = FighterEntityDataLayout;
+    using Layout = ::ioj::sim::fighter_entity_data::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -2291,8 +1582,8 @@ struct FighterEntityData
         return Layout::layout_bytes(blocks);
     }
 
-    using View = FighterEntityDataView;
-    using ConstView = FighterEntityDataConstView;
+    using View = ::ioj::sim::fighter_entity_data::View;
+    using ConstView = ::ioj::sim::fighter_entity_data::ConstView;
 
     /* **************************************** */
     // Lifetime

@@ -11,22 +11,23 @@
 #include <memory_resource>
 
 namespace ioj::ui::radar_2d {
-struct PositionsSchema;
-struct PositionsResolvedView;
-struct PositionsResolvedConstView;
-struct PositionsView;
-struct PositionsConstView;
+namespace positions {
+struct Schema;
+struct View;
+struct ConstView;
+struct ResolvedView;
+struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct PositionsLayoutColumns {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<float> XsColumn;
     ColLayout<float> YsColumn;
 
-    constexpr explicit PositionsLayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : XsColumn{previous}
         , YsColumn{XsColumn} {}
@@ -34,36 +35,36 @@ struct PositionsLayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return YsColumn;
     }
-    PositionsLayoutColumns(PositionsLayoutColumns const&) = delete;
-    auto operator=(PositionsLayoutColumns const&) -> PositionsLayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-struct PositionsLayout : ioj::single_allocation_layout::Layout<PositionsLayoutColumns> {};
+struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct PositionsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
+struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
-    using View = PositionsResolvedView;
-    using ConstView = PositionsResolvedConstView;
-    using soa_schema = ::ioj::ui::radar_2d::PositionsSchema;
+    using view_type = ::ioj::ui::radar_2d::positions::ResolvedView;
+    using const_view_type = ::ioj::ui::radar_2d::positions::ResolvedConstView;
+    using soa_schema = ::ioj::ui::radar_2d::positions::Schema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    PositionsResolvedViewImpl() = default;
-    PositionsResolvedViewImpl(Element<float>* xs, Element<float>* ys, size_type count)
+    ResolvedViewImpl() = default;
+    ResolvedViewImpl(Element<float>* xs, Element<float>* ys, size_type count)
         : xs_{xs}
         , ys_{ys}
         , count_{count} {
         ioj::soa_storage_detail::validate_column_pointers(count_, xs_, ys_);
     }
-    PositionsResolvedViewImpl(std::span<Element<float>> xs, std::span<Element<float>> ys)
-        : PositionsResolvedViewImpl{
+    ResolvedViewImpl(std::span<Element<float>> xs, std::span<Element<float>> ys)
+        : ResolvedViewImpl{
               xs.data(), ys.data(), ioj::soa_storage_detail::checked_row_count(xs.size())} {
         ioj::soa_storage_detail::validate_column_sizes(count_, xs, ys);
     }
     template <bool Enabled = Const>
-    PositionsResolvedViewImpl(PositionsResolvedViewImpl<false> const& other)
+    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : xs_{other.xs_}
         , ys_{other.ys_}
@@ -86,17 +87,17 @@ struct PositionsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     }
   private:
     template <bool>
-    friend struct PositionsResolvedViewImpl;
+    friend struct ResolvedViewImpl;
     Element<float>* xs_{};
     Element<float>* ys_{};
     size_type count_{};
 };
-struct PositionsResolvedConstView : PositionsResolvedViewImpl<true> {
-    using Base = PositionsResolvedViewImpl<true>;
+struct ResolvedConstView : ResolvedViewImpl<true> {
+    using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct PositionsResolvedView : PositionsResolvedViewImpl<false> {
-    using Base = PositionsResolvedViewImpl<false>;
+struct ResolvedView : ResolvedViewImpl<false> {
+    using Base = ResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index, float const new_xs, float const new_ys) const {
         assert(index < num());
@@ -106,41 +107,46 @@ struct PositionsResolvedView : PositionsResolvedViewImpl<false> {
 };
 
 /* **************************************** */
-// Compact views
+// Strided views
 /* **************************************** */
 template <bool Const>
-struct PositionsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = PositionsSchema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
+    using soa_schema = ::ioj::ui::radar_2d::positions::Schema;
+    using Base = ioj::soa_storage_detail::StridedViewBase<float, Const>;
     using Base::Base;
-    using Layout = PositionsLayout;
-    using View = PositionsView;
-    using ConstView = PositionsConstView;
+    using Layout = ::ioj::ui::radar_2d::positions::Layout;
+    using view_type = ::ioj::ui::radar_2d::positions::View;
+    using const_view_type = ::ioj::ui::radar_2d::positions::ConstView;
+    using State = std::conditional_t<Const,
+                                     ioj::soa_storage_detail::StorageState const,
+                                     ioj::soa_storage_detail::StorageState>;
+    ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
+        : Base{ioj::soa_storage_detail::make_strided_view<Base>(
+              state, offset, count, Layout::columns.XsColumn, Layout::columns.YsColumn)} {}
     template <bool Enabled = Const>
-    PositionsViewImpl(PositionsViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.XsColumn); }
-    auto ys() const { return this->column(Layout::columns.YsColumn); }
+    auto xs() const { return this->column(0); }
+    auto ys() const { return this->column(1); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
         func(ys());
     }
-    auto resolve() const
-        -> std::conditional_t<Const, PositionsResolvedConstView, PositionsResolvedView> {
-        return {this->column(Layout::columns.XsColumn).data(),
-                this->column(Layout::columns.YsColumn).data(),
-                this->count_};
+    auto resolve() const -> std::conditional_t<Const,
+                                               ::ioj::ui::radar_2d::positions::ResolvedConstView,
+                                               ::ioj::ui::radar_2d::positions::ResolvedView> {
+        return {this->column(0).data(), this->column(1).data(), this->num()};
     }
 };
-struct PositionsConstView : PositionsViewImpl<true> {
-    using Base = PositionsViewImpl<true>;
+struct ConstView : ViewImpl<true> {
+    using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<PositionsConstView>());
-struct PositionsView : PositionsViewImpl<false> {
-    using Base = PositionsViewImpl<false>;
+static_assert(std::is_trivially_copyable_v<ConstView>);
+struct View : ViewImpl<false> {
+    using Base = ViewImpl<false>;
     using Base::Base;
     void set(size_type index, float const new_xs, float const new_ys) const {
         assert(index < num());
@@ -148,7 +154,9 @@ struct PositionsView : PositionsViewImpl<false> {
         this->ys()[index] = new_ys;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<PositionsView>());
+static_assert(std::is_trivially_copyable_v<View>);
+
+} // namespace positions
 
 /* **************************************** */
 // Owner
@@ -159,9 +167,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<PositionsView>());
 struct Positions
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
-    using soa_schema = PositionsSchema;
+    using soa_schema = ::ioj::ui::radar_2d::positions::Schema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = PositionsLayout;
+    using Layout = ::ioj::ui::radar_2d::positions::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -174,8 +182,8 @@ struct Positions
         return Layout::layout_bytes(blocks);
     }
 
-    using View = PositionsView;
-    using ConstView = PositionsConstView;
+    using View = ::ioj::ui::radar_2d::positions::View;
+    using ConstView = ::ioj::ui::radar_2d::positions::ConstView;
 
     /* **************************************** */
     // Lifetime

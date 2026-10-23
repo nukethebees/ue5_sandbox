@@ -9,41 +9,49 @@
 #include <type_traits>
 
 namespace codegen_compile_fixture {
-struct FMaskRows8Schema;
 
 enum class EField8 : std::uint8_t {
     Values = 0,
     Count = static_cast<std::uint8_t>(Values) + (8),
 };
-
 struct FFieldMask8 {
     inline static constexpr std::int32_t field_count{static_cast<std::int32_t>(EField8::Count)};
+
     static_assert(field_count <= 64, "Field mask exceeds 64 bits.");
+
     using storage_type = std::conditional_t<
         field_count <= 8,
         std::uint8_t,
         std::conditional_t<field_count <= 16,
                            std::uint16_t,
                            std::conditional_t<field_count <= 32, std::uint32_t, std::uint64_t>>>;
-
     constexpr FFieldMask8() noexcept = default;
-    explicit constexpr FFieldMask8(storage_type const value) noexcept
-        : value_{value} {}
 
+    constexpr explicit FFieldMask8(storage_type const value) noexcept
+        : value_{value} {}
     [[nodiscard]] constexpr auto value() const noexcept -> storage_type { return value_; }
+
     [[nodiscard]] constexpr auto is_empty() const noexcept -> bool { return value_ == 0; }
+
     [[nodiscard]] constexpr auto has(EField8 const field) const noexcept -> bool {
         return (value_ & bit(field)) != 0;
     }
+
     [[nodiscard]] static constexpr auto index(EField8 const field) noexcept -> std::int32_t {
         return static_cast<std::int32_t>(field);
     }
-    constexpr void set(EField8 const field) noexcept { value_ |= bit(field); }
-    constexpr void set(FFieldMask8 const fields) noexcept { value_ |= fields.value_; }
+
+    constexpr void set(EField8 const field) noexcept {
+        value_ = static_cast<storage_type>(value_ | bit(field));
+    }
+
+    constexpr void set(FFieldMask8 const fields) noexcept {
+        value_ = static_cast<storage_type>(value_ | fields.value_);
+    }
+
     constexpr void clear(EField8 const field) noexcept {
         value_ = static_cast<storage_type>(value_ & ~bit(field));
     }
-
     [[nodiscard]] static constexpr auto values_field(std::int32_t const value_index) noexcept
         -> EField8 {
         return static_cast<EField8>(static_cast<std::int32_t>(EField8::Values) + value_index);
@@ -52,19 +60,21 @@ struct FFieldMask8 {
     [[nodiscard]] static constexpr auto bit(EField8 const field) noexcept -> storage_type {
         return static_cast<storage_type>(std::uint64_t{1} << static_cast<std::uint8_t>(field));
     }
-
     storage_type value_{};
 };
+
 static_assert(sizeof(FFieldMask8) == sizeof(FFieldMask8::storage_type));
+
 static_assert(std::is_trivially_copyable_v<FFieldMask8>);
 
-struct FMaskRows8LayoutColumns {
+namespace f_mask_rows8 {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<FFieldMask8> MasksColumn;
     ColLayout<std::int32_t> ValuesColumn;
 
-    constexpr explicit FMaskRows8LayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : MasksColumn{previous}
         , ValuesColumn{MasksColumn} {}
@@ -72,46 +82,54 @@ struct FMaskRows8LayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return ValuesColumn;
     }
-    FMaskRows8LayoutColumns(FMaskRows8LayoutColumns const&) = delete;
-    auto operator=(FMaskRows8LayoutColumns const&) -> FMaskRows8LayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-
-struct FMaskRows9Schema;
+} // namespace f_mask_rows8
 
 enum class EField9 : std::uint8_t {
     Values = 0,
     Tail = static_cast<std::uint8_t>(Values) + (8),
     Count = static_cast<std::uint8_t>(Tail) + 1,
 };
-
 struct FFieldMask9 {
     inline static constexpr std::int32_t field_count{static_cast<std::int32_t>(EField9::Count)};
+
     static_assert(field_count <= 64, "Field mask exceeds 64 bits.");
+
     using storage_type = std::conditional_t<
         field_count <= 8,
         std::uint8_t,
         std::conditional_t<field_count <= 16,
                            std::uint16_t,
                            std::conditional_t<field_count <= 32, std::uint32_t, std::uint64_t>>>;
-
     constexpr FFieldMask9() noexcept = default;
-    explicit constexpr FFieldMask9(storage_type const value) noexcept
-        : value_{value} {}
 
+    constexpr explicit FFieldMask9(storage_type const value) noexcept
+        : value_{value} {}
     [[nodiscard]] constexpr auto value() const noexcept -> storage_type { return value_; }
+
     [[nodiscard]] constexpr auto is_empty() const noexcept -> bool { return value_ == 0; }
+
     [[nodiscard]] constexpr auto has(EField9 const field) const noexcept -> bool {
         return (value_ & bit(field)) != 0;
     }
+
     [[nodiscard]] static constexpr auto index(EField9 const field) noexcept -> std::int32_t {
         return static_cast<std::int32_t>(field);
     }
-    constexpr void set(EField9 const field) noexcept { value_ |= bit(field); }
-    constexpr void set(FFieldMask9 const fields) noexcept { value_ |= fields.value_; }
+
+    constexpr void set(EField9 const field) noexcept {
+        value_ = static_cast<storage_type>(value_ | bit(field));
+    }
+
+    constexpr void set(FFieldMask9 const fields) noexcept {
+        value_ = static_cast<storage_type>(value_ | fields.value_);
+    }
+
     constexpr void clear(EField9 const field) noexcept {
         value_ = static_cast<storage_type>(value_ & ~bit(field));
     }
-
     [[nodiscard]] static constexpr auto values_field(std::int32_t const value_index) noexcept
         -> EField9 {
         return static_cast<EField9>(static_cast<std::int32_t>(EField9::Values) + value_index);
@@ -120,20 +138,22 @@ struct FFieldMask9 {
     [[nodiscard]] static constexpr auto bit(EField9 const field) noexcept -> storage_type {
         return static_cast<storage_type>(std::uint64_t{1} << static_cast<std::uint8_t>(field));
     }
-
     storage_type value_{};
 };
+
 static_assert(sizeof(FFieldMask9) == sizeof(FFieldMask9::storage_type));
+
 static_assert(std::is_trivially_copyable_v<FFieldMask9>);
 
-struct FMaskRows9LayoutColumns {
+namespace f_mask_rows9 {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<FFieldMask9> MasksColumn;
     ColLayout<std::int32_t> ValuesColumn;
     ColLayout<std::int32_t> TailColumn;
 
-    constexpr explicit FMaskRows9LayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : MasksColumn{previous}
         , ValuesColumn{MasksColumn}
@@ -142,45 +162,53 @@ struct FMaskRows9LayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return TailColumn;
     }
-    FMaskRows9LayoutColumns(FMaskRows9LayoutColumns const&) = delete;
-    auto operator=(FMaskRows9LayoutColumns const&) -> FMaskRows9LayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-
-struct FMaskRows16Schema;
+} // namespace f_mask_rows9
 
 enum class EField16 : std::uint8_t {
     Values = 0,
     Count = static_cast<std::uint8_t>(Values) + (16),
 };
-
 struct FFieldMask16 {
     inline static constexpr std::int32_t field_count{static_cast<std::int32_t>(EField16::Count)};
+
     static_assert(field_count <= 64, "Field mask exceeds 64 bits.");
+
     using storage_type = std::conditional_t<
         field_count <= 8,
         std::uint8_t,
         std::conditional_t<field_count <= 16,
                            std::uint16_t,
                            std::conditional_t<field_count <= 32, std::uint32_t, std::uint64_t>>>;
-
     constexpr FFieldMask16() noexcept = default;
-    explicit constexpr FFieldMask16(storage_type const value) noexcept
-        : value_{value} {}
 
+    constexpr explicit FFieldMask16(storage_type const value) noexcept
+        : value_{value} {}
     [[nodiscard]] constexpr auto value() const noexcept -> storage_type { return value_; }
+
     [[nodiscard]] constexpr auto is_empty() const noexcept -> bool { return value_ == 0; }
+
     [[nodiscard]] constexpr auto has(EField16 const field) const noexcept -> bool {
         return (value_ & bit(field)) != 0;
     }
+
     [[nodiscard]] static constexpr auto index(EField16 const field) noexcept -> std::int32_t {
         return static_cast<std::int32_t>(field);
     }
-    constexpr void set(EField16 const field) noexcept { value_ |= bit(field); }
-    constexpr void set(FFieldMask16 const fields) noexcept { value_ |= fields.value_; }
+
+    constexpr void set(EField16 const field) noexcept {
+        value_ = static_cast<storage_type>(value_ | bit(field));
+    }
+
+    constexpr void set(FFieldMask16 const fields) noexcept {
+        value_ = static_cast<storage_type>(value_ | fields.value_);
+    }
+
     constexpr void clear(EField16 const field) noexcept {
         value_ = static_cast<storage_type>(value_ & ~bit(field));
     }
-
     [[nodiscard]] static constexpr auto values_field(std::int32_t const value_index) noexcept
         -> EField16 {
         return static_cast<EField16>(static_cast<std::int32_t>(EField16::Values) + value_index);
@@ -189,19 +217,21 @@ struct FFieldMask16 {
     [[nodiscard]] static constexpr auto bit(EField16 const field) noexcept -> storage_type {
         return static_cast<storage_type>(std::uint64_t{1} << static_cast<std::uint8_t>(field));
     }
-
     storage_type value_{};
 };
+
 static_assert(sizeof(FFieldMask16) == sizeof(FFieldMask16::storage_type));
+
 static_assert(std::is_trivially_copyable_v<FFieldMask16>);
 
-struct FMaskRows16LayoutColumns {
+namespace f_mask_rows16 {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<FFieldMask16> MasksColumn;
     ColLayout<std::int32_t> ValuesColumn;
 
-    constexpr explicit FMaskRows16LayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : MasksColumn{previous}
         , ValuesColumn{MasksColumn} {}
@@ -209,45 +239,53 @@ struct FMaskRows16LayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return ValuesColumn;
     }
-    FMaskRows16LayoutColumns(FMaskRows16LayoutColumns const&) = delete;
-    auto operator=(FMaskRows16LayoutColumns const&) -> FMaskRows16LayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-
-struct FMaskRows17Schema;
+} // namespace f_mask_rows16
 
 enum class EField17 : std::uint8_t {
     Values = 0,
     Count = static_cast<std::uint8_t>(Values) + (17),
 };
-
 struct FFieldMask17 {
     inline static constexpr std::int32_t field_count{static_cast<std::int32_t>(EField17::Count)};
+
     static_assert(field_count <= 64, "Field mask exceeds 64 bits.");
+
     using storage_type = std::conditional_t<
         field_count <= 8,
         std::uint8_t,
         std::conditional_t<field_count <= 16,
                            std::uint16_t,
                            std::conditional_t<field_count <= 32, std::uint32_t, std::uint64_t>>>;
-
     constexpr FFieldMask17() noexcept = default;
-    explicit constexpr FFieldMask17(storage_type const value) noexcept
-        : value_{value} {}
 
+    constexpr explicit FFieldMask17(storage_type const value) noexcept
+        : value_{value} {}
     [[nodiscard]] constexpr auto value() const noexcept -> storage_type { return value_; }
+
     [[nodiscard]] constexpr auto is_empty() const noexcept -> bool { return value_ == 0; }
+
     [[nodiscard]] constexpr auto has(EField17 const field) const noexcept -> bool {
         return (value_ & bit(field)) != 0;
     }
+
     [[nodiscard]] static constexpr auto index(EField17 const field) noexcept -> std::int32_t {
         return static_cast<std::int32_t>(field);
     }
-    constexpr void set(EField17 const field) noexcept { value_ |= bit(field); }
-    constexpr void set(FFieldMask17 const fields) noexcept { value_ |= fields.value_; }
+
+    constexpr void set(EField17 const field) noexcept {
+        value_ = static_cast<storage_type>(value_ | bit(field));
+    }
+
+    constexpr void set(FFieldMask17 const fields) noexcept {
+        value_ = static_cast<storage_type>(value_ | fields.value_);
+    }
+
     constexpr void clear(EField17 const field) noexcept {
         value_ = static_cast<storage_type>(value_ & ~bit(field));
     }
-
     [[nodiscard]] static constexpr auto values_field(std::int32_t const value_index) noexcept
         -> EField17 {
         return static_cast<EField17>(static_cast<std::int32_t>(EField17::Values) + value_index);
@@ -256,19 +294,21 @@ struct FFieldMask17 {
     [[nodiscard]] static constexpr auto bit(EField17 const field) noexcept -> storage_type {
         return static_cast<storage_type>(std::uint64_t{1} << static_cast<std::uint8_t>(field));
     }
-
     storage_type value_{};
 };
+
 static_assert(sizeof(FFieldMask17) == sizeof(FFieldMask17::storage_type));
+
 static_assert(std::is_trivially_copyable_v<FFieldMask17>);
 
-struct FMaskRows17LayoutColumns {
+namespace f_mask_rows17 {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<FFieldMask17> MasksColumn;
     ColLayout<std::int32_t> ValuesColumn;
 
-    constexpr explicit FMaskRows17LayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : MasksColumn{previous}
         , ValuesColumn{MasksColumn} {}
@@ -276,45 +316,53 @@ struct FMaskRows17LayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return ValuesColumn;
     }
-    FMaskRows17LayoutColumns(FMaskRows17LayoutColumns const&) = delete;
-    auto operator=(FMaskRows17LayoutColumns const&) -> FMaskRows17LayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-
-struct FMaskRows32Schema;
+} // namespace f_mask_rows17
 
 enum class EField32 : std::uint8_t {
     Values = 0,
     Count = static_cast<std::uint8_t>(Values) + (32),
 };
-
 struct FFieldMask32 {
     inline static constexpr std::int32_t field_count{static_cast<std::int32_t>(EField32::Count)};
+
     static_assert(field_count <= 64, "Field mask exceeds 64 bits.");
+
     using storage_type = std::conditional_t<
         field_count <= 8,
         std::uint8_t,
         std::conditional_t<field_count <= 16,
                            std::uint16_t,
                            std::conditional_t<field_count <= 32, std::uint32_t, std::uint64_t>>>;
-
     constexpr FFieldMask32() noexcept = default;
-    explicit constexpr FFieldMask32(storage_type const value) noexcept
-        : value_{value} {}
 
+    constexpr explicit FFieldMask32(storage_type const value) noexcept
+        : value_{value} {}
     [[nodiscard]] constexpr auto value() const noexcept -> storage_type { return value_; }
+
     [[nodiscard]] constexpr auto is_empty() const noexcept -> bool { return value_ == 0; }
+
     [[nodiscard]] constexpr auto has(EField32 const field) const noexcept -> bool {
         return (value_ & bit(field)) != 0;
     }
+
     [[nodiscard]] static constexpr auto index(EField32 const field) noexcept -> std::int32_t {
         return static_cast<std::int32_t>(field);
     }
-    constexpr void set(EField32 const field) noexcept { value_ |= bit(field); }
-    constexpr void set(FFieldMask32 const fields) noexcept { value_ |= fields.value_; }
+
+    constexpr void set(EField32 const field) noexcept {
+        value_ = static_cast<storage_type>(value_ | bit(field));
+    }
+
+    constexpr void set(FFieldMask32 const fields) noexcept {
+        value_ = static_cast<storage_type>(value_ | fields.value_);
+    }
+
     constexpr void clear(EField32 const field) noexcept {
         value_ = static_cast<storage_type>(value_ & ~bit(field));
     }
-
     [[nodiscard]] static constexpr auto values_field(std::int32_t const value_index) noexcept
         -> EField32 {
         return static_cast<EField32>(static_cast<std::int32_t>(EField32::Values) + value_index);
@@ -323,19 +371,21 @@ struct FFieldMask32 {
     [[nodiscard]] static constexpr auto bit(EField32 const field) noexcept -> storage_type {
         return static_cast<storage_type>(std::uint64_t{1} << static_cast<std::uint8_t>(field));
     }
-
     storage_type value_{};
 };
+
 static_assert(sizeof(FFieldMask32) == sizeof(FFieldMask32::storage_type));
+
 static_assert(std::is_trivially_copyable_v<FFieldMask32>);
 
-struct FMaskRows32LayoutColumns {
+namespace f_mask_rows32 {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<FFieldMask32> MasksColumn;
     ColLayout<std::int32_t> ValuesColumn;
 
-    constexpr explicit FMaskRows32LayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : MasksColumn{previous}
         , ValuesColumn{MasksColumn} {}
@@ -343,45 +393,53 @@ struct FMaskRows32LayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return ValuesColumn;
     }
-    FMaskRows32LayoutColumns(FMaskRows32LayoutColumns const&) = delete;
-    auto operator=(FMaskRows32LayoutColumns const&) -> FMaskRows32LayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-
-struct FMaskRows33Schema;
+} // namespace f_mask_rows32
 
 enum class EField33 : std::uint8_t {
     Values = 0,
     Count = static_cast<std::uint8_t>(Values) + (33),
 };
-
 struct FFieldMask33 {
     inline static constexpr std::int32_t field_count{static_cast<std::int32_t>(EField33::Count)};
+
     static_assert(field_count <= 64, "Field mask exceeds 64 bits.");
+
     using storage_type = std::conditional_t<
         field_count <= 8,
         std::uint8_t,
         std::conditional_t<field_count <= 16,
                            std::uint16_t,
                            std::conditional_t<field_count <= 32, std::uint32_t, std::uint64_t>>>;
-
     constexpr FFieldMask33() noexcept = default;
-    explicit constexpr FFieldMask33(storage_type const value) noexcept
-        : value_{value} {}
 
+    constexpr explicit FFieldMask33(storage_type const value) noexcept
+        : value_{value} {}
     [[nodiscard]] constexpr auto value() const noexcept -> storage_type { return value_; }
+
     [[nodiscard]] constexpr auto is_empty() const noexcept -> bool { return value_ == 0; }
+
     [[nodiscard]] constexpr auto has(EField33 const field) const noexcept -> bool {
         return (value_ & bit(field)) != 0;
     }
+
     [[nodiscard]] static constexpr auto index(EField33 const field) noexcept -> std::int32_t {
         return static_cast<std::int32_t>(field);
     }
-    constexpr void set(EField33 const field) noexcept { value_ |= bit(field); }
-    constexpr void set(FFieldMask33 const fields) noexcept { value_ |= fields.value_; }
+
+    constexpr void set(EField33 const field) noexcept {
+        value_ = static_cast<storage_type>(value_ | bit(field));
+    }
+
+    constexpr void set(FFieldMask33 const fields) noexcept {
+        value_ = static_cast<storage_type>(value_ | fields.value_);
+    }
+
     constexpr void clear(EField33 const field) noexcept {
         value_ = static_cast<storage_type>(value_ & ~bit(field));
     }
-
     [[nodiscard]] static constexpr auto values_field(std::int32_t const value_index) noexcept
         -> EField33 {
         return static_cast<EField33>(static_cast<std::int32_t>(EField33::Values) + value_index);
@@ -390,19 +448,21 @@ struct FFieldMask33 {
     [[nodiscard]] static constexpr auto bit(EField33 const field) noexcept -> storage_type {
         return static_cast<storage_type>(std::uint64_t{1} << static_cast<std::uint8_t>(field));
     }
-
     storage_type value_{};
 };
+
 static_assert(sizeof(FFieldMask33) == sizeof(FFieldMask33::storage_type));
+
 static_assert(std::is_trivially_copyable_v<FFieldMask33>);
 
-struct FMaskRows33LayoutColumns {
+namespace f_mask_rows33 {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<FFieldMask33> MasksColumn;
     ColLayout<std::int32_t> ValuesColumn;
 
-    constexpr explicit FMaskRows33LayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : MasksColumn{previous}
         , ValuesColumn{MasksColumn} {}
@@ -410,7 +470,8 @@ struct FMaskRows33LayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return ValuesColumn;
     }
-    FMaskRows33LayoutColumns(FMaskRows33LayoutColumns const&) = delete;
-    auto operator=(FMaskRows33LayoutColumns const&) -> FMaskRows33LayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
+} // namespace f_mask_rows33
 } // namespace codegen_compile_fixture

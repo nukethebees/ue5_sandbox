@@ -19,16 +19,17 @@
 #include <string_view>
 
 namespace ioj::layout {
-struct ComponentTableSchema;
-struct ComponentTableResolvedView;
-struct ComponentTableResolvedConstView;
-struct ComponentTableView;
-struct ComponentTableConstView;
+namespace component_table {
+struct Schema;
+struct View;
+struct ConstView;
+struct ResolvedView;
+struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct ComponentTableLayoutColumns {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<AnalysisId> ParentColumn;
@@ -42,7 +43,7 @@ struct ComponentTableLayoutColumns {
     ColLayout<std::optional<std::uint64_t>> PaddingBeforeBytesColumn;
     ColLayout<std::optional<std::uint64_t>> SlackBytesColumn;
 
-    constexpr explicit ComponentTableLayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : ParentColumn{previous}
         , NameColumn{ParentColumn}
@@ -58,35 +59,34 @@ struct ComponentTableLayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return SlackBytesColumn;
     }
-    ComponentTableLayoutColumns(ComponentTableLayoutColumns const&) = delete;
-    auto operator=(ComponentTableLayoutColumns const&) -> ComponentTableLayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-struct ComponentTableLayout : ioj::single_allocation_layout::Layout<ComponentTableLayoutColumns> {};
+struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ComponentTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
+struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
-    using View = ComponentTableResolvedView;
-    using ConstView = ComponentTableResolvedConstView;
-    using soa_schema = ::ioj::layout::ComponentTableSchema;
+    using view_type = ::ioj::layout::component_table::ResolvedView;
+    using const_view_type = ::ioj::layout::component_table::ResolvedConstView;
+    using soa_schema = ::ioj::layout::component_table::Schema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    ComponentTableResolvedViewImpl() = default;
-    ComponentTableResolvedViewImpl(
-        Element<ioj::layout::AnalysisId>* parent,
-        Element<std::string_view>* name,
-        Element<std::string_view>* tag,
-        Element<lispb::schema::TypeId>* semantic_type,
-        Element<std::uint64_t>* element_count,
-        Element<std::optional<ioj::layout::PhysicalFactId>>* element_facts,
-        Element<std::optional<std::uint64_t>>* offset_bytes,
-        Element<std::optional<std::uint64_t>>* extent_bytes,
-        Element<std::optional<std::uint64_t>>* padding_before_bytes,
-        Element<std::optional<std::uint64_t>>* slack_bytes,
-        size_type count)
+    ResolvedViewImpl() = default;
+    ResolvedViewImpl(Element<ioj::layout::AnalysisId>* parent,
+                     Element<std::string_view>* name,
+                     Element<std::string_view>* tag,
+                     Element<lispb::schema::TypeId>* semantic_type,
+                     Element<std::uint64_t>* element_count,
+                     Element<std::optional<ioj::layout::PhysicalFactId>>* element_facts,
+                     Element<std::optional<std::uint64_t>>* offset_bytes,
+                     Element<std::optional<std::uint64_t>>* extent_bytes,
+                     Element<std::optional<std::uint64_t>>* padding_before_bytes,
+                     Element<std::optional<std::uint64_t>>* slack_bytes,
+                     size_type count)
         : parent_{parent}
         , name_{name}
         , tag_{tag}
@@ -110,29 +110,27 @@ struct ComponentTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations 
                                                           padding_before_bytes_,
                                                           slack_bytes_);
     }
-    ComponentTableResolvedViewImpl(
-        std::span<Element<ioj::layout::AnalysisId>> parent,
-        std::span<Element<std::string_view>> name,
-        std::span<Element<std::string_view>> tag,
-        std::span<Element<lispb::schema::TypeId>> semantic_type,
-        std::span<Element<std::uint64_t>> element_count,
-        std::span<Element<std::optional<ioj::layout::PhysicalFactId>>> element_facts,
-        std::span<Element<std::optional<std::uint64_t>>> offset_bytes,
-        std::span<Element<std::optional<std::uint64_t>>> extent_bytes,
-        std::span<Element<std::optional<std::uint64_t>>> padding_before_bytes,
-        std::span<Element<std::optional<std::uint64_t>>> slack_bytes)
-        : ComponentTableResolvedViewImpl{
-              parent.data(),
-              name.data(),
-              tag.data(),
-              semantic_type.data(),
-              element_count.data(),
-              element_facts.data(),
-              offset_bytes.data(),
-              extent_bytes.data(),
-              padding_before_bytes.data(),
-              slack_bytes.data(),
-              ioj::soa_storage_detail::checked_row_count(parent.size())} {
+    ResolvedViewImpl(std::span<Element<ioj::layout::AnalysisId>> parent,
+                     std::span<Element<std::string_view>> name,
+                     std::span<Element<std::string_view>> tag,
+                     std::span<Element<lispb::schema::TypeId>> semantic_type,
+                     std::span<Element<std::uint64_t>> element_count,
+                     std::span<Element<std::optional<ioj::layout::PhysicalFactId>>> element_facts,
+                     std::span<Element<std::optional<std::uint64_t>>> offset_bytes,
+                     std::span<Element<std::optional<std::uint64_t>>> extent_bytes,
+                     std::span<Element<std::optional<std::uint64_t>>> padding_before_bytes,
+                     std::span<Element<std::optional<std::uint64_t>>> slack_bytes)
+        : ResolvedViewImpl{parent.data(),
+                           name.data(),
+                           tag.data(),
+                           semantic_type.data(),
+                           element_count.data(),
+                           element_facts.data(),
+                           offset_bytes.data(),
+                           extent_bytes.data(),
+                           padding_before_bytes.data(),
+                           slack_bytes.data(),
+                           ioj::soa_storage_detail::checked_row_count(parent.size())} {
         ioj::soa_storage_detail::validate_column_sizes(count_,
                                                        parent,
                                                        name,
@@ -146,7 +144,7 @@ struct ComponentTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations 
                                                        slack_bytes);
     }
     template <bool Enabled = Const>
-    ComponentTableResolvedViewImpl(ComponentTableResolvedViewImpl<false> const& other)
+    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : parent_{other.parent_}
         , name_{other.name_}
@@ -202,7 +200,7 @@ struct ComponentTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations 
     }
   private:
     template <bool>
-    friend struct ComponentTableResolvedViewImpl;
+    friend struct ResolvedViewImpl;
     Element<ioj::layout::AnalysisId>* parent_{};
     Element<std::string_view>* name_{};
     Element<std::string_view>* tag_{};
@@ -215,12 +213,12 @@ struct ComponentTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations 
     Element<std::optional<std::uint64_t>>* slack_bytes_{};
     size_type count_{};
 };
-struct ComponentTableResolvedConstView : ComponentTableResolvedViewImpl<true> {
-    using Base = ComponentTableResolvedViewImpl<true>;
+struct ResolvedConstView : ResolvedViewImpl<true> {
+    using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ComponentTableResolvedView : ComponentTableResolvedViewImpl<false> {
-    using Base = ComponentTableResolvedViewImpl<false>;
+struct ResolvedView : ResolvedViewImpl<false> {
+    using Base = ResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::layout::AnalysisId const new_parent,
@@ -251,15 +249,15 @@ struct ComponentTableResolvedView : ComponentTableResolvedViewImpl<false> {
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct ComponentTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = ComponentTableSchema;
+struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = ::ioj::layout::component_table::Schema;
     using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = ComponentTableLayout;
-    using View = ComponentTableView;
-    using ConstView = ComponentTableConstView;
+    using Layout = ::ioj::layout::component_table::Layout;
+    using view_type = ::ioj::layout::component_table::View;
+    using const_view_type = ::ioj::layout::component_table::ConstView;
     template <bool Enabled = Const>
-    ComponentTableViewImpl(ComponentTableViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto parent() const { return this->column(Layout::columns.ParentColumn); }
@@ -287,8 +285,9 @@ struct ComponentTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> 
         func(padding_before_bytes());
         func(slack_bytes());
     }
-    auto resolve() const
-        -> std::conditional_t<Const, ComponentTableResolvedConstView, ComponentTableResolvedView> {
+    auto resolve() const -> std::conditional_t<Const,
+                                               ::ioj::layout::component_table::ResolvedConstView,
+                                               ::ioj::layout::component_table::ResolvedView> {
         return {this->column(Layout::columns.ParentColumn).data(),
                 this->column(Layout::columns.NameColumn).data(),
                 this->column(Layout::columns.TagColumn).data(),
@@ -299,16 +298,16 @@ struct ComponentTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> 
                 this->column(Layout::columns.ExtentBytesColumn).data(),
                 this->column(Layout::columns.PaddingBeforeBytesColumn).data(),
                 this->column(Layout::columns.SlackBytesColumn).data(),
-                this->count_};
+                this->num()};
     }
 };
-struct ComponentTableConstView : ComponentTableViewImpl<true> {
-    using Base = ComponentTableViewImpl<true>;
+struct ConstView : ViewImpl<true> {
+    using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<ComponentTableConstView>());
-struct ComponentTableView : ComponentTableViewImpl<false> {
-    using Base = ComponentTableViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
+struct View : ViewImpl<false> {
+    using Base = ViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::layout::AnalysisId const new_parent,
@@ -334,7 +333,9 @@ struct ComponentTableView : ComponentTableViewImpl<false> {
         this->slack_bytes()[index] = new_slack_bytes;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<ComponentTableView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+
+} // namespace component_table
 
 /* **************************************** */
 // Owner
@@ -353,9 +354,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<ComponentTableView>
 struct ComponentTable
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
-    using soa_schema = ComponentTableSchema;
+    using soa_schema = ::ioj::layout::component_table::Schema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ComponentTableLayout;
+    using Layout = ::ioj::layout::component_table::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -368,8 +369,8 @@ struct ComponentTable
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ComponentTableView;
-    using ConstView = ComponentTableConstView;
+    using View = ::ioj::layout::component_table::View;
+    using ConstView = ::ioj::layout::component_table::ConstView;
 
     /* **************************************** */
     // Lifetime

@@ -15,7 +15,6 @@
 #include <type_traits>
 
 namespace ioj::sim::telemetry {
-struct HistoryRowsSchema;
 
 enum class HistoryField : std::uint8_t {
     ActiveEntities = 0,
@@ -30,70 +29,81 @@ enum class HistoryField : std::uint8_t {
     LasersFired = static_cast<std::uint8_t>(ActiveLasers) + 1,
     Count = static_cast<std::uint8_t>(LasersFired) + 1,
 };
-
 struct HistoryFieldMask {
     inline static constexpr std::int32_t field_count{
         static_cast<std::int32_t>(HistoryField::Count)};
+
     static_assert(field_count <= 64, "Field mask exceeds 64 bits.");
+
     using storage_type = std::conditional_t<
         field_count <= 8,
         std::uint8_t,
         std::conditional_t<field_count <= 16,
                            std::uint16_t,
                            std::conditional_t<field_count <= 32, std::uint32_t, std::uint64_t>>>;
-
     constexpr HistoryFieldMask() noexcept = default;
-    explicit constexpr HistoryFieldMask(storage_type const value) noexcept
-        : value_{value} {}
 
+    constexpr explicit HistoryFieldMask(storage_type const value) noexcept
+        : value_{value} {}
     [[nodiscard]] constexpr auto value() const noexcept -> storage_type { return value_; }
+
     [[nodiscard]] constexpr auto is_empty() const noexcept -> bool { return value_ == 0; }
+
     [[nodiscard]] constexpr auto has(HistoryField const field) const noexcept -> bool {
         return (value_ & bit(field)) != 0;
     }
+
     [[nodiscard]] static constexpr auto index(HistoryField const field) noexcept -> std::int32_t {
         return static_cast<std::int32_t>(field);
     }
-    constexpr void set(HistoryField const field) noexcept { value_ |= bit(field); }
-    constexpr void set(HistoryFieldMask const fields) noexcept { value_ |= fields.value_; }
+
+    constexpr void set(HistoryField const field) noexcept {
+        value_ = static_cast<storage_type>(value_ | bit(field));
+    }
+
+    constexpr void set(HistoryFieldMask const fields) noexcept {
+        value_ = static_cast<storage_type>(value_ | fields.value_);
+    }
+
     constexpr void clear(HistoryField const field) noexcept {
         value_ = static_cast<storage_type>(value_ & ~bit(field));
     }
-
     [[nodiscard]] static constexpr auto
         active_entities_by_type_field(std::int32_t const entity_type_index) noexcept
         -> HistoryField {
         return static_cast<HistoryField>(
             static_cast<std::int32_t>(HistoryField::ActiveEntitiesByType) + entity_type_index);
     }
-
     [[nodiscard]] static constexpr auto
         active_entities_by_team_and_type_field(std::int32_t const team_index,
                                                std::int32_t const entity_type_index) noexcept
         -> HistoryField {
         return static_cast<HistoryField>(
             static_cast<std::int32_t>(HistoryField::ActiveEntitiesByTeamAndType) +
-            team_index * (entity_type_count) + entity_type_index);
+            (team_index * (entity_type_count) + entity_type_index));
     }
   private:
     [[nodiscard]] static constexpr auto bit(HistoryField const field) noexcept -> storage_type {
         return static_cast<storage_type>(std::uint64_t{1} << static_cast<std::uint8_t>(field));
     }
-
     storage_type value_{};
 };
+
 static_assert(sizeof(HistoryFieldMask) == sizeof(HistoryFieldMask::storage_type));
+
 static_assert(std::is_trivially_copyable_v<HistoryFieldMask>);
 
-struct HistoryRowsResolvedView;
-struct HistoryRowsResolvedConstView;
-struct HistoryRowsView;
-struct HistoryRowsConstView;
+namespace history_rows {
+struct Schema;
+struct View;
+struct ConstView;
+struct ResolvedView;
+struct ResolvedConstView;
 
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct HistoryRowsLayoutColumns {
+struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<SimTick> CompletedTicksColumn;
@@ -107,7 +117,7 @@ struct HistoryRowsLayoutColumns {
     ColLayout<std::int32_t> ActiveLasersColumn;
     ColLayout<std::int32_t> LasersFiredColumn;
 
-    constexpr explicit HistoryRowsLayoutColumns(
+    constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : CompletedTicksColumn{previous}
         , ValidityMasksColumn{CompletedTicksColumn}
@@ -123,35 +133,34 @@ struct HistoryRowsLayoutColumns {
         -> ioj::single_allocation_layout::ColumnLayoutBase const& {
         return LasersFiredColumn;
     }
-    HistoryRowsLayoutColumns(HistoryRowsLayoutColumns const&) = delete;
-    auto operator=(HistoryRowsLayoutColumns const&) -> HistoryRowsLayoutColumns& = delete;
+    LayoutColumns(LayoutColumns const&) = delete;
+    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
 };
-struct HistoryRowsLayout : ioj::single_allocation_layout::Layout<HistoryRowsLayoutColumns> {};
+struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct HistoryRowsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
+struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
-    using View = HistoryRowsResolvedView;
-    using ConstView = HistoryRowsResolvedConstView;
-    using soa_schema = ::ioj::sim::telemetry::HistoryRowsSchema;
+    using view_type = ::ioj::sim::telemetry::history_rows::ResolvedView;
+    using const_view_type = ::ioj::sim::telemetry::history_rows::ResolvedConstView;
+    using soa_schema = ::ioj::sim::telemetry::history_rows::Schema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    HistoryRowsResolvedViewImpl() = default;
-    HistoryRowsResolvedViewImpl(
-        Element<SimTick>* completed_ticks,
-        Element<HistoryFieldMask>* validity_masks,
-        Element<std::int32_t>* active_entities,
-        Element<ioj::sim::telemetry::EntityTypeCounts>* active_entities_by_type,
-        Element<ioj::sim::telemetry::EntityCounts>* active_entities_by_team_and_type,
-        Element<std::int32_t>* spawned_entities,
-        Element<std::int32_t>* destroyed_entities,
-        Element<std::int32_t>* kills,
-        Element<std::int32_t>* active_lasers,
-        Element<std::int32_t>* lasers_fired,
-        size_type count)
+    ResolvedViewImpl() = default;
+    ResolvedViewImpl(Element<SimTick>* completed_ticks,
+                     Element<HistoryFieldMask>* validity_masks,
+                     Element<std::int32_t>* active_entities,
+                     Element<ioj::sim::telemetry::EntityTypeCounts>* active_entities_by_type,
+                     Element<ioj::sim::telemetry::EntityCounts>* active_entities_by_team_and_type,
+                     Element<std::int32_t>* spawned_entities,
+                     Element<std::int32_t>* destroyed_entities,
+                     Element<std::int32_t>* kills,
+                     Element<std::int32_t>* active_lasers,
+                     Element<std::int32_t>* lasers_fired,
+                     size_type count)
         : completed_ticks_{completed_ticks}
         , validity_masks_{validity_masks}
         , active_entities_{active_entities}
@@ -175,7 +184,7 @@ struct HistoryRowsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                                                           active_lasers_,
                                                           lasers_fired_);
     }
-    HistoryRowsResolvedViewImpl(
+    ResolvedViewImpl(
         std::span<Element<SimTick>> completed_ticks,
         std::span<Element<HistoryFieldMask>> validity_masks,
         std::span<Element<std::int32_t>> active_entities,
@@ -186,18 +195,17 @@ struct HistoryRowsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         std::span<Element<std::int32_t>> kills,
         std::span<Element<std::int32_t>> active_lasers,
         std::span<Element<std::int32_t>> lasers_fired)
-        : HistoryRowsResolvedViewImpl{
-              completed_ticks.data(),
-              validity_masks.data(),
-              active_entities.data(),
-              active_entities_by_type.data(),
-              active_entities_by_team_and_type.data(),
-              spawned_entities.data(),
-              destroyed_entities.data(),
-              kills.data(),
-              active_lasers.data(),
-              lasers_fired.data(),
-              ioj::soa_storage_detail::checked_row_count(completed_ticks.size())} {
+        : ResolvedViewImpl{completed_ticks.data(),
+                           validity_masks.data(),
+                           active_entities.data(),
+                           active_entities_by_type.data(),
+                           active_entities_by_team_and_type.data(),
+                           spawned_entities.data(),
+                           destroyed_entities.data(),
+                           kills.data(),
+                           active_lasers.data(),
+                           lasers_fired.data(),
+                           ioj::soa_storage_detail::checked_row_count(completed_ticks.size())} {
         ioj::soa_storage_detail::validate_column_sizes(count_,
                                                        completed_ticks,
                                                        validity_masks,
@@ -211,7 +219,7 @@ struct HistoryRowsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                                                        lasers_fired);
     }
     template <bool Enabled = Const>
-    HistoryRowsResolvedViewImpl(HistoryRowsResolvedViewImpl<false> const& other)
+    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : completed_ticks_{other.completed_ticks_}
         , validity_masks_{other.validity_masks_}
@@ -272,7 +280,7 @@ struct HistoryRowsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     }
   private:
     template <bool>
-    friend struct HistoryRowsResolvedViewImpl;
+    friend struct ResolvedViewImpl;
     Element<SimTick>* completed_ticks_{};
     Element<HistoryFieldMask>* validity_masks_{};
     Element<std::int32_t>* active_entities_{};
@@ -285,12 +293,12 @@ struct HistoryRowsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<std::int32_t>* lasers_fired_{};
     size_type count_{};
 };
-struct HistoryRowsResolvedConstView : HistoryRowsResolvedViewImpl<true> {
-    using Base = HistoryRowsResolvedViewImpl<true>;
+struct ResolvedConstView : ResolvedViewImpl<true> {
+    using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct HistoryRowsResolvedView : HistoryRowsResolvedViewImpl<false> {
-    using Base = HistoryRowsResolvedViewImpl<false>;
+struct ResolvedView : ResolvedViewImpl<false> {
+    using Base = ResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              SimTick const new_completed_ticks,
@@ -321,15 +329,15 @@ struct HistoryRowsResolvedView : HistoryRowsResolvedViewImpl<false> {
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct HistoryRowsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = HistoryRowsSchema;
+struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = ::ioj::sim::telemetry::history_rows::Schema;
     using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = HistoryRowsLayout;
-    using View = HistoryRowsView;
-    using ConstView = HistoryRowsConstView;
+    using Layout = ::ioj::sim::telemetry::history_rows::Layout;
+    using view_type = ::ioj::sim::telemetry::history_rows::View;
+    using const_view_type = ::ioj::sim::telemetry::history_rows::ConstView;
     template <bool Enabled = Const>
-    HistoryRowsViewImpl(HistoryRowsViewImpl<false> const& other)
+    ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto completed_ticks() const { return this->column(Layout::columns.CompletedTicksColumn); }
@@ -362,7 +370,9 @@ struct HistoryRowsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         func(lasers_fired());
     }
     auto resolve() const
-        -> std::conditional_t<Const, HistoryRowsResolvedConstView, HistoryRowsResolvedView> {
+        -> std::conditional_t<Const,
+                              ::ioj::sim::telemetry::history_rows::ResolvedConstView,
+                              ::ioj::sim::telemetry::history_rows::ResolvedView> {
         return {this->column(Layout::columns.CompletedTicksColumn).data(),
                 this->column(Layout::columns.ValidityMasksColumn).data(),
                 this->column(Layout::columns.ActiveEntitiesColumn).data(),
@@ -373,16 +383,16 @@ struct HistoryRowsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                 this->column(Layout::columns.KillsColumn).data(),
                 this->column(Layout::columns.ActiveLasersColumn).data(),
                 this->column(Layout::columns.LasersFiredColumn).data(),
-                this->count_};
+                this->num()};
     }
 };
-struct HistoryRowsConstView : HistoryRowsViewImpl<true> {
-    using Base = HistoryRowsViewImpl<true>;
+struct ConstView : ViewImpl<true> {
+    using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<HistoryRowsConstView>());
-struct HistoryRowsView : HistoryRowsViewImpl<false> {
-    using Base = HistoryRowsViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
+struct View : ViewImpl<false> {
+    using Base = ViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              SimTick const new_completed_ticks,
@@ -408,7 +418,9 @@ struct HistoryRowsView : HistoryRowsViewImpl<false> {
         this->lasers_fired()[index] = new_lasers_fired;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<HistoryRowsView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+
+} // namespace history_rows
 
 /* **************************************** */
 // Owner
@@ -427,9 +439,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<HistoryRowsView>())
 struct HistoryRows
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
-    using soa_schema = HistoryRowsSchema;
+    using soa_schema = ::ioj::sim::telemetry::history_rows::Schema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = HistoryRowsLayout;
+    using Layout = ::ioj::sim::telemetry::history_rows::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -442,8 +454,8 @@ struct HistoryRows
         return Layout::layout_bytes(blocks);
     }
 
-    using View = HistoryRowsView;
-    using ConstView = HistoryRowsConstView;
+    using View = ::ioj::sim::telemetry::history_rows::View;
+    using ConstView = ::ioj::sim::telemetry::history_rows::ConstView;
 
     /* **************************************** */
     // Lifetime
