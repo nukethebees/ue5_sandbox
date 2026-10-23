@@ -10,7 +10,7 @@ namespace lispb::codegen::ir {
 
 struct InstanceMembers {
     std::vector<CppTypeId> type;
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<Expr> initializer;
 };
 

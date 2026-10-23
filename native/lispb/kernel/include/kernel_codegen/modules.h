@@ -14,8 +14,8 @@ namespace kernel_codegen::detail {
 class Modules {
   public:
     // Finish appending child ranges before adding another entry.
-    auto add(lispb::IdentifierId name, lispb::codegen::sexpr::SourceSpan span) -> ModuleId;
-    auto name(ModuleId const id) const -> lispb::IdentifierId { return name_[id.value]; }
+    auto add(lispb::StringId name, lispb::codegen::sexpr::SourceSpan span) -> ModuleId;
+    auto name(ModuleId const id) const -> lispb::StringId { return name_[id.value]; }
     auto span(ModuleId const id) const -> lispb::codegen::sexpr::SourceSpan {
         return span_[id.value];
     }
@@ -35,7 +35,7 @@ class Modules {
     void clear();
   private:
     std::vector<lispb::codegen::sexpr::HandleRange> expanded_variants_;
-    std::vector<lispb::IdentifierId> name_;
+    std::vector<lispb::StringId> name_;
     std::vector<lispb::codegen::sexpr::SourceSpan> span_;
     std::vector<lispb::codegen::sexpr::HandleRange> type_sets_ranges_;
     std::vector<TypeSetId> type_sets_;

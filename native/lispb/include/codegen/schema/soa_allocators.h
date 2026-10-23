@@ -13,7 +13,7 @@ struct SoaAllocators {
     [[nodiscard]] auto index(SoaAllocatorVariantId id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> prefix;
+    std::vector<StringId> prefix;
     std::vector<TypeRefId> allocator;
 };
 

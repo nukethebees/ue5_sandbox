@@ -39,8 +39,7 @@ auto soa_view_struct_nodes(LoweringContext& context,
                            SoaFunctions const& functions,
                            LoweredSoa const& const_api,
                            LoweredSoa const& mutable_api,
-                           std::map<IdentifierId, DeclarationHandle> const* schemas = nullptr)
-    -> Nodes;
+                           std::map<StringId, DeclarationHandle> const* schemas = nullptr) -> Nodes;
 auto soa_storage_view_nodes(LoweringContext& context,
                             std::span<ResolvedMemberId const> members,
                             std::span<FunctionId const> functions) -> Nodes;
@@ -64,7 +63,7 @@ auto soa_storage_node(LoweringContext& context,
                       SoaFunctions const& functions,
                       Nodes& custom_source,
                       Nodes storage_prelude,
-                      std::map<IdentifierId, DeclarationHandle> const* schemas = nullptr) -> NodeId;
+                      std::map<StringId, DeclarationHandle> const* schemas = nullptr) -> NodeId;
 auto lower_soa(LoweringContext& context,
                DeclarationHandle schema,
                Nodes storage_prelude = {},
@@ -72,17 +71,17 @@ auto lower_soa(LoweringContext& context,
                Nodes view_prelude = {}) -> LoweredSoa;
 auto lower_fixed_nodes(LoweringContext& context,
                        DeclarationHandle schema,
-                       std::map<IdentifierId, DeclarationHandle> const& schemas,
+                       std::map<StringId, DeclarationHandle> const& schemas,
                        CppTypeId equivalent_set_type = {}) -> Nodes;
 
 auto lower_single_allocation(LoweringContext& context,
                              DeclarationHandle schema,
-                             std::map<IdentifierId, DeclarationHandle> const& schemas,
+                             std::map<StringId, DeclarationHandle> const& schemas,
                              SoaBackend backend) -> LoweredSoa;
 
 auto lower_native_soa(LoweringContext& context,
                       DeclarationHandle schema,
-                      std::map<IdentifierId, DeclarationHandle> const& schemas,
+                      std::map<StringId, DeclarationHandle> const& schemas,
                       bool allow_equivalent_type = false,
                       std::span<std::string const> equivalent_members = {},
                       StringId equivalent_constructor = {},

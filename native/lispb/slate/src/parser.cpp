@@ -34,7 +34,6 @@
 namespace slate_codegen::detail {
 namespace {
 
-using lispb::IdentifierId;
 using lispb::StringId;
 using lispb::codegen::sexpr::FormId;
 using lispb::codegen::sexpr::HandleRange;
@@ -132,8 +131,8 @@ class Parser {
         if (forms.count == 0) {
             fail({}, "document must contain at least one widget class or library");
         }
-        std::set<IdentifierId> owners{document_.declarations.names.begin(),
-                                      document_.declarations.names.end()};
+        std::set<StringId> owners{document_.declarations.names.begin(),
+                                  document_.declarations.names.end()};
         for (auto const form : syntax_.forms(forms)) {
             if (syntax_.head(form) != "widget-class" && syntax_.head(form) != "widget-library") {
                 fail(syntax_.token_span(form),
@@ -152,7 +151,7 @@ class Parser {
             }
             library_ = syntax_.head(form) == "widget-library";
             auto functions{start(document_.functions.names.size())};
-            std::set<IdentifierId> function_names;
+            std::set<StringId> function_names;
             auto const count{syntax_.children(form).size()};
             for (std::size_t index{2}; index < count; ++index) {
                 auto const function{syntax_.children(form)[index]};
@@ -181,11 +180,11 @@ class Parser {
         std::size_t uses{};
     };
     struct Argument {
-        IdentifierId name;
+        StringId name;
         ValueId value;
     };
     struct NamedSlot {
-        IdentifierId name;
+        StringId name;
         ChildId child;
     };
     struct BoxSlot {
@@ -421,7 +420,7 @@ class Parser {
 
     auto parse_margin(FormId const form) -> ValueId {
         auto values{start(document_.margin_values.size())};
-        IdentifierId binding{};
+        StringId binding{};
         if (syntax_.is_list(form)) {
             if (syntax_.children(form).size() != 2 && syntax_.children(form).size() != 4) {
                 fail(syntax_.closing_span(form), "padding tuple must contain two or four values");
@@ -533,7 +532,7 @@ class Parser {
     auto parse_widget(FormId const form) -> ChildId {
         std::size_t index{1};
         auto type{atom(syntax_.children(form)[0], "expected widget type")};
-        IdentifierId assigned{};
+        StringId assigned{};
         if (syntax_.head(form) == "assign") {
             if (library_) {
                 fail(syntax_.token_span(form),
@@ -559,8 +558,8 @@ class Parser {
         }
         std::vector<Argument> arguments;
         std::vector<NamedSlot> slots;
-        std::set<IdentifierId> argument_names;
-        std::set<IdentifierId> slot_names;
+        std::set<StringId> argument_names;
+        std::set<StringId> slot_names;
         ChildId content{};
         bool saw_child{};
         auto const count{syntax_.children(form).size()};
@@ -702,8 +701,8 @@ class Parser {
     Syntax& syntax_;
     Document& document_;
     bool library_{};
-    std::map<IdentifierId, ParameterState> parameter_states_;
-    std::set<IdentifierId> binding_names_;
+    std::map<StringId, ParameterState> parameter_states_;
+    std::set<StringId> binding_names_;
 };
 
 }

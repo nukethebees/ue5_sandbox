@@ -129,7 +129,7 @@ class CppTypes {
     std::vector<CppTypePart> parts_;
     std::vector<CppTypeDependencyRange> dependencies_;
     std::vector<ParameterPassing> passing_;
-    std::array<std::vector<IdentifierId>, 3> operations_;
+    std::array<std::vector<StringId>, 3> operations_;
     std::array<std::vector<ParameterPassing>, 3> operation_passing_;
     std::vector<TypeDependencyId> dependency_uses_;
     std::unordered_multimap<std::size_t, CppTypeDependencyRange> dependency_lists_;

@@ -42,14 +42,13 @@ auto LoweringStorage::items(SchemaRange<SingleAllocationColumnId> range) const
     -> std::span<SingleAllocationColumnId const> {
     return std::span{columns_}.subspan(range.offset, range.count);
 }
-auto LoweringStorage::save(std::span<IdentifierId const> values) -> SchemaRange<IdentifierId> {
-    SchemaRange<IdentifierId> const result{static_cast<std::uint32_t>(identifiers_.size()),
-                                           static_cast<std::uint32_t>(values.size())};
+auto LoweringStorage::save(std::span<StringId const> values) -> SchemaRange<StringId> {
+    SchemaRange<StringId> const result{static_cast<std::uint32_t>(identifiers_.size()),
+                                       static_cast<std::uint32_t>(values.size())};
     identifiers_.insert(identifiers_.end(), values.begin(), values.end());
     return result;
 }
-auto LoweringStorage::items(SchemaRange<IdentifierId> range) const
-    -> std::span<IdentifierId const> {
+auto LoweringStorage::items(SchemaRange<StringId> range) const -> std::span<StringId const> {
     return std::span{identifiers_}.subspan(range.offset, range.count);
 }
 auto LoweringStorage::save(std::span<RowParameterId const> values) -> SchemaRange<RowParameterId> {

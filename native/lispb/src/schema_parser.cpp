@@ -74,7 +74,7 @@ auto SchemaParser::optional_text_id(sexpr::Fields const& fields, std::string_vie
     return value ? std::optional{parser_.text_id(*value, name)} : std::nullopt;
 }
 
-auto SchemaParser::parse_export_specifier(sexpr::Fields const& fields) -> lispb::IdentifierId {
+auto SchemaParser::parse_export_specifier(sexpr::Fields const& fields) -> lispb::StringId {
     auto const value{fields.optional("export-specifier")};
     if (!value) {
         return {};
@@ -87,7 +87,7 @@ auto SchemaParser::parse_export_specifier(sexpr::Fields const& fields) -> lispb:
 }
 
 auto SchemaParser::optional_identifier(sexpr::Fields const& fields, std::string_view const name)
-    -> std::optional<lispb::IdentifierId> {
+    -> std::optional<lispb::StringId> {
     auto const value{fields.optional(name)};
     return value ? std::optional{parser_.identifier(*value, name)} : std::nullopt;
 }
@@ -106,11 +106,11 @@ auto SchemaParser::text_id_list(sexpr::FormId const form, std::string_view const
 }
 
 auto SchemaParser::identifier_list(sexpr::FormId const form, std::string_view const purpose)
-    -> std::vector<lispb::IdentifierId> {
+    -> std::vector<lispb::StringId> {
     if (!syntax_.is_list(form)) {
         parser_.fail(form, std::string{purpose} + " must be a list");
     }
-    std::vector<lispb::IdentifierId> result;
+    std::vector<lispb::StringId> result;
     result.reserve(syntax_.children(form).size());
     for (auto const child : syntax_.children(form)) {
         result.push_back(parser_.identifier(child, purpose));
@@ -125,9 +125,9 @@ auto SchemaParser::text_id_list_or(sexpr::Fields const& fields, std::string_view
 }
 
 auto SchemaParser::identifier_list_or(sexpr::Fields const& fields, std::string_view const name)
-    -> std::vector<lispb::IdentifierId> {
+    -> std::vector<lispb::StringId> {
     auto const value{fields.optional(name)};
-    return value ? identifier_list(*value, name) : std::vector<lispb::IdentifierId>{};
+    return value ? identifier_list(*value, name) : std::vector<lispb::StringId>{};
 }
 
 auto SchemaParser::unsigned_integer(sexpr::FormId const form, std::string_view const purpose)
@@ -450,7 +450,7 @@ auto SchemaParser::parse_member(Declarations& declarations, sexpr::FormId const 
     return record_id;
 }
 
-auto SchemaParser::parse_single_allocation(sexpr::FormId const form) -> lispb::IdentifierId {
+auto SchemaParser::parse_single_allocation(sexpr::FormId const form) -> lispb::StringId {
     Fields const fields{parser_, form, "single-allocation", 1};
     fields.validate({});
     return parser_.identifier(fields.positional(0), "single-allocation name");
@@ -484,7 +484,7 @@ auto SchemaParser::parse_soa(Declarations& declarations, sexpr::FormId const for
     std::vector<FunctionSchemaId> const_view_functions;
     std::vector<FunctionSchemaId> mutable_view_functions;
     std::optional<FixedSoaId> fixed;
-    std::optional<lispb::IdentifierId> single_allocation;
+    std::optional<lispb::StringId> single_allocation;
     for (auto const declaration_id : fields.declarations()) {
         auto const declaration{declaration_id};
         auto const head{syntax_.head(declaration)};
@@ -2039,7 +2039,7 @@ auto SchemaParser::parse_external_integer(RegisteredTypes& registered, sexpr::Fo
 }
 
 auto SchemaParser::parse_type_definition(sexpr::FormId const form, TypeRegistry& registry)
-    -> std::pair<lispb::IdentifierId, RegisteredTypeId> {
+    -> std::pair<lispb::StringId, RegisteredTypeId> {
     Fields const fields{parser_, form, "type", 1};
     fields.validate({"spelling", "header", "pass-by"}, {"operation", "integer", "floating-point"});
     ExternalScalarId semantics;

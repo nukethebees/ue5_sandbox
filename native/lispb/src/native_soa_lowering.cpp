@@ -137,7 +137,7 @@ auto lower_vector_storage_operations(LoweringContext& context, DeclarationHandle
 
 auto lower_native_soa(LoweringContext& context,
                       DeclarationHandle schema,
-                      std::map<IdentifierId, DeclarationHandle> const& schemas,
+                      std::map<StringId, DeclarationHandle> const& schemas,
                       bool const allow_equivalent_type,
                       std::span<std::string const> const equivalent_members,
                       StringId const equivalent_constructor,
@@ -267,7 +267,7 @@ auto lower_native_soa(LoweringContext& context,
         flush();
         building_record = true;
     };
-    auto end_record = [&](IdentifierId const name) {
+    auto end_record = [&](StringId const name) {
         flush();
         auto const record{ir.record(name, record_members)};
         ir.set_record_export_specifier(
@@ -321,7 +321,7 @@ using {} = ioj::Vector3fSoAConstView;
         header.add(ir.forward_declaration(ir.strings.intern(const_view))).new_lines();
     }
 
-    auto const nested_vector3f = [&](IdentifierId member_name) {
+    auto const nested_vector3f = [&](StringId member_name) {
         auto const member = std::ranges::find_if(layout_members, [&](auto const& value) {
             return context.declarations.soa_members.name[context.declarations.soa_members.index(
                        fixed_members.source[fixed_members.index(value)])] == member_name;

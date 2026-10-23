@@ -48,8 +48,8 @@ class LoweringStorage {
         -> SchemaRange<SingleAllocationColumnId>;
     auto items(SchemaRange<SingleAllocationColumnId> range) const
         -> std::span<SingleAllocationColumnId const>;
-    auto save(std::span<IdentifierId const> values) -> SchemaRange<IdentifierId>;
-    auto items(SchemaRange<IdentifierId> range) const -> std::span<IdentifierId const>;
+    auto save(std::span<StringId const> values) -> SchemaRange<StringId>;
+    auto items(SchemaRange<StringId> range) const -> std::span<StringId const>;
     auto save(std::span<RowParameterId const> values) -> SchemaRange<RowParameterId>;
     auto items(SchemaRange<RowParameterId> range) const -> std::span<RowParameterId const>;
     auto save(std::span<TypeDependencyId const> values) -> SchemaRange<TypeDependencyId>;
@@ -61,7 +61,7 @@ class LoweringStorage {
     std::vector<FixedLeafId> fixed_leaves_;
     std::vector<FixedMemberLayoutId> fixed_members_;
     std::vector<SingleAllocationColumnId> columns_;
-    std::vector<IdentifierId> identifiers_;
+    std::vector<StringId> identifiers_;
     std::vector<RowParameterId> row_parameters_;
 };
 }

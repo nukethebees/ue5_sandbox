@@ -23,12 +23,12 @@ struct SoaSchemas {
     auto emits_vector_storage(DeclarationHandle id) const -> bool;
     auto uses_compact_vector_runtime(DeclarationHandle id) const -> bool;
 
-    std::vector<IdentifierId> name;
-    std::vector<std::optional<IdentifierId>> view_name;
-    std::vector<std::optional<IdentifierId>> const_view_name;
+    std::vector<StringId> name;
+    std::vector<std::optional<StringId>> view_name;
+    std::vector<std::optional<StringId>> const_view_name;
     std::vector<SchemaRange<SoaMemberId>> members;
     std::vector<SchemaRange<StorageOperation>> operations;
-    std::vector<IdentifierId> export_specifier;
+    std::vector<StringId> export_specifier;
     std::vector<SchemaRange<FunctionSchemaId>> functions;
     std::vector<SchemaRange<FunctionSchemaId>> mutable_view_functions;
     std::vector<SchemaRange<StringId>> using_declarations;
@@ -36,11 +36,11 @@ struct SoaSchemas {
     std::vector<std::uint8_t> copy_element_memberwise;
     std::vector<std::uint8_t> layout_only;
     std::vector<std::optional<FixedSoaId>> fixed;
-    std::vector<std::optional<IdentifierId>> single_allocation;
+    std::vector<std::optional<StringId>> single_allocation;
     std::vector<std::optional<TypeRefId>> array_allocator;
-    std::vector<std::optional<IdentifierId>> field_mask_name;
-    std::vector<std::optional<IdentifierId>> field_enum_name;
-    std::vector<SchemaRange<IdentifierId>> vector_components;
+    std::vector<std::optional<StringId>> field_mask_name;
+    std::vector<std::optional<StringId>> field_enum_name;
+    std::vector<SchemaRange<StringId>> vector_components;
     std::vector<std::optional<SoaStorage>> storage;
     std::vector<SchemaRange<FunctionSchemaId>> const_view_functions;
 };

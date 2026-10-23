@@ -23,7 +23,7 @@ auto EditorDiagnostics::add(DocumentId const document,
     // Both arguments may borrow the shared pool that appending text can reallocate.
     std::string const owned_message{message};
     std::string const owned_path{path};
-    messages_.push_back(lispb::string_id(strings_.intern_retained(owned_message)));
+    messages_.push_back(strings_.intern_retained(owned_message));
     paths_.push_back(strings_.intern_retained(owned_path));
     severities_.push_back(severity);
     lines_.push_back(line);

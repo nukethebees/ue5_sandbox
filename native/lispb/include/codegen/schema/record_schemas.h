@@ -18,9 +18,9 @@ struct RecordSchemas {
     [[nodiscard]] auto index(DeclarationHandle id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<SchemaRange<RecordMemberId>> members;
-    std::vector<IdentifierId> export_specifier;
+    std::vector<StringId> export_specifier;
     std::vector<RecordComparison> comparison;
     std::vector<std::uint8_t> comparison_noexcept;
     std::vector<SchemaRange<FunctionSchemaId>> functions;

@@ -17,8 +17,8 @@ struct SettingsSchemaSchemas {
     [[nodiscard]] auto index(DeclarationHandle id) const -> RowIndex;
     void clear();
 
-    std::vector<IdentifierId> name;
-    std::vector<IdentifierId> target;
+    std::vector<StringId> name;
+    std::vector<StringId> target;
     std::vector<StringId> target_header;
     std::vector<SchemaRange<StringId>> paths;
     std::vector<SchemaRange<StringId>> members;

@@ -23,10 +23,10 @@ auto fixed_leaf_argument(LoweringContext& context, FixedLeafId leaf) -> std::str
 
 auto build_soa_layout(LoweringContext& context,
                       DeclarationHandle schema,
-                      std::map<IdentifierId, DeclarationHandle> const& schemas,
+                      std::map<StringId, DeclarationHandle> const& schemas,
                       bool fixed,
                       LoweringPathId prefix,
-                      std::set<IdentifierId> ancestors) -> FixedLayoutId {
+                      std::set<StringId> ancestors) -> FixedLayoutId {
     auto& storage{context.ir.lowering};
     auto const& soas{context.declarations.soas};
     auto const& sources{context.declarations.soa_members};
@@ -101,9 +101,9 @@ auto build_soa_layout(LoweringContext& context,
 
 auto build_fixed_layout(LoweringContext& context,
                         DeclarationHandle schema,
-                        std::map<IdentifierId, DeclarationHandle> const& schemas,
+                        std::map<StringId, DeclarationHandle> const& schemas,
                         LoweringPathId prefix,
-                        std::set<IdentifierId> ancestors) -> FixedLayoutId {
+                        std::set<StringId> ancestors) -> FixedLayoutId {
     return build_soa_layout(context, schema, schemas, true, prefix, std::move(ancestors));
 }
 

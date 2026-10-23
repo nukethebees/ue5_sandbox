@@ -19,7 +19,7 @@ namespace lispb::codegen::detail {
 
 void validate_soa_body_columns(Declarations const& declarations,
                                DeclarationHandle schema,
-                               std::map<IdentifierId, DeclarationHandle> const& schemas,
+                               std::map<StringId, DeclarationHandle> const& schemas,
                                std::string_view const body) {
     scan_soa_columns(
         body,

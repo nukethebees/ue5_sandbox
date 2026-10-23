@@ -212,17 +212,12 @@ class TypeGraphBuilder {
         return std::move(graph_);
     }
   private:
-    auto str(IdentifierId const id) const -> std::string {
-        return std::string{store_.strings().view(id)};
-    }
     auto str(StringId const id) const -> std::string {
         return std::string{store_.strings().view(id)};
     }
-    auto text(std::string_view const value) -> StringId {
-        return string_id(store_.strings().intern(value));
-    }
-    auto qualified_name(lispb::codegen::ModuleSettingsId const& module, IdentifierId const name)
-        -> IdentifierId {
+    auto text(std::string_view const value) -> StringId { return store_.strings().intern(value); }
+    auto qualified_name(lispb::codegen::ModuleSettingsId const& module, StringId const name)
+        -> StringId {
         return store_.module_settings_store
                        .namespace_name[store_.module_settings_store.index(module)]
                  ? store_.strings().intern(
@@ -258,13 +253,13 @@ class TypeGraphBuilder {
 
     void declare(codegen::ModuleHandle const module,
                  codegen::DeclarationHandle const source,
-                 IdentifierId const name,
+                 StringId const name,
                  TypeDefinitionId const definition,
-                 std::optional<IdentifierId> const physical_name = {}) {
+                 std::optional<StringId> const physical_name = {}) {
         auto const module_settings{store_.module_settings(module)};
         auto const logical{qualified_name(module_settings, name)};
         auto const physical{physical_name && physical_name->value == 0
-                                ? IdentifierId{}
+                                ? StringId{}
                                 : qualified_name(module_settings, physical_name.value_or(name))};
         auto const id{
             add_type({.origin = TypeOrigin::declaration,
@@ -273,9 +268,9 @@ class TypeGraphBuilder {
                       .namespace_name =
                           store_.module_settings_store
                               .namespace_name[store_.module_settings_store.index(module_settings)]
-                              .value_or(IdentifierId{}),
+                              .value_or(StringId{}),
                       .name = name},
-                     string_id(physical),
+                     physical,
                      definition,
                      module,
                      source)};
@@ -319,7 +314,7 @@ class TypeGraphBuilder {
                 continue;
             }
             auto const module{module_id};
-            std::set<IdentifierId> names;
+            std::set<StringId> names;
             for (auto const source : store_.items(
                      store_.normal_modules.declarations[store_.normal_modules.index(module)])) {
                 auto const name{codegen::declaration_name(store_, source)};
@@ -482,12 +477,12 @@ class TypeGraphBuilder {
                             std::unreachable();
                     }
                 }()};
-                std::optional<IdentifierId> physical;
+                std::optional<StringId> physical;
                 if (auto const soa{((source).kind() == lispb::codegen::DeclarationKind::soa
                                         ? std::optional{source}
                                         : std::nullopt)}) {
                     if (store_.soas.layout_only[store_.soas.index(*soa)]) {
-                        physical = IdentifierId{};
+                        physical = StringId{};
                     } else if (!store_.soas.emits_vector_storage(*soa) &&
                                store_.soas.single_allocation[store_.soas.index(*soa)]) {
                         physical = *store_.soas.single_allocation[store_.soas.index(*soa)];
@@ -504,7 +499,7 @@ class TypeGraphBuilder {
 
     auto external_type(codegen::CppTypeId const cpp_type,
                        codegen::ExternalScalarId const metadata,
-                       std::span<IdentifierId const> const names = {}) -> TypeDefinitionId {
+                       std::span<StringId const> const names = {}) -> TypeDefinitionId {
         auto& externals{graph_.definitions_.externals};
         auto const result{externals.append()};
         auto const external_index{externals.index(result)};
@@ -584,7 +579,7 @@ class TypeGraphBuilder {
             } else {
                 auto const id{add_type(
                     {.origin = TypeOrigin::registered_external, .name = name},
-                    string_id(spelling),
+                    spelling,
                     external_type(manifest_.types.registered
                                       .cpp_type[manifest_.types.registered.index(registered)],
                                   manifest_.types.registered
@@ -595,7 +590,7 @@ class TypeGraphBuilder {
         }
     }
 
-    auto raw_external(IdentifierId const name) -> TypeId {
+    auto raw_external(StringId const name) -> TypeId {
         if (auto const found{raw_external_types_.find(name)}; found != raw_external_types_.end()) {
             return found->second;
         }
@@ -604,7 +599,7 @@ class TypeGraphBuilder {
         auto const cpp_type{manifest_.types.cpp_types.intern(store_.strings().view(name))};
         auto const id{
             add_type({.origin = TypeOrigin::cpp_spelling, .name = name},
-                     string_id(name),
+                     name,
                      external_type(cpp_type, metadata.value_or(codegen::ExternalScalarId{})))};
         raw_external_types_.emplace(name, id);
         return id;
@@ -641,7 +636,7 @@ class TypeGraphBuilder {
             if (((graph_.definition(node)).kind() == lispb::schema::TypeDefinitionKind::soa)) {
                 auto const module_settings{store_.module_settings(graph_.module(node))};
                 if (graph_.cpp_spelling(node) !=
-                    string_id(qualified_name(module_settings, graph_.name(node)))) {
+                    qualified_name(module_settings, graph_.name(node))) {
                     if (store_.strings().view(graph_.cpp_spelling(node)).empty()) {
                         resolved.cpp_type = manifest_.types.cpp_types.intern("");
                         resolved.physical = {};
@@ -683,7 +678,7 @@ class TypeGraphBuilder {
         -> ResolvedOccurrenceId {
         return graph_.resolved(module, reference);
     }
-    auto local_declaration(codegen::ModuleHandle const module, IdentifierId const name) const
+    auto local_declaration(codegen::ModuleHandle const module, StringId const name) const
         -> std::optional<TypeId> {
         return graph_.find_declared(module, name);
     }
@@ -802,7 +797,7 @@ class TypeGraphBuilder {
                             add_use(module_id, declaration, role, target, reference, kind);
                         });
                     auto registration = [&](codegen::TypeReferenceRole const& role,
-                                            IdentifierId const name) {
+                                            StringId const name) {
                         auto const registered{manifest_.types.find(store_.strings().view(name))};
                         if (!registered) {
                             return;
@@ -967,8 +962,7 @@ class TypeGraphBuilder {
                     definitions.enums.signedness[definitions.enums.index(new_enums_3)] =
                         store_.enums.signedness[store_.enums.index(source)];
                     definitions.enums.count[definitions.enums.index(new_enums_3)] =
-                        store_.enums.count[store_.enums.index(source)].transform(
-                            [](auto id) { return string_id(id); });
+                        store_.enums.count[store_.enums.index(source)];
                     definitions.enums.enum_array[definitions.enums.index(new_enums_3)] =
                         store_.enums.enum_array[store_.enums.index(source)];
                     return new_enums_3;
@@ -1174,8 +1168,7 @@ class TypeGraphBuilder {
                     definitions.optional_sentinels
                         .sentinel_name[definitions.optional_sentinels.index(
                             new_optional_sentinels_8)] =
-                        string_id(store_.optional_sentinels
-                                      .sentinel[store_.optional_sentinels.index(source)]);
+                        store_.optional_sentinels.sentinel[store_.optional_sentinels.index(source)];
                     definitions.optional_sentinels
                         .sentinel_value[definitions.optional_sentinels.index(
                             new_optional_sentinels_8)] =
@@ -1561,8 +1554,7 @@ class TypeGraphBuilder {
                             .transform([&](auto id) { return resolve_ref(id, module_id); })
                             .value_or(ResolvedOccurrenceId{});
                     definitions.soas.related_storage_name[definitions.soas.index(new_soas_20)] =
-                        store_.soas.single_allocation[store_.soas.index(source)].transform(
-                            [](auto id) { return string_id(id); });
+                        store_.soas.single_allocation[store_.soas.index(source)];
                     definitions.soas.set_vector_components(
                         new_soas_20,
                         store_.items(store_.soas.vector_components[store_.soas.index(source)]));
@@ -2196,9 +2188,9 @@ class TypeGraphBuilder {
     std::vector<TypeId> declarations_;
     std::vector<std::optional<codegen::HomogeneousValueId>> homogeneous_values_;
     std::map<codegen::ModuleHandle, StringId> module_headers_;
-    std::map<IdentifierId, codegen::ModuleHandle> modules_by_name_;
-    std::multimap<IdentifierId, TypeId> declarations_by_name_;
-    std::map<IdentifierId, TypeId> raw_external_types_;
+    std::map<StringId, codegen::ModuleHandle> modules_by_name_;
+    std::multimap<StringId, TypeId> declarations_by_name_;
+    std::map<StringId, TypeId> raw_external_types_;
     std::map<std::pair<codegen::ModuleHandle, codegen::SemanticRelationId>, RelationshipId>
         relationships_by_source_;
 };
@@ -2218,13 +2210,13 @@ auto TypeGraph::identity(TypeId const id) const -> TypeIdentity {
 auto TypeGraph::origin(TypeId const id) const -> TypeOrigin {
     return origins_[index(id)];
 }
-auto TypeGraph::module_name(TypeId const id) const -> IdentifierId {
+auto TypeGraph::module_name(TypeId const id) const -> StringId {
     return module_names_[index(id)];
 }
-auto TypeGraph::namespace_name(TypeId const id) const -> IdentifierId {
+auto TypeGraph::namespace_name(TypeId const id) const -> StringId {
     return namespace_names_[index(id)];
 }
-auto TypeGraph::name(TypeId const id) const -> IdentifierId {
+auto TypeGraph::name(TypeId const id) const -> StringId {
     return names_[index(id)];
 }
 auto TypeGraph::cpp_spelling(TypeId const id) const -> StringId {
@@ -2265,13 +2257,13 @@ auto TypeGraph::find(TypeIdentity const& identity) const -> std::optional<TypeId
     auto const found{identities_.find(identity)};
     return found == identities_.end() ? std::nullopt : std::optional{found->second};
 }
-auto TypeGraph::find_declared(codegen::ModuleHandle const module, IdentifierId const name) const
+auto TypeGraph::find_declared(codegen::ModuleHandle const module, StringId const name) const
     -> std::optional<TypeId> {
     auto const found{declarations_by_module_name_.find({module, name})};
     return found == declarations_by_module_name_.end() ? std::nullopt
                                                        : std::optional{found->second};
 }
-auto TypeGraph::find_registered(IdentifierId const name) const -> std::optional<TypeId> {
+auto TypeGraph::find_registered(StringId const name) const -> std::optional<TypeId> {
     auto const found{registered_types_.find(name)};
     return found == registered_types_.end() ? std::nullopt : std::optional{found->second};
 }
@@ -2282,7 +2274,7 @@ auto TypeGraph::find_reference(codegen::TypeRefId const reference_id,
                       module);
 }
 
-auto TypeGraph::find_named(IdentifierId const identifier, codegen::ModuleHandle const module) const
+auto TypeGraph::find_named(StringId const identifier, codegen::ModuleHandle const module) const
     -> std::optional<TypeId> {
     auto const name{strings().view(identifier)};
     if (name.starts_with('@')) {

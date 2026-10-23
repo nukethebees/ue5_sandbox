@@ -15,9 +15,9 @@ namespace kernel_codegen::detail {
 class Operands {
   public:
     // Finish appending child ranges before adding another entry.
-    auto add(lispb::IdentifierId name, lispb::codegen::sexpr::SourceSpan span, bool is_component)
+    auto add(lispb::StringId name, lispb::codegen::sexpr::SourceSpan span, bool is_component)
         -> OperandId;
-    auto name(OperandId const id) const -> lispb::IdentifierId { return name_[id.value]; }
+    auto name(OperandId const id) const -> lispb::StringId { return name_[id.value]; }
     auto span(OperandId const id) const -> lispb::codegen::sexpr::SourceSpan {
         return span_[id.value];
     }
@@ -27,7 +27,7 @@ class Operands {
     auto size() const -> std::size_t { return name_.size(); }
     void clear();
   private:
-    std::vector<lispb::IdentifierId> name_;
+    std::vector<lispb::StringId> name_;
     std::vector<lispb::codegen::sexpr::SourceSpan> span_;
     std::vector<std::uint8_t> is_component_;
     std::vector<lispb::codegen::sexpr::HandleRange> storage_ranges_;

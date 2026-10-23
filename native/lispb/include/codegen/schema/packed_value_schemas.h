@@ -21,11 +21,11 @@ struct PackedValueSchemas {
     [[nodiscard]] auto index(DeclarationHandle id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<TypeRefId> storage_type;
     std::vector<SchemaRange<PackedSegmentId>> segments;
     std::vector<std::optional<std::uint64_t>> invalid_value;
-    std::vector<IdentifierId> export_specifier;
+    std::vector<StringId> export_specifier;
     std::vector<std::uint8_t> mutable_value;
     std::vector<std::optional<PackedByteOrder>> byte_order;
     std::vector<std::optional<PackedBitOrder>> bit_order;

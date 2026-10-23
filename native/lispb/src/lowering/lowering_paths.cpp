@@ -3,7 +3,7 @@
 #include <cassert>
 #include <cstdint>
 namespace lispb::codegen {
-auto LoweringPaths::append(LoweringPathId parent, IdentifierId name) -> LoweringPathId {
+auto LoweringPaths::append(LoweringPathId parent, StringId name) -> LoweringPathId {
     auto const key{std::pair{parent, name}};
     if (auto const found{paths_.find(key)}; found != paths_.end()) {
         return found->second;
@@ -22,7 +22,7 @@ auto LoweringPaths::append(LoweringPathId parent, IdentifierId name) -> Lowering
     paths_.emplace(key, result);
     return result;
 }
-auto LoweringPaths::items(LoweringPathId path) const -> std::span<IdentifierId const> {
+auto LoweringPaths::items(LoweringPathId path) const -> std::span<StringId const> {
     if (path.value == 0) {
         return {};
     }

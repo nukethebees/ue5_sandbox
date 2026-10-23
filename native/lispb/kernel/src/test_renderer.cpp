@@ -26,9 +26,8 @@
 namespace kernel_codegen::detail {
 namespace {
 
-auto span_argument(lispb::codegen::CppIR& cpp,
-                   std::string const& type,
-                   lispb::IdentifierId const name) -> lispb::codegen::Expr {
+auto span_argument(lispb::codegen::CppIR& cpp, std::string const& type, lispb::StringId const name)
+    -> lispb::codegen::Expr {
     auto const data{cpp.call(cpp.member_access(cpp.named(name), "data"))};
     return cpp.init_list({data, cpp.named("Count")}, cpp.types.intern("std::span<" + type + ">"));
 }
@@ -163,11 +162,12 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
         .add(cpp.include(document.emissions.header_include(emission),
                          lispb::codegen::IncludeStyle::quoted),
              2)
-        .add(cpp.include(cpp.strings.add("gtest/gtest.h"), lispb::codegen::IncludeStyle::system),
+        .add(cpp.include(cpp.strings.intern("gtest/gtest.h"), lispb::codegen::IncludeStyle::system),
              2);
     for (auto const include :
          {"array", "cmath", "cstddef", "cstdint", "limits", "span", "type_traits"}) {
-        file_nodes.add(cpp.include(cpp.strings.add(include), lispb::codegen::IncludeStyle::system));
+        file_nodes.add(
+            cpp.include(cpp.strings.intern(include), lispb::codegen::IncludeStyle::system));
     }
     file_nodes.new_lines(2);
     auto const suite{"Generated_" + document.text(document.modules.name(module))};

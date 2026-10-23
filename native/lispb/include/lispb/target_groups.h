@@ -8,7 +8,7 @@
 namespace lispb {
 
 struct TargetGroups {
-    std::vector<IdentifierId> names;
+    std::vector<StringId> names;
     std::vector<codegen::sexpr::HandleRange> members;
     std::vector<TargetId> targets;
 };

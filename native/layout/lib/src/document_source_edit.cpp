@@ -58,8 +58,7 @@ void DocumentState::edit_source(std::string_view operation,
     auto const previous{*found};
     if (operation == "replace") {
         auto& store{storage().declarations};
-        std::map<std::pair<lispb::IdentifierId, lispb::IdentifierId>, lispb::schema::DeclarationId>
-            old_ids;
+        std::map<std::pair<lispb::StringId, lispb::StringId>, lispb::schema::DeclarationId> old_ids;
         auto first{candidate.modules.size()};
         auto const module_count{candidate.modules.size()};
         for (std::size_t index{}; index < module_count; ++index) {

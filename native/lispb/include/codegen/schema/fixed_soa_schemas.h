@@ -14,8 +14,8 @@ struct FixedSoaSchemas {
     [[nodiscard]] auto index(FixedSoaId id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> storage_name;
-    std::vector<SchemaRange<IdentifierId>> containers;
+    std::vector<StringId> storage_name;
+    std::vector<SchemaRange<StringId>> containers;
 };
 
 }

@@ -44,8 +44,8 @@ auto Sources::add(std::string_view const path, std::string_view const text) -> S
 
     // Retain both arguments before buffer growth can invalidate a caller's source views.
     std::string const path_text{path};
-    texts_.push_back(strings_->retain(text));
-    paths_.push_back(lispb::string_id(strings_->intern_retained(path_text)));
+    texts_.push_back(strings_->intern_retained(text));
+    paths_.push_back(strings_->intern_retained(path_text));
     lines_.push_back({lines_begin, static_cast<std::uint32_t>(line_offsets_.size()) - lines_begin});
     kinds_.push_back(SourceFileKind::unspecified);
     states_.push_back(SourceFileState::current);
@@ -152,7 +152,7 @@ auto Sources::location(SourceSpan const span) const -> SourceLocation {
     return {line, span.offset - offsets[line - 1] + 1, path(span.file)};
 }
 
-auto Sources::add_expansion(lispb::IdentifierId const name,
+auto Sources::add_expansion(lispb::StringId const name,
                             SourceSpan const invocation,
                             SourceSpan const definition) -> ExpansionId {
     auto const id{ExpansionId{static_cast<std::uint32_t>(expansion_names_.size())}};
@@ -176,7 +176,7 @@ auto Sources::expansion_text(SourceSpan const span) const -> std::string {
 }
 
 void Sources::set_path(SourceFileId const file, std::string_view const path) {
-    paths_.at(file.value) = lispb::string_id(strings_->intern_retained(path));
+    paths_.at(file.value) = strings_->intern_retained(path);
 }
 
 void Sources::refresh() {

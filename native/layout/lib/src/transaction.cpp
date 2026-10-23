@@ -340,7 +340,7 @@ void Transaction::append(TransactionKind kind,
     modules_.push_back(strings.intern(module));
     declarations_.push_back(strings.intern(declaration));
     members_.push_back(strings.intern(member));
-    texts_.push_back(strings.add(text));
+    texts_.push_back(strings.intern(text));
     numbers_.push_back(number);
     variant_ids_.emplace_back();
     payload_offsets_.push_back(payload_names_.size());
@@ -1160,7 +1160,7 @@ void Transaction::apply(DocumentState& state, Manifest& manifest, std::size_t en
                 if (kind == TransactionKind::add_enumerator ||
                     kind == TransactionKind::enumerator_initializer) {
                     store.enumerators.initializer[row] =
-                        text.empty() ? std::nullopt : std::optional{strings.add(text)};
+                        text.empty() ? std::nullopt : std::optional{strings.intern(text)};
                 }
                 if (kind == TransactionKind::add_enumerator) {
                     children.push_back(child);

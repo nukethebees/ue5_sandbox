@@ -47,9 +47,8 @@ class Sources {
     [[nodiscard]] auto span(SourceFileId file, std::uint32_t begin, std::uint32_t end) const
         -> SourceSpan;
     [[nodiscard]] auto location(SourceSpan span) const -> SourceLocation;
-    [[nodiscard]] auto add_expansion(IdentifierId name,
-                                     SourceSpan invocation,
-                                     SourceSpan definition) -> ExpansionId;
+    [[nodiscard]] auto add_expansion(StringId name, SourceSpan invocation, SourceSpan definition)
+        -> ExpansionId;
     [[nodiscard]] auto expansion_text(SourceSpan span) const -> std::string;
     [[nodiscard]] auto strings() const -> Strings& { return *strings_; }
 
@@ -72,11 +71,11 @@ class Sources {
     std::vector<SourceFileId> include_targets_;
     std::vector<SourceSpan> include_spans_;
     std::vector<std::uint32_t> line_offsets_;
-    std::vector<IdentifierId> expansion_names_{{}};
+    std::vector<StringId> expansion_names_{{}};
     std::vector<SourceSpan> invocations_{{}};
     std::vector<SourceSpan> definitions_{{}};
 
-    std::unordered_map<IdentifierId, SourceFileId> loaded_files_;
+    std::unordered_map<StringId, SourceFileId> loaded_files_;
 };
 
 }

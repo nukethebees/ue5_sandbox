@@ -20,7 +20,7 @@ class CanonicalRenderer {
     auto render_module(codegen::ModuleHandle module) -> std::string;
   private:
     auto text(StringId value) const -> std::string_view;
-    auto text(IdentifierId value) const -> std::string_view;
+
     static auto access_keyword(codegen::Access access) -> std::string_view;
     template <typename Id>
     auto items(codegen::SchemaRange<Id> range) const {

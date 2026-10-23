@@ -17,7 +17,7 @@ struct PhysicalFacts {
     std::uint64_t alignment_bytes{};
     std::optional<bool> integer_signed{};
     std::optional<std::uint32_t> unsigned_value_bits{};
-    lispb::IdentifierId provenance{};
+    lispb::StringId provenance{};
     FactOrigin origin{FactOrigin::unspecified};
 };
 

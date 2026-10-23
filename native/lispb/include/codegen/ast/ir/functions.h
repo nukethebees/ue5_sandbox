@@ -26,7 +26,7 @@ struct Functions {
     std::vector<FunctionExceptionId> exception_specification;
     std::vector<FunctionReceiver> receiver;
     std::vector<FunctionFlags> flags;
-    std::vector<IdentifierId> export_specifier;
+    std::vector<StringId> export_specifier;
     std::vector<TemplateId> template_declaration;
     std::vector<Expr> requires_clause;
     std::vector<FunctionFormatting> formatting;

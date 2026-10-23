@@ -15,7 +15,7 @@ struct MiniFloatSchemas {
     [[nodiscard]] auto index(DeclarationHandle id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<std::uint32_t> sign_bits;
     std::vector<std::uint32_t> exponent_bits;
     std::vector<std::uint32_t> significand_bits;

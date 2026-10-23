@@ -10,12 +10,12 @@
 namespace lispb::codegen {
 class LoweringPaths {
   public:
-    auto append(LoweringPathId parent, IdentifierId name) -> LoweringPathId;
-    auto items(LoweringPathId path) const -> std::span<IdentifierId const>;
+    auto append(LoweringPathId parent, StringId name) -> LoweringPathId;
+    auto items(LoweringPathId path) const -> std::span<StringId const>;
     void clear();
   private:
-    std::vector<SchemaRange<IdentifierId>> ranges_;
-    std::vector<IdentifierId> names_;
-    std::map<std::pair<LoweringPathId, IdentifierId>, LoweringPathId> paths_;
+    std::vector<SchemaRange<StringId>> ranges_;
+    std::vector<StringId> names_;
+    std::map<std::pair<LoweringPathId, StringId>, LoweringPathId> paths_;
 };
 }

@@ -16,7 +16,7 @@ auto is_tail(lispb::codegen::sexpr::HandleRange const range, Container const& co
 }
 
 }
-auto Operands::add(lispb::IdentifierId const name,
+auto Operands::add(lispb::StringId const name,
                    lispb::codegen::sexpr::SourceSpan const span,
                    bool const is_component) -> OperandId {
     auto const id{OperandId{static_cast<std::uint32_t>(name_.size())}};
@@ -45,7 +45,7 @@ void Operands::clear() {
 }
 
 auto Variants::add(VariantKind const kind,
-                   lispb::IdentifierId const name,
+                   lispb::StringId const name,
                    std::optional<OperandId> const target,
                    lispb::codegen::sexpr::SourceSpan const span) -> VariantId {
     auto const id{VariantId{static_cast<std::uint32_t>(kind_.size())}};
@@ -62,7 +62,7 @@ void Variants::clear() {
     span_.clear();
 }
 
-auto TypeSets::add(lispb::IdentifierId const name, lispb::codegen::sexpr::SourceSpan const span)
+auto TypeSets::add(lispb::StringId const name, lispb::codegen::sexpr::SourceSpan const span)
     -> TypeSetId {
     auto const id{TypeSetId{static_cast<std::uint32_t>(name_.size())}};
     name_.push_back(name);
@@ -88,7 +88,7 @@ void TypeSets::clear() {
 }
 
 auto Operations::add(OperationKind const kind,
-                     lispb::IdentifierId const name,
+                     lispb::StringId const name,
                      lispb::codegen::sexpr::SourceSpan const span) -> OperationId {
     assert(name_.size() <= OperationId::index_mask);
     auto const id{OperationId{(static_cast<std::uint32_t>(kind) << OperationId::kind_shift) |
@@ -114,11 +114,11 @@ void Operations::append_operands(OperationId const id, OperandId const value) {
     operands_.push_back(value);
     ++range.count;
 }
-auto Operations::components(OperationId const id) const -> std::span<lispb::IdentifierId const> {
+auto Operations::components(OperationId const id) const -> std::span<lispb::StringId const> {
     auto const range{components_ranges_[id.index()]};
     return std::span{components_}.subspan(range.offset, range.count);
 }
-void Operations::append_components(OperationId const id, lispb::IdentifierId const value) {
+void Operations::append_components(OperationId const id, lispb::StringId const value) {
     auto& range{components_ranges_[id.index()]};
     assert(is_tail(range, components_));
     components_.push_back(value);
@@ -173,7 +173,7 @@ void Emissions::clear() {
     export_specifier_.clear();
 }
 
-auto Modules::add(lispb::IdentifierId const name, lispb::codegen::sexpr::SourceSpan const span)
+auto Modules::add(lispb::StringId const name, lispb::codegen::sexpr::SourceSpan const span)
     -> ModuleId {
     auto const id{ModuleId{static_cast<std::uint32_t>(name_.size())}};
     expanded_variants_.push_back({});

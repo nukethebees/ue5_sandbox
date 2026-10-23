@@ -13,7 +13,7 @@ namespace ioj::layout {
 
 struct OptionalSentinelEncoding {
     lispb::schema::TypeId source_type{};
-    lispb::IdentifierId sentinel_name{};
+    lispb::StringId sentinel_name{};
     lispb::codegen::PackedIntegerValue sentinel_value{};
     bool source_signedness{};
     lispb::codegen::PackedIntegerValue source_minimum{};

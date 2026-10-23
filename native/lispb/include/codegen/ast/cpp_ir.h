@@ -143,8 +143,7 @@ class CppIR {
         -> NodeId {
         return assignment(target, value, std::span<TypeDependencyId const>{dependencies});
     }
-    auto variable(CppTypeId type, IdentifierId name, std::optional<Expr> initializer = {})
-        -> NodeId;
+    auto variable(CppTypeId type, StringId name, std::optional<Expr> initializer = {}) -> NodeId;
     auto variable(CppTypeId type, std::string_view name, std::optional<Expr> initializer = {})
         -> NodeId;
     // Text type overloads intern spellings without dependencies; use CppTypeId for resolved types.
@@ -156,48 +155,47 @@ class CppIR {
                 AccessIndentation indentation = AccessIndentation::outdented) -> NodeId;
     auto include(StringId path, IncludeStyle style = IncludeStyle::inferred) -> NodeId;
     auto include_dependencies() -> NodeId;
-    auto forward_declaration(IdentifierId name,
+    auto forward_declaration(StringId name,
                              RecordKind kind = RecordKind::struct_,
                              TemplateId declaration = {}) -> NodeId;
-    auto friend_declaration(IdentifierId name,
+    auto friend_declaration(StringId name,
                             RecordKind kind = RecordKind::class_,
                             TemplateId declaration = {}) -> NodeId;
     auto friend_type(CppTypeId type) -> NodeId;
-    auto using_declaration(IdentifierId name, CppTypeId type, TemplateId declaration = {})
-        -> NodeId;
-    auto instance_member(CppTypeId type, IdentifierId name, std::optional<Expr> initializer = {})
+    auto using_declaration(StringId name, CppTypeId type, TemplateId declaration = {}) -> NodeId;
+    auto instance_member(CppTypeId type, StringId name, std::optional<Expr> initializer = {})
         -> NodeId;
     auto static_member(CppTypeId type,
-                       IdentifierId name,
+                       StringId name,
                        std::optional<Expr> initializer = {},
                        bool is_inline = false,
                        TemplateId template_declaration = {}) -> NodeId;
     // Require a nonempty initializer expression.
     auto constexpr_member(CppTypeId type,
-                          IdentifierId name,
+                          StringId name,
                           Expr initializer,
                           bool is_inline = false,
                           TemplateId template_declaration = {}) -> NodeId;
-    auto enumerator(IdentifierId name,
+    auto enumerator(StringId name,
                     std::optional<StringId> initializer = {},
                     std::optional<StringId> annotation = {}) -> EnumValueId;
-    auto enumeration(IdentifierId name,
+    auto enumeration(StringId name,
                      CppTypeId underlying_type,
                      std::span<EnumValueId const> values,
-                     IdentifierId export_specifier = {},
+                     StringId export_specifier = {},
                      bool scoped = true) -> NodeId;
-    auto enumeration(IdentifierId name,
+    auto enumeration(StringId name,
                      CppTypeId underlying_type,
                      std::initializer_list<EnumValueId> values,
-                     IdentifierId export_specifier = {},
+                     StringId export_specifier = {},
                      bool scoped = true) -> NodeId {
         return enumeration(
             name, underlying_type, std::span<EnumValueId const>{values}, export_specifier, scoped);
     }
-    auto record(IdentifierId name,
+    auto record(StringId name,
                 std::span<NodeId const> children = {},
                 RecordKind kind = RecordKind::struct_) -> RecordId;
-    auto record(IdentifierId name,
+    auto record(StringId name,
                 std::initializer_list<NodeId> children,
                 RecordKind kind = RecordKind::struct_) -> RecordId {
         return record(name, std::span<NodeId const>{children}, kind);
@@ -208,14 +206,14 @@ class CppIR {
     }
     void set_record_template(RecordId record, TemplateId declaration);
     void set_record_requires_clause(RecordId record, Expr clause);
-    void set_record_export_specifier(RecordId record, IdentifierId specifier);
+    void set_record_export_specifier(RecordId record, StringId specifier);
     void set_record_dependencies(RecordId record, std::span<TypeDependencyId const> dependencies);
     void set_record_dependencies(RecordId record,
                                  std::initializer_list<TypeDependencyId> dependencies) {
         set_record_dependencies(record, std::span<TypeDependencyId const>{dependencies});
     }
-    auto namespace_node(IdentifierId name, std::span<NodeId const> children) -> NodeId;
-    auto namespace_node(IdentifierId name, std::initializer_list<NodeId> children) -> NodeId {
+    auto namespace_node(StringId name, std::span<NodeId const> children) -> NodeId;
+    auto namespace_node(StringId name, std::initializer_list<NodeId> children) -> NodeId {
         return namespace_node(name, std::span<NodeId const>{children});
     }
     auto record(Expr name,
@@ -226,10 +224,10 @@ class CppIR {
                 RecordKind kind = RecordKind::struct_) -> RecordId {
         return record(name, std::span<NodeId const>{children}, kind);
     }
-    auto type_template_parameter(IdentifierId name, CppTypeId default_type = {}, bool pack = false)
+    auto type_template_parameter(StringId name, CppTypeId default_type = {}, bool pack = false)
         -> TemplateParameterId;
     auto value_template_parameter(CppTypeId type,
-                                  IdentifierId name = {},
+                                  StringId name = {},
                                   Expr default_value = {},
                                   bool pack = false) -> TemplateParameterId;
     auto template_declaration(std::span<TemplateParameterId const> parameters) -> TemplateId;
@@ -240,22 +238,21 @@ class CppIR {
     // Retain arbitrary parameter-list syntax authored by the source language.
     auto raw_template_declaration(StringId parameters) -> TemplateId;
     // Require an actual return type; use the dedicated constructor/destructor factories otherwise.
-    auto function(IdentifierId name, CppTypeId return_type) -> FunctionId;
+    auto function(StringId name, CppTypeId return_type) -> FunctionId;
     auto function(Expr name, CppTypeId return_type) -> FunctionId;
     auto function(std::string_view name, CppTypeId return_type) -> FunctionId;
     auto function(std::string_view name, std::string_view return_type) -> FunctionId;
-    auto constructor(IdentifierId name, bool is_explicit = false) -> FunctionId;
-    auto destructor(IdentifierId name) -> FunctionId;
-    auto parameter(CppTypeId type,
-                   IdentifierId name = {},
-                   std::optional<StringId> default_value = {}) -> FunctionParameterId;
+    auto constructor(StringId name, bool is_explicit = false) -> FunctionId;
+    auto destructor(StringId name) -> FunctionId;
+    auto parameter(CppTypeId type, StringId name = {}, std::optional<StringId> default_value = {})
+        -> FunctionParameterId;
     auto parameter(CppTypeId type,
                    std::string_view name,
                    std::optional<StringId> default_value = {}) -> FunctionParameterId;
     auto parameter(std::string_view type,
                    std::string_view name = {},
                    std::optional<StringId> default_value = {}) -> FunctionParameterId;
-    auto member_initializer(IdentifierId member, StringId value) -> MemberInitializerId;
+    auto member_initializer(StringId member, StringId value) -> MemberInitializerId;
     void set_function_parameters(FunctionId function,
                                  std::span<FunctionParameterId const> parameters);
     void set_function_parameters(FunctionId function,
@@ -296,10 +293,10 @@ class CppIR {
     auto function_parameters(FunctionId function) const -> std::span<FunctionParameterId const>;
     auto function_return_syntax(FunctionId function) const -> ReturnSyntax;
     auto function_receiver(FunctionId function) const -> FunctionReceiver;
-    auto parameter_name(FunctionParameterId parameter) const -> IdentifierId;
+    auto parameter_name(FunctionParameterId parameter) const -> StringId;
     auto parameter_type(FunctionParameterId parameter) const -> CppTypeId;
     void set_parameter_type(FunctionParameterId parameter, CppTypeId type);
-    void set_function_name(FunctionId function, IdentifierId name);
+    void set_function_name(FunctionId function, StringId name);
     void set_function_name(FunctionId function, Expr name);
     void set_function_return_type(FunctionId function,
                                   CppTypeId type,
@@ -309,7 +306,7 @@ class CppIR {
     // Require a nonempty condition expression.
     void set_function_conditional_noexcept(FunctionId function, Expr condition);
     void set_function_receiver(FunctionId function, FunctionReceiver receiver);
-    void set_function_export_specifier(FunctionId function, IdentifierId specifier);
+    void set_function_export_specifier(FunctionId function, StringId specifier);
     void set_function_template(FunctionId function, TemplateId declaration);
     void set_function_requires_clause(FunctionId function, Expr clause);
     auto raw(StringId value, std::span<TypeDependencyId const> dependencies = {}) -> NodeId;
@@ -329,7 +326,7 @@ class CppIR {
                     std::optional<ReturnSyntax> syntax = {},
                     bool header = false) -> NodeId;
     auto named(std::string_view value, std::span<TypeDependencyId const> dependencies = {}) -> Expr;
-    auto named(IdentifierId value, std::span<TypeDependencyId const> dependencies = {}) -> Expr;
+    auto named(StringId value, std::span<TypeDependencyId const> dependencies = {}) -> Expr;
     auto named(std::string_view value, std::initializer_list<TypeDependencyId> dependencies)
         -> Expr {
         return named(value, std::span<TypeDependencyId const>{dependencies});
@@ -350,9 +347,9 @@ class CppIR {
         return call(callee, std::span<Expr const>{arguments});
     }
     auto member_access(Expr object, std::string_view member) -> Expr;
-    auto member_access(Expr object, IdentifierId member) -> Expr;
+    auto member_access(Expr object, StringId member) -> Expr;
     auto pointer_member_access(Expr object, std::string_view member) -> Expr;
-    auto pointer_member_access(Expr object, IdentifierId member) -> Expr;
+    auto pointer_member_access(Expr object, StringId member) -> Expr;
     auto unary(UnaryOperator operation, Expr operand) -> Expr;
     auto subscript(Expr object, Expr index) -> Expr;
     auto binary(BinaryOperator operation, Expr left, Expr right, bool line_break_after = false)
@@ -375,7 +372,7 @@ class CppIR {
     void for_each_child(NodeId node, std::function<void(NodeId)> const& visit) const;
     // Describe all bindings introduced by raw content or inherited bases in this scope.
     // Structured declarations are collected automatically in addition to these names.
-    void set_scope_bindings(NodeId node, std::span<IdentifierId const> names);
+    void set_scope_bindings(NodeId node, std::span<StringId const> names);
   private:
     friend class CppRenderer;
     auto append_function(Expr name, CppTypeId return_type, FunctionKind kind) -> FunctionId;
@@ -400,7 +397,7 @@ class CppIR {
     auto exprs(ir::Range range) const -> std::span<Expr const>;
     auto type_list(ir::Range range) const -> std::span<CppTypeId const>;
     auto dependency_list(ir::Range range) const -> std::span<TypeDependencyId const>;
-    std::unordered_map<std::uint32_t, std::vector<IdentifierId>> scope_bindings_;
+    std::unordered_map<std::uint32_t, std::vector<StringId>> scope_bindings_;
     std::vector<FunctionParameterId> parameter_references_;
     std::vector<MemberInitializerId> initializer_references_;
     std::vector<SwitchCaseId> case_references_;

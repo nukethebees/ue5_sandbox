@@ -5,7 +5,7 @@
 
 namespace lispb::codegen {
 
-auto Modules::append(IdentifierId module_name, CppFileId module_header, CppFileId module_source)
+auto Modules::append(StringId module_name, CppFileId module_header, CppFileId module_source)
     -> ModuleId {
     name.push_back(module_name);
     header.push_back(module_header);

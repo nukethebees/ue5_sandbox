@@ -16,11 +16,11 @@ struct FunctionSchemas {
     [[nodiscard]] auto index(FunctionSchemaId id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<TypeRefId> return_type;
     std::vector<SchemaRange<ParameterId>> parameters;
     std::vector<SchemaRange<StringId>> body_lines;
-    std::vector<SchemaRange<IdentifierId>> dependencies;
+    std::vector<SchemaRange<StringId>> dependencies;
     std::vector<std::optional<TypeRefId>> trailing_return_type;
     std::vector<std::uint8_t> is_const;
     std::vector<std::uint8_t> is_noexcept;

@@ -16,7 +16,7 @@ namespace lispb::codegen {
 
 class Environments {
   public:
-    using SymbolTable = std::unordered_map<IdentifierId, SymbolBinding>;
+    using SymbolTable = std::unordered_map<StringId, SymbolBinding>;
 
     Environments();
     void clear();
@@ -33,32 +33,31 @@ class Environments {
 
     // Repeated declarations retain the first declaration's identity.
     auto declare(EnvironmentId environment,
-                 IdentifierId name,
+                 StringId name,
                  CppDeclarationId declaration,
                  EnvironmentId introduced_scope = {}) -> SymbolBinding;
     // Preserve declaration ownership for injected names and anonymous namespace imports.
-    auto bind(EnvironmentId environment, IdentifierId name, SymbolBinding symbol) -> SymbolBinding;
+    auto bind(EnvironmentId environment, StringId name, SymbolBinding symbol) -> SymbolBinding;
     auto named(EnvironmentId parent,
                EnvironmentKind kind,
-               IdentifierId name,
+               StringId name,
                CppDeclarationId declaration = {}) -> EnvironmentId;
     void import_symbols(EnvironmentId destination, EnvironmentId source);
 
     // Search parents for the first component, then only its introduced scopes.
     // Missing and unknown results contain null handles.
-    auto lookup(EnvironmentId environment, std::span<IdentifierId const> name) const
-        -> SymbolLookup;
-    auto lookup_local(EnvironmentId environment, IdentifierId name) const -> SymbolLookup;
+    auto lookup(EnvironmentId environment, std::span<StringId const> name) const -> SymbolLookup;
+    auto lookup_local(EnvironmentId environment, StringId name) const -> SymbolLookup;
     // Register names supplied by includes without claiming knowledge of their contents.
     // Allocate scopes only for qualifiers; throw length_error if external IDs are exhausted.
-    auto reference(std::span<IdentifierId const> name) -> SymbolBinding;
+    auto reference(std::span<StringId const> name) -> SymbolBinding;
     // Ignore unknown contents when locating an already registered owner scope.
     // Return null when no such scope exists.
-    auto find_environment(EnvironmentId environment, std::span<IdentifierId const> name) const
+    auto find_environment(EnvironmentId environment, std::span<StringId const> name) const
         -> EnvironmentId;
   private:
     auto index(EnvironmentId environment) const -> std::size_t;
-    auto find_local(EnvironmentId environment, IdentifierId name) const -> SymbolBinding;
+    auto find_local(EnvironmentId environment, StringId name) const -> SymbolBinding;
 
     std::vector<EnvironmentId> parents_;
     std::vector<EnvironmentKind> kinds_;

@@ -326,7 +326,7 @@ auto conversion_function(LoweringContext& context,
         ir.named(internal_name(
             context, schema, serialized ? "serialized_name" : (display ? "display_name" : "name"))),
         {ir.named("value")})};
-    auto const result{ir.function(IdentifierId{}, ir.types.intern("auto"))};
+    auto const result{ir.function(StringId{}, ir.types.intern("auto"))};
     ir.set_function_parameters(result, {ir.parameter(parameter_type + " const", "value")});
     ir.set_function_body(result, {ir.return_stmt(lookup)});
     ir.set_function_export_specifier(

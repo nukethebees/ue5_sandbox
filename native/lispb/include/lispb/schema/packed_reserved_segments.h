@@ -12,7 +12,7 @@ struct PackedReservedSegments {
     [[nodiscard]] auto append() -> PackedSegmentId;
     [[nodiscard]] auto index(PackedSegmentId id) const -> std::uint32_t;
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<std::uint32_t> bit_width;
 };
 

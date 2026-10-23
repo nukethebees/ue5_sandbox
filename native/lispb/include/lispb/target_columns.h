@@ -8,7 +8,7 @@
 namespace lispb {
 
 struct TargetColumns {
-    std::vector<IdentifierId> names;
+    std::vector<StringId> names;
     std::vector<codegen::sexpr::HandleRange> sources;
     std::vector<StringId> output_paths;
     std::vector<PathBase> output_bases;

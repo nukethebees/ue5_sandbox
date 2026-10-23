@@ -302,7 +302,8 @@ TEST(SemanticTypeGraph, PreservesExplicitEnumSemanticWidth) {
                             new_module_settings_store)] = context.storage.strings.intern("states");
                     context.storage.declarations.module_settings_store
                         .header[context.storage.declarations.module_settings_store.index(
-                            new_module_settings_store)] = context.storage.strings.add("States.h");
+                            new_module_settings_store)] =
+                        context.storage.strings.intern("States.h");
                     return new_module_settings_store;
                 }();
             context.storage.declarations.normal_modules
@@ -334,7 +335,7 @@ TEST(SemanticTypeGraph, PreservesExplicitEnumSemanticWidth) {
                                          new_enumerators)] = context.storage.strings.intern("Idle");
                                  context.storage.declarations.enumerators
                                      .initializer[context.storage.declarations.enumerators.index(
-                                         new_enumerators)] = context.storage.strings.add("0");
+                                         new_enumerators)] = context.storage.strings.intern("0");
                                  return new_enumerators;
                              }(),
                              [&] {
@@ -346,7 +347,7 @@ TEST(SemanticTypeGraph, PreservesExplicitEnumSemanticWidth) {
                                      context.storage.strings.intern("Active");
                                  context.storage.declarations.enumerators
                                      .initializer[context.storage.declarations.enumerators.index(
-                                         new_enumerators)] = context.storage.strings.add("7");
+                                         new_enumerators)] = context.storage.strings.intern("7");
                                  context.storage.declarations.enumerators
                                      .sentinel[context.storage.declarations.enumerators.index(
                                          new_enumerators)] = true;
@@ -404,7 +405,8 @@ TEST(SemanticTypeGraph, KeepsDerivedEnumBackingOutOfSemanticDependencies) {
                             new_module_settings_store)] = context.storage.strings.intern("states");
                     context.storage.declarations.module_settings_store
                         .header[context.storage.declarations.module_settings_store.index(
-                            new_module_settings_store)] = context.storage.strings.add("States.h");
+                            new_module_settings_store)] =
+                        context.storage.strings.intern("States.h");
                     return new_module_settings_store;
                 }();
             context.storage.declarations.normal_modules
@@ -429,7 +431,7 @@ TEST(SemanticTypeGraph, KeepsDerivedEnumBackingOutOfSemanticDependencies) {
                                          new_enumerators)] = context.storage.strings.intern("Idle");
                                  context.storage.declarations.enumerators
                                      .initializer[context.storage.declarations.enumerators.index(
-                                         new_enumerators)] = context.storage.strings.add("0");
+                                         new_enumerators)] = context.storage.strings.intern("0");
                                  return new_enumerators;
                              }(),
                              [&] {
@@ -441,7 +443,7 @@ TEST(SemanticTypeGraph, KeepsDerivedEnumBackingOutOfSemanticDependencies) {
                                      context.storage.strings.intern("Active");
                                  context.storage.declarations.enumerators
                                      .initializer[context.storage.declarations.enumerators.index(
-                                         new_enumerators)] = context.storage.strings.add("7");
+                                         new_enumerators)] = context.storage.strings.intern("7");
                                  return new_enumerators;
                              }()});
                     context.storage.declarations.enums
@@ -484,7 +486,7 @@ TEST(SemanticTypeGraph, ResolvesStandaloneIntegerScalarWithoutPhysicalFacts) {
                     context.storage.declarations.module_settings_store
                         .header[context.storage.declarations.module_settings_store.index(
                             new_module_settings_store)] =
-                        context.storage.strings.add("SemanticValues.h");
+                        context.storage.strings.intern("SemanticValues.h");
                     context.storage.declarations.module_settings_store
                         .namespace_name[context.storage.declarations.module_settings_store.index(
                             new_module_settings_store)] = context.storage.strings.intern("project");
@@ -689,7 +691,7 @@ TEST(SemanticTypeGraph, RejectsIntegerScalarRelationshipToExternalLeaf) {
                     context.storage.declarations.module_settings_store
                         .header[context.storage.declarations.module_settings_store.index(
                             new_module_settings_store)] =
-                        context.storage.strings.add("SemanticValues.h");
+                        context.storage.strings.intern("SemanticValues.h");
                     context.storage.declarations.module_settings_store
                         .namespace_name[context.storage.declarations.module_settings_store.index(
                             new_module_settings_store)] = context.storage.strings.intern("project");
@@ -772,7 +774,7 @@ TEST(SemanticTypeGraph, ResolvesPhysicalRepresentationsAndDependencies) {
                      context.storage.declarations.module_settings_store
                          .header[context.storage.declarations.module_settings_store.index(
                              new_module_settings_store)] =
-                         context.storage.strings.add("SemanticValues.h");
+                         context.storage.strings.intern("SemanticValues.h");
                      context.storage.declarations.module_settings_store
                          .namespace_name[context.storage.declarations.module_settings_store.index(
                              new_module_settings_store)] =
@@ -837,7 +839,7 @@ TEST(SemanticTypeGraph, ResolvesPhysicalRepresentationsAndDependencies) {
                      context.storage.declarations.module_settings_store
                          .header[context.storage.declarations.module_settings_store.index(
                              new_module_settings_store)] =
-                         context.storage.strings.add("Representations.h");
+                         context.storage.strings.intern("Representations.h");
                      context.storage.declarations.module_settings_store
                          .namespace_name[context.storage.declarations.module_settings_store.index(
                              new_module_settings_store)] =
@@ -1192,7 +1194,8 @@ TEST(SemanticTypeGraph, ResolvesPackedIntegerScalarDomainAndDependency) {
                          context.storage.strings.intern("domains");
                      context.storage.declarations.module_settings_store
                          .header[context.storage.declarations.module_settings_store.index(
-                             new_module_settings_store)] = context.storage.strings.add("Domains.h");
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("Domains.h");
                      context.storage.declarations.module_settings_store
                          .namespace_name[context.storage.declarations.module_settings_store.index(
                              new_module_settings_store)] =
@@ -1255,7 +1258,8 @@ TEST(SemanticTypeGraph, ResolvesPackedIntegerScalarDomainAndDependency) {
                              new_module_settings_store)] = context.storage.strings.intern("packed");
                      context.storage.declarations.module_settings_store
                          .header[context.storage.declarations.module_settings_store.index(
-                             new_module_settings_store)] = context.storage.strings.add("Packed.h");
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("Packed.h");
                      context.storage.declarations.module_settings_store
                          .namespace_name[context.storage.declarations.module_settings_store.index(
                              new_module_settings_store)] =
@@ -1388,7 +1392,7 @@ TEST(SemanticTypeGraph, RetainsPackedPhysicalOrdering) {
                             new_module_settings_store)] = context.storage.strings.intern("wire");
                     context.storage.declarations.module_settings_store
                         .header[context.storage.declarations.module_settings_store.index(
-                            new_module_settings_store)] = context.storage.strings.add("Wire.h");
+                            new_module_settings_store)] = context.storage.strings.intern("Wire.h");
                     return new_module_settings_store;
                 }();
             context.storage.declarations.normal_modules
@@ -1500,9 +1504,9 @@ TEST(SemanticTypeGraph, ResolvesStandardLibrarySoaColumns) {
               graph.dependencies_of(*vectors).end());
     ASSERT_EQ(graph.definitions().soas.columns_of(vector_type).size(), 3U);
     EXPECT_TRUE(std::ranges::equal(graph.definitions().soas.vector_components_of(vector_type),
-                                   std::vector<IdentifierId>{storage.strings.find("xs"),
-                                                             storage.strings.find("ys"),
-                                                             storage.strings.find("zs")}));
+                                   std::vector<StringId>{storage.strings.find("xs"),
+                                                         storage.strings.find("ys"),
+                                                         storage.strings.find("zs")}));
     for (auto const column_id : graph.definitions().soas.columns_of(vector_type)) {
         auto const column{column_id};
         EXPECT_EQ(text(storage,
@@ -1596,7 +1600,8 @@ TEST(SemanticTypeGraph, RejectsNestedSoaTypeThatDisagreesWithResolvedSchema) {
                             new_module_settings_store)] = context.storage.strings.intern("tables");
                     context.storage.declarations.module_settings_store
                         .header[context.storage.declarations.module_settings_store.index(
-                            new_module_settings_store)] = context.storage.strings.add("Tables.h");
+                            new_module_settings_store)] =
+                        context.storage.strings.intern("Tables.h");
                     return new_module_settings_store;
                 }();
             context.storage.declarations.normal_modules
@@ -1698,7 +1703,8 @@ TEST(SemanticTypeGraph, ResolvesSoaColumnRelationshipsAndDependencies) {
                             new_module_settings_store)] = context.storage.strings.intern("tables");
                     context.storage.declarations.module_settings_store
                         .header[context.storage.declarations.module_settings_store.index(
-                            new_module_settings_store)] = context.storage.strings.add("Tables.h");
+                            new_module_settings_store)] =
+                        context.storage.strings.intern("Tables.h");
                     return new_module_settings_store;
                 }();
             context.storage.declarations.normal_modules
@@ -1848,7 +1854,8 @@ TEST(SemanticTypeGraph, ResolvesRecordMembersFixedArraysAndDependencies) {
                             new_module_settings_store)] = context.storage.strings.intern("records");
                     context.storage.declarations.module_settings_store
                         .header[context.storage.declarations.module_settings_store.index(
-                            new_module_settings_store)] = context.storage.strings.add("Records.h");
+                            new_module_settings_store)] =
+                        context.storage.strings.intern("Records.h");
                     return new_module_settings_store;
                 }();
             context.storage.declarations.normal_modules
@@ -2031,7 +2038,7 @@ TEST(SemanticTypeGraph, RejectsDirectAndIndirectByValueRecordCycles) {
                     new_module_settings_store)] = context.storage.strings.intern("records");
             context.storage.declarations.module_settings_store
                 .header[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Records.h");
+                    new_module_settings_store)] = context.storage.strings.intern("Records.h");
             return new_module_settings_store;
         }();
         context.storage.declarations.normal_modules
@@ -2146,7 +2153,8 @@ TEST(SemanticTypeGraph, PointerSelfReferenceIsNotByValueRecursion) {
                             new_module_settings_store)] = context.storage.strings.intern("records");
                     context.storage.declarations.module_settings_store
                         .header[context.storage.declarations.module_settings_store.index(
-                            new_module_settings_store)] = context.storage.strings.add("Records.h");
+                            new_module_settings_store)] =
+                        context.storage.strings.intern("Records.h");
                     return new_module_settings_store;
                 }();
             context.storage.declarations.normal_modules
@@ -2175,7 +2183,7 @@ TEST(SemanticTypeGraph, PointerSelfReferenceIsNotByValueRecursion) {
                                         new_type_refs)] = context.storage.strings.intern("Node");
                                 context.storage.declarations.type_refs
                                     .suffix[context.storage.declarations.type_refs.index(
-                                        new_type_refs)] = context.storage.strings.add("*");
+                                        new_type_refs)] = context.storage.strings.intern("*");
                                 return new_type_refs;
                             }();
                             return new_record_members;
@@ -2198,7 +2206,7 @@ TEST(SemanticTypeGraph, ClassifiesBoundedUsesWithoutDiscardingSpelling) {
                 context.storage.strings.intern("float");
             context.storage.declarations.type_refs
                 .suffix[context.storage.declarations.type_refs.index(new_type_refs)] =
-                context.storage.strings.add(" const* const*");
+                context.storage.strings.intern(" const* const*");
             return new_type_refs;
         }(),
         lispb::codegen::make_test_registry(context))};
@@ -2214,7 +2222,7 @@ TEST(SemanticTypeGraph, ClassifiesBoundedUsesWithoutDiscardingSpelling) {
                 context.storage.strings.intern("float");
             context.storage.declarations.type_refs
                 .suffix[context.storage.declarations.type_refs.index(new_type_refs)] =
-                context.storage.strings.add(" const");
+                context.storage.strings.intern(" const");
             return new_type_refs;
         }(),
         lispb::codegen::make_test_registry(context))};
@@ -2228,7 +2236,7 @@ TEST(SemanticTypeGraph, ClassifiesBoundedUsesWithoutDiscardingSpelling) {
                     context.storage.strings.intern("float");
                 context.storage.declarations.type_refs
                     .suffix[context.storage.declarations.type_refs.index(new_type_refs)] =
-                    context.storage.strings.add(suffix);
+                    context.storage.strings.intern(suffix);
                 return new_type_refs;
             }(),
             lispb::codegen::make_test_registry(context))};
@@ -2244,7 +2252,7 @@ TEST(SemanticTypeGraph, ClassifiesBoundedUsesWithoutDiscardingSpelling) {
                     context.storage.strings.intern("float");
                 context.storage.declarations.type_refs
                     .suffix[context.storage.declarations.type_refs.index(new_type_refs)] =
-                    context.storage.strings.add(suffix);
+                    context.storage.strings.intern(suffix);
                 return new_type_refs;
             }(),
             lispb::codegen::make_test_registry(context))};
@@ -2262,10 +2270,10 @@ TEST(SemanticTypeGraph, ClassifiesBoundedUsesWithoutDiscardingSpelling) {
                 context.storage.strings.intern("Owner");
             context.storage.declarations.type_refs
                 .suffix[context.storage.declarations.type_refs.index(new_type_refs)] =
-                context.storage.strings.add("");
+                context.storage.strings.intern("");
             context.storage.declarations.type_refs
                 .nested[context.storage.declarations.type_refs.index(new_type_refs)] =
-                context.storage.strings.add("Inner");
+                context.storage.strings.intern("Inner");
             return new_type_refs;
         }(),
         lispb::codegen::make_test_registry(context))};
@@ -2293,7 +2301,8 @@ TEST(SemanticTypeGraph, ResolvesRawUnionAlternativesAndDependencies) {
                         context.storage.strings.intern("payloads");
                     context.storage.declarations.module_settings_store
                         .header[context.storage.declarations.module_settings_store.index(
-                            new_module_settings_store)] = context.storage.strings.add("Payloads.h");
+                            new_module_settings_store)] =
+                        context.storage.strings.intern("Payloads.h");
                     return new_module_settings_store;
                 }();
             context.storage.declarations.normal_modules
@@ -2420,7 +2429,7 @@ TEST(SemanticTypeGraph, RejectsUnionAndMixedAggregateCycles) {
                 new_module_settings_store)] = context.storage.strings.intern("payloads");
         context.storage.declarations.module_settings_store
             .header[context.storage.declarations.module_settings_store.index(
-                new_module_settings_store)] = context.storage.strings.add("Payloads.h");
+                new_module_settings_store)] = context.storage.strings.intern("Payloads.h");
         context.storage.declarations.module_settings_store
             .namespace_name[context.storage.declarations.module_settings_store.index(
                 new_module_settings_store)] = context.storage.strings.intern("payloads");
@@ -2488,7 +2497,7 @@ TEST(SemanticTypeGraph, RejectsUnionAndMixedAggregateCycles) {
                 new_module_settings_store)] = context.storage.strings.intern("records");
         context.storage.declarations.module_settings_store
             .header[context.storage.declarations.module_settings_store.index(
-                new_module_settings_store)] = context.storage.strings.add("Records.h");
+                new_module_settings_store)] = context.storage.strings.intern("Records.h");
         context.storage.declarations.module_settings_store
             .namespace_name[context.storage.declarations.module_settings_store.index(
                 new_module_settings_store)] = context.storage.strings.intern("records");
@@ -2514,7 +2523,7 @@ TEST(SemanticTypeGraph, ResolvesTaggedUnionDiscriminantMappingsAndDependencies) 
                 new_module_settings_store)] = context.storage.strings.intern("events");
         context.storage.declarations.module_settings_store
             .header[context.storage.declarations.module_settings_store.index(
-                new_module_settings_store)] = context.storage.strings.add("Events.h");
+                new_module_settings_store)] = context.storage.strings.intern("Events.h");
         context.storage.declarations.module_settings_store
             .namespace_name[context.storage.declarations.module_settings_store.index(
                 new_module_settings_store)] = context.storage.strings.intern("events");
@@ -2574,7 +2583,7 @@ TEST(SemanticTypeGraph, ResolvesTaggedUnionDiscriminantMappingsAndDependencies) 
                 new_module_settings_store)] = context.storage.strings.intern("payloads");
         context.storage.declarations.module_settings_store
             .header[context.storage.declarations.module_settings_store.index(
-                new_module_settings_store)] = context.storage.strings.add("Payloads.h");
+                new_module_settings_store)] = context.storage.strings.intern("Payloads.h");
         context.storage.declarations.module_settings_store
             .namespace_name[context.storage.declarations.module_settings_store.index(
                 new_module_settings_store)] = context.storage.strings.intern("payloads");
@@ -2721,7 +2730,7 @@ TEST(SemanticTypeGraph, KeepsUnknownRegisteredTypesAsExternalLeaves) {
                             new_module_settings_store)] = context.storage.strings.intern("mode");
                     context.storage.declarations.module_settings_store
                         .header[context.storage.declarations.module_settings_store.index(
-                            new_module_settings_store)] = context.storage.strings.add("Mode.h");
+                            new_module_settings_store)] = context.storage.strings.intern("Mode.h");
                     return new_module_settings_store;
                 }();
             context.storage.declarations.normal_modules
@@ -2800,7 +2809,7 @@ TEST(SemanticTypeGraph, RejectsAmbiguousRegisteredDeclarationBindings) {
                         context.storage.strings.intern(std::move(module_name));
                     context.storage.declarations.module_settings_store
                         .header[context.storage.declarations.module_settings_store.index(
-                            new_module_settings_store)] = context.storage.strings.add(header);
+                            new_module_settings_store)] = context.storage.strings.intern(header);
                     context.storage.declarations.module_settings_store
                         .namespace_name[context.storage.declarations.module_settings_store.index(
                             new_module_settings_store)] = context.storage.strings.intern("project");
@@ -2871,7 +2880,7 @@ TEST(SemanticTypeGraph, RejectsInvalidAndDuplicateDeclaredIdentities) {
                         context.storage.strings.intern(std::move(name));
                     context.storage.declarations.module_settings_store
                         .header[context.storage.declarations.module_settings_store.index(
-                            new_module_settings_store)] = context.storage.strings.add("Types.h");
+                            new_module_settings_store)] = context.storage.strings.intern("Types.h");
                     return new_module_settings_store;
                 }();
             context.storage.declarations.normal_modules
@@ -2940,7 +2949,7 @@ TEST(SemanticTypeGraph, RejectsUnresolvedRegisteredReferences) {
                             new_module_settings_store)] = context.storage.strings.intern("mode");
                     context.storage.declarations.module_settings_store
                         .header[context.storage.declarations.module_settings_store.index(
-                            new_module_settings_store)] = context.storage.strings.add("Mode.h");
+                            new_module_settings_store)] = context.storage.strings.intern("Mode.h");
                     return new_module_settings_store;
                 }();
             context.storage.declarations.normal_modules
@@ -2998,7 +3007,7 @@ TEST(SemanticTypeGraph, ReferenceLookupMatchesResolverBindings) {
                              new_module_settings_store)] = context.storage.strings.intern("A");
                      context.storage.declarations.module_settings_store
                          .header[context.storage.declarations.module_settings_store.index(
-                             new_module_settings_store)] = context.storage.strings.add("A.h");
+                             new_module_settings_store)] = context.storage.strings.intern("A.h");
                      context.storage.declarations.module_settings_store
                          .namespace_name[context.storage.declarations.module_settings_store.index(
                              new_module_settings_store)] = context.storage.strings.intern("game");
@@ -3155,7 +3164,7 @@ TEST(SemanticTypeGraph, ReferenceLookupMatchesResolverBindings) {
                                            context.storage.declarations.type_refs
                                                .suffix[context.storage.declarations.type_refs.index(
                                                    new_type_refs)] =
-                                               context.storage.strings.add("*");
+                                               context.storage.strings.intern("*");
                                            return new_type_refs;
                                        }();
                                        return new_record_members;
@@ -3196,7 +3205,7 @@ TEST(SemanticTypeGraph, ReferenceLookupMatchesResolverBindings) {
                              new_module_settings_store)] = context.storage.strings.intern("B");
                      context.storage.declarations.module_settings_store
                          .header[context.storage.declarations.module_settings_store.index(
-                             new_module_settings_store)] = context.storage.strings.add("B.h");
+                             new_module_settings_store)] = context.storage.strings.intern("B.h");
                      context.storage.declarations.module_settings_store
                          .namespace_name[context.storage.declarations.module_settings_store.index(
                              new_module_settings_store)] = context.storage.strings.intern("game");
@@ -3310,7 +3319,8 @@ TEST(SemanticTypeGraph, TreatsRawCppSpellingsAsExplicitExternalLeaves) {
                             new_module_settings_store)] = context.storage.strings.intern("values");
                     context.storage.declarations.module_settings_store
                         .header[context.storage.declarations.module_settings_store.index(
-                            new_module_settings_store)] = context.storage.strings.add("Values.h");
+                            new_module_settings_store)] =
+                        context.storage.strings.intern("Values.h");
                     return new_module_settings_store;
                 }();
             context.storage.declarations.normal_modules
@@ -3419,7 +3429,7 @@ TEST(SemanticTypeGraph, SingleOnlyPhysicalOwnerDoesNotRenameLogicalIdentity) {
                             new_module_settings_store)] = context.storage.strings.intern("model");
                     context.storage.declarations.module_settings_store
                         .header[context.storage.declarations.module_settings_store.index(
-                            new_module_settings_store)] = context.storage.strings.add("Model.h");
+                            new_module_settings_store)] = context.storage.strings.intern("Model.h");
                     context.storage.declarations.module_settings_store
                         .namespace_name[context.storage.declarations.module_settings_store.index(
                             new_module_settings_store)] = context.storage.strings.intern("model");
@@ -3489,7 +3499,8 @@ TEST(SemanticTypeGraph, SingleOnlyPhysicalOwnerDoesNotRenameLogicalIdentity) {
                                              context.storage.strings.intern("LogicalRows");
                                          context.storage.declarations.type_refs
                                              .suffix[context.storage.declarations.type_refs.index(
-                                                 new_type_refs)] = context.storage.strings.add("*");
+                                                 new_type_refs)] =
+                                             context.storage.strings.intern("*");
                                          return new_type_refs;
                                      }();
                                      return new_record_members;

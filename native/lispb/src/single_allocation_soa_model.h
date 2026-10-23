@@ -12,7 +12,7 @@ struct LoweringContext;
 
 auto build_single_allocation_model(LoweringContext& context,
                                    DeclarationHandle schema,
-                                   std::map<IdentifierId, DeclarationHandle> const& schemas,
+                                   std::map<StringId, DeclarationHandle> const& schemas,
                                    SoaBackend backend) -> SingleAllocationModelId;
 
 auto column_for(LoweringContext& context, SingleAllocationModelId model, LoweringPathId path)

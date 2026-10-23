@@ -39,7 +39,7 @@ class DocumentState {
     EditorSession* session;
     DocumentId id;
     std::vector<lispb::codegen::ModuleHandle> modules;
-    std::map<lispb::IdentifierId, lispb::codegen::RegisteredTypeId> registered_types;
+    std::map<lispb::StringId, lispb::codegen::RegisteredTypeId> registered_types;
     lispb::schema::TypeGraph types;
     lispb::schema::SourceComments comments;
     Variants variants;

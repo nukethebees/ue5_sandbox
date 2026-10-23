@@ -155,7 +155,7 @@ TEST(Ast, RendersBraceInitialisedTree) {
     [[maybe_unused]] auto& ir{context.ir};
     [[maybe_unused]] auto& types{context.storage.cpp_types};
     auto const file{ir.files.append(
-        ir.strings.add("Example.h"),
+        ir.strings.intern("Example.h"),
         {
             ir.include(ir.store_text("Example/Dependency.h"), IncludeStyle::quoted),
             ir.lines(2),
@@ -214,7 +214,7 @@ TEST(Ast, CollectsNestedTypeDependenciesOnceAndInGroups) {
     auto const array{types.intern(
         "TArray<FElement>", {types.dependency("TArray<FElement>", "Containers/Array.h"), element})};
     auto const file{
-        ir.files.append(ir.strings.add("Example.h"),
+        ir.files.append(ir.strings.intern("Example.h"),
                         {
                             ir.include_dependencies(),
                             ir.lines(2),
@@ -223,7 +223,7 @@ TEST(Ast, CollectsNestedTypeDependenciesOnceAndInGroups) {
                                        ir.instance_member(array, ir.strings.intern("second"))},
                                       RecordKind::struct_),
                         })};
-    ir.files.set_include_order(file, {ir.strings.add("Project/")});
+    ir.files.set_include_order(file, {ir.strings.intern("Project/")});
 
     auto const rendered{CppRenderer{ir}.render(file)};
     EXPECT_EQ(rendered.find("Project/Element.h"), rendered.rfind("Project/Element.h"));
@@ -236,7 +236,7 @@ TEST(Ast, SortsDependencyIncludesWithinConfiguredGroups) {
     [[maybe_unused]] auto& ir{context.ir};
     [[maybe_unused]] auto& types{context.storage.cpp_types};
     auto const file{ir.files.append(
-        ir.strings.add("Example.h"),
+        ir.strings.intern("Example.h"),
         {
             ir.include_dependencies(),
             ir.instance_member(types.intern("FZ", {types.dependency("FZ", "Project/Z.h")}),
@@ -248,7 +248,7 @@ TEST(Ast, SortsDependencyIncludesWithinConfiguredGroups) {
                              {types.dependency("TArray<int32>", "Containers/Array.h")}),
                 ir.strings.intern("values")),
         })};
-    ir.files.set_include_order(file, {ir.strings.add("Project/")});
+    ir.files.set_include_order(file, {ir.strings.intern("Project/")});
 
     auto const rendered{CppRenderer{ir}.render(file)};
     EXPECT_LT(rendered.find("Project/A.h"), rendered.find("Project/Z.h"));
@@ -260,7 +260,7 @@ TEST(Ast, RendersExplicitIncludesAtTheirNodeLocation) {
     [[maybe_unused]] auto& ir{context.ir};
     [[maybe_unused]] auto& types{context.storage.cpp_types};
     auto const file{
-        ir.files.append(ir.strings.add("Example.cpp"),
+        ir.files.append(ir.strings.intern("Example.cpp"),
                         {
                             ir.include(ir.store_text("Project/Explicit.h"), IncludeStyle::quoted),
                             ir.lines(2),
@@ -571,7 +571,7 @@ TEST(Ast, CollectsOpaqueDeclarationDependenciesWithoutIncludingTheBody) {
                                                        {ir.type_reference(types.intern("T"))}));
         return created_function;
     }()};
-    auto const file{ir.files.append(ir.strings.add("Example.h"),
+    auto const file{ir.files.append(ir.strings.intern("Example.h"),
                                     {ir.include_dependencies(), ir.declaration(spec)})};
     auto const header{CppRenderer{ir}.render(file)};
     EXPECT_NE(header.find("#include \"Project/Requirement.h\""), std::string::npos);
@@ -627,7 +627,7 @@ TEST(Ast, RendersForwardUsingAndFilePolicyNodes) {
     [[maybe_unused]] auto& ir{context.ir};
     [[maybe_unused]] auto& types{context.storage.cpp_types};
     auto const file{ir.files.append(
-        ir.strings.add("Example.cpp"),
+        ir.strings.intern("Example.cpp"),
         {
             ir.forward_declaration(ir.strings.intern("FValue"), RecordKind::struct_),
             ir.lines(1),
@@ -635,8 +635,8 @@ TEST(Ast, RendersForwardUsingAndFilePolicyNodes) {
         })};
     ir.files.flags[ir.files.index(file)].set_pragma_once(false);
     ir.files.flags[ir.files.index(file)].set_clang_format_off(true);
-    ir.files.set_prologue(file, {ir.strings.add("// prologue")});
-    ir.files.set_epilogue(file, {ir.strings.add("// epilogue")});
+    ir.files.set_prologue(file, {ir.strings.intern("// prologue")});
+    ir.files.set_epilogue(file, {ir.strings.intern("// epilogue")});
 
     auto const rendered{CppRenderer{ir}.render(file)};
     EXPECT_TRUE(rendered.starts_with("// clang-format off\n"));

@@ -34,7 +34,7 @@ auto is_identifier_prefix(std::string_view const prefix) -> bool {
 }
 
 auto view_name(Declarations& declarations, DeclarationHandle schema, bool const is_const)
-    -> IdentifierId {
+    -> StringId {
     auto const authored{is_const
                             ? declarations.soas.const_view_name[declarations.soas.index(schema)]
                             : declarations.soas.view_name[declarations.soas.index(schema)]};
@@ -47,15 +47,13 @@ auto view_name(Declarations& declarations, DeclarationHandle schema, bool const 
         (is_const ? "ConstView" : "View"));
 }
 
-auto prefixed(Declarations& declarations, IdentifierId const prefix, IdentifierId const name)
-    -> IdentifierId {
+auto prefixed(Declarations& declarations, StringId const prefix, StringId const name) -> StringId {
     auto& strings{declarations.strings()};
     return strings.intern(std::string{strings.view(prefix)} + std::string{strings.view(name)});
 }
 
-void add_soa_names(Declarations& declarations,
-                   std::set<IdentifierId>& names,
-                   DeclarationHandle schema) {
+void
+    add_soa_names(Declarations& declarations, std::set<StringId>& names, DeclarationHandle schema) {
     if (declarations.soas.emits_vector_storage(schema)) {
         names.insert(declarations.soas.name[declarations.soas.index(schema)]);
         names.insert(view_name(declarations, schema, false));
@@ -86,8 +84,8 @@ void validate_soa_allocator_variants(Declarations& declarations,
         throw std::invalid_argument{"TArray allocator variants require the Unreal backend"};
     }
 
-    std::set<IdentifierId> schema_names;
-    std::set<IdentifierId> generated_names;
+    std::set<StringId> schema_names;
+    std::set<StringId> generated_names;
     for (auto const& schema : schemas) {
         schema_names.insert(declarations.soas.name[declarations.soas.index(schema)]);
         add_soa_names(declarations, generated_names, schema);

@@ -34,7 +34,7 @@ struct PackedFieldTableConstView {
     std::span<lispb::schema::PackedSegmentId const> segment;
     std::span<std::string_view const> name;
     std::span<std::optional<lispb::schema::TypeId> const> semantic_type;
-    std::span<lispb::IdentifierId const> logical_type;
+    std::span<lispb::StringId const> logical_type;
     std::span<lispb::codegen::PackedFieldKind const> kind;
     std::span<std::uint8_t const> reserved;
     std::span<std::uint32_t const> schema_bit_width;
@@ -179,7 +179,7 @@ struct PackedFieldTableView {
     std::span<lispb::schema::PackedSegmentId> segment;
     std::span<std::string_view> name;
     std::span<std::optional<lispb::schema::TypeId>> semantic_type;
-    std::span<lispb::IdentifierId> logical_type;
+    std::span<lispb::StringId> logical_type;
     std::span<lispb::codegen::PackedFieldKind> kind;
     std::span<std::uint8_t> reserved;
     std::span<std::uint32_t> schema_bit_width;
@@ -319,7 +319,7 @@ struct PackedFieldTableView {
              lispb::schema::PackedSegmentId const new_segment,
              std::string_view const new_name,
              std::optional<lispb::schema::TypeId> const new_semantic_type,
-             lispb::IdentifierId const new_logical_type,
+             lispb::StringId const new_logical_type,
              lispb::codegen::PackedFieldKind const new_kind,
              std::uint8_t const new_reserved,
              std::uint32_t const new_schema_bit_width,
@@ -374,7 +374,7 @@ struct PackedFieldTable {
     ioj::native_soa::Vector<lispb::schema::PackedSegmentId> segment;
     ioj::native_soa::Vector<std::string_view> name;
     ioj::native_soa::Vector<std::optional<lispb::schema::TypeId>> semantic_type;
-    ioj::native_soa::Vector<lispb::IdentifierId> logical_type;
+    ioj::native_soa::Vector<lispb::StringId> logical_type;
     ioj::native_soa::Vector<lispb::codegen::PackedFieldKind> kind;
     ioj::native_soa::Vector<std::uint8_t> reserved;
     ioj::native_soa::Vector<std::uint32_t> schema_bit_width;
@@ -470,7 +470,7 @@ struct PackedFieldTable {
              lispb::schema::PackedSegmentId const new_segment,
              std::string_view const new_name,
              std::optional<lispb::schema::TypeId> const new_semantic_type,
-             lispb::IdentifierId const new_logical_type,
+             lispb::StringId const new_logical_type,
              lispb::codegen::PackedFieldKind const new_kind,
              std::uint8_t const new_reserved,
              std::uint32_t const new_schema_bit_width,
@@ -520,7 +520,7 @@ struct PackedFieldTable {
              lispb::schema::PackedSegmentId const new_segment,
              std::string_view const new_name,
              std::optional<lispb::schema::TypeId> const new_semantic_type,
-             lispb::IdentifierId const new_logical_type,
+             lispb::StringId const new_logical_type,
              lispb::codegen::PackedFieldKind const new_kind,
              std::uint8_t const new_reserved,
              std::uint32_t const new_schema_bit_width,

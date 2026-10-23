@@ -53,9 +53,9 @@ class TypeGraph {
     auto cpp_types() const -> codegen::CppTypes& { return *cpp_types_; }
     auto identity(TypeId id) const -> TypeIdentity;
     auto origin(TypeId id) const -> TypeOrigin;
-    auto module_name(TypeId id) const -> IdentifierId;
-    auto namespace_name(TypeId id) const -> IdentifierId;
-    auto name(TypeId id) const -> IdentifierId;
+    auto module_name(TypeId id) const -> StringId;
+    auto namespace_name(TypeId id) const -> StringId;
+    auto name(TypeId id) const -> StringId;
     auto cpp_spelling(TypeId id) const -> StringId;
     auto definition(TypeId id) const -> TypeDefinitionId;
     auto module(TypeId id) const -> codegen::ModuleHandle;
@@ -66,10 +66,9 @@ class TypeGraph {
                std::views::transform([](std::uint32_t index) { return TypeId{index}; });
     }
     auto find(TypeIdentity const& identity) const -> std::optional<TypeId>;
-    auto find_declared(codegen::ModuleHandle module, IdentifierId name) const
-        -> std::optional<TypeId>;
-    auto find_registered(IdentifierId name) const -> std::optional<TypeId>;
-    auto find_named(IdentifierId identifier, codegen::ModuleHandle module) const
+    auto find_declared(codegen::ModuleHandle module, StringId name) const -> std::optional<TypeId>;
+    auto find_registered(StringId name) const -> std::optional<TypeId>;
+    auto find_named(StringId identifier, codegen::ModuleHandle module) const
         -> std::optional<TypeId>;
     auto find_reference(codegen::TypeRefId reference, codegen::ModuleHandle module) const
         -> std::optional<TypeId>;
@@ -103,9 +102,9 @@ class TypeGraph {
     codegen::Declarations* declarations_{};
     codegen::CppTypes* cpp_types_{};
     std::vector<TypeOrigin> origins_;
-    std::vector<IdentifierId> module_names_;
-    std::vector<IdentifierId> namespace_names_;
-    std::vector<IdentifierId> names_;
+    std::vector<StringId> module_names_;
+    std::vector<StringId> namespace_names_;
+    std::vector<StringId> names_;
     std::vector<StringId> cpp_spellings_;
     std::vector<TypeDefinitionId> definitions_ids_;
     std::vector<codegen::ModuleHandle> modules_;
@@ -124,9 +123,9 @@ class TypeGraph {
     std::vector<codegen::TypeReferenceKind> use_kinds_;
     std::map<std::pair<codegen::ModuleHandle, codegen::TypeRefId>, ResolvedOccurrenceId> bindings_;
     std::map<TypeIdentity, TypeId> identities_;
-    std::map<IdentifierId, TypeId> registered_types_;
-    std::map<std::pair<codegen::ModuleHandle, IdentifierId>, TypeId> declarations_by_module_name_;
-    std::multimap<IdentifierId, TypeId> declarations_by_spelling_;
+    std::map<StringId, TypeId> registered_types_;
+    std::map<std::pair<codegen::ModuleHandle, StringId>, TypeId> declarations_by_module_name_;
+    std::multimap<StringId, TypeId> declarations_by_spelling_;
 };
 
 auto resolve_type_graph(codegen::Manifest const& manifest) -> TypeGraph;

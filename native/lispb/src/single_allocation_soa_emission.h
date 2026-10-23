@@ -21,12 +21,11 @@ auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationMod
 auto emit_single_allocation_views(LoweringContext& context,
                                   SingleAllocationModelId model,
                                   NodeListBuilder& source,
-                                  std::map<IdentifierId, DeclarationHandle> const& schemas)
-    -> Nodes;
+                                  std::map<StringId, DeclarationHandle> const& schemas) -> Nodes;
 auto emit_single_allocation_container(LoweringContext& context,
                                       SingleAllocationModelId model,
                                       NodeListBuilder& source,
-                                      std::map<IdentifierId, DeclarationHandle> const& schemas)
+                                      std::map<StringId, DeclarationHandle> const& schemas)
     -> NodeId;
 
 }

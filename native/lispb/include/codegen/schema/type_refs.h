@@ -14,7 +14,7 @@ struct TypeRefs {
     [[nodiscard]] auto index(TypeRefId id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<StringId> suffix;
     std::vector<std::optional<StringId>> nested;
 };

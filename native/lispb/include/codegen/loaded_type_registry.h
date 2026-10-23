@@ -11,7 +11,7 @@ namespace lispb::codegen {
 struct LoadedTypeRegistry {
     TypeRegistry types;
     std::vector<sexpr::SourceFileId> sources;
-    std::map<lispb::IdentifierId, sexpr::FormId> declarations;
+    std::map<lispb::StringId, sexpr::FormId> declarations;
 };
 
 }

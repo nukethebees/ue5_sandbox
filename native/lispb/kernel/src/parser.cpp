@@ -158,7 +158,7 @@ class Parser {
 
     void parse() {
         auto const initial_modules{document_.modules.size()};
-        std::set<lispb::IdentifierId> names;
+        std::set<lispb::StringId> names;
         std::set<OutputPath> output_paths;
         for (std::size_t index{}; index < initial_modules; ++index) {
             auto const module{ModuleId{static_cast<std::uint32_t>(index)}};
@@ -209,7 +209,7 @@ class Parser {
         syntax_.sources().diagnostics().fail(syntax_.sources(), span, message);
     }
 
-    auto text(lispb::IdentifierId const id) const -> std::string {
+    auto text(lispb::StringId const id) const -> std::string {
         return std::string{syntax_.strings().view(id)};
     }
 
@@ -330,7 +330,7 @@ class Parser {
             }
             auto const spelling{literal->spelling == syntax_.text(form)
                                     ? syntax_.text_id(form)
-                                    : syntax_.strings().add(literal->spelling)};
+                                    : syntax_.strings().intern(literal->spelling)};
             return expressions.literal(spelling, literal->value, syntax_.token_span(form));
         }
 
@@ -484,8 +484,8 @@ class Parser {
                                                                     : OperationKind::map,
                                                    syntax_.identifier(syntax_.children(form)[1]),
                                                    syntax_.token_span(form))};
-        std::set<lispb::IdentifierId> fields;
-        std::set<lispb::IdentifierId> operand_names;
+        std::set<lispb::StringId> fields;
+        std::set<lispb::StringId> operand_names;
         std::optional<lispb::codegen::sexpr::FormId> expression_form;
         std::optional<lispb::codegen::sexpr::FormId> variants_form;
         for (std::size_t index{2}; index < syntax_.children(form).size(); ++index) {
@@ -522,7 +522,7 @@ class Parser {
                     fail(syntax_.token_span(field),
                          "component-map requires at least two component names");
                 }
-                std::set<lispb::IdentifierId> components;
+                std::set<lispb::StringId> components;
                 for (std::size_t component_index{1};
                      component_index < syntax_.children(field).size();
                      ++component_index) {
@@ -750,7 +750,7 @@ class Parser {
         }
 
         auto const result{document_.emissions.add(profile, syntax_.token_span(form))};
-        std::set<lispb::IdentifierId> fields;
+        std::set<lispb::StringId> fields;
         for (std::size_t index{2}; index < syntax_.children(form).size(); ++index) {
             auto const& field{syntax_.children(form)[index]};
             auto const& field_name{head(field, "emission field")};
@@ -831,10 +831,10 @@ class Parser {
         }
         auto const result{document_.modules.add(syntax_.identifier(syntax_.children(form)[1]),
                                                 syntax_.token_span(form))};
-        std::set<lispb::IdentifierId> fields;
+        std::set<lispb::StringId> fields;
         std::set<lispb::KernelProfile> profiles;
-        std::set<lispb::IdentifierId> type_sets;
-        std::set<lispb::IdentifierId> operation_names;
+        std::set<lispb::StringId> type_sets;
+        std::set<lispb::StringId> operation_names;
         auto const field_count{syntax_.children(form).size()};
         for (std::size_t index{2}; index < field_count; ++index) {
             auto const field{syntax_.children(form)[index]};

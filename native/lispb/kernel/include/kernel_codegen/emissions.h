@@ -31,16 +31,14 @@ class Emissions {
     auto header_include(EmissionId const id) -> lispb::StringId& {
         return header_include_[id.value];
     }
-    auto cpp_namespace(EmissionId const id) const -> lispb::IdentifierId {
+    auto cpp_namespace(EmissionId const id) const -> lispb::StringId {
         return cpp_namespace_[id.value];
     }
-    auto cpp_namespace(EmissionId const id) -> lispb::IdentifierId& {
-        return cpp_namespace_[id.value];
-    }
-    auto export_specifier(EmissionId const id) const -> lispb::IdentifierId {
+    auto cpp_namespace(EmissionId const id) -> lispb::StringId& { return cpp_namespace_[id.value]; }
+    auto export_specifier(EmissionId const id) const -> lispb::StringId {
         return export_specifier_[id.value];
     }
-    auto export_specifier(EmissionId const id) -> lispb::IdentifierId& {
+    auto export_specifier(EmissionId const id) -> lispb::StringId& {
         return export_specifier_[id.value];
     }
     auto size() const -> std::size_t { return profile_.size(); }
@@ -52,7 +50,7 @@ class Emissions {
     std::vector<lispb::StringId> source_;
     std::vector<std::optional<lispb::StringId>> tests_;
     std::vector<lispb::StringId> header_include_;
-    std::vector<lispb::IdentifierId> cpp_namespace_;
-    std::vector<lispb::IdentifierId> export_specifier_;
+    std::vector<lispb::StringId> cpp_namespace_;
+    std::vector<lispb::StringId> export_specifier_;
 };
 }

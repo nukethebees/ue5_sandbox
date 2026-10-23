@@ -46,9 +46,8 @@ auto join(std::vector<std::string> const& values, std::string_view separator) ->
 auto join_lines(std::vector<std::string> const& values) -> std::string {
     return join(values, "\n");
 }
-auto join(LoweringContext const& context,
-          SchemaRange<IdentifierId> values,
-          std::string_view separator) -> std::string {
+auto join(LoweringContext const& context, SchemaRange<StringId> values, std::string_view separator)
+    -> std::string {
     std::string result;
     bool first{true};
     for (auto const value : context.declarations.items(values)) {

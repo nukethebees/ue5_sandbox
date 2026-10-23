@@ -181,7 +181,7 @@ auto CppTypes::find(StringId const spelling,
         bool same_operations{true};
         for (std::size_t operation{}; operation < operations_.size(); ++operation) {
             auto const name{operation_source ? operations_[operation][operation_source->value - 1]
-                                             : IdentifierId{}};
+                                             : StringId{}};
             auto const policy{operation_source
                                   ? operation_passing_[operation][operation_source->value - 1]
                                   : ParameterPassing::const_reference};
@@ -201,7 +201,7 @@ auto CppTypes::add(std::string_view const spelling,
                    std::span<TypeDependencyId const> const dependencies,
                    std::optional<ParameterPassing> const passing) -> CppTypeId {
     auto const policy{passing.value_or(cpp_type_detail::default_parameter_passing(spelling))};
-    auto const name{string_id(strings_.intern(spelling))};
+    auto const name{strings_.intern(spelling)};
     return append(name, dependencies, policy, {});
 }
 auto CppTypes::add(std::string_view const spelling,
@@ -237,7 +237,7 @@ auto CppTypes::intern_shape(std::string_view const spelling,
                             ParameterPassing const passing,
                             std::optional<CppTypeId> const operation_source,
                             CppTypeShape const shape) -> CppTypeId {
-    auto const name{string_id(strings_.intern(spelling))};
+    auto const name{strings_.intern(spelling)};
     if (auto const found{find(name, dependencies, passing, operation_source, shape)}) {
         return *found;
     }
@@ -276,7 +276,7 @@ auto CppTypes::named(std::string_view const spelling,
         assert(std::ranges::all_of(component, [](unsigned char character) {
             return std::isalnum(character) != 0 || character == '_';
         }));
-        name_components_.push_back(string_id(strings_.intern(component)));
+        name_components_.push_back(strings_.intern(component));
         ++shape.parts.count;
         if (separator == std::string::npos) {
             break;
@@ -354,21 +354,21 @@ auto CppTypes::decorate(CppTypeId const base,
                         std::string_view const suffix) -> CppTypeId {
     // Intern both pieces before publishing views into the shared string buffer.
     std::string const suffix_text{suffix};
-    auto const before{string_id(strings_.intern(prefix))};
-    auto const after{string_id(strings_.intern(suffix_text))};
+    auto const before{strings_.intern(prefix)};
+    auto const after{strings_.intern(suffix_text)};
     return compose({{.text = before}, {.type = base}, {.text = after}}, base);
 }
 
 auto CppTypes::template_type(CppTypeId const primary, std::span<CppTypeId const> const arguments)
     -> CppTypeId {
-    std::vector<CppTypePart> parts{{.type = primary}, {.text = string_id(strings_.intern("<"))}};
+    std::vector<CppTypePart> parts{{.type = primary}, {.text = strings_.intern("<")}};
     for (auto const argument : arguments) {
         if (parts.size() != 2) {
-            parts.push_back({.text = string_id(strings_.intern(", "))});
+            parts.push_back({.text = strings_.intern(", ")});
         }
         parts.push_back({.type = argument});
     }
-    parts.push_back({.text = string_id(strings_.intern(">"))});
+    parts.push_back({.text = strings_.intern(">")});
     return compose(parts);
 }
 
@@ -434,8 +434,8 @@ auto CppTypes::dependency(std::string_view const spelling,
                           std::optional<std::string_view> const header) -> TypeDependencyId {
     // Preserve the second input if interning the first grows shared character storage.
     auto const header_text{header ? std::string{*header} : std::string{}};
-    auto const name{string_id(strings_.intern(spelling))};
-    auto const include{string_id(strings_.intern(header_text))};
+    auto const name{strings_.intern(spelling)};
+    auto const include{strings_.intern(header_text)};
     auto const header_key{header ? include.value : std::numeric_limits<std::uint32_t>::max()};
     auto const key{static_cast<std::uint64_t>(name.value) << 32 | header_key};
     if (auto const found{dependency_index_.find(key)}; found != dependency_index_.end()) {

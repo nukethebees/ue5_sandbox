@@ -15,7 +15,7 @@ struct Records {
     std::vector<Range> bases;
     std::vector<TemplateId> template_declaration;
     std::vector<Expr> requires_clause;
-    std::vector<IdentifierId> export_specifier;
+    std::vector<StringId> export_specifier;
     std::vector<RecordKind> record_kind;
     std::vector<Range> dependencies;
 };

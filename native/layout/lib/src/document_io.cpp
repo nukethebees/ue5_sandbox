@@ -78,7 +78,7 @@ void freeze_registry(DocumentState& state, SourceFileId root) {
     for (auto const file : parsed.sources) {
         rows.emplace(file, frozen.sources.paths.size());
         frozen.sources.paths.push_back(strings.intern(storage.sources.path(file)));
-        frozen.sources.texts.push_back(strings.retain(storage.sources.text(file)));
+        frozen.sources.texts.push_back(strings.intern_retained(storage.sources.text(file)));
     }
     for (std::size_t index{}; index < parents.size(); ++index) {
         frozen.parents.push_back(rows.at(parents[index]));
@@ -135,11 +135,11 @@ void set_project(DocumentState& state,
     state.io.project_root = strings.intern(root.generic_string());
     state.io.registry_path = strings.intern(registry.generic_string());
     state.io.target_name = strings.intern(target);
-    state.io.project_text = strings.retain(original);
+    state.io.project_text = strings.intern_retained(original);
     state.io.saved_project_text = state.io.project_text;
     state.io.sources_begin = span.offset;
     state.io.sources_end = span.end_offset;
-    state.io.source_comments = strings.retain(comments);
+    state.io.source_comments = strings.intern_retained(comments);
 }
 void initialize_inputs(DocumentState& state,
                        std::span<DocumentSource const> sources,
@@ -160,7 +160,7 @@ void initialize_inputs(DocumentState& state,
     auto& strings{state.session->command_strings()};
     for (std::size_t index{}; index < paths.size(); ++index) {
         state.baseline_sources.paths.push_back(strings.intern(paths[index]));
-        state.baseline_sources.texts.push_back(strings.retain(texts[index]));
+        state.baseline_sources.texts.push_back(strings.intern_retained(texts[index]));
     }
     auto const file{state.storage().sources.add("document-types.lispb", registry_text)};
     freeze_registry(state, file);
@@ -188,7 +188,8 @@ void load_inputs(DocumentState& state,
             throw std::invalid_argument{"Source is already registered: " + name};
         }
         state.baseline_sources.paths.push_back(strings.intern(name));
-        state.baseline_sources.texts.push_back(strings.retain(read(project.root / path_value)));
+        state.baseline_sources.texts.push_back(
+            strings.intern_retained(read(project.root / path_value)));
     }
     freeze_registry(state, storage.sources.load(registry));
 }
@@ -197,7 +198,7 @@ void finish_load(DocumentState& state) {
     for (std::size_t index{}; index < state.source_order.size(); ++index) {
         auto const file{state.source_order[index]};
         auto const path{state.baseline_sources.paths[index]};
-        state.io.saved_sources.emplace(path, strings.retain(render(state, file)));
+        state.io.saved_sources.emplace(path, strings.intern_retained(render(state, file)));
         state.io.persisted_sources.emplace(path, state.baseline_sources.texts[index]);
         state.io.saved_paths.emplace(state.source_ids.at(file), path);
         state.io.saved_order.push_back(path);
@@ -216,7 +217,7 @@ auto quote(std::string_view value) -> std::string {
 auto project_text(DocumentState const& state, std::span<RenderedSource const> sources)
     -> std::string {
     auto const& strings{state.session->command_strings()};
-    std::vector<lispb::IdentifierId> paths;
+    std::vector<lispb::StringId> paths;
     for (auto const& source : sources) {
         paths.push_back(strings.find(source.path));
     }
@@ -240,14 +241,14 @@ void accept_sources(DocumentState& state,
                     std::span<RenderedSource const> sources,
                     bool all_written) {
     auto& strings{state.session->command_strings()};
-    std::map<lispb::IdentifierId, lispb::StringId> saved;
+    std::map<lispb::StringId, lispb::StringId> saved;
     state.io.saved_order.clear();
     for (auto const& source : sources) {
         auto const path{strings.intern(source.path)};
         auto const previous{state.io.saved_sources.find(path)};
         auto const unchanged{previous != state.io.saved_sources.end() &&
                              strings.view(previous->second) == source.text};
-        auto const text{unchanged ? previous->second : strings.retain(source.text)};
+        auto const text{unchanged ? previous->second : strings.intern_retained(source.text)};
         saved.emplace(path, text);
         state.io.saved_order.push_back(path);
         state.io.saved_paths[source.id] = path;
@@ -399,7 +400,7 @@ auto Document::save() -> bool {
         if (document_io::read(destination) != strings.view(value.io.saved_project_text)) {
             throw std::invalid_argument{"Project changed on disk; reload before saving"};
         }
-        std::set<lispb::IdentifierId> current_paths;
+        std::set<lispb::StringId> current_paths;
         for (auto const& source : rendered) {
             auto const key{strings.find(source.path)};
             current_paths.insert(key);
@@ -413,7 +414,7 @@ auto Document::save() -> bool {
                 throw std::invalid_argument{"Source destination already exists: " + path.string()};
             }
         }
-        std::set<lispb::IdentifierId> removed;
+        std::set<lispb::StringId> removed;
         for (auto const& source : rendered) {
             auto const saved{value.io.saved_paths.find(source.id)};
             if (saved == value.io.saved_paths.end() || strings.view(saved->second) == source.path) {
@@ -446,7 +447,7 @@ auto Document::save() -> bool {
         }
         updates.publish();
         if (text != strings.view(value.io.saved_project_text)) {
-            value.io.saved_project_text = strings.retain(text);
+            value.io.saved_project_text = strings.intern_retained(text);
         }
         for (auto const path : removed) {
             value.io.persisted_sources.erase(path);

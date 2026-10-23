@@ -13,10 +13,10 @@ struct TaggedUnionAlternatives {
     [[nodiscard]] auto append() -> TaggedUnionAlternativeId;
     [[nodiscard]] auto index(TaggedUnionAlternativeId id) const -> std::uint32_t;
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<ResolvedOccurrenceId> semantic_type;
     std::vector<std::optional<std::uint64_t>> count;
-    std::vector<IdentifierId> tag;
+    std::vector<StringId> tag;
 };
 
 } // namespace lispb::schema

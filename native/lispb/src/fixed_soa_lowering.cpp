@@ -15,7 +15,7 @@ namespace lispb::codegen::detail {
 
 auto lower_fixed_nodes(LoweringContext& context,
                        DeclarationHandle schema,
-                       std::map<IdentifierId, DeclarationHandle> const& schemas,
+                       std::map<StringId, DeclarationHandle> const& schemas,
                        CppTypeId const equivalent_set_type) -> Nodes {
     auto const layout{build_fixed_layout(context, schema, schemas)};
     auto const fixed{*context.declarations.soas.fixed[context.declarations.soas.index(schema)]};

@@ -38,7 +38,7 @@ auto MaterialIR::text(lispb::StringId id) const -> std::string_view {
 }
 
 auto MaterialIR::intern(std::string_view value) -> lispb::StringId {
-    return lispb::string_id(strings->intern(value));
+    return strings->intern(value);
 }
 
 namespace {

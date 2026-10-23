@@ -10,10 +10,10 @@ stores. Validation stops before lowering/rendering. Schema, Slate and kernel low
 The IR owns construction, traversal and dependency queries; the renderer owns C++ source
 emission. Material output keeps its binary format and runtime-facing data library.
 
-Strings use offsets into flat character buffers. `StringId` and `IdentifierId` share backing
-text; views are transient and must be reacquired after appending to the same buffer. Source
-text is retained once, tokens use slices and exact source offsets, and macro provenance is
-stored separately. Syntax forms retain token IDs and flat child ranges, not owning trees.
+Strings use one interned `StringId` for equal text, including source slices. Promoting temporary
+text to retained storage preserves its ID. Views must be reacquired after growing the same
+character buffer. Tokens keep exact source offsets separately from their text IDs, and macro
+provenance is stored separately. Syntax forms retain token IDs and flat child ranges, not owning trees.
 Slate parses expanded forms directly without a token flatten/reparse step.
 
 Source loading, lexing and parsing are separate stages: `Sources::load` reads retained documents,

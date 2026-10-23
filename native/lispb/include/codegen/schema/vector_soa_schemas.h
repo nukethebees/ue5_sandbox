@@ -18,13 +18,13 @@ struct VectorSoaSchemas {
     [[nodiscard]] auto index(DeclarationHandle id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<TypeRefId> value_type;
-    std::vector<SchemaRange<IdentifierId>> components;
-    std::vector<SchemaRange<IdentifierId>> equivalent_members;
+    std::vector<SchemaRange<StringId>> components;
+    std::vector<SchemaRange<StringId>> equivalent_members;
     std::vector<std::optional<StringId>> equivalent_constructor;
     std::vector<TypeRefId> equivalent_type;
-    std::vector<IdentifierId> export_specifier;
+    std::vector<StringId> export_specifier;
     std::vector<std::optional<FixedSoaId>> fixed;
     std::vector<std::uint8_t> equivalent_accessors;
 };

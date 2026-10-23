@@ -125,48 +125,32 @@ class Validator {
         bool is_unsigned{};
     };
 
-    auto text(lispb::IdentifierId id) const -> std::string {
-        return std::string{strings_.view(id)};
-    }
     auto text(lispb::StringId id) const -> std::string { return std::string{strings_.view(id)}; }
-    auto view(lispb::IdentifierId id) const -> std::string_view { return strings_.view(id); }
+
     auto view(lispb::StringId id) const -> std::string_view { return strings_.view(id); }
     auto resolved_type(TypeRefId id, TypeRegistry const&) const -> CppTypeId {
         auto const occurrence{graph_.resolved(module_, id)};
         auto const& occurrences{graph_.occurrences()};
         return occurrences.cpp_type[occurrences.index(occurrence)];
     }
-    void require_value(lispb::IdentifierId id, std::string const& context) {
-        require_value(view(id), context);
-    }
     void require_value(lispb::StringId id, std::string const& context) {
         require_value(view(id), context);
-    }
-    void require_non_blank_value(lispb::IdentifierId id, std::string const& context) {
-        require_non_blank_value(view(id), context);
     }
     void require_non_blank_value(lispb::StringId id, std::string const& context) {
         require_non_blank_value(view(id), context);
     }
-    void require_identifier(lispb::IdentifierId id, std::string const& context) {
-        require_identifier(view(id), context);
-    }
     void require_identifier(lispb::StringId id, std::string const& context) {
         require_identifier(view(id), context);
-    }
-    void require_qualified_identifier(lispb::IdentifierId id, std::string const& context) {
-        require_qualified_identifier(view(id), context);
     }
     void require_qualified_identifier(lispb::StringId id, std::string const& context) {
         require_qualified_identifier(view(id), context);
     }
     template <typename Id>
     void require_unique_names(SchemaRange<Id> names, std::string const& context) {
-        std::set<lispb::IdentifierId> unique;
+        std::set<lispb::StringId> unique;
         for (auto const name : declarations_.items(names)) {
             require_value(name, context);
-            auto const id{strings_.intern(view(name))};
-            if (!unique.insert(id).second) {
+            if (!unique.insert(name).second) {
                 throw std::invalid_argument{context + " contains duplicate name: " + text(name)};
             }
         }
@@ -450,13 +434,13 @@ class Validator {
         }
     }
 
-    void validate_export_specifier(lispb::IdentifierId const value, std::string const& context) {
+    void validate_export_specifier(lispb::StringId const value, std::string const& context) {
         if (value.value != 0) {
             require_identifier(value, context);
         }
     }
 
-    void validate_dependency(lispb::IdentifierId key,
+    void validate_dependency(lispb::StringId key,
                              TypeRegistry const& types,
                              std::string const& context) {
         require_non_blank_value(key, context + " dependency");
@@ -508,7 +492,7 @@ class Validator {
         return type_names;
     }
 
-    auto signature(lispb::IdentifierId name,
+    auto signature(lispb::StringId name,
                    std::vector<std::string> const& parameter_types,
                    bool const is_const) -> std::string {
         std::string result{text(name) + "("};
@@ -2053,7 +2037,7 @@ class Validator {
         }
         auto required_minimum{minimum_value};
         auto required_maximum{maximum_value};
-        std::set<IdentifierId> code_names;
+        std::set<StringId> code_names;
         std::set<std::pair<bool, std::uint64_t>> code_values;
         for (auto const code_id : declarations_.items(named_codes)) {
             auto const code{code_id};
@@ -2544,7 +2528,7 @@ class Validator {
     void validate_soa(lispb::codegen::ModuleHandle const& module,
                       std::span<lispb::codegen::DeclarationHandle const> schemas,
                       TypeRegistry const& types) {
-        std::map<lispb::IdentifierId, lispb::codegen::DeclarationHandle> schemas_by_name;
+        std::map<lispb::StringId, lispb::codegen::DeclarationHandle> schemas_by_name;
         for (auto const& schema : schemas) {
             schemas_by_name.emplace(declarations_.soas.name[declarations_.soas.index(schema)],
                                     schema);
@@ -4018,8 +4002,8 @@ class Validator {
                 "Module helper namespace");
         }
         std::vector<lispb::codegen::DeclarationHandle> schemas;
-        std::set<lispb::IdentifierId> names;
-        std::set<lispb::IdentifierId> generated_names;
+        std::set<lispb::StringId> names;
+        std::set<lispb::StringId> generated_names;
         for (auto const declaration :
              declarations_.items(declarations_.normal_modules
                                      .declarations[declarations_.normal_modules.index(module)])) {
@@ -4203,7 +4187,7 @@ class Validator {
                 "Unsupported manifest schema version: " + std::to_string(manifest.schema_version) +
                 "; expected " + std::to_string(manifest_schema_version)};
         }
-        std::set<lispb::IdentifierId> module_names;
+        std::set<lispb::StringId> module_names;
         std::set<std::string> output_paths;
         auto const& cpp_types{manifest.types.cpp_types};
         for (auto const& [name_id, registered] : manifest.types.entries) {

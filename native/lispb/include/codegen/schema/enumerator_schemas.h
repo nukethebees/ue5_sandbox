@@ -15,7 +15,7 @@ struct EnumeratorSchemas {
     [[nodiscard]] auto index(EnumeratorId id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<std::optional<StringId>> initializer;
     std::vector<std::optional<StringId>> display_name;
     std::vector<std::uint8_t> hidden;

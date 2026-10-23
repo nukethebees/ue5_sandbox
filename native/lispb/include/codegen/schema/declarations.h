@@ -205,8 +205,6 @@ class Declarations {
             return type_ref_id_items_;
         } else if constexpr (std::same_as<Id, UnionAlternativeId>) {
             return union_alternative_id_items_;
-        } else if constexpr (std::same_as<Id, IdentifierId>) {
-            return identifier_id_items_;
         } else if constexpr (std::same_as<Id, StringId>) {
             return string_id_items_;
         } else {
@@ -243,7 +241,6 @@ class Declarations {
     std::vector<TaggedUnionAlternativeId> tagged_union_alternative_id_items_;
     std::vector<TypeRefId> type_ref_id_items_;
     std::vector<UnionAlternativeId> union_alternative_id_items_;
-    std::vector<IdentifierId> identifier_id_items_;
     std::vector<StringId> string_id_items_;
 };
 

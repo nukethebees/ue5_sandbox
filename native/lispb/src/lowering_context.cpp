@@ -34,14 +34,8 @@ auto LoweringContext::resolve(TypeRefId reference) const -> CppTypeId {
 auto LoweringContext::text(StringId value) const -> std::string {
     return std::string{declarations.strings().view(value)};
 }
-auto LoweringContext::text(IdentifierId value) const -> std::string {
-    return std::string{declarations.strings().view(value)};
-}
+
 auto LoweringContext::optional_text(std::optional<StringId> value) const
-    -> std::optional<std::string> {
-    return value ? std::optional{text(*value)} : std::nullopt;
-}
-auto LoweringContext::optional_text(std::optional<IdentifierId> value) const
     -> std::optional<std::string> {
     return value ? std::optional{text(*value)} : std::nullopt;
 }

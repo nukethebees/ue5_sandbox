@@ -29,7 +29,7 @@ auto Project::store_paths(std::span<std::filesystem::path const> const paths)
     codegen::sexpr::HandleRange const result{static_cast<std::uint32_t>(paths_.size()),
                                              static_cast<std::uint32_t>(paths.size())};
     for (auto const& path : paths) {
-        paths_.push_back(string_id(strings_->intern(path.generic_string())));
+        paths_.push_back(strings_->intern(path.generic_string()));
     }
     return result;
 }
@@ -90,7 +90,7 @@ auto Project::output_path(TargetId const target) const -> RootedPath {
     return {data.output_bases[target.index()],
             std::filesystem::path{strings_->view(data.output_paths[target.index()])}};
 }
-auto Project::append(TargetKind const kind, IdentifierId const name) -> TargetId {
+auto Project::append(TargetKind const kind, StringId const name) -> TargetId {
     if (names_.contains(name)) {
         throw std::invalid_argument{"duplicate Lispb target or group '" +
                                     std::string{strings_->view(name)} + "'"};
@@ -145,7 +145,7 @@ void Project::replace_sources(TargetId const target,
     assert(target.kind() == TargetKind::cpp_schema);
     columns(target).sources[target.index()] = store_paths(sources);
 }
-void Project::add_group(IdentifierId const name, std::span<IdentifierId const> const members) {
+void Project::add_group(StringId const name, std::span<StringId const> const members) {
     auto const identifier{name};
     if (names_.contains(identifier)) {
         throw std::invalid_argument{"duplicate Lispb target or group '" +

@@ -85,7 +85,7 @@ auto external_dependencies(lispb::schema::TypeGraph const& types)
                             .module_settings_store
                             .namespace_name[types.declarations().module_settings_store.index(
                                 settings)]
-                            .value_or(lispb::IdentifierId{}),
+                            .value_or(lispb::StringId{}),
                     .name = lispb::codegen::declaration_name(types.declarations(),
                                                              types.declaration(use))});
         }

@@ -13,7 +13,7 @@ struct ResolvedMembers {
     auto index(ResolvedMemberId id) const -> std::uint32_t;
     void clear();
     std::vector<SoaMemberId> source;
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<SoaMemberKind> kind;
     std::vector<CppTypeId> element_type;
     std::vector<CppTypeId> container_type;

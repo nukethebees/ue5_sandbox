@@ -20,7 +20,7 @@ struct IntegerScalarSchemas {
     [[nodiscard]] auto index(DeclarationHandle id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<std::uint8_t> signedness;
     std::vector<PackedIntegerValue> minimum_value;
     std::vector<PackedIntegerValue> maximum_value;

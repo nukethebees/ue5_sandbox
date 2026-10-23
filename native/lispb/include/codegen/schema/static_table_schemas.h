@@ -16,11 +16,11 @@ struct StaticTableSchemas {
     [[nodiscard]] auto index(DeclarationHandle id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<SchemaRange<StaticTableRowId>> rows;
     std::vector<SchemaRange<StaticTableColumnId>> columns;
     std::vector<SchemaRange<StaticTableGroupId>> groups;
-    std::vector<IdentifierId> export_specifier;
+    std::vector<StringId> export_specifier;
 };
 
 }

@@ -16,12 +16,12 @@ struct FacadeMethodSchemas {
     [[nodiscard]] auto index(FacadeMethodId id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<TypeRefId> return_type;
     std::vector<SchemaRange<ParameterId>> parameters;
     std::vector<std::uint8_t> is_const;
     std::vector<std::uint8_t> is_noexcept;
-    std::vector<std::optional<IdentifierId>> target_name;
+    std::vector<std::optional<StringId>> target_name;
 };
 
 }

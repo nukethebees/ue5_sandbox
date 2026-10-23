@@ -147,7 +147,7 @@ class Reader {
         }
         return std::bit_cast<double>(*value);
     }
-    auto read_string(bool const reusable = true) -> std::expected<lispb::StringId, std::string> {
+    auto read_string() -> std::expected<lispb::StringId, std::string> {
         auto const size{read_size(maximum_string_size)};
         if (!size) {
             return std::unexpected{size.error()};
@@ -158,7 +158,7 @@ class Reader {
         auto const* const begin{reinterpret_cast<char const*>(bytes_.data() + offset_)};
         offset_ += *size;
         auto const value{std::string_view{begin, *size}};
-        return reusable ? material_.intern(value) : material_.strings->add(value);
+        return material_.intern(value);
     }
     auto read_span() -> std::expected<SourceSpan, std::string> {
         auto const line{read_size(std::numeric_limits<std::uint32_t>::max())};
@@ -296,8 +296,8 @@ auto read_node(Reader& reader, Nodes& nodes) -> std::expected<void, std::string>
     auto const coordinate{reader.read_u32()};
     auto const instance_data{reader.read_u32()};
     auto const texture_sampler{read_texture_sampler_type(reader)};
-    auto description{reader.read_string(false)};
-    auto code{reader.read_string(false)};
+    auto description{reader.read_string()};
+    auto code{reader.read_string()};
     auto const custom_input_count{reader.read_size(maximum_collection_size)};
     if (!components || !parameter || !coordinate || !instance_data || !texture_sampler ||
         !description || !code || !custom_input_count) {

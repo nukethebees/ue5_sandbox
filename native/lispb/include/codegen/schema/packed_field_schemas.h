@@ -20,7 +20,7 @@ struct PackedFieldSchemas {
     [[nodiscard]] auto index(PackedSegmentId id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<TypeRefId> type;
     std::vector<std::optional<int>> bits;
     std::vector<PackedFieldKind> kind;

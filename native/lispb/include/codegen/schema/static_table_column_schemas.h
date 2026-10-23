@@ -13,7 +13,7 @@ struct StaticTableColumnSchemas {
     [[nodiscard]] auto index(StaticTableColumnId id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<TypeRefId> type;
 };
 

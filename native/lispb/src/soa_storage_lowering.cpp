@@ -471,7 +471,7 @@ auto soa_storage_node(LoweringContext& context,
                       SoaFunctions const& functions,
                       Nodes& custom_source,
                       Nodes storage_prelude,
-                      std::map<IdentifierId, DeclarationHandle> const* schemas) -> NodeId {
+                      std::map<StringId, DeclarationHandle> const* schemas) -> NodeId {
     auto& resolved_store{context.ir.lowering.resolved_members};
     auto& ir{context.ir};
     NodeListBuilder nodes{ir};

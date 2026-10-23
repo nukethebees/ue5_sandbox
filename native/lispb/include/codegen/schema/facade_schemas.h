@@ -19,13 +19,13 @@ struct FacadeSchemas {
     [[nodiscard]] auto index(DeclarationHandle id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<TypeRefId> target_type;
-    std::vector<IdentifierId> target_member_name;
+    std::vector<StringId> target_member_name;
     std::vector<SchemaRange<FacadeMethodId>> methods;
     std::vector<SchemaRange<StringId>> validation_lines;
-    std::vector<SchemaRange<IdentifierId>> validation_dependencies;
-    std::vector<IdentifierId> export_specifier;
+    std::vector<SchemaRange<StringId>> validation_dependencies;
+    std::vector<StringId> export_specifier;
     std::vector<Access> bind_access;
     std::vector<Access> method_access;
     std::vector<SchemaRange<StringId>> friends;

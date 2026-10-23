@@ -9,7 +9,7 @@
 namespace slate_codegen::detail {
 
 struct Functions {
-    std::vector<lispb::IdentifierId> names;
+    std::vector<lispb::StringId> names;
     std::vector<Range> parameters;
     std::vector<Range> bindings;
     std::vector<ChildId> roots;

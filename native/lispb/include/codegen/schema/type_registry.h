@@ -21,16 +21,16 @@ struct TypeRegistry {
     auto operator=(TypeRegistry&& other) noexcept -> TypeRegistry&;
 
     auto find(std::string_view name) const -> std::optional<RegisteredTypeId>;
-    auto find(IdentifierId name) const -> std::optional<RegisteredTypeId>;
-    auto bind(IdentifierId name, RegisteredTypeId type) -> bool;
+    auto find(StringId name) const -> std::optional<RegisteredTypeId>;
+    auto bind(StringId name, RegisteredTypeId type) -> bool;
     auto add(std::string_view name, CppTypeId type, ExternalScalarId scalar = {}) -> bool;
-    auto add(IdentifierId name, CppTypeId type, ExternalScalarId scalar = {}) -> bool;
+    auto add(StringId name, CppTypeId type, ExternalScalarId scalar = {}) -> bool;
     void clear();
 
     CppTypes& cpp_types;
     Declarations& declarations;
     RegisteredTypes& registered;
-    std::map<IdentifierId, RegisteredTypeId> entries;
+    std::map<StringId, RegisteredTypeId> entries;
 };
 
 auto external_scalar_schema(TypeRegistry const& types, std::string_view spelling)

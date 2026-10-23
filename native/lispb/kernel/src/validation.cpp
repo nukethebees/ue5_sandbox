@@ -25,7 +25,7 @@ namespace {
 enum class ParameterShape : std::uint8_t { scalar, read_view, write_view, owning_array };
 
 struct SignatureKey {
-    lispb::IdentifierId name;
+    lispb::StringId name;
     ScalarType type;
     std::vector<ParameterShape> parameters;
     auto operator<=>(SignatureKey const&) const = default;

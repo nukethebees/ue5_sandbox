@@ -36,7 +36,7 @@ class Fields {
     Syntax const& syntax_;
     FormId form_;
     Parser const& parser_;
-    std::vector<IdentifierId> properties_;
+    std::vector<StringId> properties_;
     std::vector<FormId> values_;
     std::vector<SourceSpan> property_spans_;
     std::vector<FormId> declarations_;

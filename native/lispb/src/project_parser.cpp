@@ -35,11 +35,11 @@ auto ProjectParser::paths(Project& project, FormId const form, std::string_view 
     return project.append_paths(values);
 }
 auto ProjectParser::names(FormId const form, std::string_view const purpose)
-    -> std::vector<IdentifierId> {
+    -> std::vector<StringId> {
     if (!syntax_.is_list(form)) {
         parser_.fail(form, std::string{purpose} + " must be a list");
     }
-    std::vector<IdentifierId> result;
+    std::vector<StringId> result;
     for (auto const child : syntax_.children(form)) {
         result.push_back(parser_.identifier(child, purpose));
     }

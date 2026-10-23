@@ -164,9 +164,7 @@ class TemporaryManifest {
         return lispb::schema::resolve_type_graph(manifest);
     }
     auto store() const -> Declarations& { return context.storage.declarations; }
-    auto text(lispb::IdentifierId id) const -> std::string_view {
-        return context.storage.strings.view(id);
-    }
+
     auto text(lispb::StringId id) const -> std::string_view {
         return context.storage.strings.view(id);
     }

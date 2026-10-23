@@ -19,9 +19,8 @@ struct SoaTypes {
     [[nodiscard]] auto index(TypeDefinitionId id) const -> std::uint32_t;
     [[nodiscard]] auto columns_of(TypeDefinitionId id) const -> std::span<SoaColumnId const>;
     void set_columns(TypeDefinitionId id, std::span<SoaColumnId const> values);
-    [[nodiscard]] auto vector_components_of(TypeDefinitionId id) const
-        -> std::span<IdentifierId const>;
-    void set_vector_components(TypeDefinitionId id, std::span<IdentifierId const> values);
+    [[nodiscard]] auto vector_components_of(TypeDefinitionId id) const -> std::span<StringId const>;
+    void set_vector_components(TypeDefinitionId id, std::span<StringId const> values);
 
     std::vector<codegen::SoaBackend> backend;
     std::vector<SoaSourceKind> source_kind;
@@ -30,7 +29,7 @@ struct SoaTypes {
     std::vector<ResolvedOccurrenceId> equivalent_type;
     std::vector<std::optional<StringId>> related_storage_name;
     std::vector<SemanticRange> vector_components;
-    std::vector<IdentifierId> vector_components_values;
+    std::vector<StringId> vector_components_values;
     std::vector<std::uint8_t> layout_only;
     std::vector<std::optional<StringId>> equivalent_constructor;
 };

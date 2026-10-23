@@ -7,7 +7,7 @@
 namespace slate_codegen::detail {
 
 struct ExistingWidgets {
-    std::vector<lispb::IdentifierId> parameters;
+    std::vector<lispb::StringId> parameters;
     std::vector<lispb::codegen::sexpr::SourceSpan> spans;
 };
 

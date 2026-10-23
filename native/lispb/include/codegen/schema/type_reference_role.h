@@ -17,8 +17,8 @@ namespace lispb::codegen {
 struct TypeReferenceRole {
     TypeReferenceCategory category{};
     TypeReferencePart part{TypeReferencePart::direct};
-    IdentifierId subject;
-    IdentifierId parameter;
+    StringId subject;
+    StringId parameter;
     std::uint32_t index{};
     std::uint32_t secondary_index{};
 

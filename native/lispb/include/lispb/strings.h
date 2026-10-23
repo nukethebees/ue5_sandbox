@@ -1,37 +1,30 @@
 #pragma once
 
 #include <lispb/indices.h>
-#include <lispb/string_pool.h>
 #include <lispb/string_slice.h>
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include <string_view>
+#include <unordered_map>
+#include <vector>
+
 namespace lispb {
 class TemporaryStringScope;
 
 class Strings {
   public:
-    [[nodiscard]] auto add(std::string_view const text) -> StringId;
-
-    [[nodiscard]] auto retain(std::string_view const text) -> StringId { return add(text, false); }
-
-    [[nodiscard]] auto slice(StringId const source,
-                             std::uint32_t const offset,
-                             std::uint32_t const length) -> StringId;
-
-    [[nodiscard]] auto intern(std::string_view const text) -> IdentifierId;
-
-    [[nodiscard]] auto intern_retained(std::string_view const text) -> IdentifierId;
-
-    // An absent spelling returns the empty identifier.
-    [[nodiscard]] auto find(std::string_view const text) const -> IdentifierId;
-
-    [[nodiscard]] auto intern(StringId const text) -> IdentifierId;
-
-    [[nodiscard]] auto view(StringId const id) const -> std::string_view;
-
-    [[nodiscard]] auto view(IdentifierId const id) const -> std::string_view;
+    // Equal text has one ID within this store, including slices of source text.
+    [[nodiscard]] auto intern(std::string_view text) -> StringId;
+    [[nodiscard]] auto intern(StringId text) -> StringId;
+    [[nodiscard]] auto intern_retained(std::string_view text) -> StringId;
+    [[nodiscard]] auto slice(StringId source, std::uint32_t offset, std::uint32_t length)
+        -> StringId;
+    // Return the empty ID when the spelling is absent.
+    [[nodiscard]] auto find(std::string_view text) const -> StringId;
+    // Reacquire views after growing the same character buffer.
+    [[nodiscard]] auto view(StringId id) const -> std::string_view;
 
     // Release temporary handles first. Retained source/document handles remain valid.
     void reset_temporary();
@@ -43,21 +36,20 @@ class Strings {
   private:
     friend class TemporaryStringScope;
     inline static constexpr std::uint32_t temporary_bit{std::uint32_t{1} << 31};
-    inline static constexpr std::uint32_t index_mask{temporary_bit - 1};
+    inline static constexpr std::uint32_t offset_mask{temporary_bit - 1};
+    inline static constexpr std::uint32_t unused_length{~std::uint32_t{}};
 
-    [[nodiscard]] auto pool(bool const temporary) -> StringPool&;
-    [[nodiscard]] auto pool(bool const temporary) const -> StringPool const&;
-    [[nodiscard]] auto slice_record(StringId const id) const -> StringSlice;
-    [[nodiscard]] auto add_slice(StringSlice const slice, bool const temporary) -> StringId;
+    [[nodiscard]] auto slice_record(StringId id) const -> StringSlice;
+    [[nodiscard]] auto append_text(std::string_view text, bool temporary) -> StringSlice;
+    [[nodiscard]] auto intern(std::string_view text, bool temporary, StringSlice source = {})
+        -> StringId;
+    [[nodiscard]] auto find(std::size_t hash, std::string_view text) const -> StringId;
 
-    [[nodiscard]] auto add(std::string_view const text, bool const temporary) -> StringId;
-    [[nodiscard]] auto intern(std::string_view const text, bool const temporary) -> IdentifierId;
-    [[nodiscard]] auto find_interned(StringPool const& storage,
-                                     std::size_t const hash,
-                                     std::string_view const text) const -> IdentifierId;
-
-    StringPool retained_;
-    StringPool transient_;
+    std::string retained_bytes_;
+    std::string temporary_bytes_;
+    std::vector<StringSlice> slices_{{}};
+    std::vector<StringId> free_slices_;
+    std::unordered_multimap<std::size_t, StringId> interned_;
     bool temporary_{};
 };
 

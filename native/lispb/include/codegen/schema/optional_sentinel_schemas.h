@@ -15,9 +15,9 @@ struct OptionalSentinelSchemas {
     [[nodiscard]] auto index(DeclarationHandle id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<TypeRefId> source;
-    std::vector<IdentifierId> sentinel;
+    std::vector<StringId> sentinel;
 };
 
 }

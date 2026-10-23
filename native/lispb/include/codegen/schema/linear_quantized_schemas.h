@@ -17,7 +17,7 @@ struct LinearQuantizedSchemas {
     [[nodiscard]] auto index(DeclarationHandle id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<TypeRefId> source;
     std::vector<std::uint32_t> bit_width;
     std::vector<std::uint64_t> reserved_codes;

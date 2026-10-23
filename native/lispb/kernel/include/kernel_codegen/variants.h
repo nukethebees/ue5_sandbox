@@ -13,11 +13,11 @@ namespace kernel_codegen::detail {
 class Variants {
   public:
     auto add(VariantKind kind,
-             lispb::IdentifierId name,
+             lispb::StringId name,
              std::optional<OperandId> target,
              lispb::codegen::sexpr::SourceSpan span) -> VariantId;
     auto kind(VariantId const id) const -> VariantKind { return kind_[id.value]; }
-    auto name(VariantId const id) const -> lispb::IdentifierId { return name_[id.value]; }
+    auto name(VariantId const id) const -> lispb::StringId { return name_[id.value]; }
     auto target(VariantId const id) const -> std::optional<OperandId> { return target_[id.value]; }
     auto span(VariantId const id) const -> lispb::codegen::sexpr::SourceSpan {
         return span_[id.value];
@@ -26,7 +26,7 @@ class Variants {
     void clear();
   private:
     std::vector<VariantKind> kind_;
-    std::vector<lispb::IdentifierId> name_;
+    std::vector<lispb::StringId> name_;
     std::vector<std::optional<OperandId>> target_;
     std::vector<lispb::codegen::sexpr::SourceSpan> span_;
 };

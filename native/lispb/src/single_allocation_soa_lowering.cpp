@@ -18,7 +18,7 @@ namespace lispb::codegen::detail {
 
 auto lower_single_allocation(LoweringContext& context,
                              DeclarationHandle schema,
-                             std::map<IdentifierId, DeclarationHandle> const& schemas,
+                             std::map<StringId, DeclarationHandle> const& schemas,
                              SoaBackend const backend) -> LoweredSoa {
     auto& ir{context.ir};
     auto model{build_single_allocation_model(context, schema, schemas, backend)};

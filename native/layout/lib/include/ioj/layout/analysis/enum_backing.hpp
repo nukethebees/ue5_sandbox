@@ -7,7 +7,7 @@
 #include <optional>
 namespace ioj::layout {
 struct EnumBacking {
-    lispb::IdentifierId backing_type{};
+    lispb::StringId backing_type{};
     std::optional<PhysicalFacts> backing_facts{};
     std::optional<std::uint64_t> backing_bits{};
     std::optional<bool> backing_can_represent_domain{};

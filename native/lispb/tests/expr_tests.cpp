@@ -184,7 +184,7 @@ TEST(Expr, CollectsSizeofTypeDependenciesThroughArithmetic) {
     [[maybe_unused]] auto& ir{context.ir};
     [[maybe_unused]] auto& types{context.storage.cpp_types};
     auto const file{ir.files.append(
-        ir.strings.add("Example.h"),
+        ir.strings.intern("Example.h"),
         {ir.include_dependencies(),
          ir.definition(
              [&] {
@@ -479,7 +479,7 @@ TEST(Ast, CollectsDeepControlFlowDependenciesOnlyForDefinitions) {
                         ir.block({ir.return_stmt(ir.call(symbol("else_only")))}))});
         return created_function;
     }()};
-    auto const file{ir.files.append(ir.strings.add("Example.h"),
+    auto const file{ir.files.append(ir.strings.intern("Example.h"),
                                     {ir.include_dependencies(), ir.declaration(spec)})};
     EXPECT_EQ(CppRenderer{ir}.render(file).find("Project/"), std::string::npos);
 
@@ -506,7 +506,7 @@ TEST(Ast, DeduplicatesSharedSymbolDependenciesAndTheirNestedHeaders) {
     auto const value{types.dependency("Value", "Project/Value.h")};
     auto const expression{ir.call(ir.named("make", {symbol, value}))};
     auto const file{ir.files.append(
-        ir.strings.add("Example.h"),
+        ir.strings.intern("Example.h"),
         {ir.include_dependencies(),
          ir.instance_member(types.intern("auto"), ir.strings.intern("value"), expression),
          ir.definition(

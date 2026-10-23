@@ -28,7 +28,7 @@ auto Parser::text_id(FormId form, std::string_view purpose) const -> StringId {
     static_cast<void>(text(form, purpose));
     return syntax_.text_id(form);
 }
-auto Parser::identifier(FormId form, std::string_view purpose) const -> IdentifierId {
+auto Parser::identifier(FormId form, std::string_view purpose) const -> StringId {
     auto const value{text_id(form, purpose)};
     return syntax_.kind(form) == TokenKind::atom ? syntax_.identifier(form)
                                                  : syntax_.strings().intern(value);

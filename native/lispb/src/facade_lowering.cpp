@@ -54,7 +54,7 @@ auto lower_facade_impl(LoweringContext& context, DeclarationHandle facade) -> De
             {},
             {ir.member_initializer(
                 declarations.facades.target_member_name[declarations.facades.index(facade)],
-                ir.strings.add("new_target"))});
+                ir.strings.intern("new_target"))});
     } else {
         ir.set_function_body(
             binding,
@@ -209,13 +209,12 @@ auto lower_facade_impl(LoweringContext& context, DeclarationHandle facade) -> De
             .definitions_in_source[context.declarations.facades.index(facade)]) {
         definitions.add(ir.definition(
             binding,
-            string_id(
-                context.declarations.facades.name[context.declarations.facades.index(facade)])));
+
+            context.declarations.facades.name[context.declarations.facades.index(facade)]));
         for (auto const& method : methods) {
-            definitions.new_lines(2).add(
-                ir.definition(method,
-                              string_id(context.declarations.facades
-                                            .name[context.declarations.facades.index(facade)])));
+            definitions.new_lines(2).add(ir.definition(
+                method,
+                context.declarations.facades.name[context.declarations.facades.index(facade)]));
         }
     }
     return {.header = {std::move(declaration_node)}, .source = definitions.build()};

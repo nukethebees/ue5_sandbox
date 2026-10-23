@@ -421,7 +421,7 @@ auto lower_portable(lispb::codegen::CppIR& cpp,
             cpp.set_function_noexcept(function);
             cpp.set_function_export_specifier(
                 function,
-                standard ? lispb::IdentifierId{} : document.emissions.export_specifier(emission));
+                standard ? lispb::StringId{} : document.emissions.export_specifier(emission));
             cpp.function_formatting(function) = {.export_after_return_type = true};
             declarations.push_back(cpp.declaration(function));
             definitions.push_back(cpp.definition(function));
@@ -431,15 +431,16 @@ auto lower_portable(lispb::codegen::CppIR& cpp,
     lispb::codegen::NodeListBuilder header_nodes{cpp};
     if (standard) {
         header_nodes
-            .add(cpp.include(cpp.strings.add("cstdint"), lispb::codegen::IncludeStyle::system))
-            .add(cpp.include(cpp.strings.add("span"), lispb::codegen::IncludeStyle::system), 2);
+            .add(cpp.include(cpp.strings.intern("cstdint"), lispb::codegen::IncludeStyle::system))
+            .add(cpp.include(cpp.strings.intern("span"), lispb::codegen::IncludeStyle::system), 2);
     } else {
         header_nodes
-            .add(cpp.include(cpp.strings.add("Containers/Array.h"),
+            .add(cpp.include(cpp.strings.intern("Containers/Array.h"),
                              lispb::codegen::IncludeStyle::quoted))
-            .add(cpp.include(cpp.strings.add("Containers/ArrayView.h"),
+            .add(cpp.include(cpp.strings.intern("Containers/ArrayView.h"),
                              lispb::codegen::IncludeStyle::quoted))
-            .add(cpp.include(cpp.strings.add("CoreTypes.h"), lispb::codegen::IncludeStyle::quoted),
+            .add(cpp.include(cpp.strings.intern("CoreTypes.h"),
+                             lispb::codegen::IncludeStyle::quoted),
                  2);
     }
     header_nodes.add(cpp.namespace_node(cpp_namespace, declarations));
@@ -452,20 +453,22 @@ auto lower_portable(lispb::codegen::CppIR& cpp,
                      2);
     if (!standard) {
         source_nodes.add(
-            cpp.include(cpp.strings.add("CoreMinimal.h"), lispb::codegen::IncludeStyle::quoted), 2);
+            cpp.include(cpp.strings.intern("CoreMinimal.h"), lispb::codegen::IncludeStyle::quoted),
+            2);
     }
-    source_nodes.add(cpp.include(cpp.strings.add("cstddef"), lispb::codegen::IncludeStyle::system))
-        .add(cpp.include(cpp.strings.add("cstdint"), lispb::codegen::IncludeStyle::system));
+    source_nodes
+        .add(cpp.include(cpp.strings.intern("cstddef"), lispb::codegen::IncludeStyle::system))
+        .add(cpp.include(cpp.strings.intern("cstdint"), lispb::codegen::IncludeStyle::system));
     if (standard) {
         source_nodes.add(
-            cpp.include(cpp.strings.add("cstdlib"), lispb::codegen::IncludeStyle::system));
+            cpp.include(cpp.strings.intern("cstdlib"), lispb::codegen::IncludeStyle::system));
     }
     if (std::ranges::any_of(document.modules.operations(module), [&](auto const operation) {
             return contains_constant(document.expressions,
                                      document.operations.expression(operation));
         })) {
         source_nodes.add(
-            cpp.include(cpp.strings.add("limits"), lispb::codegen::IncludeStyle::system));
+            cpp.include(cpp.strings.intern("limits"), lispb::codegen::IncludeStyle::system));
     }
     source_nodes.new_lines(2)
         .add(cpp.namespace_node(cpp.strings.intern(detail_namespace), implementation), 2)

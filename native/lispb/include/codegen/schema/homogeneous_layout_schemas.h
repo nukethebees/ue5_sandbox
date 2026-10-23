@@ -16,11 +16,11 @@ struct HomogeneousLayoutSchemas {
     [[nodiscard]] auto index(DeclarationHandle id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
-    std::vector<SchemaRange<IdentifierId>> components;
-    std::vector<SchemaRange<IdentifierId>> input_members;
+    std::vector<StringId> name;
+    std::vector<SchemaRange<StringId>> components;
+    std::vector<SchemaRange<StringId>> input_members;
     std::vector<SchemaRange<HomogeneousValueId>> value_types;
-    std::vector<IdentifierId> export_specifier;
+    std::vector<StringId> export_specifier;
 };
 
 }

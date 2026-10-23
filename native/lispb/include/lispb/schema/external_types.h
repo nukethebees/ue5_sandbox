@@ -16,13 +16,12 @@ namespace lispb::schema {
 struct ExternalTypes {
     [[nodiscard]] auto append() -> TypeDefinitionId;
     [[nodiscard]] auto index(TypeDefinitionId id) const -> std::uint32_t;
-    [[nodiscard]] auto registered_names_of(TypeDefinitionId id) const
-        -> std::span<IdentifierId const>;
-    void set_registered_names(TypeDefinitionId id, std::span<IdentifierId const> values);
+    [[nodiscard]] auto registered_names_of(TypeDefinitionId id) const -> std::span<StringId const>;
+    void set_registered_names(TypeDefinitionId id, std::span<StringId const> values);
 
     std::vector<codegen::CppTypeId> cpp_type;
     std::vector<SemanticRange> registered_names;
-    std::vector<IdentifierId> registered_names_values;
+    std::vector<StringId> registered_names_values;
     std::vector<std::optional<TypeDefinitionId>> integer_semantics;
     std::vector<std::optional<codegen::FloatingPointFormat>> floating_semantics;
 };

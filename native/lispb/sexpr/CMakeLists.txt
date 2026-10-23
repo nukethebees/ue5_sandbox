@@ -60,7 +60,12 @@ target_link_libraries(lispb-syntax
 )
 ioj_enable_warnings(lispb-syntax CODEGEN)
 
-add_executable(lispb-syntax-tests tests/reader_tests.cpp)
+add_executable(lispb-syntax-tests)
+target_sources(lispb-syntax-tests
+  PRIVATE
+    tests/reader_tests.cpp
+    tests/strings_tests.cpp
+)
 target_link_libraries(lispb-syntax-tests PRIVATE
   lispb-syntax
   GTest::gtest_main

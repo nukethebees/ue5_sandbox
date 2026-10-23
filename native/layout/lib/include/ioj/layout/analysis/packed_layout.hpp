@@ -11,8 +11,8 @@
 namespace ioj::layout {
 struct PackedLayout {
     RowRange fields{};
-    lispb::IdentifierId schema_storage_type{};
-    lispb::IdentifierId storage_type{};
+    lispb::StringId schema_storage_type{};
+    lispb::StringId storage_type{};
     bool storage_overridden{};
     std::optional<lispb::codegen::PackedByteOrder> byte_order{};
     lispb::codegen::PackedBitOrder bit_order{

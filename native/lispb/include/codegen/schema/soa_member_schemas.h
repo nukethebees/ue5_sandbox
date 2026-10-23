@@ -17,11 +17,11 @@ struct SoaMemberSchemas {
     [[nodiscard]] auto index(SoaMemberId id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<SoaMemberKind> kind;
     std::vector<TypeRefId> type;
-    std::vector<std::optional<IdentifierId>> fixed_schema;
-    std::vector<std::optional<IdentifierId>> nested_schema;
+    std::vector<std::optional<StringId>> fixed_schema;
+    std::vector<std::optional<StringId>> nested_schema;
     std::vector<std::uint8_t> mask_field;
     std::vector<SchemaRange<SoaMaskDimensionId>> mask_dimensions;
     std::vector<std::optional<SemanticRelationId>> relationship;

@@ -13,7 +13,7 @@ struct SettingCategorySchemas {
     [[nodiscard]] auto index(SettingCategoryId id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<StringId> label;
 };
 

@@ -91,9 +91,7 @@ CanonicalRenderer::CanonicalRenderer(codegen::Declarations const& declarations)
 auto CanonicalRenderer::text(StringId value) const -> std::string_view {
     return store_.strings().view(value);
 }
-auto CanonicalRenderer::text(IdentifierId value) const -> std::string_view {
-    return store_.strings().view(value);
-}
+
 auto CanonicalRenderer::render_declaration_schema(codegen::DeclarationHandle const declaration)
     -> std::string {
     return codegen::sexpr::SExprRenderer{ir_}.render(build_declaration_schema(declaration));

@@ -21,7 +21,7 @@ struct NormalModuleSchemas {
 
     std::vector<ModuleSettingsId> settings;
     std::vector<SchemaRange<DeclarationHandle>> declarations;
-    std::vector<std::optional<IdentifierId>> enum_helper_namespace;
+    std::vector<std::optional<StringId>> enum_helper_namespace;
     std::vector<SoaBackend> soa_backend;
     std::vector<SchemaRange<SoaAllocatorVariantId>> soa_array_allocators;
 };

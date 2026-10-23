@@ -8,7 +8,7 @@
 namespace slate_codegen::detail {
 
 struct CalledWidgets {
-    std::vector<lispb::IdentifierId> parameters;
+    std::vector<lispb::StringId> parameters;
     std::vector<Range> arguments;
     std::vector<lispb::codegen::sexpr::SourceSpan> spans;
 };

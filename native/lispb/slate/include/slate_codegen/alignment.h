@@ -6,7 +6,7 @@
 namespace slate_codegen::detail {
 
 struct Alignment {
-    lispb::IdentifierId parameter{};
+    lispb::StringId parameter{};
     AlignmentKind kind{};
 };
 

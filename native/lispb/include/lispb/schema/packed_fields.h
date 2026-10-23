@@ -20,7 +20,7 @@ struct PackedFields {
     [[nodiscard]] auto index(PackedSegmentId id) const -> std::uint32_t;
 
     std::vector<codegen::PackedSegmentId> source;
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<ResolvedOccurrenceId> semantic_type;
     std::vector<std::uint32_t> bit_width;
     std::vector<std::uint8_t> bit_width_auto;

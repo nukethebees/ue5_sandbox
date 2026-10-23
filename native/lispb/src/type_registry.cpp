@@ -25,11 +25,11 @@ auto TypeRegistry::operator=(TypeRegistry&& other) noexcept -> TypeRegistry& {
 auto TypeRegistry::find(std::string_view const name) const -> std::optional<RegisteredTypeId> {
     return find(cpp_types.strings().find(name));
 }
-auto TypeRegistry::find(IdentifierId const name) const -> std::optional<RegisteredTypeId> {
+auto TypeRegistry::find(StringId const name) const -> std::optional<RegisteredTypeId> {
     auto const found{entries.find(name)};
     return found == entries.end() ? std::nullopt : std::optional{found->second};
 }
-auto TypeRegistry::bind(IdentifierId const name, RegisteredTypeId const type) -> bool {
+auto TypeRegistry::bind(StringId const name, RegisteredTypeId const type) -> bool {
     return entries.emplace(name, type).second;
 }
 auto TypeRegistry::add(std::string_view const name,
@@ -37,7 +37,7 @@ auto TypeRegistry::add(std::string_view const name,
                        ExternalScalarId const scalar) -> bool {
     return add(cpp_types.strings().intern(name), type, scalar);
 }
-auto TypeRegistry::add(IdentifierId const name, CppTypeId const type, ExternalScalarId const scalar)
+auto TypeRegistry::add(StringId const name, CppTypeId const type, ExternalScalarId const scalar)
     -> bool {
     if (entries.contains(name)) {
         return false;

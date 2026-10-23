@@ -11,7 +11,7 @@ struct RowParameters {
     auto index(RowParameterId id) const -> std::uint32_t;
     void clear();
     std::vector<CppTypeId> type;
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<LoweringPathId> column;
     std::vector<std::uint8_t> nested;
 };

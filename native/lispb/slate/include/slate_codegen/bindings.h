@@ -8,7 +8,7 @@
 namespace slate_codegen::detail {
 
 struct Bindings {
-    std::vector<lispb::IdentifierId> names;
+    std::vector<lispb::StringId> names;
     std::vector<ValueId> initializers;
     std::vector<lispb::codegen::sexpr::SourceSpan> spans;
 };

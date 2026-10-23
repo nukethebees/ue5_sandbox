@@ -18,7 +18,7 @@ class Parser {
     [[noreturn]] void fail(SourceSpan span, std::string_view message) const;
     auto text(FormId form, std::string_view purpose) const -> std::string_view;
     auto text_id(FormId form, std::string_view purpose) const -> StringId;
-    auto identifier(FormId form, std::string_view purpose) const -> IdentifierId;
+    auto identifier(FormId form, std::string_view purpose) const -> StringId;
     auto boolean(FormId form, std::string_view purpose) const -> bool;
     auto integer(FormId form, std::string_view purpose) const -> int;
     auto number(FormId form, std::string_view purpose) const -> double;

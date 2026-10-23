@@ -31,11 +31,10 @@ auto Syntax::kind(TokenId const id) const -> TokenKind {
 auto Syntax::text_id(TokenId const id) const -> StringId {
     return token_texts_[id.value];
 }
-auto Syntax::identifier(TokenId const id) const -> IdentifierId {
+auto Syntax::identifier(TokenId const id) const -> StringId {
     auto const token_kind{kind(id)};
-    return token_kind == TokenKind::atom || token_kind == TokenKind::keyword
-             ? IdentifierId{text_id(id).value}
-             : IdentifierId{};
+    return token_kind == TokenKind::atom || token_kind == TokenKind::keyword ? text_id(id)
+                                                                             : StringId{};
 }
 auto Syntax::text(TokenId const id) const -> std::string_view {
     return strings_->view(text_id(id));
@@ -56,7 +55,7 @@ auto Syntax::kind(FormId const id) const -> TokenKind {
 auto Syntax::text_id(FormId const id) const -> StringId {
     return text_id(token(id));
 }
-auto Syntax::identifier(FormId const id) const -> IdentifierId {
+auto Syntax::identifier(FormId const id) const -> StringId {
     return identifier(token(id));
 }
 auto Syntax::text(FormId const id) const -> std::string_view {
@@ -112,13 +111,10 @@ auto Syntax::range(std::span<FormId const> const ids) -> HandleRange {
 auto Syntax::add_token(TokenKind const kind,
                        lispb::StringId const text,
                        SourceSpan const span,
-                       lispb::IdentifierId const tag) -> TokenId {
+                       lispb::StringId const tag) -> TokenId {
     auto const id{TokenId{token_count()}};
-    auto const stored_text{kind == TokenKind::atom || kind == TokenKind::keyword
-                               ? lispb::string_id(strings_->intern(text))
-                               : text};
     token_kinds_.push_back(kind);
-    token_texts_.push_back(stored_text);
+    token_texts_.push_back(text);
     token_spans_.push_back(span);
     token_tags_.push_back(tag);
     return id;

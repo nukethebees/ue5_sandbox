@@ -15,7 +15,7 @@ struct UnionAlternativeSchemas {
     [[nodiscard]] auto index(UnionAlternativeId id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<TypeRefId> type;
     std::vector<std::optional<std::uint64_t>> count;
 };

@@ -12,7 +12,7 @@ struct Enums {
     std::vector<StringId> name;
     std::vector<CppTypeId> underlying_type;
     std::vector<Range> values;
-    std::vector<IdentifierId> export_specifier;
+    std::vector<StringId> export_specifier;
     std::vector<std::uint8_t> scoped;
 };
 

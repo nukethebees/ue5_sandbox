@@ -14,9 +14,9 @@ struct StaticTableGroupSchemas {
     [[nodiscard]] auto index(StaticTableGroupId id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<TypeRefId> type;
-    std::vector<SchemaRange<IdentifierId>> columns;
+    std::vector<SchemaRange<StringId>> columns;
 };
 
 }

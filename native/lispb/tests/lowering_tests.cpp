@@ -84,15 +84,15 @@ auto render_soa(CompilerTestContext& context,
                     context.storage.declarations.module_settings_store
                         .header[context.storage.declarations.module_settings_store.index(
                             new_module_settings_store)] =
-                        context.storage.strings.add("Generated.h");
+                        context.storage.strings.intern("Generated.h");
                     context.storage.declarations.module_settings_store
                         .source[context.storage.declarations.module_settings_store.index(
                             new_module_settings_store)] =
-                        context.storage.strings.add("Generated.cpp");
+                        context.storage.strings.intern("Generated.cpp");
                     context.storage.declarations.module_settings_store
                         .header_include[context.storage.declarations.module_settings_store.index(
                             new_module_settings_store)] =
-                        context.storage.strings.add("Project/Generated.h");
+                        context.storage.strings.intern("Project/Generated.h");
                     return new_module_settings_store;
                 }();
                 context.storage.declarations.normal_modules
@@ -231,7 +231,7 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
                     context.storage.declarations.module_settings_store
                         .header[context.storage.declarations.module_settings_store.index(
                             new_module_settings_store)] =
-                        context.storage.strings.add("NativeEnum.h");
+                        context.storage.strings.intern("NativeEnum.h");
                     context.storage.declarations.module_settings_store
                         .namespace_name[context.storage.declarations.module_settings_store.index(
                             new_module_settings_store)] = context.storage.strings.intern("fixture");
@@ -268,15 +268,15 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
                                      context.storage.declarations.enumerators
                                          .initializer[context.storage.declarations.enumerators
                                                           .index(new_enumerators)] =
-                                         context.storage.strings.add("0");
+                                         context.storage.strings.intern("0");
                                      context.storage.declarations.enumerators
                                          .display_name[context.storage.declarations.enumerators
                                                            .index(new_enumerators)] =
-                                         context.storage.strings.add("Idle");
+                                         context.storage.strings.intern("Idle");
                                      context.storage.declarations.enumerators
                                          .serialized_name[context.storage.declarations.enumerators
                                                               .index(new_enumerators)] =
-                                         context.storage.strings.add("idle");
+                                         context.storage.strings.intern("idle");
                                      return new_enumerators;
                                  }(),
                                  [&] {
@@ -289,15 +289,15 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
                                      context.storage.declarations.enumerators
                                          .initializer[context.storage.declarations.enumerators
                                                           .index(new_enumerators)] =
-                                         context.storage.strings.add("1");
+                                         context.storage.strings.intern("1");
                                      context.storage.declarations.enumerators
                                          .display_name[context.storage.declarations.enumerators
                                                            .index(new_enumerators)] =
-                                         context.storage.strings.add("Active");
+                                         context.storage.strings.intern("Active");
                                      context.storage.declarations.enumerators
                                          .serialized_name[context.storage.declarations.enumerators
                                                               .index(new_enumerators)] =
-                                         context.storage.strings.add("active");
+                                         context.storage.strings.intern("active");
                                      return new_enumerators;
                                  }()});
                         context.storage.declarations.enums
@@ -356,7 +356,7 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
                             context.storage.declarations.module_settings_store
                                 .header[context.storage.declarations.module_settings_store.index(
                                     new_module_settings_store)] =
-                                context.storage.strings.add("Selected.h");
+                                context.storage.strings.intern("Selected.h");
                             return new_module_settings_store;
                         }();
                         context.storage.declarations.normal_modules
@@ -379,11 +379,11 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
                                         context.storage.declarations.enumerators
                                             .initializer[context.storage.declarations.enumerators
                                                              .index(new_enumerators)] =
-                                            context.storage.strings.add("0");
+                                            context.storage.strings.intern("0");
                                         context.storage.declarations.enumerators.serialized_name
                                             [context.storage.declarations.enumerators.index(
                                                 new_enumerators)] =
-                                            context.storage.strings.add("idle");
+                                            context.storage.strings.intern("idle");
                                         return new_enumerators;
                                     }()});
                                 context.storage.declarations.enums
@@ -434,7 +434,7 @@ TEST(Lowering, DerivesNativeEnumBackingFromSemanticWidthAndSignedness) {
                     context.storage.declarations.module_settings_store
                         .header[context.storage.declarations.module_settings_store.index(
                             new_module_settings_store)] =
-                        context.storage.strings.add("NativeEnum.h");
+                        context.storage.strings.intern("NativeEnum.h");
                     context.storage.declarations.module_settings_store
                         .namespace_name[context.storage.declarations.module_settings_store.index(
                             new_module_settings_store)] = context.storage.strings.intern("fixture");
@@ -464,7 +464,7 @@ TEST(Lowering, DerivesNativeEnumBackingFromSemanticWidthAndSignedness) {
                                      context.storage.declarations.enumerators
                                          .initializer[context.storage.declarations.enumerators
                                                           .index(new_enumerators)] =
-                                         context.storage.strings.add("-1");
+                                         context.storage.strings.intern("-1");
                                      return new_enumerators;
                                  }(),
                                  [&] {
@@ -477,7 +477,7 @@ TEST(Lowering, DerivesNativeEnumBackingFromSemanticWidthAndSignedness) {
                                      context.storage.declarations.enumerators
                                          .initializer[context.storage.declarations.enumerators
                                                           .index(new_enumerators)] =
-                                         context.storage.strings.add("1");
+                                         context.storage.strings.intern("1");
                                      return new_enumerators;
                                  }()});
                         context.storage.declarations.enums
@@ -517,10 +517,10 @@ TEST(Lowering, DerivesUnrealStyleEnumBackingWithoutChangingSemanticWidth) {
                     new_module_settings_store)] = context.storage.strings.intern("states");
             context.storage.declarations.module_settings_store
                 .header[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("States.h");
+                    new_module_settings_store)] = context.storage.strings.intern("States.h");
             context.storage.declarations.module_settings_store
                 .source[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("States.cpp");
+                    new_module_settings_store)] = context.storage.strings.intern("States.cpp");
             return new_module_settings_store;
         }();
         context.storage.declarations.normal_modules
@@ -544,7 +544,7 @@ TEST(Lowering, DerivesUnrealStyleEnumBackingWithoutChangingSemanticWidth) {
                                      new_enumerators)] = context.storage.strings.intern("Idle");
                              context.storage.declarations.enumerators
                                  .initializer[context.storage.declarations.enumerators.index(
-                                     new_enumerators)] = context.storage.strings.add("0");
+                                     new_enumerators)] = context.storage.strings.intern("0");
                              return new_enumerators;
                          }(),
                          [&] {
@@ -555,7 +555,7 @@ TEST(Lowering, DerivesUnrealStyleEnumBackingWithoutChangingSemanticWidth) {
                                      new_enumerators)] = context.storage.strings.intern("Maximum");
                              context.storage.declarations.enumerators
                                  .initializer[context.storage.declarations.enumerators.index(
-                                     new_enumerators)] = context.storage.strings.add("4095");
+                                     new_enumerators)] = context.storage.strings.intern("4095");
                              return new_enumerators;
                          }()});
                 context.storage.declarations.enums
@@ -608,7 +608,7 @@ TEST(Lowering, EmitsRequestedNamedScalarConstantsWithoutInventingScalarTypes) {
                     context.storage.declarations.module_settings_store
                         .header[context.storage.declarations.module_settings_store.index(
                             new_module_settings_store)] =
-                        context.storage.strings.add("SemanticValues.h");
+                        context.storage.strings.intern("SemanticValues.h");
                     context.storage.declarations.module_settings_store
                         .namespace_name[context.storage.declarations.module_settings_store.index(
                             new_module_settings_store)] = context.storage.strings.intern("fixture");
@@ -892,7 +892,7 @@ TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) 
                     context.storage.declarations.module_settings_store
                         .header[context.storage.declarations.module_settings_store.index(
                             new_module_settings_store)] =
-                        context.storage.strings.add("NativeEnum.h");
+                        context.storage.strings.intern("NativeEnum.h");
                     context.storage.declarations.module_settings_store
                         .namespace_name[context.storage.declarations.module_settings_store.index(
                             new_module_settings_store)] = context.storage.strings.intern("fixture");
@@ -929,11 +929,11 @@ TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) 
                                      context.storage.declarations.enumerators
                                          .initializer[context.storage.declarations.enumerators
                                                           .index(new_enumerators)] =
-                                         context.storage.strings.add("0");
+                                         context.storage.strings.intern("0");
                                      context.storage.declarations.enumerators
                                          .serialized_name[context.storage.declarations.enumerators
                                                               .index(new_enumerators)] =
-                                         context.storage.strings.add("idle");
+                                         context.storage.strings.intern("idle");
                                      return new_enumerators;
                                  }(),
                                  [&] {
@@ -946,11 +946,11 @@ TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) 
                                      context.storage.declarations.enumerators
                                          .initializer[context.storage.declarations.enumerators
                                                           .index(new_enumerators)] =
-                                         context.storage.strings.add("1");
+                                         context.storage.strings.intern("1");
                                      context.storage.declarations.enumerators
                                          .serialized_name[context.storage.declarations.enumerators
                                                               .index(new_enumerators)] =
-                                         context.storage.strings.add("active");
+                                         context.storage.strings.intern("active");
                                      return new_enumerators;
                                  }()});
                         context.storage.declarations.enums
@@ -965,20 +965,20 @@ TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) 
                             context.storage.declarations.enum_unreal_projections
                                 .header[context.storage.declarations.enum_unreal_projections.index(
                                     new_enum_unreal_projections)] =
-                                context.storage.strings.add("Project/NativeState.h");
+                                context.storage.strings.intern("Project/NativeState.h");
                             context.storage.declarations.enum_unreal_projections
                                 .header_include[context.storage.declarations.enum_unreal_projections
                                                     .index(new_enum_unreal_projections)] =
-                                context.storage.strings.add("Project/NativeState.h");
+                                context.storage.strings.intern("Project/NativeState.h");
                             context.storage.declarations.enum_unreal_projections.conversion_header
                                 [context.storage.declarations.enum_unreal_projections.index(
                                     new_enum_unreal_projections)] =
-                                context.storage.strings.add("Project/NativeStateConversion.h");
+                                context.storage.strings.intern("Project/NativeStateConversion.h");
                             context.storage.declarations.enum_unreal_projections
                                 .native_header_include[context.storage.declarations
                                                            .enum_unreal_projections.index(
                                                                new_enum_unreal_projections)] =
-                                context.storage.strings.add("fixture/NativeEnum.h");
+                                context.storage.strings.intern("fixture/NativeEnum.h");
                             context.storage.declarations.enum_unreal_projections
                                 .enum_array[context.storage.declarations.enum_unreal_projections
                                                 .index(new_enum_unreal_projections)] = true;
@@ -1039,13 +1039,13 @@ TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
                     new_module_settings_store)] = context.storage.strings.intern("modes");
             context.storage.declarations.module_settings_store
                 .header[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Modes.h");
+                    new_module_settings_store)] = context.storage.strings.intern("Modes.h");
             context.storage.declarations.module_settings_store
                 .source[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Modes.cpp");
+                    new_module_settings_store)] = context.storage.strings.intern("Modes.cpp");
             context.storage.declarations.module_settings_store
                 .header_include[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Project/Modes.h");
+                    new_module_settings_store)] = context.storage.strings.intern("Project/Modes.h");
             return new_module_settings_store;
         }();
         context.storage.declarations.normal_modules
@@ -1083,7 +1083,7 @@ TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
                                      new_enumerators)] = false;
                              context.storage.declarations.enumerators
                                  .serialized_name[context.storage.declarations.enumerators.index(
-                                     new_enumerators)] = context.storage.strings.add("first");
+                                     new_enumerators)] = context.storage.strings.intern("first");
                              return new_enumerators;
                          }(),
                          [&] {
@@ -1094,17 +1094,17 @@ TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
                                      new_enumerators)] = context.storage.strings.intern("Readable");
                              context.storage.declarations.enumerators
                                  .initializer[context.storage.declarations.enumerators.index(
-                                     new_enumerators)] = context.storage.strings.add("7");
+                                     new_enumerators)] = context.storage.strings.intern("7");
                              context.storage.declarations.enumerators
                                  .display_name[context.storage.declarations.enumerators.index(
                                      new_enumerators)] =
-                                 context.storage.strings.add("Readable Value");
+                                 context.storage.strings.intern("Readable Value");
                              context.storage.declarations.enumerators
                                  .hidden[context.storage.declarations.enumerators.index(
                                      new_enumerators)] = false;
                              context.storage.declarations.enumerators
                                  .serialized_name[context.storage.declarations.enumerators.index(
-                                     new_enumerators)] = context.storage.strings.add("readable");
+                                     new_enumerators)] = context.storage.strings.intern("readable");
                              return new_enumerators;
                          }(),
                          [&] {
@@ -1124,7 +1124,7 @@ TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
                                      new_enumerators)] = true;
                              context.storage.declarations.enumerators
                                  .serialized_name[context.storage.declarations.enumerators.index(
-                                     new_enumerators)] = context.storage.strings.add("count");
+                                     new_enumerators)] = context.storage.strings.intern("count");
                              return new_enumerators;
                          }()});
                 context.storage.declarations.enums
@@ -1193,10 +1193,10 @@ TEST(Lowering, EmitsPlainEnumsInTheirNamespace) {
                     new_module_settings_store)] = context.storage.strings.intern("states");
             context.storage.declarations.module_settings_store
                 .header[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("States.h");
+                    new_module_settings_store)] = context.storage.strings.intern("States.h");
             context.storage.declarations.module_settings_store
                 .source[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("States.cpp");
+                    new_module_settings_store)] = context.storage.strings.intern("States.cpp");
             context.storage.declarations.module_settings_store
                 .namespace_name[context.storage.declarations.module_settings_store.index(
                     new_module_settings_store)] = context.storage.strings.intern("project::states");
@@ -1256,10 +1256,10 @@ TEST(Lowering, EmitsCountsForEnumArrays) {
                     new_module_settings_store)] = context.storage.strings.intern("modes");
             context.storage.declarations.module_settings_store
                 .header[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Modes.h");
+                    new_module_settings_store)] = context.storage.strings.intern("Modes.h");
             context.storage.declarations.module_settings_store
                 .source[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Modes.cpp");
+                    new_module_settings_store)] = context.storage.strings.intern("Modes.cpp");
             return new_module_settings_store;
         }();
         context.storage.declarations.normal_modules
@@ -1324,10 +1324,10 @@ TEST(Lowering, EmitsCountsForReflectedEnumArrays) {
                     new_module_settings_store)] = context.storage.strings.intern("modes");
             context.storage.declarations.module_settings_store
                 .header[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Modes.h");
+                    new_module_settings_store)] = context.storage.strings.intern("Modes.h");
             context.storage.declarations.module_settings_store
                 .source[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Modes.cpp");
+                    new_module_settings_store)] = context.storage.strings.intern("Modes.cpp");
             return new_module_settings_store;
         }();
         context.storage.declarations.normal_modules
@@ -1393,10 +1393,10 @@ TEST(Lowering, EnumDisplayLookupWithoutOverridesFallsBackDirectly) {
                     new_module_settings_store)] = context.storage.strings.intern("states");
             context.storage.declarations.module_settings_store
                 .header[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("States.h");
+                    new_module_settings_store)] = context.storage.strings.intern("States.h");
             context.storage.declarations.module_settings_store
                 .source[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("States.cpp");
+                    new_module_settings_store)] = context.storage.strings.intern("States.cpp");
             return new_module_settings_store;
         }();
         context.storage.declarations.normal_modules
@@ -1454,10 +1454,10 @@ TEST(Lowering, EnumEscapingAndSparseDisplayCasesPreserveFallbacks) {
                     new_module_settings_store)] = context.storage.strings.intern("states");
             context.storage.declarations.module_settings_store
                 .header[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("States.h");
+                    new_module_settings_store)] = context.storage.strings.intern("States.h");
             context.storage.declarations.module_settings_store
                 .source[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("States.cpp");
+                    new_module_settings_store)] = context.storage.strings.intern("States.cpp");
             return new_module_settings_store;
         }();
         context.storage.declarations.normal_modules
@@ -1495,7 +1495,7 @@ TEST(Lowering, EnumEscapingAndSparseDisplayCasesPreserveFallbacks) {
                                      new_enumerators)] = false;
                              context.storage.declarations.enumerators
                                  .serialized_name[context.storage.declarations.enumerators.index(
-                                     new_enumerators)] = context.storage.strings.add("ready");
+                                     new_enumerators)] = context.storage.strings.intern("ready");
                              return new_enumerators;
                          }(),
                          [&] {
@@ -1510,13 +1510,14 @@ TEST(Lowering, EnumEscapingAndSparseDisplayCasesPreserveFallbacks) {
                              context.storage.declarations.enumerators
                                  .display_name[context.storage.declarations.enumerators.index(
                                      new_enumerators)] =
-                                 context.storage.strings.add("Quote\" Slash\\\n\t");
+                                 context.storage.strings.intern("Quote\" Slash\\\n\t");
                              context.storage.declarations.enumerators
                                  .hidden[context.storage.declarations.enumerators.index(
                                      new_enumerators)] = false;
                              context.storage.declarations.enumerators
                                  .serialized_name[context.storage.declarations.enumerators.index(
-                                     new_enumerators)] = context.storage.strings.add("a\"b\\c\n");
+                                     new_enumerators)] =
+                                 context.storage.strings.intern("a\"b\\c\n");
                              return new_enumerators;
                          }()});
                 context.storage.declarations.enums
@@ -1576,7 +1577,8 @@ TEST(Lowering, EnumCountsUseMlNamespaceForQualifiedHeaderOnlyEnums) {
                             new_module_settings_store)] = context.storage.strings.intern("states");
                     context.storage.declarations.module_settings_store
                         .header[context.storage.declarations.module_settings_store.index(
-                            new_module_settings_store)] = context.storage.strings.add("States.h");
+                            new_module_settings_store)] =
+                        context.storage.strings.intern("States.h");
                     context.storage.declarations.module_settings_store
                         .namespace_name[context.storage.declarations.module_settings_store.index(
                             new_module_settings_store)] =
@@ -1871,7 +1873,7 @@ TEST(Lowering, CustomSetAndAddStillSuppressGeneratedBodies) {
                  context.storage.declarations.functions
                      .body_lines[context.storage.declarations.functions.index(new_functions)] =
                      context.storage.declarations.range<StringId>(
-                         {context.storage.strings.add("custom_set();")});
+                         {context.storage.strings.intern("custom_set();")});
                  context.storage.declarations.functions
                      .is_inline[context.storage.declarations.functions.index(new_functions)] = true;
                  return new_functions;
@@ -1893,7 +1895,7 @@ TEST(Lowering, CustomSetAndAddStillSuppressGeneratedBodies) {
                  context.storage.declarations.functions
                      .body_lines[context.storage.declarations.functions.index(new_functions)] =
                      context.storage.declarations.range<StringId>(
-                         {context.storage.strings.add("custom_add();")});
+                         {context.storage.strings.intern("custom_add();")});
                  context.storage.declarations.functions
                      .is_inline[context.storage.declarations.functions.index(new_functions)] = true;
                  return new_functions;
@@ -2088,7 +2090,7 @@ TEST(Lowering, LowersCustomFunctionsToTheirRequestedFile) {
     context.storage.declarations.soas
         .using_declarations[context.storage.declarations.soas.index(schema)] =
         context.storage.declarations.range<StringId>(
-            {context.storage.strings.add("Index = int32")});
+            {context.storage.strings.intern("Index = int32")});
     context.storage.declarations.soas.functions[context.storage.declarations.soas.index(schema)] =
         context.storage.declarations.range<FunctionSchemaId>(
             {[&] {
@@ -2108,7 +2110,7 @@ TEST(Lowering, LowersCustomFunctionsToTheirRequestedFile) {
                  context.storage.declarations.functions
                      .body_lines[context.storage.declarations.functions.index(new_functions)] =
                      context.storage.declarations.range<StringId>(
-                         {context.storage.strings.add("return ids[0];")});
+                         {context.storage.strings.intern("return ids[0];")});
                  context.storage.declarations.functions
                      .is_inline[context.storage.declarations.functions.index(new_functions)] = true;
                  return new_functions;
@@ -2130,10 +2132,10 @@ TEST(Lowering, LowersCustomFunctionsToTheirRequestedFile) {
                  context.storage.declarations.functions
                      .body_lines[context.storage.declarations.functions.index(new_functions)] =
                      context.storage.declarations.range<StringId>(
-                         {context.storage.strings.add("return helper(ids);")});
+                         {context.storage.strings.intern("return helper(ids);")});
                  context.storage.declarations.functions
                      .dependencies[context.storage.declarations.functions.index(new_functions)] =
-                     context.storage.declarations.range<IdentifierId>(
+                     context.storage.declarations.range<StringId>(
                          {context.storage.strings.intern("helper")});
                  context.storage.declarations.functions
                      .definition_in_source[context.storage.declarations.functions.index(
@@ -2182,7 +2184,7 @@ TEST(Lowering, FixedContainersOwnOneSizeAndImplementValueSemantics) {
             context.storage.strings.intern("TDataStorage");
         context.storage.declarations.fixed_soas
             .containers[context.storage.declarations.fixed_soas.index(new_fixed_soas)] =
-            context.storage.declarations.range<IdentifierId>(
+            context.storage.declarations.range<StringId>(
                 {context.storage.strings.intern("TFixedData")});
         return new_fixed_soas;
     }();
@@ -2218,10 +2220,11 @@ TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {
                         new_module_settings_store)] = context.storage.strings.intern("settings");
                 context.storage.declarations.module_settings_store
                     .header[context.storage.declarations.module_settings_store.index(
-                        new_module_settings_store)] = context.storage.strings.add("Settings.h");
+                        new_module_settings_store)] = context.storage.strings.intern("Settings.h");
                 context.storage.declarations.module_settings_store
                     .source[context.storage.declarations.module_settings_store.index(
-                        new_module_settings_store)] = context.storage.strings.add("Settings.cpp");
+                        new_module_settings_store)] =
+                    context.storage.strings.intern("Settings.cpp");
                 context.storage.declarations.module_settings_store
                     .namespace_name[context.storage.declarations.module_settings_store.index(
                         new_module_settings_store)] = context.storage.strings.intern("game");
@@ -2243,7 +2246,7 @@ TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {
                         new_setting_categories)] = context.storage.strings.intern("video");
                 context.storage.declarations.setting_categories
                     .label[context.storage.declarations.setting_categories.index(
-                        new_setting_categories)] = context.storage.strings.add("Video");
+                        new_setting_categories)] = context.storage.strings.intern("Video");
                 return new_setting_categories;
             }()});
         context.storage.declarations.settings_modules
@@ -2257,7 +2260,7 @@ TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {
                          context.storage.strings.intern("vsync");
                      context.storage.declarations.settings
                          .label[context.storage.declarations.settings.index(new_settings)] =
-                         context.storage.strings.add("VSync");
+                         context.storage.strings.intern("VSync");
                      context.storage.declarations.settings
                          .category[context.storage.declarations.settings.index(new_settings)] =
                          context.storage.strings.intern("video");
@@ -2294,7 +2297,7 @@ TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {
                          context.storage.strings.intern("frame_limit");
                      context.storage.declarations.settings
                          .label[context.storage.declarations.settings.index(new_settings)] =
-                         context.storage.strings.add("Frame Limit");
+                         context.storage.strings.intern("Frame Limit");
                      context.storage.declarations.settings
                          .category[context.storage.declarations.settings.index(new_settings)] =
                          context.storage.strings.intern("video");
@@ -2326,7 +2329,7 @@ TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {
                          context.storage.declarations.setting_controls
                              .options_provider[context.storage.declarations.setting_controls.index(
                                  new_setting_controls)] =
-                             context.storage.strings.add("frame_limits");
+                             context.storage.strings.intern("frame_limits");
                          return new_setting_controls;
                      }();
                      return new_settings;

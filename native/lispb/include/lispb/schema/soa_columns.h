@@ -16,7 +16,7 @@ struct SoaColumns {
     [[nodiscard]] auto index(SoaColumnId id) const -> std::uint32_t;
 
     std::vector<std::optional<codegen::SoaMemberId>> source;
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<ResolvedOccurrenceId> semantic_type;
     std::vector<codegen::SoaMemberKind> kind;
     std::vector<std::optional<TypeId>> nested_type;

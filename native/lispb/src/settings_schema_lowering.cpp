@@ -48,7 +48,7 @@ auto parser_function(LoweringContext& context,
 auto visitor_function(LoweringContext& context,
                       std::string const& enum_name,
                       std::string const& stem,
-                      IdentifierId const target,
+                      StringId const target,
                       StringId const target_header,
                       std::span<StringId const> const paths,
                       std::span<StringId const> const members) -> NodeId {

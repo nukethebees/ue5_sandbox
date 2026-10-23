@@ -78,8 +78,7 @@ auto logical_column_access(LoweringContext& context,
                            std::span<std::string const> const path,
                            SoaRepresentation const representation,
                            std::string receiver,
-                           std::map<IdentifierId, DeclarationHandle> const* schemas)
-    -> std::string {
+                           std::map<StringId, DeclarationHandle> const* schemas) -> std::string {
     if (path.empty()) {
         throw std::invalid_argument{"SOA column reference cannot be empty"};
     }
@@ -134,7 +133,7 @@ auto expand_columns(LoweringContext& context,
                     DeclarationHandle schema,
                     SoaRepresentation const representation,
                     SoaReceiver const receiver,
-                    std::map<IdentifierId, DeclarationHandle> const* schemas) -> std::string {
+                    std::map<StringId, DeclarationHandle> const* schemas) -> std::string {
     std::string result;
     result.reserve(body.size());
     std::size_t copied{};
@@ -163,7 +162,7 @@ auto lower_soa_api(LoweringContext& context,
                    SoaRepresentation const representation,
                    SoaReceiver const receiver,
                    std::string const& type_name,
-                   std::map<IdentifierId, DeclarationHandle> const* schemas,
+                   std::map<StringId, DeclarationHandle> const* schemas,
                    SoaBackend const backend,
                    StringId const equivalent_constructor) -> LoweredSoa {
     auto& ir{context.ir};
@@ -224,7 +223,7 @@ auto lower_soa_api(LoweringContext& context,
                 header.add(ir.declaration(id)).new_lines(1);
                 source
                     .add(ir.definition(id,
-                                       ir.strings.add(type_name),
+                                       ir.strings.intern(type_name),
                                        use_trailing_return ? ReturnSyntax::trailing
                                                            : ir.function_return_syntax(spec)))
                     .new_lines(2);

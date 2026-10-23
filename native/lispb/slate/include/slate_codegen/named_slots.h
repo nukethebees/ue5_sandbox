@@ -7,7 +7,7 @@
 namespace slate_codegen::detail {
 
 struct NamedSlots {
-    std::vector<lispb::IdentifierId> names;
+    std::vector<lispb::StringId> names;
     std::vector<ChildId> children;
 };
 

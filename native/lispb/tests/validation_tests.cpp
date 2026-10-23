@@ -104,10 +104,10 @@ auto valid_soa_module(CompilerTestContext& context) -> lispb::codegen::ModuleHan
                     new_module_settings_store)] = context.storage.strings.intern("soa");
             context.storage.declarations.module_settings_store
                 .header[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Soa.h");
+                    new_module_settings_store)] = context.storage.strings.intern("Soa.h");
             context.storage.declarations.module_settings_store
                 .source[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Soa.cpp");
+                    new_module_settings_store)] = context.storage.strings.intern("Soa.cpp");
             return new_module_settings_store;
         }();
         context.storage.declarations.normal_modules
@@ -163,7 +163,7 @@ TEST(Validation, FunctionQualifiersAreSharedByRecordsAndAllSoaReceivers) {
     context.storage.declarations.functions
         .body_lines[context.storage.declarations.functions.index(valid)] =
         context.storage.declarations.range<lispb::StringId>(
-            {context.storage.strings.add("return 7;")});
+            {context.storage.strings.intern("return 7;")});
     context.storage.declarations.functions
         .is_const[context.storage.declarations.functions.index(valid)] = true;
     context.storage.declarations.functions
@@ -252,7 +252,7 @@ TEST(Validation, FunctionQualifiersAreSharedByRecordsAndAllSoaReceivers) {
     context.storage.declarations.functions
         .body_lines[context.storage.declarations.functions.index(function)] =
         context.storage.declarations.range<lispb::StringId>(
-            {context.storage.strings.add("return;")});
+            {context.storage.strings.intern("return;")});
     check(function, "nodiscard function must not return void");
     context.storage.declarations.functions
         .return_type[context.storage.declarations.functions.index(function)] = [&] {
@@ -287,7 +287,7 @@ TEST(Validation, FunctionQualifiersAreSharedByRecordsAndAllSoaReceivers) {
         .is_inline[context.storage.declarations.functions.index(function)] = false;
     context.storage.declarations.functions
         .template_parameters[context.storage.declarations.functions.index(function)] =
-        context.storage.strings.add("typename T");
+        context.storage.strings.intern("typename T");
     check(function, "function templates must be defined in the header");
 
     function = context.storage.declarations.functions.clone(valid);
@@ -299,13 +299,13 @@ TEST(Validation, FunctionQualifiersAreSharedByRecordsAndAllSoaReceivers) {
             context.storage.strings.intern("void");
         context.storage.declarations.type_refs
             .suffix[context.storage.declarations.type_refs.index(new_type_refs)] =
-            context.storage.strings.add("*");
+            context.storage.strings.intern("*");
         return new_type_refs;
     }();
     context.storage.declarations.functions
         .body_lines[context.storage.declarations.functions.index(function)] =
         context.storage.declarations.range<lispb::StringId>(
-            {context.storage.strings.add("return nullptr;")});
+            {context.storage.strings.intern("return nullptr;")});
     check(function, "");
     context.storage.declarations.functions
         .return_type[context.storage.declarations.functions.index(function)] = [&] {
@@ -323,7 +323,7 @@ TEST(Validation, FunctionQualifiersAreSharedByRecordsAndAllSoaReceivers) {
             context.storage.strings.intern("void");
         context.storage.declarations.type_refs
             .suffix[context.storage.declarations.type_refs.index(new_type_refs)] =
-            context.storage.strings.add("*");
+            context.storage.strings.intern("*");
         return new_type_refs;
     }();
     check(function, "");
@@ -448,10 +448,10 @@ auto valid_vector_module(CompilerTestContext& context) -> lispb::codegen::Module
                     new_module_settings_store)] = context.storage.strings.intern("vectors");
             context.storage.declarations.module_settings_store
                 .header[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Vectors.h");
+                    new_module_settings_store)] = context.storage.strings.intern("Vectors.h");
             context.storage.declarations.module_settings_store
                 .source[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Vectors.cpp");
+                    new_module_settings_store)] = context.storage.strings.intern("Vectors.cpp");
             return new_module_settings_store;
         }();
         context.storage.declarations.normal_modules
@@ -472,7 +472,7 @@ auto valid_vector_module(CompilerTestContext& context) -> lispb::codegen::Module
                     }();
                 context.storage.declarations.vector_soas
                     .components[context.storage.declarations.vector_soas.index(new_vector_soas)] =
-                    context.storage.declarations.range<lispb::IdentifierId>(
+                    context.storage.declarations.range<lispb::StringId>(
                         {context.storage.strings.intern("xs"),
                          context.storage.strings.intern("ys")});
                 context.storage.declarations.vector_soas
@@ -502,7 +502,7 @@ auto valid_facade_module(CompilerTestContext& context) -> lispb::codegen::Module
                     new_module_settings_store)] = context.storage.strings.intern("facade");
             context.storage.declarations.module_settings_store
                 .header[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Facade.h");
+                    new_module_settings_store)] = context.storage.strings.intern("Facade.h");
             return new_module_settings_store;
         }();
         context.storage.declarations.normal_modules
@@ -561,10 +561,10 @@ auto valid_homogeneous_module(CompilerTestContext& context) -> lispb::codegen::M
                     new_module_settings_store)] = context.storage.strings.intern("homogeneous");
             context.storage.declarations.module_settings_store
                 .header[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Values.h");
+                    new_module_settings_store)] = context.storage.strings.intern("Values.h");
             context.storage.declarations.module_settings_store
                 .source[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Values.cpp");
+                    new_module_settings_store)] = context.storage.strings.intern("Values.cpp");
             return new_module_settings_store;
         }();
         context.storage.declarations.normal_modules
@@ -578,7 +578,7 @@ auto valid_homogeneous_module(CompilerTestContext& context) -> lispb::codegen::M
                 context.storage.declarations.homogeneous_layouts
                     .components[context.storage.declarations.homogeneous_layouts.index(
                         new_homogeneous_layouts)] =
-                    context.storage.declarations.range<lispb::IdentifierId>(
+                    context.storage.declarations.range<lispb::StringId>(
                         {context.storage.strings.intern("xs"),
                          context.storage.strings.intern("ys")});
                 context.storage.declarations.homogeneous_layouts
@@ -599,7 +599,7 @@ auto valid_homogeneous_module(CompilerTestContext& context) -> lispb::codegen::M
                         }();
                         context.storage.declarations.homogeneous_values
                             .suffix[context.storage.declarations.homogeneous_values.index(
-                                new_homogeneous_values)] = context.storage.strings.add("f");
+                                new_homogeneous_values)] = context.storage.strings.intern("f");
                         return new_homogeneous_values;
                     }()});
                 return new_homogeneous_layouts;
@@ -623,11 +623,11 @@ auto normal_module(CompilerTestContext& context,
                     new_module_settings_store)] = context.storage.strings.intern("mixed");
             context.storage.declarations.module_settings_store
                 .header[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Mixed.h");
+                    new_module_settings_store)] = context.storage.strings.intern("Mixed.h");
             context.storage.declarations.module_settings_store
                 .source[context.storage.declarations.module_settings_store.index(
                     new_module_settings_store)] =
-                source ? std::optional{context.storage.strings.add(*source)} : std::nullopt;
+                source ? std::optional{context.storage.strings.intern(*source)} : std::nullopt;
             return new_module_settings_store;
         }();
         context.storage.declarations.normal_modules
@@ -658,10 +658,10 @@ auto normal_soa_module(CompilerTestContext& context,
                     new_module_settings_store)] = context.storage.strings.intern("mixed");
             context.storage.declarations.module_settings_store
                 .header[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Mixed.h");
+                    new_module_settings_store)] = context.storage.strings.intern("Mixed.h");
             context.storage.declarations.module_settings_store
                 .source[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Mixed.cpp");
+                    new_module_settings_store)] = context.storage.strings.intern("Mixed.cpp");
             return new_module_settings_store;
         }();
         context.storage.declarations.normal_modules
@@ -719,10 +719,10 @@ auto valid_enum_module(CompilerTestContext& context) -> lispb::codegen::ModuleHa
                     new_module_settings_store)] = context.storage.strings.intern("enums");
             context.storage.declarations.module_settings_store
                 .header[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Enums.h");
+                    new_module_settings_store)] = context.storage.strings.intern("Enums.h");
             context.storage.declarations.module_settings_store
                 .source[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Enums.cpp");
+                    new_module_settings_store)] = context.storage.strings.intern("Enums.cpp");
             return new_module_settings_store;
         }();
         context.storage.declarations.normal_modules
@@ -778,7 +778,7 @@ auto valid_native_enum_module(CompilerTestContext& context) -> lispb::codegen::M
                     new_module_settings_store)] = context.storage.strings.intern("native_enums");
             context.storage.declarations.module_settings_store
                 .header[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("NativeEnums.h");
+                    new_module_settings_store)] = context.storage.strings.intern("NativeEnums.h");
             context.storage.declarations.module_settings_store
                 .namespace_name[context.storage.declarations.module_settings_store.index(
                     new_module_settings_store)] = context.storage.strings.intern("project");
@@ -809,7 +809,7 @@ auto valid_native_enum_module(CompilerTestContext& context) -> lispb::codegen::M
                             context.storage.strings.intern("Idle");
                         context.storage.declarations.enumerators
                             .initializer[context.storage.declarations.enumerators.index(
-                                new_enumerators)] = context.storage.strings.add("0");
+                                new_enumerators)] = context.storage.strings.intern("0");
                         context.storage.declarations.enumerators
                             .display_name[context.storage.declarations.enumerators.index(
                                 new_enumerators)] = std::nullopt;
@@ -818,7 +818,7 @@ auto valid_native_enum_module(CompilerTestContext& context) -> lispb::codegen::M
                                 new_enumerators)] = false;
                         context.storage.declarations.enumerators
                             .serialized_name[context.storage.declarations.enumerators.index(
-                                new_enumerators)] = context.storage.strings.add("idle");
+                                new_enumerators)] = context.storage.strings.intern("idle");
                         return new_enumerators;
                     }()});
                 context.storage.declarations.enums
@@ -841,7 +841,7 @@ auto valid_integer_scalar_module(CompilerTestContext& context) -> lispb::codegen
                     new_module_settings_store)] = context.storage.strings.intern("scalars");
             context.storage.declarations.module_settings_store
                 .header[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Scalars.h");
+                    new_module_settings_store)] = context.storage.strings.intern("Scalars.h");
             return new_module_settings_store;
         }();
         context.storage.declarations.normal_modules
@@ -916,7 +916,7 @@ auto valid_linear_quantized_manifest(CompilerTestContext& context) -> Manifest {
                 new_module_settings_store)] = context.storage.strings.intern("representations");
         context.storage.declarations.module_settings_store
             .header[context.storage.declarations.module_settings_store.index(
-                new_module_settings_store)] = context.storage.strings.add("Representations.h");
+                new_module_settings_store)] = context.storage.strings.intern("Representations.h");
         return new_module_settings_store;
     }();
     context.storage.declarations.normal_modules
@@ -1027,7 +1027,7 @@ auto valid_integer_varint_manifest(
                 new_module_settings_store)] = context.storage.strings.intern("representations");
         context.storage.declarations.module_settings_store
             .header[context.storage.declarations.module_settings_store.index(
-                new_module_settings_store)] = context.storage.strings.add("Representations.h");
+                new_module_settings_store)] = context.storage.strings.intern("Representations.h");
         return new_module_settings_store;
     }();
     context.storage.declarations.normal_modules
@@ -1069,7 +1069,7 @@ auto valid_fixed_point_manifest(CompilerTestContext& context, bool const signedn
                 new_module_settings_store)] = context.storage.strings.intern("representations");
         context.storage.declarations.module_settings_store
             .header[context.storage.declarations.module_settings_store.index(
-                new_module_settings_store)] = context.storage.strings.add("Representations.h");
+                new_module_settings_store)] = context.storage.strings.intern("Representations.h");
         return new_module_settings_store;
     }();
     context.storage.declarations.normal_modules
@@ -1109,7 +1109,7 @@ auto valid_mini_float_manifest(CompilerTestContext& context) -> Manifest {
                 new_module_settings_store)] = context.storage.strings.intern("representations");
         context.storage.declarations.module_settings_store
             .header[context.storage.declarations.module_settings_store.index(
-                new_module_settings_store)] = context.storage.strings.add("Representations.h");
+                new_module_settings_store)] = context.storage.strings.intern("Representations.h");
         return new_module_settings_store;
     }();
     context.storage.declarations.normal_modules
@@ -1149,7 +1149,7 @@ auto valid_optional_sentinel_manifest(CompilerTestContext& context) -> Manifest 
                 new_module_settings_store)] = context.storage.strings.intern("representations");
         context.storage.declarations.module_settings_store
             .header[context.storage.declarations.module_settings_store.index(
-                new_module_settings_store)] = context.storage.strings.add("Representations.h");
+                new_module_settings_store)] = context.storage.strings.intern("Representations.h");
         return new_module_settings_store;
     }();
     context.storage.declarations.normal_modules
@@ -1193,7 +1193,7 @@ auto valid_optional_presence_bit_manifest(CompilerTestContext& context) -> Manif
                 new_module_settings_store)] = context.storage.strings.intern("representations");
         context.storage.declarations.module_settings_store
             .header[context.storage.declarations.module_settings_store.index(
-                new_module_settings_store)] = context.storage.strings.add("Representations.h");
+                new_module_settings_store)] = context.storage.strings.intern("Representations.h");
         return new_module_settings_store;
     }();
     context.storage.declarations.normal_modules
@@ -1234,7 +1234,7 @@ auto valid_static_table_module(CompilerTestContext& context) -> lispb::codegen::
                     new_module_settings_store)] = context.storage.strings.intern("tables");
             context.storage.declarations.module_settings_store
                 .header[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Tables.h");
+                    new_module_settings_store)] = context.storage.strings.intern("Tables.h");
             return new_module_settings_store;
         }();
         context.storage.declarations.normal_modules
@@ -1327,7 +1327,8 @@ TEST(Validation, IntegerAliasRequiresAUsableRepresentationButNoNamedCodes) {
                             new_module_settings_store)] = context.storage.strings.intern("health");
                     context.storage.declarations.module_settings_store
                         .header[context.storage.declarations.module_settings_store.index(
-                            new_module_settings_store)] = context.storage.strings.add("Health.h");
+                            new_module_settings_store)] =
+                        context.storage.strings.intern("Health.h");
                     return new_module_settings_store;
                 }();
             context.storage.declarations.normal_modules
@@ -1596,7 +1597,7 @@ TEST(Validation, RejectsEnumSemanticWidthsThatCannotRepresentKnownValues) {
                                  new_enumerators)] = context.storage.strings.intern("Zero");
                          context.storage.declarations.enumerators
                              .initializer[context.storage.declarations.enumerators.index(
-                                 new_enumerators)] = context.storage.strings.add("0");
+                                 new_enumerators)] = context.storage.strings.intern("0");
                          return new_enumerators;
                      }(),
                      [&] {
@@ -1607,7 +1608,7 @@ TEST(Validation, RejectsEnumSemanticWidthsThatCannotRepresentKnownValues) {
                                  new_enumerators)] = context.storage.strings.intern("Seven");
                          context.storage.declarations.enumerators
                              .initializer[context.storage.declarations.enumerators.index(
-                                 new_enumerators)] = context.storage.strings.add("7");
+                                 new_enumerators)] = context.storage.strings.intern("7");
                          return new_enumerators;
                      }()});
             return row_0;
@@ -1665,7 +1666,7 @@ TEST(Validation, RejectsEnumSemanticWidthsThatCannotRepresentKnownValues) {
                                  new_enumerators)] = context.storage.strings.intern("Zero");
                          context.storage.declarations.enumerators
                              .initializer[context.storage.declarations.enumerators.index(
-                                 new_enumerators)] = context.storage.strings.add("0");
+                                 new_enumerators)] = context.storage.strings.intern("0");
                          return new_enumerators;
                      }(),
                      [&] {
@@ -1676,7 +1677,7 @@ TEST(Validation, RejectsEnumSemanticWidthsThatCannotRepresentKnownValues) {
                                  new_enumerators)] = context.storage.strings.intern("Seven");
                          context.storage.declarations.enumerators
                              .initializer[context.storage.declarations.enumerators.index(
-                                 new_enumerators)] = context.storage.strings.add("7");
+                                 new_enumerators)] = context.storage.strings.intern("7");
                          return new_enumerators;
                      }()});
             return row_0;
@@ -1736,7 +1737,7 @@ TEST(Validation, AppliesExplicitEnumSignednessToTheSemanticDomain) {
                                  new_enumerators)] = context.storage.strings.intern("Negative");
                          context.storage.declarations.enumerators
                              .initializer[context.storage.declarations.enumerators.index(
-                                 new_enumerators)] = context.storage.strings.add("-1");
+                                 new_enumerators)] = context.storage.strings.intern("-1");
                          return new_enumerators;
                      }(),
                      [&] {
@@ -1747,7 +1748,7 @@ TEST(Validation, AppliesExplicitEnumSignednessToTheSemanticDomain) {
                                  new_enumerators)] = context.storage.strings.intern("Positive");
                          context.storage.declarations.enumerators
                              .initializer[context.storage.declarations.enumerators.index(
-                                 new_enumerators)] = context.storage.strings.add("1");
+                                 new_enumerators)] = context.storage.strings.intern("1");
                          return new_enumerators;
                      }()});
             return row_0;
@@ -1806,7 +1807,7 @@ TEST(Validation, AppliesExplicitEnumSignednessToTheSemanticDomain) {
                                  new_enumerators)] = context.storage.strings.intern("Zero");
                          context.storage.declarations.enumerators
                              .initializer[context.storage.declarations.enumerators.index(
-                                 new_enumerators)] = context.storage.strings.add("0");
+                                 new_enumerators)] = context.storage.strings.intern("0");
                          return new_enumerators;
                      }(),
                      [&] {
@@ -1817,7 +1818,7 @@ TEST(Validation, AppliesExplicitEnumSignednessToTheSemanticDomain) {
                                  new_enumerators)] = context.storage.strings.intern("Seven");
                          context.storage.declarations.enumerators
                              .initializer[context.storage.declarations.enumerators.index(
-                                 new_enumerators)] = context.storage.strings.add("7");
+                                 new_enumerators)] = context.storage.strings.intern("7");
                          return new_enumerators;
                      }()});
             return row_0;
@@ -1890,7 +1891,7 @@ TEST(Validation, AppliesExplicitEnumSignednessToTheSemanticDomain) {
                                  new_enumerators)] = context.storage.strings.intern("Zero");
                          context.storage.declarations.enumerators
                              .initializer[context.storage.declarations.enumerators.index(
-                                 new_enumerators)] = context.storage.strings.add("0");
+                                 new_enumerators)] = context.storage.strings.intern("0");
                          return new_enumerators;
                      }(),
                      [&] {
@@ -1901,7 +1902,7 @@ TEST(Validation, AppliesExplicitEnumSignednessToTheSemanticDomain) {
                                  new_enumerators)] = context.storage.strings.intern("Seven");
                          context.storage.declarations.enumerators
                              .initializer[context.storage.declarations.enumerators.index(
-                                 new_enumerators)] = context.storage.strings.add("7");
+                                 new_enumerators)] = context.storage.strings.intern("7");
                          return new_enumerators;
                      }()});
             return row_0;
@@ -2107,7 +2108,7 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
                 .settings[context.storage.declarations.normal_modules.index(module)])};
         context.storage.declarations.module_settings_store
             .source[context.storage.declarations.module_settings_store.index(row_0)] =
-            context.storage.strings.add("Scalars.cpp");
+            context.storage.strings.intern("Scalars.cpp");
         return row_0;
     }();
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
@@ -2456,7 +2457,7 @@ TEST(Validation, AllowsEmptyEditableModulesToRemainGenerationDestinations) {
                     new_module_settings_store)] = context.storage.strings.intern(name);
             context.storage.declarations.module_settings_store
                 .header[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add(name + ".h");
+                    new_module_settings_store)] = context.storage.strings.intern(name + ".h");
             return new_module_settings_store;
         }();
     };
@@ -2476,7 +2477,7 @@ TEST(Validation, AllowsEmptyEditableModulesToRemainGenerationDestinations) {
                 .settings[context.storage.declarations.normal_modules.index(module)])};
         context.storage.declarations.module_settings_store
             .source[context.storage.declarations.module_settings_store.index(row_0)] =
-            context.storage.strings.add("empty.cpp");
+            context.storage.strings.intern("empty.cpp");
         return row_0;
     }();
     EXPECT_EQ(
@@ -2498,7 +2499,7 @@ TEST(Validation, ValidatesRecordMemberRelationshipUnits) {
                     new_module_settings_store)] = context.storage.strings.intern("records");
             context.storage.declarations.module_settings_store
                 .header[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Records.h");
+                    new_module_settings_store)] = context.storage.strings.intern("Records.h");
             return new_module_settings_store;
         }();
         context.storage.declarations.normal_modules
@@ -3433,7 +3434,7 @@ TEST(Validation, ValidatesLinearQuantizedRepresentationsAndEmitsOnlyConfiguredHe
                     .settings[context.storage.declarations.normal_modules.index(row_1)])};
             context.storage.declarations.module_settings_store
                 .source[context.storage.declarations.module_settings_store.index(row_0)] =
-                context.storage.strings.add("Representations.cpp");
+                context.storage.strings.intern("Representations.cpp");
             return row_0;
         }();
         return row_1;
@@ -4267,19 +4268,19 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
                 context.storage.declarations.enum_unreal_projections
                     .header[context.storage.declarations.enum_unreal_projections.index(
                         new_enum_unreal_projections)] =
-                    context.storage.strings.add("Project/NativeMode.h");
+                    context.storage.strings.intern("Project/NativeMode.h");
                 context.storage.declarations.enum_unreal_projections
                     .header_include[context.storage.declarations.enum_unreal_projections.index(
                         new_enum_unreal_projections)] =
-                    context.storage.strings.add("Project/NativeMode.h");
+                    context.storage.strings.intern("Project/NativeMode.h");
                 context.storage.declarations.enum_unreal_projections
                     .conversion_header[context.storage.declarations.enum_unreal_projections.index(
                         new_enum_unreal_projections)] =
-                    context.storage.strings.add("Project/NativeModeConversion.h");
+                    context.storage.strings.intern("Project/NativeModeConversion.h");
                 context.storage.declarations.enum_unreal_projections
                     .native_header_include[context.storage.declarations.enum_unreal_projections
                                                .index(new_enum_unreal_projections)] =
-                    context.storage.strings.add("project/NativeEnums.h");
+                    context.storage.strings.intern("project/NativeEnums.h");
                 context.storage.declarations.enum_unreal_projections
                     .reflection[context.storage.declarations.enum_unreal_projections.index(
                         new_enum_unreal_projections)] = EnumReflection::none;
@@ -4312,19 +4313,19 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
                 context.storage.declarations.enum_unreal_projections
                     .header[context.storage.declarations.enum_unreal_projections.index(
                         new_enum_unreal_projections)] =
-                    context.storage.strings.add("Project/NativeMode.h");
+                    context.storage.strings.intern("Project/NativeMode.h");
                 context.storage.declarations.enum_unreal_projections
                     .header_include[context.storage.declarations.enum_unreal_projections.index(
                         new_enum_unreal_projections)] =
-                    context.storage.strings.add("Project/NativeMode.h");
+                    context.storage.strings.intern("Project/NativeMode.h");
                 context.storage.declarations.enum_unreal_projections
                     .conversion_header[context.storage.declarations.enum_unreal_projections.index(
                         new_enum_unreal_projections)] =
-                    context.storage.strings.add("Project/NativeModeConversion.h");
+                    context.storage.strings.intern("Project/NativeModeConversion.h");
                 context.storage.declarations.enum_unreal_projections
                     .native_header_include[context.storage.declarations.enum_unreal_projections
                                                .index(new_enum_unreal_projections)] =
-                    context.storage.strings.add("project/NativeEnums.h");
+                    context.storage.strings.intern("project/NativeEnums.h");
                 return new_enum_unreal_projections;
             }();
             return row_0;
@@ -4381,7 +4382,7 @@ TEST(Validation, RejectsIncompleteOrAmbiguousSerializedEnumNames) {
                     auto row_0{context.storage.declarations.enumerators.clone(rows_1.front())};
                     context.storage.declarations.enumerators
                         .serialized_name[context.storage.declarations.enumerators.index(row_0)] =
-                        context.storage.strings.add("value");
+                        context.storage.strings.intern("value");
                     return row_0;
                 }();
                 return context.storage.declarations.range(rows_1);
@@ -4420,7 +4421,7 @@ TEST(Validation, RejectsIncompleteOrAmbiguousSerializedEnumNames) {
                         false;
                     context.storage.declarations.enumerators
                         .serialized_name[context.storage.declarations.enumerators.index(
-                            new_enumerators)] = context.storage.strings.add("value");
+                            new_enumerators)] = context.storage.strings.intern("value");
                     return new_enumerators;
                 }());
                 return context.storage.declarations.range(rows);
@@ -4489,7 +4490,7 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
                     auto row_0{context.storage.declarations.enumerators.clone(rows_1.front())};
                     context.storage.declarations.enumerators
                         .initializer[context.storage.declarations.enumerators.index(row_0)] =
-                        context.storage.strings.add("0");
+                        context.storage.strings.intern("0");
                     return row_0;
                 }();
                 return context.storage.declarations.range(rows_1);
@@ -4537,7 +4538,7 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
                                      new_enumerators)] = context.storage.strings.intern("First");
                              context.storage.declarations.enumerators
                                  .initializer[context.storage.declarations.enumerators.index(
-                                     new_enumerators)] = context.storage.strings.add("0");
+                                     new_enumerators)] = context.storage.strings.intern("0");
                              return new_enumerators;
                          }(),
                          [&] {
@@ -4548,7 +4549,7 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
                                      new_enumerators)] = context.storage.strings.intern("Second");
                              context.storage.declarations.enumerators
                                  .initializer[context.storage.declarations.enumerators.index(
-                                     new_enumerators)] = context.storage.strings.add(code);
+                                     new_enumerators)] = context.storage.strings.intern(code);
                              return new_enumerators;
                          }()});
                 return row_0;
@@ -4594,7 +4595,7 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
                                  new_enumerators)] = context.storage.strings.intern("First");
                          context.storage.declarations.enumerators
                              .initializer[context.storage.declarations.enumerators.index(
-                                 new_enumerators)] = context.storage.strings.add("0x0");
+                                 new_enumerators)] = context.storage.strings.intern("0x0");
                          return new_enumerators;
                      }(),
                      [&] {
@@ -4605,7 +4606,7 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
                                  new_enumerators)] = context.storage.strings.intern("Second");
                          context.storage.declarations.enumerators
                              .initializer[context.storage.declarations.enumerators.index(
-                                 new_enumerators)] = context.storage.strings.add("1");
+                                 new_enumerators)] = context.storage.strings.intern("1");
                          return new_enumerators;
                      }()});
             return row_0;
@@ -4971,7 +4972,7 @@ TEST(Validation, SupportsSignedEnumValuesWhenTheyFitTheUnderlyingType) {
                                  new_enumerators)] = context.storage.strings.intern("Minimum");
                          context.storage.declarations.enumerators
                              .initializer[context.storage.declarations.enumerators.index(
-                                 new_enumerators)] = context.storage.strings.add("-128");
+                                 new_enumerators)] = context.storage.strings.intern("-128");
                          return new_enumerators;
                      }(),
                      [&] {
@@ -4982,7 +4983,7 @@ TEST(Validation, SupportsSignedEnumValuesWhenTheyFitTheUnderlyingType) {
                                  new_enumerators)] = context.storage.strings.intern("Maximum");
                          context.storage.declarations.enumerators
                              .initializer[context.storage.declarations.enumerators.index(
-                                 new_enumerators)] = context.storage.strings.add("127");
+                                 new_enumerators)] = context.storage.strings.intern("127");
                          return new_enumerators;
                      }()});
             return row_0;
@@ -5031,7 +5032,7 @@ TEST(Validation, SupportsSignedEnumValuesWhenTheyFitTheUnderlyingType) {
                     auto row_0{context.storage.declarations.enumerators.clone(rows_1.back())};
                     context.storage.declarations.enumerators
                         .initializer[context.storage.declarations.enumerators.index(row_0)] =
-                        context.storage.strings.add("128");
+                        context.storage.strings.intern("128");
                     return row_0;
                 }();
                 return context.storage.declarations.range(rows_1);
@@ -5142,7 +5143,7 @@ TEST(Validation, RequiresKnownSemanticFactsWhenEnumBackingIsDerived) {
                     auto row_0{context.storage.declarations.enumerators.clone(rows_1.front())};
                     context.storage.declarations.enumerators
                         .initializer[context.storage.declarations.enumerators.index(row_0)] =
-                        context.storage.strings.add("calculate_state()");
+                        context.storage.strings.intern("calculate_state()");
                     return row_0;
                 }();
                 return context.storage.declarations.range(rows_1);
@@ -5227,7 +5228,7 @@ TEST(Validation, RejectsInvalidStaticTableModuleConfiguration) {
                 .settings[context.storage.declarations.normal_modules.index(module)])};
         context.storage.declarations.module_settings_store
             .source[context.storage.declarations.module_settings_store.index(row_0)] =
-            context.storage.strings.add("Tables.cpp");
+            context.storage.strings.intern("Tables.cpp");
         return row_0;
     }();
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
@@ -5497,7 +5498,7 @@ TEST(Validation, RejectsInvalidStaticTableGroups) {
                     context.storage.declarations.static_table_groups
                         .columns[context.storage.declarations.static_table_groups.index(
                             new_static_table_groups)] =
-                        context.storage.declarations.range<lispb::IdentifierId>(
+                        context.storage.declarations.range<lispb::StringId>(
                             {context.storage.strings.intern("ids")});
                     return new_static_table_groups;
                 }()});
@@ -5662,7 +5663,7 @@ TEST(Validation, RejectsInvalidStaticTableGroups) {
                         context.storage.declarations.static_table_groups.clone(rows_1.front())};
                     context.storage.declarations.static_table_groups
                         .columns[context.storage.declarations.static_table_groups.index(row_0)] =
-                        context.storage.declarations.range<lispb::IdentifierId>(
+                        context.storage.declarations.range<lispb::StringId>(
                             {context.storage.strings.intern("missing")});
                     return row_0;
                 }();
@@ -5696,7 +5697,7 @@ TEST(Validation, RejectsInvalidStaticTableGroups) {
                         context.storage.declarations.static_table_groups.clone(rows_1.front())};
                     context.storage.declarations.static_table_groups
                         .columns[context.storage.declarations.static_table_groups.index(row_0)] =
-                        context.storage.declarations.range<lispb::IdentifierId>(
+                        context.storage.declarations.range<lispb::StringId>(
                             {context.storage.strings.intern("ids"),
                              context.storage.strings.intern("ids")});
                     return row_0;
@@ -5780,7 +5781,7 @@ TEST(Validation, RejectsStaticTableGroupGetterCollisions) {
                     context.storage.declarations.static_table_groups
                         .columns[context.storage.declarations.static_table_groups.index(
                             new_static_table_groups)] =
-                        context.storage.declarations.range<lispb::IdentifierId>(
+                        context.storage.declarations.range<lispb::StringId>(
                             {context.storage.strings.intern("ids")});
                     return new_static_table_groups;
                 }()});
@@ -5820,7 +5821,7 @@ TEST(Validation, RejectsEmptyOptionalModuleSettings) {
                 .settings[context.storage.declarations.normal_modules.index(module)])};
         context.storage.declarations.module_settings_store
             .header_include[context.storage.declarations.module_settings_store.index(row_0)] =
-            context.storage.strings.add("");
+            context.storage.strings.intern("");
         return row_0;
     }();
 
@@ -5853,7 +5854,8 @@ TEST(Validation, RejectsDuplicateAndEmptyIncludeOrderPrefixes) {
         context.storage.declarations.module_settings_store
             .include_order[context.storage.declarations.module_settings_store.index(row_0)] =
             context.storage.declarations.range<lispb::StringId>(
-                {context.storage.strings.add("Project/"), context.storage.strings.add("Project/")});
+                {context.storage.strings.intern("Project/"),
+                 context.storage.strings.intern("Project/")});
         return row_0;
     }();
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
@@ -5867,7 +5869,8 @@ TEST(Validation, RejectsDuplicateAndEmptyIncludeOrderPrefixes) {
                 .settings[context.storage.declarations.normal_modules.index(module)])};
         context.storage.declarations.module_settings_store
             .include_order[context.storage.declarations.module_settings_store.index(row_0)] =
-            context.storage.declarations.range<lispb::StringId>({context.storage.strings.add("")});
+            context.storage.declarations.range<lispb::StringId>(
+                {context.storage.strings.intern("")});
         return row_0;
     }();
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
@@ -5903,7 +5906,7 @@ TEST(Validation, RejectsDuplicateModuleNames) {
                 .settings[context.storage.declarations.normal_modules.index(second)])};
         context.storage.declarations.module_settings_store
             .header[context.storage.declarations.module_settings_store.index(row_0)] =
-            context.storage.strings.add("Other.h");
+            context.storage.strings.intern("Other.h");
         return row_0;
     }();
     context.storage.declarations.normal_modules
@@ -5913,7 +5916,7 @@ TEST(Validation, RejectsDuplicateModuleNames) {
                 .settings[context.storage.declarations.normal_modules.index(second)])};
         context.storage.declarations.module_settings_store
             .source[context.storage.declarations.module_settings_store.index(row_0)] =
-            context.storage.strings.add("Other.cpp");
+            context.storage.strings.intern("Other.cpp");
         return row_0;
     }();
     lispb::codegen::Manifest const manifest{manifest_schema_version,
@@ -6303,7 +6306,7 @@ TEST(Validation, RejectsInvalidSoaMaskDimensions) {
                                 context.storage.declarations.soa_mask_dimensions
                                     .extent[context.storage.declarations.soa_mask_dimensions.index(
                                         new_soa_mask_dimensions)] =
-                                    context.storage.strings.add("4");
+                                    context.storage.strings.intern("4");
                                 return new_soa_mask_dimensions;
                             }());
                             return context.storage.declarations.range(rows);
@@ -6350,7 +6353,7 @@ TEST(Validation, RejectsInvalidSoaMaskDimensions) {
                                 context.storage.declarations.soa_mask_dimensions
                                     .extent[context.storage.declarations.soa_mask_dimensions.index(
                                         new_soa_mask_dimensions)] =
-                                    context.storage.strings.add("2");
+                                    context.storage.strings.intern("2");
                                 return new_soa_mask_dimensions;
                             }());
                             return context.storage.declarations.range(rows);
@@ -6401,7 +6404,7 @@ TEST(Validation, RejectsInvalidSoaMaskDimensions) {
                                 context.storage.declarations.soa_mask_dimensions
                                     .extent[context.storage.declarations.soa_mask_dimensions.index(
                                         new_soa_mask_dimensions)] =
-                                    context.storage.strings.add("4");
+                                    context.storage.strings.intern("4");
                                 return new_soa_mask_dimensions;
                             }());
                             return context.storage.declarations.range(rows);
@@ -6817,7 +6820,7 @@ TEST(Validation, RejectsDuplicateFixedStorageAndContainerNames) {
                     context.storage.strings.intern("TShared");
                 context.storage.declarations.fixed_soas
                     .containers[context.storage.declarations.fixed_soas.index(new_fixed_soas)] =
-                    context.storage.declarations.range<lispb::IdentifierId>(
+                    context.storage.declarations.range<lispb::StringId>(
                         {context.storage.strings.intern("TFixedData")});
                 return new_fixed_soas;
             }();
@@ -6839,7 +6842,7 @@ TEST(Validation, RejectsDuplicateFixedStorageAndContainerNames) {
             context.storage.strings.intern("TShared");
         context.storage.declarations.fixed_soas
             .containers[context.storage.declarations.fixed_soas.index(new_fixed_soas)] =
-            context.storage.declarations.range<lispb::IdentifierId>(
+            context.storage.declarations.range<lispb::StringId>(
                 {context.storage.strings.intern("TFixedOther")});
         return new_fixed_soas;
     }();
@@ -6873,7 +6876,7 @@ TEST(Validation, RejectsDuplicateFixedStorageAndContainerNames) {
                     context.storage.strings.intern("TShared");
                 context.storage.declarations.fixed_soas
                     .containers[context.storage.declarations.fixed_soas.index(new_fixed_soas)] =
-                    context.storage.declarations.range<lispb::IdentifierId>(
+                    context.storage.declarations.range<lispb::StringId>(
                         {context.storage.strings.intern("TShared")});
                 return new_fixed_soas;
             }();
@@ -6945,7 +6948,7 @@ TEST(Validation, RejectsBlankSoaUsingDeclarations) {
                         context.storage.declarations.soas
                             .using_declarations[context.storage.declarations.soas.index(row_0)])};
                     auto rows{std::vector(original_items.begin(), original_items.end())};
-                    rows.push_back(context.storage.strings.add(declaration));
+                    rows.push_back(context.storage.strings.intern(declaration));
                     return context.storage.declarations.range(rows);
                 }();
                 return row_0;
@@ -7088,7 +7091,7 @@ TEST(Validation, RejectsNonTrailingCustomSoaDefaultArguments) {
                                          new_parameters)] = context.storage.strings.intern("first");
                                  context.storage.declarations.parameters
                                      .default_value[context.storage.declarations.parameters.index(
-                                         new_parameters)] = context.storage.strings.add("0");
+                                         new_parameters)] = context.storage.strings.intern("0");
                                  return new_parameters;
                              }(),
                              [&] {
@@ -7167,7 +7170,7 @@ TEST(Validation, RejectsNonTrailingCustomSoaDefaultArguments) {
                                     new_parameters)] = context.storage.strings.intern("value");
                             context.storage.declarations.parameters
                                 .default_value[context.storage.declarations.parameters.index(
-                                    new_parameters)] = context.storage.strings.add(" \t");
+                                    new_parameters)] = context.storage.strings.intern(" \t");
                             return new_parameters;
                         }()});
                     return new_functions;
@@ -7211,7 +7214,7 @@ TEST(Validation, RejectsUnknownCustomSoaDependencies) {
                         }();
                     context.storage.declarations.functions
                         .dependencies[context.storage.declarations.functions.index(new_functions)] =
-                        context.storage.declarations.range<lispb::IdentifierId>(
+                        context.storage.declarations.range<lispb::StringId>(
                             {context.storage.strings.intern("missing")});
                     return new_functions;
                 }()});
@@ -7251,7 +7254,7 @@ TEST(Validation, RejectsUnknownCustomSoaDependencies) {
                         }();
                     context.storage.declarations.functions
                         .dependencies[context.storage.declarations.functions.index(new_functions)] =
-                        context.storage.declarations.range<lispb::IdentifierId>(
+                        context.storage.declarations.range<lispb::StringId>(
                             {context.storage.strings.intern(" \t")});
                     return new_functions;
                 }()});
@@ -7458,7 +7461,7 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
                         }();
                     context.storage.declarations.functions
                         .template_parameters[context.storage.declarations.functions.index(
-                            new_functions)] = context.storage.strings.add(" \t");
+                            new_functions)] = context.storage.strings.intern(" \t");
                     return new_functions;
                 }()});
             return row_0;
@@ -7496,7 +7499,7 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
                         }();
                     context.storage.declarations.functions
                         .requires_clause[context.storage.declarations.functions.index(
-                            new_functions)] = context.storage.strings.add(" \t");
+                            new_functions)] = context.storage.strings.intern(" \t");
                     return new_functions;
                 }()});
             return row_0;
@@ -7641,10 +7644,10 @@ TEST(Validation, RejectsDuplicateHomogeneousComponents) {
                 new_module_settings_store)] = context.storage.strings.intern("homogeneous");
         context.storage.declarations.module_settings_store
             .header[context.storage.declarations.module_settings_store.index(
-                new_module_settings_store)] = context.storage.strings.add("Values.h");
+                new_module_settings_store)] = context.storage.strings.intern("Values.h");
         context.storage.declarations.module_settings_store
             .source[context.storage.declarations.module_settings_store.index(
-                new_module_settings_store)] = context.storage.strings.add("Values.cpp");
+                new_module_settings_store)] = context.storage.strings.intern("Values.cpp");
         return new_module_settings_store;
     }();
     context.storage.declarations.normal_modules
@@ -7658,7 +7661,7 @@ TEST(Validation, RejectsDuplicateHomogeneousComponents) {
             context.storage.declarations.homogeneous_layouts
                 .components[context.storage.declarations.homogeneous_layouts.index(
                     new_homogeneous_layouts)] =
-                context.storage.declarations.range<lispb::IdentifierId>(
+                context.storage.declarations.range<lispb::StringId>(
                     {context.storage.strings.intern("xs"), context.storage.strings.intern("xs")});
             context.storage.declarations.homogeneous_layouts
                 .value_types[context.storage.declarations.homogeneous_layouts.index(
@@ -7677,7 +7680,7 @@ TEST(Validation, RejectsDuplicateHomogeneousComponents) {
                     }();
                     context.storage.declarations.homogeneous_values
                         .suffix[context.storage.declarations.homogeneous_values.index(
-                            new_homogeneous_values)] = context.storage.strings.add("f");
+                            new_homogeneous_values)] = context.storage.strings.intern("f");
                     return new_homogeneous_values;
                 }()});
             return new_homogeneous_layouts;
@@ -7699,10 +7702,10 @@ TEST(Validation, RejectsHomogeneousLayoutsWithoutValueTypes) {
                 new_module_settings_store)] = context.storage.strings.intern("homogeneous");
         context.storage.declarations.module_settings_store
             .header[context.storage.declarations.module_settings_store.index(
-                new_module_settings_store)] = context.storage.strings.add("Values.h");
+                new_module_settings_store)] = context.storage.strings.intern("Values.h");
         context.storage.declarations.module_settings_store
             .source[context.storage.declarations.module_settings_store.index(
-                new_module_settings_store)] = context.storage.strings.add("Values.cpp");
+                new_module_settings_store)] = context.storage.strings.intern("Values.cpp");
         return new_module_settings_store;
     }();
     context.storage.declarations.normal_modules
@@ -7716,7 +7719,7 @@ TEST(Validation, RejectsHomogeneousLayoutsWithoutValueTypes) {
             context.storage.declarations.homogeneous_layouts
                 .components[context.storage.declarations.homogeneous_layouts.index(
                     new_homogeneous_layouts)] =
-                context.storage.declarations.range<lispb::IdentifierId>(
+                context.storage.declarations.range<lispb::StringId>(
                     {context.storage.strings.intern("xs")});
             return new_homogeneous_layouts;
         }()});
@@ -7796,7 +7799,7 @@ TEST(Validation, RejectsDuplicateHomogeneousValueSuffixes) {
                     }();
                     context.storage.declarations.homogeneous_values
                         .suffix[context.storage.declarations.homogeneous_values.index(
-                            new_homogeneous_values)] = context.storage.strings.add("f");
+                            new_homogeneous_values)] = context.storage.strings.intern("f");
                     return new_homogeneous_values;
                 }());
                 return context.storage.declarations.range(rows);
@@ -7833,7 +7836,7 @@ TEST(Validation, RejectsMalformedHomogeneousSuffixes) {
                         context.storage.declarations.homogeneous_values.clone(rows_1.front())};
                     context.storage.declarations.homogeneous_values
                         .suffix[context.storage.declarations.homogeneous_values.index(row_0)] =
-                        context.storage.strings.add("-float");
+                        context.storage.strings.intern("-float");
                     return row_0;
                 }();
                 return context.storage.declarations.range(rows_1);
@@ -7862,7 +7865,7 @@ TEST(Validation, RejectsCollidingHomogeneousStorageNames) {
                  context.storage.declarations.homogeneous_layouts
                      .components[context.storage.declarations.homogeneous_layouts.index(
                          new_homogeneous_layouts)] =
-                     context.storage.declarations.range<lispb::IdentifierId>(
+                     context.storage.declarations.range<lispb::StringId>(
                          {context.storage.strings.intern("xs")});
                  context.storage.declarations.homogeneous_layouts
                      .value_types[context.storage.declarations.homogeneous_layouts.index(
@@ -7882,7 +7885,7 @@ TEST(Validation, RejectsCollidingHomogeneousStorageNames) {
                          }();
                          context.storage.declarations.homogeneous_values
                              .suffix[context.storage.declarations.homogeneous_values.index(
-                                 new_homogeneous_values)] = context.storage.strings.add("sf");
+                                 new_homogeneous_values)] = context.storage.strings.intern("sf");
                          return new_homogeneous_values;
                      }()});
                  return new_homogeneous_layouts;
@@ -7896,7 +7899,7 @@ TEST(Validation, RejectsCollidingHomogeneousStorageNames) {
                  context.storage.declarations.homogeneous_layouts
                      .components[context.storage.declarations.homogeneous_layouts.index(
                          new_homogeneous_layouts)] =
-                     context.storage.declarations.range<lispb::IdentifierId>(
+                     context.storage.declarations.range<lispb::StringId>(
                          {context.storage.strings.intern("xs")});
                  context.storage.declarations.homogeneous_layouts
                      .value_types[context.storage.declarations.homogeneous_layouts.index(
@@ -7916,7 +7919,7 @@ TEST(Validation, RejectsCollidingHomogeneousStorageNames) {
                          }();
                          context.storage.declarations.homogeneous_values
                              .suffix[context.storage.declarations.homogeneous_values.index(
-                                 new_homogeneous_values)] = context.storage.strings.add("f");
+                                 new_homogeneous_values)] = context.storage.strings.intern("f");
                          return new_homogeneous_values;
                      }()});
                  return new_homogeneous_layouts;
@@ -7955,7 +7958,7 @@ TEST(Validation, RejectsDuplicateHomogeneousEquivalentSpecialisations) {
                      }();
                      context.storage.declarations.homogeneous_values
                          .suffix[context.storage.declarations.homogeneous_values.index(
-                             new_homogeneous_values)] = context.storage.strings.add("f");
+                             new_homogeneous_values)] = context.storage.strings.intern("f");
                      context.storage.declarations.homogeneous_values
                          .equivalent_type[context.storage.declarations.homogeneous_values.index(
                              new_homogeneous_values)] = [&] {
@@ -7981,7 +7984,7 @@ TEST(Validation, RejectsDuplicateHomogeneousEquivalentSpecialisations) {
                      }();
                      context.storage.declarations.homogeneous_values
                          .suffix[context.storage.declarations.homogeneous_values.index(
-                             new_homogeneous_values)] = context.storage.strings.add("other");
+                             new_homogeneous_values)] = context.storage.strings.intern("other");
                      context.storage.declarations.homogeneous_values
                          .equivalent_type[context.storage.declarations.homogeneous_values.index(
                              new_homogeneous_values)] = [&] {
@@ -8070,7 +8073,7 @@ TEST(Validation, RejectsHomogeneousInputOverloadsWithMoreThanThreeComponents) {
             auto row_0{context.storage.declarations.homogeneous_layouts.clone(rows_1.front())};
             context.storage.declarations.homogeneous_layouts
                 .input_members[context.storage.declarations.homogeneous_layouts.index(row_0)] =
-                context.storage.declarations.range<lispb::IdentifierId>(
+                context.storage.declarations.range<lispb::StringId>(
                     {context.storage.strings.intern("X")});
             return row_0;
         }();
@@ -8104,7 +8107,7 @@ TEST(Validation, RejectsHomogeneousInputOverloadsWithMoreThanThreeComponents) {
             auto row_0{context.storage.declarations.homogeneous_layouts.clone(rows_1.front())};
             context.storage.declarations.homogeneous_layouts
                 .components[context.storage.declarations.homogeneous_layouts.index(row_0)] =
-                context.storage.declarations.range<lispb::IdentifierId>(
+                context.storage.declarations.range<lispb::StringId>(
                     {context.storage.strings.intern("xs"),
                      context.storage.strings.intern("ys"),
                      context.storage.strings.intern("zs"),
@@ -8167,7 +8170,7 @@ TEST(Validation, RejectsHomogeneousInputComponentsWithDuplicateInitials) {
             auto row_0{context.storage.declarations.homogeneous_layouts.clone(rows_1.front())};
             context.storage.declarations.homogeneous_layouts
                 .components[context.storage.declarations.homogeneous_layouts.index(row_0)] =
-                context.storage.declarations.range<lispb::IdentifierId>(
+                context.storage.declarations.range<lispb::StringId>(
                     {context.storage.strings.intern("x_values"),
                      context.storage.strings.intern("x_weights")});
             return row_0;
@@ -8228,7 +8231,7 @@ TEST(Validation, RejectsHomogeneousComponentParameterCollisionsWithoutInputTypes
             auto row_0{context.storage.declarations.homogeneous_layouts.clone(rows_1.front())};
             context.storage.declarations.homogeneous_layouts
                 .components[context.storage.declarations.homogeneous_layouts.index(row_0)] =
-                context.storage.declarations.range<lispb::IdentifierId>(
+                context.storage.declarations.range<lispb::StringId>(
                     {context.storage.strings.intern("x_values"),
                      context.storage.strings.intern("x_weights")});
             return row_0;
@@ -8253,7 +8256,7 @@ TEST(Validation, RejectsVectorsWithMoreThanThreeComponents) {
             auto row_0{context.storage.declarations.vector_soas.clone(rows_1.front())};
             context.storage.declarations.vector_soas
                 .components[context.storage.declarations.vector_soas.index(row_0)] =
-                context.storage.declarations.range<lispb::IdentifierId>(
+                context.storage.declarations.range<lispb::StringId>(
                     {context.storage.strings.intern("xs"),
                      context.storage.strings.intern("ys"),
                      context.storage.strings.intern("zs"),
@@ -8300,7 +8303,7 @@ TEST(Validation, RejectsDuplicateVectorComponents) {
             auto row_0{context.storage.declarations.vector_soas.clone(rows_1.front())};
             context.storage.declarations.vector_soas
                 .components[context.storage.declarations.vector_soas.index(row_0)] =
-                context.storage.declarations.range<lispb::IdentifierId>(
+                context.storage.declarations.range<lispb::StringId>(
                     {context.storage.strings.intern("xs"), context.storage.strings.intern("xs")});
             return row_0;
         }();
@@ -8365,7 +8368,7 @@ TEST(Validation, RejectsVectorComponentsWithDuplicateParameterInitials) {
             auto row_0{context.storage.declarations.vector_soas.clone(rows_1.front())};
             context.storage.declarations.vector_soas
                 .components[context.storage.declarations.vector_soas.index(row_0)] =
-                context.storage.declarations.range<lispb::IdentifierId>(
+                context.storage.declarations.range<lispb::StringId>(
                     {context.storage.strings.intern("x_values"),
                      context.storage.strings.intern("x_weights")});
             return row_0;
@@ -8473,7 +8476,7 @@ TEST(Validation, AllowsInlineFacadesInModulesWithSourceOutput) {
                 .settings[context.storage.declarations.normal_modules.index(module)])};
         context.storage.declarations.module_settings_store
             .source[context.storage.declarations.module_settings_store.index(row_0)] =
-            context.storage.strings.add("Facade.cpp");
+            context.storage.strings.intern("Facade.cpp");
         return row_0;
     }();
 
@@ -8731,7 +8734,7 @@ TEST(Validation, RejectsNonTrailingFacadeDefaultArguments) {
                                          new_parameters)] = context.storage.strings.intern("first");
                                  context.storage.declarations.parameters
                                      .default_value[context.storage.declarations.parameters.index(
-                                         new_parameters)] = context.storage.strings.add("0");
+                                         new_parameters)] = context.storage.strings.intern("0");
                                  return new_parameters;
                              }(),
                              [&] {
@@ -8780,7 +8783,7 @@ TEST(Validation, RejectsUnknownFacadeValidationDependencies) {
             auto row_0{context.storage.declarations.facades.clone(rows_1.front())};
             context.storage.declarations.facades
                 .validation_dependencies[context.storage.declarations.facades.index(row_0)] =
-                context.storage.declarations.range<lispb::IdentifierId>(
+                context.storage.declarations.range<lispb::StringId>(
                     {context.storage.strings.intern("missing")});
             return row_0;
         }();
@@ -8810,7 +8813,7 @@ TEST(Validation, RejectsInvalidFacadeFriendAndMemberCollisions) {
             context.storage.declarations.facades
                 .friends[context.storage.declarations.facades.index(row_0)] =
                 context.storage.declarations.range<lispb::StringId>(
-                    {context.storage.strings.add("class")});
+                    {context.storage.strings.intern("class")});
             return row_0;
         }();
         return context.storage.declarations.range(rows_1);
@@ -8887,13 +8890,13 @@ TEST(Validation, RejectsDuplicateUmbrellaHeaders) {
                 new_module_settings_store)] = context.storage.strings.intern("all");
         context.storage.declarations.module_settings_store
             .header[context.storage.declarations.module_settings_store.index(
-                new_module_settings_store)] = context.storage.strings.add("All.h");
+                new_module_settings_store)] = context.storage.strings.intern("All.h");
         return new_module_settings_store;
     }();
     context.storage.declarations.umbrella_modules
         .headers[context.storage.declarations.umbrella_modules.index(module)] =
         context.storage.declarations.range<lispb::StringId>(
-            {context.storage.strings.add("Value.h"), context.storage.strings.add("Value.h")});
+            {context.storage.strings.intern("Value.h"), context.storage.strings.intern("Value.h")});
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -8911,7 +8914,7 @@ TEST(Validation, RejectsUmbrellaModulesWithoutHeaders) {
                 new_module_settings_store)] = context.storage.strings.intern("all");
         context.storage.declarations.module_settings_store
             .header[context.storage.declarations.module_settings_store.index(
-                new_module_settings_store)] = context.storage.strings.add("All.h");
+                new_module_settings_store)] = context.storage.strings.intern("All.h");
         return new_module_settings_store;
     }();
 
@@ -8931,16 +8934,16 @@ TEST(Validation, RejectsUnsupportedUmbrellaSourceAndNamespaceSettings) {
                 new_module_settings_store)] = context.storage.strings.intern("all");
         context.storage.declarations.module_settings_store
             .header[context.storage.declarations.module_settings_store.index(
-                new_module_settings_store)] = context.storage.strings.add("All.h");
+                new_module_settings_store)] = context.storage.strings.intern("All.h");
         context.storage.declarations.module_settings_store
             .source[context.storage.declarations.module_settings_store.index(
-                new_module_settings_store)] = context.storage.strings.add("All.cpp");
+                new_module_settings_store)] = context.storage.strings.intern("All.cpp");
         return new_module_settings_store;
     }();
     context.storage.declarations.umbrella_modules
         .headers[context.storage.declarations.umbrella_modules.index(module)] =
         context.storage.declarations.range<lispb::StringId>(
-            {context.storage.strings.add("Value.h")});
+            {context.storage.strings.intern("Value.h")});
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
@@ -8982,10 +8985,11 @@ TEST(Validation, RejectsInvalidSettingsDefinitions) {
                         new_module_settings_store)] = context.storage.strings.intern("settings");
                 context.storage.declarations.module_settings_store
                     .header[context.storage.declarations.module_settings_store.index(
-                        new_module_settings_store)] = context.storage.strings.add("Settings.h");
+                        new_module_settings_store)] = context.storage.strings.intern("Settings.h");
                 context.storage.declarations.module_settings_store
                     .source[context.storage.declarations.module_settings_store.index(
-                        new_module_settings_store)] = context.storage.strings.add("Settings.cpp");
+                        new_module_settings_store)] =
+                    context.storage.strings.intern("Settings.cpp");
                 return new_module_settings_store;
             }();
         context.storage.declarations.settings_modules
@@ -9004,7 +9008,7 @@ TEST(Validation, RejectsInvalidSettingsDefinitions) {
                         new_setting_categories)] = context.storage.strings.intern("video");
                 context.storage.declarations.setting_categories
                     .label[context.storage.declarations.setting_categories.index(
-                        new_setting_categories)] = context.storage.strings.add("Video");
+                        new_setting_categories)] = context.storage.strings.intern("Video");
                 return new_setting_categories;
             }()});
         context.storage.declarations.settings_modules
@@ -9017,7 +9021,7 @@ TEST(Validation, RejectsInvalidSettingsDefinitions) {
                     context.storage.strings.intern("vsync");
                 context.storage.declarations.settings
                     .label[context.storage.declarations.settings.index(new_settings)] =
-                    context.storage.strings.add("VSync");
+                    context.storage.strings.intern("VSync");
                 context.storage.declarations.settings
                     .category[context.storage.declarations.settings.index(new_settings)] =
                     context.storage.strings.intern("missing");
@@ -9134,7 +9138,7 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
         }();
         context.storage.declarations.vector_soas
             .components[context.storage.declarations.vector_soas.index(new_vector_soas)] =
-            context.storage.declarations.range<lispb::IdentifierId>(
+            context.storage.declarations.range<lispb::StringId>(
                 {context.storage.strings.intern("xs"), context.storage.strings.intern("ys")});
         context.storage.declarations.vector_soas
             .equivalent_type[context.storage.declarations.vector_soas.index(new_vector_soas)] =
@@ -9220,7 +9224,7 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
         context.storage.declarations.homogeneous_layouts
             .components[context.storage.declarations.homogeneous_layouts.index(
                 new_homogeneous_layouts)] =
-            context.storage.declarations.range<lispb::IdentifierId>(
+            context.storage.declarations.range<lispb::StringId>(
                 {context.storage.strings.intern("xs"), context.storage.strings.intern("ys")});
         context.storage.declarations.homogeneous_layouts
             .value_types[context.storage.declarations.homogeneous_layouts.index(
@@ -9239,7 +9243,7 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
                 }();
                 context.storage.declarations.homogeneous_values
                     .suffix[context.storage.declarations.homogeneous_values.index(
-                        new_homogeneous_values)] = context.storage.strings.add("f");
+                        new_homogeneous_values)] = context.storage.strings.intern("f");
                 context.storage.declarations.homogeneous_values
                     .equivalent_type[context.storage.declarations.homogeneous_values.index(
                         new_homogeneous_values)] = [&] {
@@ -9295,7 +9299,7 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
         context.storage.declarations.homogeneous_layouts
             .components[context.storage.declarations.homogeneous_layouts.index(
                 new_homogeneous_layouts)] =
-            context.storage.declarations.range<lispb::IdentifierId>(
+            context.storage.declarations.range<lispb::StringId>(
                 {context.storage.strings.intern("xs"), context.storage.strings.intern("ys")});
         context.storage.declarations.homogeneous_layouts
             .value_types[context.storage.declarations.homogeneous_layouts.index(
@@ -9314,7 +9318,7 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
                 }();
                 context.storage.declarations.homogeneous_values
                     .suffix[context.storage.declarations.homogeneous_values.index(
-                        new_homogeneous_values)] = context.storage.strings.add("f");
+                        new_homogeneous_values)] = context.storage.strings.intern("f");
                 context.storage.declarations.homogeneous_values
                     .equivalent_type[context.storage.declarations.homogeneous_values.index(
                         new_homogeneous_values)] = [&] {
@@ -9520,7 +9524,7 @@ TEST(Validation, NormalModuleAppliesSourceRequirementsPerDeclaration) {
         context.storage.declarations.homogeneous_layouts
             .components[context.storage.declarations.homogeneous_layouts.index(
                 new_homogeneous_layouts)] =
-            context.storage.declarations.range<lispb::IdentifierId>(
+            context.storage.declarations.range<lispb::StringId>(
                 {context.storage.strings.intern("xs"), context.storage.strings.intern("ys")});
         context.storage.declarations.homogeneous_layouts
             .value_types[context.storage.declarations.homogeneous_layouts.index(
@@ -9539,7 +9543,7 @@ TEST(Validation, NormalModuleAppliesSourceRequirementsPerDeclaration) {
                 }();
                 context.storage.declarations.homogeneous_values
                     .suffix[context.storage.declarations.homogeneous_values.index(
-                        new_homogeneous_values)] = context.storage.strings.add("f");
+                        new_homogeneous_values)] = context.storage.strings.intern("f");
                 return new_homogeneous_values;
             }()});
         return new_homogeneous_layouts;
@@ -9736,7 +9740,7 @@ TEST(Validation, NormalModuleMatchesSoaAllocatorVariantRestrictions) {
     context.storage.declarations.soas
         .using_declarations[context.storage.declarations.soas.index(declarations)] =
         context.storage.declarations.range<lispb::StringId>(
-            {context.storage.strings.add("value_type = int32")});
+            {context.storage.strings.intern("value_type = int32")});
     module = normal_soa_module(context, declarations, {allocator});
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -9779,10 +9783,10 @@ TEST(Validation, NormalModuleMatchesSoaAllocatorVariantRestrictions) {
                     new_module_settings_store)] = context.storage.strings.intern("mixed");
             context.storage.declarations.module_settings_store
                 .header[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Mixed.h");
+                    new_module_settings_store)] = context.storage.strings.intern("Mixed.h");
             context.storage.declarations.module_settings_store
                 .source[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Mixed.cpp");
+                    new_module_settings_store)] = context.storage.strings.intern("Mixed.cpp");
             return new_module_settings_store;
         }();
         context.storage.declarations.normal_modules
@@ -9854,7 +9858,7 @@ TEST(Validation, NormalModuleReservesFixedSoaStorageAndContainerNames) {
             context.storage.strings.intern("DataStorage");
         context.storage.declarations.fixed_soas
             .containers[context.storage.declarations.fixed_soas.index(new_fixed_soas)] =
-            context.storage.declarations.range<lispb::IdentifierId>(
+            context.storage.declarations.range<lispb::StringId>(
                 {context.storage.strings.intern("FixedData")});
         return new_fixed_soas;
     }();
@@ -9939,7 +9943,7 @@ TEST(Validation, NormalModuleReservesFixedSoaStorageAndContainerNames) {
         }();
         context.storage.declarations.vector_soas
             .components[context.storage.declarations.vector_soas.index(new_vector_soas)] =
-            context.storage.declarations.range<lispb::IdentifierId>(
+            context.storage.declarations.range<lispb::StringId>(
                 {context.storage.strings.intern("xs"), context.storage.strings.intern("ys")});
         context.storage.declarations.vector_soas
             .equivalent_type[context.storage.declarations.vector_soas.index(new_vector_soas)] =
@@ -9958,7 +9962,7 @@ TEST(Validation, NormalModuleReservesFixedSoaStorageAndContainerNames) {
                 context.storage.strings.intern("VectorStorage");
             context.storage.declarations.fixed_soas
                 .containers[context.storage.declarations.fixed_soas.index(new_fixed_soas)] =
-                context.storage.declarations.range<lispb::IdentifierId>(
+                context.storage.declarations.range<lispb::StringId>(
                     {context.storage.strings.intern("FixedVectors")});
             return new_fixed_soas;
         }();
@@ -10005,7 +10009,7 @@ TEST(Validation, NormalModuleReservesFixedSoaStorageAndContainerNames) {
             context.storage.strings.intern("DataStorage");
         context.storage.declarations.fixed_soas
             .containers[context.storage.declarations.fixed_soas.index(new_fixed_soas)] =
-            context.storage.declarations.range<lispb::IdentifierId>(
+            context.storage.declarations.range<lispb::StringId>(
                 {context.storage.strings.intern("FixedData")});
         return new_fixed_soas;
     }();

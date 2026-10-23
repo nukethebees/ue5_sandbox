@@ -9,7 +9,7 @@ namespace slate_codegen::detail {
 
 struct Margins {
     std::vector<Range> values;
-    std::vector<lispb::IdentifierId> bindings;
+    std::vector<lispb::StringId> bindings;
     std::vector<lispb::codegen::sexpr::SourceSpan> spans;
 };
 

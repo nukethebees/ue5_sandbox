@@ -7,7 +7,7 @@
 namespace slate_codegen::detail {
 
 struct Arguments {
-    std::vector<lispb::IdentifierId> names;
+    std::vector<lispb::StringId> names;
     std::vector<ValueId> values;
 };
 

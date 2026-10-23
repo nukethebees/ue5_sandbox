@@ -314,9 +314,9 @@ auto lower_scalar(detail::LoweringContext& context, DeclarationHandle scalar)
                 auto const code{code_id};
                 auto const code_row{codes.index(code)};
                 auto const code_name{context.text(codes.name[code_row])};
-                cases.push_back(ir.switch_case(ir.named(scalar_name + '_' + code_name),
-                                               ir.block({ir.return_stmt(ir.string_literal(
-                                                   string_id(codes.name[code_row])))})));
+                cases.push_back(ir.switch_case(
+                    ir.named(scalar_name + '_' + code_name),
+                    ir.block({ir.return_stmt(ir.string_literal(codes.name[code_row]))})));
             }
             NodeListBuilder body{ir};
             body.add(ir.switch_stmt(ir.named("value"), cases), 2)
@@ -356,7 +356,7 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                             schemas.push_back(*soa);
                         }
                     }
-                    std::map<IdentifierId, DeclarationHandle> expanded;
+                    std::map<StringId, DeclarationHandle> expanded;
                     for (auto const soa : expand_soa_allocator_variants(
                              store,
                              schemas,
@@ -427,9 +427,10 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                                         store.normal_modules
                                                 .enum_helper_namespace[store.normal_modules.index(
                                                     module)]
-                                            ? std::optional{string_id(
-                                                  *store.normal_modules.enum_helper_namespace
-                                                       [store.normal_modules.index(module)])}
+                                            ? std::optional{*store.normal_modules
+                                                                 .enum_helper_namespace
+                                                                     [store.normal_modules.index(
+                                                                         module)]}
                                             : std::nullopt);
                                 }
                                 case lispb::codegen::DeclarationKind::vector_soa: {

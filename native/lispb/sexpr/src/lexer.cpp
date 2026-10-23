@@ -77,7 +77,7 @@ class Lexer {
     void emit(TokenKind const kind,
               lispb::StringId const text,
               std::uint32_t const begin,
-              lispb::IdentifierId const tag = {}) {
+              lispb::StringId const tag = {}) {
         static_cast<void>(syntax_.add_token(kind, text, span(begin), tag));
     }
 
@@ -200,7 +200,7 @@ class Lexer {
         lispb::StringId text;
         if (escaped) {
             decoded.append(source().substr(chunk_begin, index_ - chunk_begin));
-            text = syntax_.strings().add(decoded);
+            text = syntax_.strings().intern(decoded);
         } else {
             text = slice(text_begin, index_);
         }

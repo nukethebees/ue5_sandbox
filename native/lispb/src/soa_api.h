@@ -23,14 +23,14 @@ auto logical_column_access(LoweringContext& context,
                            std::span<std::string const> path,
                            SoaRepresentation representation,
                            std::string receiver = {},
-                           std::map<IdentifierId, DeclarationHandle> const* schemas = nullptr)
+                           std::map<StringId, DeclarationHandle> const* schemas = nullptr)
     -> std::string;
 auto lower_soa_api(LoweringContext& context,
                    DeclarationHandle schema,
                    SoaRepresentation representation,
                    SoaReceiver receiver,
                    std::string const& type_name,
-                   std::map<IdentifierId, DeclarationHandle> const* schemas = nullptr,
+                   std::map<StringId, DeclarationHandle> const* schemas = nullptr,
                    SoaBackend backend = SoaBackend::unreal,
                    StringId equivalent_constructor = {}) -> LoweredSoa;
 }

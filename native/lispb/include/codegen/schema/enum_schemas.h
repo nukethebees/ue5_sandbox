@@ -22,12 +22,12 @@ struct EnumSchemas {
     [[nodiscard]] auto index(DeclarationHandle id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<std::optional<TypeRefId>> underlying_type;
     std::vector<SchemaRange<EnumeratorId>> values;
-    std::vector<std::optional<IdentifierId>> count;
+    std::vector<std::optional<StringId>> count;
     std::vector<SchemaRange<EnumConversion>> conversions;
-    std::vector<IdentifierId> export_specifier;
+    std::vector<StringId> export_specifier;
     std::vector<std::optional<EnumUnrealProjectionId>> unreal_projection;
     std::vector<std::optional<std::uint8_t>> bit_width;
     std::vector<EnumReflection> reflection;

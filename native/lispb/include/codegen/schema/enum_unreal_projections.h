@@ -15,7 +15,7 @@ struct EnumUnrealProjections {
     [[nodiscard]] auto index(EnumUnrealProjectionId id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<StringId> header;
     std::vector<StringId> header_include;
     std::vector<StringId> conversion_header;

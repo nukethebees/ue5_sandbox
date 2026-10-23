@@ -13,7 +13,7 @@ struct SoaMaskDimensionSchemas {
     [[nodiscard]] auto index(SoaMaskDimensionId id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> index_name;
+    std::vector<StringId> index_name;
     std::vector<StringId> extent;
 };
 

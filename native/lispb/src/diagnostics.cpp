@@ -14,7 +14,7 @@ auto Diagnostics::add(DiagnosticSeverity severity,
                       codegen::sexpr::SourceSpan span,
                       std::string_view message) -> DiagnosticId {
     auto const id{DiagnosticId{static_cast<std::uint32_t>(messages_.size())}};
-    auto const text{strings_.add(message)};
+    auto const text{strings_.intern(message)};
     severities_.push_back(severity);
     spans_.push_back(span);
     messages_.push_back(text);

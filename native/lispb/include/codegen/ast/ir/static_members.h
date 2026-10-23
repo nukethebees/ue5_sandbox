@@ -12,7 +12,7 @@ namespace lispb::codegen::ir {
 
 struct StaticMembers {
     std::vector<CppTypeId> type;
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<Expr> initializer;
     std::vector<TemplateId> template_declaration;
     std::vector<std::uint8_t> is_inline;

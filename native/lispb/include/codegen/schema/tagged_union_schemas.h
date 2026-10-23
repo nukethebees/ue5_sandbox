@@ -16,10 +16,10 @@ struct TaggedUnionSchemas {
     [[nodiscard]] auto index(DeclarationHandle id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<TypeRefId> discriminant;
     std::vector<SchemaRange<TaggedUnionAlternativeId>> alternatives;
-    std::vector<IdentifierId> export_specifier;
+    std::vector<StringId> export_specifier;
 };
 
 }

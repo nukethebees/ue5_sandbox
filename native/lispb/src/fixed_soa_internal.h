@@ -16,16 +16,16 @@ struct LoweringContext;
 
 auto build_soa_layout(LoweringContext& context,
                       DeclarationHandle schema,
-                      std::map<IdentifierId, DeclarationHandle> const& schemas,
+                      std::map<StringId, DeclarationHandle> const& schemas,
                       bool fixed,
                       LoweringPathId prefix = {},
-                      std::set<IdentifierId> ancestors = {}) -> FixedLayoutId;
+                      std::set<StringId> ancestors = {}) -> FixedLayoutId;
 
 auto build_fixed_layout(LoweringContext& context,
                         DeclarationHandle schema,
-                        std::map<IdentifierId, DeclarationHandle> const& schemas,
+                        std::map<StringId, DeclarationHandle> const& schemas,
                         LoweringPathId prefix = {},
-                        std::set<IdentifierId> ancestors = {}) -> FixedLayoutId;
+                        std::set<StringId> ancestors = {}) -> FixedLayoutId;
 auto fixed_leaf_argument(LoweringContext& context, FixedLeafId leaf) -> std::string;
 auto fixed_storage_node(LoweringContext& context, FixedLayoutId layout) -> NodeId;
 auto fixed_container_node(LoweringContext& context,

@@ -45,14 +45,14 @@ class Project {
     [[nodiscard]] auto profile(TargetId target) const -> KernelProfile;
     [[nodiscard]] auto output_path(TargetId target) const -> RootedPath;
     [[nodiscard]] auto expand(std::string_view name) const -> std::vector<TargetId>;
-    auto append(TargetKind kind, IdentifierId name) -> TargetId;
+    auto append(TargetKind kind, StringId name) -> TargetId;
     auto append_paths(std::span<StringId const> paths) -> codegen::sexpr::HandleRange;
     void set_sources(TargetId target, codegen::sexpr::HandleRange sources);
     void set_types(TargetId target, StringId types);
     void set_includes(TargetId target, codegen::sexpr::HandleRange includes);
     void set_profile(TargetId target, KernelProfile profile);
     void set_output(TargetId target, PathBase base, StringId path);
-    void add_group(IdentifierId name, std::span<IdentifierId const> members);
+    void add_group(StringId name, std::span<StringId const> members);
     void resolve_groups();
     void replace_sources(TargetId target, std::span<std::filesystem::path const> sources);
   private:
@@ -80,13 +80,13 @@ class Project {
     void
         expand(TargetId target, std::vector<TargetId>& active, std::vector<TargetId>& result) const;
     Strings* strings_;
-    std::map<IdentifierId, TargetId> names_;
+    std::map<StringId, TargetId> names_;
     std::vector<TargetId> order_;
     std::vector<StringId> paths_;
     std::vector<StringId> cpp_types_;
     std::vector<codegen::sexpr::HandleRange> slate_includes_;
     std::vector<KernelProfile> kernel_profiles_;
-    std::vector<IdentifierId> unresolved_group_members_;
+    std::vector<StringId> unresolved_group_members_;
 };
 
 }

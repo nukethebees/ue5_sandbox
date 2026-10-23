@@ -28,7 +28,7 @@ class Syntax {
     [[nodiscard]] auto sources() const -> Sources& { return *sources_; }
     [[nodiscard]] auto kind(TokenId id) const -> TokenKind;
     [[nodiscard]] auto text_id(TokenId id) const -> StringId;
-    [[nodiscard]] auto identifier(TokenId id) const -> IdentifierId;
+    [[nodiscard]] auto identifier(TokenId id) const -> StringId;
     [[nodiscard]] auto text(TokenId id) const -> std::string_view;
     [[nodiscard]] auto tag(TokenId id) const -> std::string_view;
     [[nodiscard]] auto token_span(TokenId id) const -> SourceSpan;
@@ -36,7 +36,7 @@ class Syntax {
     [[nodiscard]] auto token(FormId id) const -> TokenId;
     [[nodiscard]] auto kind(FormId id) const -> TokenKind;
     [[nodiscard]] auto text_id(FormId id) const -> StringId;
-    [[nodiscard]] auto identifier(FormId id) const -> IdentifierId;
+    [[nodiscard]] auto identifier(FormId id) const -> StringId;
     [[nodiscard]] auto text(FormId id) const -> std::string_view;
     [[nodiscard]] auto tag(FormId id) const -> std::string_view;
     [[nodiscard]] auto token_span(FormId id) const -> SourceSpan;
@@ -50,8 +50,8 @@ class Syntax {
     [[nodiscard]] auto child(FormId id, std::size_t index) const -> FormId;
     [[nodiscard]] auto range(std::span<FormId const> ids) -> HandleRange;
 
-    [[nodiscard]] auto
-        add_token(TokenKind kind, StringId text, SourceSpan span, IdentifierId tag = {}) -> TokenId;
+    [[nodiscard]] auto add_token(TokenKind kind, StringId text, SourceSpan span, StringId tag = {})
+        -> TokenId;
     [[nodiscard]] auto add_leaf(TokenId token, ExpansionId expansion = {}) -> FormId;
     [[nodiscard]] auto add_list(TokenId token, std::span<FormId const> children, SourceSpan closing)
         -> FormId;
@@ -69,7 +69,7 @@ class Syntax {
     std::vector<TokenKind> token_kinds_;
     std::vector<StringId> token_texts_;
     std::vector<SourceSpan> token_spans_;
-    std::vector<IdentifierId> token_tags_;
+    std::vector<StringId> token_tags_;
     std::vector<TokenId> form_tokens_;
     std::vector<HandleRange> form_children_;
     std::vector<std::uint32_t> form_ends_;

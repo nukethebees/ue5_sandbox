@@ -15,7 +15,7 @@ struct ParameterSchemas {
     void clear();
 
     std::vector<TypeRefId> type;
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<std::optional<StringId>> default_value;
 };
 

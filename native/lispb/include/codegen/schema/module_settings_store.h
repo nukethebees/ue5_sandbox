@@ -15,11 +15,11 @@ struct ModuleSettingsStore {
     [[nodiscard]] auto index(ModuleSettingsId id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<StringId> header;
     std::vector<std::optional<StringId>> source;
     std::vector<std::optional<StringId>> header_include;
-    std::vector<std::optional<IdentifierId>> namespace_name;
+    std::vector<std::optional<StringId>> namespace_name;
     std::vector<SchemaRange<StringId>> include_order;
     std::vector<SchemaRange<StringId>> prelude_lines;
 };

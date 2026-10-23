@@ -44,21 +44,21 @@ class SchemaParser {
     explicit SchemaParser(sexpr::Syntax& syntax);
     auto parse_module(Declarations& declarations, sexpr::FormId const form) -> ModuleHandle;
     auto parse_type_definition(sexpr::FormId const form, TypeRegistry& registry)
-        -> std::pair<lispb::IdentifierId, RegisteredTypeId>;
+        -> std::pair<lispb::StringId, RegisteredTypeId>;
   private:
     auto optional_text_id(sexpr::Fields const& fields, std::string_view const name)
         -> std::optional<lispb::StringId>;
-    auto parse_export_specifier(sexpr::Fields const& fields) -> lispb::IdentifierId;
+    auto parse_export_specifier(sexpr::Fields const& fields) -> lispb::StringId;
     auto optional_identifier(sexpr::Fields const& fields, std::string_view const name)
-        -> std::optional<lispb::IdentifierId>;
+        -> std::optional<lispb::StringId>;
     auto text_id_list(sexpr::FormId const form, std::string_view const purpose)
         -> std::vector<lispb::StringId>;
     auto identifier_list(sexpr::FormId const form, std::string_view const purpose)
-        -> std::vector<lispb::IdentifierId>;
+        -> std::vector<lispb::StringId>;
     auto text_id_list_or(sexpr::Fields const& fields, std::string_view const name)
         -> std::vector<lispb::StringId>;
     auto identifier_list_or(sexpr::Fields const& fields, std::string_view const name)
-        -> std::vector<lispb::IdentifierId>;
+        -> std::vector<lispb::StringId>;
     auto unsigned_integer(sexpr::FormId const form, std::string_view const purpose)
         -> std::uint64_t;
     auto packed_integer(sexpr::FormId const form, std::string_view const purpose)
@@ -81,7 +81,7 @@ class SchemaParser {
     auto parse_operations(sexpr::FormId const form) -> std::vector<StorageOperation>;
     auto parse_fixed(Declarations& declarations, sexpr::FormId const form) -> FixedSoaId;
     auto parse_member(Declarations& declarations, sexpr::FormId const form) -> SoaMemberId;
-    auto parse_single_allocation(sexpr::FormId const form) -> lispb::IdentifierId;
+    auto parse_single_allocation(sexpr::FormId const form) -> lispb::StringId;
     auto parse_soa(Declarations& declarations, sexpr::FormId const form) -> DeclarationHandle;
     auto parse_module_settings(Declarations& declarations, sexpr::Fields const& fields)
         -> ModuleSettingsId;

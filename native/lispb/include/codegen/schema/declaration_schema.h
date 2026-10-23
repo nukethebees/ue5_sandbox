@@ -16,8 +16,7 @@ namespace lispb::codegen {
 class Declarations;
 
 auto declaration_head(DeclarationHandle declaration) -> std::string_view;
-auto declaration_name(Declarations const& declarations, DeclarationHandle declaration)
-    -> IdentifierId;
+auto declaration_name(Declarations const& declarations, DeclarationHandle declaration) -> StringId;
 auto has_primary_semantic_type(DeclarationHandle declaration) -> bool;
 void visit_type_references(
     Declarations const& declarations,
@@ -30,6 +29,6 @@ auto rewrite_type_references(
     -> DeclarationHandle;
 auto generated_cpp_names(Declarations const& declarations,
                          DeclarationHandle declaration,
-                         ModuleHandle module) -> std::vector<IdentifierId>;
+                         ModuleHandle module) -> std::vector<StringId>;
 
 } // namespace lispb::codegen

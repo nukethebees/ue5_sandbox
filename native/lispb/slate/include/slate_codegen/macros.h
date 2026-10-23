@@ -11,7 +11,7 @@ namespace slate_codegen::detail {
 struct Macros {
     std::vector<Range> parameters;
     std::vector<lispb::codegen::sexpr::FormId> bodies;
-    std::vector<lispb::IdentifierId> parameter_names;
+    std::vector<lispb::StringId> parameter_names;
 };
 
 }

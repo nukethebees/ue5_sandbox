@@ -63,7 +63,7 @@ auto lower_vector(LoweringContext& context, DeclarationHandle vector, SoaBackend
         declarations.vector_soas.equivalent_type[vector_index];
     declarations.soas.copy_element_memberwise[schema_index] = true;
     declarations.soas.fixed[schema_index] = declarations.vector_soas.fixed[vector_index];
-    std::map<IdentifierId, DeclarationHandle> const schemas{
+    std::map<StringId, DeclarationHandle> const schemas{
         {declarations.soas.name[schema_index], schema}};
 
     std::vector<std::string> equivalent_members;

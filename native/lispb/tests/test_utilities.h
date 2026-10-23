@@ -45,7 +45,7 @@ inline auto test_text(Strings const& strings, std::optional<Id> const id)
 template <typename Id>
 inline auto test_items(Declarations const& declarations, SchemaRange<Id> const range) {
     auto const items{declarations.items(range)};
-    if constexpr (std::same_as<Id, IdentifierId> || std::same_as<Id, StringId>) {
+    if constexpr (std::same_as<Id, StringId>) {
         std::vector<std::string> result;
         for (auto const item : items) {
             result.emplace_back(declarations.strings().view(item));

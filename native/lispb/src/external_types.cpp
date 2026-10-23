@@ -19,12 +19,12 @@ auto ExternalTypes::index(TypeDefinitionId const id) const -> std::uint32_t {
     return row;
 }
 auto ExternalTypes::registered_names_of(TypeDefinitionId const id) const
-    -> std::span<IdentifierId const> {
+    -> std::span<StringId const> {
     auto const range{registered_names[index(id)]};
     return std::span{registered_names_values}.subspan(range.begin, range.count);
 }
 void ExternalTypes::set_registered_names(TypeDefinitionId const id,
-                                         std::span<IdentifierId const> const values) {
+                                         std::span<StringId const> const values) {
     registered_names[index(id)] = {static_cast<std::uint32_t>(registered_names_values.size()),
                                    static_cast<std::uint32_t>(values.size())};
     registered_names_values.insert(registered_names_values.end(), values.begin(), values.end());

@@ -72,10 +72,10 @@ auto handle(ExprKind kind, std::size_t index) -> Expr {
 // Construction and storage
 /* **************************************** */
 auto CppIR::store_text(std::string_view value) -> StringId {
-    return strings.add(value);
+    return strings.intern(value);
 }
 auto CppIR::store_optional_text(std::optional<std::string_view> value) -> std::optional<StringId> {
-    return value ? std::optional{strings.add(*value)} : std::nullopt;
+    return value ? std::optional{strings.intern(*value)} : std::nullopt;
 }
 
 auto CppIR::save_nodes(std::span<NodeId const> values) -> ir::Range {
@@ -115,17 +115,17 @@ auto CppIR::block_comment(StringId text) -> NodeId {
 }
 
 auto CppIR::line_comment(std::string_view text) -> NodeId {
-    return line_comment(strings.add(text));
+    return line_comment(strings.intern(text));
 }
 
 auto CppIR::block_comment(std::string_view text) -> NodeId {
-    return block_comment(strings.add(text));
+    return block_comment(strings.intern(text));
 }
 
 auto CppIR::line_directive(std::uint32_t line, std::string_view path) -> NodeId {
     auto const index{line_directive_nodes_.line.size()};
     line_directive_nodes_.line.push_back(line);
-    line_directive_nodes_.path.push_back(strings.add(path));
+    line_directive_nodes_.path.push_back(strings.intern(path));
     return ir_detail::node(NodeKind::line_directive, index);
 }
 
@@ -199,10 +199,10 @@ auto CppIR::assignment(Expr target, Expr value, std::span<TypeDependencyId const
     return ir_detail::node(NodeKind::assignment_stmt, index);
 }
 
-auto CppIR::variable(CppTypeId type, IdentifierId name, std::optional<Expr> initializer) -> NodeId {
+auto CppIR::variable(CppTypeId type, StringId name, std::optional<Expr> initializer) -> NodeId {
     auto const index{variable_declaration_stmt_nodes_.type.size()};
     variable_declaration_stmt_nodes_.type.push_back(type);
-    variable_declaration_stmt_nodes_.name.push_back(string_id(name));
+    variable_declaration_stmt_nodes_.name.push_back(name);
     variable_declaration_stmt_nodes_.initializer.push_back(initializer);
     return ir_detail::node(NodeKind::variable_declaration_stmt, index);
 }
@@ -242,19 +242,17 @@ auto CppIR::include_dependencies() -> NodeId {
     return ir_detail::node(NodeKind::include_dependencies, 0);
 }
 
-auto CppIR::forward_declaration(IdentifierId name, RecordKind kind, TemplateId declaration)
-    -> NodeId {
+auto CppIR::forward_declaration(StringId name, RecordKind kind, TemplateId declaration) -> NodeId {
     auto const index{forward_declaration_nodes_.name.size()};
-    forward_declaration_nodes_.name.push_back(string_id(name));
+    forward_declaration_nodes_.name.push_back(name);
     forward_declaration_nodes_.kind.push_back(kind);
     forward_declaration_nodes_.template_declaration.push_back(declaration);
     return ir_detail::node(NodeKind::forward_declaration, index);
 }
 
-auto CppIR::friend_declaration(IdentifierId name, RecordKind kind, TemplateId declaration)
-    -> NodeId {
+auto CppIR::friend_declaration(StringId name, RecordKind kind, TemplateId declaration) -> NodeId {
     auto const index{friend_declaration_nodes_.name.size()};
-    friend_declaration_nodes_.name.push_back(string_id(name));
+    friend_declaration_nodes_.name.push_back(name);
     friend_declaration_nodes_.kind.push_back(kind);
     friend_declaration_nodes_.template_declaration.push_back(declaration);
     friend_declaration_nodes_.type.push_back({});
@@ -270,15 +268,15 @@ auto CppIR::friend_type(CppTypeId type) -> NodeId {
     return ir_detail::node(NodeKind::friend_declaration, index);
 }
 
-auto CppIR::using_declaration(IdentifierId name, CppTypeId type, TemplateId declaration) -> NodeId {
+auto CppIR::using_declaration(StringId name, CppTypeId type, TemplateId declaration) -> NodeId {
     auto const index{using_declaration_nodes_.name.size()};
-    using_declaration_nodes_.name.push_back(string_id(name));
+    using_declaration_nodes_.name.push_back(name);
     using_declaration_nodes_.type.push_back(type);
     using_declaration_nodes_.template_declaration.push_back(declaration);
     return ir_detail::node(NodeKind::using_declaration, index);
 }
 
-auto CppIR::instance_member(CppTypeId type, IdentifierId name, std::optional<Expr> initializer)
+auto CppIR::instance_member(CppTypeId type, StringId name, std::optional<Expr> initializer)
     -> NodeId {
     auto const index{instance_members_.name.size()};
     instance_members_.type.push_back(type);
@@ -288,7 +286,7 @@ auto CppIR::instance_member(CppTypeId type, IdentifierId name, std::optional<Exp
 }
 
 auto CppIR::static_member(CppTypeId type,
-                          IdentifierId name,
+                          StringId name,
                           std::optional<Expr> initializer,
                           bool is_inline,
                           TemplateId template_declaration) -> NodeId {
@@ -302,7 +300,7 @@ auto CppIR::static_member(CppTypeId type,
 }
 
 auto CppIR::constexpr_member(CppTypeId type,
-                             IdentifierId name,
+                             StringId name,
                              Expr initializer,
                              bool is_inline,
                              TemplateId template_declaration) -> NodeId {
@@ -316,23 +314,23 @@ auto CppIR::constexpr_member(CppTypeId type,
     return ir_detail::node(NodeKind::constexpr_member, index);
 }
 
-auto CppIR::enumerator(IdentifierId name,
+auto CppIR::enumerator(StringId name,
                        std::optional<StringId> initializer,
                        std::optional<StringId> annotation) -> EnumValueId {
     EnumValueId const result{static_cast<std::uint32_t>(enumerators_.name.size())};
-    enumerators_.name.push_back(string_id(name));
+    enumerators_.name.push_back(name);
     enumerators_.initializer.push_back(initializer);
     enumerators_.annotation.push_back(annotation);
     return result;
 }
 
-auto CppIR::enumeration(IdentifierId name,
+auto CppIR::enumeration(StringId name,
                         CppTypeId underlying_type,
                         std::span<EnumValueId const> values,
-                        IdentifierId export_specifier,
+                        StringId export_specifier,
                         bool scoped) -> NodeId {
     auto const index{enum_nodes_.name.size()};
-    enum_nodes_.name.push_back(string_id(name));
+    enum_nodes_.name.push_back(name);
     enum_nodes_.underlying_type.push_back(underlying_type);
     enum_nodes_.values.push_back(ir::save_range(enumerator_references_, values));
     enum_nodes_.export_specifier.push_back(export_specifier);
@@ -340,8 +338,7 @@ auto CppIR::enumeration(IdentifierId name,
     return ir_detail::node(NodeKind::enum_, index);
 }
 
-auto CppIR::record(IdentifierId name, std::span<NodeId const> children, RecordKind kind)
-    -> RecordId {
+auto CppIR::record(StringId name, std::span<NodeId const> children, RecordKind kind) -> RecordId {
     return record(named(name), children, kind);
 }
 
@@ -370,7 +367,7 @@ void CppIR::set_record_requires_clause(RecordId record, Expr clause) {
     struct_nodes_.requires_clause[record.index()] = clause;
 }
 
-void CppIR::set_record_export_specifier(RecordId record, IdentifierId specifier) {
+void CppIR::set_record_export_specifier(RecordId record, StringId specifier) {
     struct_nodes_.export_specifier[record.index()] = specifier;
 }
 
@@ -379,14 +376,14 @@ void CppIR::set_record_dependencies(RecordId record,
     struct_nodes_.dependencies[record.index()] = save_dependencies(dependencies);
 }
 
-auto CppIR::namespace_node(IdentifierId name, std::span<NodeId const> children) -> NodeId {
+auto CppIR::namespace_node(StringId name, std::span<NodeId const> children) -> NodeId {
     auto const index{namespace_nodes_.name.size()};
-    namespace_nodes_.name.push_back(string_id(name));
+    namespace_nodes_.name.push_back(name);
     namespace_nodes_.children.push_back(save_nodes(children));
     return ir_detail::node(NodeKind::namespace_, index);
 }
 
-auto CppIR::function(IdentifierId name, CppTypeId return_type) -> FunctionId {
+auto CppIR::function(StringId name, CppTypeId return_type) -> FunctionId {
     return function(named(name), return_type);
 }
 
@@ -422,23 +419,23 @@ auto CppIR::append_function(Expr name, CppTypeId return_type, FunctionKind kind)
     return result;
 }
 
-auto CppIR::constructor(IdentifierId name, bool is_explicit) -> FunctionId {
+auto CppIR::constructor(StringId name, bool is_explicit) -> FunctionId {
     return append_function(named(name),
                            {},
                            is_explicit ? FunctionKind::explicit_constructor
                                        : FunctionKind::constructor);
 }
 
-auto CppIR::destructor(IdentifierId name) -> FunctionId {
+auto CppIR::destructor(StringId name) -> FunctionId {
     return append_function(
         named(strings.intern("~" + std::string{strings.view(name)})), {}, FunctionKind::destructor);
 }
 
-auto CppIR::parameter(CppTypeId type, IdentifierId name, std::optional<StringId> default_value)
+auto CppIR::parameter(CppTypeId type, StringId name, std::optional<StringId> default_value)
     -> FunctionParameterId {
     FunctionParameterId const result{static_cast<std::uint32_t>(parameters_.name.size())};
     parameters_.type.push_back(type);
-    parameters_.name.push_back(string_id(name));
+    parameters_.name.push_back(name);
     parameters_.default_value.push_back(default_value);
     return result;
 }
@@ -454,9 +451,9 @@ auto CppIR::parameter(std::string_view type,
     return parameter(types.intern(type), strings.intern(name), default_value);
 }
 
-auto CppIR::member_initializer(IdentifierId member, StringId value) -> MemberInitializerId {
+auto CppIR::member_initializer(StringId member, StringId value) -> MemberInitializerId {
     MemberInitializerId const result{static_cast<std::uint32_t>(initializers_.member.size())};
-    initializers_.member.push_back(string_id(member));
+    initializers_.member.push_back(member);
     initializers_.value.push_back(value);
     return result;
 }
@@ -491,7 +488,7 @@ void CppIR::set_function_dependencies(FunctionId function,
     functions_.dependencies[function.value] = save_dependencies(dependencies);
 }
 
-void CppIR::set_function_name(FunctionId function, IdentifierId name) {
+void CppIR::set_function_name(FunctionId function, StringId name) {
     set_function_name(function, named(name));
 }
 
@@ -527,7 +524,7 @@ void CppIR::set_function_receiver(FunctionId function, FunctionReceiver receiver
     functions_.receiver[function.value] = receiver;
 }
 
-void CppIR::set_function_export_specifier(FunctionId function, IdentifierId specifier) {
+void CppIR::set_function_export_specifier(FunctionId function, StringId specifier) {
     functions_.export_specifier[function.value] = specifier;
 }
 
@@ -562,8 +559,8 @@ auto CppIR::function_receiver(FunctionId function) const -> FunctionReceiver {
     return functions_.receiver[function.value];
 }
 
-auto CppIR::parameter_name(FunctionParameterId parameter) const -> IdentifierId {
-    return IdentifierId{parameters_.name[parameter.value].value};
+auto CppIR::parameter_name(FunctionParameterId parameter) const -> StringId {
+    return parameters_.name[parameter.value];
 }
 auto CppIR::parameter_type(FunctionParameterId parameter) const -> CppTypeId {
     return parameters_.type[parameter.value];
@@ -742,7 +739,7 @@ void CppIR::clear() {
 }
 
 auto CppIR::raw(std::string_view value, std::span<TypeDependencyId const> dependencies) -> NodeId {
-    return raw(strings.add(value), dependencies);
+    return raw(strings.intern(value), dependencies);
 }
 auto CppIR::raw(StringId value, std::span<TypeDependencyId const> dependencies) -> NodeId {
     auto const index{raw_nodes_.text.size()};
@@ -761,14 +758,14 @@ auto CppIR::raw_lines(std::span<StringId const> lines,
 auto CppIR::named(std::string_view value, std::span<TypeDependencyId const> dependencies) -> Expr {
     return named(strings.intern(value), dependencies);
 }
-auto CppIR::named(IdentifierId value, std::span<TypeDependencyId const> dependencies) -> Expr {
+auto CppIR::named(StringId value, std::span<TypeDependencyId const> dependencies) -> Expr {
     auto const result{expr_detail::handle(ExprKind::named, named_exprs_.spelling.size())};
-    named_exprs_.spelling.push_back(string_id(value));
+    named_exprs_.spelling.push_back(value);
     named_exprs_.dependencies.push_back(save_dependencies(dependencies));
     return result;
 }
 auto CppIR::literal(std::string_view value) -> Expr {
-    return literal(strings.add(value));
+    return literal(strings.intern(value));
 }
 auto CppIR::literal(StringId value) -> Expr {
     auto const result{expr_detail::handle(ExprKind::literal, literal_exprs_.spelling.size())};
@@ -776,7 +773,7 @@ auto CppIR::literal(StringId value) -> Expr {
     return result;
 }
 auto CppIR::string_literal(std::string_view value) -> Expr {
-    return string_literal(strings.add(value));
+    return string_literal(strings.intern(value));
 }
 auto CppIR::string_literal(StringId value) -> Expr {
     auto const result{expr_detail::handle(ExprKind::string_literal, string_literal_exprs_.size())};
@@ -785,7 +782,7 @@ auto CppIR::string_literal(StringId value) -> Expr {
 }
 auto CppIR::raw_expr(std::string_view value, std::span<TypeDependencyId const> dependencies)
     -> Expr {
-    return raw_expr(strings.add(value), dependencies);
+    return raw_expr(strings.intern(value), dependencies);
 }
 auto CppIR::raw_expr(StringId value, std::span<TypeDependencyId const> dependencies) -> Expr {
     auto const result{expr_detail::handle(ExprKind::raw, raw_exprs_.text.size())};
@@ -802,17 +799,17 @@ auto CppIR::call(Expr callee, std::span<Expr const> arguments) -> Expr {
 auto CppIR::member_access(Expr object, std::string_view member) -> Expr {
     return member_access(object, strings.intern(member));
 }
-auto CppIR::member_access(Expr object, IdentifierId member) -> Expr {
+auto CppIR::member_access(Expr object, StringId member) -> Expr {
     auto const result{expr_detail::handle(ExprKind::member_access, member_exprs_.object.size())};
     member_exprs_.object.push_back(object);
-    member_exprs_.member.push_back(string_id(member));
+    member_exprs_.member.push_back(member);
     member_exprs_.through_pointer.push_back(false);
     return result;
 }
 auto CppIR::pointer_member_access(Expr object, std::string_view member) -> Expr {
     return pointer_member_access(object, strings.intern(member));
 }
-auto CppIR::pointer_member_access(Expr object, IdentifierId member) -> Expr {
+auto CppIR::pointer_member_access(Expr object, StringId member) -> Expr {
     auto const result{member_access(object, member)};
     member_exprs_.through_pointer[result.index()] = true;
     return result;
@@ -874,7 +871,7 @@ auto CppIR::template_id(Expr callee, std::span<Expr const> arguments) -> Expr {
     return result;
 }
 
-auto CppIR::type_template_parameter(IdentifierId name, CppTypeId default_type, bool pack)
+auto CppIR::type_template_parameter(StringId name, CppTypeId default_type, bool pack)
     -> TemplateParameterId {
     auto const index{static_cast<std::uint32_t>(type_template_parameters_.name.size())};
     type_template_parameters_.name.push_back(name);
@@ -883,10 +880,8 @@ auto CppIR::type_template_parameter(IdentifierId name, CppTypeId default_type, b
     return TemplateParameterId{(static_cast<std::uint32_t>(TemplateParameterKind::type) << 24) |
                                index};
 }
-auto CppIR::value_template_parameter(CppTypeId type,
-                                     IdentifierId name,
-                                     Expr default_value,
-                                     bool pack) -> TemplateParameterId {
+auto CppIR::value_template_parameter(CppTypeId type, StringId name, Expr default_value, bool pack)
+    -> TemplateParameterId {
     auto const index{static_cast<std::uint32_t>(value_template_parameters_.name.size())};
     value_template_parameters_.type.push_back(type);
     value_template_parameters_.name.push_back(name);
@@ -910,7 +905,7 @@ auto CppIR::raw_template_declaration(StringId parameters) -> TemplateId {
     return TemplateId{(static_cast<std::uint32_t>(TemplateKind::authored_raw) << 24) | index};
 }
 
-void CppIR::set_scope_bindings(NodeId node, std::span<IdentifierId const> names) {
+void CppIR::set_scope_bindings(NodeId node, std::span<StringId const> names) {
     scope_bindings_[node.value] = {names.begin(), names.end()};
 }
 

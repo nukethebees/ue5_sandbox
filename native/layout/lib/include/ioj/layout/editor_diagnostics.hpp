@@ -47,7 +47,7 @@ class EditorDiagnostics {
     lispb::Strings& strings_;
     std::vector<lispb::DiagnosticSeverity> severities_;
     std::vector<lispb::StringId> messages_;
-    std::vector<lispb::IdentifierId> paths_;
+    std::vector<lispb::StringId> paths_;
     std::vector<std::uint32_t> lines_;
     std::vector<std::uint32_t> columns_;
     std::vector<DocumentId> documents_;

@@ -10,7 +10,7 @@
 namespace slate_codegen::detail {
 
 struct Declarations {
-    std::vector<lispb::IdentifierId> names;
+    std::vector<lispb::StringId> names;
     std::vector<Range> functions;
     std::vector<DeclarationKind> kinds;
     std::vector<lispb::codegen::sexpr::SourceSpan> spans;

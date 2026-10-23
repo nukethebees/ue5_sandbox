@@ -26,7 +26,6 @@ class SExprIR {
     explicit SExprIR(Strings const& strings);
     auto atom(std::string_view value) -> Expr;
     auto atom(StringId value) -> Expr;
-    auto atom(IdentifierId value) -> Expr { return atom(string_id(value)); }
     template <Serialized T>
     auto atom(T value) -> Expr {
         return atom(to_serialized_string(value));
@@ -38,7 +37,6 @@ class SExprIR {
     }
     auto string(std::string_view value) -> Expr;
     auto string(StringId value) -> Expr;
-    auto string(IdentifierId value) -> Expr { return string(string_id(value)); }
     auto comment(std::string_view value) -> Expr;
     auto quote(Expr value) -> Expr;
     auto quote(std::string_view value) -> Expr { return quote(atom(value)); }

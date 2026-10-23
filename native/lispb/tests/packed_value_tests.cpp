@@ -84,7 +84,7 @@ auto valid_module(CompilerTestContext& context) -> ModuleHandle {
                     new_module_settings_store)] = context.storage.strings.intern("packed");
             context.storage.declarations.module_settings_store
                 .header[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Packed.h");
+                    new_module_settings_store)] = context.storage.strings.intern("Packed.h");
             return new_module_settings_store;
         }();
         context.storage.declarations.normal_modules
@@ -225,7 +225,7 @@ auto lower_known_enum(CompilerTestContext& context, ModuleHandle module, Declara
                           context.storage.declarations.module_settings_store
                               .header[context.storage.declarations.module_settings_store.index(
                                   new_module_settings_store)] =
-                              context.storage.strings.add("Enums.h");
+                              context.storage.strings.intern("Enums.h");
                           return new_module_settings_store;
                       }();
                       context.storage.declarations.normal_modules
@@ -393,7 +393,8 @@ auto scalar_backed_manifest(CompilerTestContext& context,
                          context.storage.strings.intern("scalars");
                      context.storage.declarations.module_settings_store
                          .header[context.storage.declarations.module_settings_store.index(
-                             new_module_settings_store)] = context.storage.strings.add("Scalars.h");
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("Scalars.h");
                      context.storage.declarations.module_settings_store
                          .namespace_name[context.storage.declarations.module_settings_store.index(
                              new_module_settings_store)] =
@@ -477,7 +478,8 @@ auto quantized_backed_manifest(CompilerTestContext& context, std::uint64_t const
                          context.storage.strings.intern("scalars");
                      context.storage.declarations.module_settings_store
                          .header[context.storage.declarations.module_settings_store.index(
-                             new_module_settings_store)] = context.storage.strings.add("Scalars.h");
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("Scalars.h");
                      context.storage.declarations.module_settings_store
                          .namespace_name[context.storage.declarations.module_settings_store.index(
                              new_module_settings_store)] =
@@ -523,7 +525,7 @@ auto quantized_backed_manifest(CompilerTestContext& context, std::uint64_t const
                      context.storage.declarations.module_settings_store
                          .header[context.storage.declarations.module_settings_store.index(
                              new_module_settings_store)] =
-                         context.storage.strings.add("Representations.h");
+                         context.storage.strings.intern("Representations.h");
                      context.storage.declarations.module_settings_store
                          .namespace_name[context.storage.declarations.module_settings_store.index(
                              new_module_settings_store)] =
@@ -573,7 +575,8 @@ auto quantized_backed_manifest(CompilerTestContext& context, std::uint64_t const
                              new_module_settings_store)] = context.storage.strings.intern("packed");
                      context.storage.declarations.module_settings_store
                          .header[context.storage.declarations.module_settings_store.index(
-                             new_module_settings_store)] = context.storage.strings.add("Packed.h");
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("Packed.h");
                      context.storage.declarations.module_settings_store
                          .namespace_name[context.storage.declarations.module_settings_store.index(
                              new_module_settings_store)] =
@@ -680,7 +683,7 @@ auto fixed_point_backed_manifest(CompilerTestContext& context, bool const signed
                      context.storage.declarations.module_settings_store
                          .header[context.storage.declarations.module_settings_store.index(
                              new_module_settings_store)] =
-                         context.storage.strings.add("Representations.h");
+                         context.storage.strings.intern("Representations.h");
                      context.storage.declarations.module_settings_store
                          .namespace_name[context.storage.declarations.module_settings_store.index(
                              new_module_settings_store)] =
@@ -724,7 +727,8 @@ auto fixed_point_backed_manifest(CompilerTestContext& context, bool const signed
                              new_module_settings_store)] = context.storage.strings.intern("packed");
                      context.storage.declarations.module_settings_store
                          .header[context.storage.declarations.module_settings_store.index(
-                             new_module_settings_store)] = context.storage.strings.add("Packed.h");
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("Packed.h");
                      context.storage.declarations.module_settings_store
                          .namespace_name[context.storage.declarations.module_settings_store.index(
                              new_module_settings_store)] =
@@ -830,7 +834,7 @@ auto mini_float_backed_manifest(CompilerTestContext& context) -> Manifest {
                      context.storage.declarations.module_settings_store
                          .header[context.storage.declarations.module_settings_store.index(
                              new_module_settings_store)] =
-                         context.storage.strings.add("Representations.h");
+                         context.storage.strings.intern("Representations.h");
                      context.storage.declarations.module_settings_store
                          .namespace_name[context.storage.declarations.module_settings_store.index(
                              new_module_settings_store)] =
@@ -873,7 +877,8 @@ auto mini_float_backed_manifest(CompilerTestContext& context) -> Manifest {
                              new_module_settings_store)] = context.storage.strings.intern("packed");
                      context.storage.declarations.module_settings_store
                          .header[context.storage.declarations.module_settings_store.index(
-                             new_module_settings_store)] = context.storage.strings.add("Packed.h");
+                             new_module_settings_store)] =
+                         context.storage.strings.intern("Packed.h");
                      context.storage.declarations.module_settings_store
                          .namespace_name[context.storage.declarations.module_settings_store.index(
                              new_module_settings_store)] =
@@ -972,7 +977,7 @@ TEST(PackedValue, ValidatesExplicitDefaultsAndReportsStorageBudget) {
                 new_module_settings_store)] = context.storage.strings.intern("orders");
         context.storage.declarations.module_settings_store
             .header[context.storage.declarations.module_settings_store.index(
-                new_module_settings_store)] = context.storage.strings.add("Orders.h");
+                new_module_settings_store)] = context.storage.strings.intern("Orders.h");
         return new_module_settings_store;
     }();
     context.storage.declarations.normal_modules
@@ -2108,7 +2113,7 @@ TEST(PackedValue, MostSignificantFirstEnumDomainCanExcludeInvalidRawValue) {
                          context.storage.strings.intern("Zero");
                      context.storage.declarations.enumerators
                          .initializer[context.storage.declarations.enumerators.index(
-                             new_enumerators)] = context.storage.strings.add("0");
+                             new_enumerators)] = context.storage.strings.intern("0");
                      return new_enumerators;
                  }(),
                  [&] {
@@ -2118,7 +2123,7 @@ TEST(PackedValue, MostSignificantFirstEnumDomainCanExcludeInvalidRawValue) {
                          context.storage.strings.intern("COUNT");
                      context.storage.declarations.enumerators
                          .initializer[context.storage.declarations.enumerators.index(
-                             new_enumerators)] = context.storage.strings.add("5");
+                             new_enumerators)] = context.storage.strings.intern("5");
                      context.storage.declarations.enumerators
                          .display_name[context.storage.declarations.enumerators.index(
                              new_enumerators)] = std::nullopt;
@@ -2796,7 +2801,7 @@ TEST(PackedValue, LowersFixedPointPlacementToExplicitRawCodeApi) {
                 auto row_0{context.storage.declarations.fixed_points.clone(rows_1.front())};
                 context.storage.declarations.fixed_points
                     .minimum_value[context.storage.declarations.fixed_points.index(row_0)] =
-                    context.storage.strings.add("-1.5");
+                    context.storage.strings.intern("-1.5");
                 return row_0;
             }();
             return context.storage.declarations.range(rows_1);
@@ -2816,7 +2821,7 @@ TEST(PackedValue, LowersFixedPointPlacementToExplicitRawCodeApi) {
                 auto row_0{context.storage.declarations.fixed_points.clone(rows_1.front())};
                 context.storage.declarations.fixed_points
                     .maximum_value[context.storage.declarations.fixed_points.index(row_0)] =
-                    context.storage.strings.add("2.25");
+                    context.storage.strings.intern("2.25");
                 return row_0;
             }();
             return context.storage.declarations.range(rows_1);
@@ -4505,7 +4510,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 .settings[context.storage.declarations.normal_modules.index(module)])};
         context.storage.declarations.module_settings_store
             .source[context.storage.declarations.module_settings_store.index(row_0)] =
-            context.storage.strings.add("Packed.cpp");
+            context.storage.strings.intern("Packed.cpp");
         return row_0;
     }();
     EXPECT_EQ(render_test_manifest(context,
@@ -6222,7 +6227,7 @@ TEST(PackedValue, ValidatesKnownEnumUnderlyingType) {
                 new_module_settings_store)] = context.storage.strings.intern("enums");
         context.storage.declarations.module_settings_store
             .header[context.storage.declarations.module_settings_store.index(
-                new_module_settings_store)] = context.storage.strings.add("Enums.h");
+                new_module_settings_store)] = context.storage.strings.intern("Enums.h");
         return new_module_settings_store;
     }();
     context.storage.declarations.normal_modules
@@ -6334,7 +6339,7 @@ TEST(PackedValue, ValidatesKnownEnumEncodedWidthWithoutEmittingPerValueAssertion
                          context.storage.strings.intern("Zero");
                      context.storage.declarations.enumerators
                          .initializer[context.storage.declarations.enumerators.index(
-                             new_enumerators)] = context.storage.strings.add("0");
+                             new_enumerators)] = context.storage.strings.intern("0");
                      return new_enumerators;
                  }(),
                  [&] {
@@ -6344,7 +6349,7 @@ TEST(PackedValue, ValidatesKnownEnumEncodedWidthWithoutEmittingPerValueAssertion
                          context.storage.strings.intern("High");
                      context.storage.declarations.enumerators
                          .initializer[context.storage.declarations.enumerators.index(
-                             new_enumerators)] = context.storage.strings.add("7");
+                             new_enumerators)] = context.storage.strings.intern("7");
                      return new_enumerators;
                  }(),
                  [&] {
@@ -6354,7 +6359,7 @@ TEST(PackedValue, ValidatesKnownEnumEncodedWidthWithoutEmittingPerValueAssertion
                          context.storage.strings.intern("COUNT");
                      context.storage.declarations.enumerators
                          .initializer[context.storage.declarations.enumerators.index(
-                             new_enumerators)] = context.storage.strings.add("8");
+                             new_enumerators)] = context.storage.strings.intern("8");
                      context.storage.declarations.enumerators
                          .display_name[context.storage.declarations.enumerators.index(
                              new_enumerators)] = std::nullopt;
@@ -6446,7 +6451,7 @@ TEST(PackedValue, OmitsSentinelAssertionWhenTheKnownEnumDomainExcludesIt) {
                          context.storage.strings.intern("Zero");
                      context.storage.declarations.enumerators
                          .initializer[context.storage.declarations.enumerators.index(
-                             new_enumerators)] = context.storage.strings.add("0");
+                             new_enumerators)] = context.storage.strings.intern("0");
                      return new_enumerators;
                  }(),
                  [&] {
@@ -6456,7 +6461,7 @@ TEST(PackedValue, OmitsSentinelAssertionWhenTheKnownEnumDomainExcludesIt) {
                          context.storage.strings.intern("COUNT");
                      context.storage.declarations.enumerators
                          .initializer[context.storage.declarations.enumerators.index(
-                             new_enumerators)] = context.storage.strings.add("5");
+                             new_enumerators)] = context.storage.strings.intern("5");
                      context.storage.declarations.enumerators
                          .display_name[context.storage.declarations.enumerators.index(
                              new_enumerators)] = std::nullopt;
@@ -6526,7 +6531,7 @@ TEST(PackedValue, ResolvesImplicitValuesAfterExplicitHexadecimalValues) {
                          context.storage.strings.intern("Zero");
                      context.storage.declarations.enumerators
                          .initializer[context.storage.declarations.enumerators.index(
-                             new_enumerators)] = context.storage.strings.add("0");
+                             new_enumerators)] = context.storage.strings.intern("0");
                      return new_enumerators;
                  }(),
                  [&] {
@@ -6536,7 +6541,7 @@ TEST(PackedValue, ResolvesImplicitValuesAfterExplicitHexadecimalValues) {
                          context.storage.strings.intern("High");
                      context.storage.declarations.enumerators
                          .initializer[context.storage.declarations.enumerators.index(
-                             new_enumerators)] = context.storage.strings.add("0x7");
+                             new_enumerators)] = context.storage.strings.intern("0x7");
                      return new_enumerators;
                  }(),
                  [&] {
@@ -6651,7 +6656,7 @@ TEST(PackedValue, RejectsKnownEnumValuesOutsideTheirUnderlyingType) {
                          context.storage.strings.intern("Zero");
                      context.storage.declarations.enumerators
                          .initializer[context.storage.declarations.enumerators.index(
-                             new_enumerators)] = context.storage.strings.add("0");
+                             new_enumerators)] = context.storage.strings.intern("0");
                      return new_enumerators;
                  }(),
                  [&] {
@@ -6661,7 +6666,7 @@ TEST(PackedValue, RejectsKnownEnumValuesOutsideTheirUnderlyingType) {
                          context.storage.strings.intern("Maximum");
                      context.storage.declarations.enumerators
                          .initializer[context.storage.declarations.enumerators.index(
-                             new_enumerators)] = context.storage.strings.add("255");
+                             new_enumerators)] = context.storage.strings.intern("255");
                      return new_enumerators;
                  }()});
         return new_enums;
@@ -6678,7 +6683,7 @@ TEST(PackedValue, RejectsKnownEnumValuesOutsideTheirUnderlyingType) {
                 auto row_0{context.storage.declarations.enumerators.clone(rows_1.back())};
                 context.storage.declarations.enumerators
                     .initializer[context.storage.declarations.enumerators.index(row_0)] =
-                    context.storage.strings.add("256");
+                    context.storage.strings.intern("256");
                 return row_0;
             }();
             return context.storage.declarations.range(rows_1);
@@ -6738,7 +6743,7 @@ TEST(PackedValue, AllowsEnumAliasesAndUsesStructuralCountSemantics) {
                          context.storage.strings.intern("Zero");
                      context.storage.declarations.enumerators
                          .initializer[context.storage.declarations.enumerators.index(
-                             new_enumerators)] = context.storage.strings.add("0");
+                             new_enumerators)] = context.storage.strings.intern("0");
                      return new_enumerators;
                  }(),
                  [&] {
@@ -6748,7 +6753,7 @@ TEST(PackedValue, AllowsEnumAliasesAndUsesStructuralCountSemantics) {
                          context.storage.strings.intern("Alias");
                      context.storage.declarations.enumerators
                          .initializer[context.storage.declarations.enumerators.index(
-                             new_enumerators)] = context.storage.strings.add("0");
+                             new_enumerators)] = context.storage.strings.intern("0");
                      return new_enumerators;
                  }()});
         return new_enums;
@@ -6764,7 +6769,7 @@ TEST(PackedValue, AllowsEnumAliasesAndUsesStructuralCountSemantics) {
                      context.storage.strings.intern("Zero");
                  context.storage.declarations.enumerators
                      .initializer[context.storage.declarations.enumerators.index(new_enumerators)] =
-                     context.storage.strings.add("0");
+                     context.storage.strings.intern("0");
                  return new_enumerators;
              }(),
              [&] {
@@ -6774,7 +6779,7 @@ TEST(PackedValue, AllowsEnumAliasesAndUsesStructuralCountSemantics) {
                      context.storage.strings.intern("High");
                  context.storage.declarations.enumerators
                      .initializer[context.storage.declarations.enumerators.index(new_enumerators)] =
-                     context.storage.strings.add("7");
+                     context.storage.strings.intern("7");
                  return new_enumerators;
              }(),
              [&] {
@@ -6784,7 +6789,7 @@ TEST(PackedValue, AllowsEnumAliasesAndUsesStructuralCountSemantics) {
                      context.storage.strings.intern("COUNT");
                  context.storage.declarations.enumerators
                      .initializer[context.storage.declarations.enumerators.index(new_enumerators)] =
-                     context.storage.strings.add("6");
+                     context.storage.strings.intern("6");
                  context.storage.declarations.enumerators
                      .display_name[context.storage.declarations.enumerators.index(
                          new_enumerators)] = std::nullopt;
@@ -6851,7 +6856,7 @@ TEST(PackedValue, EmitsCompactFallbackForOpaqueKnownEnumValues) {
                      context.storage.declarations.enumerators
                          .initializer[context.storage.declarations.enumerators.index(
                              new_enumerators)] =
-                         context.storage.strings.add("static_cast<uint8>(0)");
+                         context.storage.strings.intern("static_cast<uint8>(0)");
                      return new_enumerators;
                  }(),
                  [&] {
@@ -6862,7 +6867,7 @@ TEST(PackedValue, EmitsCompactFallbackForOpaqueKnownEnumValues) {
                      context.storage.declarations.enumerators
                          .initializer[context.storage.declarations.enumerators.index(
                              new_enumerators)] =
-                         context.storage.strings.add("static_cast<uint8>(7)");
+                         context.storage.strings.intern("static_cast<uint8>(7)");
                      return new_enumerators;
                  }()});
         return new_enums;
@@ -6916,7 +6921,7 @@ TEST(PackedValue, RejectsFieldsNarrowerThanEnumSemanticDomain) {
                     new_module_settings_store)] = context.storage.strings.intern("enums");
             context.storage.declarations.module_settings_store
                 .header[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = context.storage.strings.add("Enums.h");
+                    new_module_settings_store)] = context.storage.strings.intern("Enums.h");
             return new_module_settings_store;
         }();
         context.storage.declarations.normal_modules
@@ -6945,7 +6950,7 @@ TEST(PackedValue, RejectsFieldsNarrowerThanEnumSemanticDomain) {
                                      new_enumerators)] = context.storage.strings.intern("Idle");
                              context.storage.declarations.enumerators
                                  .initializer[context.storage.declarations.enumerators.index(
-                                     new_enumerators)] = context.storage.strings.add("0");
+                                     new_enumerators)] = context.storage.strings.intern("0");
                              return new_enumerators;
                          }(),
                          [&] {
@@ -6957,7 +6962,7 @@ TEST(PackedValue, RejectsFieldsNarrowerThanEnumSemanticDomain) {
                              context.storage.declarations.enumerators
                                  .initializer[context.storage.declarations.enumerators.index(
                                      new_enumerators)] =
-                                 context.storage.strings.add(std::move(maximum));
+                                 context.storage.strings.intern(std::move(maximum));
                              return new_enumerators;
                          }()});
                 context.storage.declarations.enums
@@ -7076,7 +7081,7 @@ TEST(PackedValue, DerivesAutoWidthFromEnumSemanticDomain) {
                 new_module_settings_store)] = context.storage.strings.intern("enums");
         context.storage.declarations.module_settings_store
             .header[context.storage.declarations.module_settings_store.index(
-                new_module_settings_store)] = context.storage.strings.add("Enums.h");
+                new_module_settings_store)] = context.storage.strings.intern("Enums.h");
         return new_module_settings_store;
     }();
     context.storage.declarations.normal_modules
@@ -7104,7 +7109,7 @@ TEST(PackedValue, DerivesAutoWidthFromEnumSemanticDomain) {
                          context.storage.strings.intern("Idle");
                      context.storage.declarations.enumerators
                          .initializer[context.storage.declarations.enumerators.index(
-                             new_enumerators)] = context.storage.strings.add("0");
+                             new_enumerators)] = context.storage.strings.intern("0");
                      return new_enumerators;
                  }(),
                  [&] {
@@ -7114,7 +7119,7 @@ TEST(PackedValue, DerivesAutoWidthFromEnumSemanticDomain) {
                          context.storage.strings.intern("Maximum");
                      context.storage.declarations.enumerators
                          .initializer[context.storage.declarations.enumerators.index(
-                             new_enumerators)] = context.storage.strings.add("7");
+                             new_enumerators)] = context.storage.strings.intern("7");
                      return new_enumerators;
                  }()});
         context.storage.declarations.enums

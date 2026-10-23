@@ -23,9 +23,8 @@ auto lower_schema_function(LoweringContext& context,
                            std::optional<std::string_view> body = std::nullopt) -> FunctionId;
 
 auto join(std::vector<std::string> const& values, std::string_view separator) -> std::string;
-auto join(LoweringContext const& context,
-          SchemaRange<IdentifierId> values,
-          std::string_view separator) -> std::string;
+auto join(LoweringContext const& context, SchemaRange<StringId> values, std::string_view separator)
+    -> std::string;
 auto join_lines(std::vector<std::string> const& values) -> std::string;
 auto join_lines(LoweringContext const& context, SchemaRange<StringId> values) -> std::string;
 auto source_include(LoweringContext const& context, ModuleSettingsId settings) -> std::string;

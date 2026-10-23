@@ -54,7 +54,7 @@ void scan_soa_columns(std::string_view const body,
 
 void validate_soa_body_columns(Declarations const& declarations,
                                DeclarationHandle schema,
-                               std::map<IdentifierId, DeclarationHandle> const& schemas,
+                               std::map<StringId, DeclarationHandle> const& schemas,
                                std::string_view body);
 
 }

@@ -17,7 +17,7 @@ struct FixedPointSchemas {
     [[nodiscard]] auto index(DeclarationHandle id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<std::uint8_t> signedness;
     std::vector<std::uint32_t> total_bits;
     std::vector<std::uint32_t> fractional_bits;

@@ -22,23 +22,23 @@ auto HomogeneousStorageTypes::index(TypeDefinitionId const id) const -> std::uin
     return row;
 }
 auto HomogeneousStorageTypes::components_of(TypeDefinitionId const id) const
-    -> std::span<IdentifierId const> {
+    -> std::span<StringId const> {
     auto const range{components[index(id)]};
     return std::span{components_values}.subspan(range.begin, range.count);
 }
 void HomogeneousStorageTypes::set_components(TypeDefinitionId const id,
-                                             std::span<IdentifierId const> const values) {
+                                             std::span<StringId const> const values) {
     components[index(id)] = {static_cast<std::uint32_t>(components_values.size()),
                              static_cast<std::uint32_t>(values.size())};
     components_values.insert(components_values.end(), values.begin(), values.end());
 }
 auto HomogeneousStorageTypes::input_members_of(TypeDefinitionId const id) const
-    -> std::span<IdentifierId const> {
+    -> std::span<StringId const> {
     auto const range{input_members[index(id)]};
     return std::span{input_members_values}.subspan(range.begin, range.count);
 }
 void HomogeneousStorageTypes::set_input_members(TypeDefinitionId const id,
-                                                std::span<IdentifierId const> const values) {
+                                                std::span<StringId const> const values) {
     input_members[index(id)] = {static_cast<std::uint32_t>(input_members_values.size()),
                                 static_cast<std::uint32_t>(values.size())};
     input_members_values.insert(input_members_values.end(), values.begin(), values.end());

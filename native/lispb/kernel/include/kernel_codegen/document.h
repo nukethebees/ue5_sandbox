@@ -24,9 +24,7 @@ struct Document {
     Emissions emissions;
     Modules modules;
     ExpandedVariants expanded_variants;
-    auto text(lispb::IdentifierId const id) const -> std::string {
-        return std::string{strings.view(id)};
-    }
+
     auto text(lispb::StringId const id) const -> std::string {
         return std::string{strings.view(id)};
     }

@@ -177,9 +177,9 @@ class Analyzer {
             }
             return;
         }
-        material_.settings.name = lispb::string_id(syntax_.identifier(syntax_.children(form)[1]));
+        material_.settings.name = syntax_.identifier(syntax_.children(form)[1]);
 
-        std::set<lispb::IdentifierId> clauses;
+        std::set<lispb::StringId> clauses;
         auto const count{syntax_.children(form).size()};
         for (std::size_t index{2}; index < count; ++index) {
             auto const& clause{syntax_.children(form)[index]};
@@ -453,14 +453,14 @@ class Analyzer {
             }
         }
 
-        auto const parameter{material_.parameters.append(
-            lispb::string_id(syntax_.identifier(syntax_.children(form)[2])),
-            type,
-            parameter_texture,
-            parameter_sampler,
-            {},
-            material_span(syntax_.token_span(form)),
-            parameter_defaults)};
+        auto const parameter{
+            material_.parameters.append(syntax_.identifier(syntax_.children(form)[2]),
+                                        type,
+                                        parameter_texture,
+                                        parameter_sampler,
+                                        {},
+                                        material_span(syntax_.token_span(form)),
+                                        parameter_defaults)};
         auto const node{material_.nodes.add_parameter(
             type, material_span(syntax_.token_span(form)), {}, parameter, parameter_sampler)};
         material_.parameters.node[parameter.value] = node;
@@ -489,7 +489,7 @@ class Analyzer {
             return;
         }
         symbols_.emplace(syntax_.identifier(syntax_.children(form)[1]), *node);
-        material_.bindings.append(lispb::string_id(syntax_.identifier(syntax_.children(form)[1])),
+        material_.bindings.append(syntax_.identifier(syntax_.children(form)[1]),
                                   *node,
                                   material_span(syntax_.token_span(form)));
     }
@@ -895,11 +895,10 @@ class Analyzer {
         }
         auto const result_type{static_cast<ValueType>(static_cast<unsigned>(ValueType::float1) +
                                                       static_cast<unsigned>(mask->size() - 1))};
-        return material_.nodes.add_component_mask(
-            result_type,
-            material_span(syntax_.token_span(form)),
-            std::array{*input},
-            lispb::string_id(syntax_.identifier(syntax_.children(form)[2])));
+        return material_.nodes.add_component_mask(result_type,
+                                                  material_span(syntax_.token_span(form)),
+                                                  std::array{*input},
+                                                  syntax_.identifier(syntax_.children(form)[2]));
     }
 
     auto standard_value(FormId const form, NodeKind const kind, ValueType const type)
@@ -1013,7 +1012,7 @@ class Analyzer {
         std::vector<CustomInputId> custom_inputs;
         inputs.reserve(syntax_.children(declarations).size());
         custom_inputs.reserve(syntax_.children(declarations).size());
-        std::set<lispb::IdentifierId> input_names;
+        std::set<lispb::StringId> input_names;
         for (auto const& declaration : syntax_.children(declarations)) {
             if (!syntax_.is_list(declaration) || syntax_.children(declaration).size() != 3) {
                 fail(syntax_.token_span(declaration),
@@ -1040,18 +1039,17 @@ class Analyzer {
             }
             inputs.push_back(*input);
             custom_inputs.push_back(material_.nodes.input_declarations.append(
-                lispb::string_id(syntax_.identifier(syntax_.children(declaration)[0])), type));
+                syntax_.identifier(syntax_.children(declaration)[0]), type));
         }
         if (custom_inputs.size() != syntax_.children(declarations).size()) {
             return std::nullopt;
         }
-        return material_.nodes.add_shader_call(
-            result_type,
-            material_span(syntax_.token_span(form)),
-            inputs,
-            syntax_.text_id(path_form),
-            lispb::string_id(syntax_.identifier(syntax_.children(form)[3])),
-            custom_inputs);
+        return material_.nodes.add_shader_call(result_type,
+                                               material_span(syntax_.token_span(form)),
+                                               inputs,
+                                               syntax_.text_id(path_form),
+                                               syntax_.identifier(syntax_.children(form)[3]),
+                                               custom_inputs);
     }
 
     auto per_instance_custom_data(FormId const form) -> std::optional<NodeHandle> {
@@ -1095,7 +1093,7 @@ class Analyzer {
         inputs.reserve(syntax_.children(declarations).size());
         custom_inputs.reserve(syntax_.children(declarations).size());
         lispb::StringId description;
-        std::set<lispb::IdentifierId> input_names;
+        std::set<lispb::StringId> input_names;
         for (auto const& declaration : syntax_.children(declarations)) {
             if (!syntax_.is_list(declaration) || syntax_.children(declaration).size() != 3) {
                 fail(syntax_.token_span(declaration),
@@ -1125,7 +1123,7 @@ class Analyzer {
             }
             inputs.push_back(*input);
             custom_inputs.push_back(material_.nodes.input_declarations.append(
-                lispb::string_id(syntax_.identifier(syntax_.children(declaration)[0])), type));
+                syntax_.identifier(syntax_.children(declaration)[0]), type));
         }
 
         std::size_t index{3};
@@ -1158,7 +1156,7 @@ class Analyzer {
                                           material_span(syntax_.token_span(form)),
                                           inputs,
                                           description,
-                                          material_.strings->add(code),
+                                          material_.strings->intern(code),
                                           custom_inputs);
     }
 
@@ -1166,7 +1164,7 @@ class Analyzer {
     lispb::codegen::sexpr::SourceFileId source_;
     TextureResolver resolver_;
     MaterialIR& material_;
-    std::unordered_map<lispb::IdentifierId, NodeHandle> symbols_;
+    std::unordered_map<lispb::StringId, NodeHandle> symbols_;
     std::size_t diagnostic_begin_;
 };
 

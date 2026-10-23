@@ -48,7 +48,7 @@ void describe_compact_scope(LoweringContext& context, RecordId record, Declarati
         return;
     }
     // Describe inherited runtime members and declarations retained as generated raw C++.
-    std::vector<IdentifierId> names;
+    std::vector<StringId> names;
     for (auto const name : {"StorageState",
                             "StorageOperations",
                             "CompactViewOperations",
@@ -165,7 +165,7 @@ void set_source_template(LoweringContext& context,
 auto column_access(LoweringContext& context,
                    LoweringPathId path,
                    std::string receiver,
-                   std::map<LoweringPathId, IdentifierId>& groups,
+                   std::map<LoweringPathId, StringId>& groups,
                    NodeListBuilder& body,
                    std::size_t prefix_count = 0) -> Expr {
     auto& ir{context.ir};
@@ -535,7 +535,7 @@ auto source_pointers_node(LoweringContext& context, SingleAllocationModelId mode
     NodeListBuilder body{ir};
     body.add(ir.raw("using " + context.text(model_store.runtime_namespace[model_store_index]) +
                     "source_data;"));
-    std::map<LoweringPathId, IdentifierId> groups;
+    std::map<LoweringPathId, StringId> groups;
     std::vector<Expr> pointers;
     for (auto const column : context.ir.lowering.items(model_store.columns[model_store_index])) {
         pointers.push_back(
@@ -618,8 +618,7 @@ auto live_column_copy_node(LoweringContext& context) -> NodeId {
 auto nested_view(LoweringContext& context,
                  SingleAllocationViewId view,
                  SoaMemberId member,
-                 std::map<IdentifierId, DeclarationHandle> const& schemas)
-    -> SingleAllocationViewId {
+                 std::map<StringId, DeclarationHandle> const& schemas) -> SingleAllocationViewId {
     auto& ir{context.ir};
     auto& views{ir.lowering.single_allocation_views};
     auto const parent_row{views.index(view)};
@@ -679,7 +678,7 @@ auto view_columns(LoweringContext& context, SingleAllocationViewId view)
 auto emit_resolved_views(LoweringContext& context,
                          SingleAllocationViewId view,
                          NodeListBuilder& source,
-                         std::map<IdentifierId, DeclarationHandle> const& schemas) -> Nodes {
+                         std::map<StringId, DeclarationHandle> const& schemas) -> Nodes {
     auto& ir{context.ir};
     auto& storage{ir.lowering};
     auto& views{storage.single_allocation_views};
@@ -913,7 +912,7 @@ auto emit_resolved_views(LoweringContext& context,
 
 auto compact_view_node(LoweringContext& context,
                        SingleAllocationViewId view,
-                       std::map<IdentifierId, DeclarationHandle> const& schemas) -> NodeId {
+                       std::map<StringId, DeclarationHandle> const& schemas) -> NodeId {
     auto& model_store{context.ir.lowering.single_allocation_models};
     auto& view_store{context.ir.lowering.single_allocation_views};
     auto const view_store_index{view_store.index(view)};
@@ -1081,7 +1080,7 @@ auto compact_view_node(LoweringContext& context,
         }
     }
     NodeListBuilder body{ir};
-    std::map<LoweringPathId, IdentifierId> groups;
+    std::map<LoweringPathId, StringId> groups;
     std::vector<Expr> arguments;
     for (auto const column :
          context.ir.lowering.items(model_store.columns[model_store.index(model)])) {
@@ -1229,7 +1228,7 @@ auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationMod
             .new_lines(1);
         constructor_initializers.push_back(
             ir.member_initializer(column_store.layout_identifier[column_store.index(column)],
-                                  ir.strings.add(previous_column)));
+                                  ir.strings.intern(previous_column)));
         previous_column = context.text(column_store.layout_identifier[column_store.index(column)]);
     }
     ir.set_function_body(constructor, {}, constructor_initializers);
@@ -1379,7 +1378,7 @@ namespace {
 auto emit_views(LoweringContext& context,
                 SingleAllocationViewId view,
                 NodeListBuilder& source,
-                std::map<IdentifierId, DeclarationHandle> const& schemas) -> Nodes {
+                std::map<StringId, DeclarationHandle> const& schemas) -> Nodes {
     auto& model_store{context.ir.lowering.single_allocation_models};
     auto& view_store{context.ir.lowering.single_allocation_views};
     auto const view_store_index{view_store.index(view)};
@@ -1453,8 +1452,7 @@ auto emit_views(LoweringContext& context,
 auto emit_single_allocation_views(LoweringContext& context,
                                   SingleAllocationModelId model,
                                   NodeListBuilder& source,
-                                  std::map<IdentifierId, DeclarationHandle> const& schemas)
-    -> Nodes {
+                                  std::map<StringId, DeclarationHandle> const& schemas) -> Nodes {
     auto& storage{context.ir.lowering};
     auto& views{storage.single_allocation_views};
     auto const& models{storage.single_allocation_models};
@@ -1476,7 +1474,7 @@ auto emit_single_allocation_views(LoweringContext& context,
 auto emit_single_allocation_container(LoweringContext& context,
                                       SingleAllocationModelId model,
                                       NodeListBuilder& source,
-                                      std::map<IdentifierId, DeclarationHandle> const& schemas)
+                                      std::map<StringId, DeclarationHandle> const& schemas)
     -> NodeId {
     auto& model_store{context.ir.lowering.single_allocation_models};
     auto const model_store_index{model_store.index(model)};

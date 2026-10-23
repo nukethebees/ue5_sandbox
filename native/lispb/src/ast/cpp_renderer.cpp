@@ -55,9 +55,9 @@
 namespace lispb::codegen {
 
 namespace environment_detail {
-auto components(Strings& strings, std::string name) -> std::vector<IdentifierId> {
+auto components(Strings& strings, std::string name) -> std::vector<StringId> {
     // Own the spelling while interning components, which can move the string buffer.
-    std::vector<IdentifierId> result;
+    std::vector<StringId> result;
     std::string_view remaining{name};
     if (remaining.starts_with("::")) {
         remaining.remove_prefix(2);
@@ -289,10 +289,10 @@ void CppRenderer::append_type(std::string& output, CppTypeId const type) {
             output += ir_.types.spelling(type);
             return;
         }
-        std::vector<IdentifierId> components;
+        std::vector<StringId> components;
         for (auto const component :
              std::span{ir_.types.name_components_}.subspan(shape.parts.begin, shape.parts.count)) {
-            components.push_back(IdentifierId{component.value});
+            components.push_back(component);
         }
         append_name(output, components);
     } else {
@@ -306,7 +306,7 @@ void CppRenderer::append_type(std::string& output, CppTypeId const type) {
         }
     }
 }
-void CppRenderer::append_name(std::string& output, std::span<IdentifierId const> components) {
+void CppRenderer::append_name(std::string& output, std::span<StringId const> components) {
     std::string canonical;
     for (auto const component : components) {
         if (!canonical.empty()) {
@@ -341,7 +341,7 @@ void CppRenderer::append_name(std::string& output, std::span<IdentifierId const>
 
 /* **************************************** */
 // Environments, expressions and nodes
-auto CppRenderer::declaration_name(Expr expression) -> IdentifierId {
+auto CppRenderer::declaration_name(Expr expression) -> StringId {
     while (expression.kind() == ExprKind::template_id) {
         expression = ir_.template_id_exprs_.callee[expression.index()];
     }
@@ -773,7 +773,7 @@ auto CppRenderer::signature(std::uint32_t index,
         output += "constexpr ";
     }
     auto const export_specifier{(declaration || header) ? ir_.functions_.export_specifier[id]
-                                                        : IdentifierId{}};
+                                                        : StringId{}};
     if (export_specifier.value != 0 && !format.export_after_return_type) {
         output += ir_.strings.view(export_specifier);
         output += ' ';

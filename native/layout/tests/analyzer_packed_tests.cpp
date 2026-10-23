@@ -6,7 +6,7 @@
 
 namespace ioj::layout::analyzer_packed_tests {
 
-static_assert(single_allocation_layout::supported_leaf<lispb::IdentifierId>);
+static_assert(single_allocation_layout::supported_leaf<lispb::StringId>);
 static_assert(single_allocation_layout::supported_leaf<std::optional<PhysicalFacts>>);
 static_assert(single_allocation_layout::supported_leaf<std::optional<EnumBacking>>);
 static_assert(single_allocation_layout::supported_leaf<std::optional<PackedLayout>>);

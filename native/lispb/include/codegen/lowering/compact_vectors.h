@@ -13,7 +13,7 @@ struct CompactVectors {
     auto index(CompactVectorId id) const -> std::uint32_t;
     void clear();
     std::vector<CppTypeId> element_type;
-    std::vector<SchemaRange<IdentifierId>> components;
+    std::vector<SchemaRange<StringId>> components;
     std::vector<CompactVectorKind> kind;
     std::vector<CppTypeId> equivalent_type;
 };

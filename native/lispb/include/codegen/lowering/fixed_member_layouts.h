@@ -14,6 +14,6 @@ struct FixedMemberLayouts {
     std::vector<SoaMemberId> source;
     std::vector<ResolvedMemberId> member;
     std::vector<SchemaRange<FixedLeafId>> leaves;
-    std::vector<IdentifierId> nested_storage_name;
+    std::vector<StringId> nested_storage_name;
 };
 }

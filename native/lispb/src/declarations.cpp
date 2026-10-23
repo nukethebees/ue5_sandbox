@@ -151,7 +151,6 @@ void Declarations::clear() {
     tagged_union_alternative_id_items_.clear();
     type_ref_id_items_.clear();
     union_alternative_id_items_.clear();
-    identifier_id_items_.clear();
     string_id_items_.clear();
 }
 

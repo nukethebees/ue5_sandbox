@@ -14,7 +14,7 @@ struct PackedReservedBitsSchemas {
     [[nodiscard]] auto index(PackedSegmentId id) const -> std::uint32_t;
     void clear();
 
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<int> bits;
 };
 

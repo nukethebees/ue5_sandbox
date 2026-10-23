@@ -39,7 +39,6 @@
 
 namespace slate_codegen::detail {
 namespace {
-using lispb::IdentifierId;
 using lispb::StringId;
 using lispb::codegen::Expr;
 using lispb::codegen::sexpr::SourceSpan;
@@ -116,17 +115,14 @@ class Renderer {
         nodes.push_back(
             ir_.namespace_node(ir_.strings.intern(namespace_name), std::move(children)));
         auto const file{
-            ir_.files.append(ir_.strings.add(output_path(owner).generic_string()), nodes)};
+            ir_.files.append(ir_.strings.intern(output_path(owner).generic_string()), nodes)};
         auto const file_index{ir_.files.index(file)};
-        ir_.files.source[file_index] = ir_.strings.add(source_path);
+        ir_.files.source[file_index] = ir_.strings.intern(source_path);
         ir_.files.flags[file_index].set_format_generated(true);
         ir_.modules.append(document_.declarations.names[index], file);
         return file;
     }
   private:
-    auto text(IdentifierId const id) const -> std::string {
-        return std::string{ir_.strings.view(id)};
-    }
     auto text(StringId const id) const -> std::string { return std::string{ir_.strings.view(id)}; }
 
     auto source_line(SourceSpan const span) -> lispb::codegen::NodeId {

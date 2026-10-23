@@ -43,8 +43,8 @@ class CppRenderer {
     // Types and environments
     /* **************************************** */
     void append_type(std::string& output, CppTypeId type);
-    void append_name(std::string& output, std::span<IdentifierId const> components);
-    auto declaration_name(Expr expression) -> IdentifierId;
+    void append_name(std::string& output, std::span<StringId const> components);
+    auto declaration_name(Expr expression) -> StringId;
     void collect_environment(EnvironmentId environment,
                              std::span<NodeId const> children,
                              bool bindings_known = false);

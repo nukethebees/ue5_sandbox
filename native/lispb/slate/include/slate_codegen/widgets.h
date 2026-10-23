@@ -9,8 +9,8 @@
 namespace slate_codegen::detail {
 
 struct Widgets {
-    std::vector<lispb::IdentifierId> types;
-    std::vector<lispb::IdentifierId> assigned_members;
+    std::vector<lispb::StringId> types;
+    std::vector<lispb::StringId> assigned_members;
     std::vector<Range> arguments;
     std::vector<ChildId> contents;
     std::vector<Range> named_slots;

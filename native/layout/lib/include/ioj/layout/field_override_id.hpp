@@ -11,6 +11,6 @@ struct FieldOverrideId {
     auto operator<=>(FieldOverrideId const&) const = default;
 
     lispb::schema::TypeId type;
-    lispb::IdentifierId field_name;
+    lispb::StringId field_name;
 };
 }

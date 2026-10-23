@@ -69,7 +69,7 @@ auto recognize_compact_vector(LoweringContext& context,
 
 auto build_single_allocation_model(LoweringContext& context,
                                    DeclarationHandle schema,
-                                   std::map<IdentifierId, DeclarationHandle> const& schemas,
+                                   std::map<StringId, DeclarationHandle> const& schemas,
                                    SoaBackend const backend) -> SingleAllocationModelId {
     auto& ir{context.ir};
     auto const& type_graph{context.semantic};
@@ -97,8 +97,8 @@ auto build_single_allocation_model(LoweringContext& context,
             : *sources.const_view_name[source_row];
     auto const native{backend == SoaBackend::standard_library};
     models.runtime_namespace[row] =
-        ir.strings.add(native ? "ioj::native_soa::" : "ioj::soa_storage::");
-    models.vector_namespace[row] = ir.strings.add(native ? "ioj::native_soa::" : "ioj::soa::");
+        ir.strings.intern(native ? "ioj::native_soa::" : "ioj::soa_storage::");
+    models.vector_namespace[row] = ir.strings.intern(native ? "ioj::native_soa::" : "ioj::soa::");
     models.size_type[row] = ir.types.intern(native ? "std::uint32_t" : "int32");
     models.byte_size_type[row] = ir.types.intern(native ? "std::size_t" : "SIZE_T");
     models.span_template[row] = ir.strings.intern(native ? "std::span" : "TArrayView");

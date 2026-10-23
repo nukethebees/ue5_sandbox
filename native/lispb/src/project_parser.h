@@ -21,7 +21,7 @@ class ProjectParser {
   private:
     auto paths(Project& project, codegen::sexpr::FormId form, std::string_view purpose)
         -> codegen::sexpr::HandleRange;
-    auto names(codegen::sexpr::FormId form, std::string_view purpose) -> std::vector<IdentifierId>;
+    auto names(codegen::sexpr::FormId form, std::string_view purpose) -> std::vector<StringId>;
     void output_path(Project& project,
                      TargetId target,
                      codegen::sexpr::FormId form,

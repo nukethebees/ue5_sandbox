@@ -13,7 +13,7 @@ struct SingleAllocationViews {
     std::vector<SingleAllocationModelId> model;
     std::vector<DeclarationHandle> schema;
     std::vector<LoweringPathId> member_prefix;
-    std::vector<IdentifierId> view_name;
-    std::vector<IdentifierId> const_view_name;
+    std::vector<StringId> view_name;
+    std::vector<StringId> const_view_name;
 };
 }

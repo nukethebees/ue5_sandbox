@@ -78,7 +78,7 @@ void Variants::set_packed_storage(VariantId const id,
 }
 void Variants::set_field_width(VariantId const id,
                                lispb::schema::DeclarationId const type,
-                               lispb::IdentifierId member,
+                               lispb::StringId member,
                                std::optional<std::uint32_t> const value) {
     auto& columns{edit(id)};
     auto const count{columns.field_types.size()};
@@ -107,7 +107,7 @@ void Variants::set_field_width(VariantId const id,
 }
 void Variants::set_column_type(VariantId const id,
                                lispb::schema::DeclarationId const type,
-                               lispb::IdentifierId member,
+                               lispb::StringId member,
                                std::optional<std::string> value) {
     auto& columns{edit(id)};
     auto const count{columns.column_types.size()};
@@ -156,8 +156,8 @@ void Variants::set_capacity(VariantId const id,
 }
 
 void Variants::rename_member(lispb::schema::DeclarationId const type,
-                             lispb::IdentifierId const old_name,
-                             lispb::IdentifierId const new_name) {
+                             lispb::StringId const old_name,
+                             lispb::StringId const new_name) {
     for (auto& columns : settings_) {
         auto const fields{columns.field_types.size()};
         for (std::size_t row{}; row < fields; ++row) {
@@ -173,8 +173,7 @@ void Variants::rename_member(lispb::schema::DeclarationId const type,
         }
     }
 }
-void Variants::erase_member(lispb::schema::DeclarationId const type,
-                            lispb::IdentifierId const name) {
+void Variants::erase_member(lispb::schema::DeclarationId const type, lispb::StringId const name) {
     auto const count{ids_.size()};
     for (std::size_t row{1}; row < count; ++row) {
         set_field_width(ids_[row], type, name, std::nullopt);

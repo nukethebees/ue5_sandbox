@@ -289,7 +289,7 @@ auto soa_view_struct_nodes(LoweringContext& context,
                            SoaFunctions const& functions,
                            LoweredSoa const& const_api,
                            LoweredSoa const& mutable_api,
-                           std::map<IdentifierId, DeclarationHandle> const*) -> Nodes {
+                           std::map<StringId, DeclarationHandle> const*) -> Nodes {
     auto& ir{context.ir};
     NodeListBuilder result{ir};
     return result.add(ir.forward_declaration(ir.strings.intern(view_name)), 1)

@@ -29,19 +29,19 @@ class Variants {
                             std::optional<std::string> value);
     void set_field_width(VariantId id,
                          lispb::schema::DeclarationId type,
-                         lispb::IdentifierId member,
+                         lispb::StringId member,
                          std::optional<std::uint32_t> value);
     void set_column_type(VariantId id,
                          lispb::schema::DeclarationId type,
-                         lispb::IdentifierId member,
+                         lispb::StringId member,
                          std::optional<std::string> value);
     void set_capacity(VariantId id,
                       lispb::schema::DeclarationId type,
                       std::optional<std::uint64_t> value);
     void rename_member(lispb::schema::DeclarationId type,
-                       lispb::IdentifierId old_name,
-                       lispb::IdentifierId new_name);
-    void erase_member(lispb::schema::DeclarationId type, lispb::IdentifierId name);
+                       lispb::StringId old_name,
+                       lispb::StringId new_name);
+    void erase_member(lispb::schema::DeclarationId type, lispb::StringId name);
     void erase_declaration(lispb::schema::DeclarationId type);
     auto operator==(Variants const&) const -> bool = default;
   private:

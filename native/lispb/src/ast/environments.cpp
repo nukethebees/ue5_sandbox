@@ -52,7 +52,7 @@ void Environments::mark_unknown(EnvironmentId environment) {
 }
 
 auto Environments::declare(EnvironmentId environment,
-                           IdentifierId name,
+                           StringId name,
                            CppDeclarationId declaration,
                            EnvironmentId introduced_scope) -> SymbolBinding {
     return bind(environment,
@@ -61,7 +61,7 @@ auto Environments::declare(EnvironmentId environment,
                  .declaring_scope = environment,
                  .introduced_scope = introduced_scope});
 }
-auto Environments::bind(EnvironmentId environment, IdentifierId name, SymbolBinding symbol)
+auto Environments::bind(EnvironmentId environment, StringId name, SymbolBinding symbol)
     -> SymbolBinding {
     assert(name.value != 0 && !symbol.declaration.is_null());
     auto& table{symbols_[index(environment)]};
@@ -73,14 +73,14 @@ auto Environments::bind(EnvironmentId environment, IdentifierId name, SymbolBind
     }
     return entry->second;
 }
-auto Environments::find_local(EnvironmentId environment, IdentifierId name) const -> SymbolBinding {
+auto Environments::find_local(EnvironmentId environment, StringId name) const -> SymbolBinding {
     auto const& table{symbols(environment)};
     auto const found{table.find(name)};
     return found == table.end() ? SymbolBinding{} : found->second;
 }
 auto Environments::named(EnvironmentId parent,
                          EnvironmentKind kind,
-                         IdentifierId name,
+                         StringId name,
                          CppDeclarationId declaration) -> EnvironmentId {
     auto const existing{find_local(parent, name)};
     if (!existing.introduced_scope.is_null()) {
@@ -108,8 +108,7 @@ void Environments::import_symbols(EnvironmentId destination, EnvironmentId sourc
     }
 }
 
-auto Environments::lookup_local(EnvironmentId environment, IdentifierId name) const
-    -> SymbolLookup {
+auto Environments::lookup_local(EnvironmentId environment, StringId name) const -> SymbolLookup {
     auto const symbol{find_local(environment, name)};
     if (symbol.declaration.is_null()) {
         return {.status = bindings_complete_[index(environment)] ? LookupStatus::missing
@@ -120,7 +119,7 @@ auto Environments::lookup_local(EnvironmentId environment, IdentifierId name) co
     }
     return {.status = LookupStatus::found, .symbol = symbol};
 }
-auto Environments::lookup(EnvironmentId environment, std::span<IdentifierId const> name) const
+auto Environments::lookup(EnvironmentId environment, std::span<StringId const> name) const
     -> SymbolLookup {
     assert(!name.empty());
     SymbolLookup result;
@@ -140,7 +139,7 @@ auto Environments::lookup(EnvironmentId environment, std::span<IdentifierId cons
     }
     return result;
 }
-auto Environments::reference(std::span<IdentifierId const> name) -> SymbolBinding {
+auto Environments::reference(std::span<StringId const> name) -> SymbolBinding {
     assert(!name.empty());
     auto environment{global()};
     auto const count{name.size()};
@@ -158,8 +157,8 @@ auto Environments::reference(std::span<IdentifierId const> name) -> SymbolBindin
     auto const declaration{CppDeclarationId{ExternalDeclarationId{external_declaration_count_++}}};
     return declare(environment, name.back(), declaration);
 }
-auto Environments::find_environment(EnvironmentId environment,
-                                    std::span<IdentifierId const> name) const -> EnvironmentId {
+auto Environments::find_environment(EnvironmentId environment, std::span<StringId const> name) const
+    -> EnvironmentId {
     assert(!name.empty());
     SymbolBinding result;
     for (auto current{environment}; !current.is_null(); current = parent(current)) {

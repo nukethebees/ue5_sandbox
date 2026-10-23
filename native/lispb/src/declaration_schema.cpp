@@ -71,10 +71,9 @@ auto rewrite_range(Store& store, SchemaRange<Id>& range, Rewrite const& rewrite)
 template <typename Store, typename Visitor>
 auto traverse_references(Store& store, DeclarationHandle declaration, Visitor const& visitor)
     -> DeclarationHandle {
-    auto role =
-        [](TypeReferenceCategory category, IdentifierId subject = {}, std::uint32_t index = 0) {
-            return TypeReferenceRole{.category = category, .subject = subject, .index = index};
-        };
+    auto role = [](TypeReferenceCategory category, StringId subject = {}, std::uint32_t index = 0) {
+        return TypeReferenceRole{.category = category, .subject = subject, .index = index};
+    };
     auto reference = [&](TypeReferenceRole location,
                          TypeRefId& id,
                          TypeReferenceKind kind = TypeReferenceKind::ordinary) {
@@ -365,7 +364,7 @@ auto traverse_references(Store& store, DeclarationHandle declaration, Visitor co
 auto soa_generated_cpp_names(Declarations const& declarations,
                              DeclarationHandle schema,
                              ModuleHandle module,
-                             bool includes_allocator_variants) -> std::vector<IdentifierId> {
+                             bool includes_allocator_variants) -> std::vector<StringId> {
     auto const& soas{declarations.soas};
     auto const schema_row{soas.index(schema)};
     auto const module_row{declarations.normal_modules.index(module)};
@@ -384,7 +383,7 @@ auto soa_generated_cpp_names(Declarations const& declarations,
                                           soas.const_view_name[schema_row]
                                       ? text(*soas.const_view_name[schema_row])
                                       : name + "SingleConstView"};
-    std::vector<IdentifierId> result;
+    std::vector<StringId> result;
     auto add = [&](std::string_view spelling) { result.push_back(strings.intern(spelling)); };
     add(name + "Schema");
     if (soas.emits_vector_storage(schema)) {
@@ -405,7 +404,7 @@ auto soa_generated_cpp_names(Declarations const& declarations,
         add(compact_view);
         add(compact_const_view);
         add(compact_view + "Impl");
-        std::vector<IdentifierId> ancestors{soas.name[schema_row]};
+        std::vector<StringId> ancestors{soas.name[schema_row]};
         auto collect_nested =
             [&](auto&& self, DeclarationHandle parent, std::string const& suffix) -> void {
             for (auto const member_id : declarations.items(soas.members[soas.index(parent)])) {
@@ -527,8 +526,7 @@ auto rewrite_type_references(
     return traverse_references(declarations, declaration, rewrite);
 }
 
-auto declaration_name(Declarations const& declarations, DeclarationHandle declaration)
-    -> IdentifierId {
+auto declaration_name(Declarations const& declarations, DeclarationHandle declaration) -> StringId {
     switch (declaration.kind()) {
         case DeclarationKind::enumeration:
             return declarations.enums.name[declarations.enums.index(declaration)];
@@ -579,7 +577,7 @@ auto declaration_name(Declarations const& declarations, DeclarationHandle declar
 
 auto generated_cpp_names(Declarations const& declarations,
                          DeclarationHandle declaration,
-                         ModuleHandle module) -> std::vector<IdentifierId> {
+                         ModuleHandle module) -> std::vector<StringId> {
     auto& strings{declarations.strings()};
     auto text = [&](auto id) { return std::string{strings.view(id)}; };
     auto const id{declaration_name(declarations, declaration)};
@@ -603,7 +601,7 @@ auto generated_cpp_names(Declarations const& declarations,
         case DeclarationKind::integer_scalar: {
             auto const& scalars{declarations.integer_scalars};
             auto const row{scalars.index(declaration)};
-            std::vector<IdentifierId> result;
+            std::vector<StringId> result;
             if (scalars.cpp_emission[row] == IntegerScalarCppEmission::alias) {
                 return {id};
             }
@@ -623,10 +621,10 @@ auto generated_cpp_names(Declarations const& declarations,
         case DeclarationKind::soa:
             return soa_generated_cpp_names(declarations, declaration, module, true);
         case DeclarationKind::vector_soa: {
-            std::vector<IdentifierId> result{strings.intern(name + "Schema"),
-                                             id,
-                                             strings.intern(name + "View"),
-                                             strings.intern(name + "ConstView")};
+            std::vector<StringId> result{strings.intern(name + "Schema"),
+                                         id,
+                                         strings.intern(name + "View"),
+                                         strings.intern(name + "ConstView")};
             auto const fixed{
                 declarations.vector_soas.fixed[declarations.vector_soas.index(declaration)]};
             if (fixed) {
@@ -639,7 +637,7 @@ auto generated_cpp_names(Declarations const& declarations,
             return result;
         }
         case DeclarationKind::homogeneous_layout: {
-            std::vector<IdentifierId> result{strings.intern("T" + name + "View")};
+            std::vector<StringId> result{strings.intern("T" + name + "View")};
             auto const values{declarations.items(
                 declarations.homogeneous_layouts
                     .value_types[declarations.homogeneous_layouts.index(declaration)])};

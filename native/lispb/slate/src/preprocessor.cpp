@@ -30,7 +30,7 @@
 namespace slate_codegen::detail {
 namespace {
 
-using lispb::IdentifierId;
+using lispb::StringId;
 using lispb::codegen::sexpr::FormId;
 using lispb::codegen::sexpr::HandleRange;
 using lispb::codegen::sexpr::SourceSpan;
@@ -108,7 +108,7 @@ class Preprocessor {
     }
   private:
     struct Argument {
-        IdentifierId parameter;
+        StringId parameter;
         FormId value;
     };
 
@@ -202,7 +202,7 @@ class Preprocessor {
         auto const macro{MacroId{static_cast<std::uint32_t>(macros_.bodies.size())}};
         auto const body{syntax_.children(form)[3]};
         auto const parameters_begin{static_cast<std::uint32_t>(macros_.parameter_names.size())};
-        std::set<IdentifierId> parameters;
+        std::set<StringId> parameters;
         auto const parameter_count{syntax_.children(syntax_.children(form)[2]).size()};
         for (std::size_t index{}; index < parameter_count; ++index) {
             auto const parameter{syntax_.children(syntax_.children(id)[2])[index]};
@@ -268,7 +268,7 @@ class Preprocessor {
         }
         auto head{syntax_.is_list(form) && !syntax_.children(form).empty()
                       ? syntax_.identifier(syntax_.child(form, 0))
-                      : IdentifierId{}};
+                      : StringId{}};
         for (auto const argument : arguments) {
             if (argument.parameter == head) {
                 head = syntax_.identifier(argument.value);
@@ -330,7 +330,7 @@ class Preprocessor {
     std::set<std::filesystem::path> loaded_files_;
     std::vector<std::filesystem::path> active_files_;
     Macros macros_;
-    std::map<IdentifierId, MacroId> macro_names_;
+    std::map<StringId, MacroId> macro_names_;
     std::vector<MacroId> active_macros_;
     std::size_t expanded_forms_{};
 };

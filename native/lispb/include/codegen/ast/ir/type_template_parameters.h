@@ -6,7 +6,7 @@
 #include <vector>
 namespace lispb::codegen::ir {
 struct TypeTemplateParameters {
-    std::vector<IdentifierId> name;
+    std::vector<StringId> name;
     std::vector<CppTypeId> default_type;
     std::vector<std::uint8_t> pack;
 };

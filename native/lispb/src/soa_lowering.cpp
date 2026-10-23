@@ -252,7 +252,7 @@ auto field_mask_nodes(LoweringContext& context,
 auto lower_soa_impl(LoweringContext& context,
                     DeclarationHandle schema,
                     Nodes storage_prelude,
-                    std::map<IdentifierId, DeclarationHandle> const* schemas = nullptr,
+                    std::map<StringId, DeclarationHandle> const* schemas = nullptr,
                     Nodes mutable_view_prelude = {},
                     Nodes view_prelude = {}) -> LoweredSoa {
     auto& ir{context.ir};
@@ -319,7 +319,7 @@ auto lower_soa_impl(LoweringContext& context,
         if (has_source_definition) {
             source.new_lines(2);
         }
-        source.add(ir.definition(spec, ir.strings.add(owner)));
+        source.add(ir.definition(spec, ir.strings.intern(owner)));
         has_source_definition = true;
     };
     source.append(std::move(custom_source)).new_lines(2);
@@ -351,7 +351,7 @@ auto lower_soa_impl(LoweringContext& context,
 
 auto lower_one_soa(LoweringContext& context,
                    DeclarationHandle schema,
-                   std::map<IdentifierId, DeclarationHandle> const& schemas,
+                   std::map<StringId, DeclarationHandle> const& schemas,
                    SoaBackend const backend) -> LoweredSoa {
     auto& ir{context.ir};
     auto const& type_graph{context.semantic};
@@ -421,7 +421,7 @@ auto lower_soa(LoweringContext& context,
 auto lower_soa_declaration(LoweringContext& context,
                            DeclarationHandle schema,
                            ModuleHandle module,
-                           std::map<IdentifierId, DeclarationHandle> const& schemas,
+                           std::map<StringId, DeclarationHandle> const& schemas,
                            std::optional<SoaAllocatorVariantId> const allocator_variant)
     -> DeclarationEmission {
     if (allocator_variant && !context.declarations.soas.emits_vector_storage(schema)) {

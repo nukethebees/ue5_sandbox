@@ -17,9 +17,9 @@ struct SettingsModuleSchemas {
     void clear();
 
     std::vector<ModuleSettingsId> settings;
-    std::vector<IdentifierId> api_name;
-    std::vector<IdentifierId> state_name;
-    std::vector<IdentifierId> export_specifier;
+    std::vector<StringId> api_name;
+    std::vector<StringId> state_name;
+    std::vector<StringId> export_specifier;
     std::vector<SchemaRange<SettingCategoryId>> categories;
     std::vector<SchemaRange<SettingId>> settings_list;
 };

@@ -8,9 +8,9 @@
 namespace lispb::schema {
 struct TypeIdentity {
     TypeOrigin origin{TypeOrigin::declaration};
-    IdentifierId module_name;
-    IdentifierId namespace_name;
-    IdentifierId name;
+    StringId module_name;
+    StringId namespace_name;
+    StringId name;
 
     auto operator<=>(TypeIdentity const&) const = default;
 };
