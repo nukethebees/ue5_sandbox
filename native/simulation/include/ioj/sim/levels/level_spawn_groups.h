@@ -144,11 +144,9 @@ struct LevelSpawnGroups
     // Lifetime
     /* **************************************** */
     LevelSpawnGroups() noexcept
-        : LevelSpawnGroups{std::pmr::get_default_resource()} {}
-    explicit LevelSpawnGroups(std::pmr::memory_resource* resource) noexcept
-        : resource_{resource} {
-        assert(resource != nullptr);
-    }
+        : LevelSpawnGroups{*std::pmr::get_default_resource()} {}
+    explicit LevelSpawnGroups(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~LevelSpawnGroups() { Operations::release_storage(*this); }
     LevelSpawnGroups(LevelSpawnGroups const&) = delete;

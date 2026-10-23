@@ -214,11 +214,9 @@ struct CapitalEntityData
     // Lifetime
     /* **************************************** */
     CapitalEntityData() noexcept
-        : CapitalEntityData{std::pmr::get_default_resource()} {}
-    explicit CapitalEntityData(std::pmr::memory_resource* resource) noexcept
-        : resource_{resource} {
-        assert(resource != nullptr);
-    }
+        : CapitalEntityData{*std::pmr::get_default_resource()} {}
+    explicit CapitalEntityData(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~CapitalEntityData() { Operations::release_storage(*this); }
     CapitalEntityData(CapitalEntityData const&) = delete;

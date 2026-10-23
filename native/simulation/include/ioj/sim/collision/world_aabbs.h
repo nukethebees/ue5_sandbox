@@ -153,11 +153,9 @@ struct WorldAABBs
     // Lifetime
     /* **************************************** */
     WorldAABBs() noexcept
-        : WorldAABBs{std::pmr::get_default_resource()} {}
-    explicit WorldAABBs(std::pmr::memory_resource* resource) noexcept
-        : resource_{resource} {
-        assert(resource != nullptr);
-    }
+        : WorldAABBs{*std::pmr::get_default_resource()} {}
+    explicit WorldAABBs(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~WorldAABBs() { Operations::release_storage(*this); }
     WorldAABBs(WorldAABBs const&) = delete;

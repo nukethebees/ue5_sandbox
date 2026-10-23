@@ -229,11 +229,9 @@ struct LaserSpawnRequests
     // Lifetime
     /* **************************************** */
     LaserSpawnRequests() noexcept
-        : LaserSpawnRequests{std::pmr::get_default_resource()} {}
-    explicit LaserSpawnRequests(std::pmr::memory_resource* resource) noexcept
-        : resource_{resource} {
-        assert(resource != nullptr);
-    }
+        : LaserSpawnRequests{*std::pmr::get_default_resource()} {}
+    explicit LaserSpawnRequests(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~LaserSpawnRequests() { Operations::release_storage(*this); }
     LaserSpawnRequests(LaserSpawnRequests const&) = delete;

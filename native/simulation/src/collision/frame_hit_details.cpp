@@ -2,7 +2,7 @@
 
 namespace ioj::sim::lasers {
 FrameHitDetails::FrameHitDetails(std::pmr::memory_resource* const scratch_resource)
-    : storage_{scratch_resource} {}
+    : storage_{*scratch_resource} {}
 
 void FrameHitDetails::reserve(std::uint32_t const count) {
     storage_.reserve(count);

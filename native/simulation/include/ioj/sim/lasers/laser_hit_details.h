@@ -179,11 +179,9 @@ struct LaserHitDetails
     // Lifetime
     /* **************************************** */
     LaserHitDetails() noexcept
-        : LaserHitDetails{std::pmr::get_default_resource()} {}
-    explicit LaserHitDetails(std::pmr::memory_resource* resource) noexcept
-        : resource_{resource} {
-        assert(resource != nullptr);
-    }
+        : LaserHitDetails{*std::pmr::get_default_resource()} {}
+    explicit LaserHitDetails(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~LaserHitDetails() { Operations::release_storage(*this); }
     LaserHitDetails(LaserHitDetails const&) = delete;

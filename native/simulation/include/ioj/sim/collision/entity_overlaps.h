@@ -138,11 +138,9 @@ struct EntityEntityOverlaps
     // Lifetime
     /* **************************************** */
     EntityEntityOverlaps() noexcept
-        : EntityEntityOverlaps{std::pmr::get_default_resource()} {}
-    explicit EntityEntityOverlaps(std::pmr::memory_resource* resource) noexcept
-        : resource_{resource} {
-        assert(resource != nullptr);
-    }
+        : EntityEntityOverlaps{*std::pmr::get_default_resource()} {}
+    explicit EntityEntityOverlaps(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~EntityEntityOverlaps() { Operations::release_storage(*this); }
     EntityEntityOverlaps(EntityEntityOverlaps const&) = delete;
@@ -399,11 +397,9 @@ struct EntityStaticOverlaps
     // Lifetime
     /* **************************************** */
     EntityStaticOverlaps() noexcept
-        : EntityStaticOverlaps{std::pmr::get_default_resource()} {}
-    explicit EntityStaticOverlaps(std::pmr::memory_resource* resource) noexcept
-        : resource_{resource} {
-        assert(resource != nullptr);
-    }
+        : EntityStaticOverlaps{*std::pmr::get_default_resource()} {}
+    explicit EntityStaticOverlaps(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~EntityStaticOverlaps() { Operations::release_storage(*this); }
     EntityStaticOverlaps(EntityStaticOverlaps const&) = delete;

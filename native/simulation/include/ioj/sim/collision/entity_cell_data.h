@@ -192,11 +192,9 @@ struct EntityCellData
     // Lifetime
     /* **************************************** */
     EntityCellData() noexcept
-        : EntityCellData{std::pmr::get_default_resource()} {}
-    explicit EntityCellData(std::pmr::memory_resource* resource) noexcept
-        : resource_{resource} {
-        assert(resource != nullptr);
-    }
+        : EntityCellData{*std::pmr::get_default_resource()} {}
+    explicit EntityCellData(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~EntityCellData() { Operations::release_storage(*this); }
     EntityCellData(EntityCellData const&) = delete;

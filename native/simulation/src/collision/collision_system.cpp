@@ -51,8 +51,8 @@ auto CollisionSystem::detect_overlaps(std::span<EntityId const> const overlap_ca
                                       FrameMemoryResource* const scratch_resource)
     -> DetectedOverlapsView {
     SANDBOX_PROFILE_SCOPE("CollisionSystem::detect_overlaps");
-    EntityEntityOverlaps entity_overlaps{scratch_resource};
-    EntityStaticOverlaps static_overlaps{scratch_resource};
+    EntityEntityOverlaps entity_overlaps{*scratch_resource};
+    EntityStaticOverlaps static_overlaps{*scratch_resource};
     collect_overlaps_for_candidates(
         overlap_candidates, entity_overlaps, static_overlaps, scratch_resource);
 

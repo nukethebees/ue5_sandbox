@@ -147,11 +147,9 @@ struct EntityDeathInfo
     // Lifetime
     /* **************************************** */
     EntityDeathInfo() noexcept
-        : EntityDeathInfo{std::pmr::get_default_resource()} {}
-    explicit EntityDeathInfo(std::pmr::memory_resource* resource) noexcept
-        : resource_{resource} {
-        assert(resource != nullptr);
-    }
+        : EntityDeathInfo{*std::pmr::get_default_resource()} {}
+    explicit EntityDeathInfo(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~EntityDeathInfo() { Operations::release_storage(*this); }
     EntityDeathInfo(EntityDeathInfo const&) = delete;

@@ -518,11 +518,9 @@ struct FighterEntityData
     // Lifetime
     /* **************************************** */
     FighterEntityData() noexcept
-        : FighterEntityData{std::pmr::get_default_resource()} {}
-    explicit FighterEntityData(std::pmr::memory_resource* resource) noexcept
-        : resource_{resource} {
-        assert(resource != nullptr);
-    }
+        : FighterEntityData{*std::pmr::get_default_resource()} {}
+    explicit FighterEntityData(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~FighterEntityData() { Operations::release_storage(*this); }
     FighterEntityData(FighterEntityData const&) = delete;
