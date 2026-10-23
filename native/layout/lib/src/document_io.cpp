@@ -24,6 +24,8 @@
 #include <stdexcept>
 
 namespace ioj::layout {
+using lispb::codegen::output_path_key;
+
 namespace document_io {
 using lispb::codegen::sexpr::SourceFileId;
 
@@ -487,8 +489,8 @@ auto Document::save_as(std::filesystem::path const& path, std::string_view targe
         auto const registry{has_project
                                 ? std::filesystem::path{strings.view(value.io.registry_path)}
                                 : root / "types.lispb"};
-        std::set<std::string> destinations{lispb::codegen::output_path_key(destination)};
-        if (!destinations.insert(lispb::codegen::output_path_key(registry)).second) {
+        std::set<std::string> destinations{output_path_key(destination)};
+        if (!destinations.insert(output_path_key(registry)).second) {
             throw std::invalid_argument{"Project destination collides with the type registry"};
         }
         if (!has_project && std::filesystem::exists(registry)) {
@@ -500,7 +502,7 @@ auto Document::save_as(std::filesystem::path const& path, std::string_view targe
                 "\n    :sources (";
         for (auto const& source : rendered) {
             auto const source_path{root / document_io::relative_path(source.path)};
-            if (!destinations.insert(lispb::codegen::output_path_key(source_path)).second) {
+            if (!destinations.insert(output_path_key(source_path)).second) {
                 throw std::invalid_argument{
                     "Source destination collides with another project file: " +
                     source_path.string()};

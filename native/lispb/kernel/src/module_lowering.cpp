@@ -118,19 +118,20 @@ auto lower_expression(lispb::codegen::CppIR& cpp,
             return cpp.raw_expr("(-" + prefix + "infinity())");
         }
         case ExpressionKind::binary: {
-            lispb::codegen::BinaryOperator operation{};
+            using BinOp = lispb::codegen::BinaryOperator;
+            BinOp operation{};
             switch (document.expressions.operation(expression)) {
                 case BinaryOperator::add:
-                    operation = lispb::codegen::BinaryOperator::add;
+                    operation = BinOp::add;
                     break;
                 case BinaryOperator::subtract:
-                    operation = lispb::codegen::BinaryOperator::subtract;
+                    operation = BinOp::subtract;
                     break;
                 case BinaryOperator::multiply:
-                    operation = lispb::codegen::BinaryOperator::multiply;
+                    operation = BinOp::multiply;
                     break;
                 case BinaryOperator::divide:
-                    operation = lispb::codegen::BinaryOperator::divide;
+                    operation = BinOp::divide;
                     break;
             }
             auto const left{lower_expression(cpp,

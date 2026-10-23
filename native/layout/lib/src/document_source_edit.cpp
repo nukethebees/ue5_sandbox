@@ -9,6 +9,8 @@
 #include <stdexcept>
 
 namespace ioj::layout {
+using lispb::codegen::ModuleKind;
+
 namespace source_edit {
 auto normalized(std::string_view path) -> std::string {
     auto const value{std::filesystem::path{path}.lexically_normal()};
@@ -38,7 +40,7 @@ void DocumentState::edit_source(std::string_view operation,
         for (auto const module : parsed.modules) {
             source_files.emplace(module, file);
             candidate.modules.push_back(module);
-            if (module.kind() == lispb::codegen::ModuleKind::normal) {
+            if (module.kind() == ModuleKind::normal) {
                 auto const& store{storage().declarations};
                 for (auto const declaration : store.items(
                          store.normal_modules.declarations[store.normal_modules.index(module)])) {
@@ -67,7 +69,7 @@ void DocumentState::edit_source(std::string_view operation,
                 continue;
             }
             first = std::min(first, index);
-            if (module.kind() != lispb::codegen::ModuleKind::normal) {
+            if (module.kind() != ModuleKind::normal) {
                 continue;
             }
             auto const settings{store.module_settings(module)};
@@ -84,7 +86,7 @@ void DocumentState::edit_source(std::string_view operation,
         auto const parsed{lispb::codegen::parse_module_source(storage(), file)};
         for (auto const module : parsed.modules) {
             source_files.emplace(module, file);
-            if (module.kind() != lispb::codegen::ModuleKind::normal) {
+            if (module.kind() != ModuleKind::normal) {
                 continue;
             }
             auto const settings{store.module_settings(module)};

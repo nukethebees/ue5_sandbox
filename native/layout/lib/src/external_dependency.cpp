@@ -12,6 +12,8 @@
 #include <utility>
 
 namespace ioj::layout {
+using lispb::codegen::native_spelling;
+
 auto external_dependencies(lispb::schema::TypeGraph const& types)
     -> std::vector<ExternalDependency> {
     std::map<std::string, ExternalDependency> grouped;
@@ -34,10 +36,10 @@ auto external_dependencies(lispb::schema::TypeGraph const& types)
             std::string{types.strings().view(types.cpp_spelling(node))} == "decltype(auto)") {
             continue;
         }
-        auto& entry{grouped[lispb::codegen::native_spelling(
-            std::string{types.strings().view(types.cpp_spelling(node))})]};
-        entry.cpp_spelling = lispb::codegen::native_spelling(
-            std::string{types.strings().view(types.cpp_spelling(node))});
+        auto& entry{
+            grouped[native_spelling(std::string{types.strings().view(types.cpp_spelling(node))})]};
+        entry.cpp_spelling =
+            native_spelling(std::string{types.strings().view(types.cpp_spelling(node))});
         entry.types.push_back(lispb::schema::TypeId{static_cast<std::uint32_t>(index)});
         entry.semantics_known =
             entry.semantics_known ||
@@ -57,8 +59,8 @@ auto external_dependencies(lispb::schema::TypeGraph const& types)
         if (!((types.definition(node)).kind() == lispb::schema::TypeDefinitionKind::external)) {
             continue;
         }
-        auto const found{grouped.find(lispb::codegen::native_spelling(
-            std::string{types.strings().view(types.cpp_spelling(node))}))};
+        auto const found{grouped.find(
+            native_spelling(std::string{types.strings().view(types.cpp_spelling(node))}))};
         if (found == grouped.end()) {
             continue;
         }

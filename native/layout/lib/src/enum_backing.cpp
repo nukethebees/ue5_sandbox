@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 
 namespace ioj::layout::analysis_detail {
 
@@ -17,38 +18,43 @@ auto enum_domain_fits_backing(EnumCodeValue const minimum,
                               lispb::schema::EnumSignedness signedness,
                               std::optional<std::uint32_t> unsigned_value_bits,
                               std::uint64_t const backing_bits) -> std::optional<bool> {
-    if (signedness == lispb::schema::EnumSignedness::unspecified) {
-        return std::nullopt;
-    }
-    if (signedness == lispb::schema::EnumSignedness::unsigned_) {
-        if (!unsigned_value_bits.has_value()) {
+    using enum lispb::schema::EnumSignedness;
+    switch (signedness) {
+        case unspecified:
             return std::nullopt;
+        case unsigned_: {
+            if (!unsigned_value_bits.has_value()) {
+                return std::nullopt;
+            }
+            auto const maximum_value{maximum_unsigned_value(*unsigned_value_bits)};
+            return maximum_value.has_value() && !minimum.negative && !maximum.negative &&
+                   maximum.magnitude <= *maximum_value;
         }
-        auto const maximum_value{maximum_unsigned_value(*unsigned_value_bits)};
-        return maximum_value.has_value() && !minimum.negative && !maximum.negative &&
-               maximum.magnitude <= *maximum_value;
+        case signed_: {
+            if (backing_bits == 0 || backing_bits > 64) {
+                return std::nullopt;
+            }
+            auto const negative_magnitude_limit{backing_bits == 64
+                                                    ? (std::uint64_t{1} << 63)
+                                                    : (std::uint64_t{1} << (backing_bits - 1))};
+            auto const positive_limit{negative_magnitude_limit - 1};
+            auto const minimum_fits{!minimum.negative ||
+                                    minimum.magnitude <= negative_magnitude_limit};
+            auto const maximum_fits{maximum.negative || maximum.magnitude <= positive_limit};
+            return minimum_fits && maximum_fits;
+        }
     }
-    if (backing_bits == 0 || backing_bits > 64) {
-        return std::nullopt;
-    }
-    auto const negative_magnitude_limit{
-        backing_bits == 64 ? (std::uint64_t{1} << 63) : (std::uint64_t{1} << (backing_bits - 1))};
-    auto const positive_limit{negative_magnitude_limit - 1};
-    auto const minimum_fits{!minimum.negative || minimum.magnitude <= negative_magnitude_limit};
-    auto const maximum_fits{maximum.negative || maximum.magnitude <= positive_limit};
-    return minimum_fits && maximum_fits;
+    std::unreachable();
 }
 
 auto derived_enum_backing_type(lispb::schema::TypeGraph const& types,
                                lispb::schema::TypeDefinitionId const& enumeration)
     -> std::optional<std::string> {
     auto const& domains{types.enum_domains()};
-    auto const domain{
-        types.definitions().enums.domain[types.definitions().enums.index(enumeration)]};
+    auto const& enums{types.definitions().enums};
+    auto const row{enums.index(enumeration)};
     auto const requirement{lispb::schema::derive_enum_storage_requirement(
-        domains,
-        domain,
-        types.definitions().enums.bit_width[types.definitions().enums.index(enumeration)])};
+        domains, enums.domain[row], enums.bit_width[row])};
     if (!requirement.has_value()) {
         return std::nullopt;
     }

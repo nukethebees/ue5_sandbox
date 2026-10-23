@@ -5,11 +5,13 @@
 #include <utility>
 
 namespace ioj::layout {
+using lispb::codegen::DeclarationHandle;
+
 DocumentState::DocumentState(EditorSession& owner, DocumentId identity)
     : session{&owner}
     , id{identity}
     , history{owner, identity} {}
-auto DocumentState::register_declaration(lispb::codegen::DeclarationHandle declaration)
+auto DocumentState::register_declaration(DeclarationHandle declaration)
     -> lispb::schema::DeclarationId {
     if (auto const found{declaration_ids.find(declaration)}; found != declaration_ids.end()) {
         return found->second;
@@ -22,8 +24,7 @@ auto DocumentState::register_declaration(lispb::codegen::DeclarationHandle decla
     declaration_ids.emplace(declaration, found->second);
     return found->second;
 }
-void DocumentState::inherit_declaration(lispb::codegen::DeclarationHandle before,
-                                        lispb::codegen::DeclarationHandle after) {
+void DocumentState::inherit_declaration(DeclarationHandle before, DeclarationHandle after) {
     declaration_ids.emplace(after, declaration_ids.at(before));
     comments.inherit(before, after);
 }

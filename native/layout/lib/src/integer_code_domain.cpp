@@ -10,6 +10,7 @@
 #include <optional>
 
 namespace ioj::layout::analysis_detail {
+using lispb::codegen::PackedIntegerValue;
 
 auto maximum_unsigned_value(std::uint32_t const bits) -> std::optional<std::uint64_t> {
     if (bits > 64) {
@@ -54,8 +55,7 @@ auto minimum_bits_for_code_count(ExactCodeCount const count) -> std::uint32_t {
     return bits;
 }
 
-auto packed_range_count(lispb::codegen::PackedIntegerValue const minimum,
-                        lispb::codegen::PackedIntegerValue const maximum)
+auto packed_range_count(PackedIntegerValue const minimum, PackedIntegerValue const maximum)
     -> std::optional<std::uint64_t> {
     if (lispb::codegen::packed_integer_less(maximum, minimum)) {
         return std::nullopt;
@@ -70,8 +70,7 @@ auto packed_range_count(lispb::codegen::PackedIntegerValue const minimum,
     return through_zero.has_value() ? checked_add(*through_zero, 1) : std::nullopt;
 }
 
-auto packed_range_span(lispb::codegen::PackedIntegerValue const minimum,
-                       lispb::codegen::PackedIntegerValue const maximum)
+auto packed_range_span(PackedIntegerValue const minimum, PackedIntegerValue const maximum)
     -> std::optional<std::uint64_t> {
     if (lispb::codegen::packed_integer_less(maximum, minimum)) {
         return std::nullopt;
@@ -85,7 +84,7 @@ auto packed_range_span(lispb::codegen::PackedIntegerValue const minimum,
     return checked_add(minimum.magnitude, maximum.magnitude);
 }
 
-auto packed_integer_as_long_double(lispb::codegen::PackedIntegerValue const value) -> long double {
+auto packed_integer_as_long_double(PackedIntegerValue const value) -> long double {
     auto const magnitude{static_cast<long double>(value.magnitude)};
     return value.negative ? -magnitude : magnitude;
 }

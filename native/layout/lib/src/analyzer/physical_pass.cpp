@@ -28,6 +28,8 @@
 #include <vector>
 
 namespace ioj::layout::analysis_detail {
+using lispb::codegen::classify_physical_type_use;
+using lispb::codegen::PhysicalTypeForm;
 
 auto retain_facts(AnalysisContext& context, TypeFacts const& facts) -> PhysicalFactId {
     using Signedness = lispb::schema::EnumSignedness;
@@ -65,10 +67,10 @@ auto physical_use(AnalysisContext& context,
                   AbiProfile const& abi,
                   lispb::schema::TypeId type,
                   lispb::codegen::CppTypeId cpp_type,
-                  lispb::codegen::PhysicalTypeForm form,
+                  PhysicalTypeForm form,
                   lispb::StringId object_spelling,
                   bool names_semantic_type) -> std::optional<PhysicalFactId> {
-    using Form = lispb::codegen::PhysicalTypeForm;
+    using Form = PhysicalTypeForm;
     auto const& types{context.types};
     if (form == Form::unsupported) {
         context.report({DiagnosticSeverity::warning,
@@ -131,7 +133,7 @@ auto physical_spelling(AnalysisContext& context,
                        lispb::codegen::ModuleHandle module) -> std::optional<PhysicalFactId> {
     auto const& types{context.types};
     auto const cpp{types.cpp_types().intern(spelling)};
-    auto const physical{lispb::codegen::classify_physical_type_use(types.cpp_types(), cpp)};
+    auto const physical{classify_physical_type_use(types.cpp_types(), cpp)};
     auto const target{types.find_named(types.strings().find(spelling), module)};
     return physical_use(context,
                         scenario,
@@ -152,18 +154,13 @@ auto append_component(AnalysisContext& context,
                       lispb::schema::ResolvedOccurrenceId occurrence,
                       std::uint64_t count) -> std::size_t {
     auto& members{context.storage.components};
-    auto const row{members.append()};
-    members.parent()[row] = parent;
-    members.name()[row] = name;
-    members.tag()[row] = tag;
-    members.semantic_type()[row] =
-        context.types.occurrences().type[context.types.occurrences().index(occurrence)];
-    members.element_count()[row] = count;
-    members.element_facts()[row] = physical_occurrence(context, scenario, abi, occurrence);
-    if (members.element_facts()[row]) {
-        members.extent_bytes()[row] = checked_multiply(
-            context.storage.physical_facts.size_bytes()[members.element_facts()[row]->value],
-            count);
+    auto const& occurrences{context.types.occurrences()};
+    auto const semantic_type{occurrences.type[occurrences.index(occurrence)]};
+    auto const facts{physical_occurrence(context, scenario, abi, occurrence)};
+    auto const row{members.add(parent, name, tag, semantic_type, count, facts, {}, {}, {}, {})};
+    if (facts) {
+        members.extent_bytes()[row] =
+            checked_multiply(context.storage.physical_facts.size_bytes()[facts->value], count);
         if (!members.extent_bytes()[row]) {
             context.report(
                 {DiagnosticSeverity::error,
@@ -449,7 +446,7 @@ void derive_leaf(AnalysisContext& context,
             return;
         case Kind::external: {
             auto const cpp{definitions.externals.cpp_type[definitions.externals.index(definition)]};
-            auto const physical{lispb::codegen::classify_physical_type_use(types.cpp_types(), cpp)};
+            auto const physical{classify_physical_type_use(types.cpp_types(), cpp)};
             facts = physical_use(
                 context, scenario, abi, type, cpp, physical.form, physical.object_spelling, false);
             return;
@@ -526,7 +523,7 @@ void analyze_physical_layouts(AnalysisContext& context,
             }
             auto const row{occurrences.index(use)};
             if (occurrences.names_semantic_type[row] &&
-                occurrences.physical_form[row] == lispb::codegen::PhysicalTypeForm::value &&
+                occurrences.physical_form[row] == PhysicalTypeForm::value &&
                 lispb::schema::is_valid(occurrences.type[row])) {
                 dependency(type, occurrences.type[row]);
             }
@@ -535,10 +532,10 @@ void analyze_physical_layouts(AnalysisContext& context,
             override != variant.overrides.packed_storage_types.end()) {
             auto const target{
                 types.find_named(types.strings().find(override->second), types.module(type))};
-            auto const form{lispb::codegen::classify_physical_type_use(
-                                types.cpp_types(), types.cpp_types().intern(override->second))
+            auto const form{classify_physical_type_use(types.cpp_types(),
+                                                       types.cpp_types().intern(override->second))
                                 .form};
-            if (target && form == lispb::codegen::PhysicalTypeForm::value) {
+            if (target && form == PhysicalTypeForm::value) {
                 dependency(type, *target);
             }
         }

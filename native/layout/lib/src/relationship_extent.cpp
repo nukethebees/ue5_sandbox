@@ -20,6 +20,9 @@
 #include <string_view>
 
 namespace ioj::layout::analysis_detail {
+using lispb::codegen::PackedIntegerValue;
+using lispb::codegen::semantic_relation_kind_name;
+using lispb::codegen::SemanticRelationKind;
 
 auto relationship_extent_requirement(std::uint64_t const extent,
                                      bool const includes_terminal_count,
@@ -80,16 +83,15 @@ auto relationship_code_space_extent_limit(std::uint32_t const width,
     return code_count - *overhead;
 }
 
-auto relationship_semantic_extent_limit(
-    lispb::codegen::SemanticRelationKind const kind,
-    std::optional<lispb::codegen::PackedIntegerValue> const minimum_value,
-    std::optional<lispb::codegen::PackedIntegerValue> const maximum_value)
+auto relationship_semantic_extent_limit(SemanticRelationKind const kind,
+                                        std::optional<PackedIntegerValue> const minimum_value,
+                                        std::optional<PackedIntegerValue> const maximum_value)
     -> std::optional<std::uint64_t> {
     if (!minimum_value.has_value() || !maximum_value.has_value() || minimum_value->negative ||
         minimum_value->magnitude != 0 || maximum_value->negative) {
         return std::nullopt;
     }
-    if (kind == lispb::codegen::SemanticRelationKind::count_of) {
+    if (kind == SemanticRelationKind::count_of) {
         return maximum_value->magnitude;
     }
     if (maximum_value->magnitude == maximum_unsigned_code) {
@@ -100,7 +102,7 @@ auto relationship_semantic_extent_limit(
 
 auto relationship_sentinel_extent_limit(
     lispb::codegen::Declarations const& declarations,
-    lispb::codegen::SemanticRelationKind const kind,
+    SemanticRelationKind const kind,
     lispb::codegen::SchemaRange<lispb::codegen::PackedNamedCodeId> const named_codes)
     -> std::optional<std::uint64_t> {
     auto limit{maximum_analysis_count};
@@ -112,13 +114,13 @@ auto relationship_sentinel_extent_limit(
         }
         if (declarations.packed_named_codes.value[declarations.packed_named_codes.index(code)]
                 .negative ||
-            (kind == lispb::codegen::SemanticRelationKind::count_of &&
+            (kind == SemanticRelationKind::count_of &&
              declarations.packed_named_codes.value[declarations.packed_named_codes.index(code)]
                      .magnitude == 0)) {
             return std::nullopt;
         }
         auto const candidate{
-            kind == lispb::codegen::SemanticRelationKind::count_of
+            kind == SemanticRelationKind::count_of
                 ? declarations.packed_named_codes.value[declarations.packed_named_codes.index(code)]
                           .magnitude -
                       1
@@ -133,13 +135,13 @@ auto analyze_unsigned_relationship_extent(
     AnalysisContext& analysis,
     lispb::codegen::Declarations const& declarations,
     std::string_view const context,
-    lispb::codegen::SemanticRelationKind const kind,
+    SemanticRelationKind const kind,
     std::uint64_t const target_extent,
     lispb::codegen::SchemaRange<lispb::codegen::PackedNamedCodeId> const named_codes,
     std::uint32_t const width,
-    std::optional<lispb::codegen::PackedIntegerValue> const minimum_value,
-    std::optional<lispb::codegen::PackedIntegerValue> const maximum_value) -> RelationshipMetrics {
-    auto const includes_terminal_count{kind == lispb::codegen::SemanticRelationKind::count_of};
+    std::optional<PackedIntegerValue> const minimum_value,
+    std::optional<PackedIntegerValue> const maximum_value) -> RelationshipMetrics {
+    auto const includes_terminal_count{kind == SemanticRelationKind::count_of};
     auto const sentinel_count{static_cast<std::uint64_t>(
         std::ranges::count_if(declarations.items(named_codes), [&](auto id) {
             return declarations.packed_named_codes
@@ -197,7 +199,7 @@ auto analyze_unsigned_relationship_extent(
                                      declarations.packed_named_codes
                                          .name[declarations.packed_named_codes.index(code)])} +
                                  "' collides with the live values required by its '" +
-                                 std::string{lispb::codegen::semantic_relation_kind_name(kind)} +
+                                 std::string{semantic_relation_kind_name(kind)} +
                                  "' target extent."});
         }
     }
@@ -205,9 +207,7 @@ auto analyze_unsigned_relationship_extent(
     auto numeric_bits{std::uint32_t{1}};
     if (has_live_value || sentinel_count != 0) {
         auto const numeric_requirement{lispb::codegen::minimum_packed_integer_bits(
-            lispb::codegen::PackedIntegerValue{0},
-            lispb::codegen::PackedIntegerValue{maximum_encoded_value},
-            false)};
+            PackedIntegerValue{0}, PackedIntegerValue{maximum_encoded_value}, false)};
         numeric_bits = numeric_requirement.value_or(65);
     }
     result.minimum_required_bits = std::max(requirement.minimum_code_count_bits, numeric_bits);
@@ -224,8 +224,7 @@ auto analyze_unsigned_relationship_extent(
     if (!result.width_sufficient) {
         analysis.report({DiagnosticSeverity::error,
                          std::string{context} + " uses " + std::to_string(width) +
-                             " bits but its '" +
-                             std::string{lispb::codegen::semantic_relation_kind_name(kind)} +
+                             " bits but its '" + std::string{semantic_relation_kind_name(kind)} +
                              "' target extent requires at least " +
                              std::to_string(result.minimum_required_bits) + " bits."});
     }
@@ -235,8 +234,7 @@ auto analyze_unsigned_relationship_extent(
         analysis.report({DiagnosticSeverity::error,
                          std::string{context} +
                              " semantic range does not cover the live values required by its '" +
-                             std::string{lispb::codegen::semantic_relation_kind_name(kind)} +
-                             "' target extent."});
+                             std::string{semantic_relation_kind_name(kind)} + "' target extent."});
     }
     return result;
 }

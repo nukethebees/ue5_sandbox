@@ -26,16 +26,16 @@
 #include <string_view>
 
 namespace ioj::layout {
+using lispb::codegen::PhysicalTypeForm;
+
 namespace {
 
 auto probe_error(lispb::codegen::CppTypes const& types,
                  std::string const& spelling,
-                 lispb::codegen::PhysicalTypeForm const form,
+                 PhysicalTypeForm const form,
                  lispb::StringId const object_spelling) -> std::optional<std::string> {
-    if ((form != lispb::codegen::PhysicalTypeForm::value &&
-         form != lispb::codegen::PhysicalTypeForm::object_pointer) ||
-        (form == lispb::codegen::PhysicalTypeForm::value &&
-         types.strings().view(object_spelling) == "void") ||
+    if ((form != PhysicalTypeForm::value && form != PhysicalTypeForm::object_pointer) ||
+        (form == PhysicalTypeForm::value && types.strings().view(object_spelling) == "void") ||
         types.strings().view(object_spelling) == "auto" ||
         spelling.find_first_of(";{}\r\n\"#") != std::string::npos) {
         return "Cannot probe unsupported complete-object spelling: " + spelling;
@@ -79,7 +79,7 @@ auto external_probe_request(lispb::schema::TypeGraph const& types, lispb::schema
         }
     }};
     auto const collect{[&](lispb::codegen::CppTypeId cpp_type,
-                           lispb::codegen::PhysicalTypeForm const form,
+                           PhysicalTypeForm const form,
                            lispb::StringId const object_spelling) {
         auto const spelling{std::string{types.cpp_types().spelling(cpp_type)}};
         if (auto const error{probe_error(types.cpp_types(), spelling, form, object_spelling)}) {

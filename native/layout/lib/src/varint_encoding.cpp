@@ -8,6 +8,8 @@
 #include <cstdint>
 
 namespace ioj::layout::analysis_detail {
+using lispb::codegen::IntegerVarintEncoding;
+using lispb::codegen::PackedIntegerValue;
 
 auto unsigned_varint_bytes(std::uint64_t value) -> std::uint32_t {
     auto bytes{std::uint32_t{1}};
@@ -18,7 +20,7 @@ auto unsigned_varint_bytes(std::uint64_t value) -> std::uint32_t {
     return bytes;
 }
 
-auto signed_integer_value(lispb::codegen::PackedIntegerValue const value) -> std::int64_t {
+auto signed_integer_value(PackedIntegerValue const value) -> std::int64_t {
     if (!value.negative) {
         return static_cast<std::int64_t>(value.magnitude);
     }
@@ -41,18 +43,18 @@ auto signed_varint_bytes(std::int64_t value) -> std::uint32_t {
     }
 }
 
-auto zigzag_value(lispb::codegen::PackedIntegerValue const value) -> std::uint64_t {
+auto zigzag_value(PackedIntegerValue const value) -> std::uint64_t {
     return value.negative ? value.magnitude * 2 - 1 : value.magnitude * 2;
 }
 
-auto integer_varint_bytes(lispb::codegen::PackedIntegerValue const value,
-                          lispb::codegen::IntegerVarintEncoding const encoding) -> std::uint32_t {
+auto integer_varint_bytes(PackedIntegerValue const value, IntegerVarintEncoding const encoding)
+    -> std::uint32_t {
     switch (encoding) {
-        case lispb::codegen::IntegerVarintEncoding::unsigned_varint:
+        case IntegerVarintEncoding::unsigned_varint:
             return unsigned_varint_bytes(value.magnitude);
-        case lispb::codegen::IntegerVarintEncoding::signed_varint:
+        case IntegerVarintEncoding::signed_varint:
             return signed_varint_bytes(signed_integer_value(value));
-        case lispb::codegen::IntegerVarintEncoding::zigzag_varint:
+        case IntegerVarintEncoding::zigzag_varint:
             return unsigned_varint_bytes(zigzag_value(value));
     }
     return 0;

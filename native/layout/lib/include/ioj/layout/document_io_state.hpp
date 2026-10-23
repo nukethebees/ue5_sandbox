@@ -11,19 +11,21 @@
 
 namespace ioj::layout {
 struct DocumentIoState {
+    using StringId = lispb::StringId;
+
     FrozenRegistry registry;
-    lispb::StringId project_path;
-    lispb::StringId project_root;
-    lispb::StringId target_name;
-    lispb::StringId registry_path;
-    lispb::StringId project_text;
+    StringId project_path;
+    StringId project_root;
+    StringId target_name;
+    StringId registry_path;
+    StringId project_text;
     std::uint32_t sources_begin{};
     std::uint32_t sources_end{};
-    lispb::StringId source_comments;
-    lispb::StringId saved_project_text;
-    std::vector<lispb::StringId> saved_order;
-    std::map<lispb::StringId, lispb::StringId> saved_sources;
-    std::map<lispb::StringId, lispb::StringId> persisted_sources;
-    std::map<SourceId, lispb::StringId> saved_paths;
+    StringId source_comments;
+    StringId saved_project_text;
+    std::vector<StringId> saved_order;
+    std::map<StringId, StringId> saved_sources;
+    std::map<StringId, StringId> persisted_sources;
+    std::map<SourceId, StringId> saved_paths;
 };
 }

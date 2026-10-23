@@ -54,6 +54,8 @@
 #include <vector>
 
 namespace ioj::layout::analysis_detail {
+using lispb::codegen::PackedIntegerValue;
+
 auto compute_integer_domain(AnalysisContext& context, lispb::schema::TypeId type) -> IntegerDomain {
     auto const& types{context.types};
 
@@ -119,15 +121,13 @@ auto compute_integer_domain(AnalysisContext& context, lispb::schema::TypeId type
     } else if (sentinel_count == 0 && integer_scalars.bit_width[scalar_row] == 64) {
         auto const full_unsigned_domain{
             !integer_scalars.signedness[scalar_row] &&
-            integer_scalars.minimum_value[scalar_row] == lispb::codegen::PackedIntegerValue{0} &&
-            integer_scalars.maximum_value[scalar_row] ==
-                lispb::codegen::PackedIntegerValue{maximum_unsigned_code}};
+            integer_scalars.minimum_value[scalar_row] == PackedIntegerValue{0} &&
+            integer_scalars.maximum_value[scalar_row] == PackedIntegerValue{maximum_unsigned_code}};
         auto const full_signed_domain{
             integer_scalars.signedness[scalar_row] &&
             integer_scalars.minimum_value[scalar_row] ==
-                lispb::codegen::PackedIntegerValue::from_parts(true, std::uint64_t{1} << 63) &&
-            integer_scalars.maximum_value[scalar_row] ==
-                lispb::codegen::PackedIntegerValue{maximum_signed_code}};
+                PackedIntegerValue::from_parts(true, std::uint64_t{1} << 63) &&
+            integer_scalars.maximum_value[scalar_row] == PackedIntegerValue{maximum_signed_code}};
         if (full_unsigned_domain || full_signed_domain) {
             unused_codes = 0;
         }
@@ -309,14 +309,14 @@ auto compute_fixed_encoding(AnalysisContext& context, lispb::schema::TypeId type
         std::ldexp(1.0L, -static_cast<int>(fixed_points.fractional_bits[fixed_row]))};
     auto const scale{std::ldexp(1.0L, static_cast<int>(fixed_points.fractional_bits[fixed_row]))};
 
-    lispb::codegen::PackedIntegerValue minimum_raw;
-    lispb::codegen::PackedIntegerValue maximum_raw;
+    PackedIntegerValue minimum_raw;
+    PackedIntegerValue maximum_raw;
     long double minimum_value{};
     long double maximum_value{};
     if (fixed_points.signedness[fixed_row]) {
         auto const negative_magnitude{std::uint64_t{1} << (fixed_points.total_bits[fixed_row] - 1)};
-        minimum_raw = lispb::codegen::PackedIntegerValue::from_parts(true, negative_magnitude);
-        maximum_raw = lispb::codegen::PackedIntegerValue{negative_magnitude - 1};
+        minimum_raw = PackedIntegerValue::from_parts(true, negative_magnitude);
+        maximum_raw = PackedIntegerValue{negative_magnitude - 1};
         auto const range_limit{
             std::ldexp(1.0L,
                        static_cast<int>(fixed_points.total_bits[fixed_row] - 1) -
@@ -324,11 +324,11 @@ auto compute_fixed_encoding(AnalysisContext& context, lispb::schema::TypeId type
         minimum_value = -range_limit;
         maximum_value = range_limit - resolution;
     } else {
-        minimum_raw = lispb::codegen::PackedIntegerValue{0};
-        maximum_raw = lispb::codegen::PackedIntegerValue{
-            fixed_points.total_bits[fixed_row] == 64
-                ? maximum_unsigned_code
-                : (std::uint64_t{1} << fixed_points.total_bits[fixed_row]) - 1};
+        minimum_raw = PackedIntegerValue{0};
+        maximum_raw =
+            PackedIntegerValue{fixed_points.total_bits[fixed_row] == 64
+                                   ? maximum_unsigned_code
+                                   : (std::uint64_t{1} << fixed_points.total_bits[fixed_row]) - 1};
         maximum_value = std::ldexp(1.0L,
                                    static_cast<int>(fixed_points.total_bits[fixed_row]) -
                                        static_cast<int>(fixed_points.fractional_bits[fixed_row])) -
@@ -337,7 +337,7 @@ auto compute_fixed_encoding(AnalysisContext& context, lispb::schema::TypeId type
 
     auto const minimum_allowed_raw{fixed_points.minimum_raw_value[fixed_row].value_or(minimum_raw)};
     auto const maximum_allowed_raw{fixed_points.maximum_raw_value[fixed_row].value_or(maximum_raw)};
-    auto const to_value = [&](lispb::codegen::PackedIntegerValue const raw) {
+    auto const to_value = [&](PackedIntegerValue const raw) {
         auto const value{static_cast<long double>(raw.magnitude) / scale};
         return raw.negative ? -value : value;
     };
@@ -461,7 +461,7 @@ auto compute_varint_encoding(AnalysisContext& context, lispb::schema::TypeId typ
     auto const maximum_endpoint_bytes{integer_varint_bytes(
         integer_scalars.maximum_value[source_row], integer_varints.encoding[varint_row])};
     auto minimum_bytes{std::min(minimum_endpoint_bytes, maximum_endpoint_bytes)};
-    auto const zero{lispb::codegen::PackedIntegerValue{0}};
+    auto const zero{PackedIntegerValue{0}};
     if (lispb::codegen::packed_integer_less_equal(integer_scalars.minimum_value[source_row],
                                                   zero) &&
         lispb::codegen::packed_integer_less_equal(zero,
