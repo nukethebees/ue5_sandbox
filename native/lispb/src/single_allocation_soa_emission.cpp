@@ -151,6 +151,8 @@ void set_source_template(LoweringContext& context,
                          FunctionId function) {
     auto& ir{context.ir};
     auto const& models{ir.lowering.single_allocation_models};
+    auto const& soas{context.declarations.soas};
+    auto const owner_name{soas.name[soas.index(models.schema[models.index(model)])]};
     ir.set_function_template(
         function,
         ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Columns"))}));
@@ -158,8 +160,7 @@ void set_source_template(LoweringContext& context,
         function,
         ir.template_id(ir.named("ioj::soa_storage_detail::SoaSourceFor"),
                        {ir.type_reference(ir.types.intern("Columns")),
-                        ir.type_reference(
-                            ir.types.intern(context.text(models.owner_name[models.index(model)]))),
+                        ir.type_reference(ir.types.intern(context.text(owner_name))),
                         ir.type_reference(ir.types.intern("size_type"))}));
 }
 
@@ -192,22 +193,19 @@ auto column_access(LoweringContext& context,
 
 auto storage_lifetime_nodes(LoweringContext& context, SingleAllocationModelId model) -> Nodes {
     auto& model_store{context.ir.lowering.single_allocation_models};
-    auto const model_store_index{model_store.index(model)};
+    auto const& soas{context.declarations.soas};
+    auto const owner_name{soas.name[soas.index(model_store.schema[model_store.index(model)])]};
     auto& ir{context.ir};
-    auto const copy_parameter{
-        ir.parameter(context.text(model_store.owner_name[model_store_index]) + " const&", "")};
-    auto const move_parameter{
-        ir.parameter(context.text(model_store.owner_name[model_store_index]) + "&&", "other")};
+    auto const copy_parameter{ir.parameter(context.text(owner_name) + " const&", "")};
+    auto const move_parameter{ir.parameter(context.text(owner_name) + "&&", "other")};
     auto const free_data{ir.call(ir.named("Operations::release_storage"), {ir.named("*this")})};
-    auto const default_constructor{ir.constructor(model_store.owner_name[model_store_index])};
+    auto const default_constructor{ir.constructor(owner_name)};
     ir.set_function_noexcept(default_constructor);
     ir.set_function_body(
         default_constructor,
         {},
-        {ir.member_initializer(model_store.owner_name[model_store_index],
-                               ir.store_text("*std::pmr::get_default_resource()"))});
-    auto const resource_constructor{
-        ir.constructor(model_store.owner_name[model_store_index], true)};
+        {ir.member_initializer(owner_name, ir.store_text("*std::pmr::get_default_resource()"))});
+    auto const resource_constructor{ir.constructor(owner_name, true)};
     ir.set_function_parameters(resource_constructor,
                                {ir.parameter("std::pmr::memory_resource&", "resource")});
     ir.set_function_noexcept(resource_constructor);
@@ -221,19 +219,17 @@ auto storage_lifetime_nodes(LoweringContext& context, SingleAllocationModelId mo
         resource_accessor, ir.types.intern("std::pmr::memory_resource*"), ReturnSyntax::trailing);
     ir.set_function_receiver(resource_accessor, FunctionReceiver::const_);
     ir.set_function_noexcept(resource_accessor);
-    auto const destructor{ir.destructor(model_store.owner_name[model_store_index])};
+    auto const destructor{ir.destructor(owner_name)};
     ir.set_function_body(destructor, {ir.expr_stmt(free_data)});
-    auto const copy_constructor{ir.constructor(model_store.owner_name[model_store_index])};
+    auto const copy_constructor{ir.constructor(owner_name)};
     ir.set_function_parameters(copy_constructor, {copy_parameter});
     ir.set_function_deleted(copy_constructor);
     auto const copy_assignment{ir.function("operator=", "auto")};
     ir.set_function_parameters(copy_assignment, {copy_parameter});
     ir.set_function_return_type(
-        copy_assignment,
-        ir.types.intern(context.text(model_store.owner_name[model_store_index]) + "&"),
-        ReturnSyntax::trailing);
+        copy_assignment, ir.types.intern(context.text(owner_name) + "&"), ReturnSyntax::trailing);
     ir.set_function_deleted(copy_assignment);
-    auto const move_constructor{ir.constructor(model_store.owner_name[model_store_index])};
+    auto const move_constructor{ir.constructor(owner_name)};
     ir.set_function_parameters(move_constructor, {move_parameter});
     ir.set_function_noexcept(move_constructor);
     ir.set_function_body(
@@ -250,9 +246,7 @@ auto storage_lifetime_nodes(LoweringContext& context, SingleAllocationModelId mo
             ir.call(ir.named("Operations::move_assign"),
                     {ir.unary(UnaryOperator::dereference, ir.named("this")), ir.named("other")}))});
     ir.set_function_return_type(
-        move_assignment,
-        ir.types.intern(context.text(model_store.owner_name[model_store_index]) + "&"),
-        ReturnSyntax::trailing);
+        move_assignment, ir.types.intern(context.text(owner_name) + "&"), ReturnSyntax::trailing);
 
     NodeListBuilder result{ir};
     result.append(section_header(context, "Lifetime"))
@@ -698,13 +692,8 @@ auto emit_resolved_views(LoweringContext& context,
         auto const base{implementation + (is_const ? "<true>" : "<false>")};
         NodeListBuilder wrapper{ir};
         wrapper.add(ir.raw("using Base = " + base + ";\nusing Base::Base;")).new_lines(1);
-        auto api{lower_soa_api(context,
-                               schema,
-
-                               is_const ? SoaReceiver::const_view : SoaReceiver::mutable_view,
-                               name,
-
-                               storage.equivalent_constructors.at({model, schema}))};
+        auto api{lower_soa_api(
+            context, schema, is_const ? SoaReceiver::const_view : SoaReceiver::mutable_view, name)};
         wrapper.append(api.header);
         if (!api.source.empty()) {
             source.append(api.source).new_lines(1);
@@ -724,6 +713,7 @@ auto compact_view_node(LoweringContext& context, SingleAllocationModelId model) 
     auto const model_row{models.index(model)};
     auto const schema{models.schema[model_row]};
     auto const schema_row{context.declarations.soas.index(schema)};
+    auto const scope{schema_namespace(context, schema)};
     auto const selected{ir.lowering.items(models.columns[model_row])};
     auto const strided{is_strided_schema(context, schema)};
     auto const base{strided ? "ioj::soa_storage_detail::StridedViewBase<" +
@@ -738,12 +728,10 @@ auto compact_view_node(LoweringContext& context, SingleAllocationModelId model) 
                               ir.types.intern(schema_namespace(context, schema) + "::Schema")),
          ir.using_declaration(ir.strings.intern("Base"), ir.types.intern(base)),
          ir.raw("using Base::Base;"),
-         ir.using_declaration(ir.strings.intern("Layout"),
-                              ir.types.intern(context.text(models.layout_name[model_row]))),
-         ir.using_declaration(ir.strings.intern("view_type"),
-                              ir.types.intern(context.text(models.view_name[model_row]))),
+         ir.using_declaration(ir.strings.intern("Layout"), ir.types.intern(scope + "::Layout")),
+         ir.using_declaration(ir.strings.intern("view_type"), ir.types.intern(scope + "::View")),
          ir.using_declaration(ir.strings.intern("const_view_type"),
-                              ir.types.intern(context.text(models.const_view_name[model_row])))}));
+                              ir.types.intern(scope + "::ConstView"))}));
     if (strided && !context.declarations.soas.layout_only[schema_row]) {
         children.new_lines(1).add(
             ir.raw("using State = std::conditional_t<Const, ioj::soa_storage_detail::StorageState "
@@ -973,19 +961,16 @@ auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationMod
 auto storage_implementation_nodes(LoweringContext& context, SingleAllocationModelId model)
     -> Nodes {
     auto& model_store{context.ir.lowering.single_allocation_models};
-    auto const model_store_index{model_store.index(model)};
+    auto const scope{schema_namespace(context, model_store.schema[model_store.index(model)])};
     auto& ir{context.ir};
     auto copying{column_copying_nodes(context, model)};
     NodeListBuilder children{ir};
     children
         .append(adjacent(
             context,
-            {ir.using_declaration(
-                 ir.strings.intern("View"),
-                 ir.types.intern(context.text(model_store.view_name[model_store_index]))),
-             ir.using_declaration(
-                 ir.strings.intern("ConstView"),
-                 ir.types.intern(context.text(model_store.const_view_name[model_store_index])))}))
+            {ir.using_declaration(ir.strings.intern("View"), ir.types.intern(scope + "::View")),
+             ir.using_declaration(ir.strings.intern("ConstView"),
+                                  ir.types.intern(scope + "::ConstView"))}))
         .new_lines(2)
         .append(storage_lifetime_nodes(context, model))
         .new_lines(1)
@@ -1032,11 +1017,8 @@ auto emit_single_allocation_views(LoweringContext& context,
         std::string const base{is_const ? "ViewImpl<true>" : "ViewImpl<false>"};
         NodeListBuilder children{ir};
         children.add(ir.raw("using Base = " + base + ";\nusing Base::Base;")).new_lines(1);
-        auto api{lower_soa_api(context,
-                               schema,
-                               is_const ? SoaReceiver::const_view : SoaReceiver::mutable_view,
-                               name,
-                               ir.lowering.equivalent_constructors.at({model, schema}))};
+        auto api{lower_soa_api(
+            context, schema, is_const ? SoaReceiver::const_view : SoaReceiver::mutable_view, name)};
         children.append(api.header);
         if (!api.source.empty()) {
             source.append(api.source).new_lines(2);
@@ -1060,6 +1042,10 @@ auto emit_single_allocation_container(LoweringContext& context,
                                       NodeListBuilder& source) -> NodeId {
     auto& model_store{context.ir.lowering.single_allocation_models};
     auto const model_store_index{model_store.index(model)};
+    auto const schema{model_store.schema[model_store_index]};
+    auto const& soas{context.declarations.soas};
+    auto const owner_name{soas.name[soas.index(schema)]};
+    auto const scope{schema_namespace(context, schema)};
     auto& ir{context.ir};
     NodeListBuilder children{ir};
     auto const operations{std::string{"ioj::native_soa::StorageOperations"}};
@@ -1072,7 +1058,7 @@ auto emit_single_allocation_container(LoweringContext& context,
     children.add(ir.using_declaration(ir.strings.intern("Operations"), ir.types.intern(operations)))
         .new_lines(1);
     children
-        .add(ir.raw("using Layout = " + context.text(model_store.layout_name[model_store_index]) +
+        .add(ir.raw("using Layout = " + scope + "::Layout" +
                     ";\n"
                     "using size_type = Layout::size_type;\n"
                     "using byte_size_type = Layout::byte_size_type;\n\n"
@@ -1091,14 +1077,10 @@ auto emit_single_allocation_container(LoweringContext& context,
         .add(ir.access(Access::public_))
         .new_lines(1);
 
-    auto api{lower_soa_api(
-        context,
-        model_store.schema[model_store_index],
-
-        SoaReceiver::owner,
-        context.text(model_store.owner_name[model_store_index]),
-
-        ir.lowering.equivalent_constructors.at({model, model_store.schema[model_store_index]}))};
+    auto api{lower_soa_api(context,
+                           model_store.schema[model_store_index],
+                           SoaReceiver::owner,
+                           context.text(owner_name))};
     children.new_lines(1).append(std::move(api.header));
     children.new_lines(1).add(permutation_node(context, model));
     source.append(std::move(api.source)).new_lines(2);
@@ -1108,8 +1090,7 @@ auto emit_single_allocation_container(LoweringContext& context,
         .add(ir.instance_member(ir.types.intern("std::pmr::memory_resource*"),
                                 ir.strings.intern("resource_"),
                                 ir.init_list({})));
-    auto const created_record{ir.record(
-        model_store.owner_name[model_store_index], children.build(), RecordKind::struct_)};
+    auto const created_record{ir.record(owner_name, children.build(), RecordKind::struct_)};
     describe_compact_scope(context, created_record, model_store.schema[model_store_index]);
     ir.set_record_bases(
         created_record,

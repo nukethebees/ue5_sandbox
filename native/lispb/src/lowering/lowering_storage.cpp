@@ -36,7 +36,6 @@ void LoweringStorage::clear() {
     dependencies_.clear();
     single_allocation_models.clear();
     column_lookup.clear();
-    equivalent_constructors.clear();
     single_allocation_columns.clear();
     paths.clear();
     columns_.clear();

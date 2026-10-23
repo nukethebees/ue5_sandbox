@@ -79,14 +79,7 @@ auto build_single_allocation_model(LoweringContext& context, DeclarationHandle s
     auto& columns{storage.single_allocation_columns};
     auto const result{models.append()};
     auto const row{models.index(result)};
-    auto const& sources{context.declarations.soas};
-    auto const source_row{sources.index(schema)};
     models.schema[row] = schema;
-    models.owner_name[row] = sources.name[source_row];
-    auto const namespace_name{schema_namespace(context, schema)};
-    models.layout_name[row] = ir.strings.intern(namespace_name + "::Layout");
-    models.view_name[row] = ir.strings.intern(namespace_name + "::View");
-    models.const_view_name[row] = ir.strings.intern(namespace_name + "::ConstView");
     std::vector<TypeDependencyId> dependencies{
         ir.types.dependency("assert", "cassert"),
         ir.types.dependency("memory_resource", "memory_resource"),
@@ -102,11 +95,6 @@ auto build_single_allocation_model(LoweringContext& context, DeclarationHandle s
             context.text(context.declarations.soas.name[context.declarations.soas.index(schema)])};
     }
     auto const root_type{type_graph.definition(*root_id)};
-    storage.equivalent_constructors.emplace(
-        std::pair{result, schema},
-        type_graph.definitions()
-            .soas.equivalent_constructor[type_graph.definitions().soas.index(root_type)]
-            .value_or(StringId{}));
     std::set<std::string> flattened_names;
     auto collect_columns =
         [&](auto&& self, schema::TypeDefinitionId const& current, LoweringPathId prefix) -> void {

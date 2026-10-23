@@ -7,7 +7,6 @@
 #include <codegen/schema/soa_schemas.h>
 #include <lispb/indices.h>
 
-#include <map>
 #include <span>
 #include <string>
 #include <string_view>
@@ -21,6 +20,5 @@ auto logical_column_access(LoweringContext& context,
 auto lower_soa_api(LoweringContext& context,
                    DeclarationHandle schema,
                    SoaReceiver receiver,
-                   std::string const& type_name,
-                   StringId equivalent_constructor = {}) -> LoweredSoa;
+                   std::string const& type_name) -> LoweredSoa;
 }

@@ -26,7 +26,6 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
-#include <map>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -299,8 +298,7 @@ auto expand_columns(LoweringContext& context,
 auto lower_soa_api(LoweringContext& parent_context,
                    DeclarationHandle schema,
                    SoaReceiver const receiver,
-                   std::string const& type_name,
-                   StringId const equivalent_constructor) -> LoweredSoa {
+                   std::string const& type_name) -> LoweredSoa {
     auto context{parent_context.for_declaration(schema)};
     auto& ir{context.ir};
     NodeListBuilder header{ir};
@@ -403,9 +401,10 @@ auto lower_soa_api(LoweringContext& parent_context,
         if (receiver == SoaReceiver::owner) {
             expression = "get_const_view()[index]";
         } else {
-            expression = equivalent_constructor.value == 0
-                           ? "equivalent_type{"
-                           : std::string{ir.strings.view(equivalent_constructor)} + "(";
+            auto const constructor{
+                context.declarations.soas
+                    .equivalent_constructor[context.declarations.soas.index(schema)]};
+            expression = constructor ? context.text(*constructor) + "(" : "equivalent_type{";
             bool first{true};
             for (auto const member_id : context.declarations.items(
                      context.declarations.soas.members[context.declarations.soas.index(schema)])) {
@@ -419,7 +418,7 @@ auto lower_soa_api(LoweringContext& parent_context,
                                      .name[context.declarations.soa_members.index(member)])};
                 expression += logical_column_access(context, schema, path) + "[index]";
             }
-            expression += equivalent_constructor.value == 0 ? "}" : ")";
+            expression += constructor ? ")" : "}";
         }
         header
             .add(ir.header_function([&] {

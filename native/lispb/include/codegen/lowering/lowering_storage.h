@@ -15,8 +15,6 @@ class LoweringStorage {
     SingleAllocationModels single_allocation_models;
     std::map<std::pair<SingleAllocationModelId, LoweringPathId>, SingleAllocationColumnId>
         column_lookup;
-    std::map<std::pair<SingleAllocationModelId, DeclarationHandle>, StringId>
-        equivalent_constructors;
     SingleAllocationColumns single_allocation_columns;
     LoweringPaths paths;
     auto save(std::span<SingleAllocationColumnId const> values)
