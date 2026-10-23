@@ -1,4 +1,4 @@
-set(layout_analysis_generated "${CMAKE_BINARY_DIR}/native/layout/generated")
+set(layout_analysis_generated "${CMAKE_CURRENT_SOURCE_DIR}/../generated")
 set(layout_analysis_tables
   code_table
   component_table
@@ -15,28 +15,35 @@ set(layout_analysis_tables
 )
 set(layout_analysis_headers)
 set(layout_analysis_sources)
-set(layout_analysis_schemas "${CMAKE_CURRENT_SOURCE_DIR}/../schema/types.lispb")
 foreach(table IN LISTS layout_analysis_tables)
   list(APPEND layout_analysis_headers "${layout_analysis_generated}/ioj/layout/analysis/${table}.hpp")
   list(APPEND layout_analysis_sources "${layout_analysis_generated}/ioj/layout/analysis/${table}.cpp")
-  list(APPEND layout_analysis_schemas "${CMAKE_CURRENT_SOURCE_DIR}/../schema/${table}.lispb")
 endforeach()
 
-add_custom_command(
-  OUTPUT ${layout_analysis_headers} ${layout_analysis_sources}
+add_custom_target(generate-layout-analysis
   COMMAND "$<TARGET_FILE:lispb>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target layout-analysis
-    --depfile "${layout_analysis_generated}/analysis.d"
-  DEPENDS lispb "${PROJECT_SOURCE_DIR}/lispb/project.lispb" ${layout_analysis_schemas}
-  DEPFILE "${layout_analysis_generated}/analysis.d"
+  DEPENDS lispb
+  COMMENT "Generating committed layout analysis tables"
+  USES_TERMINAL
   VERBATIM
 )
-add_custom_target(generate-layout-analysis DEPENDS ${layout_analysis_headers} ${layout_analysis_sources})
+add_custom_target(check-generated-layout-analysis
+  COMMAND "$<TARGET_FILE:lispb>" check
+    --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
+    --build-root "${CMAKE_BINARY_DIR}"
+    --target layout-analysis
+  DEPENDS lispb
+  COMMENT "Checking committed layout analysis tables"
+  USES_TERMINAL
+  VERBATIM
+)
+add_dependencies(generate-code generate-layout-analysis)
+add_dependencies(check-generated-code check-generated-layout-analysis)
 
 add_library(native-layout)
-add_dependencies(native-layout generate-layout-analysis)
 set_target_properties(native-layout PROPERTIES UNITY_BUILD OFF)
 target_sources(native-layout
   PRIVATE
@@ -83,6 +90,7 @@ target_sources(native-layout
     src/declaration_kind.cpp
     src/declaration_capabilities.cpp
     src/external_dependency.cpp
+    ${layout_analysis_headers}
     ${layout_analysis_sources}
 )
 target_include_directories(native-layout

@@ -27,7 +27,7 @@
       "native/layout/schema/tag_table.lispb"
       "native/layout/schema/type_analysis_table.lispb"
       "native/layout/schema/workload_table.lispb")
-    :output-root (build-path "native/layout/generated"))
+    :output-root (project-path "native/layout/generated"))
 
   (cpp-schema sandbox-code
     :types "lispb/schema/types.lispb"
@@ -210,7 +210,7 @@
       slate-game-options
       slate-level-select))
   (group committed-code
-    :targets (compiler-ir compiler-schema sandbox-code sandbox-core-test-fixture slate-production kernel-unreal kernel-native-core))
+    :targets (compiler-ir compiler-schema layout-analysis sandbox-code sandbox-core-test-fixture slate-production kernel-unreal kernel-native-core))
   (group materials
     :targets (
       ui-glow-material
