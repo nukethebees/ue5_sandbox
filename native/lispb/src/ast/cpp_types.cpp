@@ -3,7 +3,6 @@
 #include <codegen/ast/cpp_type_dependency_range.h>
 #include <codegen/ast/indices.h>
 #include <codegen/ast/parameter_passing.h>
-#include <codegen/ast/render_context.h>
 #include <codegen/ast/type_operation.h>
 #include <lispb/indices.h>
 #include <lispb/strings.h>
@@ -101,7 +100,7 @@ void CppTypes::clear() {
 auto CppTypes::append(StringId const spelling,
                       std::span<TypeDependencyId const> const dependencies,
                       ParameterPassing const passing,
-                      Shape const shape) -> CppTypeId {
+                      CppTypeShape const shape) -> CppTypeId {
     assert(spellings_.size() < std::numeric_limits<std::uint32_t>::max());
     assert(dependency_uses_.size() + dependencies.size() <=
            std::numeric_limits<std::uint32_t>::max());
@@ -163,14 +162,14 @@ auto CppTypes::find(StringId const spelling,
                     std::span<TypeDependencyId const> const dependencies,
                     ParameterPassing const passing,
                     std::optional<CppTypeId> const operation_source,
-                    Shape const shape) const -> std::optional<CppTypeId> {
+                    CppTypeShape const shape) const -> std::optional<CppTypeId> {
     auto const [begin, end]{types_by_spelling_.equal_range(spelling.value)};
     for (auto current{begin}; current != end; ++current) {
         auto const candidate{current->second};
         auto const index{candidate.value - 1};
         auto const candidate_shape{shapes_[index]};
         if (candidate_shape.form != shape.form ||
-            (shape.form == Form::composed &&
+            (shape.form == CppTypeForm::composed &&
              !std::ranges::equal(std::span{parts_}.subspan(shape.parts.begin, shape.parts.count),
                                  std::span{parts_}.subspan(candidate_shape.parts.begin,
                                                            candidate_shape.parts.count))) ||
@@ -229,7 +228,7 @@ auto CppTypes::derive(CppTypeId const base,
                       std::span<TypeDependencyId const> const dependencies) -> CppTypeId {
     assert(base.value != 0 && base.value <= spellings_.size());
     auto const policy{parameter_passing(base)};
-    auto const shape{spelling == this->spelling(base) ? shapes_[base.value - 1] : Shape{}};
+    auto const shape{spelling == this->spelling(base) ? shapes_[base.value - 1] : CppTypeShape{}};
     return intern_shape(spelling, dependencies, policy, base, shape);
 }
 
@@ -237,7 +236,7 @@ auto CppTypes::intern_shape(std::string_view const spelling,
                             std::span<TypeDependencyId const> const dependencies,
                             ParameterPassing const passing,
                             std::optional<CppTypeId> const operation_source,
-                            Shape const shape) -> CppTypeId {
+                            CppTypeShape const shape) -> CppTypeId {
     auto const name{string_id(strings_.intern(spelling))};
     if (auto const found{find(name, dependencies, passing, operation_source, shape)}) {
         return *found;
@@ -264,8 +263,8 @@ auto CppTypes::named(std::string_view const spelling,
     }
     std::string const name{spelling};
     auto const policy{passing.value_or(cpp_type_detail::default_parameter_passing(name))};
-    Shape shape{.form = Form::named,
-                .parts = {static_cast<std::uint32_t>(name_components_.size()), 0}};
+    CppTypeShape shape{.form = CppTypeForm::named,
+                       .parts = {static_cast<std::uint32_t>(name_components_.size()), 0}};
     std::size_t begin{};
     do {
         auto const separator{name.find("::", begin)};
@@ -310,9 +309,9 @@ auto CppTypes::compose(std::span<CppTypePart const> const parts,
         }
     }
 
-    Shape const shape{.form = Form::composed,
-                      .parts = {static_cast<std::uint32_t>(parts_.size()),
-                                static_cast<std::uint32_t>(parts.size())}};
+    CppTypeShape const shape{.form = CppTypeForm::composed,
+                             .parts = {static_cast<std::uint32_t>(parts_.size()),
+                                       static_cast<std::uint32_t>(parts.size())}};
     parts_.insert(parts_.end(), parts.begin(), parts.end());
     auto const passing{policy_source ? parameter_passing(*policy_source)
                                      : cpp_type_detail::default_parameter_passing(spelling)};
@@ -324,7 +323,7 @@ auto CppTypes::compose(std::span<CppTypePart const> const parts,
 }
 
 auto CppTypes::reference(CppTypeId const type) -> CppTypeId {
-    if (shapes_[type.value - 1].form != Form::raw) {
+    if (shapes_[type.value - 1].form != CppTypeForm::raw) {
         return type;
     }
     std::string const name{spelling(type)};

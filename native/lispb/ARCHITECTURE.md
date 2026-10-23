@@ -5,8 +5,10 @@
 `lispb::Compiler` owns the shared source, string, syntax, declaration and C++ type stores,
 the current semantic graph, backend IR, generated C++ IR and output artifacts. A compilation
 selects a frontend and runs parsing, semantic checks, lowering and rendering through those
-stores. Validation stops before lowering/rendering. Schema, Slate and kernel output use
-`CppIR`; material output keeps its binary format and runtime-facing data library.
+stores. Validation stops before lowering/rendering. Schema, Slate and kernel lower into
+`CppIR`, then pass the completed IR to `CppRenderer` before output formatting and publication.
+The IR owns construction, traversal and dependency queries; the renderer owns C++ source
+emission. Material output keeps its binary format and runtime-facing data library.
 
 Strings use offsets into flat character buffers. `StringId` and `IdentifierId` share backing
 text; views are transient and must be reacquired after appending to the same buffer. Source
@@ -40,16 +42,20 @@ remain raw language-boundary inputs. Export specifiers are interned identifiers.
 member and output-file flags are generated packed values checked into the source tree.
 
 C++ type references retain qualified-name components and composed type handles alongside their
-canonical spellings. Rendering borrows a per-render environment store with parallel parent,
+canonical spellings. `CppRenderer` owns a per-render environment store with parallel parent,
 scope-kind and symbol-table columns. A symbol identifies its declaration through a tagged
 handle and optionally names the environment introduced by that declaration. Lookup searches
 parents for the first name, then follows introduced environments for qualified components.
 The renderer shortens a name only when lookup resolves to the same declaration, and an RAII
-guard restores the current environment after each nested emission region.
-Signatures, templates and typed expressions share this context. Canonical spellings and dependency
+guard restores the current environment after each nested emission region. Renderer instances
+reset lookup state for each entry point and retain their indentation setting. `RenderContext`
+only carries indentation depth and include groups; class membership follows the environment.
+Signatures, templates and typed expressions share the renderer. Canonical spellings and dependency
 policies remain independent of their displayed names. Authored C++ stays opaque; unknown raw
 declarations or inherited scopes retain qualification. Generated raw declarations can describe
-their bindings explicitly through `CppIR::set_scope_bindings`.
+their bindings explicitly through `CppIR::set_scope_bindings`. This metadata must list all
+introduced bindings. Missing names in a scope with unknown bindings produce an unknown lookup
+result, preventing an unsafe search through its parent environments.
 
 `NodeId` identifies a generated node. `Modules` and `CppFiles` retain output assembly metadata in
 the same C++ IR owner, with file/module handles, shared text and flat ordered node/text ranges.

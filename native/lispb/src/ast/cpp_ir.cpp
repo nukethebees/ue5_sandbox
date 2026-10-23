@@ -2,39 +2,78 @@
 
 #include <ioj/is_any.h>
 
+#include <codegen/ast/access.h>
+#include <codegen/ast/access_indentation.h>
+#include <codegen/ast/binary_operator.h>
 #include <codegen/ast/cpp_types.h>
+#include <codegen/ast/expr.h>
+#include <codegen/ast/expr_kind.h>
+#include <codegen/ast/function_body_layout.h>
+#include <codegen/ast/function_disposition_placement.h>
 #include <codegen/ast/function_exception_id.h>
 #include <codegen/ast/function_exception_kind.h>
 #include <codegen/ast/function_implementation_id.h>
 #include <codegen/ast/function_implementation_kind.h>
 #include <codegen/ast/function_kind.h>
+#include <codegen/ast/function_opening_brace_placement.h>
+#include <codegen/ast/function_receiver.h>
+#include <codegen/ast/function_requires_placement.h>
+#include <codegen/ast/function_template_placement.h>
+#include <codegen/ast/function_trailing_return_placement.h>
+#include <codegen/ast/include.h>
 #include <codegen/ast/include_style.h>
+#include <codegen/ast/indices.h>
+#include <codegen/ast/ir/range.h>
 #include <codegen/ast/ir/range_storage.h>
+#include <codegen/ast/node_id.h>
 #include <codegen/ast/node_kind.h>
+#include <codegen/ast/record_kind.h>
+#include <codegen/ast/return_syntax.h>
+#include <codegen/ast/template_kind.h>
+#include <codegen/ast/template_parameter_kind.h>
+#include <codegen/ast/unary_operator.h>
+#include <codegen/cpp_string.h>
+#include <lispb/indices.h>
 #include <lispb/strings.h>
 
+#include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <optional>
+#include <set>
 #include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
-namespace lispb::codegen {
+#include <utility>
+#include <vector>
 
-auto CppIR::store_text(std::string_view value) -> StringId {
-    return strings.add(value);
-}
-auto CppIR::store_optional_text(std::optional<std::string_view> value) -> std::optional<StringId> {
-    return value ? std::optional{strings.add(*value)} : std::nullopt;
-}
+namespace lispb::codegen {
 
 namespace ir_detail {
 auto node(NodeKind kind, std::size_t index) -> NodeId {
     assert(index < 0x01000000U);
     return NodeId{(static_cast<std::uint32_t>(kind) << 24) | static_cast<std::uint32_t>(index)};
 }
+}
+
+namespace expr_detail {
+auto handle(ExprKind kind, std::size_t index) -> Expr {
+    assert(index < 0x01000000U);
+    return Expr{(static_cast<std::uint32_t>(kind) << 24) | static_cast<std::uint32_t>(index)};
+}
+}
+
+/* **************************************** */
+// Construction and storage
+/* **************************************** */
+auto CppIR::store_text(std::string_view value) -> StringId {
+    return strings.add(value);
+}
+auto CppIR::store_optional_text(std::optional<std::string_view> value) -> std::optional<StringId> {
+    return value ? std::optional{strings.add(*value)} : std::nullopt;
 }
 
 auto CppIR::save_nodes(std::span<NodeId const> values) -> ir::Range {
@@ -538,8 +577,7 @@ auto CppIR::function_node(FunctionId function,
                           std::optional<ReturnSyntax> return_syntax) -> NodeId {
     if (owner &&
         functions_.implementation[function.value].kind() == FunctionImplementationKind::deleted) {
-        throw std::invalid_argument{"Function '" + render(functions_.name[function.value]) +
-                                    "' deleted function cannot be an out-of-line definition"};
+        throw std::invalid_argument{"A deleted function cannot be an out-of-line definition"};
     }
     if (!declaration &&
         functions_.implementation[function.value].kind() == FunctionImplementationKind::none) {
@@ -716,6 +754,441 @@ auto CppIR::raw_lines(std::span<StringId const> lines,
     raw_lines_nodes_.lines.push_back(ir::save_range(raw_lines_, lines));
     raw_lines_nodes_.dependencies.push_back(save_dependencies(dependencies));
     return ir_detail::node(NodeKind::raw_lines, index);
+}
+
+auto CppIR::named(std::string_view value, std::span<TypeDependencyId const> dependencies) -> Expr {
+    return named(strings.intern(value), dependencies);
+}
+auto CppIR::named(IdentifierId value, std::span<TypeDependencyId const> dependencies) -> Expr {
+    auto const result{expr_detail::handle(ExprKind::named, named_exprs_.spelling.size())};
+    named_exprs_.spelling.push_back(string_id(value));
+    named_exprs_.dependencies.push_back(save_dependencies(dependencies));
+    return result;
+}
+auto CppIR::literal(std::string_view value) -> Expr {
+    return literal(strings.add(value));
+}
+auto CppIR::literal(StringId value) -> Expr {
+    auto const result{expr_detail::handle(ExprKind::literal, literal_exprs_.spelling.size())};
+    literal_exprs_.spelling.push_back(value);
+    return result;
+}
+auto CppIR::string_literal(std::string_view value) -> Expr {
+    return string_literal(strings.add(value));
+}
+auto CppIR::string_literal(StringId value) -> Expr {
+    auto const result{expr_detail::handle(ExprKind::string_literal, string_literal_exprs_.size())};
+    string_literal_exprs_.push_back(value);
+    return result;
+}
+auto CppIR::raw_expr(std::string_view value, std::span<TypeDependencyId const> dependencies)
+    -> Expr {
+    return raw_expr(strings.add(value), dependencies);
+}
+auto CppIR::raw_expr(StringId value, std::span<TypeDependencyId const> dependencies) -> Expr {
+    auto const result{expr_detail::handle(ExprKind::raw, raw_exprs_.text.size())};
+    raw_exprs_.text.push_back(value);
+    raw_exprs_.dependencies.push_back(save_dependencies(dependencies));
+    return result;
+}
+auto CppIR::call(Expr callee, std::span<Expr const> arguments) -> Expr {
+    auto const result{expr_detail::handle(ExprKind::call, call_exprs_.callee.size())};
+    call_exprs_.callee.push_back(callee);
+    call_exprs_.arguments.push_back(save_exprs(arguments));
+    return result;
+}
+auto CppIR::member_access(Expr object, std::string_view member) -> Expr {
+    return member_access(object, strings.intern(member));
+}
+auto CppIR::member_access(Expr object, IdentifierId member) -> Expr {
+    auto const result{expr_detail::handle(ExprKind::member_access, member_exprs_.object.size())};
+    member_exprs_.object.push_back(object);
+    member_exprs_.member.push_back(string_id(member));
+    member_exprs_.through_pointer.push_back(false);
+    return result;
+}
+auto CppIR::pointer_member_access(Expr object, std::string_view member) -> Expr {
+    return pointer_member_access(object, strings.intern(member));
+}
+auto CppIR::pointer_member_access(Expr object, IdentifierId member) -> Expr {
+    auto const result{member_access(object, member)};
+    member_exprs_.through_pointer[result.index()] = true;
+    return result;
+}
+auto CppIR::unary(UnaryOperator operation, Expr operand) -> Expr {
+    auto const result{expr_detail::handle(ExprKind::unary, unary_exprs_.operation.size())};
+    unary_exprs_.operation.push_back(operation);
+    unary_exprs_.operand.push_back(operand);
+    return result;
+}
+auto CppIR::subscript(Expr object, Expr index) -> Expr {
+    auto const result{expr_detail::handle(ExprKind::subscript, subscript_exprs_.object.size())};
+    subscript_exprs_.object.push_back(object);
+    subscript_exprs_.index.push_back(index);
+    return result;
+}
+auto CppIR::binary(BinaryOperator operation, Expr left, Expr right, bool line_break_after) -> Expr {
+    auto const result{expr_detail::handle(ExprKind::binary, binary_exprs_.operation.size())};
+    binary_exprs_.operation.push_back(operation);
+    binary_exprs_.left.push_back(left);
+    binary_exprs_.right.push_back(right);
+    binary_exprs_.line_break_after.push_back(line_break_after);
+    return result;
+}
+auto CppIR::static_cast_expr(CppTypeId type, Expr operand) -> Expr {
+    auto const result{expr_detail::handle(ExprKind::static_cast_, cast_exprs_.type.size())};
+    cast_exprs_.type.push_back(type);
+    cast_exprs_.operand.push_back(operand);
+    return result;
+}
+auto CppIR::sizeof_type(CppTypeId type) -> Expr {
+    auto const result{expr_detail::handle(ExprKind::sizeof_type, sizeof_exprs_.type.size())};
+    sizeof_exprs_.type.push_back(type);
+    return result;
+}
+auto CppIR::init_list(std::span<Expr const> elements, std::optional<CppTypeId> type) -> Expr {
+    auto const result{
+        expr_detail::handle(ExprKind::initializer_list, initializer_exprs_.type.size())};
+    initializer_exprs_.type.push_back(type);
+    initializer_exprs_.elements.push_back(save_exprs(elements));
+    return result;
+}
+auto CppIR::type_reference(CppTypeId type) -> Expr {
+    auto const result{
+        expr_detail::handle(ExprKind::type_reference, type_reference_exprs_.type.size())};
+    type_reference_exprs_.type.push_back(type);
+    return result;
+}
+auto CppIR::parenthesized(Expr expr) -> Expr {
+    auto const result{
+        expr_detail::handle(ExprKind::parenthesized, parenthesized_exprs_.operand.size())};
+    parenthesized_exprs_.operand.push_back(expr);
+    return result;
+}
+auto CppIR::template_id(Expr callee, std::span<Expr const> arguments) -> Expr {
+    auto const result{expr_detail::handle(ExprKind::template_id, template_id_exprs_.callee.size())};
+    template_id_exprs_.callee.push_back(callee);
+    template_id_exprs_.arguments.push_back(save_exprs(arguments));
+    return result;
+}
+
+auto CppIR::type_template_parameter(IdentifierId name, CppTypeId default_type, bool pack)
+    -> TemplateParameterId {
+    auto const index{static_cast<std::uint32_t>(type_template_parameters_.name.size())};
+    type_template_parameters_.name.push_back(name);
+    type_template_parameters_.default_type.push_back(default_type);
+    type_template_parameters_.pack.push_back(pack);
+    return TemplateParameterId{(static_cast<std::uint32_t>(TemplateParameterKind::type) << 24) |
+                               index};
+}
+auto CppIR::value_template_parameter(CppTypeId type,
+                                     IdentifierId name,
+                                     Expr default_value,
+                                     bool pack) -> TemplateParameterId {
+    auto const index{static_cast<std::uint32_t>(value_template_parameters_.name.size())};
+    value_template_parameters_.type.push_back(type);
+    value_template_parameters_.name.push_back(name);
+    value_template_parameters_.default_value.push_back(default_value);
+    value_template_parameters_.pack.push_back(pack);
+    return TemplateParameterId{(static_cast<std::uint32_t>(TemplateParameterKind::value) << 24) |
+                               index};
+}
+auto CppIR::template_declaration(std::span<TemplateParameterId const> parameters) -> TemplateId {
+    assert(!parameters.empty());
+    auto const index{static_cast<std::uint32_t>(templates_.parameters.size())};
+    templates_.parameters.push_back(ir::save_range(template_parameter_references_, parameters));
+    return TemplateId{(static_cast<std::uint32_t>(TemplateKind::parameters) << 24) | index};
+}
+auto CppIR::template_specialization() -> TemplateId {
+    return TemplateId{static_cast<std::uint32_t>(TemplateKind::explicit_specialization) << 24};
+}
+auto CppIR::raw_template_declaration(StringId parameters) -> TemplateId {
+    auto const index{static_cast<std::uint32_t>(templates_.authored_text.size())};
+    templates_.authored_text.push_back(parameters);
+    return TemplateId{(static_cast<std::uint32_t>(TemplateKind::authored_raw) << 24) | index};
+}
+
+void CppIR::set_scope_bindings(NodeId node, std::span<IdentifierId const> names) {
+    scope_bindings_[node.value] = {names.begin(), names.end()};
+}
+
+/* **************************************** */
+// Traversal and dependencies
+/* **************************************** */
+void CppIR::for_each_child(NodeId node, std::function<void(NodeId)> const& visit) const {
+    auto visit_range = [&](ir::Range range) {
+        for (auto const child : nodes(range)) {
+            visit(child);
+        }
+    };
+    auto const i{node.index()};
+    switch (node.kind()) {
+        case NodeKind::block:
+            visit_range(block_nodes_.children[i]);
+            break;
+        case NodeKind::struct_:
+            visit_range(struct_nodes_.children[i]);
+            break;
+        case NodeKind::namespace_:
+            visit_range(namespace_nodes_.children[i]);
+            break;
+        case NodeKind::function: {
+            auto const implementation{functions_.implementation[function_nodes_.function[i].value]};
+            if (!function_nodes_.declaration[i] &&
+                implementation.kind() == FunctionImplementationKind::body) {
+                visit_range(
+                    block_nodes_.children[function_bodies_.block[implementation.index()].index()]);
+            }
+            break;
+        }
+        case NodeKind::if_stmt:
+            visit_range(if_stmt_nodes_.then_children[i]);
+            if (auto const otherwise{if_stmt_nodes_.else_children[i]}) {
+                visit_range(*otherwise);
+            }
+            break;
+        case NodeKind::for_stmt:
+            visit(for_stmt_nodes_.initializer[i]);
+            visit_range(for_stmt_nodes_.children[i]);
+            break;
+        case NodeKind::switch_stmt: {
+            auto const range{switch_stmt_nodes_.cases[i]};
+            auto const end{range.begin + range.count};
+            for (auto c{range.begin}; c < end; ++c) {
+                visit_range(cases_.body[case_references_[c].value]);
+            }
+            break;
+        }
+        default:
+            break;
+    }
+}
+void CppIR::collect_dependencies(NodeId node, std::vector<TypeDependencyId>& result) const {
+    auto append = [&](std::span<TypeDependencyId const> values) {
+        result.insert(result.end(), values.begin(), values.end());
+    };
+    auto type = [&](CppTypeId id) { append(types.dependencies(id)); };
+    auto const i{node.index()};
+    switch (node.kind()) {
+        case NodeKind::raw:
+            append(dependency_list(raw_nodes_.dependencies[i]));
+            break;
+        case NodeKind::raw_lines:
+            append(dependency_list(raw_lines_nodes_.dependencies[i]));
+            break;
+        case NodeKind::expr_stmt:
+            append(dependency_list(expr_stmt_nodes_.dependencies[i]));
+            collect_dependencies(expr_stmt_nodes_.expr[i], result);
+            break;
+        case NodeKind::return_stmt:
+            append(dependency_list(return_stmt_nodes_.dependencies[i]));
+            if (auto const value{return_stmt_nodes_.expr[i]}) {
+                collect_dependencies(*value, result);
+            }
+            break;
+        case NodeKind::assignment_stmt:
+            append(dependency_list(assignment_stmt_nodes_.dependencies[i]));
+            collect_dependencies(assignment_stmt_nodes_.target[i], result);
+            collect_dependencies(assignment_stmt_nodes_.value[i], result);
+            break;
+        case NodeKind::variable_declaration_stmt:
+            type(variable_declaration_stmt_nodes_.type[i]);
+            if (auto const initializer{variable_declaration_stmt_nodes_.initializer[i]}) {
+                collect_dependencies(*initializer, result);
+            }
+            break;
+        case NodeKind::if_stmt:
+            collect_dependencies(if_stmt_nodes_.condition[i], result);
+            break;
+        case NodeKind::for_stmt:
+            collect_dependencies(for_stmt_nodes_.condition[i], result);
+            collect_dependencies(for_stmt_nodes_.increment[i], result);
+            break;
+        case NodeKind::switch_stmt: {
+            collect_dependencies(switch_stmt_nodes_.condition[i], result);
+            auto const range{switch_stmt_nodes_.cases[i]};
+            auto const end{range.begin + range.count};
+            for (auto c{range.begin}; c < end; ++c) {
+                if (auto const label{cases_.label[case_references_[c].value]}) {
+                    collect_dependencies(*label, result);
+                }
+            }
+            break;
+        }
+        case NodeKind::forward_declaration:
+            collect_dependencies(forward_declaration_nodes_.template_declaration[i], result);
+            break;
+        case NodeKind::friend_declaration:
+            collect_dependencies(friend_declaration_nodes_.template_declaration[i], result);
+            if (auto const friend_type{friend_declaration_nodes_.type[i]}; friend_type.value != 0) {
+                type(friend_type);
+            }
+            break;
+        case NodeKind::using_declaration:
+            collect_dependencies(using_declaration_nodes_.template_declaration[i], result);
+            type(using_declaration_nodes_.type[i]);
+            break;
+        case NodeKind::instance_member:
+            type(instance_members_.type[i]);
+            if (auto const value{instance_members_.initializer[i]}) {
+                collect_dependencies(value, result);
+            }
+            break;
+        case NodeKind::static_member:
+            collect_dependencies(static_members_.template_declaration[i], result);
+            type(static_members_.type[i]);
+            if (auto const value{static_members_.initializer[i]}) {
+                collect_dependencies(value, result);
+            }
+            break;
+        case NodeKind::constexpr_member:
+            collect_dependencies(constexpr_members_.template_declaration[i], result);
+            type(constexpr_members_.type[i]);
+            collect_dependencies(constexpr_members_.initializer[i], result);
+            break;
+        case NodeKind::function: {
+            auto const id{function_nodes_.function[i].value};
+            collect_dependencies(functions_.name[id], result);
+            collect_dependencies(functions_.template_declaration[id], result);
+            if (auto const clause{functions_.requires_clause[id]}) {
+                collect_dependencies(clause, result);
+            }
+            if (functions_.return_type[id].value != 0) {
+                type(functions_.return_type[id]);
+            }
+            append(dependency_list(functions_.dependencies[id]));
+            if (auto const exception{functions_.exception_specification[id]};
+                exception.kind() == FunctionExceptionKind::conditional) {
+                collect_dependencies(conditional_noexcept_[exception.index()], result);
+            }
+            auto const range{functions_.parameters[id]};
+            auto const end{range.begin + range.count};
+            for (auto p{range.begin}; p < end; ++p) {
+                type(parameters_.type[parameter_references_[p].value]);
+            }
+            break;
+        }
+        case NodeKind::enum_:
+            if (enum_nodes_.underlying_type[i].value != 0) {
+                type(enum_nodes_.underlying_type[i]);
+            }
+            break;
+        case NodeKind::struct_:
+            collect_dependencies(struct_nodes_.name[i], result);
+            collect_dependencies(struct_nodes_.template_declaration[i], result);
+            if (auto const clause{struct_nodes_.requires_clause[i]}) {
+                collect_dependencies(clause, result);
+            }
+            append(dependency_list(struct_nodes_.dependencies[i]));
+            for (auto const base : type_list(struct_nodes_.bases[i])) {
+                type(base);
+            }
+            break;
+        default:
+            break;
+    }
+    for_each_child(node, [&](NodeId child) { collect_dependencies(child, result); });
+}
+
+void CppIR::collect_dependencies(Expr expr, std::vector<TypeDependencyId>& result) const {
+    auto const index{expr.index()};
+    auto append = [&](std::span<TypeDependencyId const> values) {
+        result.insert(result.end(), values.begin(), values.end());
+    };
+    switch (expr.kind()) {
+        case ExprKind::type_reference:
+            append(types.dependencies(type_reference_exprs_.type[index]));
+            break;
+        case ExprKind::parenthesized:
+            collect_dependencies(parenthesized_exprs_.operand[index], result);
+            break;
+        case ExprKind::template_id:
+            collect_dependencies(template_id_exprs_.callee[index], result);
+            for (auto const argument : exprs(template_id_exprs_.arguments[index])) {
+                collect_dependencies(argument, result);
+            }
+            break;
+        case ExprKind::named:
+            append(dependency_list(named_exprs_.dependencies[index]));
+            break;
+        case ExprKind::raw:
+            append(dependency_list(raw_exprs_.dependencies[index]));
+            break;
+        case ExprKind::call:
+            collect_dependencies(call_exprs_.callee[index], result);
+            for (auto const child : exprs(call_exprs_.arguments[index])) {
+                collect_dependencies(child, result);
+            }
+            break;
+        case ExprKind::member_access:
+            collect_dependencies(member_exprs_.object[index], result);
+            break;
+        case ExprKind::subscript:
+            collect_dependencies(subscript_exprs_.object[index], result);
+            collect_dependencies(subscript_exprs_.index[index], result);
+            break;
+        case ExprKind::binary:
+            collect_dependencies(binary_exprs_.left[index], result);
+            collect_dependencies(binary_exprs_.right[index], result);
+            break;
+        case ExprKind::unary:
+            collect_dependencies(unary_exprs_.operand[index], result);
+            break;
+        case ExprKind::static_cast_:
+            append(types.dependencies(cast_exprs_.type[index]));
+            collect_dependencies(cast_exprs_.operand[index], result);
+            break;
+        case ExprKind::sizeof_type:
+            append(types.dependencies(sizeof_exprs_.type[index]));
+            break;
+        case ExprKind::initializer_list:
+            if (auto const type{initializer_exprs_.type[index]}) {
+                append(types.dependencies(*type));
+            }
+            for (auto const child : exprs(initializer_exprs_.elements[index])) {
+                collect_dependencies(child, result);
+            }
+            break;
+        case ExprKind::literal:
+        case ExprKind::string_literal:
+            break;
+        case ExprKind::invalid:
+            std::unreachable();
+    }
+}
+
+void CppIR::collect_dependencies(TemplateId declaration,
+                                 std::vector<TypeDependencyId>& result) const {
+    if (!declaration) {
+        return;
+    }
+    if (declaration.kind() != TemplateKind::parameters) {
+        return;
+    }
+    auto append_type = [&](CppTypeId type) {
+        if (type.value == 0) {
+            return;
+        }
+        auto const dependencies{types.dependencies(type)};
+        result.insert(result.end(), dependencies.begin(), dependencies.end());
+    };
+    auto const range{templates_.parameters[declaration.index()]};
+    auto const end{range.begin + range.count};
+    for (auto position{range.begin}; position < end; ++position) {
+        auto const parameter{template_parameter_references_[position]};
+        auto const index{parameter.index()};
+        switch (parameter.kind()) {
+            case TemplateParameterKind::type:
+                append_type(type_template_parameters_.default_type[index]);
+                break;
+            case TemplateParameterKind::value:
+                append_type(value_template_parameters_.type[index]);
+                if (auto const value{value_template_parameters_.default_value[index]}) {
+                    collect_dependencies(value, result);
+                }
+                break;
+        }
+    }
 }
 
 } // namespace lispb::codegen

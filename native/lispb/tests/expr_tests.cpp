@@ -4,6 +4,7 @@
 #include <codegen/ast/binary_operator.h>
 #include <codegen/ast/cpp_files.h>
 #include <codegen/ast/cpp_ir.h>
+#include <codegen/ast/cpp_renderer.h>
 #include <codegen/ast/cpp_types.h>
 #include <codegen/ast/expr.h>
 #include <codegen/ast/expr_kind.h>
@@ -43,8 +44,8 @@ TEST(Expr, RequiresExplicitRawAndSupportsIndependentCopies) {
     auto copy{original};
     original = ir.literal("false");
 
-    EXPECT_EQ(ir.render(copy), "lookup(value)");
-    EXPECT_EQ(ir.render(original), "false");
+    EXPECT_EQ(CppRenderer{ir}.render(copy), "lookup(value)");
+    EXPECT_EQ(CppRenderer{ir}.render(original), "false");
     EXPECT_EQ(copy.kind(), ExprKind::call);
 }
 
@@ -53,14 +54,15 @@ TEST(Expr, RendersCallsCastsAndInitializerLists) {
     [[maybe_unused]] auto& ir{context.ir};
     [[maybe_unused]] auto& types{context.storage.cpp_types};
     auto const lookup{ir.call(ir.named("get_name"), {ir.named("project::Mode::Ready")})};
-    EXPECT_EQ(ir.render(ir.init_list({lookup}, types.intern("FString"))),
+    EXPECT_EQ(CppRenderer{ir}.render(ir.init_list({lookup}, types.intern("FString"))),
               "FString{get_name(project::Mode::Ready)}");
-    EXPECT_EQ(ir.render(ir.init_list({ir.literal("1"), ir.literal("2")})), "{1, 2}");
-    EXPECT_EQ(ir.render(ir.init_list({}, types.intern("FString"))), "FString{}");
-    EXPECT_EQ(ir.render(ir.init_list({})), "{}");
-    EXPECT_EQ(ir.render(ir.static_cast_expr(types.intern("int32"), ir.named("Mode::COUNT"))),
-              "static_cast<int32>(Mode::COUNT)");
-    EXPECT_EQ(ir.render(ir.call(ir.call(ir.named("factory")), {ir.literal("42")})),
+    EXPECT_EQ(CppRenderer{ir}.render(ir.init_list({ir.literal("1"), ir.literal("2")})), "{1, 2}");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.init_list({}, types.intern("FString"))), "FString{}");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.init_list({})), "{}");
+    EXPECT_EQ(
+        CppRenderer{ir}.render(ir.static_cast_expr(types.intern("int32"), ir.named("Mode::COUNT"))),
+        "static_cast<int32>(Mode::COUNT)");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.call(ir.call(ir.named("factory")), {ir.literal("42")})),
               "factory()(42)");
 }
 
@@ -69,11 +71,13 @@ TEST(Expr, PreservesBinaryGroupingAndPostfixBinding) {
     [[maybe_unused]] auto& ir{context.ir};
     [[maybe_unused]] auto& types{context.storage.cpp_types};
     auto const inner{ir.binary(BinaryOperator::equal, ir.named("a"), ir.named("b"))};
-    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::equal, inner, ir.named("c"))), "a == b == c");
-    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::equal, ir.named("c"), inner)), "c == (a == b)");
-    EXPECT_EQ(ir.render(ir.call(inner)), "(a == b)()");
-    EXPECT_EQ(ir.render(ir.call(ir.named("f"), {inner})), "f(a == b)");
-    EXPECT_EQ(ir.render(ir.static_cast_expr(types.intern("bool"), inner)),
+    EXPECT_EQ(CppRenderer{ir}.render(ir.binary(BinaryOperator::equal, inner, ir.named("c"))),
+              "a == b == c");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.binary(BinaryOperator::equal, ir.named("c"), inner)),
+              "c == (a == b)");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.call(inner)), "(a == b)()");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.call(ir.named("f"), {inner})), "f(a == b)");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.static_cast_expr(types.intern("bool"), inner)),
               "static_cast<bool>(a == b)");
 }
 
@@ -86,26 +90,30 @@ TEST(Expr, RendersUnaryPointerAccessAndLogicalPrecedence) {
     auto const missing{ir.binary(BinaryOperator::logical_or,
                                  ir.unary(UnaryOperator::logical_not, pointer),
                                  ir.unary(UnaryOperator::logical_not, data))};
-    EXPECT_EQ(ir.render(missing), "!state || !state->data");
-    EXPECT_EQ(ir.render(ir.unary(UnaryOperator::logical_not, missing)),
+    EXPECT_EQ(CppRenderer{ir}.render(missing), "!state || !state->data");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.unary(UnaryOperator::logical_not, missing)),
               "!(!state || !state->data)");
-    EXPECT_EQ(ir.render(ir.call(ir.named("test"), {missing})), "test(!state || !state->data)");
-    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::equal, missing, ir.literal("false"))),
-              "(!state || !state->data) == false");
-    EXPECT_EQ(ir.render(ir.member_access(ir.unary(UnaryOperator::dereference, pointer), "data")),
-              "(*state).data");
-    EXPECT_EQ(ir.render(ir.unary(UnaryOperator::address_of,
-                                 ir.unary(UnaryOperator::address_of, pointer))),
-              "&(&state)");
-    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::not_equal,
-                                  ir.named("this"),
-                                  ir.unary(UnaryOperator::address_of, ir.named("other")))),
-              "this != &other");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.call(ir.named("test"), {missing})),
+              "test(!state || !state->data)");
     EXPECT_EQ(
-        ir.render(ir.binary(BinaryOperator::divide,
+        CppRenderer{ir}.render(ir.binary(BinaryOperator::equal, missing, ir.literal("false"))),
+        "(!state || !state->data) == false");
+    EXPECT_EQ(CppRenderer{ir}.render(
+                  ir.member_access(ir.unary(UnaryOperator::dereference, pointer), "data")),
+              "(*state).data");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.unary(UnaryOperator::address_of,
+                                              ir.unary(UnaryOperator::address_of, pointer))),
+              "&(&state)");
+    EXPECT_EQ(
+        CppRenderer{ir}.render(ir.binary(BinaryOperator::not_equal,
+                                         ir.named("this"),
+                                         ir.unary(UnaryOperator::address_of, ir.named("other")))),
+        "this != &other");
+    EXPECT_EQ(CppRenderer{ir}.render(
+                  ir.binary(BinaryOperator::divide,
                             ir.named("a"),
                             ir.binary(BinaryOperator::multiply, ir.named("b"), ir.named("c")))),
-        "a / (b * c)");
+              "a / (b * c)");
     auto const expression{
         ir.unary(UnaryOperator::logical_not,
                  ir.pointer_member_access(ir.named("state", {types.dependency("state", "State.h")}),
@@ -126,10 +134,12 @@ TEST(Ast, RendersRefQualifiedMethodsAndInlineOutOfLineConstructors) {
         ir.set_function_noexcept(created_function);
         return created_function;
     }()};
-    EXPECT_EQ(ir.render(ir.declaration(spec)), "auto view() const & noexcept -> View;");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.declaration(spec)),
+              "auto view() const & noexcept -> View;");
     ir.set_function_receiver(spec, FunctionReceiver::const_rvalue);
     ir.set_function_deleted(spec);
-    EXPECT_EQ(ir.render(ir.definition(spec)), "auto view() const && noexcept -> View = delete;");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.definition(spec)),
+              "auto view() const && noexcept -> View = delete;");
     auto const constructor{ir.definition(
         [&] {
             auto const created_function{ir.constructor(ir.strings.intern("View"))};
@@ -141,7 +151,7 @@ TEST(Ast, RendersRefQualifiedMethodsAndInlineOutOfLineConstructors) {
         ir.store_text("View"),
         {},
         true)};
-    EXPECT_EQ(ir.render(constructor), "inline View::View() {  }");
+    EXPECT_EQ(CppRenderer{ir}.render(constructor), "inline View::View() {  }");
 }
 
 TEST(Expr, RendersSizeofAndPreservesArithmeticGrouping) {
@@ -153,18 +163,19 @@ TEST(Expr, RendersSizeofAndPreservesArithmeticGrouping) {
     auto const c{ir.named("c")};
     auto const sum{ir.binary(BinaryOperator::add, a, b)};
     auto const product{ir.binary(BinaryOperator::multiply, b, c)};
-    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::multiply, sum, c)), "(a + b) * c");
-    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::add, a, product)), "a + b * c");
-    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::multiply, a, product)), "a * (b * c)");
-    EXPECT_EQ(
-        ir.render(ir.binary(BinaryOperator::add, a, ir.binary(BinaryOperator::subtract, b, c))),
-        "a + (b - c)");
-    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::multiply,
-                                  ir.named("count"),
-                                  ir.sizeof_type(types.intern("Element")))),
+    EXPECT_EQ(CppRenderer{ir}.render(ir.binary(BinaryOperator::multiply, sum, c)), "(a + b) * c");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.binary(BinaryOperator::add, a, product)), "a + b * c");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.binary(BinaryOperator::multiply, a, product)),
+              "a * (b * c)");
+    EXPECT_EQ(CppRenderer{ir}.render(
+                  ir.binary(BinaryOperator::add, a, ir.binary(BinaryOperator::subtract, b, c))),
+              "a + (b - c)");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.binary(BinaryOperator::multiply,
+                                               ir.named("count"),
+                                               ir.sizeof_type(types.intern("Element")))),
               "count * sizeof(Element)");
-    EXPECT_EQ(ir.render(ir.static_cast_expr(types.intern("int"),
-                                            ir.sizeof_type(types.intern("Element")))),
+    EXPECT_EQ(CppRenderer{ir}.render(ir.static_cast_expr(types.intern("int"),
+                                                         ir.sizeof_type(types.intern("Element")))),
               "static_cast<int>(sizeof(Element))");
 }
 
@@ -189,7 +200,7 @@ TEST(Expr, CollectsSizeofTypeDependenciesThroughArithmetic) {
                  return created_function;
              }(),
              {})})};
-    auto const output{ir.render(file)};
+    auto const output{CppRenderer{ir}.render(file)};
     EXPECT_NE(output.find("#include \"Project/Element.h\""), std::string::npos);
     EXPECT_NE(output.find("return 2 * sizeof(Element);"), std::string::npos);
 }
@@ -199,17 +210,18 @@ TEST(Expr, KeepsRawVerbatimAndProtectsNestedRawOperands) {
     [[maybe_unused]] auto& ir{context.ir};
     [[maybe_unused]] auto& types{context.storage.cpp_types};
     Expr const raw_expr{ir.raw_expr("left, right")};
-    EXPECT_EQ(ir.render(raw_expr), "left, right");
-    EXPECT_EQ(ir.render(ir.return_stmt(raw_expr)), "return left, right;");
-    EXPECT_EQ(ir.render(ir.call(ir.named("f"), {raw_expr})), "f((left, right))");
-    EXPECT_EQ(ir.render(ir.call(ir.raw_expr("*function_pointer"))), "(*function_pointer)()");
-    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::equal, raw_expr, ir.literal("0"))),
+    EXPECT_EQ(CppRenderer{ir}.render(raw_expr), "left, right");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.return_stmt(raw_expr)), "return left, right;");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.call(ir.named("f"), {raw_expr})), "f((left, right))");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.call(ir.raw_expr("*function_pointer"))),
+              "(*function_pointer)()");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.binary(BinaryOperator::equal, raw_expr, ir.literal("0"))),
               "(left, right) == 0");
-    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::equal, ir.literal("0"), raw_expr)),
+    EXPECT_EQ(CppRenderer{ir}.render(ir.binary(BinaryOperator::equal, ir.literal("0"), raw_expr)),
               "0 == (left, right)");
-    EXPECT_EQ(ir.render(ir.static_cast_expr(types.intern("int"), raw_expr)),
+    EXPECT_EQ(CppRenderer{ir}.render(ir.static_cast_expr(types.intern("int"), raw_expr)),
               "static_cast<int>((left, right))");
-    EXPECT_EQ(ir.render(ir.init_list({raw_expr})), "{(left, right)}");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.init_list({raw_expr})), "{(left, right)}");
 }
 
 TEST(Expr, RendersMemberAccessAndSubscriptsWithPostfixBinding) {
@@ -218,20 +230,26 @@ TEST(Expr, RendersMemberAccessAndSubscriptsWithPostfixBinding) {
     [[maybe_unused]] auto& types{context.storage.cpp_types};
     auto const other_values{ir.member_access(ir.named("other"), "values")};
     auto const element{ir.subscript(other_values, ir.named("index"))};
-    EXPECT_EQ(ir.render(element), "other.values[index]");
-    EXPECT_EQ(ir.render(ir.call(ir.member_access(element, "size"))), "other.values[index].size()");
-    EXPECT_EQ(ir.render(ir.subscript(ir.call(ir.named("get_values")), ir.named("index"))),
-              "get_values()[index]");
-    EXPECT_EQ(ir.render(ir.call(ir.member_access(ir.named("values"), "set"),
-                                {ir.named("index"), ir.literal("42")})),
+    EXPECT_EQ(CppRenderer{ir}.render(element), "other.values[index]");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.call(ir.member_access(element, "size"))),
+              "other.values[index].size()");
+    EXPECT_EQ(
+        CppRenderer{ir}.render(ir.subscript(ir.call(ir.named("get_values")), ir.named("index"))),
+        "get_values()[index]");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.call(ir.member_access(ir.named("values"), "set"),
+                                             {ir.named("index"), ir.literal("42")})),
               "values.set(index, 42)");
     auto const difference{ir.binary(BinaryOperator::subtract, ir.named("end"), ir.named("count"))};
-    EXPECT_EQ(ir.render(ir.subscript(other_values, difference)), "other.values[end - count]");
-    EXPECT_EQ(ir.render(ir.subscript(difference, ir.named("index"))), "(end - count)[index]");
-    EXPECT_EQ(ir.render(ir.member_access(difference, "value")), "(end - count).value");
-    EXPECT_EQ(ir.render(ir.member_access(ir.raw_expr("*pointer"), "value")), "(*pointer).value");
-    EXPECT_EQ(ir.render(ir.subscript(ir.raw_expr("*pointer"), ir.raw_expr("first, last"))),
-              "(*pointer)[(first, last)]");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.subscript(other_values, difference)),
+              "other.values[end - count]");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.subscript(difference, ir.named("index"))),
+              "(end - count)[index]");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.member_access(difference, "value")), "(end - count).value");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.member_access(ir.raw_expr("*pointer"), "value")),
+              "(*pointer).value");
+    EXPECT_EQ(
+        CppRenderer{ir}.render(ir.subscript(ir.raw_expr("*pointer"), ir.raw_expr("first, last"))),
+        "(*pointer)[(first, last)]");
 }
 
 TEST(Expr, PreservesSubtractionAndComparisonPrecedence) {
@@ -245,20 +263,30 @@ TEST(Expr, PreservesSubtractionAndComparisonPrecedence) {
     auto const comparison{ir.binary(BinaryOperator::greater_equal, a, b)};
     auto const equality{ir.binary(BinaryOperator::equal, a, b)};
 
-    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::subtract, subtraction, c)), "a - b - c");
-    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::subtract, c, subtraction)), "c - (a - b)");
-    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::greater_equal, subtraction, c)), "a - b >= c");
-    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::subtract, comparison, c)), "(a >= b) - c");
-    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::subtract, c, comparison)), "c - (a >= b)");
-    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::equal, comparison, c)), "a >= b == c");
-    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::greater_equal, equality, c)), "(a == b) >= c");
-    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::greater_equal, c, comparison)), "c >= (a >= b)");
-    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::greater, subtraction, c)), "a - b > c");
-    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::greater, equality, c)), "(a == b) > c");
-    EXPECT_EQ(
-        ir.render(ir.binary(BinaryOperator::greater, a, ir.binary(BinaryOperator::greater, b, c))),
-        "a > (b > c)");
-    EXPECT_EQ(ir.render(ir.binary(BinaryOperator::subtract, c, ir.raw_expr("a - b"))),
+    EXPECT_EQ(CppRenderer{ir}.render(ir.binary(BinaryOperator::subtract, subtraction, c)),
+              "a - b - c");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.binary(BinaryOperator::subtract, c, subtraction)),
+              "c - (a - b)");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.binary(BinaryOperator::greater_equal, subtraction, c)),
+              "a - b >= c");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.binary(BinaryOperator::subtract, comparison, c)),
+              "(a >= b) - c");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.binary(BinaryOperator::subtract, c, comparison)),
+              "c - (a >= b)");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.binary(BinaryOperator::equal, comparison, c)),
+              "a >= b == c");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.binary(BinaryOperator::greater_equal, equality, c)),
+              "(a == b) >= c");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.binary(BinaryOperator::greater_equal, c, comparison)),
+              "c >= (a >= b)");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.binary(BinaryOperator::greater, subtraction, c)),
+              "a - b > c");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.binary(BinaryOperator::greater, equality, c)),
+              "(a == b) > c");
+    EXPECT_EQ(CppRenderer{ir}.render(
+                  ir.binary(BinaryOperator::greater, a, ir.binary(BinaryOperator::greater, b, c))),
+              "a > (b > c)");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.binary(BinaryOperator::subtract, c, ir.raw_expr("a - b"))),
               "c - (a - b)");
 }
 
@@ -281,14 +309,15 @@ TEST(Expr, EscapesStringContentsWithoutConsumingFollowingDigits) {
     CompilerTestContext context;
     [[maybe_unused]] auto& ir{context.ir};
     [[maybe_unused]] auto& types{context.storage.cpp_types};
-    EXPECT_EQ(ir.render(ir.string_literal("")), "\"\"");
-    EXPECT_EQ(ir.render(ir.string_literal("a\"b\\c\n\r\t")), "\"a\\\"b\\\\c\\n\\r\\t\"");
-    EXPECT_EQ(ir.render(ir.string_literal(std::string_view{"\0"
-                                                           "7\001"
-                                                           "f\177",
-                                                           5})),
+    EXPECT_EQ(CppRenderer{ir}.render(ir.string_literal("")), "\"\"");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.string_literal("a\"b\\c\n\r\t")),
+              "\"a\\\"b\\\\c\\n\\r\\t\"");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.string_literal(std::string_view{"\0"
+                                                                        "7\001"
+                                                                        "f\177",
+                                                                        5})),
               "\"\\0007\\001f\\177\"");
-    EXPECT_EQ(ir.render(ir.string_literal("caf\xc3\xa9")), "\"caf\xc3\xa9\"");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.string_literal("caf\xc3\xa9")), "\"caf\xc3\xa9\"");
     EXPECT_EQ(escape_cpp_string(std::string_view{"\0"
                                                  "7\001"
                                                  "f\177",
@@ -345,21 +374,22 @@ TEST(Expr, PreservesAbsentEmptyAndStructuredInitializers) {
     CompilerTestContext context;
     [[maybe_unused]] auto& ir{context.ir};
     [[maybe_unused]] auto& types{context.storage.cpp_types};
-    EXPECT_EQ(ir.render(ir.instance_member(types.intern("int"), ir.strings.intern("value"))),
-              "int value;");
-    EXPECT_EQ(ir.render(ir.instance_member(
+    EXPECT_EQ(
+        CppRenderer{ir}.render(ir.instance_member(types.intern("int"), ir.strings.intern("value"))),
+        "int value;");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.instance_member(
                   types.intern("int"), ir.strings.intern("value"), ir.raw_expr(""))),
               "int value{};");
-    EXPECT_EQ(ir.render(ir.instance_member(
+    EXPECT_EQ(CppRenderer{ir}.render(ir.instance_member(
                   types.intern("int"), ir.strings.intern("value"), ir.literal("42"))),
               "int value{42};");
-    EXPECT_EQ(
-        ir.render(ir.variable(types.intern("int"), ir.strings.intern("value"), ir.raw_expr(""))),
-        "int value{};");
-    EXPECT_EQ(ir.render(ir.variable(
+    EXPECT_EQ(CppRenderer{ir}.render(
+                  ir.variable(types.intern("int"), ir.strings.intern("value"), ir.raw_expr(""))),
+              "int value{};");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.variable(
                   types.intern("auto const"), ir.strings.intern("value"), ir.call(ir.named("f")))),
               "auto const value{f()};");
-    EXPECT_EQ(ir.render(ir.return_stmt()), "return;");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.return_stmt()), "return;");
 }
 
 TEST(Ast, RendersNestedControlFlowWithExplicitBreaksAndSpacing) {
@@ -377,7 +407,7 @@ TEST(Ast, RendersNestedControlFlowWithExplicitBreaksAndSpacing) {
         {ir.switch_case(ir.named("Mode::Ready"), ir.block(body.build())),
          ir.switch_case(std::nullopt, ir.block({ir.return_stmt(ir.literal("false"))}))})};
 
-    EXPECT_EQ(ir.render(statement, {.indent_level = 1}),
+    EXPECT_EQ(CppRenderer{ir}.render(statement, {.indent_level = 1}),
               "    switch (mode) {\n"
               "    case Mode::Ready: {\n"
               "        if (ready) {\n"
@@ -398,13 +428,14 @@ TEST(Ast, RendersEmptyControlFlowAndStandaloneBlocks) {
     CompilerTestContext context;
     [[maybe_unused]] auto& ir{context.ir};
     [[maybe_unused]] auto& types{context.storage.cpp_types};
-    EXPECT_EQ(ir.render(ir.block({})), "{\n\n}");
-    EXPECT_EQ(ir.render(ir.block({ir.return_stmt()})), "{\n    return;\n}");
-    EXPECT_EQ(ir.render(ir.if_stmt(ir.named("ready"), ir.block({}))), "if (ready) {\n\n}");
-    EXPECT_EQ(ir.render(ir.switch_stmt(ir.named("mode"), {})), "switch (mode) {\n}");
-    EXPECT_EQ(
-        ir.render(ir.switch_stmt(ir.named("mode"), {ir.switch_case(std::nullopt, ir.block({}))})),
-        "switch (mode) {\ndefault: {\n\n}\n}");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.block({})), "{\n\n}");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.block({ir.return_stmt()})), "{\n    return;\n}");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.if_stmt(ir.named("ready"), ir.block({}))),
+              "if (ready) {\n\n}");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.switch_stmt(ir.named("mode"), {})), "switch (mode) {\n}");
+    EXPECT_EQ(CppRenderer{ir}.render(
+                  ir.switch_stmt(ir.named("mode"), {ir.switch_case(std::nullopt, ir.block({}))})),
+              "switch (mode) {\ndefault: {\n\n}\n}");
 }
 
 TEST(Ast, VisitsBothBranchesAndAllSwitchBodiesInOrder) {
@@ -419,7 +450,7 @@ TEST(Ast, VisitsBothBranchesAndAllSwitchBodiesInOrder) {
                         ir.switch_case(ir.literal("2"), ir.block({ir.raw("two")})),
                         ir.switch_case(std::nullopt, ir.block({ir.raw("default")}))})};
     std::vector<std::string> visited;
-    auto visit = [&](NodeId const& node) { visited.push_back(ir.render(node)); };
+    auto visit = [&](NodeId const& node) { visited.push_back(CppRenderer{ir}.render(node)); };
     ir.for_each_child(branches, visit);
     ir.for_each_child(cases, visit);
     EXPECT_EQ(visited, (std::vector<std::string>{"then", "else", "one", "two", "default"}));
@@ -450,10 +481,10 @@ TEST(Ast, CollectsDeepControlFlowDependenciesOnlyForDefinitions) {
     }()};
     auto const file{ir.files.append(ir.strings.add("Example.h"),
                                     {ir.include_dependencies(), ir.declaration(spec)})};
-    EXPECT_EQ(ir.render(file).find("Project/"), std::string::npos);
+    EXPECT_EQ(CppRenderer{ir}.render(file).find("Project/"), std::string::npos);
 
     ir.files.set_nodes(file, {ir.files.nodes(file).front(), ir.definition(spec)});
-    auto const output{ir.render(file)};
+    auto const output{CppRenderer{ir}.render(file)};
     for (auto const* name : {"condition_only",
                              "switch_only",
                              "case_only",
@@ -486,7 +517,7 @@ TEST(Ast, DeduplicatesSharedSymbolDependenciesAndTheirNestedHeaders) {
                  return created_function;
              }(),
              {})})};
-    auto const output{ir.render(file)};
+    auto const output{CppRenderer{ir}.render(file)};
     for (auto const* header : {"Project/Make.h", "Project/Value.h"}) {
         EXPECT_NE(output.find(header), std::string::npos);
         EXPECT_EQ(output.find(header), output.rfind(header));

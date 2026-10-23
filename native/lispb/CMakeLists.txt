@@ -197,16 +197,13 @@ target_sources(codegen-lib PRIVATE
   src/lowering/single_allocation_views.cpp
   src/lowering/packed_field_layouts.cpp
   src/ast/cpp_ir.cpp
-  src/ast/cpp_ir_environments.cpp
+  src/ast/cpp_renderer.cpp
   src/ast/cpp_declaration_id.cpp
   src/ast/environment_guard.cpp
   src/ast/environments.cpp
   src/ast/render_state.cpp
   src/ast/cpp_files.cpp
   src/ast/modules.cpp
-  src/ast/cpp_ir_templates.cpp
-  src/ast/cpp_ir_render.cpp
-  src/ast/cpp_ir_exprs.cpp
   src/ast/render_context.cpp
   src/ast/include.cpp
   src/ast/node_list_builder.cpp

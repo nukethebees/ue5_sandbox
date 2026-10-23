@@ -5,6 +5,7 @@
 
 #include <codegen/ast/cpp_files.h>
 #include <codegen/ast/cpp_ir.h>
+#include <codegen/ast/cpp_renderer.h>
 #include <codegen/ast/indices.h>
 #include <codegen/ast/modules.h>
 #include <kernel_codegen/document.h>
@@ -37,7 +38,7 @@ auto render(lispb::codegen::CppIR& cpp, Document const& document, ModuleAnalysis
         auto const index{cpp.files.index(file)};
         result.push_back(
             lispb::TextArtifact{std::filesystem::path{cpp.strings.view(cpp.files.path[index])},
-                                cpp.render(file),
+                                lispb::codegen::CppRenderer{cpp}.render(file),
                                 cpp.files.flags[index].format_generated()});
     }
     return result;

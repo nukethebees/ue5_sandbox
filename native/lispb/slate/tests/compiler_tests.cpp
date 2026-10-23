@@ -2,6 +2,7 @@
 #include "renderer.h"
 
 #include <codegen/ast/cpp_ir.h>
+#include <codegen/ast/cpp_renderer.h>
 #include <codegen/ast/cpp_types.h>
 #include <codegen/sexpr/reader.h>
 #include <codegen/sexpr/source_error.h>
@@ -36,7 +37,8 @@ struct TestDocument {
         parse(syntax, lispb::codegen::sexpr::read_forms(syntax, file), document);
     }
     auto render(std::uint32_t const index = 0) -> std::string {
-        return ir.render(detail::lower("test.lispb", sources, document, DeclarationId{index}, ir));
+        return lispb::codegen::CppRenderer{ir}.render(
+            detail::lower("test.lispb", sources, document, DeclarationId{index}, ir));
     }
 };
 

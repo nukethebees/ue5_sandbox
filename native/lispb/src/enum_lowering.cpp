@@ -18,6 +18,7 @@
 #include <codegen/ast/node_list_builder.h>
 #include <codegen/ast/nodes.h>
 #include <codegen/ast/return_syntax.h>
+#include <codegen/cpp_string.h>
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/enum_conversion.h>
 #include <codegen/schema/enum_reflection.h>
@@ -418,7 +419,6 @@ auto conversion_function(LoweringContext& context,
 
 auto annotation(LoweringContext& context, EnumeratorId value, bool const reflected)
     -> std::optional<std::string> {
-    auto& ir{context.ir};
     auto const& enumerators{context.declarations.enumerators};
     auto const row{enumerators.index(value)};
     if (!reflected || (!enumerators.display_name[row] && !enumerators.hidden[row])) {
@@ -426,8 +426,8 @@ auto annotation(LoweringContext& context, EnumeratorId value, bool const reflect
     }
     std::vector<std::string> metadata;
     if (enumerators.display_name[row]) {
-        metadata.push_back("DisplayName = " +
-                           ir.render(ir.string_literal(*enumerators.display_name[row])));
+        metadata.push_back("DisplayName = \"" +
+                           escape_cpp_string(context.text(*enumerators.display_name[row])) + "\"");
     }
     if (enumerators.hidden[row]) {
         metadata.emplace_back("Hidden");

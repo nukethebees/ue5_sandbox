@@ -67,7 +67,6 @@
 #include <codegen/ast/node_id.h>
 #include <codegen/ast/record_id.h>
 #include <codegen/ast/record_kind.h>
-#include <codegen/ast/render_context.h>
 #include <codegen/ast/return_syntax.h>
 #include <codegen/ast/template_id.h>
 #include <codegen/ast/template_parameter_id.h>
@@ -92,6 +91,7 @@ class Strings;
 namespace lispb::codegen {
 
 class CppTypes;
+class CppRenderer;
 
 class CppIR {
   public:
@@ -370,12 +370,6 @@ class CppIR {
         -> Expr {
         return init_list(std::span<Expr const>{elements}, type);
     }
-    auto render(Expr expr, RenderContext const& context = {}) const -> std::string;
-    auto render(NodeId node, RenderContext const& context = {}) const -> std::string;
-    auto render(CppFileId file) const -> std::string;
-    auto render_nodes(std::span<NodeId const> values,
-                      RenderContext const& context,
-                      int newlines) const -> std::string;
     void collect_dependencies(Expr expr, std::vector<TypeDependencyId>& result) const;
     void collect_dependencies(NodeId node, std::vector<TypeDependencyId>& result) const;
     void for_each_child(NodeId node, std::function<void(NodeId)> const& visit) const;
@@ -383,10 +377,8 @@ class CppIR {
     // Structured declarations are collected automatically in addition to these names.
     void set_scope_bindings(NodeId node, std::span<IdentifierId const> names);
   private:
+    friend class CppRenderer;
     auto append_function(Expr name, CppTypeId return_type, FunctionKind kind) -> FunctionId;
-    void append_template(std::string& output,
-                         TemplateId declaration,
-                         RenderContext const& context) const;
     void collect_dependencies(TemplateId declaration, std::vector<TypeDependencyId>& result) const;
     ir::TypeTemplateParameters type_template_parameters_;
     ir::ValueTemplateParameters value_template_parameters_;
@@ -408,33 +400,6 @@ class CppIR {
     auto exprs(ir::Range range) const -> std::span<Expr const>;
     auto type_list(ir::Range range) const -> std::span<CppTypeId const>;
     auto dependency_list(ir::Range range) const -> std::span<TypeDependencyId const>;
-    auto expr_precedence(Expr expr) const -> int;
-    void append_expr(std::string& output,
-                     Expr expr,
-                     RenderContext const& context,
-                     int minimum = 0,
-                     bool equal = false) const;
-    void append_node(std::string& output, NodeId node, RenderContext const& context) const;
-    void append_nodes(std::string& output,
-                      std::span<NodeId const> values,
-                      RenderContext const& context,
-                      int newlines) const;
-    auto signature(std::uint32_t function_index,
-                   RenderContext const& context,
-                   EnvironmentId& environment) const -> std::string;
-    auto declaration_name(Expr expression) const -> IdentifierId;
-    void collect_environment(RenderState& state,
-                             EnvironmentId environment,
-                             std::span<NodeId const> children,
-                             bool complete = false) const;
-    void collect_template_parameters(RenderState& state,
-                                     EnvironmentId environment,
-                                     TemplateId declaration) const;
-    auto block_environment(RenderState& state,
-                           std::span<NodeId const> children,
-                           EnvironmentKind kind = EnvironmentKind::block) const -> EnvironmentId;
-    auto record_environment(std::string_view owner, RenderState& state) const -> EnvironmentId;
-    void initialize_environments(RenderState& state, std::span<NodeId const> children) const;
     std::unordered_map<std::uint32_t, std::vector<IdentifierId>> scope_bindings_;
     std::vector<FunctionParameterId> parameter_references_;
     std::vector<MemberInitializerId> initializer_references_;

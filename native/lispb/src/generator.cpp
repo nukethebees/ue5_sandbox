@@ -6,6 +6,7 @@
 
 #include <codegen/ast/cpp_files.h>
 #include <codegen/ast/cpp_ir.h>
+#include <codegen/ast/cpp_renderer.h>
 #include <codegen/ast/cpp_types.h>
 #include <codegen/ast/include_style.h>
 #include <codegen/ast/indices.h>
@@ -501,7 +502,7 @@ auto render_modules(CppIR& ir, std::span<ModuleId const> modules) -> std::vector
             }
             ir.files.flags[file_row].set_clang_format_off(false);
             ir.files.flags[file_row].set_format_generated(true);
-            result.push_back(GeneratedFile{normalized, ir.render(file), true});
+            result.push_back(GeneratedFile{normalized, CppRenderer{ir}.render(file), true});
         }
     }
     return result;

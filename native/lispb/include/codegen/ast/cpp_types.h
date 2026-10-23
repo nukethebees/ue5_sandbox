@@ -1,6 +1,8 @@
 #pragma once
 
 #include <codegen/ast/cpp_type_dependency_range.h>
+#include <codegen/ast/cpp_type_part.h>
+#include <codegen/ast/cpp_type_shape.h>
 #include <codegen/ast/indices.h>
 #include <codegen/ast/ir/range.h>
 #include <codegen/ast/parameter_passing.h>
@@ -24,15 +26,7 @@ class Strings;
 
 namespace lispb::codegen {
 
-struct RenderContext;
-
-// Compose generated type syntax without flattening references to other types.
-struct CppTypePart {
-    StringId text{};
-    CppTypeId type{};
-
-    auto operator==(CppTypePart const&) const -> bool = default;
-};
+class CppRenderer;
 
 class CppTypes {
   public:
@@ -91,7 +85,6 @@ class CppTypes {
         -> CppTypeId;
     // Return an unpublished copy whose policies can be configured independently.
     auto clone(CppTypeId base) -> CppTypeId;
-    void append(std::string& output, CppTypeId type, RenderContext const& context) const;
 
     auto spelling(CppTypeId type) const -> std::string_view;
     auto spelling_id(CppTypeId type) const -> StringId;
@@ -113,29 +106,25 @@ class CppTypes {
     auto dependency_spelling(TypeDependencyId dependency) const -> std::string_view;
     auto dependency_header(TypeDependencyId dependency) const -> std::optional<std::string_view>;
   private:
-    enum class Form { raw, named, composed };
-    struct Shape {
-        Form form{Form::raw};
-        ir::Range parts{};
-    };
+    friend class CppRenderer;
     auto append(StringId spelling,
                 std::span<TypeDependencyId const> dependencies,
                 ParameterPassing passing,
-                Shape shape) -> CppTypeId;
+                CppTypeShape shape) -> CppTypeId;
     auto find(StringId spelling,
               std::span<TypeDependencyId const> dependencies,
               ParameterPassing passing,
               std::optional<CppTypeId> operation_source,
-              Shape shape) const -> std::optional<CppTypeId>;
+              CppTypeShape shape) const -> std::optional<CppTypeId>;
     auto intern_shape(std::string_view spelling,
                       std::span<TypeDependencyId const> dependencies,
                       ParameterPassing passing,
                       std::optional<CppTypeId> operation_source,
-                      Shape shape) -> CppTypeId;
+                      CppTypeShape shape) -> CppTypeId;
 
     Strings& strings_;
     std::vector<StringId> spellings_;
-    std::vector<Shape> shapes_;
+    std::vector<CppTypeShape> shapes_;
     std::vector<StringId> name_components_;
     std::vector<CppTypePart> parts_;
     std::vector<CppTypeDependencyRange> dependencies_;

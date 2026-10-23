@@ -6,6 +6,7 @@
 
 #include <codegen/ast/cpp_files.h>
 #include <codegen/ast/cpp_ir.h>
+#include <codegen/ast/cpp_renderer.h>
 #include <codegen/sexpr/sources.h>
 #include <codegen/sexpr/syntax.h>
 #include <lispb/compilation.h>
@@ -69,7 +70,7 @@ void compile_sources(lispb::codegen::sexpr::Syntax& syntax,
                                           ir)};
             auto const file_index{ir.files.index(file)};
             result.add_text(std::filesystem::path{ir.strings.view(ir.files.path[file_index])},
-                            ir.render(file),
+                            lispb::codegen::CppRenderer{ir}.render(file),
                             ir.files.flags[file_index].format_generated());
         }
     }

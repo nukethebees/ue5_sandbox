@@ -7,6 +7,7 @@
 #include <codegen/ast/cpp_file_flags.h>
 #include <codegen/ast/cpp_files.h>
 #include <codegen/ast/cpp_ir.h>
+#include <codegen/ast/cpp_renderer.h>
 #include <codegen/ast/cpp_types.h>
 #include <codegen/ast/function_body_layout.h>
 #include <codegen/ast/function_formatting.h>
@@ -61,7 +62,7 @@ TEST(Ast, NodeListBuilderComposesSectionsAndSpacing) {
                    .add(ir.instance_member(types.intern("int32"), ir.strings.intern("third")))
                    .build()};
 
-    EXPECT_EQ(ir.render_nodes(nodes, {}, 0),
+    EXPECT_EQ(CppRenderer{ir}.render_nodes(nodes, {}, 0),
               "public:\nint32 first;\nint32 second;\n\nint32 third;");
 }
 
@@ -69,9 +70,10 @@ TEST(Ast, RendersFriendDeclarations) {
     CompilerTestContext context;
     [[maybe_unused]] auto& ir{context.ir};
     [[maybe_unused]] auto& types{context.storage.cpp_types};
-    EXPECT_EQ(ir.render(ir.friend_declaration(ir.strings.intern("FOwner"))),
+    EXPECT_EQ(CppRenderer{ir}.render(ir.friend_declaration(ir.strings.intern("FOwner"))),
               "friend class FOwner;");
-    EXPECT_EQ(ir.render(ir.friend_declaration(ir.strings.intern("FValue"), RecordKind::struct_)),
+    EXPECT_EQ(CppRenderer{ir}.render(
+                  ir.friend_declaration(ir.strings.intern("FValue"), RecordKind::struct_)),
               "friend struct FValue;");
 }
 
@@ -79,8 +81,8 @@ TEST(Ast, RendersComments) {
     CompilerTestContext context;
     [[maybe_unused]] auto& ir{context.ir};
     [[maybe_unused]] auto& types{context.storage.cpp_types};
-    EXPECT_EQ(ir.render(ir.line_comment("Lifetime")), "// Lifetime");
-    EXPECT_EQ(ir.render(ir.block_comment("****************************************")),
+    EXPECT_EQ(CppRenderer{ir}.render(ir.line_comment("Lifetime")), "// Lifetime");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.block_comment("****************************************")),
               "/* **************************************** */");
 }
 
@@ -92,8 +94,8 @@ TEST(Ast, RendersStaticAssertionsWithOptionalMessages) {
     NodeId const with_message{ir.static_assertion(ir.store_text("valid<Value>"),
                                                   ir.store_text("Value must be \"valid\"."))};
 
-    EXPECT_EQ(ir.render(without_message), "static_assert(sizeof(Value) == 16);");
-    EXPECT_EQ(ir.render(with_message),
+    EXPECT_EQ(CppRenderer{ir}.render(without_message), "static_assert(sizeof(Value) == 16);");
+    EXPECT_EQ(CppRenderer{ir}.render(with_message),
               "static_assert(valid<Value>, \"Value must be \\\"valid\\\".\");");
 }
 
@@ -101,14 +103,14 @@ TEST(Ast, RendersTypedStmts) {
     CompilerTestContext context;
     [[maybe_unused]] auto& ir{context.ir};
     [[maybe_unused]] auto& types{context.storage.cpp_types};
-    EXPECT_EQ(ir.render(ir.expr_stmt(ir.raw_expr("apply(value)"))), "apply(value);");
-    EXPECT_EQ(ir.render(ir.return_stmt(ir.raw_expr("value"))), "return value;");
-    EXPECT_EQ(ir.render(ir.return_stmt()), "return;");
-    EXPECT_EQ(ir.render(ir.assignment(ir.raw_expr("target"), ir.raw_expr("value"))),
+    EXPECT_EQ(CppRenderer{ir}.render(ir.expr_stmt(ir.raw_expr("apply(value)"))), "apply(value);");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.return_stmt(ir.raw_expr("value"))), "return value;");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.return_stmt()), "return;");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.assignment(ir.raw_expr("target"), ir.raw_expr("value"))),
               "target = value;");
-    EXPECT_EQ(ir.render(ir.variable(types.intern("auto const"),
-                                    ir.strings.intern("count"),
-                                    ir.raw_expr("values.Num()"))),
+    EXPECT_EQ(CppRenderer{ir}.render(ir.variable(types.intern("auto const"),
+                                                 ir.strings.intern("count"),
+                                                 ir.raw_expr("values.Num()"))),
               "auto const count{values.Num()};");
 }
 
@@ -136,14 +138,16 @@ TEST(Ast, RendersAccessSpecifiersWithExplicitIndentation) {
     CompilerTestContext context;
     [[maybe_unused]] auto& ir{context.ir};
     [[maybe_unused]] auto& types{context.storage.cpp_types};
-    auto const render_context{RenderContext{.indent_level = 1, .indent_text = "    "}};
+    auto const render_context{RenderContext{.indent_level = 1}};
 
-    EXPECT_EQ(ir.render(ir.access(Access::public_), render_context), "  public:");
-    EXPECT_EQ(ir.render(ir.access(Access::private_, AccessIndentation::normal), render_context),
+    EXPECT_EQ(CppRenderer{ir}.render(ir.access(Access::public_), render_context), "  public:");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.access(Access::private_, AccessIndentation::normal),
+                                     render_context),
               "    private:");
-    EXPECT_EQ(ir.render(ir.access(Access::private_, AccessIndentation::normal),
-                        RenderContext{.indent_level = 1, .indent_text = "\t"}),
-              "\tprivate:");
+    CppRenderer tab_renderer{ir, "\t"};
+    EXPECT_EQ(
+        tab_renderer.render(ir.access(Access::private_, AccessIndentation::normal), render_context),
+        "\tprivate:");
 }
 
 TEST(Ast, RendersBraceInitialisedTree) {
@@ -183,7 +187,7 @@ TEST(Ast, RendersBraceInitialisedTree) {
                 }),
         })};
 
-    EXPECT_EQ(ir.render(file), R"(// This file is autogenerated. Do not edit by hand.
+    EXPECT_EQ(CppRenderer{ir}.render(file), R"(// This file is autogenerated. Do not edit by hand.
 // Edit lispb/schema and regenerate it instead.
 
 #pragma once
@@ -221,7 +225,7 @@ TEST(Ast, CollectsNestedTypeDependenciesOnceAndInGroups) {
                         })};
     ir.files.set_include_order(file, {ir.strings.add("Project/")});
 
-    auto const rendered{ir.render(file)};
+    auto const rendered{CppRenderer{ir}.render(file)};
     EXPECT_EQ(rendered.find("Project/Element.h"), rendered.rfind("Project/Element.h"));
     EXPECT_EQ(rendered.find("Containers/Array.h"), rendered.rfind("Containers/Array.h"));
     EXPECT_LT(rendered.find("Project/Element.h"), rendered.find("Containers/Array.h"));
@@ -246,7 +250,7 @@ TEST(Ast, SortsDependencyIncludesWithinConfiguredGroups) {
         })};
     ir.files.set_include_order(file, {ir.strings.add("Project/")});
 
-    auto const rendered{ir.render(file)};
+    auto const rendered{CppRenderer{ir}.render(file)};
     EXPECT_LT(rendered.find("Project/A.h"), rendered.find("Project/Z.h"));
     EXPECT_LT(rendered.find("Project/Z.h"), rendered.find("Containers/Array.h"));
 }
@@ -264,7 +268,7 @@ TEST(Ast, RendersExplicitIncludesAtTheirNodeLocation) {
                         })};
     ir.files.flags[ir.files.index(file)].set_pragma_once(false);
 
-    auto const rendered{ir.render(file)};
+    auto const rendered{CppRenderer{ir}.render(file)};
     EXPECT_LT(rendered.find("Project/Explicit.h"), rendered.find("int value;"));
     EXPECT_EQ(rendered.find("Project/Explicit.h"), rendered.rfind("Project/Explicit.h"));
 }
@@ -316,7 +320,7 @@ TEST(Ast, RendersClassInheritanceAndMemberInitializers) {
     CompilerTestContext context;
     [[maybe_unused]] auto& ir{context.ir};
     [[maybe_unused]] auto& types{context.storage.cpp_types};
-    auto const rendered{ir.render([&] {
+    auto const rendered{CppRenderer{ir}.render([&] {
         auto const created_record{ir.record(
             ir.strings.intern("FDerived"),
             {
@@ -372,7 +376,7 @@ TEST(Ast, RendersTemplatedConstrainedFunctions) {
         return created_function;
     }()};
 
-    auto const rendered{ir.render(ir.header_function(spec))};
+    auto const rendered{CppRenderer{ir}.render(ir.header_function(spec))};
     EXPECT_NE(rendered.find("template <typename Other>"), std::string::npos);
     EXPECT_NE(rendered.find("requires Appendable<Other>"), std::string::npos);
     EXPECT_NE(rendered.find("append_from(other);"), std::string::npos);
@@ -400,31 +404,40 @@ TEST(Ast, RendersTypedFunctionFormattingPolicies) {
         };
         return created_function;
     }()};
-    EXPECT_EQ(ir.render(ir.header_function(compact), {.record_scope = true}),
-              "template <typename TFunc> void apply() requires Invocable<TFunc> { func(); }");
+    EXPECT_EQ(CppRenderer{ir}.render(
+                  ir.record(ir.strings.intern("FValue"), {ir.header_function(compact)})),
+              "struct FValue {\n"
+              "    template <typename TFunc> void apply() requires Invocable<TFunc> { func(); }\n"
+              "};");
 
     auto prefixed{compact};
     ir.function_formatting(prefixed) = FunctionFormatting{
         .requires_placement = FunctionRequiresPlacement::before_signature,
     };
-    EXPECT_EQ(ir.render(ir.header_function(prefixed), {.record_scope = true}),
-              "template <typename TFunc>\n"
-              "    requires Invocable<TFunc>\n"
-              "void apply() {\n"
-              "    func();\n"
-              "}");
+    EXPECT_EQ(CppRenderer{ir}.render(
+                  ir.record(ir.strings.intern("FValue"), {ir.header_function(prefixed)})),
+              "struct FValue {\n"
+              "    template <typename TFunc>\n"
+              "        requires Invocable<TFunc>\n"
+              "    void apply() {\n"
+              "        func();\n"
+              "    }\n"
+              "};");
 
     auto separate_brace{compact};
     ir.set_function_template(separate_brace, {});
     ir.function_formatting(separate_brace) = FunctionFormatting{
         .opening_brace_placement = FunctionOpeningBracePlacement::separate_line,
     };
-    EXPECT_EQ(ir.render(ir.header_function(separate_brace), {.record_scope = true}),
-              "void apply()\n"
-              "    requires Invocable<TFunc>\n"
-              "{\n"
-              "    func();\n"
-              "}");
+    EXPECT_EQ(CppRenderer{ir}.render(
+                  ir.record(ir.strings.intern("FValue"), {ir.header_function(separate_brace)})),
+              "struct FValue {\n"
+              "    void apply()\n"
+              "        requires Invocable<TFunc>\n"
+              "    {\n"
+              "        func();\n"
+              "    }\n"
+              "};");
 }
 
 TEST(Ast, RendersConstrainedStructuresAndSpecialMembers) {
@@ -476,7 +489,7 @@ TEST(Ast, RendersConstrainedStructuresAndSpecialMembers) {
         return created_record;
     }()};
 
-    EXPECT_EQ(ir.render(structure),
+    EXPECT_EQ(CppRenderer{ir}.render(structure),
               "template <int Capacity>\n"
               "    requires (Capacity >= 0)\n"
               "struct TFixedData {\n"
@@ -513,8 +526,9 @@ TEST(Ast, RendersDeclarationsAndOutOfLineDefinitionsFromOneSpec) {
     }()};
 
     auto const function{spec};
-    EXPECT_EQ(ir.render(ir.declaration(function)), "void set(int32 const value = 0) noexcept;");
-    EXPECT_EQ(ir.render(ir.definition(function, ir.store_text("FValue"))),
+    EXPECT_EQ(CppRenderer{ir}.render(ir.declaration(function)),
+              "void set(int32 const value = 0) noexcept;");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.definition(function, ir.store_text("FValue"))),
               "void FValue::set(int32 const value) noexcept {\n"
               "    stored = value;\n"
               "}");
@@ -532,7 +546,7 @@ TEST(Ast, CollectsTrailingReturnTypeDependencies) {
         return created_function;
     }())};
 
-    EXPECT_EQ(ir.render(function), "auto make() -> FResult;");
+    EXPECT_EQ(CppRenderer{ir}.render(function), "auto make() -> FResult;");
     EXPECT_EQ(collected_dependencies(ir, function), std::vector<TypeDependencyId>{dependency});
 }
 
@@ -559,13 +573,13 @@ TEST(Ast, CollectsOpaqueDeclarationDependenciesWithoutIncludingTheBody) {
     }()};
     auto const file{ir.files.append(ir.strings.add("Example.h"),
                                     {ir.include_dependencies(), ir.declaration(spec)})};
-    auto const header{ir.render(file)};
+    auto const header{CppRenderer{ir}.render(file)};
     EXPECT_NE(header.find("#include \"Project/Requirement.h\""), std::string::npos);
     EXPECT_EQ(header.find("Project/Implementation.h"), std::string::npos);
     EXPECT_NE(header.find("requires SupportsValue<T>"), std::string::npos);
 
     ir.files.set_nodes(file, {ir.files.nodes(file).front(), ir.definition(spec)});
-    auto const source{ir.render(file)};
+    auto const source{CppRenderer{ir}.render(file)};
     EXPECT_NE(source.find("#include \"Project/Requirement.h\""), std::string::npos);
     EXPECT_NE(source.find("#include \"Project/Implementation.h\""), std::string::npos);
     EXPECT_EQ(source.find("Project/Requirement.h"), source.rfind("Project/Requirement.h"));
@@ -580,12 +594,12 @@ TEST(Ast, RendersQualifiedTrailingReturnAndDefaultedConstructor) {
     ir.set_function_return_type(function, types.intern("int32"), ReturnSyntax::trailing);
     ir.set_function_receiver(function, FunctionReceiver::static_);
     ir.function_flags(function).set_is_constexpr(true);
-    EXPECT_EQ(ir.render(ir.declaration(function)),
+    EXPECT_EQ(CppRenderer{ir}.render(ir.declaration(function)),
               "static constexpr auto qualified_placeholder_return() -> int32;");
 
     auto const constructor{ir.constructor(ir.strings.intern("FValue"))};
     ir.set_function_defaulted(constructor);
-    EXPECT_EQ(ir.render(ir.definition(constructor, ir.store_text("FValue"))),
+    EXPECT_EQ(CppRenderer{ir}.render(ir.definition(constructor, ir.store_text("FValue"))),
               "FValue::FValue() = default;");
 }
 
@@ -624,7 +638,7 @@ TEST(Ast, RendersForwardUsingAndFilePolicyNodes) {
     ir.files.set_prologue(file, {ir.strings.add("// prologue")});
     ir.files.set_epilogue(file, {ir.strings.add("// epilogue")});
 
-    auto const rendered{ir.render(file)};
+    auto const rendered{CppRenderer{ir}.render(file)};
     EXPECT_TRUE(rendered.starts_with("// clang-format off\n"));
     EXPECT_EQ(rendered.find("#pragma once"), std::string::npos);
     EXPECT_NE(rendered.find("// prologue\n\nstruct FValue;\nusing Value = FValue;"),
@@ -650,11 +664,14 @@ TEST(Ast, AppliesStaticAndDefaultArgumentRulesToFunctionForms) {
     }()};
 
     auto const function{spec};
-    EXPECT_EQ(ir.render(ir.header_function(function), {.record_scope = true}),
-              "static int32 make(int32 const value = 7) {\n"
-              "    return value;\n"
-              "}");
-    EXPECT_EQ(ir.render(ir.definition(function, ir.store_text("FValue"))),
+    EXPECT_EQ(CppRenderer{ir}.render(
+                  ir.record(ir.strings.intern("FValue"), {ir.header_function(function)})),
+              "struct FValue {\n"
+              "    static int32 make(int32 const value = 7) {\n"
+              "        return value;\n"
+              "    }\n"
+              "};");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.definition(function, ir.store_text("FValue"))),
               "int32 FValue::make(int32 const value) {\n"
               "    return value;\n"
               "}");
@@ -664,9 +681,9 @@ TEST(Ast, RendersEmptyEnumsWithoutAnEnumerator) {
     CompilerTestContext context;
     auto& ir{context.ir};
 
-    EXPECT_EQ(ir.render(ir.enumeration(ir.strings.intern("Empty"), {}, {})),
+    EXPECT_EQ(CppRenderer{ir}.render(ir.enumeration(ir.strings.intern("Empty"), {}, {})),
               "enum class Empty {\n\n};");
-    EXPECT_EQ(ir.render(ir.enumeration(ir.strings.intern("Empty"), {}, {}, {}, false)),
+    EXPECT_EQ(CppRenderer{ir}.render(ir.enumeration(ir.strings.intern("Empty"), {}, {}, {}, false)),
               "enum Empty {\n\n};");
 }
 
@@ -685,7 +702,7 @@ TEST(Ast, RendersEnumsAndExportedFreeFunctions) {
                        },
                        ir.strings.intern("PROJECT_API"))};
 
-    EXPECT_EQ(ir.render(value),
+    EXPECT_EQ(CppRenderer{ir}.render(value),
               "enum class PROJECT_API EMode : uint8 {\n"
               "    First = 1,\n"
               "    Second UMETA(DisplayName = \"Second Value\"),\n"
@@ -699,11 +716,13 @@ TEST(Ast, RendersEnumsAndExportedFreeFunctions) {
         return created_function;
     }()};
     auto const function{spec};
-    EXPECT_EQ(ir.render(ir.declaration(function)),
+    EXPECT_EQ(CppRenderer{ir}.render(ir.declaration(function)),
               "PROJECT_API auto to_string_view() -> FStringView;");
-    EXPECT_EQ(ir.render(ir.definition(spec)), "auto to_string_view() -> FStringView {\n\n}");
-    EXPECT_EQ(ir.render(ir.namespace_node(ir.strings.intern(""), {ir.raw("int value;")})),
-              "namespace {\nint value;\n} // namespace");
+    EXPECT_EQ(CppRenderer{ir}.render(ir.definition(spec)),
+              "auto to_string_view() -> FStringView {\n\n}");
+    EXPECT_EQ(
+        CppRenderer{ir}.render(ir.namespace_node(ir.strings.intern(""), {ir.raw("int value;")})),
+        "namespace {\nint value;\n} // namespace");
 }
 
 struct NamespaceCase {
@@ -738,7 +757,7 @@ TEST_P(NamespaceRendering, ShortensOnlyVisibleNamespaceComponents) {
         }
         members.add(ir.instance_member(types.named(test.target), ir.strings.intern("value")));
         auto const record{ir.record(ir.strings.intern("Holder"), members.build())};
-        auto const output{ir.render(in_namespace(ir, test.current, record, nested))};
+        auto const output{CppRenderer{ir}.render(in_namespace(ir, test.current, record, nested))};
         EXPECT_NE(output.find(std::string{test.expected} + " value;"), std::string::npos) << output;
     }
 }
@@ -761,14 +780,15 @@ INSTANTIATE_TEST_SUITE_P(
 TEST(Ast, RestoresNamespaceContextAndRetainsAnonymousLookup) {
     CompilerTestContext context;
     auto& ir{context.ir};
+    CppRenderer renderer{ir};
     auto const type{ir.types.named("a::b::Token")};
     auto const member{ir.variable(type, "value")};
     auto const local{in_namespace(ir, "a::b", ir.namespace_node(ir.strings.intern(""), {member}))};
-    auto const output{ir.render_nodes(std::vector<NodeId>{local, member}, {}, 1)};
+    auto const output{renderer.render_nodes(std::vector<NodeId>{local, member}, {}, 1)};
     EXPECT_NE(output.find("namespace {\nToken value{};"), std::string::npos);
     EXPECT_TRUE(output.ends_with("a::b::Token value{};"));
-    EXPECT_EQ(ir.render(member), "a::b::Token value{};");
-    EXPECT_EQ(ir.render(local), ir.render(local));
+    EXPECT_EQ(renderer.render(member), "a::b::Token value{};");
+    EXPECT_EQ(renderer.render(local), renderer.render(local));
 }
 
 TEST(Ast, RetainsTypeStructureAndPoliciesAcrossCompositionAndDependencies) {
@@ -783,7 +803,7 @@ TEST(Ast, RetainsTypeStructureAndPoliciesAcrossCompositionAndDependencies) {
     auto const array{types.template_type(types.named("std::array"), {pointer, types.intern("2")})};
     auto const copied{types.with_dependencies(pointer, std::vector{dependency})};
     auto const emit = [&](CppTypeId type) {
-        return ir.render(in_namespace(ir, "a", ir.variable(type, "value")));
+        return CppRenderer{ir}.render(in_namespace(ir, "a", ir.variable(type, "value")));
     };
     EXPECT_NE(emit(array).find("std::array<Token const*, 2> value{};"), std::string::npos);
     EXPECT_NE(emit(copied).find("Token const* value{};"), std::string::npos);
@@ -804,11 +824,11 @@ TEST(Ast, PreservesQualificationAcrossOpaqueScopesUnlessBindingsAreProvided) {
     auto const member{ir.instance_member(ir.types.named("a::Token"), ir.strings.intern("value"))};
     auto const record{ir.record(ir.strings.intern("Holder"), {raw, member})};
     auto const wrapped{in_namespace(ir, "a", record)};
-    EXPECT_NE(ir.render(wrapped).find("a::Token value;"), std::string::npos);
+    EXPECT_NE(CppRenderer{ir}.render(wrapped).find("a::Token value;"), std::string::npos);
     ir.set_scope_bindings(raw, std::vector{ir.strings.intern("Hidden")});
-    EXPECT_NE(ir.render(wrapped).find("\n    Token value;"), std::string::npos);
+    EXPECT_NE(CppRenderer{ir}.render(wrapped).find("\n    Token value;"), std::string::npos);
     ir.set_record_bases(record, {ir.types.intern("ExternalBase")});
-    EXPECT_NE(ir.render(wrapped).find("a::Token value;"), std::string::npos);
+    EXPECT_NE(CppRenderer{ir}.render(wrapped).find("a::Token value;"), std::string::npos);
 }
 
 TEST(Ast, AccountsForReopenedAndAnonymousNamespaceBindings) {
@@ -820,10 +840,11 @@ TEST(Ast, AccountsForReopenedAndAnonymousNamespaceBindings) {
     for (auto const anonymous : {false, true}) {
         auto const binding{anonymous ? ir.namespace_node(ir.strings.intern(""), {declaration})
                                      : static_cast<NodeId>(declaration)};
-        auto const output{ir.render_nodes(std::vector<NodeId>{in_namespace(ir, "a::b", binding),
-                                                              in_namespace(ir, "a::b", member)},
-                                          {},
-                                          1)};
+        auto const output{
+            CppRenderer{ir}.render_nodes(std::vector<NodeId>{in_namespace(ir, "a::b", binding),
+                                                             in_namespace(ir, "a::b", member)},
+                                         {},
+                                         1)};
         EXPECT_NE(output.find("a::Token value{};"), std::string::npos) << output;
     }
 }
@@ -840,7 +861,7 @@ TEST(Ast, UsesTemplateAndMemberScopesInSignaturesAndExpressions) {
                   {ir.using_declaration(ir.strings.intern("Token"), ir.types.intern("int")),
                    ir.declaration(make)})};
     auto const definition{ir.definition(make, ir.store_text("Holder"))};
-    auto const output{ir.render_nodes(
+    auto const output{CppRenderer{ir}.render_nodes(
         std::vector<NodeId>{in_namespace(ir, "a", record), in_namespace(ir, "a", definition)},
         {},
         1)};
@@ -857,8 +878,8 @@ TEST(Ast, UsesTemplateAndMemberScopesInSignaturesAndExpressions) {
                          {ir.variable(token, "value", ir.init_list({}, token)),
                           ir.expr_stmt(ir.sizeof_type(token)),
                           ir.return_stmt(ir.static_cast_expr(token, ir.named("value")))});
-    auto const templated{
-        ir.render(in_namespace(ir, "a", ir.definition(template_function, {}, {}, true)))};
+    auto const templated{CppRenderer{ir}.render(
+        in_namespace(ir, "a", ir.definition(template_function, {}, {}, true)))};
     for (auto const expected : {"-> a::Token",
                                 "a::Token value{a::Token{}};",
                                 "sizeof(a::Token)",
@@ -874,11 +895,11 @@ TEST(Ast, DistinguishesDeclarationsWhenNodesAreReusedAcrossNamespaces) {
     auto const record{
         ir.record(ir.strings.intern("Holder"),
                   {ir.instance_member(ir.types.named("a::Token"), ir.strings.intern("value"))})};
-    auto const output{
-        ir.render_nodes(std::vector{ir.namespace_node(ir.strings.intern("a"), {alias, record}),
-                                    ir.namespace_node(ir.strings.intern("b"), {alias, record})},
-                        {},
-                        1)};
+    auto const output{CppRenderer{ir}.render_nodes(
+        std::vector{ir.namespace_node(ir.strings.intern("a"), {alias, record}),
+                    ir.namespace_node(ir.strings.intern("b"), {alias, record})},
+        {},
+        1)};
 
     EXPECT_NE(output.find("namespace a {\nusing Token = int;\n\nstruct Holder {\n    Token value;"),
               std::string::npos)
@@ -900,7 +921,7 @@ TEST(Ast, TracksLocalHidingAtTheDeclarationAndRestoresEnclosingLookup) {
                           ir.variable(token, "after"),
                           ir.variable("int", "Token"),
                           ir.variable(token, "hidden")});
-    auto const output{ir.render(in_namespace(ir, "a", ir.definition(function)))};
+    auto const output{CppRenderer{ir}.render(in_namespace(ir, "a", ir.definition(function)))};
 
     for (auto const expected :
          {"Token before{};", "a::Token inside{};", "Token after{};", "a::Token hidden{};"}) {
@@ -924,12 +945,12 @@ TEST(Ast, ResolvesNestedClassOwnersAndForwardDeclaredInjectedNames) {
         ir.record(ir.strings.intern("Self"),
                   {ir.instance_member(ir.types.decorate(ir.types.named("a::Self"), "", " const*"),
                                       ir.strings.intern("next"))})};
-    auto const output{
-        ir.render(ir.namespace_node(ir.strings.intern("a"),
-                                    {outer,
-                                     ir.definition(make, ir.store_text("Outer::Inner")),
-                                     ir.forward_declaration(ir.strings.intern("Self")),
-                                     self}))};
+    auto const output{CppRenderer{ir}.render(
+        ir.namespace_node(ir.strings.intern("a"),
+                          {outer,
+                           ir.definition(make, ir.store_text("Outer::Inner")),
+                           ir.forward_declaration(ir.strings.intern("Self")),
+                           self}))};
 
     EXPECT_NE(output.find("Token Outer::Inner::make(a::Token value)"), std::string::npos) << output;
     EXPECT_NE(output.find("return a::Token{};"), std::string::npos) << output;
@@ -947,7 +968,7 @@ TEST(Ast, KeepsTemplateHeadersIndependentOfFunctionParameters) {
     ir.set_function_parameters(function,
                                {ir.parameter(token, "Token"), ir.parameter(token, "other")});
     ir.set_function_return_type(function, token, ReturnSyntax::trailing);
-    auto const output{ir.render(in_namespace(ir, "a", ir.declaration(function)))};
+    auto const output{CppRenderer{ir}.render(in_namespace(ir, "a", ir.declaration(function)))};
 
     EXPECT_NE(output.find("template <Token N>"), std::string::npos) << output;
     EXPECT_NE(output.find("use(Token Token, a::Token other) -> a::Token;"), std::string::npos)
@@ -961,7 +982,8 @@ TEST(Ast, PreservesQualificationForAuthoredRecordNames) {
         ir.record(ir.raw_expr("Holder"),
                   {ir.instance_member(ir.types.named("a::Token"), ir.strings.intern("value"))})};
 
-    EXPECT_NE(ir.render(in_namespace(ir, "a", record)).find("a::Token value;"), std::string::npos);
+    EXPECT_NE(CppRenderer{ir}.render(in_namespace(ir, "a", record)).find("a::Token value;"),
+              std::string::npos);
 }
 
 } // namespace
