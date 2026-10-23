@@ -2,11 +2,9 @@
   :header "include/ioj/layout/analysis/soa_column_table.hpp"
   :source "src/analysis/soa_column_table.cpp"
   :header-include "ioj/layout/analysis/soa_column_table.hpp"
-  :backend standard-library
   :namespace ioj::layout
   :prelude #cpp{#include <optional>}cpp#
   (struct SoaColumnTable
-    (single-allocation SoaColumnTable)
     (member parent array @analysis_id)
     (member name array @string_view)
     (member semantic_type array @type_id)

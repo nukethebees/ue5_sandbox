@@ -1,7 +1,7 @@
 #include "analyzer_test_fixtures.hpp"
 
 #include <gtest/gtest.h>
-#include <native_soa_types.h>
+#include <native_soa/types.hpp>
 
 #include <array>
 #include <cstddef>
@@ -57,12 +57,19 @@ TEST(PhysicalFacts, GeneratedCppAgreesForPointersNestedRecordsAndAlignedExternal
     PairRows generated;
     generated.set_num(7);
     EXPECT_EQ(storage.columns.total_bytes()[first_column],
-              generated.pairs.size() * sizeof(generated.pairs[0]));
+              generated.capacity() * sizeof(generated.pairs()[0]));
     EXPECT_EQ(storage.columns.total_bytes()[first_column + 1],
-              generated.pointers.size() * sizeof(Node*));
+              generated.capacity() * sizeof(Node*));
+    auto const& layout{storage.types.soa()[storage.runs.front().analysis.value].value()};
+    EXPECT_EQ(layout.capacity, generated.capacity());
+    EXPECT_EQ(layout.allocation_count, 1);
+    EXPECT_EQ(layout.total_allocation_bytes,
+              PairRows::Layout::layout_bytes(generated.capacity() /
+                                             PairRows::Layout::capacity_granularity));
+    EXPECT_EQ(layout.allocation_alignment_bytes, PairRows::Layout::allocation_alignment);
 }
 
-TEST(PhysicalFacts, SingleOnlySchemasUseOwnerFactsAndLayoutsHaveNoPhysicalObject) {
+TEST(PhysicalFacts, SoaOwnersHavePhysicalFactsAndLayoutsHaveNoPhysicalObject) {
     using namespace ioj::native_soa_fixture;
     EditorSession editor;
     auto document{editor.load(std::filesystem::path{IOJ_SOURCE_DIR} / "lispb/project.lispb",
@@ -75,7 +82,7 @@ TEST(PhysicalFacts, SingleOnlySchemasUseOwnerFactsAndLayoutsHaveNoPhysicalObject
     owner.origin = FactOrigin::compiler_probe;
     profile.set("ioj::native_soa_fixture::ApiOwner", owner);
     std::array requests{
-        AnalysisRequest{.type = *document.find_type("native_soa_fixture", "ApiRows"),
+        AnalysisRequest{.type = *document.find_type("native_soa_fixture", "ApiOwner"),
                         .abi = &profile},
         AnalysisRequest{.type = *document.find_type("native_soa_fixture", "ApiCoordinates"),
                         .abi = &profile}};

@@ -32,7 +32,6 @@ auto same_abi(AbiProfile const& first, AbiProfile const& second) -> bool {
 
 auto same_scenario(AnalysisRequest const& first, AnalysisRequest const& second) -> bool {
     return first.variant == second.variant && first.default_capacity == second.default_capacity &&
-           first.allocation_strategy == second.allocation_strategy &&
            same_abi(*first.abi, *second.abi);
 }
 

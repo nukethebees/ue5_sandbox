@@ -2,11 +2,9 @@
   :header "include/ioj/layout/analysis/packed_field_table.hpp"
   :source "src/analysis/packed_field_table.cpp"
   :header-include "ioj/layout/analysis/packed_field_table.hpp"
-  :backend standard-library
   :namespace ioj::layout
   :prelude #cpp{#include <optional>}cpp#
   (struct PackedFieldTable
-    (single-allocation PackedFieldTable)
     (member parent array @analysis_id)
     (member segment array @packed_segment_id)
     (member name array @string_view)

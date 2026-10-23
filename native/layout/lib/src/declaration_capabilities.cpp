@@ -1,9 +1,5 @@
 #include <ioj/layout/declaration_capabilities.hpp>
 
-#include <codegen/schema/soa_backend.h>
-#include <lispb/schema/soa_source_kind.h>
-#include <lispb/schema/soa_types.h>
-
 #include <utility>
 
 namespace ioj::layout {
@@ -92,22 +88,12 @@ auto declaration_capabilities(lispb::schema::TypeGraph const& types,
         case lispb::schema::TypeDefinitionKind::facade: {
             return {.kind = DeclarationKind::facade, .inspectable = true, .editable = true};
         }
-        case lispb::schema::TypeDefinitionKind::homogeneous_storage: {
-            return {
-                .kind = DeclarationKind::homogeneous_layout, .inspectable = true, .editable = true};
-        }
         case lispb::schema::TypeDefinitionKind::soa: {
-            auto const supported{
-                types.definitions()
-                    .soas.backend[types.definitions().soas.index(types.definition(node))] ==
-                lispb::codegen::SoaBackend::standard_library};
-            auto const vector{types.definitions().soas.source_kind[types.definitions().soas.index(
-                                  types.definition(node))] == lispb::schema::SoaSourceKind::vector};
-            return {.kind = vector ? DeclarationKind::vector_soa : DeclarationKind::soa,
+            return {.kind = DeclarationKind::soa,
                     .inspectable = true,
-                    .editable = supported && !vector,
-                    .physical_analysis_available = supported,
-                    .supports_variant_overrides = supported};
+                    .editable = true,
+                    .physical_analysis_available = true,
+                    .supports_variant_overrides = true};
         }
         default:
             std::unreachable();
@@ -117,9 +103,6 @@ auto declaration_capabilities(lispb::schema::TypeGraph const& types,
 auto declaration_capabilities(lispb::codegen::DeclarationHandle const declaration)
     -> DeclarationCapabilities {
     switch (declaration.kind()) {
-        case lispb::codegen::DeclarationKind::homogeneous_layout:
-            return {
-                .kind = DeclarationKind::homogeneous_layout, .inspectable = true, .editable = true};
         case lispb::codegen::DeclarationKind::static_table:
             return {.kind = DeclarationKind::static_table, .inspectable = true, .editable = true};
         case lispb::codegen::DeclarationKind::facade:

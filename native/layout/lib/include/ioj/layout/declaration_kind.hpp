@@ -16,8 +16,6 @@ enum class DeclarationKind {
     union_,
     tagged_union,
     soa,
-    vector_soa,
-    homogeneous_layout,
     static_table,
     facade,
 };

@@ -9,6 +9,7 @@
 #include <ioj/layout/analysis/analysis_request.hpp>
 #include <ioj/layout/analysis/analysis_storage.hpp>
 #include <ioj/layout/resolved_variant.hpp>
+#include <ioj/single_allocation/layout.h>
 
 #include <codegen/ast/cpp_types.h>
 #include <codegen/schema/physical_type_use.h>
@@ -18,6 +19,7 @@
 #include <lispb/strings.h>
 
 #include <algorithm>
+#include <limits>
 
 namespace ioj::layout::analysis_detail {
 void analyze_soa_layout(AnalysisContext& context,
@@ -41,17 +43,27 @@ void analyze_soa_layout(AnalysisContext& context,
         result.capacity = found->second;
         result.capacity_overridden = true;
     }
-    result.allocation_strategy = request.allocation_strategy;
+    using Policy = single_allocation_layout::LayoutPolicy;
+    std::uint32_t rounded_capacity{};
+    constexpr auto maximum_capacity{std::numeric_limits<std::uint32_t>::max() /
+                                    Policy::capacity_granularity * Policy::capacity_granularity};
+    auto const valid_capacity{
+        result.capacity <= maximum_capacity &&
+        single_allocation_layout::try_round_capacity(
+            static_cast<std::int64_t>(result.capacity), maximum_capacity, rounded_capacity)};
+    if (valid_capacity) {
+        result.capacity = rounded_capacity;
+    } else {
+        context.report(
+            {DiagnosticSeverity::error, "SoA capacity exceeds the native row-count limit."});
+    }
     auto const members{soas.columns_of(soa)};
-    result.allocation_count = result.capacity == 0 || members.empty() ? 0
-                            : request.allocation_strategy == SoaAllocationStrategy::separate_columns
-                                ? members.size()
-                                : 1;
+    result.allocation_count = result.capacity == 0 || members.empty() ? 0 : 1;
     std::optional<std::uint64_t> row_bytes{0};
     std::optional<std::uint64_t> total_bytes{0};
     std::optional<std::uint64_t> allocation_offset{0};
     std::optional<std::uint64_t> allocation_padding{0};
-    std::optional<std::uint64_t> allocation_alignment{1};
+    std::optional<std::uint64_t> allocation_alignment{Policy::minimum_alignment};
     auto const cache{abi.memory_facts().cache_line_bytes};
     auto const page{abi.memory_facts().page_bytes};
     for (auto const column : members) {
@@ -75,9 +87,7 @@ void analyze_soa_layout(AnalysisContext& context,
                       types.cpp_types(), types.cpp_types().intern(physical_type))
                       .cv_qualified
                 : occurrences.cv_qualified[occurrence_row] != 0};
-        if (schema.kind[schema_row] != lispb::codegen::SoaMemberKind::array ||
-            soas.backend[soas.index(soa)] != lispb::codegen::SoaBackend::standard_library ||
-            cv_qualified) {
+        if (schema.kind[schema_row] != lispb::codegen::SoaMemberKind::array || cv_qualified) {
             context.report({DiagnosticSeverity::warning,
                             "SoA column '" + std::string{columns.name()[row]} +
                                 "' has an unsupported owning-storage representation."});
@@ -99,7 +109,8 @@ void analyze_soa_layout(AnalysisContext& context,
             context.storage.physical_facts.size_bytes()[columns.type_facts()[row]->value]};
         auto const alignment{
             context.storage.physical_facts.alignment_bytes()[columns.type_facts()[row]->value]};
-        columns.total_bytes()[row] = checked_multiply(size, result.capacity);
+        columns.total_bytes()[row] =
+            valid_capacity ? checked_multiply(size, result.capacity) : std::nullopt;
         if (!columns.total_bytes()[row]) {
             context.report({DiagnosticSeverity::error,
                             "Byte count overflows uint64 for SoA column '" +
@@ -134,12 +145,18 @@ void analyze_soa_layout(AnalysisContext& context,
         if (total_known && !total_bytes) {
             context.report({DiagnosticSeverity::error, "SoA total payload bytes overflow uint64."});
         }
+        auto const column_alignment{std::max<std::uint64_t>(alignment, Policy::minimum_alignment)};
         if (allocation_alignment) {
-            allocation_alignment = std::max(*allocation_alignment, alignment);
+            allocation_alignment = std::max(*allocation_alignment, column_alignment);
         }
-        if (request.allocation_strategy == SoaAllocationStrategy::aligned_contiguous) {
-            auto const aligned{allocation_offset.and_then(
-                [&](auto offset) { return align_up(offset, alignment); })};
+        {
+            auto const gap{
+                row == result.columns.begin || result.capacity == 0 ? 0 : Policy::column_gap};
+            auto const aligned{allocation_offset.and_then([&](auto offset) {
+                return checked_add(offset, gap).and_then([&](auto value) {
+                    return align_up(value, column_alignment);
+                });
+            })};
             if (aligned) {
                 columns.allocation_offset_bytes()[row] = aligned;
                 columns.padding_before_bytes()[row] = *aligned - *allocation_offset;
@@ -156,21 +173,16 @@ void analyze_soa_layout(AnalysisContext& context,
             });
             if (previous_known && !allocation_offset) {
                 context.report({DiagnosticSeverity::error,
-                                "Aligned contiguous SoA allocation arithmetic overflows."});
+                                "Single-allocation SoA layout arithmetic overflows."});
             }
         }
     }
     result.columns.count = columns.num() - result.columns.begin;
     result.bytes_per_logical_element = row_bytes;
     result.total_payload_bytes = total_bytes;
-    if (request.allocation_strategy == SoaAllocationStrategy::separate_columns) {
-        result.total_allocation_bytes = total_bytes;
-        result.total_alignment_padding_bytes = 0;
-    } else {
-        result.total_allocation_bytes = allocation_offset;
-        result.total_alignment_padding_bytes = allocation_padding;
-        result.allocation_alignment_bytes = allocation_alignment;
-    }
+    result.total_allocation_bytes = allocation_offset;
+    result.total_alignment_padding_bytes = allocation_padding;
+    result.allocation_alignment_bytes = allocation_alignment;
     context.storage.types.soa()[id.value] = result;
 }
 }

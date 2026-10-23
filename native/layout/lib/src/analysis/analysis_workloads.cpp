@@ -296,12 +296,14 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
                                   : storage.components.offset_bytes()[child]};
             auto const extent{soa ? useful : per_element};
             if (offset && extent) {
-                all.emplace_back(*offset, *extent);
-                if (access_includes_read(operation)) {
-                    reads.emplace_back(*offset, *extent);
-                }
-                if (access_includes_write(operation)) {
-                    writes.emplace_back(*offset, *extent);
+                if (*extent != 0) {
+                    all.emplace_back(*offset, *extent);
+                    if (access_includes_read(operation)) {
+                        reads.emplace_back(*offset, *extent);
+                    }
+                    if (access_includes_write(operation)) {
+                        writes.emplace_back(*offset, *extent);
+                    }
                 }
             } else {
                 all_complete = false;
@@ -314,15 +316,12 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
 
             selections.capacity_slack_bytes()[selected] =
                 difference(storage.columns.total_bytes()[child], useful);
-            auto const contiguous{soa->allocation_strategy ==
-                                  SoaAllocationStrategy::aligned_contiguous};
-            auto const allocation_offset{contiguous ? offset : Quantity{}};
             column_footprint(context,
                              selections.cache()[selected],
                              cache_size,
                              per_element,
                              useful,
-                             allocation_offset,
+                             offset,
                              request.element_count,
                              operation);
             column_footprint(context,
@@ -330,7 +329,7 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
                              page_size,
                              per_element,
                              useful,
-                             allocation_offset,
+                             offset,
                              request.element_count,
                              operation);
             auto add_regions = [&](RegionFootprint& total, RegionFootprint const& value) {
@@ -392,31 +391,29 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
     } else if (soa) {
         table.unselected_payload_bytes()[row] =
             difference(table.full_logical_payload_bytes()[row], payload.useful);
-        if (soa->allocation_strategy == SoaAllocationStrategy::aligned_contiguous) {
-            auto const complete{request.element_count <= soa->capacity &&
-                                soa->total_allocation_bytes.has_value()};
-            table.footprint_exact()[row] = complete && all_complete;
-            interval_footprint(context,
-                               table.cache()[row],
-                               0,
-                               all,
-                               reads,
-                               writes,
-                               1,
-                               complete && all_complete,
-                               complete && reads_complete,
-                               complete && writes_complete);
-            interval_footprint(context,
-                               table.pages()[row],
-                               0,
-                               all,
-                               reads,
-                               writes,
-                               1,
-                               complete && all_complete,
-                               complete && reads_complete,
-                               complete && writes_complete);
-        }
+        auto const complete{request.element_count <= soa->capacity &&
+                            soa->total_allocation_bytes.has_value()};
+        table.footprint_exact()[row] = complete && all_complete;
+        interval_footprint(context,
+                           table.cache()[row],
+                           0,
+                           all,
+                           reads,
+                           writes,
+                           1,
+                           complete && all_complete,
+                           complete && reads_complete,
+                           complete && writes_complete);
+        interval_footprint(context,
+                           table.pages()[row],
+                           0,
+                           all,
+                           reads,
+                           writes,
+                           1,
+                           complete && all_complete,
+                           complete && reads_complete,
+                           complete && writes_complete);
     } else {
         table.footprint_exact()[row] = all_complete && aggregate->size_bytes.has_value();
         interval_footprint(context,

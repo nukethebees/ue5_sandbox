@@ -2,11 +2,9 @@
   :header "include/ioj/layout/analysis/tag_table.hpp"
   :source "src/analysis/tag_table.cpp"
   :header-include "ioj/layout/analysis/tag_table.hpp"
-  :backend standard-library
   :namespace ioj::layout
   :prelude #cpp{#include <optional>}cpp#
   (struct TagTable
-    (single-allocation TagTable)
     (member name array @string_view)
     (member mapped array @uint8_t)
     (member sentinel array @uint8_t)

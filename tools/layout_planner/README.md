@@ -68,7 +68,7 @@ whether to discard them.
 ## Analyze and compare
 
 **Layout** displays the selected declaration's sizes, padding, packed fields,
-SoA columns, and encoding metrics. Set element count and SoA allocation strategy
+SoA columns, and encoding metrics. Set element count and requested SoA capacity
 to model the intended use. **Access workload** selects a member, operation, and
 access multiplicity and reports payload and cache/page footprint estimates.
 
@@ -81,7 +81,7 @@ SoA column-type, and capacity overrides. Select an active variant to analyze it;
 expand **Compare variants** to compare two variants. Variant changes share
 document undo/redo but do not modify saved LispB files.
 
-Element counts, allocation strategies, profiles and access workloads also share
+Element counts, capacities, profiles and access workloads also share
 undo/redo. These analysis settings remain session-local. Controls queue changes;
 the next frame displays the results of processing the complete batch.
 

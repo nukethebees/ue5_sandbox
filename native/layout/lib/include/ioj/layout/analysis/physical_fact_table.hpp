@@ -5,6 +5,7 @@
 
 #include "ioj/layout/fact_origin.hpp"
 #include "ioj/native_soa/storage.h"
+#include "ioj/soa_permutation.h"
 
 #include "lispb/indices.h"
 #include "lispb/schema/enum_signedness.h"
@@ -16,10 +17,9 @@
 
 namespace ioj::layout {
 struct PhysicalFactTableSchema;
-
-struct PhysicalFactTableSingleView;
-struct PhysicalFactTableSingleConstView;
-struct PhysicalFactTableSingleLayoutColumns {
+struct PhysicalFactTableView;
+struct PhysicalFactTableConstView;
+struct PhysicalFactTableLayoutColumns {
     template <typename T>
     using ColLayout = ioj::native_soa::ColumnLayout<T>;
 
@@ -32,18 +32,18 @@ struct PhysicalFactTableSingleLayoutColumns {
     ColLayout<lispb::StringId> ProvenanceColumn;
     ColLayout<FactOrigin> OriginColumn;
 
-    constexpr PhysicalFactTableSingleLayoutColumns() noexcept
+    constexpr PhysicalFactTableLayoutColumns() noexcept
         : SizeBytesColumn{LayoutStart}
         , AlignmentBytesColumn{SizeBytesColumn}
         , SignednessColumn{AlignmentBytesColumn}
         , UnsignedValueBitsColumn{SignednessColumn}
         , ProvenanceColumn{UnsignedValueBitsColumn}
         , OriginColumn{ProvenanceColumn} {}
-    PhysicalFactTableSingleLayoutColumns(PhysicalFactTableSingleLayoutColumns const&) = delete;
-    auto operator=(PhysicalFactTableSingleLayoutColumns const&)
-        -> PhysicalFactTableSingleLayoutColumns& = delete;
+    PhysicalFactTableLayoutColumns(PhysicalFactTableLayoutColumns const&) = delete;
+    auto operator=(PhysicalFactTableLayoutColumns const&)
+        -> PhysicalFactTableLayoutColumns& = delete;
 };
-struct PhysicalFactTableSingleLayout {
+struct PhysicalFactTableLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
@@ -51,7 +51,7 @@ struct PhysicalFactTableSingleLayout {
         ioj::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
 
-    static constexpr PhysicalFactTableSingleLayoutColumns columns{};
+    static constexpr PhysicalFactTableLayoutColumns columns{};
 
     static constexpr byte_size_type allocation_alignment{columns.OriginColumn.allocation_alignment};
 
@@ -67,25 +67,24 @@ struct PhysicalFactTableSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
-struct PhysicalFactTableSingleResolvedView;
-struct PhysicalFactTableSingleResolvedConstView;
+struct PhysicalFactTableResolvedView;
+struct PhysicalFactTableResolvedConstView;
 template <bool Const>
-struct PhysicalFactTableSingleResolvedViewImpl {
+struct PhysicalFactTableResolvedViewImpl {
     using size_type = std::uint32_t;
-    using View = PhysicalFactTableSingleResolvedView;
-    using ConstView = PhysicalFactTableSingleResolvedConstView;
-    using soa_schema = PhysicalFactTableSchema;
+    using View = PhysicalFactTableResolvedView;
+    using ConstView = PhysicalFactTableResolvedConstView;
+    using soa_schema = ::ioj::layout::PhysicalFactTableSchema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    PhysicalFactTableSingleResolvedViewImpl() = default;
-    PhysicalFactTableSingleResolvedViewImpl(
-        Element<std::uint64_t>* size_bytes,
-        Element<std::uint64_t>* alignment_bytes,
-        Element<lispb::schema::EnumSignedness>* signedness,
-        Element<std::optional<std::uint32_t>>* unsigned_value_bits,
-        Element<lispb::StringId>* provenance,
-        Element<ioj::layout::FactOrigin>* origin,
-        size_type count)
+    PhysicalFactTableResolvedViewImpl() = default;
+    PhysicalFactTableResolvedViewImpl(Element<std::uint64_t>* size_bytes,
+                                      Element<std::uint64_t>* alignment_bytes,
+                                      Element<lispb::schema::EnumSignedness>* signedness,
+                                      Element<std::optional<std::uint32_t>>* unsigned_value_bits,
+                                      Element<lispb::StringId>* provenance,
+                                      Element<ioj::layout::FactOrigin>* origin,
+                                      size_type count)
         : size_bytes_{size_bytes}
         , alignment_bytes_{alignment_bytes}
         , signedness_{signedness}
@@ -101,14 +100,14 @@ struct PhysicalFactTableSingleResolvedViewImpl {
                                                           provenance_,
                                                           origin_);
     }
-    PhysicalFactTableSingleResolvedViewImpl(
+    PhysicalFactTableResolvedViewImpl(
         std::span<Element<std::uint64_t>> size_bytes,
         std::span<Element<std::uint64_t>> alignment_bytes,
         std::span<Element<lispb::schema::EnumSignedness>> signedness,
         std::span<Element<std::optional<std::uint32_t>>> unsigned_value_bits,
         std::span<Element<lispb::StringId>> provenance,
         std::span<Element<ioj::layout::FactOrigin>> origin)
-        : PhysicalFactTableSingleResolvedViewImpl{
+        : PhysicalFactTableResolvedViewImpl{
               size_bytes.data(),
               alignment_bytes.data(),
               signedness.data(),
@@ -124,8 +123,7 @@ struct PhysicalFactTableSingleResolvedViewImpl {
         assert(origin.size() == count_);
     }
     template <bool Enabled = Const>
-    PhysicalFactTableSingleResolvedViewImpl(
-        PhysicalFactTableSingleResolvedViewImpl<false> const& other)
+    PhysicalFactTableResolvedViewImpl(PhysicalFactTableResolvedViewImpl<false> const& other)
         requires Enabled
         : size_bytes_{other.size_bytes_}
         , alignment_bytes_{other.alignment_bytes_}
@@ -195,7 +193,7 @@ struct PhysicalFactTableSingleResolvedViewImpl {
     }
   private:
     template <bool>
-    friend struct PhysicalFactTableSingleResolvedViewImpl;
+    friend struct PhysicalFactTableResolvedViewImpl;
     Element<std::uint64_t>* size_bytes_{};
     Element<std::uint64_t>* alignment_bytes_{};
     Element<lispb::schema::EnumSignedness>* signedness_{};
@@ -204,12 +202,12 @@ struct PhysicalFactTableSingleResolvedViewImpl {
     Element<ioj::layout::FactOrigin>* origin_{};
     size_type count_{};
 };
-struct PhysicalFactTableSingleResolvedConstView : PhysicalFactTableSingleResolvedViewImpl<true> {
-    using Base = PhysicalFactTableSingleResolvedViewImpl<true>;
+struct PhysicalFactTableResolvedConstView : PhysicalFactTableResolvedViewImpl<true> {
+    using Base = PhysicalFactTableResolvedViewImpl<true>;
     using Base::Base;
 };
-struct PhysicalFactTableSingleResolvedView : PhysicalFactTableSingleResolvedViewImpl<false> {
-    using Base = PhysicalFactTableSingleResolvedViewImpl<false>;
+struct PhysicalFactTableResolvedView : PhysicalFactTableResolvedViewImpl<false> {
+    using Base = PhysicalFactTableResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              std::uint64_t const new_size_bytes,
@@ -228,23 +226,23 @@ struct PhysicalFactTableSingleResolvedView : PhysicalFactTableSingleResolvedView
     }
 };
 template <bool Const>
-struct PhysicalFactTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct PhysicalFactTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = PhysicalFactTableSchema;
     using size_type = std::uint32_t;
-    using Layout = PhysicalFactTableSingleLayout;
+    using Layout = PhysicalFactTableLayout;
     using Storage = ioj::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    using View = PhysicalFactTableSingleView;
-    using ConstView = PhysicalFactTableSingleConstView;
-    PhysicalFactTableSingleViewImpl() = default;
-    PhysicalFactTableSingleViewImpl(State* state, size_type offset, size_type count)
+    using View = PhysicalFactTableView;
+    using ConstView = PhysicalFactTableConstView;
+    PhysicalFactTableViewImpl() = default;
+    PhysicalFactTableViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
         , count_{count} {}
     template <bool Enabled = Const>
-    PhysicalFactTableSingleViewImpl(PhysicalFactTableSingleViewImpl<false> const& other)
+    PhysicalFactTableViewImpl(PhysicalFactTableViewImpl<false> const& other)
         requires Enabled
         : state_{other.state_}
         , offset_{other.offset_}
@@ -266,9 +264,8 @@ struct PhysicalFactTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOpe
         func(provenance());
         func(origin());
     }
-    auto resolve() const -> std::conditional_t<Const,
-                                               PhysicalFactTableSingleResolvedConstView,
-                                               PhysicalFactTableSingleResolvedView> {
+    auto resolve() const -> std::
+        conditional_t<Const, PhysicalFactTableResolvedConstView, PhysicalFactTableResolvedView> {
         return {(make_column_view(Layout::columns.SizeBytesColumn).data()),
                 (make_column_view(Layout::columns.AlignmentBytesColumn).data()),
                 (make_column_view(Layout::columns.SignednessColumn).data()),
@@ -285,18 +282,18 @@ struct PhysicalFactTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOpe
     }
     friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
-    friend struct PhysicalFactTableSingleViewImpl;
+    friend struct PhysicalFactTableViewImpl;
     State* state_{};
     size_type offset_{};
     size_type count_{};
 };
-struct PhysicalFactTableSingleConstView : PhysicalFactTableSingleViewImpl<true> {
-    using Base = PhysicalFactTableSingleViewImpl<true>;
+struct PhysicalFactTableConstView : PhysicalFactTableViewImpl<true> {
+    using Base = PhysicalFactTableViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<PhysicalFactTableSingleConstView>());
-struct PhysicalFactTableSingleView : PhysicalFactTableSingleViewImpl<false> {
-    using Base = PhysicalFactTableSingleViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<PhysicalFactTableConstView>());
+struct PhysicalFactTableView : PhysicalFactTableViewImpl<false> {
+    using Base = PhysicalFactTableViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              std::uint64_t const new_size_bytes,
@@ -314,7 +311,7 @@ struct PhysicalFactTableSingleView : PhysicalFactTableSingleViewImpl<false> {
         this->origin()[index] = new_origin;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<PhysicalFactTableSingleView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<PhysicalFactTableView>());
 // Columns:
 // size_bytes: std::uint64_t
 // alignment_bytes: std::uint64_t
@@ -327,7 +324,7 @@ struct PhysicalFactTable
     , ioj::native_soa::StorageOperations {
     using soa_schema = PhysicalFactTableSchema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = PhysicalFactTableSingleLayout;
+    using Layout = PhysicalFactTableLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -340,8 +337,8 @@ struct PhysicalFactTable
         return Layout::layout_bytes(blocks);
     }
 
-    using View = PhysicalFactTableSingleView;
-    using ConstView = PhysicalFactTableSingleConstView;
+    using View = PhysicalFactTableView;
+    using ConstView = PhysicalFactTableConstView;
 
     /* **************************************** */
     // Lifetime
@@ -512,7 +509,7 @@ struct PhysicalFactTable
              lispb::schema::EnumSignedness const new_signedness,
              std::optional<std::uint32_t> const new_unsigned_value_bits,
              lispb::StringId const new_provenance,
-             ioj::layout::FactOrigin const new_origin) {
+             FactOrigin const new_origin) {
         assert(index < num());
         get_view().size_bytes()[index] = new_size_bytes;
         get_view().alignment_bytes()[index] = new_alignment_bytes;
@@ -526,7 +523,7 @@ struct PhysicalFactTable
                   lispb::schema::EnumSignedness const new_signedness,
                   std::optional<std::uint32_t> const new_unsigned_value_bits,
                   lispb::StringId const new_provenance,
-                  ioj::layout::FactOrigin const new_origin) {
+                  FactOrigin const new_origin) {
         auto const index{num()};
         add_uninitialised(1);
         set(index,
@@ -537,6 +534,16 @@ struct PhysicalFactTable
             new_provenance,
             new_origin);
         return index;
+    }
+    void apply_permutation(std::span<size_type> indices) {
+        assert(indices.size() == num_);
+        auto const columns{get_data()};
+        ioj::apply_permutation(std::span{columns.size_bytes, num_}, indices);
+        ioj::apply_permutation(std::span{columns.alignment_bytes, num_}, indices);
+        ioj::apply_permutation(std::span{columns.signedness, num_}, indices);
+        ioj::apply_permutation(std::span{columns.unsigned_value_bits, num_}, indices);
+        ioj::apply_permutation(std::span{columns.provenance, num_}, indices);
+        ioj::apply_permutation(std::span{columns.origin, num_}, indices);
     }
   private:
     std::pmr::memory_resource* resource_{};

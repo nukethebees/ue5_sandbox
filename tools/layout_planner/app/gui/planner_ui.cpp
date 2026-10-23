@@ -4,7 +4,6 @@
 #include <ioj/layout/abi_profile.hpp>
 #include <ioj/layout/analysis_settings.hpp>
 #include <ioj/layout/analyzer/access_operation.hpp>
-#include <ioj/layout/analyzer/soa_allocation_strategy.hpp>
 #include <ioj/layout/editor_session.hpp>
 
 #include <lispb/diagnostics.h>
@@ -654,16 +653,6 @@ void PlannerUi::draw_analysis() {
         transaction.set_default_soa_capacity(capacity);
         controller_.submit(std::move(transaction));
     }
-    auto contiguous{settings.soa_allocation_strategy ==
-                    layout::SoaAllocationStrategy::aligned_contiguous};
-    if (ImGui::Checkbox("Contiguous SoA allocation", &contiguous)) {
-        auto transaction{document_->transaction()};
-        transaction.set_soa_allocation_strategy(
-            contiguous ? layout::SoaAllocationStrategy::aligned_contiguous
-                       : layout::SoaAllocationStrategy::separate_columns);
-        controller_.submit(std::move(transaction));
-    }
-
     auto const& storage{controller_.analysis()};
     if (ImGui::CollapsingHeader("Access workload")) {
         auto operation{static_cast<int>(settings.access_operation)};

@@ -65,7 +65,7 @@ TEST_F(PlannerUiTest, InvalidInputCanDrawDiagnostics) {
 TEST_F(PlannerUiTest, ChangedDocumentRequiresCloseConfirmation) {
     layout::EditorSession editor;
     auto document{editor.from_source(R"(
-        (module game :header "Game.h" :backend standard-library
+        (module game :header "Game.h"
             (packed-value ShipState :storage std::uint16_t
                 (field health std::uint16_t :bits 8))))")};
     ASSERT_TRUE(document.valid());

@@ -12,6 +12,7 @@
 #include "ioj/layout/analysis/quantized_encoding.hpp"
 #include "ioj/layout/analysis/varint_encoding.hpp"
 #include "ioj/native_soa/storage.h"
+#include "ioj/soa_permutation.h"
 
 #include "lispb/schema/indices.h"
 
@@ -22,10 +23,9 @@
 
 namespace ioj::layout {
 struct ScalarTableSchema;
-
-struct ScalarTableSingleView;
-struct ScalarTableSingleConstView;
-struct ScalarTableSingleLayoutColumns {
+struct ScalarTableView;
+struct ScalarTableConstView;
+struct ScalarTableLayoutColumns {
     template <typename T>
     using ColLayout = ioj::native_soa::ColumnLayout<T>;
 
@@ -41,7 +41,7 @@ struct ScalarTableSingleLayoutColumns {
     ColLayout<std::optional<ioj::layout::FloatEncoding>> FloatEncodingColumn;
     ColLayout<std::optional<ioj::layout::VarintEncoding>> VarintEncodingColumn;
 
-    constexpr ScalarTableSingleLayoutColumns() noexcept
+    constexpr ScalarTableLayoutColumns() noexcept
         : TypeColumn{LayoutStart}
         , IntegerDomainColumn{TypeColumn}
         , EnumDomainColumn{IntegerDomainColumn}
@@ -51,11 +51,10 @@ struct ScalarTableSingleLayoutColumns {
         , FixedEncodingColumn{QuantizedEncodingColumn}
         , FloatEncodingColumn{FixedEncodingColumn}
         , VarintEncodingColumn{FloatEncodingColumn} {}
-    ScalarTableSingleLayoutColumns(ScalarTableSingleLayoutColumns const&) = delete;
-    auto operator=(ScalarTableSingleLayoutColumns const&)
-        -> ScalarTableSingleLayoutColumns& = delete;
+    ScalarTableLayoutColumns(ScalarTableLayoutColumns const&) = delete;
+    auto operator=(ScalarTableLayoutColumns const&) -> ScalarTableLayoutColumns& = delete;
 };
-struct ScalarTableSingleLayout {
+struct ScalarTableLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
@@ -63,7 +62,7 @@ struct ScalarTableSingleLayout {
         ioj::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
 
-    static constexpr ScalarTableSingleLayoutColumns columns{};
+    static constexpr ScalarTableLayoutColumns columns{};
 
     static constexpr byte_size_type allocation_alignment{
         columns.VarintEncodingColumn.allocation_alignment};
@@ -80,18 +79,18 @@ struct ScalarTableSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
-struct ScalarTableSingleResolvedView;
-struct ScalarTableSingleResolvedConstView;
+struct ScalarTableResolvedView;
+struct ScalarTableResolvedConstView;
 template <bool Const>
-struct ScalarTableSingleResolvedViewImpl {
+struct ScalarTableResolvedViewImpl {
     using size_type = std::uint32_t;
-    using View = ScalarTableSingleResolvedView;
-    using ConstView = ScalarTableSingleResolvedConstView;
-    using soa_schema = ScalarTableSchema;
+    using View = ScalarTableResolvedView;
+    using ConstView = ScalarTableResolvedConstView;
+    using soa_schema = ::ioj::layout::ScalarTableSchema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    ScalarTableSingleResolvedViewImpl() = default;
-    ScalarTableSingleResolvedViewImpl(
+    ScalarTableResolvedViewImpl() = default;
+    ScalarTableResolvedViewImpl(
         Element<lispb::schema::TypeId>* type,
         Element<std::optional<ioj::layout::IntegerDomain>>* integer_domain,
         Element<std::optional<ioj::layout::EnumDomain>>* enum_domain,
@@ -123,7 +122,7 @@ struct ScalarTableSingleResolvedViewImpl {
                                                           float_encoding_,
                                                           varint_encoding_);
     }
-    ScalarTableSingleResolvedViewImpl(
+    ScalarTableResolvedViewImpl(
         std::span<Element<lispb::schema::TypeId>> type,
         std::span<Element<std::optional<ioj::layout::IntegerDomain>>> integer_domain,
         std::span<Element<std::optional<ioj::layout::EnumDomain>>> enum_domain,
@@ -135,17 +134,16 @@ struct ScalarTableSingleResolvedViewImpl {
         std::span<Element<std::optional<ioj::layout::FixedEncoding>>> fixed_encoding,
         std::span<Element<std::optional<ioj::layout::FloatEncoding>>> float_encoding,
         std::span<Element<std::optional<ioj::layout::VarintEncoding>>> varint_encoding)
-        : ScalarTableSingleResolvedViewImpl{
-              type.data(),
-              integer_domain.data(),
-              enum_domain.data(),
-              optional_sentinel_encoding.data(),
-              optional_presence_encoding.data(),
-              quantized_encoding.data(),
-              fixed_encoding.data(),
-              float_encoding.data(),
-              varint_encoding.data(),
-              ioj::soa_storage_detail::checked_row_count(type.size())} {
+        : ScalarTableResolvedViewImpl{type.data(),
+                                      integer_domain.data(),
+                                      enum_domain.data(),
+                                      optional_sentinel_encoding.data(),
+                                      optional_presence_encoding.data(),
+                                      quantized_encoding.data(),
+                                      fixed_encoding.data(),
+                                      float_encoding.data(),
+                                      varint_encoding.data(),
+                                      ioj::soa_storage_detail::checked_row_count(type.size())} {
         assert(type.size() == count_);
         assert(integer_domain.size() == count_);
         assert(enum_domain.size() == count_);
@@ -157,7 +155,7 @@ struct ScalarTableSingleResolvedViewImpl {
         assert(varint_encoding.size() == count_);
     }
     template <bool Enabled = Const>
-    ScalarTableSingleResolvedViewImpl(ScalarTableSingleResolvedViewImpl<false> const& other)
+    ScalarTableResolvedViewImpl(ScalarTableResolvedViewImpl<false> const& other)
         requires Enabled
         : type_{other.type_}
         , integer_domain_{other.integer_domain_}
@@ -264,7 +262,7 @@ struct ScalarTableSingleResolvedViewImpl {
     }
   private:
     template <bool>
-    friend struct ScalarTableSingleResolvedViewImpl;
+    friend struct ScalarTableResolvedViewImpl;
     Element<lispb::schema::TypeId>* type_{};
     Element<std::optional<ioj::layout::IntegerDomain>>* integer_domain_{};
     Element<std::optional<ioj::layout::EnumDomain>>* enum_domain_{};
@@ -276,12 +274,12 @@ struct ScalarTableSingleResolvedViewImpl {
     Element<std::optional<ioj::layout::VarintEncoding>>* varint_encoding_{};
     size_type count_{};
 };
-struct ScalarTableSingleResolvedConstView : ScalarTableSingleResolvedViewImpl<true> {
-    using Base = ScalarTableSingleResolvedViewImpl<true>;
+struct ScalarTableResolvedConstView : ScalarTableResolvedViewImpl<true> {
+    using Base = ScalarTableResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ScalarTableSingleResolvedView : ScalarTableSingleResolvedViewImpl<false> {
-    using Base = ScalarTableSingleResolvedViewImpl<false>;
+struct ScalarTableResolvedView : ScalarTableResolvedViewImpl<false> {
+    using Base = ScalarTableResolvedViewImpl<false>;
     using Base::Base;
     void set(
         size_type index,
@@ -307,23 +305,23 @@ struct ScalarTableSingleResolvedView : ScalarTableSingleResolvedViewImpl<false> 
     }
 };
 template <bool Const>
-struct ScalarTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct ScalarTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = ScalarTableSchema;
     using size_type = std::uint32_t;
-    using Layout = ScalarTableSingleLayout;
+    using Layout = ScalarTableLayout;
     using Storage = ioj::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    using View = ScalarTableSingleView;
-    using ConstView = ScalarTableSingleConstView;
-    ScalarTableSingleViewImpl() = default;
-    ScalarTableSingleViewImpl(State* state, size_type offset, size_type count)
+    using View = ScalarTableView;
+    using ConstView = ScalarTableConstView;
+    ScalarTableViewImpl() = default;
+    ScalarTableViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
         , count_{count} {}
     template <bool Enabled = Const>
-    ScalarTableSingleViewImpl(ScalarTableSingleViewImpl<false> const& other)
+    ScalarTableViewImpl(ScalarTableViewImpl<false> const& other)
         requires Enabled
         : state_{other.state_}
         , offset_{other.offset_}
@@ -355,8 +353,8 @@ struct ScalarTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperation
         func(float_encoding());
         func(varint_encoding());
     }
-    auto resolve() const -> std::
-        conditional_t<Const, ScalarTableSingleResolvedConstView, ScalarTableSingleResolvedView> {
+    auto resolve() const
+        -> std::conditional_t<Const, ScalarTableResolvedConstView, ScalarTableResolvedView> {
         return {(make_column_view(Layout::columns.TypeColumn).data()),
                 (make_column_view(Layout::columns.IntegerDomainColumn).data()),
                 (make_column_view(Layout::columns.EnumDomainColumn).data()),
@@ -376,18 +374,18 @@ struct ScalarTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperation
     }
     friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
-    friend struct ScalarTableSingleViewImpl;
+    friend struct ScalarTableViewImpl;
     State* state_{};
     size_type offset_{};
     size_type count_{};
 };
-struct ScalarTableSingleConstView : ScalarTableSingleViewImpl<true> {
-    using Base = ScalarTableSingleViewImpl<true>;
+struct ScalarTableConstView : ScalarTableViewImpl<true> {
+    using Base = ScalarTableViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<ScalarTableSingleConstView>());
-struct ScalarTableSingleView : ScalarTableSingleViewImpl<false> {
-    using Base = ScalarTableSingleViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<ScalarTableConstView>());
+struct ScalarTableView : ScalarTableViewImpl<false> {
+    using Base = ScalarTableViewImpl<false>;
     using Base::Base;
     void set(
         size_type index,
@@ -412,7 +410,7 @@ struct ScalarTableSingleView : ScalarTableSingleViewImpl<false> {
         this->varint_encoding()[index] = new_varint_encoding;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<ScalarTableSingleView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<ScalarTableView>());
 // Columns:
 // type: lispb::schema::TypeId
 // integer_domain: std::optional<ioj::layout::IntegerDomain>
@@ -428,7 +426,7 @@ struct ScalarTable
     , ioj::native_soa::StorageOperations {
     using soa_schema = ScalarTableSchema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ScalarTableSingleLayout;
+    using Layout = ScalarTableLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -441,8 +439,8 @@ struct ScalarTable
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ScalarTableSingleView;
-    using ConstView = ScalarTableSingleConstView;
+    using View = ScalarTableView;
+    using ConstView = ScalarTableConstView;
 
     /* **************************************** */
     // Lifetime
@@ -680,6 +678,19 @@ struct ScalarTable
     }
     std::size_t append(lispb::schema::TypeId value);
     std::size_t find(lispb::schema::TypeId value) const;
+    void apply_permutation(std::span<size_type> indices) {
+        assert(indices.size() == num_);
+        auto const columns{get_data()};
+        ioj::apply_permutation(std::span{columns.type, num_}, indices);
+        ioj::apply_permutation(std::span{columns.integer_domain, num_}, indices);
+        ioj::apply_permutation(std::span{columns.enum_domain, num_}, indices);
+        ioj::apply_permutation(std::span{columns.optional_sentinel_encoding, num_}, indices);
+        ioj::apply_permutation(std::span{columns.optional_presence_encoding, num_}, indices);
+        ioj::apply_permutation(std::span{columns.quantized_encoding, num_}, indices);
+        ioj::apply_permutation(std::span{columns.fixed_encoding, num_}, indices);
+        ioj::apply_permutation(std::span{columns.float_encoding, num_}, indices);
+        ioj::apply_permutation(std::span{columns.varint_encoding, num_}, indices);
+    }
   private:
     std::pmr::memory_resource* resource_{};
 };

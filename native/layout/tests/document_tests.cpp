@@ -14,7 +14,7 @@
 
 namespace ioj::layout::document_tests {
 constexpr std::string_view source{R"(
-    (module game :header "Game.h" :backend standard-library
+    (module game :header "Game.h"
         (packed-value ShipState :storage std::uint16_t
             (field health std::uint16_t :bits 8)
             (field armor std::uint16_t :bits 8))
@@ -365,7 +365,7 @@ class DocumentDeclaration : public testing::TestWithParam<DeclarationCase> {};
 TEST_P(DocumentDeclaration, CreatesAndRoundTripsAuthoredDeclaration) {
     EditorSession editor;
     auto const& test{GetParam()};
-    auto doc{editor.from_source(R"((module game :header "Game.h" :backend standard-library
+    auto doc{editor.from_source(R"((module game :header "Game.h"
         (enum Kind std::uint8_t (value Small) (value Large))
         (integer-scalar Value :signed false :minimum 0 :maximum 100
             (code Invalid :value 127 :sentinel true))))")};

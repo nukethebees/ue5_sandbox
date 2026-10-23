@@ -3,7 +3,6 @@
 #include <ioj/layout/abi_profile.hpp>
 #include <ioj/layout/access_set.hpp>
 #include <ioj/layout/analyzer/integer_varint_distribution_entry.hpp>
-#include <ioj/layout/analyzer/soa_allocation_strategy.hpp>
 #include <ioj/layout/analyzer/tagged_union_distribution_entry.hpp>
 #include <ioj/layout/analyzer/union_distribution_entry.hpp>
 
@@ -29,7 +28,6 @@ struct AnalysisSettings {
     std::uint64_t default_soa_capacity{65536};
     std::uint64_t access_multiplicity{1};
     AccessOperation access_operation{AccessOperation::read};
-    SoaAllocationStrategy soa_allocation_strategy{SoaAllocationStrategy::separate_columns};
     std::map<lispb::schema::DeclarationId, AccessSet> access_sets{};
     std::map<lispb::schema::DeclarationId, std::vector<IntegerVarintDistributionEntry>>
         varint_distributions{};

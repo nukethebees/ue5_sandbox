@@ -24,7 +24,6 @@ struct CapabilityCase {
     char const* name;
     char const* declaration;
     DeclarationCapabilities expected;
-    char const* backend{"standard-library"};
 };
 
 class DeclarationCapabilityTest : public testing::TestWithParam<CapabilityCase> {};
@@ -32,9 +31,9 @@ class DeclarationCapabilityTest : public testing::TestWithParam<CapabilityCase> 
 TEST_P(DeclarationCapabilityTest, ReportsAuthoringAndAnalysisCapabilities) {
     EditorSession editor;
     auto const& test{GetParam()};
-    auto const document{editor.from_source(
-        std::string{R"((module test :header "Test.h" :source "Test.cpp" :backend )"} +
-        test.backend + ' ' + test.declaration + ')')};
+    auto const document{
+        editor.from_source(std::string{R"((module test :header "Test.h" :source "Test.cpp" )"} +
+                           test.declaration + ')')};
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto const type{document.find_type("test", "Value")};
     ASSERT_TRUE(type);
@@ -54,20 +53,7 @@ INSTANTIATE_TEST_SUITE_P(
             {DeclarationKind::packed, true, true, true, true}},
         CapabilityCase{"StandardSoa",
                        "(struct Value (member values array float))",
-                       {DeclarationKind::soa, true, true, true, true}},
-        CapabilityCase{"UnrealSoa",
-                       "(struct Value (member values array float))",
-                       {DeclarationKind::soa, true, false, false, false},
-                       "unreal"},
-        CapabilityCase{"StandardVector",
-                       "(vector-soa Value :value-type float :equivalent-type Vector :components (x "
-                       "y) :equivalent-members (x y))",
-                       {DeclarationKind::vector_soa, true, false, true, true}},
-        CapabilityCase{"UnrealVector",
-                       "(vector-soa Value :value-type float :equivalent-type Vector :components (x "
-                       "y) :equivalent-members (x y))",
-                       {DeclarationKind::vector_soa, true, false, false, false},
-                       "unreal"}),
+                       {DeclarationKind::soa, true, true, true, true}}),
     [](auto const& info) { return info.param.name; });
 
 TEST(AnalysisBatch, ReusesPhysicalRowsAcrossCountsAndSeparatesAbiScenarios) {

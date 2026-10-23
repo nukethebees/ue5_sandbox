@@ -202,17 +202,11 @@ auto graph_edge_labels(TypeGraph const& types, TypeId const user, TypeId const d
                     result,
                     std::string{types.strings().view(
                         types.definitions()
-                            .soa_columns.name[types.definitions().soa_columns.index(column)])});
-            }
-            if (types.definitions()
-                    .soa_columns.nested_type[types.definitions().soa_columns.index(column)] ==
-                dependency) {
-                append_edge_label(
-                    result,
-                    std::string{types.strings().view(
-                        types.definitions()
                             .soa_columns.name[types.definitions().soa_columns.index(column)])} +
-                        " nested");
+                        (types.definitions().soa_columns.kind[types.definitions().soa_columns.index(
+                             column)] == lispb::codegen::SoaMemberKind::nested
+                             ? " nested"
+                             : ""));
             }
             if (lispb::schema::is_valid(
                     types.definitions()

@@ -6,6 +6,7 @@
 #include "ioj/layout/analysis/analysis_id.hpp"
 #include "ioj/layout/analysis/physical_fact_id.hpp"
 #include "ioj/native_soa/storage.h"
+#include "ioj/soa_permutation.h"
 
 #include "lispb/schema/indices.h"
 
@@ -18,10 +19,9 @@
 
 namespace ioj::layout {
 struct ComponentTableSchema;
-
-struct ComponentTableSingleView;
-struct ComponentTableSingleConstView;
-struct ComponentTableSingleLayoutColumns {
+struct ComponentTableView;
+struct ComponentTableConstView;
+struct ComponentTableLayoutColumns {
     template <typename T>
     using ColLayout = ioj::native_soa::ColumnLayout<T>;
 
@@ -38,7 +38,7 @@ struct ComponentTableSingleLayoutColumns {
     ColLayout<std::optional<std::uint64_t>> PaddingBeforeBytesColumn;
     ColLayout<std::optional<std::uint64_t>> SlackBytesColumn;
 
-    constexpr ComponentTableSingleLayoutColumns() noexcept
+    constexpr ComponentTableLayoutColumns() noexcept
         : ParentColumn{LayoutStart}
         , NameColumn{ParentColumn}
         , TagColumn{NameColumn}
@@ -49,11 +49,10 @@ struct ComponentTableSingleLayoutColumns {
         , ExtentBytesColumn{OffsetBytesColumn}
         , PaddingBeforeBytesColumn{ExtentBytesColumn}
         , SlackBytesColumn{PaddingBeforeBytesColumn} {}
-    ComponentTableSingleLayoutColumns(ComponentTableSingleLayoutColumns const&) = delete;
-    auto operator=(ComponentTableSingleLayoutColumns const&)
-        -> ComponentTableSingleLayoutColumns& = delete;
+    ComponentTableLayoutColumns(ComponentTableLayoutColumns const&) = delete;
+    auto operator=(ComponentTableLayoutColumns const&) -> ComponentTableLayoutColumns& = delete;
 };
-struct ComponentTableSingleLayout {
+struct ComponentTableLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
@@ -61,7 +60,7 @@ struct ComponentTableSingleLayout {
         ioj::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
 
-    static constexpr ComponentTableSingleLayoutColumns columns{};
+    static constexpr ComponentTableLayoutColumns columns{};
 
     static constexpr byte_size_type allocation_alignment{
         columns.SlackBytesColumn.allocation_alignment};
@@ -78,18 +77,18 @@ struct ComponentTableSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
-struct ComponentTableSingleResolvedView;
-struct ComponentTableSingleResolvedConstView;
+struct ComponentTableResolvedView;
+struct ComponentTableResolvedConstView;
 template <bool Const>
-struct ComponentTableSingleResolvedViewImpl {
+struct ComponentTableResolvedViewImpl {
     using size_type = std::uint32_t;
-    using View = ComponentTableSingleResolvedView;
-    using ConstView = ComponentTableSingleResolvedConstView;
-    using soa_schema = ComponentTableSchema;
+    using View = ComponentTableResolvedView;
+    using ConstView = ComponentTableResolvedConstView;
+    using soa_schema = ::ioj::layout::ComponentTableSchema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    ComponentTableSingleResolvedViewImpl() = default;
-    ComponentTableSingleResolvedViewImpl(
+    ComponentTableResolvedViewImpl() = default;
+    ComponentTableResolvedViewImpl(
         Element<ioj::layout::AnalysisId>* parent,
         Element<std::string_view>* name,
         Element<std::string_view>* tag,
@@ -124,7 +123,7 @@ struct ComponentTableSingleResolvedViewImpl {
                                                           padding_before_bytes_,
                                                           slack_bytes_);
     }
-    ComponentTableSingleResolvedViewImpl(
+    ComponentTableResolvedViewImpl(
         std::span<Element<ioj::layout::AnalysisId>> parent,
         std::span<Element<std::string_view>> name,
         std::span<Element<std::string_view>> tag,
@@ -135,7 +134,7 @@ struct ComponentTableSingleResolvedViewImpl {
         std::span<Element<std::optional<std::uint64_t>>> extent_bytes,
         std::span<Element<std::optional<std::uint64_t>>> padding_before_bytes,
         std::span<Element<std::optional<std::uint64_t>>> slack_bytes)
-        : ComponentTableSingleResolvedViewImpl{
+        : ComponentTableResolvedViewImpl{
               parent.data(),
               name.data(),
               tag.data(),
@@ -159,7 +158,7 @@ struct ComponentTableSingleResolvedViewImpl {
         assert(slack_bytes.size() == count_);
     }
     template <bool Enabled = Const>
-    ComponentTableSingleResolvedViewImpl(ComponentTableSingleResolvedViewImpl<false> const& other)
+    ComponentTableResolvedViewImpl(ComponentTableResolvedViewImpl<false> const& other)
         requires Enabled
         : parent_{other.parent_}
         , name_{other.name_}
@@ -258,7 +257,7 @@ struct ComponentTableSingleResolvedViewImpl {
     }
   private:
     template <bool>
-    friend struct ComponentTableSingleResolvedViewImpl;
+    friend struct ComponentTableResolvedViewImpl;
     Element<ioj::layout::AnalysisId>* parent_{};
     Element<std::string_view>* name_{};
     Element<std::string_view>* tag_{};
@@ -271,12 +270,12 @@ struct ComponentTableSingleResolvedViewImpl {
     Element<std::optional<std::uint64_t>>* slack_bytes_{};
     size_type count_{};
 };
-struct ComponentTableSingleResolvedConstView : ComponentTableSingleResolvedViewImpl<true> {
-    using Base = ComponentTableSingleResolvedViewImpl<true>;
+struct ComponentTableResolvedConstView : ComponentTableResolvedViewImpl<true> {
+    using Base = ComponentTableResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ComponentTableSingleResolvedView : ComponentTableSingleResolvedViewImpl<false> {
-    using Base = ComponentTableSingleResolvedViewImpl<false>;
+struct ComponentTableResolvedView : ComponentTableResolvedViewImpl<false> {
+    using Base = ComponentTableResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::layout::AnalysisId const new_parent,
@@ -303,23 +302,23 @@ struct ComponentTableSingleResolvedView : ComponentTableSingleResolvedViewImpl<f
     }
 };
 template <bool Const>
-struct ComponentTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct ComponentTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = ComponentTableSchema;
     using size_type = std::uint32_t;
-    using Layout = ComponentTableSingleLayout;
+    using Layout = ComponentTableLayout;
     using Storage = ioj::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    using View = ComponentTableSingleView;
-    using ConstView = ComponentTableSingleConstView;
-    ComponentTableSingleViewImpl() = default;
-    ComponentTableSingleViewImpl(State* state, size_type offset, size_type count)
+    using View = ComponentTableView;
+    using ConstView = ComponentTableConstView;
+    ComponentTableViewImpl() = default;
+    ComponentTableViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
         , count_{count} {}
     template <bool Enabled = Const>
-    ComponentTableSingleViewImpl(ComponentTableSingleViewImpl<false> const& other)
+    ComponentTableViewImpl(ComponentTableViewImpl<false> const& other)
         requires Enabled
         : state_{other.state_}
         , offset_{other.offset_}
@@ -349,9 +348,8 @@ struct ComponentTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperat
         func(padding_before_bytes());
         func(slack_bytes());
     }
-    auto resolve() const -> std::conditional_t<Const,
-                                               ComponentTableSingleResolvedConstView,
-                                               ComponentTableSingleResolvedView> {
+    auto resolve() const
+        -> std::conditional_t<Const, ComponentTableResolvedConstView, ComponentTableResolvedView> {
         return {(make_column_view(Layout::columns.ParentColumn).data()),
                 (make_column_view(Layout::columns.NameColumn).data()),
                 (make_column_view(Layout::columns.TagColumn).data()),
@@ -372,18 +370,18 @@ struct ComponentTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperat
     }
     friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
-    friend struct ComponentTableSingleViewImpl;
+    friend struct ComponentTableViewImpl;
     State* state_{};
     size_type offset_{};
     size_type count_{};
 };
-struct ComponentTableSingleConstView : ComponentTableSingleViewImpl<true> {
-    using Base = ComponentTableSingleViewImpl<true>;
+struct ComponentTableConstView : ComponentTableViewImpl<true> {
+    using Base = ComponentTableViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<ComponentTableSingleConstView>());
-struct ComponentTableSingleView : ComponentTableSingleViewImpl<false> {
-    using Base = ComponentTableSingleViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<ComponentTableConstView>());
+struct ComponentTableView : ComponentTableViewImpl<false> {
+    using Base = ComponentTableViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::layout::AnalysisId const new_parent,
@@ -409,7 +407,7 @@ struct ComponentTableSingleView : ComponentTableSingleViewImpl<false> {
         this->slack_bytes()[index] = new_slack_bytes;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<ComponentTableSingleView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<ComponentTableView>());
 // Columns:
 // parent: ioj::layout::AnalysisId
 // name: std::string_view
@@ -426,7 +424,7 @@ struct ComponentTable
     , ioj::native_soa::StorageOperations {
     using soa_schema = ComponentTableSchema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ComponentTableSingleLayout;
+    using Layout = ComponentTableLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -439,8 +437,8 @@ struct ComponentTable
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ComponentTableSingleView;
-    using ConstView = ComponentTableSingleConstView;
+    using View = ComponentTableView;
+    using ConstView = ComponentTableConstView;
 
     /* **************************************** */
     // Lifetime
@@ -634,7 +632,7 @@ struct ComponentTable
     auto padding_before_bytes(this auto& self) { return self.get_view().padding_before_bytes(); }
     auto slack_bytes(this auto& self) { return self.get_view().slack_bytes(); }
     void set(size_type index,
-             ioj::layout::AnalysisId const new_parent,
+             AnalysisId const new_parent,
              std::string_view const new_name,
              std::string_view const new_tag,
              lispb::schema::TypeId const new_semantic_type,
@@ -656,7 +654,7 @@ struct ComponentTable
         get_view().padding_before_bytes()[index] = new_padding_before_bytes;
         get_view().slack_bytes()[index] = new_slack_bytes;
     }
-    size_type add(ioj::layout::AnalysisId const new_parent,
+    size_type add(AnalysisId const new_parent,
                   std::string_view const new_name,
                   std::string_view const new_tag,
                   lispb::schema::TypeId const new_semantic_type,
@@ -682,6 +680,20 @@ struct ComponentTable
         return index;
     }
     std::size_t append();
+    void apply_permutation(std::span<size_type> indices) {
+        assert(indices.size() == num_);
+        auto const columns{get_data()};
+        ioj::apply_permutation(std::span{columns.parent, num_}, indices);
+        ioj::apply_permutation(std::span{columns.name, num_}, indices);
+        ioj::apply_permutation(std::span{columns.tag, num_}, indices);
+        ioj::apply_permutation(std::span{columns.semantic_type, num_}, indices);
+        ioj::apply_permutation(std::span{columns.element_count, num_}, indices);
+        ioj::apply_permutation(std::span{columns.element_facts, num_}, indices);
+        ioj::apply_permutation(std::span{columns.offset_bytes, num_}, indices);
+        ioj::apply_permutation(std::span{columns.extent_bytes, num_}, indices);
+        ioj::apply_permutation(std::span{columns.padding_before_bytes, num_}, indices);
+        ioj::apply_permutation(std::span{columns.slack_bytes, num_}, indices);
+    }
   private:
     std::pmr::memory_resource* resource_{};
 };

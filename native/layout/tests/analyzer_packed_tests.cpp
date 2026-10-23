@@ -205,7 +205,7 @@ class RelationshipCapacityTest : public testing::TestWithParam<CapacityCase> {};
 TEST_P(RelationshipCapacityTest, DerivesWidthFromTargetExtent) {
     EditorSession editor;
     auto const& test{GetParam()};
-    auto const source{std::string{R"((module game :header "Game.h" :backend standard-library
+    auto const source{std::string{R"((module game :header "Game.h"
         (struct Entities (member values array std::uint8_t))
         (packed-value Handle :storage std::uint64_t
           (field index std::uint64_t :bits 8 (relation )"} +

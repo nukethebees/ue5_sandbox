@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/native_soa/storage.h"
+#include "ioj/soa_permutation.h"
 
 #include "codegen/schema/packed_integer_value.h"
 
@@ -15,10 +16,9 @@
 
 namespace ioj::layout {
 struct DistributionEntryTableSchema;
-
-struct DistributionEntryTableSingleView;
-struct DistributionEntryTableSingleConstView;
-struct DistributionEntryTableSingleLayoutColumns {
+struct DistributionEntryTableView;
+struct DistributionEntryTableConstView;
+struct DistributionEntryTableLayoutColumns {
     template <typename T>
     using ColLayout = ioj::native_soa::ColumnLayout<T>;
 
@@ -32,7 +32,7 @@ struct DistributionEntryTableSingleLayoutColumns {
     ColLayout<std::optional<std::uint64_t>> WeightedExtentBytesColumn;
     ColLayout<std::optional<std::uint64_t>> WeightedSlackBytesColumn;
 
-    constexpr DistributionEntryTableSingleLayoutColumns() noexcept
+    constexpr DistributionEntryTableLayoutColumns() noexcept
         : ComponentColumn{LayoutStart}
         , ValueColumn{ComponentColumn}
         , WeightColumn{ValueColumn}
@@ -40,12 +40,11 @@ struct DistributionEntryTableSingleLayoutColumns {
         , SlackBytesColumn{ExtentBytesColumn}
         , WeightedExtentBytesColumn{SlackBytesColumn}
         , WeightedSlackBytesColumn{WeightedExtentBytesColumn} {}
-    DistributionEntryTableSingleLayoutColumns(DistributionEntryTableSingleLayoutColumns const&) =
-        delete;
-    auto operator=(DistributionEntryTableSingleLayoutColumns const&)
-        -> DistributionEntryTableSingleLayoutColumns& = delete;
+    DistributionEntryTableLayoutColumns(DistributionEntryTableLayoutColumns const&) = delete;
+    auto operator=(DistributionEntryTableLayoutColumns const&)
+        -> DistributionEntryTableLayoutColumns& = delete;
 };
-struct DistributionEntryTableSingleLayout {
+struct DistributionEntryTableLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
@@ -53,7 +52,7 @@ struct DistributionEntryTableSingleLayout {
         ioj::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
 
-    static constexpr DistributionEntryTableSingleLayoutColumns columns{};
+    static constexpr DistributionEntryTableLayoutColumns columns{};
 
     static constexpr byte_size_type allocation_alignment{
         columns.WeightedSlackBytesColumn.allocation_alignment};
@@ -70,18 +69,18 @@ struct DistributionEntryTableSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
-struct DistributionEntryTableSingleResolvedView;
-struct DistributionEntryTableSingleResolvedConstView;
+struct DistributionEntryTableResolvedView;
+struct DistributionEntryTableResolvedConstView;
 template <bool Const>
-struct DistributionEntryTableSingleResolvedViewImpl {
+struct DistributionEntryTableResolvedViewImpl {
     using size_type = std::uint32_t;
-    using View = DistributionEntryTableSingleResolvedView;
-    using ConstView = DistributionEntryTableSingleResolvedConstView;
-    using soa_schema = DistributionEntryTableSchema;
+    using View = DistributionEntryTableResolvedView;
+    using ConstView = DistributionEntryTableResolvedConstView;
+    using soa_schema = ::ioj::layout::DistributionEntryTableSchema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    DistributionEntryTableSingleResolvedViewImpl() = default;
-    DistributionEntryTableSingleResolvedViewImpl(
+    DistributionEntryTableResolvedViewImpl() = default;
+    DistributionEntryTableResolvedViewImpl(
         Element<std::optional<std::size_t>>* component,
         Element<std::optional<lispb::codegen::PackedIntegerValue>>* value,
         Element<std::uint64_t>* weight,
@@ -107,7 +106,7 @@ struct DistributionEntryTableSingleResolvedViewImpl {
                                                           weighted_extent_bytes_,
                                                           weighted_slack_bytes_);
     }
-    DistributionEntryTableSingleResolvedViewImpl(
+    DistributionEntryTableResolvedViewImpl(
         std::span<Element<std::optional<std::size_t>>> component,
         std::span<Element<std::optional<lispb::codegen::PackedIntegerValue>>> value,
         std::span<Element<std::uint64_t>> weight,
@@ -115,7 +114,7 @@ struct DistributionEntryTableSingleResolvedViewImpl {
         std::span<Element<std::optional<std::uint64_t>>> slack_bytes,
         std::span<Element<std::optional<std::uint64_t>>> weighted_extent_bytes,
         std::span<Element<std::optional<std::uint64_t>>> weighted_slack_bytes)
-        : DistributionEntryTableSingleResolvedViewImpl{
+        : DistributionEntryTableResolvedViewImpl{
               component.data(),
               value.data(),
               weight.data(),
@@ -133,8 +132,8 @@ struct DistributionEntryTableSingleResolvedViewImpl {
         assert(weighted_slack_bytes.size() == count_);
     }
     template <bool Enabled = Const>
-    DistributionEntryTableSingleResolvedViewImpl(
-        DistributionEntryTableSingleResolvedViewImpl<false> const& other)
+    DistributionEntryTableResolvedViewImpl(
+        DistributionEntryTableResolvedViewImpl<false> const& other)
         requires Enabled
         : component_{other.component_}
         , value_{other.value_}
@@ -215,7 +214,7 @@ struct DistributionEntryTableSingleResolvedViewImpl {
     }
   private:
     template <bool>
-    friend struct DistributionEntryTableSingleResolvedViewImpl;
+    friend struct DistributionEntryTableResolvedViewImpl;
     Element<std::optional<std::size_t>>* component_{};
     Element<std::optional<lispb::codegen::PackedIntegerValue>>* value_{};
     Element<std::uint64_t>* weight_{};
@@ -225,14 +224,12 @@ struct DistributionEntryTableSingleResolvedViewImpl {
     Element<std::optional<std::uint64_t>>* weighted_slack_bytes_{};
     size_type count_{};
 };
-struct DistributionEntryTableSingleResolvedConstView
-    : DistributionEntryTableSingleResolvedViewImpl<true> {
-    using Base = DistributionEntryTableSingleResolvedViewImpl<true>;
+struct DistributionEntryTableResolvedConstView : DistributionEntryTableResolvedViewImpl<true> {
+    using Base = DistributionEntryTableResolvedViewImpl<true>;
     using Base::Base;
 };
-struct DistributionEntryTableSingleResolvedView
-    : DistributionEntryTableSingleResolvedViewImpl<false> {
-    using Base = DistributionEntryTableSingleResolvedViewImpl<false>;
+struct DistributionEntryTableResolvedView : DistributionEntryTableResolvedViewImpl<false> {
+    using Base = DistributionEntryTableResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              std::optional<std::size_t> const new_component,
@@ -253,23 +250,23 @@ struct DistributionEntryTableSingleResolvedView
     }
 };
 template <bool Const>
-struct DistributionEntryTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct DistributionEntryTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = DistributionEntryTableSchema;
     using size_type = std::uint32_t;
-    using Layout = DistributionEntryTableSingleLayout;
+    using Layout = DistributionEntryTableLayout;
     using Storage = ioj::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    using View = DistributionEntryTableSingleView;
-    using ConstView = DistributionEntryTableSingleConstView;
-    DistributionEntryTableSingleViewImpl() = default;
-    DistributionEntryTableSingleViewImpl(State* state, size_type offset, size_type count)
+    using View = DistributionEntryTableView;
+    using ConstView = DistributionEntryTableConstView;
+    DistributionEntryTableViewImpl() = default;
+    DistributionEntryTableViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
         , count_{count} {}
     template <bool Enabled = Const>
-    DistributionEntryTableSingleViewImpl(DistributionEntryTableSingleViewImpl<false> const& other)
+    DistributionEntryTableViewImpl(DistributionEntryTableViewImpl<false> const& other)
         requires Enabled
         : state_{other.state_}
         , offset_{other.offset_}
@@ -296,8 +293,8 @@ struct DistributionEntryTableSingleViewImpl : ioj::soa_storage_detail::CompactVi
         func(weighted_slack_bytes());
     }
     auto resolve() const -> std::conditional_t<Const,
-                                               DistributionEntryTableSingleResolvedConstView,
-                                               DistributionEntryTableSingleResolvedView> {
+                                               DistributionEntryTableResolvedConstView,
+                                               DistributionEntryTableResolvedView> {
         return {(make_column_view(Layout::columns.ComponentColumn).data()),
                 (make_column_view(Layout::columns.ValueColumn).data()),
                 (make_column_view(Layout::columns.WeightColumn).data()),
@@ -315,19 +312,18 @@ struct DistributionEntryTableSingleViewImpl : ioj::soa_storage_detail::CompactVi
     }
     friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
-    friend struct DistributionEntryTableSingleViewImpl;
+    friend struct DistributionEntryTableViewImpl;
     State* state_{};
     size_type offset_{};
     size_type count_{};
 };
-struct DistributionEntryTableSingleConstView : DistributionEntryTableSingleViewImpl<true> {
-    using Base = DistributionEntryTableSingleViewImpl<true>;
+struct DistributionEntryTableConstView : DistributionEntryTableViewImpl<true> {
+    using Base = DistributionEntryTableViewImpl<true>;
     using Base::Base;
 };
-static_assert(
-    ioj::soa_storage_detail::validate_compact_view<DistributionEntryTableSingleConstView>());
-struct DistributionEntryTableSingleView : DistributionEntryTableSingleViewImpl<false> {
-    using Base = DistributionEntryTableSingleViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<DistributionEntryTableConstView>());
+struct DistributionEntryTableView : DistributionEntryTableViewImpl<false> {
+    using Base = DistributionEntryTableViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              std::optional<std::size_t> const new_component,
@@ -347,7 +343,7 @@ struct DistributionEntryTableSingleView : DistributionEntryTableSingleViewImpl<f
         this->weighted_slack_bytes()[index] = new_weighted_slack_bytes;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<DistributionEntryTableSingleView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<DistributionEntryTableView>());
 // Columns:
 // component: std::optional<std::size_t>
 // value: std::optional<lispb::codegen::PackedIntegerValue>
@@ -361,7 +357,7 @@ struct DistributionEntryTable
     , ioj::native_soa::StorageOperations {
     using soa_schema = DistributionEntryTableSchema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = DistributionEntryTableSingleLayout;
+    using Layout = DistributionEntryTableLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -374,8 +370,8 @@ struct DistributionEntryTable
         return Layout::layout_bytes(blocks);
     }
 
-    using View = DistributionEntryTableSingleView;
-    using ConstView = DistributionEntryTableSingleConstView;
+    using View = DistributionEntryTableView;
+    using ConstView = DistributionEntryTableConstView;
 
     /* **************************************** */
     // Lifetime
@@ -582,6 +578,17 @@ struct DistributionEntryTable
             new_weighted_extent_bytes,
             new_weighted_slack_bytes);
         return index;
+    }
+    void apply_permutation(std::span<size_type> indices) {
+        assert(indices.size() == num_);
+        auto const columns{get_data()};
+        ioj::apply_permutation(std::span{columns.component, num_}, indices);
+        ioj::apply_permutation(std::span{columns.value, num_}, indices);
+        ioj::apply_permutation(std::span{columns.weight, num_}, indices);
+        ioj::apply_permutation(std::span{columns.extent_bytes, num_}, indices);
+        ioj::apply_permutation(std::span{columns.slack_bytes, num_}, indices);
+        ioj::apply_permutation(std::span{columns.weighted_extent_bytes, num_}, indices);
+        ioj::apply_permutation(std::span{columns.weighted_slack_bytes, num_}, indices);
     }
   private:
     std::pmr::memory_resource* resource_{};

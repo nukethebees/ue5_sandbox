@@ -2,11 +2,9 @@
   :header "include/ioj/layout/analysis/relationship_table.hpp"
   :source "src/analysis/relationship_table.cpp"
   :header-include "ioj/layout/analysis/relationship_table.hpp"
-  :backend standard-library
   :namespace ioj::layout
   :prelude #cpp{#include <optional>}cpp#
   (struct RelationshipTable
-    (single-allocation RelationshipTable)
     (member owner array @analysis_id)
     (member field array @optional_size_t)
     (member relationship array @relationship_id)

@@ -7,6 +7,7 @@
 #include "ioj/layout/analysis/physical_fact_id.hpp"
 #include "ioj/layout/analyzer/cache_line_tiling.hpp"
 #include "ioj/native_soa/storage.h"
+#include "ioj/soa_permutation.h"
 
 #include "lispb/indices.h"
 #include "lispb/schema/indices.h"
@@ -20,10 +21,9 @@
 
 namespace ioj::layout {
 struct SoaColumnTableSchema;
-
-struct SoaColumnTableSingleView;
-struct SoaColumnTableSingleConstView;
-struct SoaColumnTableSingleLayoutColumns {
+struct SoaColumnTableView;
+struct SoaColumnTableConstView;
+struct SoaColumnTableLayoutColumns {
     template <typename T>
     using ColLayout = ioj::native_soa::ColumnLayout<T>;
 
@@ -45,7 +45,7 @@ struct SoaColumnTableSingleLayoutColumns {
     ColLayout<std::optional<std::uint64_t>> CompleteElementsPerPageColumn;
     ColLayout<std::optional<ioj::layout::CacheLineTiling>> CacheLineTilingColumn;
 
-    constexpr SoaColumnTableSingleLayoutColumns() noexcept
+    constexpr SoaColumnTableLayoutColumns() noexcept
         : ParentColumn{LayoutStart}
         , NameColumn{ParentColumn}
         , SemanticTypeColumn{NameColumn}
@@ -61,11 +61,10 @@ struct SoaColumnTableSingleLayoutColumns {
         , MinimumPagesColumn{ElementsPerCacheLineColumn}
         , CompleteElementsPerPageColumn{MinimumPagesColumn}
         , CacheLineTilingColumn{CompleteElementsPerPageColumn} {}
-    SoaColumnTableSingleLayoutColumns(SoaColumnTableSingleLayoutColumns const&) = delete;
-    auto operator=(SoaColumnTableSingleLayoutColumns const&)
-        -> SoaColumnTableSingleLayoutColumns& = delete;
+    SoaColumnTableLayoutColumns(SoaColumnTableLayoutColumns const&) = delete;
+    auto operator=(SoaColumnTableLayoutColumns const&) -> SoaColumnTableLayoutColumns& = delete;
 };
-struct SoaColumnTableSingleLayout {
+struct SoaColumnTableLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
@@ -73,7 +72,7 @@ struct SoaColumnTableSingleLayout {
         ioj::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
 
-    static constexpr SoaColumnTableSingleLayoutColumns columns{};
+    static constexpr SoaColumnTableLayoutColumns columns{};
 
     static constexpr byte_size_type allocation_alignment{
         columns.CacheLineTilingColumn.allocation_alignment};
@@ -90,18 +89,18 @@ struct SoaColumnTableSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
-struct SoaColumnTableSingleResolvedView;
-struct SoaColumnTableSingleResolvedConstView;
+struct SoaColumnTableResolvedView;
+struct SoaColumnTableResolvedConstView;
 template <bool Const>
-struct SoaColumnTableSingleResolvedViewImpl {
+struct SoaColumnTableResolvedViewImpl {
     using size_type = std::uint32_t;
-    using View = SoaColumnTableSingleResolvedView;
-    using ConstView = SoaColumnTableSingleResolvedConstView;
-    using soa_schema = SoaColumnTableSchema;
+    using View = SoaColumnTableResolvedView;
+    using ConstView = SoaColumnTableResolvedConstView;
+    using soa_schema = ::ioj::layout::SoaColumnTableSchema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    SoaColumnTableSingleResolvedViewImpl() = default;
-    SoaColumnTableSingleResolvedViewImpl(
+    SoaColumnTableResolvedViewImpl() = default;
+    SoaColumnTableResolvedViewImpl(
         Element<ioj::layout::AnalysisId>* parent,
         Element<std::string_view>* name,
         Element<lispb::schema::TypeId>* semantic_type,
@@ -151,7 +150,7 @@ struct SoaColumnTableSingleResolvedViewImpl {
                                                           complete_elements_per_page_,
                                                           cache_line_tiling_);
     }
-    SoaColumnTableSingleResolvedViewImpl(
+    SoaColumnTableResolvedViewImpl(
         std::span<Element<ioj::layout::AnalysisId>> parent,
         std::span<Element<std::string_view>> name,
         std::span<Element<lispb::schema::TypeId>> semantic_type,
@@ -167,7 +166,7 @@ struct SoaColumnTableSingleResolvedViewImpl {
         std::span<Element<std::optional<std::uint64_t>>> minimum_pages,
         std::span<Element<std::optional<std::uint64_t>>> complete_elements_per_page,
         std::span<Element<std::optional<ioj::layout::CacheLineTiling>>> cache_line_tiling)
-        : SoaColumnTableSingleResolvedViewImpl{
+        : SoaColumnTableResolvedViewImpl{
               parent.data(),
               name.data(),
               semantic_type.data(),
@@ -201,7 +200,7 @@ struct SoaColumnTableSingleResolvedViewImpl {
         assert(cache_line_tiling.size() == count_);
     }
     template <bool Enabled = Const>
-    SoaColumnTableSingleResolvedViewImpl(SoaColumnTableSingleResolvedViewImpl<false> const& other)
+    SoaColumnTableResolvedViewImpl(SoaColumnTableResolvedViewImpl<false> const& other)
         requires Enabled
         : parent_{other.parent_}
         , name_{other.name_}
@@ -339,7 +338,7 @@ struct SoaColumnTableSingleResolvedViewImpl {
     }
   private:
     template <bool>
-    friend struct SoaColumnTableSingleResolvedViewImpl;
+    friend struct SoaColumnTableResolvedViewImpl;
     Element<ioj::layout::AnalysisId>* parent_{};
     Element<std::string_view>* name_{};
     Element<lispb::schema::TypeId>* semantic_type_{};
@@ -357,12 +356,12 @@ struct SoaColumnTableSingleResolvedViewImpl {
     Element<std::optional<ioj::layout::CacheLineTiling>>* cache_line_tiling_{};
     size_type count_{};
 };
-struct SoaColumnTableSingleResolvedConstView : SoaColumnTableSingleResolvedViewImpl<true> {
-    using Base = SoaColumnTableSingleResolvedViewImpl<true>;
+struct SoaColumnTableResolvedConstView : SoaColumnTableResolvedViewImpl<true> {
+    using Base = SoaColumnTableResolvedViewImpl<true>;
     using Base::Base;
 };
-struct SoaColumnTableSingleResolvedView : SoaColumnTableSingleResolvedViewImpl<false> {
-    using Base = SoaColumnTableSingleResolvedViewImpl<false>;
+struct SoaColumnTableResolvedView : SoaColumnTableResolvedViewImpl<false> {
+    using Base = SoaColumnTableResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::layout::AnalysisId const new_parent,
@@ -399,23 +398,23 @@ struct SoaColumnTableSingleResolvedView : SoaColumnTableSingleResolvedViewImpl<f
     }
 };
 template <bool Const>
-struct SoaColumnTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct SoaColumnTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = SoaColumnTableSchema;
     using size_type = std::uint32_t;
-    using Layout = SoaColumnTableSingleLayout;
+    using Layout = SoaColumnTableLayout;
     using Storage = ioj::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    using View = SoaColumnTableSingleView;
-    using ConstView = SoaColumnTableSingleConstView;
-    SoaColumnTableSingleViewImpl() = default;
-    SoaColumnTableSingleViewImpl(State* state, size_type offset, size_type count)
+    using View = SoaColumnTableView;
+    using ConstView = SoaColumnTableConstView;
+    SoaColumnTableViewImpl() = default;
+    SoaColumnTableViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
         , count_{count} {}
     template <bool Enabled = Const>
-    SoaColumnTableSingleViewImpl(SoaColumnTableSingleViewImpl<false> const& other)
+    SoaColumnTableViewImpl(SoaColumnTableViewImpl<false> const& other)
         requires Enabled
         : state_{other.state_}
         , offset_{other.offset_}
@@ -465,9 +464,8 @@ struct SoaColumnTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperat
         func(complete_elements_per_page());
         func(cache_line_tiling());
     }
-    auto resolve() const -> std::conditional_t<Const,
-                                               SoaColumnTableSingleResolvedConstView,
-                                               SoaColumnTableSingleResolvedView> {
+    auto resolve() const
+        -> std::conditional_t<Const, SoaColumnTableResolvedConstView, SoaColumnTableResolvedView> {
         return {(make_column_view(Layout::columns.ParentColumn).data()),
                 (make_column_view(Layout::columns.NameColumn).data()),
                 (make_column_view(Layout::columns.SemanticTypeColumn).data()),
@@ -493,18 +491,18 @@ struct SoaColumnTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperat
     }
     friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
-    friend struct SoaColumnTableSingleViewImpl;
+    friend struct SoaColumnTableViewImpl;
     State* state_{};
     size_type offset_{};
     size_type count_{};
 };
-struct SoaColumnTableSingleConstView : SoaColumnTableSingleViewImpl<true> {
-    using Base = SoaColumnTableSingleViewImpl<true>;
+struct SoaColumnTableConstView : SoaColumnTableViewImpl<true> {
+    using Base = SoaColumnTableViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<SoaColumnTableSingleConstView>());
-struct SoaColumnTableSingleView : SoaColumnTableSingleViewImpl<false> {
-    using Base = SoaColumnTableSingleViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<SoaColumnTableConstView>());
+struct SoaColumnTableView : SoaColumnTableViewImpl<false> {
+    using Base = SoaColumnTableViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::layout::AnalysisId const new_parent,
@@ -540,7 +538,7 @@ struct SoaColumnTableSingleView : SoaColumnTableSingleViewImpl<false> {
         this->cache_line_tiling()[index] = new_cache_line_tiling;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<SoaColumnTableSingleView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<SoaColumnTableView>());
 // Columns:
 // parent: ioj::layout::AnalysisId
 // name: std::string_view
@@ -562,7 +560,7 @@ struct SoaColumnTable
     , ioj::native_soa::StorageOperations {
     using soa_schema = SoaColumnTableSchema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = SoaColumnTableSingleLayout;
+    using Layout = SoaColumnTableLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -575,8 +573,8 @@ struct SoaColumnTable
         return Layout::layout_bytes(blocks);
     }
 
-    using View = SoaColumnTableSingleView;
-    using ConstView = SoaColumnTableSingleConstView;
+    using View = SoaColumnTableView;
+    using ConstView = SoaColumnTableConstView;
 
     /* **************************************** */
     // Lifetime
@@ -811,7 +809,7 @@ struct SoaColumnTable
     }
     auto cache_line_tiling(this auto& self) { return self.get_view().cache_line_tiling(); }
     void set(size_type index,
-             ioj::layout::AnalysisId const new_parent,
+             AnalysisId const new_parent,
              std::string_view const new_name,
              lispb::schema::TypeId const new_semantic_type,
              lispb::StringId const new_schema_type,
@@ -843,7 +841,7 @@ struct SoaColumnTable
         get_view().complete_elements_per_page()[index] = new_complete_elements_per_page;
         get_view().cache_line_tiling()[index] = new_cache_line_tiling;
     }
-    size_type add(ioj::layout::AnalysisId const new_parent,
+    size_type add(AnalysisId const new_parent,
                   std::string_view const new_name,
                   lispb::schema::TypeId const new_semantic_type,
                   lispb::StringId const new_schema_type,
@@ -879,6 +877,25 @@ struct SoaColumnTable
         return index;
     }
     std::size_t append();
+    void apply_permutation(std::span<size_type> indices) {
+        assert(indices.size() == num_);
+        auto const columns{get_data()};
+        ioj::apply_permutation(std::span{columns.parent, num_}, indices);
+        ioj::apply_permutation(std::span{columns.name, num_}, indices);
+        ioj::apply_permutation(std::span{columns.semantic_type, num_}, indices);
+        ioj::apply_permutation(std::span{columns.schema_type, num_}, indices);
+        ioj::apply_permutation(std::span{columns.physical_type, num_}, indices);
+        ioj::apply_permutation(std::span{columns.overridden, num_}, indices);
+        ioj::apply_permutation(std::span{columns.type_facts, num_}, indices);
+        ioj::apply_permutation(std::span{columns.total_bytes, num_}, indices);
+        ioj::apply_permutation(std::span{columns.allocation_offset_bytes, num_}, indices);
+        ioj::apply_permutation(std::span{columns.padding_before_bytes, num_}, indices);
+        ioj::apply_permutation(std::span{columns.minimum_cache_lines, num_}, indices);
+        ioj::apply_permutation(std::span{columns.elements_per_cache_line, num_}, indices);
+        ioj::apply_permutation(std::span{columns.minimum_pages, num_}, indices);
+        ioj::apply_permutation(std::span{columns.complete_elements_per_page, num_}, indices);
+        ioj::apply_permutation(std::span{columns.cache_line_tiling, num_}, indices);
+    }
   private:
     std::pmr::memory_resource* resource_{};
 };

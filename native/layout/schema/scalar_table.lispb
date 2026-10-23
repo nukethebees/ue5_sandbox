@@ -2,11 +2,9 @@
   :header "include/ioj/layout/analysis/scalar_table.hpp"
   :source "src/analysis/scalar_table.cpp"
   :header-include "ioj/layout/analysis/scalar_table.hpp"
-  :backend standard-library
   :namespace ioj::layout
   :prelude #cpp{#include <optional>}cpp#
   (struct ScalarTable
-    (single-allocation ScalarTable)
     (member type array @type_id)
     (member integer_domain array @optional_integer_domain)
     (member enum_domain array @optional_enum_domain)

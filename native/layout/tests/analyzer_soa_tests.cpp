@@ -13,72 +13,52 @@ TEST_P(SoaAnalysisTest, ReportsColumnsAllocationsAndAccess) {
 
 AnalysisCase const cases[]{
     {"GeneratedRecordColumn",
-     R"((module game :header "Game.h" :backend standard-library
+     R"((module game :header "Game.h"
         (record Pair (member x float) (member y float))
         (struct Value (member pairs array Pair))))",
      [](AnalysisContext& context) {
          auto const run{run_analysis(context, "Value", {.default_capacity = 3})};
          auto const& result{context.storage.types.soa()[run.analysis.value].value()};
-         EXPECT_EQ(result.total_payload_bytes, 24);
+         EXPECT_EQ(result.total_payload_bytes, 512);
          EXPECT_EQ(context.storage.physical_facts.alignment_bytes()
                        [context.storage.columns.type_facts()[result.columns.begin]->value],
                    alignof(float));
      }},
     {"UnknownMiddleColumn",
-     R"((module game :header "Game.h" :backend standard-library
+     R"((module game :header "Game.h"
         (struct Value (member first array float) (member unknown array Opaque)
           (member last array double))))",
      [](AnalysisContext& context) {
-         auto const run{
-             run_analysis(context,
-                          "Value",
-                          {.default_capacity = 3,
-                           .allocation_strategy = SoaAllocationStrategy::aligned_contiguous},
-                          true)};
+         auto const run{run_analysis(context, "Value", {.default_capacity = 3}, true)};
          auto const& result{context.storage.types.soa()[run.analysis.value].value()};
          auto const& columns{context.storage.columns};
          EXPECT_EQ(columns.allocation_offset_bytes()[result.columns.begin], 0);
          EXPECT_FALSE(columns.allocation_offset_bytes()[result.columns.begin + 1]);
          EXPECT_FALSE(columns.allocation_offset_bytes()[result.columns.begin + 2]);
-         EXPECT_EQ(columns.total_bytes()[result.columns.begin + 2], 24);
+         EXPECT_EQ(columns.total_bytes()[result.columns.begin + 2], 512);
          EXPECT_FALSE(result.total_allocation_bytes);
      }},
-    {"AllocationStrategies",
-     R"((module game :header "Game.h" :backend standard-library
+    {"SingleAllocationLayout",
+     R"((module game :header "Game.h"
         (struct Value (member small array std::uint8_t) (member wide array std::uint32_t))))",
      [](AnalysisContext& context) {
-         auto const type{context.document.find_type("game", "Value").value()};
-         auto const abi{AbiProfile::host_common()};
-         std::array const requests{
-             AnalysisRequest{.type = type, .abi = &abi, .default_capacity = 3},
-             AnalysisRequest{.type = type,
-                             .abi = &abi,
-                             .default_capacity = 3,
-                             .allocation_strategy = SoaAllocationStrategy::aligned_contiguous}};
-         analyze_requests(context, requests);
+         auto const run{run_analysis(context, "Value", {.default_capacity = 3})};
          auto const& storage{context.storage};
-         auto const& separate{storage.types.soa()[storage.runs[0].analysis.value].value()};
-         auto const& contiguous{storage.types.soa()[storage.runs[1].analysis.value].value()};
-         SoaLayout expected{.columns = {separate.columns.begin, 2},
-                            .capacity = 3,
-                            .allocation_count = 2,
-                            .bytes_per_logical_element = 5,
-                            .total_payload_bytes = 15,
-                            .total_allocation_bytes = 15,
-                            .total_alignment_padding_bytes = 0};
-         EXPECT_EQ(separate, expected);
-         expected.columns = {contiguous.columns.begin, 2};
-         expected.allocation_strategy = SoaAllocationStrategy::aligned_contiguous;
-         expected.allocation_count = 1;
-         expected.total_allocation_bytes = 16;
-         expected.total_alignment_padding_bytes = 1;
-         expected.allocation_alignment_bytes = 4;
-         EXPECT_EQ(contiguous, expected);
-         EXPECT_EQ(storage.columns.allocation_offset_bytes()[contiguous.columns.begin + 1], 4);
-         EXPECT_EQ(storage.columns.padding_before_bytes()[contiguous.columns.begin + 1], 1);
+         auto const& result{storage.types.soa()[run.analysis.value].value()};
+         SoaLayout const expected{.columns = {result.columns.begin, 2},
+                                  .capacity = 64,
+                                  .allocation_count = 1,
+                                  .bytes_per_logical_element = 5,
+                                  .total_payload_bytes = 320,
+                                  .total_allocation_bytes = 512,
+                                  .total_alignment_padding_bytes = 192,
+                                  .allocation_alignment_bytes = 64};
+         EXPECT_EQ(result, expected);
+         EXPECT_EQ(storage.columns.allocation_offset_bytes()[result.columns.begin + 1], 256);
+         EXPECT_EQ(storage.columns.padding_before_bytes()[result.columns.begin + 1], 192);
      }},
     {"ColumnOverflow",
-     R"((module game :header "Game.h" :backend standard-library
+     R"((module game :header "Game.h"
         (struct Value (member values array double))))",
      [](AnalysisContext& context) {
          auto const run{
@@ -91,7 +71,7 @@ AnalysisCase const cases[]{
          EXPECT_FALSE(context.storage.columns.total_bytes()[result.columns.begin]);
      }},
     {"TargetComparison",
-     R"((module game :header "Game.h" :backend standard-library
+     R"((module game :header "Game.h"
         (struct Value (member small array std::uint8_t) (member wide array std::uint32_t))))",
      [](AnalysisContext& context) {
          auto const type{context.document.find_type("game", "Value").value()};
@@ -114,11 +94,11 @@ AnalysisCase const cases[]{
          auto const second{storage.types.soa()[storage.runs[1].analysis.value]->columns.begin + 1};
          auto const missing{storage.types.soa()[storage.runs[2].analysis.value]->columns.begin + 1};
          EXPECT_EQ(*storage.columns.total_bytes()[second] - *storage.columns.total_bytes()[first],
-                   12);
+                   256);
          EXPECT_FALSE(storage.columns.total_bytes()[missing]);
      }},
     {"SelectedWorkload",
-     R"((module game :header "Game.h" :backend standard-library
+     R"((module game :header "Game.h"
         (struct Value (member x array float) (member y array float) (member z array float))))",
      [](AnalysisContext& context) {
          AccessSet const accesses{{"x", AccessOperation::read}};
@@ -135,11 +115,11 @@ AnalysisCase const cases[]{
              (PayloadFootprint{
                  .useful = 40, .read = 40, .write = 0, .logical_read = 120, .logical_write = 0}));
          EXPECT_EQ(access.unselected_payload_bytes()[row], 80);
-         EXPECT_EQ(access.capacity_slack_bytes()[row], 1080);
+         EXPECT_EQ(access.capacity_slack_bytes()[row], 1416);
          EXPECT_EQ(access.cache()[row].count, 1);
          run_analysis(context,
                       "Value",
-                      {.element_count = 101, .default_capacity = 100, .accesses = &accesses},
+                      {.element_count = 129, .default_capacity = 100, .accesses = &accesses},
                       true);
          AccessSet const missing{{"missing", AccessOperation::read}};
          run_analysis(context,
@@ -148,7 +128,7 @@ AnalysisCase const cases[]{
                       true);
      }},
     {"RecordSoaComparison",
-     R"((module game :header "Game.h" :backend standard-library
+     R"((module game :header "Game.h"
         (record Row (member x float) (member y float) (member z float))
         (struct Columns (member x array float) (member y array float) (member z array float))))",
      [](AnalysisContext& context) {
@@ -184,7 +164,7 @@ class SoaCapacityTest : public testing::TestWithParam<std::uint64_t> {};
 TEST_P(SoaCapacityTest, ScalesPayloadAndMemoryRegions) {
     EditorSession editor;
     auto const capacity{GetParam()};
-    auto const doc{editor.from_source(R"((module game :header "Game.h" :backend standard-library
+    auto const doc{editor.from_source(R"((module game :header "Game.h"
         (struct Value (member x array float) (member y array float) (member z array float))))")};
     ASSERT_TRUE(doc.valid());
     auto abi{AbiProfile::host_common()};
@@ -205,12 +185,17 @@ TEST_P(SoaCapacityTest, ScalesPayloadAndMemoryRegions) {
                                  .accesses = &accesses})};
     auto const& result{storage.types.soa()[run.analysis.value].value()};
     EXPECT_EQ(result.bytes_per_logical_element, 12);
-    EXPECT_EQ(result.total_payload_bytes, 12 * capacity);
+    auto const reserved_capacity{(capacity + 63) / 64 * 64};
+    auto const allocation_bytes{capacity == 0 ? 0 : 12 * reserved_capacity + 384};
+    EXPECT_EQ(result.capacity, reserved_capacity);
+    EXPECT_EQ(result.total_payload_bytes, 12 * reserved_capacity);
+    EXPECT_EQ(result.total_allocation_bytes, allocation_bytes);
+    EXPECT_EQ(result.allocation_count, capacity == 0 ? 0 : 1);
     EXPECT_EQ(storage.workloads.cache()[run.access->value].count, (4 * capacity + 63) / 64);
-    EXPECT_EQ(storage.totals[0].minimum_pages, 3 * ((4 * capacity + 4095) / 4096));
-    EXPECT_EQ(storage.totals[0].cache_capacity.fits_l1_data, 12 * capacity <= 4096);
-    EXPECT_EQ(storage.totals[0].cache_capacity.fits_l2, 12 * capacity <= 8192);
-    EXPECT_EQ(storage.totals[0].cache_capacity.fits_l3, 12 * capacity <= 16384);
+    EXPECT_EQ(storage.totals[0].minimum_pages, (allocation_bytes + 4095) / 4096);
+    EXPECT_EQ(storage.totals[0].cache_capacity.fits_l1_data, allocation_bytes <= 4096);
+    EXPECT_EQ(storage.totals[0].cache_capacity.fits_l2, allocation_bytes <= 8192);
+    EXPECT_EQ(storage.totals[0].cache_capacity.fits_l3, allocation_bytes <= 16384);
 }
 
 INSTANTIATE_TEST_SUITE_P(

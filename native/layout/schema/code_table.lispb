@@ -2,11 +2,9 @@
   :header "include/ioj/layout/analysis/code_table.hpp"
   :source "src/analysis/code_table.cpp"
   :header-include "ioj/layout/analysis/code_table.hpp"
-  :backend standard-library
   :namespace ioj::layout
   :prelude #cpp{#include <optional>}cpp#
   (struct CodeTable
-    (single-allocation CodeTable)
     (member name array @string_view)
     (member sentinel array @uint8_t)
     (member count_sentinel array @uint8_t)

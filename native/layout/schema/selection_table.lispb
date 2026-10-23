@@ -2,11 +2,9 @@
   :header "include/ioj/layout/analysis/selection_table.hpp"
   :source "src/analysis/selection_table.cpp"
   :header-include "ioj/layout/analysis/selection_table.hpp"
-  :backend standard-library
   :namespace ioj::layout
   :prelude #cpp{#include <optional>}cpp#
   (struct SelectionTable
-    (single-allocation SelectionTable)
     (member source array @size_t)
     (member operation array @access_operation)
     (member bytes array @payload_footprint)

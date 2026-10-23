@@ -49,7 +49,6 @@ enum class TransactionKind : std::uint8_t {
     default_soa_capacity,
     access_operation,
     access_multiplicity,
-    soa_allocation_strategy,
     abi_profile,
     comparison_abi_profile,
     access_set,

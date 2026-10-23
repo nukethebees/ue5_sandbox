@@ -2,11 +2,9 @@
   :header "include/ioj/layout/analysis/workload_table.hpp"
   :source "src/analysis/workload_table.cpp"
   :header-include "ioj/layout/analysis/workload_table.hpp"
-  :backend standard-library
   :namespace ioj::layout
   :prelude #cpp{#include <optional>}cpp#
   (struct WorkloadTable
-    (single-allocation WorkloadTable)
     (member analysis array @analysis_id)
     (member selections array @row_range)
     (member element_count array @uint64_t)

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/native_soa/storage.h"
+#include "ioj/soa_permutation.h"
 
 #include <cassert>
 #include <cstdint>
@@ -13,10 +14,9 @@
 
 namespace ioj::layout {
 struct TagTableSchema;
-
-struct TagTableSingleView;
-struct TagTableSingleConstView;
-struct TagTableSingleLayoutColumns {
+struct TagTableView;
+struct TagTableConstView;
+struct TagTableLayoutColumns {
     template <typename T>
     using ColLayout = ioj::native_soa::ColumnLayout<T>;
 
@@ -27,15 +27,15 @@ struct TagTableSingleLayoutColumns {
     ColLayout<std::uint8_t> SentinelColumn;
     ColLayout<std::uint8_t> CountSentinelColumn;
 
-    constexpr TagTableSingleLayoutColumns() noexcept
+    constexpr TagTableLayoutColumns() noexcept
         : NameColumn{LayoutStart}
         , MappedColumn{NameColumn}
         , SentinelColumn{MappedColumn}
         , CountSentinelColumn{SentinelColumn} {}
-    TagTableSingleLayoutColumns(TagTableSingleLayoutColumns const&) = delete;
-    auto operator=(TagTableSingleLayoutColumns const&) -> TagTableSingleLayoutColumns& = delete;
+    TagTableLayoutColumns(TagTableLayoutColumns const&) = delete;
+    auto operator=(TagTableLayoutColumns const&) -> TagTableLayoutColumns& = delete;
 };
-struct TagTableSingleLayout {
+struct TagTableLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
@@ -43,7 +43,7 @@ struct TagTableSingleLayout {
         ioj::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
 
-    static constexpr TagTableSingleLayoutColumns columns{};
+    static constexpr TagTableLayoutColumns columns{};
 
     static constexpr byte_size_type allocation_alignment{
         columns.CountSentinelColumn.allocation_alignment};
@@ -60,22 +60,22 @@ struct TagTableSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
-struct TagTableSingleResolvedView;
-struct TagTableSingleResolvedConstView;
+struct TagTableResolvedView;
+struct TagTableResolvedConstView;
 template <bool Const>
-struct TagTableSingleResolvedViewImpl {
+struct TagTableResolvedViewImpl {
     using size_type = std::uint32_t;
-    using View = TagTableSingleResolvedView;
-    using ConstView = TagTableSingleResolvedConstView;
-    using soa_schema = TagTableSchema;
+    using View = TagTableResolvedView;
+    using ConstView = TagTableResolvedConstView;
+    using soa_schema = ::ioj::layout::TagTableSchema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    TagTableSingleResolvedViewImpl() = default;
-    TagTableSingleResolvedViewImpl(Element<std::string_view>* name,
-                                   Element<std::uint8_t>* mapped,
-                                   Element<std::uint8_t>* sentinel,
-                                   Element<std::uint8_t>* count_sentinel,
-                                   size_type count)
+    TagTableResolvedViewImpl() = default;
+    TagTableResolvedViewImpl(Element<std::string_view>* name,
+                             Element<std::uint8_t>* mapped,
+                             Element<std::uint8_t>* sentinel,
+                             Element<std::uint8_t>* count_sentinel,
+                             size_type count)
         : name_{name}
         , mapped_{mapped}
         , sentinel_{sentinel}
@@ -84,22 +84,22 @@ struct TagTableSingleResolvedViewImpl {
         ioj::soa_storage_detail::validate_column_pointers(
             count_, name_, mapped_, sentinel_, count_sentinel_);
     }
-    TagTableSingleResolvedViewImpl(std::span<Element<std::string_view>> name,
-                                   std::span<Element<std::uint8_t>> mapped,
-                                   std::span<Element<std::uint8_t>> sentinel,
-                                   std::span<Element<std::uint8_t>> count_sentinel)
-        : TagTableSingleResolvedViewImpl{name.data(),
-                                         mapped.data(),
-                                         sentinel.data(),
-                                         count_sentinel.data(),
-                                         ioj::soa_storage_detail::checked_row_count(name.size())} {
+    TagTableResolvedViewImpl(std::span<Element<std::string_view>> name,
+                             std::span<Element<std::uint8_t>> mapped,
+                             std::span<Element<std::uint8_t>> sentinel,
+                             std::span<Element<std::uint8_t>> count_sentinel)
+        : TagTableResolvedViewImpl{name.data(),
+                                   mapped.data(),
+                                   sentinel.data(),
+                                   count_sentinel.data(),
+                                   ioj::soa_storage_detail::checked_row_count(name.size())} {
         assert(name.size() == count_);
         assert(mapped.size() == count_);
         assert(sentinel.size() == count_);
         assert(count_sentinel.size() == count_);
     }
     template <bool Enabled = Const>
-    TagTableSingleResolvedViewImpl(TagTableSingleResolvedViewImpl<false> const& other)
+    TagTableResolvedViewImpl(TagTableResolvedViewImpl<false> const& other)
         requires Enabled
         : name_{other.name_}
         , mapped_{other.mapped_}
@@ -150,19 +150,19 @@ struct TagTableSingleResolvedViewImpl {
     }
   private:
     template <bool>
-    friend struct TagTableSingleResolvedViewImpl;
+    friend struct TagTableResolvedViewImpl;
     Element<std::string_view>* name_{};
     Element<std::uint8_t>* mapped_{};
     Element<std::uint8_t>* sentinel_{};
     Element<std::uint8_t>* count_sentinel_{};
     size_type count_{};
 };
-struct TagTableSingleResolvedConstView : TagTableSingleResolvedViewImpl<true> {
-    using Base = TagTableSingleResolvedViewImpl<true>;
+struct TagTableResolvedConstView : TagTableResolvedViewImpl<true> {
+    using Base = TagTableResolvedViewImpl<true>;
     using Base::Base;
 };
-struct TagTableSingleResolvedView : TagTableSingleResolvedViewImpl<false> {
-    using Base = TagTableSingleResolvedViewImpl<false>;
+struct TagTableResolvedView : TagTableResolvedViewImpl<false> {
+    using Base = TagTableResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              std::string_view const new_name,
@@ -177,23 +177,23 @@ struct TagTableSingleResolvedView : TagTableSingleResolvedViewImpl<false> {
     }
 };
 template <bool Const>
-struct TagTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct TagTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = TagTableSchema;
     using size_type = std::uint32_t;
-    using Layout = TagTableSingleLayout;
+    using Layout = TagTableLayout;
     using Storage = ioj::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    using View = TagTableSingleView;
-    using ConstView = TagTableSingleConstView;
-    TagTableSingleViewImpl() = default;
-    TagTableSingleViewImpl(State* state, size_type offset, size_type count)
+    using View = TagTableView;
+    using ConstView = TagTableConstView;
+    TagTableViewImpl() = default;
+    TagTableViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
         , count_{count} {}
     template <bool Enabled = Const>
-    TagTableSingleViewImpl(TagTableSingleViewImpl<false> const& other)
+    TagTableViewImpl(TagTableViewImpl<false> const& other)
         requires Enabled
         : state_{other.state_}
         , offset_{other.offset_}
@@ -210,7 +210,7 @@ struct TagTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
         func(count_sentinel());
     }
     auto resolve() const
-        -> std::conditional_t<Const, TagTableSingleResolvedConstView, TagTableSingleResolvedView> {
+        -> std::conditional_t<Const, TagTableResolvedConstView, TagTableResolvedView> {
         return {(make_column_view(Layout::columns.NameColumn).data()),
                 (make_column_view(Layout::columns.MappedColumn).data()),
                 (make_column_view(Layout::columns.SentinelColumn).data()),
@@ -225,18 +225,18 @@ struct TagTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     }
     friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
-    friend struct TagTableSingleViewImpl;
+    friend struct TagTableViewImpl;
     State* state_{};
     size_type offset_{};
     size_type count_{};
 };
-struct TagTableSingleConstView : TagTableSingleViewImpl<true> {
-    using Base = TagTableSingleViewImpl<true>;
+struct TagTableConstView : TagTableViewImpl<true> {
+    using Base = TagTableViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<TagTableSingleConstView>());
-struct TagTableSingleView : TagTableSingleViewImpl<false> {
-    using Base = TagTableSingleViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<TagTableConstView>());
+struct TagTableView : TagTableViewImpl<false> {
+    using Base = TagTableViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              std::string_view const new_name,
@@ -250,7 +250,7 @@ struct TagTableSingleView : TagTableSingleViewImpl<false> {
         this->count_sentinel()[index] = new_count_sentinel;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<TagTableSingleView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<TagTableView>());
 // Columns:
 // name: std::string_view
 // mapped: std::uint8_t
@@ -261,7 +261,7 @@ struct TagTable
     , ioj::native_soa::StorageOperations {
     using soa_schema = TagTableSchema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = TagTableSingleLayout;
+    using Layout = TagTableLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -274,8 +274,8 @@ struct TagTable
         return Layout::layout_bytes(blocks);
     }
 
-    using View = TagTableSingleView;
-    using ConstView = TagTableSingleConstView;
+    using View = TagTableView;
+    using ConstView = TagTableConstView;
 
     /* **************************************** */
     // Lifetime
@@ -440,6 +440,14 @@ struct TagTable
         add_uninitialised(1);
         set(index, new_name, new_mapped, new_sentinel, new_count_sentinel);
         return index;
+    }
+    void apply_permutation(std::span<size_type> indices) {
+        assert(indices.size() == num_);
+        auto const columns{get_data()};
+        ioj::apply_permutation(std::span{columns.name, num_}, indices);
+        ioj::apply_permutation(std::span{columns.mapped, num_}, indices);
+        ioj::apply_permutation(std::span{columns.sentinel, num_}, indices);
+        ioj::apply_permutation(std::span{columns.count_sentinel, num_}, indices);
     }
   private:
     std::pmr::memory_resource* resource_{};

@@ -12,7 +12,7 @@
 #include <vector>
 
 namespace ioj::layout::workspace_tests {
-constexpr std::string_view source{R"((module game :header "Game.h" :backend standard-library
+constexpr std::string_view source{R"((module game :header "Game.h"
     (packed-value State :storage std::uint16_t (field health std::uint16_t :bits 8))
     (struct Ships (member values array std::uint32_t))))"};
 
@@ -107,7 +107,6 @@ TEST(DocumentSettings, AllAnalysisInputsShareSchemaHistory) {
     edit.set_default_soa_capacity(500);
     edit.set_access_operation(AccessOperation::read_write);
     edit.set_access_multiplicity(8);
-    edit.set_soa_allocation_strategy(SoaAllocationStrategy::aligned_contiguous);
     edit.set_abi_profile(AbiProfile{"unknown target"});
     edit.set_comparison_abi_profile(AbiProfile::host_common());
     edit.set_access_set("game", "Ships", {{"values", AccessOperation::write}});
@@ -118,8 +117,6 @@ TEST(DocumentSettings, AllAnalysisInputsShareSchemaHistory) {
                                     .default_soa_capacity = 500,
                                     .access_multiplicity = 8,
                                     .access_operation = AccessOperation::read_write,
-                                    .soa_allocation_strategy =
-                                        SoaAllocationStrategy::aligned_contiguous,
                                     .access_sets = {{owner, {{"values", AccessOperation::write}}}}};
     EXPECT_EQ(doc.analysis_settings(), expected);
     EXPECT_FALSE(doc.dirty());

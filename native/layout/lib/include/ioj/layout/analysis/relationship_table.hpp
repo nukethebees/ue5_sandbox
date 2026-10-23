@@ -6,6 +6,7 @@
 #include "ioj/layout/analysis/analysis_id.hpp"
 #include "ioj/layout/analysis/relationship_metrics.hpp"
 #include "ioj/native_soa/storage.h"
+#include "ioj/soa_permutation.h"
 
 #include "lispb/schema/indices.h"
 
@@ -16,10 +17,9 @@
 
 namespace ioj::layout {
 struct RelationshipTableSchema;
-
-struct RelationshipTableSingleView;
-struct RelationshipTableSingleConstView;
-struct RelationshipTableSingleLayoutColumns {
+struct RelationshipTableView;
+struct RelationshipTableConstView;
+struct RelationshipTableLayoutColumns {
     template <typename T>
     using ColLayout = ioj::native_soa::ColumnLayout<T>;
 
@@ -30,16 +30,16 @@ struct RelationshipTableSingleLayoutColumns {
     ColLayout<lispb::schema::RelationshipId> RelationshipColumn;
     ColLayout<std::optional<ioj::layout::RelationshipMetrics>> MetricsColumn;
 
-    constexpr RelationshipTableSingleLayoutColumns() noexcept
+    constexpr RelationshipTableLayoutColumns() noexcept
         : OwnerColumn{LayoutStart}
         , FieldColumn{OwnerColumn}
         , RelationshipColumn{FieldColumn}
         , MetricsColumn{RelationshipColumn} {}
-    RelationshipTableSingleLayoutColumns(RelationshipTableSingleLayoutColumns const&) = delete;
-    auto operator=(RelationshipTableSingleLayoutColumns const&)
-        -> RelationshipTableSingleLayoutColumns& = delete;
+    RelationshipTableLayoutColumns(RelationshipTableLayoutColumns const&) = delete;
+    auto operator=(RelationshipTableLayoutColumns const&)
+        -> RelationshipTableLayoutColumns& = delete;
 };
-struct RelationshipTableSingleLayout {
+struct RelationshipTableLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
@@ -47,7 +47,7 @@ struct RelationshipTableSingleLayout {
         ioj::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
 
-    static constexpr RelationshipTableSingleLayoutColumns columns{};
+    static constexpr RelationshipTableLayoutColumns columns{};
 
     static constexpr byte_size_type allocation_alignment{
         columns.MetricsColumn.allocation_alignment};
@@ -64,18 +64,18 @@ struct RelationshipTableSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
-struct RelationshipTableSingleResolvedView;
-struct RelationshipTableSingleResolvedConstView;
+struct RelationshipTableResolvedView;
+struct RelationshipTableResolvedConstView;
 template <bool Const>
-struct RelationshipTableSingleResolvedViewImpl {
+struct RelationshipTableResolvedViewImpl {
     using size_type = std::uint32_t;
-    using View = RelationshipTableSingleResolvedView;
-    using ConstView = RelationshipTableSingleResolvedConstView;
-    using soa_schema = RelationshipTableSchema;
+    using View = RelationshipTableResolvedView;
+    using ConstView = RelationshipTableResolvedConstView;
+    using soa_schema = ::ioj::layout::RelationshipTableSchema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    RelationshipTableSingleResolvedViewImpl() = default;
-    RelationshipTableSingleResolvedViewImpl(
+    RelationshipTableResolvedViewImpl() = default;
+    RelationshipTableResolvedViewImpl(
         Element<ioj::layout::AnalysisId>* owner,
         Element<std::optional<std::size_t>>* field,
         Element<lispb::schema::RelationshipId>* relationship,
@@ -89,12 +89,12 @@ struct RelationshipTableSingleResolvedViewImpl {
         ioj::soa_storage_detail::validate_column_pointers(
             count_, owner_, field_, relationship_, metrics_);
     }
-    RelationshipTableSingleResolvedViewImpl(
+    RelationshipTableResolvedViewImpl(
         std::span<Element<ioj::layout::AnalysisId>> owner,
         std::span<Element<std::optional<std::size_t>>> field,
         std::span<Element<lispb::schema::RelationshipId>> relationship,
         std::span<Element<std::optional<ioj::layout::RelationshipMetrics>>> metrics)
-        : RelationshipTableSingleResolvedViewImpl{
+        : RelationshipTableResolvedViewImpl{
               owner.data(),
               field.data(),
               relationship.data(),
@@ -106,8 +106,7 @@ struct RelationshipTableSingleResolvedViewImpl {
         assert(metrics.size() == count_);
     }
     template <bool Enabled = Const>
-    RelationshipTableSingleResolvedViewImpl(
-        RelationshipTableSingleResolvedViewImpl<false> const& other)
+    RelationshipTableResolvedViewImpl(RelationshipTableResolvedViewImpl<false> const& other)
         requires Enabled
         : owner_{other.owner_}
         , field_{other.field_}
@@ -162,19 +161,19 @@ struct RelationshipTableSingleResolvedViewImpl {
     }
   private:
     template <bool>
-    friend struct RelationshipTableSingleResolvedViewImpl;
+    friend struct RelationshipTableResolvedViewImpl;
     Element<ioj::layout::AnalysisId>* owner_{};
     Element<std::optional<std::size_t>>* field_{};
     Element<lispb::schema::RelationshipId>* relationship_{};
     Element<std::optional<ioj::layout::RelationshipMetrics>>* metrics_{};
     size_type count_{};
 };
-struct RelationshipTableSingleResolvedConstView : RelationshipTableSingleResolvedViewImpl<true> {
-    using Base = RelationshipTableSingleResolvedViewImpl<true>;
+struct RelationshipTableResolvedConstView : RelationshipTableResolvedViewImpl<true> {
+    using Base = RelationshipTableResolvedViewImpl<true>;
     using Base::Base;
 };
-struct RelationshipTableSingleResolvedView : RelationshipTableSingleResolvedViewImpl<false> {
-    using Base = RelationshipTableSingleResolvedViewImpl<false>;
+struct RelationshipTableResolvedView : RelationshipTableResolvedViewImpl<false> {
+    using Base = RelationshipTableResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::layout::AnalysisId const new_owner,
@@ -189,23 +188,23 @@ struct RelationshipTableSingleResolvedView : RelationshipTableSingleResolvedView
     }
 };
 template <bool Const>
-struct RelationshipTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct RelationshipTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = RelationshipTableSchema;
     using size_type = std::uint32_t;
-    using Layout = RelationshipTableSingleLayout;
+    using Layout = RelationshipTableLayout;
     using Storage = ioj::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    using View = RelationshipTableSingleView;
-    using ConstView = RelationshipTableSingleConstView;
-    RelationshipTableSingleViewImpl() = default;
-    RelationshipTableSingleViewImpl(State* state, size_type offset, size_type count)
+    using View = RelationshipTableView;
+    using ConstView = RelationshipTableConstView;
+    RelationshipTableViewImpl() = default;
+    RelationshipTableViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
         , count_{count} {}
     template <bool Enabled = Const>
-    RelationshipTableSingleViewImpl(RelationshipTableSingleViewImpl<false> const& other)
+    RelationshipTableViewImpl(RelationshipTableViewImpl<false> const& other)
         requires Enabled
         : state_{other.state_}
         , offset_{other.offset_}
@@ -221,9 +220,8 @@ struct RelationshipTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOpe
         func(relationship());
         func(metrics());
     }
-    auto resolve() const -> std::conditional_t<Const,
-                                               RelationshipTableSingleResolvedConstView,
-                                               RelationshipTableSingleResolvedView> {
+    auto resolve() const -> std::
+        conditional_t<Const, RelationshipTableResolvedConstView, RelationshipTableResolvedView> {
         return {(make_column_view(Layout::columns.OwnerColumn).data()),
                 (make_column_view(Layout::columns.FieldColumn).data()),
                 (make_column_view(Layout::columns.RelationshipColumn).data()),
@@ -238,18 +236,18 @@ struct RelationshipTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOpe
     }
     friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
-    friend struct RelationshipTableSingleViewImpl;
+    friend struct RelationshipTableViewImpl;
     State* state_{};
     size_type offset_{};
     size_type count_{};
 };
-struct RelationshipTableSingleConstView : RelationshipTableSingleViewImpl<true> {
-    using Base = RelationshipTableSingleViewImpl<true>;
+struct RelationshipTableConstView : RelationshipTableViewImpl<true> {
+    using Base = RelationshipTableViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<RelationshipTableSingleConstView>());
-struct RelationshipTableSingleView : RelationshipTableSingleViewImpl<false> {
-    using Base = RelationshipTableSingleViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<RelationshipTableConstView>());
+struct RelationshipTableView : RelationshipTableViewImpl<false> {
+    using Base = RelationshipTableViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::layout::AnalysisId const new_owner,
@@ -263,7 +261,7 @@ struct RelationshipTableSingleView : RelationshipTableSingleViewImpl<false> {
         this->metrics()[index] = new_metrics;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<RelationshipTableSingleView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<RelationshipTableView>());
 // Columns:
 // owner: ioj::layout::AnalysisId
 // field: std::optional<std::size_t>
@@ -274,7 +272,7 @@ struct RelationshipTable
     , ioj::native_soa::StorageOperations {
     using soa_schema = RelationshipTableSchema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = RelationshipTableSingleLayout;
+    using Layout = RelationshipTableLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -287,8 +285,8 @@ struct RelationshipTable
         return Layout::layout_bytes(blocks);
     }
 
-    using View = RelationshipTableSingleView;
-    using ConstView = RelationshipTableSingleConstView;
+    using View = RelationshipTableView;
+    using ConstView = RelationshipTableConstView;
 
     /* **************************************** */
     // Lifetime
@@ -437,7 +435,7 @@ struct RelationshipTable
     auto relationship(this auto& self) { return self.get_view().relationship(); }
     auto metrics(this auto& self) { return self.get_view().metrics(); }
     void set(size_type index,
-             ioj::layout::AnalysisId const new_owner,
+             AnalysisId const new_owner,
              std::optional<std::size_t> const new_field,
              lispb::schema::RelationshipId const new_relationship,
              std::optional<ioj::layout::RelationshipMetrics> const new_metrics) {
@@ -447,7 +445,7 @@ struct RelationshipTable
         get_view().relationship()[index] = new_relationship;
         get_view().metrics()[index] = new_metrics;
     }
-    size_type add(ioj::layout::AnalysisId const new_owner,
+    size_type add(AnalysisId const new_owner,
                   std::optional<std::size_t> const new_field,
                   lispb::schema::RelationshipId const new_relationship,
                   std::optional<ioj::layout::RelationshipMetrics> const new_metrics) {
@@ -457,6 +455,14 @@ struct RelationshipTable
         return index;
     }
     std::size_t append();
+    void apply_permutation(std::span<size_type> indices) {
+        assert(indices.size() == num_);
+        auto const columns{get_data()};
+        ioj::apply_permutation(std::span{columns.owner, num_}, indices);
+        ioj::apply_permutation(std::span{columns.field, num_}, indices);
+        ioj::apply_permutation(std::span{columns.relationship, num_}, indices);
+        ioj::apply_permutation(std::span{columns.metrics, num_}, indices);
+    }
   private:
     std::pmr::memory_resource* resource_{};
 };

@@ -31,10 +31,6 @@ auto declaration_kind_label(DeclarationKind const kind) -> char const* {
             return "tagged union";
         case DeclarationKind::soa:
             return "SoA";
-        case DeclarationKind::vector_soa:
-            return "vector-soa";
-        case DeclarationKind::homogeneous_layout:
-            return "layout";
         case DeclarationKind::static_table:
             return "table";
         case DeclarationKind::facade:

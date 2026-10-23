@@ -1,6 +1,5 @@
 add_executable(native-layout-tests)
 set_target_properties(native-layout-tests PROPERTIES UNITY_BUILD OFF)
-add_dependencies(native-layout-tests generate-native-soa-fixture)
 target_sources(native-layout-tests PRIVATE
   document_tests.cpp
   document_serialization_tests.cpp

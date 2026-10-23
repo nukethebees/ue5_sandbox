@@ -1,7 +1,6 @@
 #pragma once
 #include <ioj/layout/access_set.hpp>
 #include <ioj/layout/analyzer/integer_varint_distribution_entry.hpp>
-#include <ioj/layout/analyzer/soa_allocation_strategy.hpp>
 #include <ioj/layout/analyzer/tagged_union_distribution_entry.hpp>
 #include <ioj/layout/analyzer/union_distribution_entry.hpp>
 #include <ioj/layout/variant_id.hpp>
@@ -19,7 +18,6 @@ struct AnalysisRequest {
     std::uint64_t element_count{1};
     std::uint64_t default_capacity{65536};
     std::uint64_t multiplicity{1};
-    SoaAllocationStrategy allocation_strategy{SoaAllocationStrategy::separate_columns};
     AccessSet const* accesses{};
     bool distribution_requested{};
     std::span<IntegerVarintDistributionEntry const> varint_distribution{};

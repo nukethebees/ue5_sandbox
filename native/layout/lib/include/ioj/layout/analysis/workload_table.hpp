@@ -11,6 +11,7 @@
 #include "ioj/layout/analysis/workload_id.hpp"
 #include "ioj/layout/analyzer/cache_capacity_analysis.hpp"
 #include "ioj/native_soa/storage.h"
+#include "ioj/soa_permutation.h"
 
 #include <cassert>
 #include <cstdint>
@@ -19,10 +20,9 @@
 
 namespace ioj::layout {
 struct WorkloadTableSchema;
-
-struct WorkloadTableSingleView;
-struct WorkloadTableSingleConstView;
-struct WorkloadTableSingleLayoutColumns {
+struct WorkloadTableView;
+struct WorkloadTableConstView;
+struct WorkloadTableLayoutColumns {
     template <typename T>
     using ColLayout = ioj::native_soa::ColumnLayout<T>;
 
@@ -45,7 +45,7 @@ struct WorkloadTableSingleLayoutColumns {
     ColLayout<std::optional<std::uint64_t>> AllocatedPayloadBytesColumn;
     ColLayout<std::optional<std::uint64_t>> CapacitySlackBytesColumn;
 
-    constexpr WorkloadTableSingleLayoutColumns() noexcept
+    constexpr WorkloadTableLayoutColumns() noexcept
         : AnalysisColumn{LayoutStart}
         , SelectionsColumn{AnalysisColumn}
         , ElementCountColumn{SelectionsColumn}
@@ -62,11 +62,10 @@ struct WorkloadTableSingleLayoutColumns {
         , UnselectedPayloadBytesColumn{FullLogicalPayloadBytesColumn}
         , AllocatedPayloadBytesColumn{UnselectedPayloadBytesColumn}
         , CapacitySlackBytesColumn{AllocatedPayloadBytesColumn} {}
-    WorkloadTableSingleLayoutColumns(WorkloadTableSingleLayoutColumns const&) = delete;
-    auto operator=(WorkloadTableSingleLayoutColumns const&)
-        -> WorkloadTableSingleLayoutColumns& = delete;
+    WorkloadTableLayoutColumns(WorkloadTableLayoutColumns const&) = delete;
+    auto operator=(WorkloadTableLayoutColumns const&) -> WorkloadTableLayoutColumns& = delete;
 };
-struct WorkloadTableSingleLayout {
+struct WorkloadTableLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
@@ -74,7 +73,7 @@ struct WorkloadTableSingleLayout {
         ioj::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
 
-    static constexpr WorkloadTableSingleLayoutColumns columns{};
+    static constexpr WorkloadTableLayoutColumns columns{};
 
     static constexpr byte_size_type allocation_alignment{
         columns.CapacitySlackBytesColumn.allocation_alignment};
@@ -91,35 +90,34 @@ struct WorkloadTableSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
-struct WorkloadTableSingleResolvedView;
-struct WorkloadTableSingleResolvedConstView;
+struct WorkloadTableResolvedView;
+struct WorkloadTableResolvedConstView;
 template <bool Const>
-struct WorkloadTableSingleResolvedViewImpl {
+struct WorkloadTableResolvedViewImpl {
     using size_type = std::uint32_t;
-    using View = WorkloadTableSingleResolvedView;
-    using ConstView = WorkloadTableSingleResolvedConstView;
-    using soa_schema = WorkloadTableSchema;
+    using View = WorkloadTableResolvedView;
+    using ConstView = WorkloadTableResolvedConstView;
+    using soa_schema = ::ioj::layout::WorkloadTableSchema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    WorkloadTableSingleResolvedViewImpl() = default;
-    WorkloadTableSingleResolvedViewImpl(
-        Element<ioj::layout::AnalysisId>* analysis,
-        Element<ioj::layout::RowRange>* selections,
-        Element<std::uint64_t>* element_count,
-        Element<std::uint64_t>* multiplicity,
-        Element<ioj::layout::PayloadFootprint>* bytes,
-        Element<ioj::layout::PayloadFootprint>* bits,
-        Element<ioj::layout::RegionFootprint>* cache,
-        Element<ioj::layout::RegionFootprint>* pages,
-        Element<ioj::layout::CacheCapacityAnalysis>* cache_capacity,
-        Element<ioj::layout::PackedAccessWaste>* packed_waste,
-        Element<std::uint8_t>* footprint_exact,
-        Element<std::optional<std::uint64_t>>* storage_bytes,
-        Element<std::optional<std::uint64_t>>* full_logical_payload_bytes,
-        Element<std::optional<std::uint64_t>>* unselected_payload_bytes,
-        Element<std::optional<std::uint64_t>>* allocated_payload_bytes,
-        Element<std::optional<std::uint64_t>>* capacity_slack_bytes,
-        size_type count)
+    WorkloadTableResolvedViewImpl() = default;
+    WorkloadTableResolvedViewImpl(Element<ioj::layout::AnalysisId>* analysis,
+                                  Element<ioj::layout::RowRange>* selections,
+                                  Element<std::uint64_t>* element_count,
+                                  Element<std::uint64_t>* multiplicity,
+                                  Element<ioj::layout::PayloadFootprint>* bytes,
+                                  Element<ioj::layout::PayloadFootprint>* bits,
+                                  Element<ioj::layout::RegionFootprint>* cache,
+                                  Element<ioj::layout::RegionFootprint>* pages,
+                                  Element<ioj::layout::CacheCapacityAnalysis>* cache_capacity,
+                                  Element<ioj::layout::PackedAccessWaste>* packed_waste,
+                                  Element<std::uint8_t>* footprint_exact,
+                                  Element<std::optional<std::uint64_t>>* storage_bytes,
+                                  Element<std::optional<std::uint64_t>>* full_logical_payload_bytes,
+                                  Element<std::optional<std::uint64_t>>* unselected_payload_bytes,
+                                  Element<std::optional<std::uint64_t>>* allocated_payload_bytes,
+                                  Element<std::optional<std::uint64_t>>* capacity_slack_bytes,
+                                  size_type count)
         : analysis_{analysis}
         , selections_{selections}
         , element_count_{element_count}
@@ -155,7 +153,7 @@ struct WorkloadTableSingleResolvedViewImpl {
                                                           allocated_payload_bytes_,
                                                           capacity_slack_bytes_);
     }
-    WorkloadTableSingleResolvedViewImpl(
+    WorkloadTableResolvedViewImpl(
         std::span<Element<ioj::layout::AnalysisId>> analysis,
         std::span<Element<ioj::layout::RowRange>> selections,
         std::span<Element<std::uint64_t>> element_count,
@@ -172,7 +170,7 @@ struct WorkloadTableSingleResolvedViewImpl {
         std::span<Element<std::optional<std::uint64_t>>> unselected_payload_bytes,
         std::span<Element<std::optional<std::uint64_t>>> allocated_payload_bytes,
         std::span<Element<std::optional<std::uint64_t>>> capacity_slack_bytes)
-        : WorkloadTableSingleResolvedViewImpl{
+        : WorkloadTableResolvedViewImpl{
               analysis.data(),
               selections.data(),
               element_count.data(),
@@ -208,7 +206,7 @@ struct WorkloadTableSingleResolvedViewImpl {
         assert(capacity_slack_bytes.size() == count_);
     }
     template <bool Enabled = Const>
-    WorkloadTableSingleResolvedViewImpl(WorkloadTableSingleResolvedViewImpl<false> const& other)
+    WorkloadTableResolvedViewImpl(WorkloadTableResolvedViewImpl<false> const& other)
         requires Enabled
         : analysis_{other.analysis_}
         , selections_{other.selections_}
@@ -357,7 +355,7 @@ struct WorkloadTableSingleResolvedViewImpl {
     }
   private:
     template <bool>
-    friend struct WorkloadTableSingleResolvedViewImpl;
+    friend struct WorkloadTableResolvedViewImpl;
     Element<ioj::layout::AnalysisId>* analysis_{};
     Element<ioj::layout::RowRange>* selections_{};
     Element<std::uint64_t>* element_count_{};
@@ -376,12 +374,12 @@ struct WorkloadTableSingleResolvedViewImpl {
     Element<std::optional<std::uint64_t>>* capacity_slack_bytes_{};
     size_type count_{};
 };
-struct WorkloadTableSingleResolvedConstView : WorkloadTableSingleResolvedViewImpl<true> {
-    using Base = WorkloadTableSingleResolvedViewImpl<true>;
+struct WorkloadTableResolvedConstView : WorkloadTableResolvedViewImpl<true> {
+    using Base = WorkloadTableResolvedViewImpl<true>;
     using Base::Base;
 };
-struct WorkloadTableSingleResolvedView : WorkloadTableSingleResolvedViewImpl<false> {
-    using Base = WorkloadTableSingleResolvedViewImpl<false>;
+struct WorkloadTableResolvedView : WorkloadTableResolvedViewImpl<false> {
+    using Base = WorkloadTableResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::layout::AnalysisId const new_analysis,
@@ -420,23 +418,23 @@ struct WorkloadTableSingleResolvedView : WorkloadTableSingleResolvedViewImpl<fal
     }
 };
 template <bool Const>
-struct WorkloadTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct WorkloadTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = WorkloadTableSchema;
     using size_type = std::uint32_t;
-    using Layout = WorkloadTableSingleLayout;
+    using Layout = WorkloadTableLayout;
     using Storage = ioj::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    using View = WorkloadTableSingleView;
-    using ConstView = WorkloadTableSingleConstView;
-    WorkloadTableSingleViewImpl() = default;
-    WorkloadTableSingleViewImpl(State* state, size_type offset, size_type count)
+    using View = WorkloadTableView;
+    using ConstView = WorkloadTableConstView;
+    WorkloadTableViewImpl() = default;
+    WorkloadTableViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
         , count_{count} {}
     template <bool Enabled = Const>
-    WorkloadTableSingleViewImpl(WorkloadTableSingleViewImpl<false> const& other)
+    WorkloadTableViewImpl(WorkloadTableViewImpl<false> const& other)
         requires Enabled
         : state_{other.state_}
         , offset_{other.offset_}
@@ -484,9 +482,8 @@ struct WorkloadTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperati
         func(allocated_payload_bytes());
         func(capacity_slack_bytes());
     }
-    auto resolve() const -> std::conditional_t<Const,
-                                               WorkloadTableSingleResolvedConstView,
-                                               WorkloadTableSingleResolvedView> {
+    auto resolve() const
+        -> std::conditional_t<Const, WorkloadTableResolvedConstView, WorkloadTableResolvedView> {
         return {(make_column_view(Layout::columns.AnalysisColumn).data()),
                 (make_column_view(Layout::columns.SelectionsColumn).data()),
                 (make_column_view(Layout::columns.ElementCountColumn).data()),
@@ -513,18 +510,18 @@ struct WorkloadTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperati
     }
     friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
-    friend struct WorkloadTableSingleViewImpl;
+    friend struct WorkloadTableViewImpl;
     State* state_{};
     size_type offset_{};
     size_type count_{};
 };
-struct WorkloadTableSingleConstView : WorkloadTableSingleViewImpl<true> {
-    using Base = WorkloadTableSingleViewImpl<true>;
+struct WorkloadTableConstView : WorkloadTableViewImpl<true> {
+    using Base = WorkloadTableViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<WorkloadTableSingleConstView>());
-struct WorkloadTableSingleView : WorkloadTableSingleViewImpl<false> {
-    using Base = WorkloadTableSingleViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<WorkloadTableConstView>());
+struct WorkloadTableView : WorkloadTableViewImpl<false> {
+    using Base = WorkloadTableViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::layout::AnalysisId const new_analysis,
@@ -562,7 +559,7 @@ struct WorkloadTableSingleView : WorkloadTableSingleViewImpl<false> {
         this->capacity_slack_bytes()[index] = new_capacity_slack_bytes;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<WorkloadTableSingleView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<WorkloadTableView>());
 // Columns:
 // analysis: ioj::layout::AnalysisId
 // selections: ioj::layout::RowRange
@@ -585,7 +582,7 @@ struct WorkloadTable
     , ioj::native_soa::StorageOperations {
     using soa_schema = WorkloadTableSchema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = WorkloadTableSingleLayout;
+    using Layout = WorkloadTableLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -598,8 +595,8 @@ struct WorkloadTable
         return Layout::layout_bytes(blocks);
     }
 
-    using View = WorkloadTableSingleView;
-    using ConstView = WorkloadTableSingleConstView;
+    using View = WorkloadTableView;
+    using ConstView = WorkloadTableConstView;
 
     /* **************************************** */
     // Lifetime
@@ -841,16 +838,16 @@ struct WorkloadTable
     }
     auto capacity_slack_bytes(this auto& self) { return self.get_view().capacity_slack_bytes(); }
     void set(size_type index,
-             ioj::layout::AnalysisId const new_analysis,
-             ioj::layout::RowRange const new_selections,
+             AnalysisId const new_analysis,
+             RowRange const new_selections,
              std::uint64_t const new_element_count,
              std::uint64_t const new_multiplicity,
-             ioj::layout::PayloadFootprint const new_bytes,
-             ioj::layout::PayloadFootprint const new_bits,
-             ioj::layout::RegionFootprint const new_cache,
-             ioj::layout::RegionFootprint const new_pages,
-             ioj::layout::CacheCapacityAnalysis const new_cache_capacity,
-             ioj::layout::PackedAccessWaste const new_packed_waste,
+             PayloadFootprint const new_bytes,
+             PayloadFootprint const new_bits,
+             RegionFootprint const new_cache,
+             RegionFootprint const new_pages,
+             CacheCapacityAnalysis const new_cache_capacity,
+             PackedAccessWaste const new_packed_waste,
              std::uint8_t const new_footprint_exact,
              std::optional<std::uint64_t> const new_storage_bytes,
              std::optional<std::uint64_t> const new_full_logical_payload_bytes,
@@ -875,16 +872,16 @@ struct WorkloadTable
         get_view().allocated_payload_bytes()[index] = new_allocated_payload_bytes;
         get_view().capacity_slack_bytes()[index] = new_capacity_slack_bytes;
     }
-    size_type add(ioj::layout::AnalysisId const new_analysis,
-                  ioj::layout::RowRange const new_selections,
+    size_type add(AnalysisId const new_analysis,
+                  RowRange const new_selections,
                   std::uint64_t const new_element_count,
                   std::uint64_t const new_multiplicity,
-                  ioj::layout::PayloadFootprint const new_bytes,
-                  ioj::layout::PayloadFootprint const new_bits,
-                  ioj::layout::RegionFootprint const new_cache,
-                  ioj::layout::RegionFootprint const new_pages,
-                  ioj::layout::CacheCapacityAnalysis const new_cache_capacity,
-                  ioj::layout::PackedAccessWaste const new_packed_waste,
+                  PayloadFootprint const new_bytes,
+                  PayloadFootprint const new_bits,
+                  RegionFootprint const new_cache,
+                  RegionFootprint const new_pages,
+                  CacheCapacityAnalysis const new_cache_capacity,
+                  PackedAccessWaste const new_packed_waste,
                   std::uint8_t const new_footprint_exact,
                   std::optional<std::uint64_t> const new_storage_bytes,
                   std::optional<std::uint64_t> const new_full_logical_payload_bytes,
@@ -914,6 +911,26 @@ struct WorkloadTable
     }
     WorkloadId
         append(AnalysisId owner, RowRange selected, std::uint64_t count, std::uint64_t repeat);
+    void apply_permutation(std::span<size_type> indices) {
+        assert(indices.size() == num_);
+        auto const columns{get_data()};
+        ioj::apply_permutation(std::span{columns.analysis, num_}, indices);
+        ioj::apply_permutation(std::span{columns.selections, num_}, indices);
+        ioj::apply_permutation(std::span{columns.element_count, num_}, indices);
+        ioj::apply_permutation(std::span{columns.multiplicity, num_}, indices);
+        ioj::apply_permutation(std::span{columns.bytes, num_}, indices);
+        ioj::apply_permutation(std::span{columns.bits, num_}, indices);
+        ioj::apply_permutation(std::span{columns.cache, num_}, indices);
+        ioj::apply_permutation(std::span{columns.pages, num_}, indices);
+        ioj::apply_permutation(std::span{columns.cache_capacity, num_}, indices);
+        ioj::apply_permutation(std::span{columns.packed_waste, num_}, indices);
+        ioj::apply_permutation(std::span{columns.footprint_exact, num_}, indices);
+        ioj::apply_permutation(std::span{columns.storage_bytes, num_}, indices);
+        ioj::apply_permutation(std::span{columns.full_logical_payload_bytes, num_}, indices);
+        ioj::apply_permutation(std::span{columns.unselected_payload_bytes, num_}, indices);
+        ioj::apply_permutation(std::span{columns.allocated_payload_bytes, num_}, indices);
+        ioj::apply_permutation(std::span{columns.capacity_slack_bytes, num_}, indices);
+    }
   private:
     std::pmr::memory_resource* resource_{};
 };

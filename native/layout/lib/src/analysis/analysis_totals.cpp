@@ -130,24 +130,6 @@ auto compute_element_totals(AnalysisContext& context,
         if (!region_size || *region_size == 0) {
             return;
         }
-        if (soa && soa->allocation_strategy == SoaAllocationStrategy::separate_columns) {
-            minimum_count = 0;
-            auto const end{soa->columns.begin + soa->columns.count};
-            for (auto column{soa->columns.begin}; column != end; ++column) {
-                auto const bytes{storage.columns.total_bytes()[column]};
-                if (!bytes) {
-                    minimum_count.reset();
-                    break;
-                }
-                minimum_count = checked_add(*minimum_count, minimum_regions(*bytes, *region_size));
-                if (!minimum_count) {
-                    context.report({DiagnosticSeverity::error,
-                                    "SoA allocation region count overflows uint64."});
-                    break;
-                }
-            }
-            return;
-        }
         if (result.total_storage_bytes) {
             minimum_count = minimum_regions(*result.total_storage_bytes, *region_size);
         }

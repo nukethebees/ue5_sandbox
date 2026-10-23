@@ -140,7 +140,6 @@ class Transaction {
     void set_default_soa_capacity(std::uint64_t value);
     void set_access_operation(AccessOperation value);
     void set_access_multiplicity(std::uint64_t value);
-    void set_soa_allocation_strategy(SoaAllocationStrategy value);
     void set_abi_profile(AbiProfile const& profile);
     void set_comparison_abi_profile(std::optional<AbiProfile> const& profile);
     void set_access_set(std::string_view module,

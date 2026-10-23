@@ -2,11 +2,9 @@
   :header "include/ioj/layout/analysis/type_analysis_table.hpp"
   :source "src/analysis/type_analysis_table.cpp"
   :header-include "ioj/layout/analysis/type_analysis_table.hpp"
-  :backend standard-library
   :namespace ioj::layout
   :prelude #cpp{#include <optional>}cpp#
   (struct TypeAnalysisTable
-    (single-allocation TypeAnalysisTable)
     (member schema_type array @type_id)
     (member scenario array @scenario_id)
     (member physical array @optional_physical_fact_id)

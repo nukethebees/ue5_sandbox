@@ -114,12 +114,6 @@ auto renamed(Declarations& store, DeclarationHandle original, std::string_view n
         case DeclarationKind::soa:
             assign(store.soas);
             break;
-        case DeclarationKind::vector_soa:
-            assign(store.vector_soas);
-            break;
-        case DeclarationKind::homogeneous_layout:
-            assign(store.homogeneous_layouts);
-            break;
         case DeclarationKind::static_table:
             assign(store.static_tables);
             break;
@@ -171,7 +165,7 @@ auto refers_to(Manifest const& manifest,
             if (store.strings().view(declaration_name(store, declaration)) == target_name) {
                 return false;
             }
-            for (auto const name : generated_cpp_names(store, declaration, module)) {
+            for (auto const name : generated_cpp_names(store, declaration)) {
                 if (store.strings().view(name) == target_name) {
                     return false;
                 }
@@ -196,7 +190,7 @@ auto qualify_moved_references(Manifest const& manifest,
         }
         for (auto const item : declarations_of(store, module)) {
             local_names.emplace_back(store.strings().view(declaration_name(store, item)));
-            for (auto const name : generated_cpp_names(store, item, module)) {
+            for (auto const name : generated_cpp_names(store, item)) {
                 local_names.emplace_back(store.strings().view(name));
             }
         }
@@ -222,8 +216,8 @@ void repair_references(DocumentState& state,
     auto& store{state.storage().declarations};
     auto const old_namespace{namespace_name(store, old_module)};
     auto const new_namespace{namespace_name(store, new_module)};
-    auto old_names{generated_cpp_names(store, before, old_module)};
-    auto new_names{generated_cpp_names(store, after, new_module)};
+    auto old_names{generated_cpp_names(store, before)};
+    auto new_names{generated_cpp_names(store, after)};
     if (before.kind() != after.kind() || old_names.size() != new_names.size()) {
         old_names.clear();
         new_names.clear();
@@ -261,47 +255,6 @@ void repair_references(DocumentState& state,
                     }
                     return reference;
                 });
-            if (declaration.kind() == DeclarationKind::soa) {
-                auto const origin_settings{store.module_settings(old_module)};
-                auto const current_settings{store.module_settings(module)};
-                auto const local{store.module_settings_store
-                                     .name[store.module_settings_store.index(origin_settings)] ==
-                                 store.module_settings_store
-                                     .name[store.module_settings_store.index(current_settings)]};
-                if (local) {
-                    auto const range{
-                        store.items(store.soas.members[store.soas.index(declaration)])};
-                    std::vector<SoaMemberId> members{range.begin(), range.end()};
-                    bool changed_members{};
-                    for (auto& member : members) {
-                        auto const row{store.soa_members.index(member)};
-                        auto const old_name{declaration_name(store, before)};
-                        auto const nested{store.soa_members.nested_schema[row] == old_name};
-                        auto const fixed{store.soa_members.fixed_schema[row] == old_name};
-                        if (!nested && !fixed) {
-                            continue;
-                        }
-                        if (old_module != new_module) {
-                            continue;
-                        }
-                        member = store.soa_members.clone(member);
-                        auto const updated{store.soa_members.index(member)};
-                        if (nested) {
-                            store.soa_members.nested_schema[updated] =
-                                declaration_name(store, after);
-                        }
-                        if (fixed) {
-                            store.soa_members.fixed_schema[updated] =
-                                declaration_name(store, after);
-                        }
-                        changed_members = true;
-                    }
-                    if (changed_members) {
-                        declaration = store.soas.clone(declaration);
-                        store.soas.members[store.soas.index(declaration)] = store.range(members);
-                    }
-                }
-            }
             if (declaration != previous) {
                 state.inherit_declaration(previous, declaration);
                 changed = true;
@@ -551,14 +504,6 @@ void Transaction::set_access_operation(AccessOperation value) {
 void Transaction::set_access_multiplicity(std::uint64_t value) {
     append(TransactionKind::access_multiplicity, {}, {}, {}, {}, value);
 }
-void Transaction::set_soa_allocation_strategy(SoaAllocationStrategy value) {
-    append(TransactionKind::soa_allocation_strategy,
-           {},
-           {},
-           {},
-           {},
-           static_cast<std::uint64_t>(value));
-}
 void Transaction::set_abi_profile(AbiProfile const& profile) {
     append(TransactionKind::abi_profile, {}, {}, {}, serialize_abi_profile(profile));
 }
@@ -674,7 +619,7 @@ void Transaction::apply(DocumentState& state, Manifest& manifest, std::size_t en
                 state.variants.erase_declaration(state.declaration_ids.at(declaration));
                 state.analysis_settings.erase_declaration(state.declaration_ids.at(declaration));
             }
-            auto names{generated_cpp_names(store, declaration, module)};
+            auto names{generated_cpp_names(store, declaration)};
             names.push_back(declaration_name(store, declaration));
             for (auto const name : names) {
                 removed_names.emplace_back(strings.view(name));
@@ -713,10 +658,6 @@ void Transaction::apply(DocumentState& state, Manifest& manifest, std::size_t en
                     break;
                 case TransactionKind::access_multiplicity:
                     assign(settings.access_multiplicity, *number);
-                    break;
-                case TransactionKind::soa_allocation_strategy:
-                    assign(settings.soa_allocation_strategy,
-                           static_cast<SoaAllocationStrategy>(*number));
                     break;
                 case TransactionKind::abi_profile:
                 case TransactionKind::comparison_abi_profile: {
@@ -1231,8 +1172,6 @@ void Transaction::apply(DocumentState& state, Manifest& manifest, std::size_t en
                         if (kind == TransactionKind::add_member ||
                             kind == TransactionKind::member_type) {
                             columns.kind[row] = SoaMemberKind::array;
-                            columns.nested_schema[row].reset();
-                            columns.fixed_schema[row].reset();
                         }
                     } else {
                         if (kind == TransactionKind::member_count) {
@@ -1302,7 +1241,7 @@ void Transaction::apply(DocumentState& state, Manifest& manifest, std::size_t en
                 continue;
             }
             for (auto const declaration : declarations_of(store, module)) {
-                auto names{generated_cpp_names(store, declaration, module)};
+                auto names{generated_cpp_names(store, declaration)};
                 names.push_back(declaration_name(store, declaration));
                 restored |=
                     std::ranges::any_of(names, [&](auto id) { return strings.view(id) == name; });

@@ -176,7 +176,7 @@ void PlannerController::new_document() {
             editor_.record_error("Save or undo the current edits before creating another project.");
             return;
         }
-        adopt(editor_.from_source(R"((module game :header "Game.h" :backend standard-library))"));
+        adopt(editor_.from_source(R"((module game :header "Game.h"))"));
     });
 }
 
@@ -271,7 +271,6 @@ void PlannerController::analyze() {
     request.element_count = settings.element_count;
     request.default_capacity = settings.default_soa_capacity;
     request.multiplicity = settings.access_multiplicity;
-    request.allocation_strategy = settings.soa_allocation_strategy;
     if (declaration_id_) {
         if (auto const found{settings.access_sets.find(*declaration_id_)};
             found != settings.access_sets.end()) {

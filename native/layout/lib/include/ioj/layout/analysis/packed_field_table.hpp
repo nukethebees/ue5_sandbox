@@ -6,6 +6,7 @@
 #include "ioj/layout/analysis/analysis_id.hpp"
 #include "ioj/layout/analysis/row_range.hpp"
 #include "ioj/native_soa/storage.h"
+#include "ioj/soa_permutation.h"
 
 #include "codegen/schema/packed_field_kind.h"
 #include "codegen/schema/packed_integer_value.h"
@@ -22,10 +23,9 @@
 
 namespace ioj::layout {
 struct PackedFieldTableSchema;
-
-struct PackedFieldTableSingleView;
-struct PackedFieldTableSingleConstView;
-struct PackedFieldTableSingleLayoutColumns {
+struct PackedFieldTableView;
+struct PackedFieldTableConstView;
+struct PackedFieldTableLayoutColumns {
     template <typename T>
     using ColLayout = ioj::native_soa::ColumnLayout<T>;
 
@@ -56,7 +56,7 @@ struct PackedFieldTableSingleLayoutColumns {
     ColLayout<std::optional<std::uint64_t>> UnusedCodesColumn;
     ColLayout<RowRange> CodesColumn;
 
-    constexpr PackedFieldTableSingleLayoutColumns() noexcept
+    constexpr PackedFieldTableLayoutColumns() noexcept
         : ParentColumn{LayoutStart}
         , SegmentColumn{ParentColumn}
         , NameColumn{SegmentColumn}
@@ -81,11 +81,10 @@ struct PackedFieldTableSingleLayoutColumns {
         , MinimumRequiredBitsColumn{RequiredCodeCountColumn}
         , UnusedCodesColumn{MinimumRequiredBitsColumn}
         , CodesColumn{UnusedCodesColumn} {}
-    PackedFieldTableSingleLayoutColumns(PackedFieldTableSingleLayoutColumns const&) = delete;
-    auto operator=(PackedFieldTableSingleLayoutColumns const&)
-        -> PackedFieldTableSingleLayoutColumns& = delete;
+    PackedFieldTableLayoutColumns(PackedFieldTableLayoutColumns const&) = delete;
+    auto operator=(PackedFieldTableLayoutColumns const&) -> PackedFieldTableLayoutColumns& = delete;
 };
-struct PackedFieldTableSingleLayout {
+struct PackedFieldTableLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
@@ -93,7 +92,7 @@ struct PackedFieldTableSingleLayout {
         ioj::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
 
-    static constexpr PackedFieldTableSingleLayoutColumns columns{};
+    static constexpr PackedFieldTableLayoutColumns columns{};
 
     static constexpr byte_size_type allocation_alignment{columns.CodesColumn.allocation_alignment};
 
@@ -109,18 +108,18 @@ struct PackedFieldTableSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
-struct PackedFieldTableSingleResolvedView;
-struct PackedFieldTableSingleResolvedConstView;
+struct PackedFieldTableResolvedView;
+struct PackedFieldTableResolvedConstView;
 template <bool Const>
-struct PackedFieldTableSingleResolvedViewImpl {
+struct PackedFieldTableResolvedViewImpl {
     using size_type = std::uint32_t;
-    using View = PackedFieldTableSingleResolvedView;
-    using ConstView = PackedFieldTableSingleResolvedConstView;
-    using soa_schema = PackedFieldTableSchema;
+    using View = PackedFieldTableResolvedView;
+    using ConstView = PackedFieldTableResolvedConstView;
+    using soa_schema = ::ioj::layout::PackedFieldTableSchema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    PackedFieldTableSingleResolvedViewImpl() = default;
-    PackedFieldTableSingleResolvedViewImpl(
+    PackedFieldTableResolvedViewImpl() = default;
+    PackedFieldTableResolvedViewImpl(
         Element<ioj::layout::AnalysisId>* parent,
         Element<lispb::schema::PackedSegmentId>* segment,
         Element<std::string_view>* name,
@@ -197,7 +196,7 @@ struct PackedFieldTableSingleResolvedViewImpl {
                                                           unused_codes_,
                                                           codes_);
     }
-    PackedFieldTableSingleResolvedViewImpl(
+    PackedFieldTableResolvedViewImpl(
         std::span<Element<ioj::layout::AnalysisId>> parent,
         std::span<Element<lispb::schema::PackedSegmentId>> segment,
         std::span<Element<std::string_view>> name,
@@ -224,7 +223,7 @@ struct PackedFieldTableSingleResolvedViewImpl {
         std::span<Element<std::optional<std::uint32_t>>> minimum_required_bits,
         std::span<Element<std::optional<std::uint64_t>>> unused_codes,
         std::span<Element<ioj::layout::RowRange>> codes)
-        : PackedFieldTableSingleResolvedViewImpl{
+        : PackedFieldTableResolvedViewImpl{
               parent.data(),
               segment.data(),
               name.data(),
@@ -276,8 +275,7 @@ struct PackedFieldTableSingleResolvedViewImpl {
         assert(codes.size() == count_);
     }
     template <bool Enabled = Const>
-    PackedFieldTableSingleResolvedViewImpl(
-        PackedFieldTableSingleResolvedViewImpl<false> const& other)
+    PackedFieldTableResolvedViewImpl(PackedFieldTableResolvedViewImpl<false> const& other)
         requires Enabled
         : parent_{other.parent_}
         , segment_{other.segment_}
@@ -474,7 +472,7 @@ struct PackedFieldTableSingleResolvedViewImpl {
     }
   private:
     template <bool>
-    friend struct PackedFieldTableSingleResolvedViewImpl;
+    friend struct PackedFieldTableResolvedViewImpl;
     Element<ioj::layout::AnalysisId>* parent_{};
     Element<lispb::schema::PackedSegmentId>* segment_{};
     Element<std::string_view>* name_{};
@@ -501,12 +499,12 @@ struct PackedFieldTableSingleResolvedViewImpl {
     Element<ioj::layout::RowRange>* codes_{};
     size_type count_{};
 };
-struct PackedFieldTableSingleResolvedConstView : PackedFieldTableSingleResolvedViewImpl<true> {
-    using Base = PackedFieldTableSingleResolvedViewImpl<true>;
+struct PackedFieldTableResolvedConstView : PackedFieldTableResolvedViewImpl<true> {
+    using Base = PackedFieldTableResolvedViewImpl<true>;
     using Base::Base;
 };
-struct PackedFieldTableSingleResolvedView : PackedFieldTableSingleResolvedViewImpl<false> {
-    using Base = PackedFieldTableSingleResolvedViewImpl<false>;
+struct PackedFieldTableResolvedView : PackedFieldTableResolvedViewImpl<false> {
+    using Base = PackedFieldTableResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::layout::AnalysisId const new_parent,
@@ -561,23 +559,23 @@ struct PackedFieldTableSingleResolvedView : PackedFieldTableSingleResolvedViewIm
     }
 };
 template <bool Const>
-struct PackedFieldTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct PackedFieldTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = PackedFieldTableSchema;
     using size_type = std::uint32_t;
-    using Layout = PackedFieldTableSingleLayout;
+    using Layout = PackedFieldTableLayout;
     using Storage = ioj::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    using View = PackedFieldTableSingleView;
-    using ConstView = PackedFieldTableSingleConstView;
-    PackedFieldTableSingleViewImpl() = default;
-    PackedFieldTableSingleViewImpl(State* state, size_type offset, size_type count)
+    using View = PackedFieldTableView;
+    using ConstView = PackedFieldTableConstView;
+    PackedFieldTableViewImpl() = default;
+    PackedFieldTableViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
         , count_{count} {}
     template <bool Enabled = Const>
-    PackedFieldTableSingleViewImpl(PackedFieldTableSingleViewImpl<false> const& other)
+    PackedFieldTableViewImpl(PackedFieldTableViewImpl<false> const& other)
         requires Enabled
         : state_{other.state_}
         , offset_{other.offset_}
@@ -657,9 +655,8 @@ struct PackedFieldTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOper
         func(unused_codes());
         func(codes());
     }
-    auto resolve() const -> std::conditional_t<Const,
-                                               PackedFieldTableSingleResolvedConstView,
-                                               PackedFieldTableSingleResolvedView> {
+    auto resolve() const -> std::
+        conditional_t<Const, PackedFieldTableResolvedConstView, PackedFieldTableResolvedView> {
         return {(make_column_view(Layout::columns.ParentColumn).data()),
                 (make_column_view(Layout::columns.SegmentColumn).data()),
                 (make_column_view(Layout::columns.NameColumn).data()),
@@ -694,18 +691,18 @@ struct PackedFieldTableSingleViewImpl : ioj::soa_storage_detail::CompactViewOper
     }
     friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
-    friend struct PackedFieldTableSingleViewImpl;
+    friend struct PackedFieldTableViewImpl;
     State* state_{};
     size_type offset_{};
     size_type count_{};
 };
-struct PackedFieldTableSingleConstView : PackedFieldTableSingleViewImpl<true> {
-    using Base = PackedFieldTableSingleViewImpl<true>;
+struct PackedFieldTableConstView : PackedFieldTableViewImpl<true> {
+    using Base = PackedFieldTableViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<PackedFieldTableSingleConstView>());
-struct PackedFieldTableSingleView : PackedFieldTableSingleViewImpl<false> {
-    using Base = PackedFieldTableSingleViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<PackedFieldTableConstView>());
+struct PackedFieldTableView : PackedFieldTableViewImpl<false> {
+    using Base = PackedFieldTableViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::layout::AnalysisId const new_parent,
@@ -759,7 +756,7 @@ struct PackedFieldTableSingleView : PackedFieldTableSingleViewImpl<false> {
         this->codes()[index] = new_codes;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<PackedFieldTableSingleView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<PackedFieldTableView>());
 // Columns:
 // parent: ioj::layout::AnalysisId
 // segment: lispb::schema::PackedSegmentId
@@ -790,7 +787,7 @@ struct PackedFieldTable
     , ioj::native_soa::StorageOperations {
     using soa_schema = PackedFieldTableSchema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = PackedFieldTableSingleLayout;
+    using Layout = PackedFieldTableLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -803,8 +800,8 @@ struct PackedFieldTable
         return Layout::layout_bytes(blocks);
     }
 
-    using View = PackedFieldTableSingleView;
-    using ConstView = PackedFieldTableSingleConstView;
+    using View = PackedFieldTableView;
+    using ConstView = PackedFieldTableConstView;
 
     /* **************************************** */
     // Lifetime
@@ -1102,7 +1099,7 @@ struct PackedFieldTable
     auto unused_codes(this auto& self) { return self.get_view().unused_codes(); }
     auto codes(this auto& self) { return self.get_view().codes(); }
     void set(size_type index,
-             ioj::layout::AnalysisId const new_parent,
+             AnalysisId const new_parent,
              lispb::schema::PackedSegmentId const new_segment,
              std::string_view const new_name,
              std::optional<lispb::schema::TypeId> const new_semantic_type,
@@ -1125,7 +1122,7 @@ struct PackedFieldTable
              std::optional<std::uint64_t> const new_required_code_count,
              std::optional<std::uint32_t> const new_minimum_required_bits,
              std::optional<std::uint64_t> const new_unused_codes,
-             ioj::layout::RowRange const new_codes) {
+             RowRange const new_codes) {
         assert(index < num());
         get_view().parent()[index] = new_parent;
         get_view().segment()[index] = new_segment;
@@ -1153,7 +1150,7 @@ struct PackedFieldTable
         get_view().codes()[index] = new_codes;
     }
     size_type
-        add(ioj::layout::AnalysisId const new_parent,
+        add(AnalysisId const new_parent,
             lispb::schema::PackedSegmentId const new_segment,
             std::string_view const new_name,
             std::optional<lispb::schema::TypeId> const new_semantic_type,
@@ -1176,7 +1173,7 @@ struct PackedFieldTable
             std::optional<std::uint64_t> const new_required_code_count,
             std::optional<std::uint32_t> const new_minimum_required_bits,
             std::optional<std::uint64_t> const new_unused_codes,
-            ioj::layout::RowRange const new_codes) {
+            RowRange const new_codes) {
         auto const index{num()};
         add_uninitialised(1);
         set(index,
@@ -1207,6 +1204,34 @@ struct PackedFieldTable
         return index;
     }
     std::size_t append();
+    void apply_permutation(std::span<size_type> indices) {
+        assert(indices.size() == num_);
+        auto const columns{get_data()};
+        ioj::apply_permutation(std::span{columns.parent, num_}, indices);
+        ioj::apply_permutation(std::span{columns.segment, num_}, indices);
+        ioj::apply_permutation(std::span{columns.name, num_}, indices);
+        ioj::apply_permutation(std::span{columns.semantic_type, num_}, indices);
+        ioj::apply_permutation(std::span{columns.logical_type, num_}, indices);
+        ioj::apply_permutation(std::span{columns.kind, num_}, indices);
+        ioj::apply_permutation(std::span{columns.reserved, num_}, indices);
+        ioj::apply_permutation(std::span{columns.schema_bit_width, num_}, indices);
+        ioj::apply_permutation(std::span{columns.schema_bit_width_auto, num_}, indices);
+        ioj::apply_permutation(std::span{columns.bit_width, num_}, indices);
+        ioj::apply_permutation(std::span{columns.overridden, num_}, indices);
+        ioj::apply_permutation(std::span{columns.least_significant_bit, num_}, indices);
+        ioj::apply_permutation(std::span{columns.most_significant_bit, num_}, indices);
+        ioj::apply_permutation(std::span{columns.maximum_unsigned_value, num_}, indices);
+        ioj::apply_permutation(std::span{columns.minimum_signed_value, num_}, indices);
+        ioj::apply_permutation(std::span{columns.maximum_signed_value, num_}, indices);
+        ioj::apply_permutation(std::span{columns.minimum_semantic_value, num_}, indices);
+        ioj::apply_permutation(std::span{columns.maximum_semantic_value, num_}, indices);
+        ioj::apply_permutation(std::span{columns.semantic_value_count, num_}, indices);
+        ioj::apply_permutation(std::span{columns.sentinel_code_count, num_}, indices);
+        ioj::apply_permutation(std::span{columns.required_code_count, num_}, indices);
+        ioj::apply_permutation(std::span{columns.minimum_required_bits, num_}, indices);
+        ioj::apply_permutation(std::span{columns.unused_codes, num_}, indices);
+        ioj::apply_permutation(std::span{columns.codes, num_}, indices);
+    }
   private:
     std::pmr::memory_resource* resource_{};
 };
