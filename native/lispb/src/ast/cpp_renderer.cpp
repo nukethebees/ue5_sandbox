@@ -95,19 +95,25 @@ auto binary_precedence(BinaryOperator operation) -> int {
             return 1;
         case BinaryOperator::logical_and:
             return 2;
+        case BinaryOperator::bitwise_or:
+            return 3;
+        case BinaryOperator::bitwise_and:
+            return 4;
         case BinaryOperator::equal:
         case BinaryOperator::not_equal:
-            return 3;
+            return 5;
         case BinaryOperator::greater_equal:
         case BinaryOperator::greater:
         case BinaryOperator::less:
-            return 4;
+            return 6;
+        case BinaryOperator::shift_left:
+            return 7;
         case BinaryOperator::subtract:
         case BinaryOperator::add:
-            return 5;
+            return 8;
         case BinaryOperator::multiply:
         case BinaryOperator::divide:
-            return 6;
+            return 9;
     }
     std::unreachable();
 }
@@ -135,6 +141,12 @@ auto binary_spelling(BinaryOperator operation) -> std::string_view {
             return " * ";
         case BinaryOperator::divide:
             return " / ";
+        case BinaryOperator::bitwise_and:
+            return " & ";
+        case BinaryOperator::bitwise_or:
+            return " | ";
+        case BinaryOperator::shift_left:
+            return " << ";
     }
     std::unreachable();
 }
@@ -548,9 +560,9 @@ auto CppRenderer::expr_precedence(Expr expr) -> int {
             return expr_detail::binary_precedence(ir_.binary_exprs_.operation[expr.index()]);
         case ExprKind::sizeof_type:
         case ExprKind::unary:
-            return 7;
+            return 10;
         default:
-            return 8;
+            return 11;
     }
 }
 void CppRenderer::append_expr(
@@ -581,7 +593,7 @@ void CppRenderer::append_expr(
             output += ')';
             break;
         case ExprKind::template_id:
-            append_expr(output, ir_.template_id_exprs_.callee[index], context, 8);
+            append_expr(output, ir_.template_id_exprs_.callee[index], context, 11);
             output += '<';
             append_arguments(ir_.template_id_exprs_.arguments[index]);
             output += '>';
@@ -601,18 +613,18 @@ void CppRenderer::append_expr(
             output += ir_.strings.view(ir_.raw_exprs_.text[index]);
             break;
         case ExprKind::call:
-            append_expr(output, ir_.call_exprs_.callee[index], context, 8);
+            append_expr(output, ir_.call_exprs_.callee[index], context, 11);
             output += '(';
             append_arguments(ir_.call_exprs_.arguments[index]);
             output += ')';
             break;
         case ExprKind::member_access:
-            append_expr(output, ir_.member_exprs_.object[index], context, 8);
+            append_expr(output, ir_.member_exprs_.object[index], context, 11);
             output += ir_.member_exprs_.through_pointer[index] ? "->" : ".";
             output += ir_.strings.view(ir_.member_exprs_.member[index]);
             break;
         case ExprKind::subscript:
-            append_expr(output, ir_.subscript_exprs_.object[index], context, 8);
+            append_expr(output, ir_.subscript_exprs_.object[index], context, 11);
             output += '[';
             append_expr(output, ir_.subscript_exprs_.index[index], context, 1);
             output += ']';
@@ -640,8 +652,11 @@ void CppRenderer::append_expr(
                 case UnaryOperator::preincrement:
                     output += "++";
                     break;
+                case UnaryOperator::bitwise_not:
+                    output += '~';
+                    break;
             }
-            append_expr(output, ir_.unary_exprs_.operand[index], context, 7, true);
+            append_expr(output, ir_.unary_exprs_.operand[index], context, 10, true);
             break;
         case ExprKind::static_cast_:
             output += "static_cast<";

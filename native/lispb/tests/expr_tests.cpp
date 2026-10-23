@@ -123,6 +123,28 @@ TEST(Expr, RendersUnaryPointerAccessAndLogicalPrecedence) {
     EXPECT_EQ(types.dependency_header(deps.front()), "State.h");
 }
 
+TEST(Expr, PreservesBitwiseAndShiftPrecedence) {
+    CompilerTestContext context;
+    auto& ir{context.ir};
+    CppRenderer renderer{ir};
+    auto const value{ir.named("value")};
+    auto const bit{ir.call(ir.named("bit"), {ir.named("field")})};
+    auto const masked{ir.binary(BinaryOperator::bitwise_and, value, bit)};
+    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::not_equal, masked, ir.literal("0"))),
+              "(value & bit(field)) != 0");
+    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::bitwise_and, value,
+                                        ir.unary(UnaryOperator::bitwise_not, bit))),
+              "value & ~bit(field)");
+    auto const combined{ir.binary(BinaryOperator::bitwise_or, value, bit)};
+    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::shift_left, combined,
+                                        ir.binary(BinaryOperator::add, ir.named("index"), ir.literal("1")))),
+              "(value | bit(field)) << index + 1");
+    EXPECT_EQ(renderer.render(ir.unary(UnaryOperator::bitwise_not, combined)),
+              "~(value | bit(field))");
+    EXPECT_EQ(renderer.render(ir.call(ir.member_access(combined, "test"))),
+              "(value | bit(field)).test()");
+}
+
 TEST(Ast, RendersRefQualifiedMethodsAndInlineOutOfLineConstructors) {
     CompilerTestContext context;
     auto& ir{context.ir};

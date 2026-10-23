@@ -16,6 +16,9 @@ enum class BinaryOperator : std::uint8_t {
     not_equal,
     divide,
     less,
+    bitwise_and,
+    bitwise_or,
+    shift_left,
 };
 
 } // namespace lispb::codegen
